@@ -31,16 +31,6 @@ describe("detail view", () => {
         cy.findByText("9999").should("be.visible");
       });
 
-      DetailView.visitTable(PEOPLE_ID, 1);
-
-      DetailView.getDetailsRowValue({ index: 2, rowsCount: 13 }).within(() => {
-        cy.findByRole("link", { name: "borer-hudson@yahoo.com" }).should(
-          "have.attr",
-          "href",
-          "mailto:borer-hudson@yahoo.com",
-        );
-      });
-
       DetailView.visitTable(PRODUCTS_ID, 1);
 
       cy.findByRole("heading", {

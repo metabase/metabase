@@ -43,38 +43,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("shows correct object detail card for questions with joins (metabase#27094)", () => {
-    const questionDetails = {
-      name: "14775",
-      query: {
-        "source-table": ORDERS_ID,
-        joins: [
-          {
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-            ],
-            alias: "Products",
-          },
-        ],
-      },
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    drillPK({ id: 1 });
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(
-        "be.visible",
-      );
-      cy.findByRole("heading", { name: "1" }).should("be.visible");
-    });
-  });
-
   it("shows correct object detail card for questions with joins after clicking on view details (metabase#39477)", () => {
     const questionDetails = {
       name: "39477",
@@ -127,6 +95,17 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       );
       cy.findByRole("heading", { name: "2" }).should("be.visible");
       cy.findByText("110.93").should("be.visible");
+      cy.findByLabelText("Close").click();
+    });
+    cy.findByTestId("object-detail").should("not.exist");
+
+    cy.log("Open object details by clicking the PK cell (metabase#27094)");
+    drillPK({ id: 1 });
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(
+        "be.visible",
+      );
+      cy.findByRole("heading", { name: "1" }).should("be.visible");
     });
   });
 
@@ -216,9 +195,19 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   it("handles browsing records by FKs (metabase#21756)", () => {
+    cy.intercept(
+      { method: "GET", pathname: "/api/action" },
+      cy.spy().as("getActions"),
+    );
     H.openOrdersTable();
 
     drillFK({ id: 1 });
+
+    cy.log("ad-hoc questions do not fetch actions (metabase#50266)");
+    cy.findByTestId("object-detail")
+      .findByRole("link", { name: /Orders/ })
+      .should("be.visible");
+    cy.get("@getActions").should("have.callCount", 0);
 
     assertUserDetailView({ id: 1, name: "Hudson Borer" });
     getPreviousObjectDetailButton().should("not.exist");
@@ -294,22 +283,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .should("be.visible");
   });
 
-  it("should not offer drill-through on the object detail records (metabase#20560)", () => {
-    H.openPeopleTable({ limit: 2 });
-
-    drillPK({ id: 2 });
-    cy.url().should("contain", "objectId=2");
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findByTestId("object-detail")
-      .findAllByText("Domenica Williamson")
-      .last()
-      .click();
-    // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
-    // Unfortunately, asserting that the popover does not exist will give us a false positive result.
-    cy.findByTestId("object-detail").findByText("Searsboro").click();
-  });
-
   it("should work with non-numeric IDs (metabase#22768)", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: null,
@@ -370,22 +343,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByText("People → Name").scrollIntoView().should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
-  });
-
-  it("should not call GET /api/action endpoint for ad-hoc questions (metabase#50266)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/action", cy.spy().as("getActions"));
-
-    cy.visit("/");
-    H.browseDatabases().click();
-    cy.findByRole("heading", { name: "Sample Database" }).click();
-    cy.findByRole("heading", { name: "Orders" }).click();
-    cy.wait("@dataset");
-    cy.findAllByTestId("cell-data").eq(11).click();
-    H.popover().findByText("View details").click();
-    cy.wait(["@dataset", "@dataset", "@dataset"]); // object detail + Orders relationship + Reviews relationship
-
-    cy.get("@getActions").should("have.callCount", 0);
   });
 
   it("reset object detail navigation state on query change (metabase#54317)", () => {
@@ -498,6 +455,11 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       },
     });
 
+    H.tableInteractive().findByText("Searsboro").click();
+    H.popover().should("be.visible");
+    cy.realPress("Escape");
+    H.popover().should("not.exist");
+
     getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
 
     getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
@@ -514,6 +476,16 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail")
       .findByRole("heading", { name: "Domenica Williamson" })
       .should("be.visible");
+
+    cy.log("does not offer drill-through on the record values (metabase#20560)");
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findByTestId("object-detail")
+      .findAllByText("Domenica Williamson")
+      .last()
+      .click();
+    // A drill popover would cover "Searsboro", and the click would fail.
+    cy.findByTestId("object-detail").findByText("Searsboro").click();
+    H.popover().should("not.exist");
 
     cy.log("navigates up");
     getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
@@ -805,6 +777,17 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         cy.location("href").should("eq", expectedUrl);
         cy.findByRole("heading", { name: "Hudson Borer" }).should("be.visible");
       });
+
+      cy.log("email values render as mailto links");
+      H.DetailView.getDetailsRowValue({ index: 2, rowsCount: 13 }).within(
+        () => {
+          cy.findByRole("link", { name: "borer-hudson@yahoo.com" }).should(
+            "have.attr",
+            "href",
+            "mailto:borer-hudson@yahoo.com",
+          );
+        },
+      );
     });
 
     it("2 primary keys", () => {
