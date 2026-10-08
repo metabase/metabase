@@ -21,6 +21,10 @@
    That is the var it was built for, what it calls with no replacement in scope, and the var a re-export came from."
   (Collections/synchronizedMap (WeakHashMap.)))
 
+(def ^:private ^Map sources
+  "Each re-export taken over from potemkin, mapped to the var it was imported from."
+  (Collections/synchronizedMap (WeakHashMap.)))
+
 (def ^:private max-proxy-depth
   "Re-entries of one var's proxy allowed on a thread, while a replacement is in scope, before assuming a capture bug.
    Generous enough to permit deliberate recursion, low enough to fail fast before the stack overflows."
@@ -46,7 +50,7 @@
     reexport))
 
 (defn- watched-source
-  "The var that potemkin copies over `a-var` whenever its root changes, or nil when there is none."
+  "The var that `a-var` is a re-export of, or nil when it is not one."
   ^Var [^Var a-var]
   ;; potemkin watches the source with the re-export as the key, and copies the source's metadata over the re-export's.
   ;; That includes `:ns`, so the source is normally interned in the namespace the re-export's metadata names.
@@ -57,11 +61,15 @@
                                v)))
                          vars))
         meta-ns  (:ns (meta a-var))]
-    (or (when (instance? Namespace meta-ns)
+    (or (.get sources a-var)
+        (when (instance? Namespace meta-ns)
           (watching (vals (ns-interns meta-ns))))
         ;; A re-export of a re-export names the first source's namespace, so its own source can be anywhere.
         (when-not (identical? meta-ns (.ns a-var))
-          (watching (mapcat (comp vals ns-interns) (all-ns)))))))
+          (watching (mapcat (comp vals ns-interns) (all-ns))))
+        ;; Another thread can take the re-export over while this one is looking for potemkin's watch. It records
+        ;; the link before it removes the watch, so a search that came up empty finds the link here.
+        (.get sources a-var))))
 
 (defn- mirrors?
   "Whether `a-var` still has the root that potemkin copied from `source`."
@@ -167,26 +175,48 @@
   (adopt-reexports! reexport)
   (.bindRoot reexport (var->proxy reexport source source)))
 
-(defn- follow-source-later!
-  "Have `reexport` follow `source` once it gets back the root it mirrored before something put a stub over it."
+(defn- proxied-original
+  "The function under every proxy on `a-var`, or its root when it has none."
+  [^Var a-var]
+  ;; Unlike [[original-fn]] this reads [[proxies]] alone and takes no var's monitor, so a watch can call it.
+  (let [[_ original source] (proxy-entry a-var)]
+    (cond
+      source   (recur source)
+      original original
+      :else    (.getRawRoot a-var))))
+
+(defn- copy-of-source?
+  "Whether `root` is one that potemkin copied from `source`: the source's current root, or its original."
+  [root ^Var source]
+  (or (identical? root (.getRawRoot source))
+      (identical? root (proxied-original source))))
+
+(defn- take-over!
+  "Stop potemkin copying the root of `source` over `reexport`, and have `reexport` call through `source` instead."
   [^Var reexport ^Var source]
-  (let [mirrored (.getRawRoot source)]
-    (add-watch reexport ::follow-source-later
+  ;; Record the link before removing potemkin's watch, which is how a thread about to proxy the re-export finds the
+  ;; source it has to lock first.
+  (.put sources reexport source)
+  (remove-watch source reexport)
+  (locking reexport
+    ;; A `with-redefs` of the re-export puts back, when it exits, the root it found when it started. If that root is
+    ;; a copy of the source's, the re-export has to start calling through the source: potemkin no longer updates it.
+    ;; The watch runs holding the re-export's monitor, so it must not take the source's: see `install-proxy!`.
+    (add-watch reexport ::follow-source
                (fn [_ _ _ root]
-                 (when (identical? root mirrored)
-                   (remove-watch reexport ::follow-source-later)
-                   (follow-source! reexport source))))))
+                 (when (copy-of-source? root source)
+                   (follow-source! reexport source))))
+    ;; A re-export under a stub keeps the stub, and the watch picks it up when the stub goes.
+    (when (copy-of-source? (.getRawRoot reexport) source)
+      (follow-source! reexport source))))
 
 (defn- adopt-reexports!
   "Take over the re-exports of `a-var` from potemkin. Call this before giving `a-var` a new root."
   [^Var a-var]
   ;; potemkin would copy the new root over each re-export, and over a `with-redefs` stub or a proxy if one is there.
   ;; A re-export that calls through `a-var` follows the new root without the copy.
-  (doseq [^Var reexport (reexports a-var)]
-    (remove-watch a-var reexport)
-    (if (mirrors? reexport a-var)
-      (follow-source! reexport a-var)
-      (follow-source-later! reexport a-var))))
+  (doseq [reexport (reexports a-var)]
+    (take-over! reexport a-var)))
 
 (defn- install-proxy!
   "Put a proxy at the root of `a-var`, unless its own proxy is already there."
@@ -198,27 +228,14 @@
     (locking lock-first
       (locking a-var
         (when-not (proxy-entry a-var)
-          (let [root         (.getRawRoot a-var)
-                ;; Another thread can have taken this var over from potemkin while this one waited for the locks.
-                ^Var source  (when (and source (contains? (.getWatches source) a-var))
-                               source)]
-            (check-proxyable a-var root)
-            (cond
-              (nil? source)
-              (do (adopt-reexports! a-var)
-                  (.bindRoot a-var (var->proxy a-var root nil)))
-
-              (mirrors? a-var source)
-              (do (remove-watch source a-var)
-                  (follow-source! a-var source))
-
-              ;; Something put a stub over the re-export before it was ever proxied. The stub stays in effect, and the
-              ;; re-export starts following its source when the stub goes.
-              :else
-              (do (remove-watch source a-var)
-                  (follow-source-later! a-var source)
-                  (adopt-reexports! a-var)
-                  (.bindRoot a-var (var->proxy a-var root nil))))))))))
+          (check-proxyable a-var (.getRawRoot a-var))
+          (when source
+            (take-over! a-var source))
+          ;; Anything else gets a proxy over the root it has: a var that is not a re-export, or a re-export under a
+          ;; stub, where the stub is what the proxy has to fall back to.
+          (when-not (proxy-entry a-var)
+            (adopt-reexports! a-var)
+            (.bindRoot a-var (var->proxy a-var (.getRawRoot a-var) nil))))))))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
