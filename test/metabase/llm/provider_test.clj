@@ -583,6 +583,13 @@
                                   mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
       (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
 
+(deftest env-base-url-moves-a-key-stored-without-an-address-test
+  (testing (str "A key stored with no address, on a type with no default, has no address recorded with it. Thus, "
+                "nothing shows that it is for the address the variable names.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:api-key "sk-no-address"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (= {:base-url "https://ollama.com/v1"} (llm.provider/credentials "ollama")))))))
+
 (deftest env-base-url-keeps-the-key-on-types-it-always-shadowed-test
   (testing (str "on a type in the compatibility exemption, a base-URL variable shadows the address alone and a "
                 "key typed in the UI goes along with it, whatever the connection stored: the gateway setup an "

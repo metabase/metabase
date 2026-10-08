@@ -887,8 +887,7 @@
   (boolean
    (and (not (contains? env-base-url-shadowing-types type-name))
         (u/trimmed-string (:base-url env-config))
-        (when-let [chosen (base-url-choice type-name config)]
-          (not= chosen (base-url-choice type-name env-config))))))
+        (not= (base-url-choice type-name config) (base-url-choice type-name env-config)))))
 
 (defn- captured-secret-fields
   "The secret fields of `type-name` that `env-config` has moved away from, among those `present?` says the

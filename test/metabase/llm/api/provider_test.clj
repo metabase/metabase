@@ -1021,12 +1021,13 @@
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
         (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
         (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic")))))))
-  (testing (str "and on Ollama, a key typed with nothing stored yet is for the only address there is, the one "
-                "the environment supplies")
+  (testing (str "but on Ollama, a key typed with nothing stored has no address recorded with it, so it cannot "
+                "follow the address the environment supplies. It has to come from the environment as well.")
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
-        (mt/user-http-request :crowberto :put 204 "setting/llm-ollama-api-key" {:value "sk-fresh"})
-        (is (= "sk-fresh" (:api-key (stored-config "ollama"))))))))
+        (is (=? {:message #".*MB_LLM_OLLAMA_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-fresh"})))
+        (is (nil? (:api-key (stored-config "ollama"))))))))
 
 (deftest update-preserves-a-masked-service-account-key-test
   (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
