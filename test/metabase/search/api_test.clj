@@ -130,6 +130,8 @@
                                             :type nil
                                             :can_write true))
 
+(def ^:private action-model-params {:name "ActionModel", :type :model})
+
 (defn- default-search-results []
   (cleaned-results
    [(make-result "dashboard test dashboard"
@@ -160,6 +162,8 @@
                  :display_type        "table")
     (make-result "action test action"
                  :model               "action"
+                 :model_name          (:name action-model-params)
+                 :model_id            true
                  :database_id         true
                  :creator_id          true
                  :creator_common_name "Rasta Toucan")
@@ -222,8 +226,12 @@
                                  {:collection_id (u/the-id collection)})))]
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Collection  coll           (data-map "collection %s collection")
+                     :model/Card        action-model   (if in-root-collection?
+                                                         action-model-params
+                                                         (assoc action-model-params :collection_id (u/the-id coll)))
                      :model/Action      {action-id :id
-                                         :as action}   (assoc (coll-data-map "action %s action" coll) :type :query)
+                                         :as action}   (merge (data-map "action %s action")
+                                                              {:type :query, :model_id (u/the-id action-model)})
                      :model/Database    {db-id :id
                                          :as db}       (data-map "database %s database")
                      :model/Table       table          (merge (data-map "database %s database")
@@ -976,8 +984,10 @@
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
-      (mt/with-temp [:model/Action      {action-id :id} (archived {:name "action test action 2"
-                                                                   :type :query})
+      (mt/with-temp [:model/Card        action-model {:type :model}
+                     :model/Action      {action-id :id} (archived {:name     "action test action 2"
+                                                                   :type     :query
+                                                                   :model_id (u/the-id action-model)})
                      :model/QueryAction _ (query-action action-id)
                      :model/Card        _ (archived {:name "card test card 2"})
                      :model/Card        _ (archived {:name "dataset test dataset" :type :model})
@@ -991,11 +1001,14 @@
 (deftest archived-results-test-2
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp [:model/Action      {action-id :id} (archived {:name "action test action"
-                                                                   :type :query})
+      (mt/with-temp [:model/Card        action-model action-model-params
+                     :model/Action      {action-id :id} (archived {:name     "action test action"
+                                                                   :type     :query
+                                                                   :model_id (u/the-id action-model)})
                      :model/QueryAction _ (query-action action-id)
-                     :model/Action      _ (archived {:name "action that will not appear in results"
-                                                     :type :query})
+                     :model/Action      _ (archived {:name     "action that will not appear in results"
+                                                     :type     :query
+                                                     :model_id (u/the-id action-model)})
                      :model/Card        _ (archived {:name "card test card"})
                      :model/Card        _ (archived {:name "card that will not appear in results"})
                      :model/Card        _ (archived {:name "dataset test dataset" :type :model})
@@ -1010,8 +1023,10 @@
 (deftest archived-results-test-3
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp [:model/Action      {action-id :id} (archived {:name "action test action"
-                                                                   :type :query})
+      (mt/with-temp [:model/Card        action-model action-model-params
+                     :model/Action      {action-id :id} (archived {:name     "action test action"
+                                                                   :type     :query
+                                                                   :model_id (u/the-id action-model)})
                      :model/QueryAction _ (query-action action-id)
                      :model/Card        _ (archived {:name "card test card"})
                      :model/Card        _ (archived {:name "dataset test dataset" :type :model})
@@ -1221,7 +1236,7 @@
          :model/Card      {card-id-4 :id}    {:name (format "%s Card 4" search-term) :creator_id user-id-2}
          :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}
          :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
-         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :creator_id user-id :type :query}]
+         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :query}]
         (testing "sanity check that without search by created_by we have more results than if a filter is provided"
           (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
                  5)))
@@ -1443,6 +1458,7 @@
        :model/Dashboard  {dash-id :id}   {:name search-term}
        :model/Card       {metric-id :id} {:name search-term :type :metric}
        :model/Action     {action-id :id} {:name       search-term
+                                          :model_id   model-id
                                           :type       :query}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                           [:model/Dashboard dash-id] [:model/Card metric-id]]]
@@ -1597,8 +1613,10 @@
 (deftest models-archived-string-test
   (testing "search request includes `archived-string` param"
     (with-search-items-in-root-collection "Available models"
-      (mt/with-temp [:model/Action _ (archived {:name "test action"
-                                                :type :query})]
+      (mt/with-temp [:model/Card   {model-id :id} action-model-params
+                     :model/Action _              (archived {:name     "test action"
+                                                             :type     :query
+                                                             :model_id model-id})]
         (testing "`archived-string` is 'false'"
           (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                  (get-available-models :archived "false"))))

@@ -193,9 +193,8 @@
    :action                       {:prefix    :action
                                   :spec      ::action
                                   :insert!   {:model :model/Action}
-                                  :relations {:creator_id    [:core-user :id]
-                                              :collection_id [:collection :id]
-                                              :model_id      [:simple-model :id]}}
+                                  :relations {:creator_id [:core-user :id]
+                                              :model_id   [:simple-model :id]}}
    :query-action                 {:prefix    :query-action
                                   :spec      ::query-action
                                   :insert!   {:model :model/QueryAction}

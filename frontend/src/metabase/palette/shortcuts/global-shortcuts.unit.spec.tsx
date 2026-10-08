@@ -47,10 +47,10 @@ const setup = async ({ isAdmin = true }: SetupOpts = {}) => {
     }),
   });
 
-  // The palette registers its actions from an effect fed by /api/database. A
+  // The palette registers its actions from an effect fed by /api/search. A
   // keystroke dispatched before that registration lands is lost.
   await waitFor(() =>
-    expect(fetchMock.callHistory.called("path:/api/database")).toBe(true),
+    expect(fetchMock.callHistory.called("path:/api/search")).toBe(true),
   );
 
   return view;

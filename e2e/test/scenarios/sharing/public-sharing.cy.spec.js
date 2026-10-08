@@ -124,13 +124,26 @@ describe("scenarios > admin > settings > public sharing", () => {
         cy.wrap(response.body.uuid).as("questionUuid");
       });
 
-    H.createAction({
-      ...DEFAULT_ACTION_DETAILS,
-      name: expectedActionName,
-      collection_id: null,
+    H.createQuestion({
+      name: "Model",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+      type: "model",
     }).then(({ body }) => {
-      const actionId = body.id;
-      cy.wrap(actionId).as("actionId");
+      const modelId = body.id;
+      cy.wrap(modelId).as("modelId");
+    });
+
+    cy.get("@modelId").then((modelId) => {
+      H.createAction({
+        ...DEFAULT_ACTION_DETAILS,
+        name: expectedActionName,
+        model_id: modelId,
+      }).then(({ body }) => {
+        const actionId = body.id;
+        cy.wrap(actionId).as("actionId");
+      });
     });
 
     cy.get("@actionId")
@@ -228,11 +241,11 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText(expectedActionName).click();
       cy.url().should(
         "eq",
-        `${location.origin}/data-studio/data-actions/${this.actionId}`,
+        `${location.origin}/model/${this.modelId}/detail/actions/${this.actionId}`,
       );
-      cy.findByTestId("action-header")
-        .findByDisplayValue(expectedActionName)
-        .should("be.visible");
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(expectedActionName).should("be.visible");
+      });
       cy.visit("/admin/settings/public-sharing");
     });
 

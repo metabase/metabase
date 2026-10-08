@@ -211,7 +211,7 @@
                          :model/Collection {parent-id :id}     {:name "Parent"}
                          :model/Collection {child-id :id}      {:name "Child" :location (str "/" parent-id "/")}
                          :model/Collection {snip-coll-id :id}   {:name "Snips" :namespace "snippets"}
-                         :model/Card       _ {:name "Model" :type :model :database_id db-id}
+                         :model/Card       {model-card-id :id} {:name "Model" :type :model :database_id db-id}
                          :model/Card       {embed-card-id :id} {:name "Embedded" :database_id db-id}]
         (let [deps (fn [model id]
                      (serdes/serialization-dependencies model (t2/select-one (keyword "model" model) :id id)))]
@@ -226,15 +226,16 @@
                                                    {:name "snip" :content "1=1" :collection_id snip-coll-id
                                                     :creator_id (mt/user->id :rasta)})]
               (is (= #{[{:model "Collection" :id snip-coll-id}]} (deps "NativeQuerySnippet" snip-id)))))
-          (testing "Action (query) references its Database, and the tables/fields in its query"
-            (let [action-id (t2/insert-returning-pk! :model/Action {:name "A" :type :query})]
+          (testing "Action (query) references its model Card, Database, and the tables/fields in its query"
+            (let [action-id (t2/insert-returning-pk! :model/Action {:name "A" :type :query :model_id model-card-id})]
               (t2/insert! :model/QueryAction {:action_id     action-id
                                               :database_id   db-id
                                               :dataset_query {:database db-id
                                                               :type     :query
                                                               :query    {:source-table table-id
                                                                          :filter       [:> [:field field-id nil] 1]}}})
-              (is (= #{[{:model "Database" :id db-id}]
+              (is (= #{[{:model "Card" :id model-card-id}]
+                       [{:model "Database" :id db-id}]
                        [{:model "Table" :id table-id}]
                        [{:model "Field" :id field-id}]}
                      (deps "Action" action-id)))))

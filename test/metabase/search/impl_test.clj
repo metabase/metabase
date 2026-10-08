@@ -156,9 +156,11 @@
                                                :type       :model
                                                :created_at two-years-ago}
          :model/Action     {action-new :id}   {:name       search-term
+                                               :model_id   model-new
                                                :type       :query
                                                :created_at new}
          :model/Action     {action-old :id}   {:name       search-term
+                                               :model_id   model-old
                                                :type       :query
                                                :created_at two-years-ago}
          :model/Segment    {_segment-new :id} {:name       search-term
@@ -233,9 +235,11 @@
          :model/Card       {metric-new :id}    {:name search-term :type :metric}
          :model/Card       {metric-old :id}    {:name search-term :type :metric}
          :model/Action     {action-new :id}    {:name       search-term
+                                                :model_id   model-new
                                                 :type       :query
                                                 :updated_at new}
          :model/Action     {action-old :id}    {:name       search-term
+                                                :model_id   model-old
                                                 :type       :query
                                                 :updated_at two-years-ago}]
         (t2/insert! (t2/table-name :model/Revision) (for [[model model-id timestamp]

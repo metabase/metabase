@@ -447,24 +447,16 @@
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps allow-int-ids? parameters))))
 
-(defn- with-loadable-action-dashcards
-  "`ingested` without the dashcards whose action has no local row, and with no card on the dashcards of query actions."
+(defn- without-unloaded-action-dashcards
+  "`ingested` without the dashcards whose action has no local row."
   [{:keys [dashcards] :as ingested}]
   (if-let [action-eids (not-empty (into #{} (keep :action_id) dashcards))]
-    (let [action-types (dashboards.db/action-types-by-entity-id action-eids)]
-      (assoc ingested :dashcards (into []
-                                       (keep (fn [{action-eid :action_id :as dashcard}]
-                                               (case (when action-eid
-                                                       (get action-types action-eid ::missing))
-                                                 nil      dashcard
-                                                 ::missing nil
-                                                 :query   (assoc dashcard :card_id nil)
-                                                 dashcard)))
-                                       dashcards)))
+    (let [loaded (dashboards.db/action-entity-ids-in action-eids)]
+      (assoc ingested :dashcards (filterv #(or (nil? (:action_id %)) (contains? loaded (:action_id %))) dashcards)))
     ingested))
 
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (serdes/default-load-one! (with-loadable-action-dashcards ingested) maybe-local))
+  (serdes/default-load-one! (without-unloaded-action-dashcards ingested) maybe-local))
 
 (defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
   (dashboard-deps false dashboard))

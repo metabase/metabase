@@ -9,14 +9,11 @@ import { getParameters } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
 import { performUndo } from "metabase/redux/undo";
 import {
-  createMockActionDashboardCard,
   createMockCard,
   createMockDashboardCard,
   createMockField,
-  createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
   createMockParameter,
-  createMockQueryAction,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
@@ -30,7 +27,6 @@ import {
 import {
   REMOVE_PARAMETER,
   removeParameter,
-  setActionForDashcard,
   setOrUnsetParameterValues,
   setParameterIsMultiSelect,
   setParameterMapping,
@@ -483,35 +479,5 @@ describe("setOrUnsetParameterValues", () => {
 
     const state = store.getState();
     expect(state.dashboard.parameterValues["123"]).toBe(null);
-  });
-});
-
-describe("setActionForDashcard", () => {
-  it("points the dashcard at the model of the new action, or at none", () => {
-    const dashcard = createMockActionDashboardCard({
-      id: 1,
-      card_id: 10,
-      action: createMockImplicitQueryAction({ id: 1, model_id: 10 }),
-    });
-    const store = setup(
-      createMockState({
-        dashboard: createMockDashboardState({
-          dashboardId: 1,
-          dashboards: {
-            "1": createMockStoreDashboard({ id: 1, dashcards: [1] }),
-          },
-          dashcards: { "1": dashcard },
-        }),
-      }),
-    );
-
-    store.dispatch(
-      setActionForDashcard(dashcard, createMockQueryAction({ id: 2 })),
-    );
-
-    expect(store.getState().dashboard.dashcards[1]).toMatchObject({
-      action_id: 2,
-      card_id: null,
-    });
   });
 });

@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useListDatabasesQuery } from "metabase/api";
+import { skipToken, useListDatabasesQuery, useSearchQuery } from "metabase/api";
 import type { UseInitialCollectionIdProps } from "metabase/common/collections/hooks";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
@@ -82,6 +82,12 @@ export const useCommandPaletteBasicActions = ({
     isLoggedIn ? undefined : skipToken,
   );
   const databases = databasesResponse?.data ?? [];
+  const { data: searchResults } = useSearchQuery(
+    isLoggedIn
+      ? { models: ["dataset"], limit: 1, context: "basic-actions" }
+      : skipToken,
+  );
+  const hasModels = (searchResults?.data?.length ?? 0) > 0;
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -328,7 +334,7 @@ export const useCommandPaletteBasicActions = ({
 
   const openActionModal = [];
 
-  if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasDataStudioAccess) {
+  if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
     openActionModal.push({
       id: "create-action",
       name: t`New action`,
@@ -336,15 +342,14 @@ export const useCommandPaletteBasicActions = ({
       section: "basic",
       icon: "bolt",
       perform: () => {
-        navigate(Urls.newDataAction());
+        openNewModal("action");
       },
     });
   }
   useRegisterActions(openActionModal, [
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
-    hasDataStudioAccess,
-    navigate,
+    hasModels,
   ]);
 
   const colorSchemeRef = useLatest(useColorScheme());

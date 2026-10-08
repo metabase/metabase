@@ -334,6 +334,12 @@ const createDashboardWithCards = () => {
     query: { "source-table": ORDERS_ID },
   };
 
+  const modelDetails = {
+    name: "Orders model",
+    query: { "source-table": ORDERS_ID },
+    type: "model",
+  };
+
   const actionDetails = {
     name: "Update orders quantity",
     type: "query",
@@ -361,17 +367,19 @@ const createDashboardWithCards = () => {
 
   H.createDashboard().then(({ body: { id: dashboard_id } }) => {
     H.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
-      H.createAction({ ...actionDetails, collection_id: null }).then(
-        ({ body: { id: action_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            dashcards: [
-              { id: -1, card_id: question_id, ...questionDashcardDetails },
-              H.getTextCardDetails({ id: -2, size_y: 1 }),
-              H.getActionCardDetails({ id: -3, action_id }),
-            ],
-          });
-        },
-      );
+      H.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
+        H.createAction({ ...actionDetails, model_id }).then(
+          ({ body: { id: action_id } }) => {
+            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+              dashcards: [
+                { id: -1, card_id: question_id, ...questionDashcardDetails },
+                H.getTextCardDetails({ id: -2, size_y: 1 }),
+                H.getActionCardDetails({ id: -3, action_id }),
+              ],
+            });
+          },
+        );
+      });
     });
 
     cy.wrap(dashboard_id).as("dashboardId");

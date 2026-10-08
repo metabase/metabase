@@ -16,6 +16,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -70,10 +71,6 @@
    :parameters             transform-action-parameters
    :visualization_settings transform-action-visualization-settings})
 
-(t2/define-after-select :model/Action
-  [action]
-  (dissoc action :legacy_model_id))
-
 (t2/deftransforms :model/QueryAction
   {:dataset_query lib-be/transform-query})
 
@@ -100,13 +97,6 @@
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
-(defn- check-query-action-model
-  "Throws a 400 when `action` belongs to a model but is not implicit."
-  [{model-id :model_id, :as action}]
-  (when (and model-id (not (implicit? action)))
-    (throw (ex-info (tru "Only basic actions can belong to a model.")
-                    {:status-code 400}))))
-
 (defn check-implicit-actions-supported
   "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
   [{model-id :model_id, :as action}]
@@ -115,16 +105,37 @@
     (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                     {:status-code 400}))))
 
-;; A data app's resource collection holds the copies of the actions the app runs.
+;; A data app's resource collection holds the copies of the actions the app runs, and actions without a model live in
+;; the data actions namespace.
 (defmethod collection/allowed-namespaces :model/Action
   [_]
-  (conj collection/default-allowed-namespaces collection/data-apps-ns))
+  (conj collection/default-allowed-namespaces collection/data-apps-ns collection/data-actions-ns))
+
+(def ^:private model-less-namespaces
+  "The Collection namespaces an Action without a model may go in, besides the data actions root."
+  #{collection/data-actions-ns collection/data-apps-ns})
+
+(defn- collection-namespace
+  "The namespace of the Collection with `collection-id` as a keyword, or nil."
+  [collection-id]
+  (some-> collection-id actions.db/collection-namespace keyword))
+
+(defn- check-model-less-collection
+  "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection."
+  [{model-id :model_id, collection-id :collection_id}]
+  (when (and (nil? model-id)
+             collection-id
+             (not (contains? model-less-namespaces (collection-namespace collection-id))))
+    (let [msg (tru "An action without a model can only go in a data actions or data app collection.")]
+      (throw (ex-info msg {:status-code 400
+                           :errors      {:collection_id msg}})))))
 
 (defn- check-collection-content
-  "Throws unless an Action may go in the Collection with `collection-id`."
-  [collection-id]
+  "Throws unless `action` may go in its Collection."
+  [{collection-id :collection_id, :as action}]
   (collection/check-collection-namespace :model/Action collection-id)
-  (collection/check-allowed-content :action collection-id))
+  (collection/check-allowed-content :action collection-id)
+  (check-model-less-collection action))
 
 (defn- set-model-collection
   "`action` with the `:collection_id` of its model Card."
@@ -135,10 +146,9 @@
   [{model-id :model_id, :as action}]
   (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
              model-id set-model-collection)
-    (check-query-action-model action)
     (when (implicit? action)
       (check-implicit-action-model model-id))
-    (check-collection-content (:collection_id <>))))
+    (check-collection-content <>)))
 
 (t2/define-before-update :model/Action
   [{model-id :model_id, :as action}]
@@ -146,13 +156,11 @@
     (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
                (and model-id (changed? :model_id))
                set-model-collection)
-      (when (or (changed? :type) (changed? :model_id))
-        (check-query-action-model action))
       (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
-      (when (contains? (t2/changes <>) :collection_id)
-        (check-collection-content (:collection_id <>))))))
+      (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
+        (check-collection-content <>)))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -201,12 +209,37 @@
       (when collection-id
         (api/check-404 (actions.db/collection-exists? collection-id))))))
 
+(defn- sandboxed-current-user?
+  "Whether a current user is bound and uses sandboxing."
+  []
+  (boolean (and api/*current-user-id* (perms/sandboxed-user?))))
+
+(defmethod mi/perms-objects-set :model/Action
+  [{model-id :model_id, collection-id :collection_id, :as action} read-or-write]
+  (cond
+    model-id
+    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
+
+    (sandboxed-current-user?)
+    #{"___no-sandboxed-data-actions-access"}
+
+    (and (= read-or-write :write)
+         (not (remote-sync/model-editable? :model/Action (assoc action :model_id nil))))
+    #{"___no-remote-sync-access"}
+
+    (nil? collection-id)
+    (perms/perms-objects-set-for-parent-collection collection/data-actions-ns nil read-or-write)
+
+    :else
+    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)))
+
 (defn- collection-writable?
   "Whether the current user can write the Collection `action` goes in."
-  [action]
-  ((get-method mi/can-create? :perms/use-parent-collection-perms)
-   :model/Action
-   (assoc action :collection_id (effective-collection-id action))))
+  [{model-id :model_id, :as action}]
+  (let [action (assoc action :collection_id (effective-collection-id action))]
+    (if model-id
+      ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
+      (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
@@ -282,7 +315,6 @@
   [updates         :- ::actions.schema/action.for-update
    existing-action :- ::actions.schema/action]
   (let [updates (merge (select-keys existing-action [:type]) updates)] ; in case the updates do not include it.
-    (check-query-action-model updates)
     (update*! (lib/normalize ::actions.schema/action.for-update updates) existing-action)))
 
 (defn- normalize-query-actions [actions]
@@ -571,9 +603,7 @@
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
    :skip      [;; always re-derived from public_uuid on import
-               :public_uuid_prefix
-               ;; only kept to roll back the migration that detached query actions from their models
-               :legacy_model_id]
+               :public_uuid_prefix]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
@@ -589,22 +619,16 @@
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false, :archived_directly false}})
 
-(defn- ingested-collection-ref
-  "The Collection ref of an ingested Action, or its model's Collection ref when it has none."
-  [{:keys [collection_id model_id]}]
-  (or collection_id
-      (some-> model_id
-              (serdes/*import-fk* :model/Card)
-              actions.db/card-collection-id
-              (serdes/*export-fk* :model/Collection))))
+(defmethod serdes/storage-path "Action" [{:keys [model_id collection_id] :as action} ctx]
+  (if (and (nil? model_id)
+           (or (nil? collection_id)
+               (= collection/data-actions-ns
+                  (some-> (actions.db/collection-namespace-with-entity-id collection_id) keyword))))
+    (serdes/storage-default-collection-path action ctx (name collection/data-actions-ns))
+    (serdes/storage-default-collection-path action ctx)))
 
 (defmethod serdes/load-one! "Action" [ingested maybe-local]
-  (case (some-> (:type ingested) name)
-    "http"  nil
-    "query" (serdes/default-load-one! (-> ingested
-                                          (assoc :collection_id (ingested-collection-ref ingested))
-                                          (dissoc :model_id))
-                                      maybe-local)
+  (when-not (= "http" (some-> (:type ingested) name))
     (serdes/default-load-one! ingested maybe-local)))
 
 (defmethod serdes/deserialization-dependencies "Action" [action]
@@ -612,8 +636,7 @@
    (concat
     (when-let [collection-id (:collection_id action)]
       [[{:model "Collection" :id collection-id}]])
-    (when-let [model-id (and (or (not= (:type action) "query") (nil? (:collection_id action)))
-                             (:model_id action))]
+    (when-let [model-id (:model_id action)]
       [[{:model "Card" :id model-id}]])
     (when (= (:type action) "query")
       (serdes/mbql-deps false (:dataset_query (first (:query action))))))))

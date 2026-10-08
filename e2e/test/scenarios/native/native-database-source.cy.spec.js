@@ -135,6 +135,29 @@ describe(
       cy.get("@persistDatabase.all").should("have.length", 1);
     });
 
+    it("selecting a database in native editor for model actions should not persist the database", () => {
+      [SAMPLE_DB_ID, PG_DB_ID].forEach(enableModelActionsForDatabase);
+
+      cy.visit("/");
+      H.startNewAction();
+      assertNoDatabaseSelected();
+
+      selectDatabase("Sample Database");
+
+      startNativeModel();
+      assertNoDatabaseSelected();
+      cy.log(
+        "Persisting a database for a native model should not affect actions",
+      );
+      selectDatabase(postgresName);
+      cy.wait("@persistDatabase");
+      cy.get("@persistDatabase.all").should("have.length", 1);
+
+      cy.visit("/");
+      H.startNewAction();
+      assertNoDatabaseSelected();
+    });
+
     describe("permissions", () => {
       it("users should be able to choose the databases they can run native queries against (metabase#39053)", () => {
         cy.log(
@@ -353,4 +376,10 @@ function assertSelectedDatabase(name) {
   );
 
   return cy.findByTestId("selected-database").should("have.text", name);
+}
+
+function enableModelActionsForDatabase(id) {
+  cy.request("PUT", `/api/database/${id}`, {
+    settings: { "database-enable-actions": true },
+  });
 }

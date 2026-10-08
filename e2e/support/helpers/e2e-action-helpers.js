@@ -1,5 +1,12 @@
 import { capitalize } from "inflection";
 
+import {
+  commandPalette,
+  commandPaletteButton,
+  commandPaletteInput,
+} from "./e2e-command-palette-helpers";
+import { NativeEditor } from "./e2e-native-editor-helpers";
+
 export function setActionsEnabledForDB(dbId, enabled = true) {
   return cy.request("PUT", `/api/database/${dbId}`, {
     settings: {
@@ -8,9 +15,12 @@ export function setActionsEnabledForDB(dbId, enabled = true) {
   });
 }
 
+export function fillActionQuery(query) {
+  NativeEditor.type(query);
+}
 /**
  *
- * @param {import("metabase-types/api").CreateActionRequest} actionDetails
+ * @param {import("metabase/actions/types").CreateQueryActionParams} actionDetails
  */
 export function createAction(actionDetails) {
   return cy.request("POST", "/api/action", actionDetails);
@@ -42,4 +52,14 @@ export function createImplicitActions({ modelId }) {
   createImplicitAction({ model_id: modelId, kind: "create" });
   createImplicitAction({ model_id: modelId, kind: "update" });
   createImplicitAction({ model_id: modelId, kind: "delete" });
+}
+
+export function startNewAction() {
+  commandPaletteButton().click();
+  commandPalette().within(() => {
+    commandPaletteInput().type("Ac");
+    cy.findByLabelText("New action").click();
+  });
+  commandPalette().should("not.exist");
+  cy.findByTestId("action-creator").should("be.visible");
 }

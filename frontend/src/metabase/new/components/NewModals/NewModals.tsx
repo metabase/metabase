@@ -8,11 +8,15 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { useLocation, useParams } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { WritebackAction } from "metabase-types/api";
 
 const getCurrentOpenModalState = <TProps,>(state: State) =>
   // Unjustified type cast. FIXME
@@ -26,8 +30,20 @@ export const NewModals = () => {
     getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const collectionId =
     useInitialCollectionId({ location, params }) ?? undefined;
+
+  const handleActionCreated = useCallback(
+    (action: WritebackAction) => {
+      const nextLocation = Urls.modelDetail(
+        { id: action.model_id ?? undefined },
+        "actions",
+      );
+      navigate(nextLocation);
+    },
+    [navigate],
+  );
 
   const handleModalClose = useCallback(() => {
     dispatch(closeModal());
@@ -74,6 +90,22 @@ export const NewModals = () => {
           onClose={handleModalClose}
           collectionId={collectionId}
         />
+      );
+    case "action":
+      return (
+        <Modal
+          {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
+          opened
+          onClose={handleModalClose}
+          size="95%"
+          withCloseButton={false}
+          padding={0}
+        >
+          <ActionCreator
+            onClose={handleModalClose}
+            onSubmit={handleActionCreated}
+          />
+        </Modal>
       );
     case "upgrade":
       return <UpgradeModal opened onClose={handleModalClose} />;

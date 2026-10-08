@@ -31,7 +31,8 @@
                                "indexed-entity"
                                "document"
                                "exploration"
-                               "table"])
+                               "table"
+                               "action"])
 
 (mr/def ::Collection
   [:map

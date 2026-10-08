@@ -129,12 +129,10 @@
               ;; actions 0-9 are query actions, and 10-19 are implicit actions.
               :action                  (apply concat
                                               (for [type [:query :implicit]]
-                                                (cond->> (many-random-fks 10
-                                                                          {:spec-gen {:type type}}
-                                                                          (cond-> {:creator_id [:u 10]}
-                                                                            (= type :implicit) (assoc :model_id [:sm 10])
-                                                                            (= type :query)    (assoc :collection_id [:coll 100])))
-                                                  (= type :query) (mapv #(assoc-in % [1 :refs :model_id] ::rs/omit)))))
+                                                (many-random-fks 10
+                                                                 {:spec-gen {:type type}}
+                                                                 {:model_id   [:sm 10]
+                                                                  :creator_id [:u 10]})))
               :query-action            (map-indexed
                                         (fn [idx x]
                                           (assoc-in x [1 :refs :action_id] (keyword (str "action" idx))))

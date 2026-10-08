@@ -8,19 +8,22 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn unarchived-action-ids-visible-to-user
-  "The ids of the unarchived Actions of the model `:model-id`, or in Collections the current user can read without
-  one, limited to actions of `:type` if given."
-  [{action-type :type, model-id :model-id} :- [:map {:closed true}
-                                               [:type     {:optional true} [:maybe ::actions.schema/type]]
-                                               [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
+(mu/defn action-ids-visible-to-user
+  "The ids of the Actions that are `:archived` or not, of the model `:model-id`, or else in Collections the current
+  user can read or in the data actions root without a model, limited to actions of `:type` if given."
+  [{action-type :type, model-id :model-id, :keys [archived]} :- [:map {:closed true}
+                                                                 [:type     {:optional true} [:maybe ::actions.schema/type]]
+                                                                 [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
+                                                                 [:archived :boolean]]]
   (t2/select-pks-vec :model/Action {:where [:and
-                                            [:= :archived false]
+                                            [:= :archived archived]
                                             (when action-type
                                               [:= :type (name action-type)])
                                             (if model-id
                                               [:= :model_id model-id]
-                                              (collection/visible-collection-filter-clause))]}))
+                                              [:or
+                                               (collection/visible-collection-filter-clause)
+                                               [:and [:= :model_id nil] [:= :collection_id nil]]])]}))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

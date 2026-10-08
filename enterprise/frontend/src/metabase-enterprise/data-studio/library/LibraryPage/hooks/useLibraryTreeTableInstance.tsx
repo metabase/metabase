@@ -19,6 +19,9 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
+import { useActionDatabases } from "metabase-enterprise/data-studio/library/actions/hooks/use-action-databases";
+import { useBuildActionTree } from "metabase-enterprise/data-studio/library/actions/hooks/use-build-action-tree";
+import { canCreateActions } from "metabase-enterprise/data-studio/library/actions/utils";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection } from "metabase-types/api";
 
@@ -86,20 +89,34 @@ export function useLibraryTreeTableInstance({
     isLoading: loadingSnippets,
     error: snippetsError,
   } = useBuildSnippetTree();
+  const { databases: actionDatabases, isLoading: loadingActionDatabases } =
+    useActionDatabases();
+  const {
+    tree: actionTree,
+    isLoading: loadingActions,
+    error: actionsError,
+  } = useBuildActionTree({
+    canCreateActions:
+      !isRemoteSyncReadOnly && canCreateActions(actionDatabases),
+  });
+  const localTree = useMemo(
+    () => [...snippetTree, ...actionTree],
+    [snippetTree, actionTree],
+  );
 
-  // Server-side search for tables and metrics, client-side for snippets
+  // Server-side search for tables and metrics, client-side for snippets and actions
   const {
     tree: searchTree,
     isActive: isSearchActive,
     isLoading: isSearchLoading,
-  } = useLibrarySearch(searchQuery, libraryCollection?.id, snippetTree);
+  } = useLibrarySearch(searchQuery, libraryCollection?.id, localTree);
 
   const combinedTree = useMemo(
     () =>
       isSearchActive
         ? searchTree
-        : [...tablesTree, ...metricsTree, ...snippetTree],
-    [isSearchActive, searchTree, tablesTree, metricsTree, snippetTree],
+        : [...tablesTree, ...metricsTree, ...localTree],
+    [isSearchActive, searchTree, tablesTree, metricsTree, localTree],
   );
 
   const isLoading =
@@ -107,8 +124,12 @@ export function useLibraryTreeTableInstance({
     loadingTables ||
     loadingMetrics ||
     loadingSnippets ||
+    loadingActions ||
+    loadingActionDatabases ||
     isSearchLoading;
-  useErrorHandling(tablesError || metricsError || snippetsError);
+  useErrorHandling(
+    tablesError || metricsError || snippetsError || actionsError,
+  );
 
   const libraryHasContent = useMemo(
     () =>
@@ -228,6 +249,7 @@ export function useLibraryTreeTableInstance({
   );
 
   const snippetRootId = snippetTree[0]?.id;
+  const actionRootId = actionTree[0]?.id;
 
   // Controlled expansion: expand all during search, preserve user state when browsing.
   // Default any IDs from the URL. If none are provided, default to Data, Metrics and SQL Snippets expanded
@@ -247,8 +269,18 @@ export function useLibraryTreeTableInstance({
       ids[snippetRootId] = true;
     }
 
+    if (actionRootId) {
+      ids[actionRootId] = true;
+    }
+
     return ids;
-  }, [expandedIdsFromUrl, tableCollection, metricCollection, snippetRootId]);
+  }, [
+    expandedIdsFromUrl,
+    tableCollection,
+    metricCollection,
+    snippetRootId,
+    actionRootId,
+  ]);
 
   const [browseExpanded, setBrowseExpanded] = useState<ExpandedState | null>(
     null,

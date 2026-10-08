@@ -111,7 +111,7 @@
 
 (deftest actions-test
   (mt/with-temp [:model/Database   {other-db-id :id} {}
-                 :model/Collection {hidden-coll-id :id} {:name "Hidden actions"}
+                 :model/Collection {hidden-coll-id :id} {:name "Hidden actions" :namespace "data-actions"}
                  :model/Card       {model-id :id} {:type          :model
                                                    :dataset_query (lib/query (mt/metadata-provider)
                                                                              (lib.metadata/table (mt/metadata-provider)
@@ -122,7 +122,8 @@
                  :model/QueryAction _ {:action_id archived, :dataset_query (touch-category-query)}
                  :model/Action     {hidden :id} {:type :query, :name "Hidden", :collection_id hidden-coll-id}
                  :model/QueryAction _ {:action_id hidden, :dataset_query (touch-category-query)}
-                 :model/Action     {on-model :id} {:type :implicit, :name "On a model", :model_id model-id}]
+                 :model/Action     {on-model :id} {:type :query, :name "On a model", :model_id model-id}
+                 :model/QueryAction _ {:action_id on-model, :dataset_query (touch-category-query)}]
     (let [action-ids (fn [database-ids] (into #{} (map :id) (source/actions source/app-db-source database-ids)))
           ours       #{standalone archived hidden on-model}]
       (mt/with-current-user (mt/user->id :crowberto)

@@ -63,6 +63,13 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     priority: 90,
   },
   {
+    id: "data-actions",
+    namespace: "data-actions",
+    icon: "bolt",
+    pathPrefixGroupId: "library",
+    priority: 85,
+  },
+  {
     id: "glossary",
     models: new Set(["glossary"]),
     icon: "glossary",
@@ -249,7 +256,12 @@ const getPathPrefixSegments = (
     libraryCollectionId != null &&
     collectionId !== libraryCollectionId &&
     collectionId != null &&
-    isCollectionInNamespace(collectionId, "snippets", namespaceCollectionMap)
+    spec.namespace != null &&
+    isCollectionInNamespace(
+      collectionId,
+      spec.namespace,
+      namespaceCollectionMap,
+    )
   ) {
     const libraryCollection = collectionMap.get(libraryCollectionId);
     if (libraryCollection) {

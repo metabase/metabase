@@ -379,37 +379,56 @@ describe("shortcuts", () => {
     });
   });
 
-  it("should not fire shortcuts while a modal holds focus (ADM 658)", () => {
-    cy.visit("/");
-    cy.findByTestId("home-page")
-      .findByTestId("loading-indicator")
-      .should("not.exist");
-    H.navigationSidebar().should("be.visible");
+  it(
+    "should not fire shortcuts while a modal holds focus (ADM 658)",
+    { tags: ["@actions"] },
+    () => {
+      H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-    cy.log("Mantine modals");
-    H.startNewCollectionFromSidebar();
-    cy.findByTestId("new-collection-modal")
-      .should("be.visible")
-      .findByLabelText(/collection it's saved in/i)
-      .click();
+      cy.visit("/");
+      cy.findByTestId("home-page")
+        .findByTestId("loading-indicator")
+        .should("not.exist");
+      H.navigationSidebar().should("be.visible");
 
-    // Remove focus
-    H.entityPickerModal().findByRole("heading").click();
+      cy.log("Mantine modals");
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal")
+        .should("be.visible")
+        .findByLabelText(/collection it's saved in/i)
+        .click();
 
-    cy.realPress("[");
-    H.navigationSidebar().should("be.visible");
-    cy.realPress("Escape");
-    H.entityPickerModal().should("not.exist");
+      // Remove focus
+      H.entityPickerModal().findByRole("heading").click();
 
-    cy.realPress("[");
-    H.navigationSidebar().should("be.visible");
-    cy.realPress("Escape");
-    cy.findByTestId("new-collection-modal").should("not.exist");
+      cy.realPress("[");
+      H.navigationSidebar().should("be.visible");
+      cy.realPress("Escape");
+      H.entityPickerModal().should("not.exist");
 
-    cy.log("the shortcut works again once no modal holds focus");
-    cy.realPress("[");
-    H.navigationSidebar().should("not.be.visible");
-  });
+      cy.realPress("[");
+      H.navigationSidebar().should("be.visible");
+      cy.realPress("Escape");
+      cy.findByTestId("new-collection-modal").should("not.exist");
+
+      cy.log("Legacy modals");
+      H.startNewAction();
+
+      // Remove focus
+      H.modal()
+        .findByText(/Build custom forms/)
+        .click();
+
+      cy.realPress("[");
+      H.navigationSidebar().should("be.visible");
+      cy.realPress("Escape");
+      cy.findByTestId("action-creator").should("not.exist");
+
+      cy.log("the shortcut works again once no modal holds focus");
+      cy.realPress("[");
+      H.navigationSidebar().should("not.be.visible");
+    },
+  );
 
   it("should support dashboard shortcuts", () => {
     cy.intercept("POST", "/api/bookmark/dashboard/*").as("bookmarkDashboard");

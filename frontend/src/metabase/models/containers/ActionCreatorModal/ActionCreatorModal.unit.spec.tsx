@@ -13,17 +13,13 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  getDefaultFieldSettings,
-  getDefaultFormSettings,
-} from "metabase/actions/utils";
+import { loadActionCreator } from "metabase/querying/action-creator";
 import { Route, useLocation, useParams } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
-  createMockActionParameter,
   createMockCard,
-  createMockImplicitQueryAction,
+  createMockQueryAction,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -40,13 +36,7 @@ function RoutedActionCreatorModal({ onClose }: { onClose: () => void }) {
 
 const MODEL = createMockCard({ id: 1, type: "model" });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
-const ACTION = createMockImplicitQueryAction({
-  model_id: MODEL.id,
-  parameters: [createMockActionParameter({ id: "name", name: "Name" })],
-  visualization_settings: getDefaultFormSettings({
-    fields: { name: getDefaultFieldSettings({ id: "name" }) },
-  }),
-});
+const ACTION = createMockQueryAction({ model_id: MODEL.id });
 const ACTION_NOT_FOUND_ID = 999;
 const DATABASE = createSampleDatabase({
   settings: { "database-enable-actions": true },
@@ -63,6 +53,11 @@ async function setup({
   model = MODEL,
   action = ACTION,
 }: SetupOpts) {
+  // `modalRoute` awaits the editor's chunk before it mounts the modal. Without
+  // the same wait here the import lands inside the assertions, where the
+  // editor's `Suspense` boundary renders nothing.
+  await loadActionCreator();
+
   setupDatabasesEndpoints([DATABASE]);
   setupCardsEndpoints([model]);
 
@@ -133,6 +128,105 @@ describe("actions > containers > ActionCreatorModal", () => {
     );
   });
 
+  describe("creating new action", () => {
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/action`;
+      const { router } = await setup({ initialRoute, action: null });
+
+      act(() => {
+        router.navigate(actionRoute);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      act(() => {
+        router.back();
+      });
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
+      const { router } = await setup({ initialRoute, action: null });
+
+      act(() => {
+        router.navigate(actionRoute);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      });
+
+      await userEvent.type(screen.getByDisplayValue("New Action"), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
+      act(() => {
+        router.back();
+      });
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when saving changes", async () => {
+      const initialRoute = `/model/${MODEL.id}/detail/actions`;
+      const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
+      const { router } = await setup({ initialRoute, action: null });
+
+      act(() => {
+        router.navigate(actionRoute);
+      });
+
+      expect(await screen.findByTestId("action-creator")).toBeInTheDocument();
+
+      const query = "select 1;";
+
+      await userEvent.type(screen.getByDisplayValue("New Action"), "a change");
+      await userEvent.type(screen.queryAllByRole("textbox")[1], query);
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+
+      fetchMock.post("path:/api/action", {
+        name: "New Actiona change",
+        dataset_query: {
+          type: "native",
+          database: DATABASE.id,
+          native: {
+            query,
+            "template-tags": {},
+          },
+        },
+        database_id: DATABASE.id,
+        parameters: [],
+        type: "query",
+        visualization_settings: {
+          name: "",
+          type: "button",
+          description: "",
+          confirmMessage: "",
+          successMessage: "",
+          fields: {},
+        },
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+      await waitFor(() => {
+        expect(router.location.pathname).toBe(initialRoute);
+      });
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("editing existing action", () => {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
       const action = ACTION;
@@ -148,9 +242,11 @@ describe("actions > containers > ActionCreatorModal", () => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
-      const showFieldCheckbox = await screen.findByLabelText("Show field");
-      await userEvent.click(showFieldCheckbox);
-      await userEvent.click(showFieldCheckbox);
+      const input = screen.getByDisplayValue(action.name);
+      await userEvent.type(input, "12");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(input, "{backspace}{backspace}");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       act(() => {
         router.back();
@@ -175,7 +271,8 @@ describe("actions > containers > ActionCreatorModal", () => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
-      await userEvent.click(await screen.findByLabelText("Show field"));
+      await userEvent.type(screen.getByDisplayValue(action.name), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       act(() => {
         router.back();
@@ -201,9 +298,15 @@ describe("actions > containers > ActionCreatorModal", () => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
-      await userEvent.click(await screen.findByLabelText("Show field"));
+      await userEvent.type(screen.getByDisplayValue(action.name), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
-      fetchMock.modifyRoute(`action-${action.id}-put`, { response: action });
+      fetchMock.modifyRoute(`action-${action.id}-put`, {
+        response: {
+          ...action,
+          name: `${action.name}a change`,
+        },
+      });
 
       await userEvent.click(screen.getByRole("button", { name: "Update" }));
 

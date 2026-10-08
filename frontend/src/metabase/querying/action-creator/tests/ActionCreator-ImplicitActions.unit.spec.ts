@@ -48,8 +48,7 @@ describe("ActionCreator > Implicit Actions", () => {
       }),
     });
 
-    expect(await screen.findByText(action.name)).toBeInTheDocument();
-    expect(screen.queryByDisplayValue(action.name)).not.toBeInTheDocument();
+    expect(await screen.findByDisplayValue(action.name)).toBeDisabled();
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
     expect(queryIcon("grabber")).not.toBeInTheDocument();
   });
@@ -62,7 +61,7 @@ describe("ActionCreator > Implicit Actions", () => {
       canWrite: false,
     });
 
-    expect(await screen.findByText(action.name)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue(action.name)).toBeDisabled();
 
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
     expect(queryIcon("grabber")).not.toBeInTheDocument();

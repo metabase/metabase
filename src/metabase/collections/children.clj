@@ -822,6 +822,12 @@
              (map :collection_id)
              (into #{}))
 
+        collections-containing-actions
+        (->> (when (seq descendant-collection-ids)
+               (collections.db/unarchived-action-collection-ids-in descendant-collection-ids))
+             (map :collection_id)
+             (into #{}))
+
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
         (->> (t2/hydrate descendant-collections :effective_parent :is_remote_synced)
@@ -835,7 +841,8 @@
                {:table collections-containing-tables
                 :collection collections-containing-collections
                 :dashboard collections-containing-dashboards
-                :transform collections-containing-transforms})
+                :transform collections-containing-transforms
+                :action collections-containing-actions})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and

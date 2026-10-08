@@ -145,6 +145,7 @@
                                 :insert nil)
                               [[:name                   required-for-insert :string]
                                [:type                   required-for-insert ::type]
+                               [:model_id               {:optional true}    [:maybe ::lib.schema.id/card]]
                                [:collection_id          {:optional true}    [:maybe ::lib.schema.id/collection]]
                                [:archived               {:optional true}    :boolean]
                                [:archived_directly      {:optional true}    :boolean]
@@ -167,11 +168,9 @@
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
               :dispatch         (comp #{:implicit :query} keyword :type)}
       [:implicit (into [:map {:closed true} [:model_id required-for-insert ::lib.schema.id/card]] implicit-action-entries)]
-      [:query    (into [:map {:closed true} [:model_id {:optional true} :nil]] query-action-entries)]
+      [:query    (into [:map {:closed true}] query-action-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
-      [nil       (into [:map {:closed true} [:model_id {:optional true} [:maybe ::lib.schema.id/card]]]
-                       cat
-                       [implicit-action-entries query-action-entries])]]]))
+      [nil       (into [:map {:closed true}] cat [implicit-action-entries query-action-entries])]]]))
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."

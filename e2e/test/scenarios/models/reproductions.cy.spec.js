@@ -311,9 +311,20 @@ describe("issue 29378", () => {
   const ACTION_DETAILS = {
     name: "Update orders quantity",
     description: "Set orders quantity to the same value",
-    type: "implicit",
-    kind: "row/update",
+    type: "query",
     model_id: ORDERS_QUESTION_ID,
+    database_id: SAMPLE_DB_ID,
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "UPDATE orders SET quantity = quantity",
+      },
+      type: "native",
+    },
+    parameters: [],
+    visualization_settings: {
+      type: "button",
+    },
   };
 
   beforeEach(() => {
@@ -330,7 +341,9 @@ describe("issue 29378", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Auto tracking schema").should("be.visible");
+    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
+      "be.visible",
+    );
 
     H.commandPaletteSearch(ACTION_DETAILS.name, false);
     H.commandPalette()
@@ -341,7 +354,9 @@ describe("issue 29378", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Auto tracking schema").should("be.visible");
+    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
+      "be.visible",
+    );
   });
 });
 

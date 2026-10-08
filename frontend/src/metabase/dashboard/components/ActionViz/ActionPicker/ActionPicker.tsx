@@ -9,11 +9,11 @@ import CS from "metabase/css/core/index.css";
 import { ActionCreator } from "metabase/querying/action-creator";
 import {
   ActionIcon,
+  Button,
   Icon,
   Modal,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -23,7 +23,7 @@ import {
   EmptyState,
   ModelCollapseSection,
 } from "./ActionPicker.styled";
-import { getSortedActionsWithoutModel, sortAndGroupActions } from "./utils";
+import { sortAndGroupActions } from "./utils";
 
 type ActionPickerModel = Pick<Card, "id" | "name" | "database_id">;
 
@@ -45,21 +45,9 @@ export function ActionPicker({
     ) ?? [];
 
   const actionsByModel = useMemo(() => sortAndGroupActions(actions), [actions]);
-  const actionsWithoutModel = useMemo(
-    () => getSortedActionsWithoutModel(actions),
-    [actions],
-  );
-  const isEmpty = sortedModels.length === 0 && actionsWithoutModel.length === 0;
 
   return (
     <div className={CS.scrollY}>
-      {actionsWithoutModel.length > 0 && (
-        <DataActionPicker
-          actions={actionsWithoutModel}
-          currentAction={currentAction}
-          onClick={onClick}
-        />
-      )}
       {sortedModels.map((model) => (
         <ModelActionPicker
           key={model.id}
@@ -69,84 +57,14 @@ export function ActionPicker({
           currentAction={currentAction}
         />
       ))}
-      {isEmpty && (
+      {!sortedModels.length && (
         <EmptyState
-          message={t`No actions found`}
-          action={t`Create new action`}
-          link={Urls.newDataAction()}
+          message={t`No models found`}
+          action={t`Create new model`}
+          link={"/model/new"}
         />
       )}
     </div>
-  );
-}
-
-type DataActionPickerProps = {
-  actions: WritebackAction[];
-  currentAction?: WritebackAction;
-  onClick: (action: WritebackAction) => void;
-};
-
-function DataActionPicker({
-  actions,
-  currentAction,
-  onClick,
-}: DataActionPickerProps) {
-  const hasCurrentAction =
-    currentAction != null && currentAction.model_id == null;
-
-  return (
-    <ModelCollapseSection
-      header={<h4>{t`Data actions`}</h4>}
-      initialState={hasCurrentAction ? "expanded" : "collapsed"}
-    >
-      <ActionsList>
-        {actions.map((action) => (
-          <ActionPickerItem
-            key={action.id}
-            action={action}
-            isSelected={currentAction?.id === action.id}
-            onClick={onClick}
-          />
-        ))}
-      </ActionsList>
-    </ModelCollapseSection>
-  );
-}
-
-type ActionPickerItemProps = {
-  action: WritebackAction;
-  isSelected: boolean;
-  onClick: (action: WritebackAction) => void;
-  onEdit?: (action: WritebackAction) => void;
-};
-
-function ActionPickerItem({
-  action,
-  isSelected,
-  onClick,
-  onEdit,
-}: ActionPickerItemProps) {
-  return (
-    <ActionItem
-      role="button"
-      isSelected={isSelected}
-      aria-selected={isSelected}
-      onClick={() => onClick(action)}
-      data-testid={`action-item-${action.name}`}
-    >
-      <span>{action.name}</span>
-      {onEdit && (
-        <ActionIcon
-          onClick={(event: MouseEvent<HTMLButtonElement>) => {
-            // we have a click listener on the parent
-            event.stopPropagation();
-            onEdit(action);
-          }}
-        >
-          <Icon name="pencil" />
-        </ActionIcon>
-      )}
-    </ActionItem>
   );
 }
 
@@ -181,10 +99,15 @@ function ModelActionPicker({
     onClick(updatedAction);
   };
 
-  const handleEdit = (action: WritebackAction) => {
-    setEditingActionId(action.id);
-    toggleIsActionCreatorVisible();
-  };
+  const newActionButton = (
+    <Button
+      variant="subtle"
+      m="0.25rem 0.75rem"
+      onClick={toggleIsActionCreatorVisible}
+    >
+      {t`Create new action`}
+    </Button>
+  );
 
   return (
     <>
@@ -195,18 +118,34 @@ function ModelActionPicker({
         {actions.length ? (
           <ActionsList>
             {actions.map((action) => (
-              <ActionPickerItem
+              <ActionItem
                 key={action.id}
-                action={action}
+                role="button"
                 isSelected={currentAction?.id === action.id}
-                onClick={onClick}
-                onEdit={action.type === "implicit" ? handleEdit : undefined}
-              />
+                aria-selected={currentAction?.id === action.id}
+                onClick={() => onClick(action)}
+                data-testid={`action-item-${action.name}`}
+              >
+                <span>{action.name}</span>
+                <ActionIcon
+                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                    // we have a click listener on the parent
+                    event.stopPropagation();
+
+                    setEditingActionId(action.id);
+                    toggleIsActionCreatorVisible();
+                  }}
+                >
+                  <Icon name="pencil" />
+                </ActionIcon>
+              </ActionItem>
             ))}
+            {newActionButton}
           </ActionsList>
         ) : (
           <EmptyModelStateContainer>
             <div>{t`There are no actions for this model`}</div>
+            {newActionButton}
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>
@@ -220,6 +159,7 @@ function ModelActionPicker({
       >
         <ActionCreator
           modelId={model.id}
+          databaseId={model.database_id}
           actionId={editingActionId}
           onClose={closeModal}
           onSubmit={handleModalSubmit}

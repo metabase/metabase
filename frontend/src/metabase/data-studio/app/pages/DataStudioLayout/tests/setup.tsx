@@ -1,7 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
-  setupDatabaseListEndpoint,
   setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
@@ -14,7 +13,6 @@ import { renderWithProviders } from "__support__/ui";
 import { Route } from "metabase/router";
 import type {
   Collection,
-  Database,
   RemoteSyncEntity,
   TokenFeatures,
 } from "metabase-types/api";
@@ -174,7 +172,6 @@ interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   transformsEnabled?: boolean;
   transformsSetupComplete?: boolean;
-  databases?: Database[];
 }
 
 export const setup = ({
@@ -190,7 +187,6 @@ export const setup = ({
   tokenFeatures,
   transformsEnabled = false,
   transformsSetupComplete = false,
-  databases = [],
 }: SetupOpts = {}) => {
   // Build collections list
   const collections: Collection[] = [];
@@ -218,7 +214,6 @@ export const setup = ({
   };
 
   setupSettingsEndpoints([]);
-  setupDatabaseListEndpoint(databases);
   setupRemoteSyncSettingsEndpoints(remoteSyncSettings, {
     tokenFeatures,
     transformsEnabled,

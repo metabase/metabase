@@ -19,7 +19,6 @@ import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
-import { getDataStudioActionRoutes } from "./data-actions/routes";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { GuidePage } from "./guide/pages/GuidePage/GuidePage";
@@ -49,13 +48,6 @@ const transformsSectionLayout = () =>
     /* webpackChunkName: "data-studio" */ "./app/pages/TransformsSectionLayout"
   ).then(({ TransformsSectionLayout }) => ({
     Component: TransformsSectionLayout,
-  }));
-
-const actionsSectionLayout = () =>
-  import(
-    /* webpackChunkName: "data-studio" */ "./app/pages/ActionsSectionLayout"
-  ).then(({ ActionsSectionLayout }) => ({
-    Component: ActionsSectionLayout,
   }));
 
 const dependenciesSectionLayout = () =>
@@ -113,9 +105,6 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           </Route>
           <Route path="transforms" lazy={transformsSectionLayout}>
             {getDataStudioTransformRoutes()}
-          </Route>
-          <Route path="data-actions" lazy={actionsSectionLayout}>
-            {getDataStudioActionRoutes()}
           </Route>
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSettingsRoutes()}

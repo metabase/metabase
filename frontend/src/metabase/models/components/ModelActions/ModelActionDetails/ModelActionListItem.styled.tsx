@@ -60,6 +60,17 @@ const baseActionCardStyles = css`
   border-radius: 6px;
 `;
 
+export const CodeBlock = styled.pre`
+  ${baseActionCardStyles}
+
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.7rem;
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-text-primary);
+`;
+
 export const ActionRunButtonContainer = styled.div`
   position: absolute;
   top: 0.5rem;

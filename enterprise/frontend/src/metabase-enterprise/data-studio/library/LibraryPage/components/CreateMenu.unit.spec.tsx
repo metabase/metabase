@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EnterpriseSettings } from "metabase-types/api";
+import type { Database, EnterpriseSettings } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -19,6 +21,7 @@ interface SetupOptions {
   canWriteToDataCollection?: boolean;
   canWriteToMetricCollection?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
+  databases?: Database[];
 }
 
 const fullPermissionsUser: Partial<User> = {
@@ -35,7 +38,9 @@ const setup = ({
   canWriteToDataCollection = true,
   canWriteToMetricCollection = true,
   remoteSyncType,
+  databases = [],
 }: SetupOptions = {}) => {
+  setupDatabasesEndpoints(databases);
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
@@ -190,6 +195,43 @@ describe("CreateMenu", () => {
     setup({ user: fullPermissionsUser, remoteSyncType: "read-only" });
     expect(
       screen.queryByRole("button", { name: /New/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the data action option with native write on an actions-enabled database", async () => {
+    setup({
+      user: fullPermissionsUser,
+      databases: [
+        createMockDatabase({
+          native_permissions: "write",
+          settings: { "database-enable-actions": true },
+        }),
+      ],
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Data action/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the data action option without an actions-enabled database", async () => {
+    setup({
+      user: fullPermissionsUser,
+      databases: [
+        createMockDatabase({
+          native_permissions: "write",
+          settings: { "database-enable-actions": false },
+        }),
+      ],
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+
+    expect(await screen.findByText("Snippet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Data action/ }),
     ).not.toBeInTheDocument();
   });
 });

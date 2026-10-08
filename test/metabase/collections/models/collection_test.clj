@@ -204,8 +204,9 @@
   (testing "archiving a Collection archives its Actions and keeps their dashboard buttons, and unarchiving restores
             only the Actions archived along with it"
     (mt/with-temp [:model/Collection    collection {}
-                   :model/Action        action     {:type :query :name "Rename" :collection_id (u/the-id collection)}
-                   :model/Action        old-action {:type :query :name "Old" :collection_id (u/the-id collection)
+                   :model/Card          model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action        action     {:type :query :name "Rename" :model_id (u/the-id model)}
+                   :model/Action        old-action {:type :query :name "Old" :model_id (u/the-id model)
                                                     :archived true :archived_directly true}
                    :model/Dashboard     dashboard  {:collection_id (u/the-id collection)}
                    :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard) :action_id (u/the-id action)}]
@@ -220,7 +221,7 @@
   (testing "restoring a Collection does not restore the Actions of a model that is still in the trash"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card       model      {:type :model :collection_id (u/the-id collection)}
-                   :model/Action     action     {:type :implicit :name "Create" :model_id (u/the-id model)}]
+                   :model/Action     action     {:type :query :name "Rename" :model_id (u/the-id model)}]
       (t2/update! :model/Card (u/the-id model) {:archived true :archived_directly true})
       (archive-collection! collection)
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
@@ -229,7 +230,7 @@
 
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
-    (mt/with-temp [:model/Collection collection {}
+    (mt/with-temp [:model/Collection collection {:namespace "data-actions"}
                    :model/Action     action     {:type :query :name "No model" :model_id nil
                                                  :collection_id (u/the-id collection)}]
       (t2/delete! :model/Collection :id (u/the-id collection))
@@ -1943,7 +1944,7 @@
       ;; Actions depend on their model Cards, but the function only returns Card IDs
       (mt/with-temp [:model/Action {action-id :id} {:name "Test Action"
                                                     :model_id model-in-regular-id
-                                                    :type "implicit"}]
+                                                    :type "query"}]
         (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Action {:id action-id}))]
           (is (set? result)
               "Should return a set of card IDs"))))))
@@ -1979,10 +1980,10 @@
                                                          :type :model}
                    :model/Action _ {:name "Action in Library"
                                     :model_id card-in-remote-synced-id
-                                    :type "implicit"}
+                                    :type "query"}
                    :model/Action _ {:name "Action in Regular"
                                     :model_id card-in-regular-id
-                                    :type "implicit"}]
+                                    :type "query"}]
       ;; The new implementation only returns Card IDs, not other model types
       (mt/with-temp [:model/Card {test-card-id :id} {:name "Test Card"}]
         (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id test-card-id}))]
@@ -2013,10 +2014,10 @@
                                                          :type :model}
                    :model/Action _ {:name "Action in Library"
                                     :model_id card-in-remote-synced-id
-                                    :type "implicit"}
+                                    :type "query"}
                    :model/Action _ {:name "Action in Regular"
                                     :model_id card-in-regular-id
-                                    :type "implicit"}]
+                                    :type "query"}]
       ;; Test that only Card IDs outside remote-synced collection are returned
       (mt/with-temp [:model/Card {test-card-id :id} {:name "Test Card"}]
         (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id test-card-id}))]

@@ -121,13 +121,13 @@ describe("scenarios > admin > databases > writable connection", () => {
     H.waitForSucceededTransformRuns();
   });
 
-  it("should be able to use data actions with a writable connection", () => {
+  it("should be able to use model actions with a writable connection", () => {
     visitDatabase(WRITABLE_DB_ID);
 
-    cy.log("Data actions should be enabled for this db");
-    cy.findByLabelText("Data actions").should("be.checked");
+    cy.log("Model actions should be enabled for this db");
+    cy.findByLabelText("Model actions").should("be.checked");
 
-    createDataAction().then((action) => {
+    createModelWithAction().then((action) => {
       updateMainConnection(READ_ONLY_USER);
       runAction(action.id).then(expectFailure);
 
@@ -302,21 +302,25 @@ function createModel() {
   );
 }
 
-function createDataAction() {
-  return H.createAction({
-    type: "query",
-    name: "Delete row",
-    database_id: WRITABLE_DB_ID,
-    collection_id: null,
-    parameters: [],
-    dataset_query: {
-      database: WRITABLE_DB_ID,
-      type: "native",
-      native: {
-        query: `DELETE FROM ${ORDERS_TABLE_NAME} WHERE id = 1`,
-      },
-    },
-  }).then(({ body: action }) => action);
+function createModelWithAction() {
+  return createModel()
+    .then((model) =>
+      H.createAction({
+        type: "query",
+        name: "Delete row",
+        database_id: WRITABLE_DB_ID,
+        model_id: model.id,
+        parameters: [],
+        dataset_query: {
+          database: WRITABLE_DB_ID,
+          type: "native",
+          native: {
+            query: `DELETE FROM ${ORDERS_TABLE_NAME} WHERE id = 1`,
+          },
+        },
+      }),
+    )
+    .then(({ body: action }) => action);
 }
 
 function runAction(actionId: number) {

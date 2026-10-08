@@ -6,11 +6,40 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { loadActionCreator } from "metabase/querying/action-creator";
+import { setOpenModal } from "metabase/redux/ui";
 import { Route } from "metabase/router";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { NewModals } from "./NewModals";
+
+async function setup() {
+  // The editor is a chunk of its own, so keep its import out of the window the
+  // assertions below wait in.
+  await loadActionCreator();
+
+  setupDatabasesEndpoints([createMockDatabase()]);
+  setupCardsEndpoints([]);
+  setupCollectionsEndpoints({ collections: [] });
+
+  const { store } = renderWithProviders(
+    <Route path="/" element={<NewModals />} />,
+    { withRouter: true },
+  );
+
+  act(() => {
+    store.dispatch(setOpenModal("action"));
+  });
+
+  await screen.findByTestId("action-creator");
+}
 
 async function setupShortcut() {
   setupDatabasesEndpoints([createMockDatabase()]);
@@ -30,6 +59,14 @@ async function setupShortcut() {
 }
 
 describe("NewModals", () => {
+  it("opens the action creator in new query action mode", async () => {
+    await setup();
+
+    expect(screen.getByText(/New action/i)).toBeInTheDocument();
+    expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
   it("toggles the shortcuts modal with ?", async () => {
     await setupShortcut();
 
@@ -47,6 +84,16 @@ describe("NewModals", () => {
       expect(
         screen.queryByRole("dialog", { name: "Shortcuts" }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  it("closes the action creator on cancel", async () => {
+    await setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
     });
   });
 });

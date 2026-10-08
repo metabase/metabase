@@ -1,22 +1,30 @@
 import { ActionCreator as ActionCreatorContent } from "metabase/actions/containers/ActionCreator/ActionCreator";
+import type { DataReferenceSlot } from "metabase/actions/containers/ActionCreator/types";
 import {
   skipToken,
   useGetActionQuery,
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type {
   Card,
   CardId,
   Database,
+  DatabaseId,
   WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
 
+import { ActionContextProvider } from "./ActionContextProvider";
+import {
+  DataReferenceInline,
+  DataReferenceTriggerButton,
+} from "./InlineDataReference";
+
 export interface ActionCreatorProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
+  databaseId?: DatabaseId;
 
   action?: WritebackAction;
   /**
@@ -29,9 +37,15 @@ export interface ActionCreatorProps {
   onClose?: () => void;
 }
 
+const DATA_REFERENCE: DataReferenceSlot = {
+  TriggerButton: DataReferenceTriggerButton,
+  Panel: DataReferenceInline,
+};
+
 export function ActionCreator({
   actionId,
   modelId,
+  databaseId,
   action,
   isRouted,
   onSubmit,
@@ -46,30 +60,26 @@ export function ActionCreator({
   const modelDatabase = databases?.data.find(
     (database) => database.id === model?.dataset_query.database,
   );
-  const {
-    data: initialAction,
-    isLoading,
-    error,
-  } = useGetActionQuery(actionId != null ? { id: actionId } : skipToken);
+  const { data: initialAction } = useGetActionQuery(
+    actionId != null ? { id: actionId } : skipToken,
+  );
   // This is needed in case we already have an action and pass it from the outside
   const contextAction = action || initialAction;
 
-  if (contextAction == null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  if (contextAction.type !== "implicit") {
-    return null;
-  }
-
   return (
-    <ActionCreatorContent
-      action={contextAction}
-      canWriteModelActions={canWriteActions(model, modelDatabase)}
-      isRouted={isRouted}
-      onSubmit={onSubmit}
-      onClose={onClose}
-    />
+    <ActionContextProvider
+      initialAction={contextAction}
+      databaseId={databaseId}
+    >
+      <ActionCreatorContent
+        modelId={modelId}
+        canWriteModelActions={canWriteActions(model, modelDatabase)}
+        isRouted={isRouted}
+        dataReference={DATA_REFERENCE}
+        onSubmit={onSubmit}
+        onClose={onClose}
+      />
+    </ActionContextProvider>
   );
 }
 

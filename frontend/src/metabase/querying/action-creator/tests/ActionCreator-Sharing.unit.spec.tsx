@@ -3,8 +3,14 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import type { WritebackImplicitQueryAction } from "metabase-types/api";
-import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
+import type {
+  WritebackImplicitQueryAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
+import {
+  createMockImplicitQueryAction,
+  createMockQueryAction,
+} from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./common";
 import { SITE_URL, setup as baseSetup } from "./common";
@@ -17,6 +23,13 @@ async function setup({
   return { action };
 }
 
+function getQueryAction(params?: Partial<WritebackQueryAction>) {
+  return createMockQueryAction({
+    id: getNextId(),
+    ...params,
+  });
+}
+
 function getImplicitAction(params?: Partial<WritebackImplicitQueryAction>) {
   return createMockImplicitQueryAction({
     id: getNextId(),
@@ -25,9 +38,10 @@ function getImplicitAction(params?: Partial<WritebackImplicitQueryAction>) {
 }
 
 describe("ActionCreator > Sharing", () => {
-  describe("implicit actions", () => {
-    const getAction = getImplicitAction;
-
+  describe.each([
+    ["query", getQueryAction],
+    ["implicit", getImplicitAction],
+  ])(`%s actions`, (_, getAction) => {
     describe("admin users and has public sharing enabled", () => {
       const mockUuid = "mock-uuid";
       const privateAction = getAction();

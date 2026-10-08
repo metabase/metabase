@@ -12,6 +12,16 @@ export const FormContainer = styled.div`
   flex-direction: column;
 `;
 
+export const FormFieldEditorDragContainer = styled.div`
+  margin-bottom: var(--mantine-spacing-sm);
+`;
+
+export const FieldSettingsButtonsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+`;
+
 export const WarningBanner = styled.div`
   padding: var(--mantine-spacing-lg);
   border: 1px solid var(--mb-color-feedback-warning);

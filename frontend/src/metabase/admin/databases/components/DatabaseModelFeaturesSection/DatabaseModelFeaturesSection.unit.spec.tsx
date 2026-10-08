@@ -64,18 +64,18 @@ function setup({
 }
 
 describe("DatabaseModelFeaturesSection", () => {
-  describe("data actions control", () => {
+  describe("model actions control", () => {
     it("is shown if database supports actions", () => {
       setup();
 
-      expect(screen.getByLabelText(/Data actions/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Model actions/i)).toBeInTheDocument();
     });
 
     it("isn't shown if database doesn't support actions", () => {
       const features = _.without(COMMON_DATABASE_FEATURES, "actions");
       setup({ database: createMockDatabase({ features }) });
 
-      expect(screen.queryByText(/Data actions/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
     });
 
     it("shows if actions are enabled", () => {
@@ -85,7 +85,7 @@ describe("DatabaseModelFeaturesSection", () => {
         }),
       });
 
-      expect(screen.getByLabelText(/Data actions/i)).toBeChecked();
+      expect(screen.getByLabelText(/Model actions/i)).toBeChecked();
     });
 
     it("shows if actions are disabled", () => {
@@ -95,13 +95,13 @@ describe("DatabaseModelFeaturesSection", () => {
         }),
       });
 
-      expect(screen.getByLabelText(/Data actions/i)).not.toBeChecked();
+      expect(screen.getByLabelText(/Model actions/i)).not.toBeChecked();
     });
 
     it("enables actions", async () => {
       const { database, updateDatabase } = setup();
 
-      await userEvent.click(screen.getByLabelText(/Data actions/i));
+      await userEvent.click(screen.getByLabelText(/Model actions/i));
 
       expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
@@ -115,7 +115,7 @@ describe("DatabaseModelFeaturesSection", () => {
       });
       const { updateDatabase } = setup({ database });
 
-      await userEvent.click(screen.getByLabelText(/Data actions/i));
+      await userEvent.click(screen.getByLabelText(/Model actions/i));
 
       expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
@@ -127,7 +127,7 @@ describe("DatabaseModelFeaturesSection", () => {
   describe("model caching control", () => {
     it("isn't shown if model caching is turned off globally", () => {
       setup({ isModelPersistenceEnabled: false });
-      expect(screen.getByLabelText("Data actions")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(
         screen.queryByLabelText("Model persistence"),
       ).not.toBeInTheDocument();
@@ -140,7 +140,7 @@ describe("DatabaseModelFeaturesSection", () => {
           features: _.without(COMMON_DATABASE_FEATURES, "persist-models"),
         }),
       });
-      expect(screen.getByLabelText("Data actions")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(
         screen.queryByLabelText("Model persistence"),
       ).not.toBeInTheDocument();
@@ -159,7 +159,7 @@ describe("DatabaseModelFeaturesSection", () => {
           features: [...COMMON_DATABASE_FEATURES, "persist-models-enabled"],
         }),
       });
-      expect(screen.getByLabelText("Data actions")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(screen.getByLabelText("Model persistence")).toBeInTheDocument();
       expect(screen.getByLabelText("Model persistence")).toBeChecked();
     });

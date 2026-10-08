@@ -402,6 +402,7 @@ describe("scenarios > models", () => {
         cy.findByPlaceholderText("Search…").type("Ord");
         cy.wait("@search");
         cy.findByText("Everywhere").click();
+        cy.wait("@search");
         cy.get("[data-testid=result-item][data-model-type=table]").should(
           "contain.text",
           "Orders",

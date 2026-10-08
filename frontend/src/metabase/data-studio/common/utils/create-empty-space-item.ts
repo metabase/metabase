@@ -31,6 +31,10 @@ const getEmptyStateConfig = (
       description: t`Reusable bits of code that save your time`,
       actionLabel: t`New snippet`,
     },
+    actions: {
+      description: t`Queries that change data, for data apps to run`,
+      actionLabel: t`New data action`,
+    },
   };
 
   return config[sectionType];
@@ -48,6 +52,8 @@ export const createEmptyStateItem = (
     actionUrl = Urls.newDataStudioMetric({ collectionId: collectionId });
   } else if (sectionType === "snippets" && !hideAction) {
     actionUrl = Urls.newDataStudioSnippet();
+  } else if (sectionType === "actions" && !hideAction) {
+    actionUrl = Urls.newDataStudioAction();
   }
   // "data" section opens a modal, so no actionUrl
 

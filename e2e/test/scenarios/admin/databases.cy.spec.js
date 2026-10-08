@@ -34,7 +34,7 @@ describe(
           expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
-        cy.findByLabelText("Data actions").should("be.checked");
+        cy.findByLabelText("Model actions").should("be.checked");
       });
     });
   },

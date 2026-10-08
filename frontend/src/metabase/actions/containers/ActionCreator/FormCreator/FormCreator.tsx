@@ -1,14 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import type {
+  DragEndEvent,
+  RenderItemProps,
+} from "metabase/common/components/Sortable";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { Form, FormProvider } from "metabase/forms";
-import { Flex, Icon, Stack, UnstyledButton } from "metabase/ui";
+import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import type {
   ActionFormSettings,
   FieldSettings,
   Parameter,
+  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -20,8 +27,13 @@ import { syncFieldsWithParameters } from "../utils";
 
 import { Description } from "./Description";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
-import { FormContainer, WarningBanner } from "./FormCreator.styled";
+import {
+  FormContainer,
+  FormFieldEditorDragContainer,
+  WarningBanner,
+} from "./FormCreator.styled";
 import FormFieldEditor from "./FormFieldEditor";
+import { reorderFields } from "./utils";
 
 // FormEditor's can't be submitted as it serves as a form preview
 const ON_SUBMIT_NOOP = _.noop;
@@ -29,6 +41,8 @@ const ON_SUBMIT_NOOP = _.noop;
 interface FormCreatorProps {
   parameters: Parameter[];
   formSettings?: ActionFormSettings;
+  isEditable: boolean;
+  actionType: WritebackAction["type"];
   onChange: (formSettings: ActionFormSettings) => void;
   onClose?: () => void;
 }
@@ -36,9 +50,15 @@ interface FormCreatorProps {
 export function FormCreator({
   parameters,
   formSettings: passedFormSettings,
+  isEditable,
+  actionType,
   onChange,
   onClose,
 }: FormCreatorProps) {
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 5 },
+  });
+
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
   );
@@ -71,21 +91,72 @@ export function FormCreator({
     [validationSchema],
   );
 
-  const handleChangeFieldSettings = (newFieldSettings: FieldSettings) => {
-    if (!newFieldSettings?.id) {
-      return;
-    }
+  const handleSortEnd = useCallback(
+    ({ id, newIndex }: DragEndEvent) => {
+      if (!formSettings.fields) {
+        return;
+      }
 
-    setFormSettings({
-      ...formSettings,
-      fields: {
-        ...formSettings.fields,
-        [newFieldSettings.id]: newFieldSettings,
-      },
-    });
-  };
+      const oldIndex = form.fields.findIndex((field) => field.name === id);
+      if (oldIndex === -1) {
+        return;
+      }
+
+      const reorderedFields = reorderFields(
+        formSettings.fields,
+        oldIndex,
+        newIndex,
+      );
+      setFormSettings({
+        ...formSettings,
+        fields: reorderedFields,
+      });
+    },
+    [form.fields, formSettings],
+  );
+
+  const handleChangeFieldSettings = useCallback(
+    (newFieldSettings: FieldSettings) => {
+      if (!newFieldSettings?.id) {
+        return;
+      }
+
+      setFormSettings({
+        ...formSettings,
+        fields: {
+          ...formSettings.fields,
+          [newFieldSettings.id]: newFieldSettings,
+        },
+      });
+    },
+    [formSettings],
+  );
 
   const fieldSettings = formSettings.fields || {};
+
+  const renderItem = ({
+    item: field,
+    id,
+  }: RenderItemProps<(typeof form.fields)[number]>) => (
+    <Sortable
+      key={id}
+      id={id}
+      disabled={!isEditable}
+      as={FormFieldEditorDragContainer}
+      draggingStyle={{ opacity: 0.5 }}
+    >
+      {({ dragHandleRef, dragHandleListeners }) => (
+        <FormFieldEditor
+          field={field}
+          fieldSettings={fieldSettings[field.name]}
+          isEditable={isEditable}
+          onChange={handleChangeFieldSettings}
+          dragHandleRef={dragHandleRef}
+          dragHandleListeners={dragHandleListeners}
+        />
+      )}
+    </Sortable>
+  );
 
   if (!parameters.length) {
     return (
@@ -118,11 +189,17 @@ export function FormCreator({
       return false;
     }
 
-    const parameter = parameters.find(
-      (parameter) => parameter.id === settings.id,
-    );
+    if (actionType === "implicit") {
+      const parameter = parameters.find(
+        (parameter) => parameter.id === settings.id,
+      );
 
-    return parameter?.required && settings.hidden;
+      return parameter?.required && settings.hidden;
+    }
+
+    return (
+      settings.hidden && settings.required && settings.defaultValue == null
+    );
   });
 
   return (
@@ -141,16 +218,13 @@ export function FormCreator({
           onSubmit={ON_SUBMIT_NOOP}
         >
           <Form role="form" data-testid="action-form-editor">
-            <Stack gap="sm">
-              {form.fields.map((field) => (
-                <FormFieldEditor
-                  key={field.name}
-                  field={field}
-                  fieldSettings={fieldSettings[field.name]}
-                  onChange={handleChangeFieldSettings}
-                />
-              ))}
-            </Stack>
+            <SortableList
+              items={form.fields}
+              getId={(field) => field.name}
+              renderItem={renderItem}
+              onSortEnd={handleSortEnd}
+              sensors={[pointerSensor]}
+            />
           </Form>
         </FormProvider>
       </FormContainer>

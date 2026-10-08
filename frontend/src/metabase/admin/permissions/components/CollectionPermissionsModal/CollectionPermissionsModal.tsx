@@ -32,7 +32,7 @@ import { PermissionsTable } from "../PermissionsTable";
 import S from "./CollectionPermissionsModal.module.css";
 
 const getDefaultTitle = (namespace?: CollectionNamespace) =>
-  namespace === "snippets"
+  namespace === "snippets" || namespace === "data-actions"
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 

@@ -10,6 +10,7 @@ import type { UserId, UserInfo } from "./user";
 export type ListActionsRequest = {
   "model-id"?: CardId;
   type?: WritebackActionType;
+  archived?: boolean;
 };
 
 export interface CreateActionRequest {
@@ -154,7 +155,7 @@ export interface FieldSettings {
   fieldType: FieldType;
   inputType: InputSettingType;
   required: boolean;
-  defaultValue?: string | number | null;
+  defaultValue?: string | number;
   hidden: boolean;
   range?: DateRange | NumberRange;
   valueOptions?: FieldValueOptions;

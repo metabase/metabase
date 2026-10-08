@@ -12,16 +12,14 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import { Route } from "metabase/router";
 import type {
   Card,
   Database,
   StructuredDatasetQuery,
-  WritebackAction,
+  WritebackQueryAction,
 } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
-  createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 import {
@@ -35,7 +33,7 @@ const TEST_DATABASE_WITH_ACTIONS = createSampleDatabase({
 
 const TEST_MODEL = createStructuredModelCard();
 
-const TEST_ACTION = createMockImplicitQueryAction({ model_id: TEST_MODEL.id });
+const TEST_ACTION = createMockQueryAction({ model_id: TEST_MODEL.id });
 
 async function setup({
   model = TEST_MODEL,
@@ -44,7 +42,7 @@ async function setup({
   initialRoute = `/model/${TEST_MODEL.id}/detail/actions/${TEST_ACTION.id}`,
 }: {
   model?: Card<StructuredDatasetQuery>;
-  actions?: WritebackAction[];
+  actions?: WritebackQueryAction[];
   database?: Database;
   initialRoute?: string;
 }) {
@@ -56,16 +54,10 @@ async function setup({
   );
   setupModelActionsEndpoints(actions, model.id);
 
-  renderWithProviders(
-    <>
-      {getModelRoutes()}
-      <Route
-        path="/data-studio/data-actions/:actionId"
-        element={<div data-testid="data-action-page" />}
-      />
-    </>,
-    { withRouter: true, initialRoute },
-  );
+  renderWithProviders(getModelRoutes(), {
+    withRouter: true,
+    initialRoute,
+  });
 
   await waitForLoaderToBeRemoved();
 }
@@ -76,7 +68,11 @@ describe("ModelActionDetails", () => {
 
     await userEvent.click(document.body);
 
-    expect(await screen.findByTestId("action-creator")).toBeInTheDocument();
+    const mockQueryEditor = await screen.findByTestId(
+      "mock-native-query-editor",
+    );
+
+    expect(mockQueryEditor).toBeInTheDocument();
   });
 
   it("should leave ActionCreatorModal when clicking 'Cancel'", async () => {
@@ -84,16 +80,8 @@ describe("ModelActionDetails", () => {
 
     await userEvent.click(await screen.findByText("Cancel"));
 
-    expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
-  });
-
-  it("should redirect a query action to Data Studio", async () => {
-    const action = createMockQueryAction({ id: 2 });
-    await setup({
-      actions: [action],
-      initialRoute: `/model/${TEST_MODEL.id}/detail/actions/${action.id}`,
-    });
-
-    expect(await screen.findByTestId("data-action-page")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("mock-native-query-editor"),
+    ).not.toBeInTheDocument();
   });
 });

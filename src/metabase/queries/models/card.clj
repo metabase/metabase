@@ -582,10 +582,11 @@
                  (= (:type old-card-info) :model)
                  (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: delete its implicit actions
+      ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
         (queries.db/delete-dashcards-for-model-actions! id)
+        (queries.db/archive-explicit-actions-for-model! id)
         (queries.db/delete-implicit-actions-for-model! id))
       (when (contains? changes :archived)
         (queries.db/set-actions-of-model-archived! id (boolean (:archived changes))))

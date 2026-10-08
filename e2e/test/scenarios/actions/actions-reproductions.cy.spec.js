@@ -151,7 +151,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     );
 
     cy.get("@modelId").then((modelId) => {
-      H.createAction({ ...QUERY_ACTION, collection_id: null }).then(
+      H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
         ({ body: { id: actionId } }) => {
           cy.wrap(actionId).as("actionId");
 
@@ -496,6 +496,38 @@ describe("issue 32840", () => {
       .eq(1)
       .findByPlaceholderText("Created At")
       .should("have.value", "2026-07-19T19:44:56");
+  });
+});
+
+describe("issue 32750", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    cy.visit("/");
+  });
+
+  it("action creator keeps its query and template tag parameters across viewport changes (metabase#32750)", () => {
+    H.startNewAction();
+
+    cy.log("only variable template tags become parameters");
+    H.fillActionQuery("{{#1-orders-model}}");
+    H.fillActionQuery("{{snippet:101}}");
+    H.fillActionQuery("{{id}}");
+    cy.findByLabelText("ID").should("be.visible");
+    cy.findByLabelText("#1 Orders Model").should("not.exist");
+    cy.findByLabelText("Snippet:101").should("not.exist");
+    cy.findAllByTestId("form-field-container").should("have.length", 1);
+
+    cy.viewport(320, 800);
+    cy.findByTestId("action-creator").should("be.visible");
+    H.NativeEditor.get().should("contain", "{{id}}");
+    cy.findByLabelText("ID").should("exist");
+
+    cy.viewport(1440, 800);
+    cy.findByTestId("action-creator").should("be.visible");
+    H.NativeEditor.get().should("contain", "{{id}}");
+    cy.findByLabelText("ID").should("be.visible");
   });
 });
 

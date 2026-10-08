@@ -70,7 +70,11 @@ export async function setup({
   }
 
   renderWithProviders(
-    <ActionCreator actionId={action?.id} modelId={model?.id} />,
+    <ActionCreator
+      actionId={action?.id}
+      modelId={model?.id}
+      databaseId={database.id}
+    />,
     {
       storeInitialState: createMockState({
         currentUser: createMockUser({

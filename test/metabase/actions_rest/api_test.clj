@@ -46,7 +46,7 @@
   [:map
    [:id                     ms/PositiveInt]
    [:type                   [:= "query"]]
-   [:model_id               :nil]
+   [:model_id               ms/PositiveInt]
    [:database_id            ::lib.schema.id/database]
    [:dataset_query          [:map
                              [:database ::lib.schema.id/database]
@@ -68,6 +68,7 @@
   [{:name          "Query example"
     :description   "A simple update query action"
     :type          "query"
+    :model_id      card-id
     :dataset_query (lib/native-query (mt/metadata-provider) "update users set name = 'foo' where id = {{x}}")
     :database_id   (t2/select-one-fn :database_id :model/Card :id card-id)
     :parameters    [{:id "x" :type "number"}]}
@@ -86,6 +87,7 @@
         (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query users)}
                           action-1 {:name                   "Query example"
                                     :type                   :query
+                                    :model_id               card-id
                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
                                                                     :type name)
                                     :database_id            (mt/id)
@@ -98,6 +100,7 @@
                                     :parameters [{:id "x" :type "number"}]}
                           archived {:name                   "Archived example"
                                     :type                   :query
+                                    :model_id               card-id
                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
                                                                     :type name)
                                     :database_id            (mt/id)
@@ -105,8 +108,13 @@
                                     :visualization_settings {:position "top"}
                                     :archived               true}]
           (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
-            (is (= [(:action-id action-2)]
-                   (map :id response))))
+            (is (= (map :action-id [action-1 action-2])
+                   (map :id response)))
+            (doseq [action response
+                    :when (= (:type action) "query")]
+              (testing "Should return a query action deserialized (#23201)"
+                (is (malli= ExpectedGetQueryActionAPIResponse
+                            action)))))
           (testing "Should not be allowed to list actions without permission on the model"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
@@ -142,10 +150,10 @@
                    (mt/user-http-request :rasta :get 403 (format "action/%d" action-id))))))))))
 
 (deftest action-model-db-disagree-test
-  (let [cross-db-action (fn cross-db-action [other-db-id collection-id]
-                          {:type          :query
-                           :collection_id collection-id
-                           :database_id   other-db-id       ;; action against test-data
+  (let [cross-db-action (fn cross-db-action [model-id other-db-id]
+                          {:type        :query
+                           :model_id    model-id            ;; model against one-db
+                           :database_id other-db-id         ;; action against test-data
                            :name        "cross db action"
                            :dataset_query
                            {:native
@@ -180,18 +188,20 @@
             (mt/dataset time-test-data
               (mt/with-actions-enabled
                 (is (not= (mt/id) test-data-id))
-                (let [action   (cross-db-action test-data-id nil)
-                      response (mt/user-http-request :rasta :post 400 "action" action)]
-                  (testing "Checks the action's database for actions enabled"
-                    (is (partial= {:message "Actions are not enabled."
-                                   :data    {:database-id test-data-id}}
-                                  response)))))))))
+                (mt/with-temp [:model/Card model {:type          :model
+                                                  :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
+                  (let [action   (cross-db-action (:id model) test-data-id)
+                        response (mt/user-http-request :rasta :post 400 "action" action)]
+                    (testing "Checks both databases for actions enabled"
+                      (is (partial= {:message "Actions are not enabled."
+                                     :data    {:database-id test-data-id}}
+                                    response))))))))))
       (testing "When executing, both dbs are checked for enabled"
         (mt/dataset test-data
           (let [test-data-id (mt/id)]
             (mt/with-actions-test-data-and-actions-enabled
-              (mt/with-actions [_ {:type :model, :dataset_query (mt/mbql-query categories)}
-                                {action-on-other-id :action-id} (cross-db-action test-data-id nil)]
+              (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query categories)}
+                                {action-on-other-id :action-id} (cross-db-action model-id test-data-id)]
                 (is (partial= {:message "Actions are not enabled."
                                :data    {:database-id test-data-id}}
                               (mt/user-http-request :rasta
@@ -203,18 +213,20 @@
           (mt/dataset test-data
             (let [test-data-id (mt/id)]
               (mt/with-actions-enabled
-                (let [collection-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-                      action        (cross-db-action test-data-id collection-id)]
-                  (testing "Action creation should succeed when both databases have actions enabled"
-                    (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 "action" action)))
-                    (is (=? {:name "cross db action"} (mt/user-http-request :crowberto :post 200 "action" action))))
-                  (testing "Action execution should succeed when both databases have actions enabled"
-                    (let [response (mt/user-http-request :crowberto :post "action" action)
-                          url      (format "action/%s/execute" (:id response))
-                          params   {:parameters {:id 1 :source "Twitter"}}]
-                      (is (=? "You don't have permissions to do that."
-                              (mt/user-http-request :rasta :post 403 url params)))
-                      (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params))))))))))))))
+                (mt/with-temp [:model/Card model {:type          :model
+                                                  :dataset_query (mt/native-query {:query "select * from checkins limit 1"})
+                                                  :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}]
+                  (let [action (cross-db-action (:id model) test-data-id)]
+                    (testing "Action creation should succeed when both databases have actions enabled"
+                      (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 "action" action)))
+                      (is (=? {:name "cross db action"} (mt/user-http-request :crowberto :post 200 "action" action))))
+                    (testing "Action execution should succeed when both databases have actions enabled"
+                      (let [response (mt/user-http-request :crowberto :post "action" action)
+                            url      (format "action/%s/execute" (:id response))
+                            params   {:parameters {:id 1 :source "Twitter"}}]
+                        (is (=? "You don't have permissions to do that."
+                                (mt/user-http-request :rasta :post 403 url params)))
+                        (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
 (deftest action-query-db-differs-from-declared-db-test
   (testing "a query action cannot be created against a database other than the one its query targets"
@@ -224,18 +236,21 @@
           (mt/with-actions-enabled                         ;; actions enabled only on the model's DB (time-test-data)
             (let [model-db-id (mt/id)]
               (is (not= model-db-id target-db-id))
-              (let [;; declare :database_id as the enabled DB to try to pass every enablement gate...
-                    ;; ...while the query points at target-db-id, whose actions are disabled.
-                    action {:type          :query
-                            :database_id   model-db-id
-                            :name          "sneaky cross db action"
-                            :dataset_query {:type     "native"
-                                            :database target-db-id
-                                            :native   {:query "update people set source = 'pwned' where id = 1"}}
-                            :parameters    []}]
-                (testing "creating it is refused because actions are disabled on the query's real DB"
-                  (is (= "Actions are not enabled."
-                         (:cause (mt/user-http-request :crowberto :post 400 "action" action)))))))))))))
+              (mt/with-temp [:model/Card model {:type          :model
+                                                :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
+                (let [;; declare :database_id as the model's own (enabled) DB to try to pass every enablement gate...
+                      ;; ...while the query points at target-db-id, whose actions are disabled.
+                      action {:type          :query
+                              :model_id      (:id model)
+                              :database_id   model-db-id
+                              :name          "sneaky cross db action"
+                              :dataset_query {:type     "native"
+                                              :database target-db-id
+                                              :native   {:query "update people set source = 'pwned' where id = 1"}}
+                              :parameters    []}]
+                  (testing "creating it is refused because actions are disabled on the query's real DB"
+                    (is (= "Actions are not enabled."
+                           (:cause (mt/user-http-request :crowberto :post 400 "action" action))))))))))))))
 
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
@@ -317,29 +332,17 @@
                           (is (partial= (expected-fn updated-action)
                                         (mt/user-http-request :crowberto :get 200 action-path))))))
                     (testing "Get All"
-                      (let [list-url      (if (= (:type initial-action) "query")
-                                            "action?type=query"
-                                            (str "action?model-id=" card-id))
-                            expected-list (if (= (:type initial-action) "query")
-                                            [(expected-fn updated-action)]
-                                            [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
-                                             (expected-fn updated-action)])
-                            list-actions  (fn [& args]
-                                            (filter #(or (not= (:type initial-action) "query")
-                                                         (= (:id %) (:id created-action)))
-                                                    (apply mt/user-http-request args)))]
-                        (is (partial= expected-list
-                                      (list-actions :crowberto :get 200 list-url)))
-                        (testing "Should not be possible without permission"
-                          (if (= (:type initial-action) "query")
-                            (is (not-any? #(= (:id %) (:id created-action))
-                                          (mt/user-http-request :rasta :get 200 list-url)))
-                            (is (= "You don't have permissions to do that."
-                                   (mt/user-http-request :rasta :get 403 list-url)))))
-                        (testing "Should still work if actions are disabled"
-                          (mt/with-actions-disabled
-                            (is (partial= expected-list
-                                          (list-actions :crowberto :get 200 list-url))))))))
+                      (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                     (expected-fn updated-action)]
+                                    (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))
+                      (testing "Should not be possible without permission"
+                        (is (= "You don't have permissions to do that."
+                               (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))))
+                      (testing "Should still work if actions are disabled"
+                        (mt/with-actions-disabled
+                          (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                                         (expected-fn updated-action)]
+                                        (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))))))
                   (testing "Delete"
                     (testing "Should not be possible without permission"
                       (is (= "You don't have permissions to do that."
@@ -393,11 +396,12 @@
 
 (deftest action-parameters-test
   (mt/with-actions-enabled
-    (mt/with-temp [:model/Card _ {:type          :model
-                                  :dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                              :dataset_query (mt/mbql-query venues)}]
       (mt/with-model-cleanup [:model/Action]
         (let [initial-action {:name          "Query example"
                               :type          "query"
+                              :model_id      card-id
                               :database_id   (mt/id)
                               :dataset_query (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
                                                      :type name)
@@ -416,9 +420,7 @@
                        :specific-errors {:name ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
               (is (=? {:specific-errors {:model_id ["missing required key, received: nil"]}}
-                      (mt/user-http-request :crowberto :post 400 "action" {:type "implicit" :name "test"})))
-              (is (=? {:specific-errors {:model_id ["should be nil, received: 1"]}}
-                      (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id 1)))))))))))
+                      (mt/user-http-request :crowberto :post 400 "action" {:type "implicit" :name "test"}))))))))))
 
 (deftest native-query-action-requires-native-permission-test
   (testing "creating or updating a native query action requires native query permission on the database"
@@ -433,7 +435,7 @@
                             :collection_id (:id (collection/user->personal-collection (mt/user->id :rasta)))}]
               (let [native-action   {:name          "native example"
                                      :type          "query"
-                                     :collection_id (t2/select-one-fn :collection_id :model/Card :id model-id)
+                                     :model_id      model-id
                                      :database_id   (mt/id)
                                      :dataset_query (lib/native-query (mt/metadata-provider)
                                                                       "update users set name = 'foo' where id = {{x}}")
@@ -485,17 +487,24 @@
    :parameters    [{:id "id" :slug "id" :type "number" :target [:variable [:template-tag "id"]]}
                    {:id "name" :slug "name" :type "text" :target [:variable [:template-tag "name"]]}]})
 
+(defn- data-actions-root
+  "The data actions root Collection, for granting permissions on it."
+  []
+  (assoc collection/root-collection :namespace (name collection/data-actions-ns)))
+
 (deftest action-without-model-test
-  (testing "a query action without a model can be created, moved between collections, and executed"
+  (testing "a query action without a model can be created, moved between data actions collections, and executed"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
-        (mt/with-temp [:model/Collection {coll-id :id}  {}
-                       :model/Collection {other-id :id} {}]
+        (mt/with-temp [:model/Collection {coll-id :id}  {:namespace "data-actions"}
+                       :model/Collection {other-id :id} {:namespace "data-actions"}]
           (let [created (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))
                 path    (str "action/" (:id created))]
             (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)} created))
             (is (=? {:name "Renamed" :model_id nil :collection_id other-id}
                     (mt/user-http-request :crowberto :put 200 path {:name "Renamed" :collection_id other-id})))
+            (is (=? {:name "Renamed" :model_id nil :collection_id nil}
+                    (mt/user-http-request :crowberto :put 200 path {:collection_id nil})))
             (is (=? {:rows-affected 1}
                     (mt/user-http-request :crowberto :post 200 (str path "/execute")
                                           {:parameters {:id 1 :name "Renamed Category"}})))
@@ -505,33 +514,58 @@
                        ffirst)))))))))
 
 (deftest action-without-model-collection-perms-test
-  (testing "creating or moving an action without a model requires write permission on its collection"
+  (testing "creating or moving an action without a model requires write permission on its data actions collection"
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.test-util/with-restored-perms!
         (mt/with-model-cleanup [:model/Action]
-          (mt/with-temp [:model/Collection {locked-id :id} {}]
-            (let [personal-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+          (mt/with-temp [:model/Collection {locked-id :id}   {:namespace "data-actions"}
+                         :model/Collection {writable-id :id} {:namespace "data-actions"}]
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable-id)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "action" (model-less-query-action locked-id))))
+            (testing "the data actions root needs its own permission"
               (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :post 403 "action" (model-less-query-action locked-id))))
-              (let [created (mt/user-http-request :rasta :post 200 "action" (model-less-query-action personal-id))]
-                (is (=? {:collection_id personal-id} created))
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :put 403 (str "action/" (:id created)) {:collection_id locked-id})))
-                (is (= personal-id (t2/select-one-fn :collection_id :model/Action :id (:id created))))))))))))
+                     (mt/user-http-request :rasta :post 403 "action" (model-less-query-action nil))))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) (data-actions-root))
+              (is (=? {:collection_id nil}
+                      (mt/user-http-request :rasta :post 200 "action" (model-less-query-action nil)))))
+            (let [created (mt/user-http-request :rasta :post 200 "action" (model-less-query-action writable-id))]
+              (is (=? {:collection_id writable-id} created))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :put 403 (str "action/" (:id created)) {:collection_id locked-id})))
+              (is (= writable-id (t2/select-one-fn :collection_id :model/Action :id (:id created)))))))))))
 
 (deftest list-actions-without-model-test
-  (testing "the action list includes actions without a model, filtered by collection permissions"
+  (testing "the action list includes actions without a model, filtered by data actions collection permissions"
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.test-util/with-restored-perms!
         (mt/with-model-cleanup [:model/Action]
-          (mt/with-temp [:model/Collection {locked-id :id} {}]
-            (let [personal-id (:id (collection/user->personal-collection (mt/user->id :rasta)))
-                  visible     (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action personal-id))
-                  hidden      (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action locked-id))
-                  listed-ids  (fn [user] (set (map :id (mt/user-http-request user :get 200 "action"))))]
-              (is (set/subset? #{(:id visible) (:id hidden)} (listed-ids :crowberto)))
+          (mt/with-temp [:model/Collection {visible-coll-id :id} {:namespace "data-actions"}
+                         :model/Collection {locked-id :id}       {:namespace "data-actions"}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) visible-coll-id)
+            (let [visible    (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action visible-coll-id))
+                  hidden     (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action locked-id))
+                  at-root    (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+                  listed-ids (fn [user] (set (map :id (mt/user-http-request user :get 200 "action"))))]
+              (is (set/subset? #{(:id visible) (:id hidden) (:id at-root)} (listed-ids :crowberto)))
               (is (contains? (listed-ids :rasta) (:id visible)))
-              (is (not (contains? (listed-ids :rasta) (:id hidden)))))))))))
+              (is (not-any? #{(:id hidden) (:id at-root)} (listed-ids :rasta)))
+              (testing "with read permission on the data actions root"
+                (perms/grant-collection-read-permissions! (perms/all-users-group) (data-actions-root))
+                (is (contains? (listed-ids :rasta) (:id at-root)))))))))))
+
+(deftest list-archived-actions-test
+  (testing "GET /api/action?archived=true lists archived actions instead of unarchived ones"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [active     (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+              archived   (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+              _          (mt/user-http-request :crowberto :put 200 (str "action/" (:id archived)) {:archived true})
+              listed-ids (fn [& params] (set (map :id (apply mt/user-http-request :crowberto :get 200 "action" params))))]
+          (is (contains? (listed-ids) (:id active)))
+          (is (not (contains? (listed-ids) (:id archived))))
+          (is (contains? (listed-ids :archived true) (:id archived)))
+          (is (not (contains? (listed-ids :archived true) (:id active)))))))))
 
 (deftest list-actions-by-type-test
   (testing "GET /api/action?type= returns only actions of that type, alone or combined with model-id"
@@ -554,9 +588,9 @@
                 (is (contains? ids implicit-id))
                 (is (not-any? #{query-id (:id model-less)} ids))))
             (testing "type combines with model-id"
-              (is (= #{} (list-ids :model-id model-id :type "query")))
+              (is (= #{query-id} (list-ids :model-id model-id :type "query")))
               (is (= #{implicit-id} (list-ids :model-id model-id :type "implicit")))
-              (is (= #{implicit-id} (list-ids :model-id model-id))))
+              (is (= #{query-id implicit-id} (list-ids :model-id model-id))))
             (testing "a model-less query action is returned with its creator"
               (is (=? {:id      (:id model-less)
                        :creator {:id (mt/user->id :crowberto)}}
@@ -568,57 +602,62 @@
 (deftest action-can-write-test
   (testing "GET /api/action and GET /api/action/:id hydrate :can_write from the action's collection"
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-model-cleanup [:model/Action]
-          (mt/with-temp [:model/Collection {coll-id :id} {}]
-            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-            (let [action-id (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id)))
-                  listed    (fn [user]
-                              (m/find-first #(= action-id (:id %))
-                                            (mt/user-http-request user :get 200 "action" :type "query")))]
-              (testing "a user who can write the collection"
-                (is (=? {:can_write true} (listed :crowberto)))
-                (is (=? {:can_write true} (mt/user-http-request :crowberto :get 200 (str "action/" action-id)))))
-              (testing "a user who can only read the collection"
-                (is (=? {:can_write false} (listed :rasta)))
-                (is (=? {:can_write false} (mt/user-http-request :rasta :get 200 (str "action/" action-id))))))))))))
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+          (let [action-id (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id)))
+                listed    (fn [user]
+                            (m/find-first #(= action-id (:id %))
+                                          (mt/user-http-request user :get 200 "action" :type "query")))]
+            (testing "a user who can write the collection"
+              (is (=? {:can_write true} (listed :crowberto)))
+              (is (=? {:can_write true} (mt/user-http-request :crowberto :get 200 (str "action/" action-id)))))
+            (testing "a user who can only read the collection"
+              (is (=? {:can_write false} (listed :rasta)))
+              (is (=? {:can_write false} (mt/user-http-request :rasta :get 200 (str "action/" action-id)))))))))))
 
 (deftest attached-action-keeps-model-collection-test
   (testing "an action with a model stays in the model's collection whatever collection_id an update sends"
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-temp [:model/Collection {other-id :id} {}]
-        (mt/with-actions [{:keys [action-id]} {:type :implicit :public_uuid nil :made_public_by_id nil}]
+      (mt/with-temp [:model/Collection {coll-id :id}  {}
+                     :model/Collection {other-id :id} {}]
+        (mt/with-actions [{:keys [action-id]} {:public_uuid nil :made_public_by_id nil :collection_id coll-id}]
           (let [model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)]
             (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:collection_id other-id})
             (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))
 
 (deftest action-without-model-collection-guards-test
-  (testing "an action without a model can only go in an existing, unarchived Collection of the default namespace"
+  (testing "an action without a model can only go in the data actions root or an existing, unarchived data actions or data app collection"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
-        (mt/with-temp [:model/Collection {coll-id :id}     {}
+        (mt/with-temp [:model/Collection {coll-id :id}     {:namespace "data-actions"}
+                       :model/Collection {app-id :id}      {:namespace "data-apps"}
+                       :model/Collection {default-id :id}  {}
                        :model/Collection {snippets-id :id} {:namespace "snippets"}
-                       :model/Collection {archived-id :id} {:archived true}]
+                       :model/Collection {archived-id :id} {:namespace "data-actions" :archived true}]
           (is (re-find #"can only go in Collections in the"
                        (str (mt/user-http-request :crowberto :post 400 "action" (model-less-query-action snippets-id)))))
+          (is (re-find #"can only go in a data actions or data app collection"
+                       (str (mt/user-http-request :crowberto :post 400 "action" (model-less-query-action default-id)))))
           (is (= "Not found."
                  (mt/user-http-request :crowberto :post 404 "action" (model-less-query-action Integer/MAX_VALUE))))
+          (is (=? {:collection_id app-id}
+                  (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action app-id))))
           (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))))]
             (mt/user-http-request :crowberto :put 400 path {:collection_id archived-id})
+            (mt/user-http-request :crowberto :put 400 path {:collection_id default-id})
             (is (= coll-id (:collection_id (mt/user-http-request :crowberto :get 200 path))))))))))
 
-(deftest query-action-with-model-rejected-test
-  (testing "a query action cannot be created with a model"
+(deftest action-with-missing-model-test
+  (testing "creating or moving an action onto a model that does not exist is a 404"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
-        (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (mt/mbql-query categories)}]
-          (is (=? {:specific-errors {:model_id [(str "should be nil, received: " model-id)]}}
-                  (mt/user-http-request :crowberto :post 400 "action" (assoc (model-less-query-action nil) :model_id model-id))))
-          (testing "or moved onto one"
-            (let [action-id (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil)))]
-              (is (= "Only basic actions can belong to a model."
-                     (mt/user-http-request :crowberto :put 400 (str "action/" action-id) {:model_id model-id})))
-              (is (nil? (t2/select-one-fn :model_id :model/Action :id action-id))))))))))
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 "action"
+                                     (assoc (model-less-query-action nil) :model_id Integer/MAX_VALUE))))
+        (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :put 404 path {:model_id Integer/MAX_VALUE}))))))))
 
 (deftest archiving-directly-test
   (testing "archiving an action through the API marks it as archived directly, and unarchiving clears that"
@@ -635,18 +674,19 @@
   (testing "creating or updating an action ignores the columns the server populates"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
-        (let [personal-id (:id (collection/user->personal-collection (mt/user->id :rasta)))
-              spoofed     {:creator_id        (mt/user->id :crowberto)
-                           :made_public_by_id (mt/user->id :crowberto)
-                           :public_uuid       (str (random-uuid))}
-              stored      #(t2/select-one [:model/Action :creator_id :made_public_by_id :public_uuid] :id %)
-              created     (mt/user-http-request :rasta :post 200 "action"
-                                                (merge (model-less-query-action personal-id) spoofed))]
-          (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
-                 (into {} (stored (:id created)))))
-          (mt/user-http-request :rasta :put 200 (str "action/" (:id created)) (assoc spoofed :name "Renamed"))
-          (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
-                 (into {} (stored (:id created))))))))))
+        (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (let [spoofed {:creator_id        (mt/user->id :crowberto)
+                         :made_public_by_id (mt/user->id :crowberto)
+                         :public_uuid       (str (random-uuid))}
+                stored  #(t2/select-one [:model/Action :creator_id :made_public_by_id :public_uuid] :id %)
+                created (mt/user-http-request :rasta :post 200 "action"
+                                              (merge (model-less-query-action coll-id) spoofed))]
+            (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
+                   (into {} (stored (:id created)))))
+            (mt/user-http-request :rasta :put 200 (str "action/" (:id created)) (assoc spoofed :name "Renamed"))
+            (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
+                   (into {} (stored (:id created)))))))))))
 
 (deftest update-checks-actions-enabled-test
   (testing "while actions are disabled on its database, a query action's query can't change but the rest of it can"
@@ -730,7 +770,7 @@
 (deftest fetch-public-actions-test
   (testing "GET /api/action/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [action-opts (assoc (shared-action-opts) :type :implicit :name "Test action")]
+      (let [action-opts (assoc (shared-action-opts) :name "Test action")]
         (mt/with-actions [{:keys [action-id model-id]} action-opts]
           (testing "Test that it requires superuser"
             (is (= "You don't have permissions to do that."

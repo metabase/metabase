@@ -1,8 +1,4 @@
-import type {
-  CardId,
-  CollectionId,
-  WritebackActionId,
-} from "metabase-types/api";
+import type { CardId, WritebackActionId } from "metabase-types/api";
 
 import { modelDetail } from "./models";
 
@@ -11,7 +7,12 @@ type ParentModelProps = {
   name?: string;
 };
 
-export function modelAction(
+export function newAction(parentModel: ParentModelProps) {
+  const baseUrl = modelDetail(parentModel, "actions");
+  return `${baseUrl}/new`;
+}
+
+export function action(
   parentModel: ParentModelProps,
   actionId: WritebackActionId,
 ) {
@@ -21,52 +22,4 @@ export function modelAction(
 
 export function publicAction(siteUrl: string, uuid: string) {
   return `${siteUrl}/public/action/${uuid}`;
-}
-
-const DATA_ACTIONS_ROOT_URL = `/data-studio/data-actions`;
-
-export type DataActionListParams = {
-  collectionId?: CollectionId;
-};
-
-export function dataActionList({ collectionId }: DataActionListParams = {}) {
-  const searchParams = new URLSearchParams();
-  if (collectionId != null) {
-    searchParams.set("collectionId", String(collectionId));
-  }
-
-  const queryString = searchParams.toString();
-  return queryString.length > 0
-    ? `${DATA_ACTIONS_ROOT_URL}?${queryString}`
-    : DATA_ACTIONS_ROOT_URL;
-}
-
-export function newDataAction() {
-  return `${DATA_ACTIONS_ROOT_URL}/new`;
-}
-
-export function dataAction(actionId: WritebackActionId) {
-  return `${DATA_ACTIONS_ROOT_URL}/${actionId}`;
-}
-
-export function dataActionEdit(actionId: WritebackActionId) {
-  return `${dataAction(actionId)}/edit`;
-}
-
-export function dataActionFields(
-  actionId: WritebackActionId,
-  fieldId?: string,
-) {
-  const fieldsUrl = `${dataAction(actionId)}/fields`;
-  return fieldId != null
-    ? `${fieldsUrl}/${encodeURIComponent(fieldId)}`
-    : fieldsUrl;
-}
-
-export function dataActionRun(actionId: WritebackActionId) {
-  return `${dataAction(actionId)}/run`;
-}
-
-export function dataActionSettings(actionId: WritebackActionId) {
-  return `${dataAction(actionId)}/settings`;
 }

@@ -11,6 +11,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.util :as u]
@@ -21,21 +22,23 @@
 (set! *warn-on-reflection* true)
 
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
-  "Returns the unarchived actions in collections the current user can read. Pass optional `?model-id=<model-id>` to
-  limit to the actions of a particular model, and optional `?type=<type>` to limit to actions of that type."
+  "Returns the actions the current user can read, unarchived unless `?archived=true`. Pass optional
+  `?model-id=<model-id>` to limit to the actions of a particular model, and optional `?type=<type>` to limit to actions
+  of that type."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [model-id]
+   {:keys [model-id archived]
     action-type :type} :- [:map {:closed true}
                            [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
-                           [:type     {:optional true} [:maybe ::actions.schema/type]]]]
+                           [:type     {:optional true} [:maybe ::actions.schema/type]]
+                           [:archived {:default false} :boolean]]]
   (let [model      (when model-id
                      (api/read-check :model/Card model-id))
-        action-ids (actions-rest.db/unarchived-action-ids-visible-to-user
-                    {:type action-type, :model-id model-id})
+        action-ids (actions-rest.db/action-ids-visible-to-user
+                    {:type action-type, :model-id model-id, :archived archived})
         actions    (when (seq action-ids)
                      (actions/select-actions-for-ids (when model [model]) action-ids))]
-    (t2/hydrate (vec actions) :creator :can_write)))
+    (t2/hydrate (filterv mi/can-read? actions) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."

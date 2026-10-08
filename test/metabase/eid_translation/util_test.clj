@@ -80,7 +80,7 @@
      :model/Field {field-id :id} {}
 
      ;; eid models:
-     :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :implicit}
+     :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :query}
      :model/Collection         {collection_id           :id collection_eid           :entity_id} {}
      ;; filling entity id for User doesn't work: do it manually below.
      :model/User               {core_user_id            :id #_#_core_user_eid        :entity_id} {}

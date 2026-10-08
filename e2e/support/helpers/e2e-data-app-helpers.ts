@@ -223,7 +223,7 @@ export function setDataAppCollectionAccess(
     });
 }
 
-/** Creates a collection the non-admin groups hold `access` to. */
+/** Creates a data actions folder the non-admin groups hold `access` to. */
 export function createDataAppCollection({
   name,
   access,
@@ -232,7 +232,10 @@ export function createDataAppCollection({
   access: CollectionPermission;
 }) {
   return cy
-    .request<Collection>("POST", "/api/collection", { name })
+    .request<Collection>("POST", "/api/collection", {
+      name,
+      namespace: "data-actions",
+    })
     .then(({ body: collection }) => {
       setDataAppCollectionAccess(collection.id, access);
       return cy.wrap(collection, { log: false });
