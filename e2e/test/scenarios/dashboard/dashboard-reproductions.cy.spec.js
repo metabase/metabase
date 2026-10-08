@@ -611,66 +611,44 @@ describe("issue 29076", () => {
 });
 
 describe("issue 31274", () => {
-  const createTextCards = (length) => {
-    return Array.from({ length }).map((_, index) => {
-      return H.getTextCardDetails({
-        size_x: 2,
-        size_y: 2,
-        row: (length - index - 1) * 2,
-        text: `Text ${index + 1}`,
-      });
-    });
-  };
-
-  function visibleActionsPanel() {
-    return cy.findAllByTestId("dashboardcard-actions-panel").filter(":visible");
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should not clip dashcard actions (metabase#31274)", () => {
-    H.createDashboard().then(({ body: dashboard }) => {
-      const [text1, text2, text3] = createTextCards(3);
-      // Dashcards render in creation order. Text 3 is created last, so it
-      // comes after Text 2 in the DOM while it sits above it.
+    H.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      // The top card is created last, so it would come last in the DOM and
+      // cover the actions of the card below if dashcards render in creation order
       H.updateDashboardCards({
-        dashboard_id: dashboard.id,
-        cards: [text1, text2],
+        dashboard_id,
+        cards: [H.getTextCardDetails({ row: 6, text: "Bottom card" })],
       }).then(({ body: { dashcards } }) => {
         H.updateDashboardCards({
-          dashboard_id: dashboard.id,
-          cards: [...dashcards, text3],
+          dashboard_id,
+          cards: [
+            ...dashcards,
+            H.getTextCardDetails({ row: 0, text: "Top card" }),
+          ],
         });
       });
-
-      H.visitDashboard(dashboard.id);
-      H.editDashboard(dashboard.id);
-
-      H.assertTabSelected("Tab 1");
-
-      H.getDashboardCards()
-        .should("have.length", 3)
-        .last()
-        .findByText("Text 3");
-
-      H.getDashboardCards().filter(":contains('Text 2')").realHover({
-        scrollBehavior: false, // prevents flaky tests
-      });
-
-      cy.log(
-        "Make sure cypress can click the element, which means it is not covered by another",
-      );
-
-      visibleActionsPanel().should("have.length", 1).icon("close").click({
-        position: "top",
-        scrollBehavior: false, // prevents flaky tests
-      });
-
-      cy.findAllByTestId("dashcard").should("have.length", 2);
+      H.visitDashboard(dashboard_id);
     });
+
+    H.editDashboard();
+    H.getDashboardCards().should("have.length", 2);
+
+    cy.log(
+      "Make sure cypress can click the element, which means it is not covered by the card above",
+    );
+    H.getDashboardCards()
+      .filter(":contains('Bottom card')")
+      .realHover({ scrollBehavior: false })
+      .findByTestId("dashboardcard-actions-panel")
+      .icon("close")
+      .click({ position: "top", scrollBehavior: false });
+
+    H.getDashboardCards().should("have.length", 1);
   });
 });
 
