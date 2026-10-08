@@ -31,13 +31,6 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
       type: "number/=",
       sectionId: "number",
     },
-    {
-      name: "Price",
-      slug: "price",
-      id: "88b1a9dd",
-      type: "number/=",
-      sectionId: "number",
-    },
   ];
 
   const parameterMapping = filterDetails.map((filter) => ({
@@ -82,8 +75,14 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     });
   });
 
-  it("should keep filter value on blur (metabase#31975)", () => {
-    cy.findByPlaceholderText("Price").type("95").blur();
+  it("should keep filter value on blur (metabase#31975), and reset mappings when the operator changes from '=' to another operator", () => {
+    H.editDashboard();
+    H.setFilter("Number", "Equal to");
+    H.getDashboardCard().findByRole("button").click();
+    H.popover().findByText("Price").click();
+    H.saveDashboard();
+
+    cy.findByPlaceholderText("Number").type("95").blur();
     cy.findByPlaceholderText("Rating").type("3.8").blur();
 
     cy.findByTestId("table-body")
@@ -97,5 +96,36 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
       .and("contain", "95.93")
       // second line rating
       .and("contain", "4.4");
+
+    cy.log("reset mappings when the operator changes from '=' to Between");
+    H.editDashboard();
+
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .contains("Number")
+      .click();
+
+    H.sidebar().findByText("Filter operator").next().click();
+    H.popover().findByText("Between").click();
+
+    H.getDashboardCard()
+      .should(
+        "contain",
+        "A number variable in this card can only be connected to a number filter with Equal to operator.",
+      )
+      .and("not.contain", "Column to filter on");
+
+    H.sidebar().findByText("Filter operator").next().click();
+    H.popover().findByText("Equal to").click();
+
+    H.getDashboardCard()
+      .should("contain", "Column to filter on")
+      .findByRole("button")
+      .should("contain", "Select…")
+      .and("not.contain", "Price");
+
+    H.saveDashboard();
+
+    H.filterWidget({ name: "Rating" }).should("be.visible");
+    H.filterWidget({ name: "Number" }).should("not.exist");
   });
 });
