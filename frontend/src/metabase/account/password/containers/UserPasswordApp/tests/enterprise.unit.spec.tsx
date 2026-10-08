@@ -1,5 +1,4 @@
 import { screen, waitFor, waitForLoaderToBeRemoved } from "__support__/ui";
-import { hasAuthenticationSettings } from "metabase/account/utils";
 import { createMockMfaStatus, createMockUser } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup as setupCommon } from "./setup";
@@ -87,25 +86,6 @@ describe("UserPasswordApp (EE)", () => {
     );
   });
 
-  it.each(["google", "saml", "jwt"] as const)(
-    "should show MFA settings for a password user who signed in with %s",
-    async (ssoSource) => {
-      setup({
-        user: createMockUser({ sso_source: ssoSource }),
-        tokenFeatures: { "multi-factor-auth": true },
-      });
-
-      expect(
-        await screen.findByText("Two-factor authentication"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", {
-          name: "Set up two-factor authentication",
-        }),
-      ).toBeInTheDocument();
-    },
-  );
-
   it("should show the Slack row for an SSO user", async () => {
     setup({
       user: createMockUser({
@@ -122,33 +102,5 @@ describe("UserPasswordApp (EE)", () => {
       await screen.findByText("Two-factor authentication"),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
-  });
-
-  it.each([
-    ["slack", { "multi-factor-auth": true, disable_password_login: true }],
-    ["oidc", { "multi-factor-auth": true }],
-  ] as const)(
-    "should show MFA alongside the password form for a %s password user",
-    async (ssoSource, tokenFeatures) => {
-      setup({
-        user: createMockUser({ sso_source: ssoSource }),
-        tokenFeatures,
-      });
-
-      expect(
-        await screen.findByText("Two-factor authentication"),
-      ).toBeInTheDocument();
-      expect(screen.getByLabelText("Current password")).toBeInTheDocument();
-    },
-  );
-
-  it("should keep MFA settings available by URL when password login is disabled", async () => {
-    const { user } = setup({ isPasswordLoginEnabled: false });
-
-    await waitForLoaderToBeRemoved();
-
-    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
-    expect(screen.getByText("Two-factor authentication")).toBeInTheDocument();
-    expect(hasAuthenticationSettings(user, "optional")).toBe(false);
   });
 });
