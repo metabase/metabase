@@ -239,7 +239,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       display: "bar",
     });
 
-    ["X-ray", "Compare to the rest"].forEach((action, index) => {
+    [
+      { action: "X-ray", title: "Source is Affiliate" },
+      {
+        action: "Compare to the rest",
+        title: "Comparison of Number of People by Source and People",
+      },
+    ].forEach(({ action, title }, index) => {
       cy.log(action);
       if (index > 0) {
         cy.go("back");
@@ -257,7 +263,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       });
       cy.wait("@xray");
 
-      H.main().should("contain", "Source is Affiliate");
+      H.main().should("contain", title);
       cy.contains("null").should("not.exist");
     });
   });
@@ -414,7 +420,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         cy.url().should("include", "/auto/dashboard/");
         H.main()
           .findByText(
-            /^A closer look at number of Orders where Created At is in/,
+            /^A closer look at number of Orders where year of Created At is between/,
           )
           .should("be.visible");
         H.dashboardGrid().find("text").contains("Created At");
