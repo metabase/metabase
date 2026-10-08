@@ -2499,6 +2499,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/ModelIndex
                     :model/Table
                     :model/User}}
 
