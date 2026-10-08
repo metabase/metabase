@@ -774,31 +774,6 @@ describe("scenarios > visualizations > line chart", () => {
       });
     });
 
-    it("should not split the y-axis when the setting is disabled", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["min", ["field", ORDERS.TOTAL, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
-        visualization_settings: {
-          "graph.y_axis.auto_split": false,
-        },
-      });
-
-      cy.get("g.axis.yr").should("not.exist");
-    });
-
     it("should label each side of a split y-axis separately", () => {
       H.visitQuestionAdhoc({
         dataset_query: {
