@@ -48,7 +48,9 @@ To clear a filter, pass `null` for its slug. To reset it to its default, leave t
 
 The [change callback](#change-payload) hands values back as arrays: push `4` and you get `[4]`. Date and time grouping values are the exception and stay strings.
 
-The two-element between formats work with dashboard filters connected to a column or a field filter. A plain SQL variable can only be connected to an equal-to filter, so a between value never reaches one; put the comparison in the SQL instead.
+A **Between** number filter takes a two-element array with the lower and upper bounds, like `[10, 20]`. This works when the dashboard filter is connected to a column in a query builder question, or to a [field filter](../questions/native-editor/field-filters.md) in a SQL question. It also works for a field filter on an embedded SQL question, if the field filter's widget type is **Between**.
+
+A **Between** filter doesn't work with a [plain SQL variable](../questions/native-editor/basic-sql-parameters.md): Metabase only lets you connect a plain number variable to a filter that uses **Equal to**, so a **Between** filter can't be connected to one at all. To filter a plain variable by a range, use two variables in the SQL, like `{% raw %}WHERE total BETWEEN {{min_total}} AND {{max_total}}{% endraw %}`, and connect each one to its own **Equal to** filter. Both variables need a value, or the query won't run. To let either end stay open, put each comparison in its own [optional clause](../questions/native-editor/optional-variables.md), like `{% raw %}WHERE TRUE [[AND total >= {{min_total}}]] [[AND total <= {{max_total}}]]{% endraw %}`.
 
 In the `params` of a signed token, `[10, null]` and `[null, 20]` give a between filter an open end. Through attributes and props, pass a closed range: the embed drops the `null` and applies the remaining number as a lower bound. So `[null, 20]` doesn't mean up to 20; it's applied as 20 and up. Pass `[0, 20]` instead.
 

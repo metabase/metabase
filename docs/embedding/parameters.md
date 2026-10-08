@@ -52,7 +52,7 @@ Then pass the token to the component, as the `token` attribute on `<metabase-das
 
 Some notes on locked parameters:
 
-- **Every token has to include every locked parameter.** Leave out a parameter, and Metabase refuses the request. The dashboard still renders its frame and widgets, and each card shows `You must specify a value for :slug in the JWT.` in place of its chart.
+- **Every token has to include every locked parameter.** If you leave out a parameter, Metabase refuses the request. The dashboard still renders its frame and widgets, and each card shows `You must specify a value for :slug in the JWT.` in place of its chart.
 - **A locked value narrows the options in editable widgets.** Lock **State** to Vermont, and an editable **City** filter on the same dashboard only lists Vermont cities (like [linked filters](../dashboards/filters.md#linking-filters)).
 - **Multiple locked parameters combine with AND.**
 - **To turn a locked parameter off for a given token, pass `[]` as its value.** The token still has to name the parameter; the filter just doesn't apply.
@@ -282,9 +282,9 @@ Because the parameter is locked, your server should check that the viewer is all
 
 Render the first token into the `token` attribute yourself rather than letting [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) fetch it. An embed that starts without a token fetches one on load, and that token would overwrite the value your widget just set.
 
-There are two endpoints in play. The `/api/metabase-token` endpoint in the example is yours: it signs a token for a value your page passes. The [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) endpoint, if you've set one, signs the token the embed fetches on its own: on load when there's no `token` attribute, and after the current token expires.
+There are two endpoints in play, and only one of them gets the value your widget picked. The `/api/metabase-token` endpoint in the example is yours: it signs a token for a value your page passes. The [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) endpoint, if you've set one, signs the token the embed fetches on its own: on load when there's no `token` attribute, and after the current token expires.
 
-That second case is the trap. Once the token expires, the embed asks the provider endpoint for a fresh one the next time it needs data, like when someone changes a filter. That request carries only the resource id and the `custom-context` attribute, not the value your widget picked. So unless the endpoint can work the value out on its own, from `custom-context` or from your app's session, the locked value snaps back to whatever the endpoint signs by default. Check out [Sending custom context](./guest-embedding.md#sending-custom-context) for the shape the provider endpoint receives.
+Once the token expires, the embed asks the provider endpoint for a fresh one the next time it needs data, like when someone changes a filter. That request carries only the resource id and the `custom-context` attribute, not the value your widget picked. So unless the endpoint can work the value out on its own, from `custom-context` or from your app's session, the locked value snaps back to whatever the endpoint signs by default. Check out [Sending custom context](./guest-embedding.md#sending-custom-context) for the shape the provider endpoint receives.
 
 #### React SDK re-signed token
 

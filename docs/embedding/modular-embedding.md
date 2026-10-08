@@ -180,7 +180,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 ## Pass parameter values to embedded components
 
-Your page can [set starting values](./parameters.md#set-starting-values) for dashboard filters and SQL variables, [control them from your app](./parameters.md#control-values-from-your-app), and [hide their widgets](./parameters.md#hide-parameter-widgets). Check out [Embedding parameters](./parameters.md).
+Your page can [set starting values](./parameters.md#set-starting-values) for dashboard filters and SQL variables, [control them from your app](./parameters.md#control-values-from-your-app), and [hide their widgets](./parameters.md#hide-parameter-widgets).
 
 ## Page-level config
 
