@@ -209,21 +209,11 @@
       (when collection-id
         (api/check-404 (actions.db/collection-exists? collection-id))))))
 
-(defn- sandboxed-current-user?
-  "Whether a current user is bound and uses sandboxing."
-  []
-  (boolean (and api/*current-user-id* (perms/sandboxed-user?))))
-
 (defmethod mi/perms-objects-set :model/Action
   [{model-id :model_id, collection-id :collection_id, :as action} read-or-write]
   (cond
     model-id
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
-
-    (and (sandboxed-current-user?)
-         (or (nil? collection-id)
-             (= collection/data-actions-ns (collection-namespace collection-id))))
-    #{"___no-sandboxed-data-actions-access"}
 
     (and (= read-or-write :write)
          (not (remote-sync/model-editable? :model/Action (assoc action :model_id nil))))
