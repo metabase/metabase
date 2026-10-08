@@ -68,18 +68,20 @@
   [^Var a-var ^Var source]
   (identical? (.getRawRoot source) (.getRawRoot a-var)))
 
+(defn- mirrored-source
+  "The var that potemkin copies over `a-var`, when `a-var` still has the root it copied. Otherwise nil."
+  ^Var [^Var a-var]
+  (when-let [source (watched-source a-var)]
+    (when (mirrors? a-var source)
+      source)))
+
 (defn original-fn
   "Return the original (unpatched) function for `a-var`.
    That is the root it had when [[with-dynamic-fn-redefs]] proxied it, or its current root if it is not proxied.
    For a potemkin re-export it is the original of the var it was imported from."
   [^Var a-var]
-  (let [[_ original source :as entry] (proxy-entry a-var)
-        source                        (or source
-                                          (when-not entry
-                                            (when-let [watched (watched-source a-var)]
-                                              (when (mirrors? a-var watched)
-                                                watched))))]
-    (if source
+  (let [[_ original source :as entry] (proxy-entry a-var)]
+    (if-let [source (or source (when-not entry (mirrored-source a-var)))]
       (recur source)
       (or original @a-var))))
 
