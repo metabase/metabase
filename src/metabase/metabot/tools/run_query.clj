@@ -81,12 +81,17 @@
          (quoted (llm-shape/truncate query-error max-error-chars)))
     "Query failed: unknown error"))
 
+(defn- refusal
+  "An agent error whose `message` the model reads as the tool's output."
+  [message]
+  (ex-info message {:agent-error? true}))
+
 (defn- stored-query
   [query-id]
   (let [queries (shared/current-queries-state)]
     (or (get queries query-id)
-        (throw (ex-info (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "].")
-                        {:agent-error? true})))))
+        (throw (refusal (str "No query with id " query-id ". Known query ids: ["
+                             (str/join ", " (keys queries)) "]."))))))
 
 (defn- conversation-open-to-others?
   "Whether someone other than the current user can read the current conversation, now or by joining it later."
@@ -98,13 +103,10 @@
 
 (defn- shared-conversation-refusal
   []
-  (ex-info (str "run_query is not available in a conversation other people can read, because they would see "
-                "the rows too. Ask the user to continue in their own Metabot chat.")
-           {:agent-error? true}))
+  (refusal (str "run_query is not available in a conversation other people can read, because they would see "
+                "the rows too. Ask the user to continue in their own Metabot chat.")))
 
-(defn- no-permission
-  []
-  (ex-info "You do not have permission to run this query." {:agent-error? true}))
+(def ^:private no-permission-message "You do not have permission to run this query.")
 
 (defn- saved-questions-read
   "The saved questions `query` reads at any depth: its source, in a join, or through another saved question.
@@ -124,17 +126,15 @@
 
 (defn- sql-refusal
   []
-  (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. "
+  (refusal (str "run_query only runs notebook queries, and this one is a SQL query. "
                 "To get values, rebuild the question with construct_notebook_query, "
-                "then run that query with run_query.")
-           {:agent-error? true}))
+                "then run that query with run_query.")))
 
 (defn- metabot-sql-card-refusal
   []
   ;; Rebuilding the query over the same question would be refused again, so the hint points away from it.
-  (ex-info (str "run_query only runs notebook queries, and this one reads a saved question that holds SQL you "
-                "wrote. To get values, build the question from tables with construct_notebook_query instead.")
-           {:agent-error? true}))
+  (refusal (str "run_query only runs notebook queries, and this one reads a saved question that holds SQL you "
+                "wrote. To get values, build the question from tables with construct_notebook_query instead.")))
 
 ;; TODO (Chris 2026-10-08) -- the query builder sends the open query without the filter values the user has set, so
 ;; a question with a filter widget, or one opened from a dashboard, runs here unfiltered and can show different rows
@@ -150,9 +150,8 @@
   (let [normalized (lib-be/normalize-query query)]
     ;; Normalizing recovers to an empty map from a query it can't read.
     (when (empty? normalized)
-      (throw (ex-info (str "This query could not be read. Rebuild the question with construct_notebook_query, "
-                           "then run that query with run_query.")
-                      {:agent-error? true})))
+      (throw (refusal (str "This query could not be read. Rebuild the question with construct_notebook_query, "
+                           "then run that query with run_query."))))
     (when (lib/any-native-stage? normalized)
       (throw (sql-refusal)))
     ;; A saved question runs here as it does for the user anywhere else, SQL or not. The exception is SQL that
@@ -164,7 +163,7 @@
         ;; involved. Anyone else gets the refusal the QP would give them for a question they can't read.
         (throw (if (every? #(some-> % mi/can-read?) cards)
                  (metabot-sql-card-refusal)
-                 (no-permission)))))
+                 (refusal no-permission-message)))))
     (lib/prepare-for-serialization normalized)))
 
 (defn- plain-decimal-text
@@ -266,7 +265,7 @@
                                      [:maybe [:int {:min 1 :max max-row-limit}]]]]]
   (try
     (when-not (metabot.settings/metabot-query-execution-enabled?)
-      (throw (ex-info "Query execution is turned off for Metabot." {:agent-error? true})))
+      (throw (refusal "Query execution is turned off for Metabot.")))
     ;; The rows are stored with the conversation, and every participant can read them back.
     (when (conversation-open-to-others?)
       (throw (shared-conversation-refusal)))
@@ -284,7 +283,7 @@
         (cond
           ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
           permissions-error?
-          {:output (ex-message (no-permission))}
+          {:output no-permission-message}
 
           ;; The exception message embeds the warehouse's error text unquoted.
           (= :query-failed error)
