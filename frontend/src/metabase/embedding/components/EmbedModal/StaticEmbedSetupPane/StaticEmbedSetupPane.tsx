@@ -31,7 +31,7 @@ import { ParametersSettings } from "./ParametersSettings";
 import { PreviewModeSelector } from "./PreviewModeSelector";
 import { type PreviewBackgroundType, PreviewPane } from "./PreviewPane";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
-import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
+import { SettingsTabLayout } from "./SettingsTabLayout";
 import { getDefaultDisplayOptions } from "./config";
 import { getDefaultEmbeddingParams } from "./lib/get-default-embedding-params";
 import { getHasParamsChanged } from "./lib/get-has-params-changed";
