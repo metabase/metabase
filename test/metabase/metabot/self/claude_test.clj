@@ -854,7 +854,7 @@
                 "claude-haiku-4-5-20251001"]]
       (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
-    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
       (is (not (contains? claude/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
@@ -869,6 +869,15 @@
       (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
               {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
+             (:models (claude/list-models {:credentials byok-credentials})))))))
+
+(deftest list-models-drops-retired-opus-4-1-test
+  (testing "the picker does not offer Opus 4.1, also when the account catalog still lists it"
+    (with-redefs [http/request (fn [_]
+                                 {:status 200
+                                  :body   {:data [{:id "claude-opus-4-1-20250805" :display_name "Claude Opus 4.1" :created_at "2025-08-05"}
+                                                  {:id "claude-opus-4-8"          :display_name "Claude Opus 4.8" :created_at "2026-02-01"}]}})]
+      (is (= [{:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}]
              (:models (claude/list-models {:credentials byok-credentials})))))))
 
 (deftest ^:parallel model-supports-temperature?-test

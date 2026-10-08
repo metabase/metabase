@@ -67,7 +67,6 @@
    "anthropic/claude-opus-4.7"       {:display-name "Claude Opus 4.7"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.6"       {:display-name "Claude Opus 4.6"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.5"       {:display-name "Claude Opus 4.5"         :context-window  200000 :reasoning :budget-only}
-   "anthropic/claude-opus-4.1"       {:display-name "Claude Opus 4.1"         :context-window  200000 :reasoning :budget-only}
    "anthropic/claude-sonnet-5"       {:display-name "Claude Sonnet 5"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-sonnet-4.6"     {:display-name "Claude Sonnet 4.6"       :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-sonnet-4.5"     {:display-name "Claude Sonnet 4.5"       :context-window 1000000 :reasoning :budget-only}
