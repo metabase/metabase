@@ -145,8 +145,8 @@
 
 (mu/defn- built-query
   "The query Metabase builds from `query-definition`, as the dev preview does, once its source table and every table
-  it reads at any depth, through a foreign key or a metric it aggregates, exist as the typed schema lists them. (A
-  routing destination has no tables of its own, only cards.)"
+  it reads at any depth, through a foreign key, a metric it aggregates or a column remapping, exist as the typed
+  schema lists them. (A routing destination has no tables of its own, only cards.)"
   [{[{{table-id :id} :source}] :stages, :as query-definition} :- ::query-definition/query-definition]
   (let [table (data-apps.db/table table-id)]
     (when-not table
@@ -157,8 +157,11 @@
       (when-not (mr/validate ::lib.schema/query built)
         (fail (tru "The definition does not build a valid query.")))
       ;; Types generated before a table was deactivated still reach its columns through a foreign key, as does the
-      ;; query of a metric the built query holds only the ID of, and the query would fail on the table when it runs.
-      (doseq [read-id (sort (:table (lib/all-referenced-entity-ids-recursive built)))]
+      ;; query of a metric the built query holds only the ID of, and a column remapped to display another table's
+      ;; column joins that table only when the query runs. The query would fail on the table when it runs.
+      (doseq [read-id (sort (into (:table (lib/all-referenced-entity-ids-recursive built))
+                                  (keep :table-id)
+                                  (lib/returned-columns built -1 built {:include-remaps? true})))]
         (when-not (data-apps.db/table read-id)
           (fail (tru "Table {0} does not exist." (str read-id)))))
       built)))

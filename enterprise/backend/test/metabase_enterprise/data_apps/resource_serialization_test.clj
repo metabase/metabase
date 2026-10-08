@@ -244,6 +244,23 @@
                                           :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                              :aggregations [{:type "metric" :id count-id}]}]}}]}))))))))
 
+(deftest refuses-a-column-remapped-to-a-deactivated-table-test
+  (testing "venues.category_id displays categories.name, a join the query processor adds only when the query runs, so
+            the built query never names categories"
+    (let [categories (mt/id :categories)
+          venues     {:type "table" :id (mt/id :venues)}]
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (mt/with-temp-vals-in-db :model/Table categories {:active false}
+          (is (=? {:queries [{:export "VenueCategoryIds" :error (str "Table " categories " does not exist.")}
+                             {:export "VenuePrices" :entity map?}]}
+                  (serialize! :crowberto 200
+                              {:queries [{:export "VenueCategoryIds"
+                                          :query  {:stages [{:source venues
+                                                             :fields [{:type "column" :name "CATEGORY_ID"}]}]}}
+                                         {:export "VenuePrices"
+                                          :query  {:stages [{:source venues
+                                                             :fields [{:type "column" :name "PRICE"}]}]}}]}))))))))
+
 (deftest refuses-a-definition-that-builds-an-invalid-query-test
   (testing "the request schema accepts what a type lets through, and lib's own checks are off in production, so the
             built query is checked: an invalid one must not serialize and then fail when it runs"
