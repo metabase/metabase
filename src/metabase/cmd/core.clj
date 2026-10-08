@@ -180,6 +180,13 @@
   (classloader/require 'metabase.cmd.mcp-tools-dox)
   ((resolve 'metabase.cmd.mcp-tools-dox/generate-dox!)))
 
+(defn ^:command driver-features-documentation
+  "Generates `docs/databases/feature-support.md`, which shows which officially supported database supports which
+  feature. Needs the driver modules on the classpath: `clojure -M:ee:drivers:doc driver-features-documentation`."
+  []
+  (classloader/require 'metabase.cmd.driver-feature-dox)
+  ((resolve 'metabase.cmd.driver-feature-dox/generate-dox!)))
+
 (defn ^:command command-documentation
   "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
   `docs/installation-and-operation/commands.md`."

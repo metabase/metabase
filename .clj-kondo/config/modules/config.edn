@@ -728,6 +728,7 @@
    :uses #{api
            api-routes
            app-db
+           driver
            mcp
            metabot
            metabot.llm
