@@ -42,23 +42,27 @@
   [:map
    [:unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]])
 
-(mr/def ::test-auto-bin-spec
-  [:= {:decode/normalize lib.schema.common/normalize-keyword} :auto])
+(mr/def ::test-binning-spec
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :strategy)}
+   [:default [:map {:closed true}
+              [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :default]]]]
+   [:num-bins [:map {:closed true}
+               [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :num-bins]]
+               [:num-bins [:ref ::lib.schema.binning/num-bins]]]]
+   [:bin-width [:map {:closed true}
+                [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :bin-width]]
+                [:bin-width [:ref ::lib.schema.binning/bin-width]]]]])
 
-(mr/def ::test-bin-count-bucket-spec
+(mr/def ::test-binning-bucket-spec
   [:map
-   [:bins {:optional true} [:maybe [:or ::lib.schema.binning/num-bins ::test-auto-bin-spec]]]])
-
-(mr/def ::test-bin-width-bucket-spec
-  [:map
-   [:bin-width {:optional true} [:maybe [:or ::lib.schema.binning/bin-width ::test-auto-bin-spec]]]])
+   [:binning {:optional true} [:maybe [:ref ::test-binning-spec]]]])
 
 (mr/def ::test-column-with-binning-spec
   [:merge
    ::test-column-spec
    ::test-temporal-bucket-spec
-   ::test-bin-count-bucket-spec
-   ::test-bin-width-bucket-spec])
+   ::test-binning-bucket-spec])
 
 (mr/def ::test-breakout-spec
   [:ref ::test-column-with-binning-spec])

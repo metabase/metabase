@@ -65,7 +65,10 @@ function createQueryWithBreakoutAndBinningCount(
             type: "column",
             sourceName: "ORDERS",
             name: "TAX",
-            bins: binningCount,
+            binning:
+              binningCount != null
+                ? { strategy: "num-bins", numBins: binningCount }
+                : undefined,
           },
         ],
       },
@@ -82,8 +85,18 @@ function createQueryWithMultipleBreakoutsAndBinningStrategy() {
           id: ORDERS_ID,
         },
         breakouts: [
-          { type: "column", sourceName: "ORDERS", name: "TAX", bins: 10 },
-          { type: "column", sourceName: "ORDERS", name: "TAX", bins: 50 },
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "TAX",
+            binning: { strategy: "num-bins", numBins: 10 },
+          },
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "TAX",
+            binning: { strategy: "num-bins", numBins: 50 },
+          },
         ],
       },
     ],

@@ -17,7 +17,7 @@
                             {:type :measure :id 1}
                             {:type :metric :id 1}]
              :breakouts    [{:type :column :name "DATE" :unit :month}
-                            {:type :column :name "PRICE" :bins 10}]
+                            {:type :column :name "PRICE" :binning {:strategy :num-bins :num-bins 10}}]
              :order-bys    [{:type :column :name "DATE" :unit :month :direction :asc}]
              :limit        10}]})
 

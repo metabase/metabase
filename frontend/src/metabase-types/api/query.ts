@@ -530,20 +530,30 @@ export type TestTemporalBucketSpec = {
   unit?: TemporalUnit;
 };
 
-export type TestBinCountSpec = {
-  bins?: number | "auto";
+export type TestDefaultBinningSpec = {
+  strategy: "default";
 };
 
-export type TestBinWidthSpec = {
-  binWidth?: number | "auto";
+export type TestNumBinsBinningSpec = {
+  strategy: "num-bins";
+  numBins: number;
 };
 
-type TestBinningSpec =
-  | TestTemporalBucketSpec
-  | TestBinCountSpec
-  | TestBinWidthSpec;
+export type TestBinWidthBinningSpec = {
+  strategy: "bin-width";
+  binWidth: number;
+};
 
-export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
+export type TestBinningSpec =
+  | TestDefaultBinningSpec
+  | TestNumBinsBinningSpec
+  | TestBinWidthBinningSpec;
+
+type TestBucketSpec = TestTemporalBucketSpec & {
+  binning?: TestBinningSpec;
+};
+
+export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
 
 export type TestBreakoutSpec = TestColumnWithBinningSpec;
 
@@ -563,7 +573,7 @@ type TestJoinConditionSpec = {
 
 export type TestOrderBySpec = TestColumnSpec & {
   direction?: "asc" | "desc";
-} & TestBinningSpec;
+} & TestBucketSpec;
 
 export type TestStageSpec = {
   fields?: readonly TestColumnSpec[];

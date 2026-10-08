@@ -155,9 +155,9 @@
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
-                            :breakouts [{:type :column
-                                         :name "PRICE"
-                                         :bins 10}]}]})]
+                            :breakouts [{:type    :column
+                                         :name    "PRICE"
+                                         :binning {:strategy :num-bins :num-bins 10}}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :num-bins :num-bins 10}}
                 (meta/id :venues :price)]]
@@ -169,12 +169,42 @@
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
-                            :breakouts [{:type      :column
-                                         :name      "LATITUDE"
-                                         :bin-width 20}]}]})]
+                            :breakouts [{:type    :column
+                                         :name    "LATITUDE"
+                                         :binning {:strategy :bin-width :bin-width 20}}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :bin-width :bin-width 20.0}}
                 (meta/id :venues :latitude)]]
+              (lib/breakouts query))))))
+
+(deftest ^:parallel test-query-with-default-binning-breakout-test
+  (testing "test-query adds breakouts with default binning"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source    {:type :table
+                                        :id   (meta/id :venues)}
+                            :breakouts [{:type    :column
+                                         :name    "PRICE"
+                                         :binning {:strategy :default}}]}]})]
+      (is (=? [[:field
+                {:binning {:strategy :default}}
+                (meta/id :venues :price)]]
+              (lib/breakouts query))))))
+
+(deftest ^:parallel test-query-with-camel-case-binning-test
+  (testing "test-query reads camelCase binning keys and string strategies"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {"stages" [{"source"    {"type" "table"
+                                          "id"   (meta/id :venues)}
+                             "breakouts" [{"type"    "column"
+                                           "name"    "PRICE"
+                                           "binning" {"strategy" "num-bins" "numBins" 10}}
+                                          {"type"    "column"
+                                           "name"    "LATITUDE"
+                                           "binning" {"strategy" "bin-width" "binWidth" 20}}]}]})]
+      (is (=? [[:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]
+               [:field {:binning {:strategy :bin-width :bin-width 20.0}} (meta/id :venues :latitude)]]
               (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-order-bys-test
@@ -417,12 +447,12 @@
                                                    :id   (meta/id :venues)}
                                       :strategy   :left-join
                                       :conditions [{:operator  :=
-                                                    :left      {:type      :column
-                                                                :name      "LATITUDE"
-                                                                :bin-width 20}
-                                                    :right     {:type      :column
-                                                                :name      "LONGITUDE"
-                                                                :bin-width 20}}]}]}]})]
+                                                    :left      {:type    :column
+                                                                :name    "LATITUDE"
+                                                                :binning {:strategy :bin-width :bin-width 20}}
+                                                    :right     {:type    :column
+                                                                :name    "LONGITUDE"
+                                                                :binning {:strategy :bin-width :bin-width 20}}}]}]}]})]
       (is (=? [{:lib/type   :mbql/join
                 :strategy   :left-join
                 :conditions [[:= {}
@@ -496,7 +526,7 @@
                                         :id   (meta/id :venues)}
                             :order-bys [{:type      :column
                                          :name      "PRICE"
-                                         :bins      10
+                                         :binning   {:strategy :num-bins :num-bins 10}
                                          :direction :asc}]}]})]
       (is (=? [[:asc {} [:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]]]
               (lib/order-bys query))))))
@@ -771,9 +801,9 @@
                                          :name        "CREATED_AT"
                                          :source-name "ORDERS"
                                          :unit        :month}
-                                        {:type :column
-                                         :name "QUANTITY"
-                                         :bins 10}]
+                                        {:type    :column
+                                         :name    "QUANTITY"
+                                         :binning {:strategy :num-bins :num-bins 10}}]
 
                             :order-bys [{:type        :column
                                          :name        "CREATED_AT"
