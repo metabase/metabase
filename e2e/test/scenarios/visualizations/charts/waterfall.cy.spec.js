@@ -178,7 +178,7 @@ describe("scenarios > visualizations > waterfall", () => {
       testSwitchingToWaterfall();
     });
 
-    it("should correctly switch into single-series mode for ad-hoc queries", () => {
+    it("should correctly switch into single-series mode for saved questions", () => {
       H.createQuestion(
         { name: "Q1", query: DATASET_QUERY.query, display: "line" },
         { visitQuestion: true },
