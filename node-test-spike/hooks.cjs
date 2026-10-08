@@ -27,7 +27,7 @@ const crypto = require("node:crypto");
 // stands in for the options below: bump it whenever they change.
 const TRANSFORM_VERSION = "1";
 // Within one process a file cannot change, so the transformed output is held in
-// memory: isolated mode re-requires modules constantly and would otherwise
+// memory: every file loads the project's modules again and would otherwise
 // re-read and re-hash every source each time.
 const transformMemo = new Map();
 const transformCached = (file) => transformSource(file, fs.readFileSync(file, "utf8"));
@@ -245,14 +245,12 @@ registerHooks({
 // --- jsdom as the global DOM -----------------------------------------------------
 const { JSDOM } = require(bunModule("jsdom").replace(/jsdom@[^/]+/, (m) => m)); 
 const createDom = () => new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", { url: "http://localhost/", pretendToBeVisual: true });
-// jest gives each file a new jsdom window. So does this, when project code is
-// isolated per file. Packages stay loaded, so the few that bind to the window
-// when they load are loaded again for each file.
-const FRESH_WINDOW = process.env.NT_ISOLATE_ALL === "1" && process.env.NT_FRESH_WINDOW !== "0";
-// Of Testing Library only user-event is on the list. The rest binds one thing
-// to the window, `screen`, which is pointed at each new document instead.
-const WINDOW_BOUND_PACKAGES = process.env.NT_EVICT_PACKAGES ?? (FRESH_WINDOW ? "@testing-library/user-event|jest-canvas-mock|@emotion" : "");
-const windowBoundPattern = WINDOW_BOUND_PACKAGES ? new RegExp(`/node_modules/(${WINDOW_BOUND_PACKAGES})/`) : null;
+// jest gives each file a new jsdom window, and so does this. Packages stay
+// loaded, so the few that bind to the window when they load are loaded again
+// for each file. Of Testing Library only user-event is one of them. The rest
+// binds one thing to the window, `screen`, which is pointed at each new
+// document instead.
+const WINDOW_BOUND_PACKAGES = /\/node_modules\/(@testing-library\/user-event|jest-canvas-mock|@emotion)\//;
 let dom = createDom();
 let win = dom.window;
 const keep = new Set(["undefined", "globalThis", "window", "self", "global", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "queueMicrotask", "console", "process", "performance", "structuredClone", "crypto", "URL", "URLSearchParams", "TextEncoder", "TextDecoder", "AbortController", "AbortSignal", "fetch", "Request", "Response", "Headers", "Blob", "File", "ReadableStream", "WritableStream", "TransformStream", "constructor"]);
@@ -324,12 +322,12 @@ for (const key of windowKeys) {
   }
   let value;
   try { value = win[key]; } catch { continue; }
-  // With a new window per file, a package that saved a window function when it
+  // A package that saved a window function when it
   // loaded (Mantine: `const raf = window.requestAnimationFrame`) must still reach
   // the current window, so the global is a forwarder that outlives the window.
   const isMethod = typeof value === "function" && !/^[A-Z]/.test(key);
-  if (isMethod && FRESH_WINDOW) windowForwarders[key] ??= function (...args) { return win[key].apply(win, args); };
-  const bound = isMethod ? (FRESH_WINDOW ? windowForwarders[key] : value.bind(win)) : value;
+  if (isMethod) windowForwarders[key] ??= function (...args) { return win[key].apply(win, args); };
+  const bound = isMethod ? windowForwarders[key] : value;
   try { Object.defineProperty(globalThis, key, { value: bound, writable: true, configurable: true, enumerable: false }); } catch {}
 }
 for (const alias of ["window", "self", "top", "parent"]) Object.defineProperty(globalThis, alias, { value: globalThis, configurable: true, writable: true });
@@ -354,7 +352,6 @@ installWindowGlobals(false);
 // other error is kept for the wrapper to report as the current test's failure.
 const FETCH_MOCK_ABORT_RACE = /locked for exclusive reading/;
 let pendingUncaught;
-let usedFakeTimers = false;
 process.setUncaughtExceptionCaptureCallback((error) => {
   const message = String(error?.message ?? error);
   if (FETCH_MOCK_ABORT_RACE.test(message)) return;
@@ -561,10 +558,6 @@ const runSuite = async (suite, t, outer) => {
         fetchMock.callHistory.clear();
         phase = "between";
       } catch {}
-      if (usedFakeTimers) {
-        usedFakeTimers = false;
-        cancelLeftoverFrames();
-      }
       if (pendingUncaught) {
         failure ??= { error: pendingUncaught };
         pendingUncaught = undefined;
@@ -587,19 +580,6 @@ const runSuite = async (suite, t, outer) => {
   for (const child of suite.children) child.fn = undefined;
   for (const list of [suite.children, suite.beforeAll, suite.afterAll, suite.beforeEach, suite.afterEach, hooks.beforeEach, hooks.afterEach]) list.length = 0;
 };
-
-// A spec may pin document.activeElement with a non-configurable data property,
-// which jest discards with its document but a shared one cannot. Keeping such a
-// definition configurable is what makes it removable between files.
-const originalDefineProperty = Object.defineProperty;
-if (!FRESH_WINDOW) {
-  Object.defineProperty = function defineProperty(target, key, descriptor) {
-    if (key === "activeElement" && target === globalThis.document) {
-      return originalDefineProperty(target, key, { ...descriptor, configurable: true });
-    }
-    return originalDefineProperty(target, key, descriptor);
-  };
-}
 
 const resetFocus = () => {
   const document = globalThis.document;
@@ -636,25 +616,9 @@ const SETUP_CHAIN = process.env.NT_PROJECT === "sdk"
       "frontend/test/jest-setup-env-core.js",
     ];
 
-const MOCKING_API = /\bjest\.(mock|doMock|unmock|resetModules|isolateModules)\(/;
-// Every file gets a fresh registry, which is jest's model on Node's own loader.
-const ISOLATE_ALL = process.env.NT_ISOLATE_ALL === "1";
 const sharedGlobalKeys = new Set();
 let packageLoadDepth = 0;
 const CLOCK_GLOBALS = ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "requestAnimationFrame", "cancelAnimationFrame", "requestIdleCallback", "cancelIdleCallback", "Date", "performance", "queueMicrotask"];
-// Mantine keeps a module-level theme whose component overrides close over project
-// components, so leaving it cached hands the next file's tree the old graph's ones.
-const EVICTABLE_PACKAGES = process.env.NT_SHARE_UI_PACKAGES === "1" ? /$^/ : /\/node_modules\/(@mantine|@emotion)\//;
-// Project modules that are shared between isolated files the way packages are.
-// stateless-tier.cjs writes the list: modules of the named areas that hold no
-// module-level state and import only packages and one another, so nothing in
-// the set can point at a module that is rebuilt.
-const STABLE_MODULES = new Set(
-  process.env.NT_STABLE_MODULES === "1" && fs.existsSync(path.join(__dirname, "stable-modules.json"))
-    ? JSON.parse(fs.readFileSync(path.join(__dirname, "stable-modules.json"), "utf8")).map(abs)
-    : [],
-);
-const isEvictable = (file) => (isProjectSource(file) && !STABLE_MODULES.has(file)) || EVICTABLE_PACKAGES.test(file);
 // A module that stays loaded lists every module it ever required and points
 // at the module that first required it. Either link would keep an evicted
 // module, and through it the graph of its file, alive.
@@ -678,7 +642,7 @@ const repointScreen = () => {
 const evictProjectModules = () => {
   const evicted = new Set();
   for (const file of Object.keys(require.cache)) {
-    if (!isEvictable(file)) continue;
+    if (!isProjectSource(file)) continue;
     evicted.add(require.cache[file]);
     delete require.cache[file];
   }
@@ -687,10 +651,6 @@ const evictProjectModules = () => {
 let preloadMocks = null;
 let currentFile = "";
 let currentTest = "";
-// A spec often registers its mocks from an imported setup file, so the source
-// scan cannot see them and only the run itself knows.
-let mockedThisFile = false;
-let initialBootstrap;
 // user-event installs a getter-only navigator.clipboard, and the setup chain
 // assigns to that property, so re-running the chain throws unless it is dropped.
 // sinon's uninstall deletes a timer global when it believes it was not an own
@@ -729,22 +689,6 @@ const clearPendingTimers = () => {
   pendingTimers.clear();
 };
 
-// jsdom drives requestAnimationFrame from one interval that it starts when the
-// first callback is queued and stops when the last one has run. Started under a
-// fake clock, that interval dies with the clock while jsdom still counts its
-// callbacks as pending, so no frame fires again in this window. jest gives each
-// file a new window. Here the leftover callbacks are cancelled, which returns
-// jsdom's count to zero and lets the next request start a real interval.
-const requestFrame = globalThis.window.requestAnimationFrame;
-const cancelFrame = globalThis.window.cancelAnimationFrame;
-let lastCancelledFrame = 0;
-const cancelLeftoverFrames = () => {
-  if (FRESH_WINDOW || !clockIsReal()) return;
-  const newest = requestFrame.call(globalThis.window, () => {});
-  for (let handle = lastCancelledFrame + 1; handle <= newest; handle += 1) cancelFrame.call(globalThis.window, handle);
-  lastCancelledFrame = newest;
-};
-
 const restoreTimerGlobals = () => {
   const originals = {
     setTimeout: realSetTimeout,
@@ -766,7 +710,7 @@ const resetNavigator = () => {
   }
 };
 
-const fileCleanup = async (isolated) => {
+const fileCleanup = async () => {
   finishSnapshots();
   // A spy that a file never restores would be undone by the next file's own
   // restoreAllMocks, on top of globals that have been reset since. Spies go
@@ -776,7 +720,6 @@ const fileCleanup = async (isolated) => {
   restoreTimerGlobals();
   clearPendingTimers();
   trackTimers();
-  cancelLeftoverFrames();
   const fetchMock = require("fetch-mock").default;
   try { await fetchMock.callHistory.flush(true); } catch {}
   fetchMock.removeRoutes();
@@ -786,50 +729,40 @@ const fileCleanup = async (isolated) => {
   // refuses to focus anything in the next file.
   resetFocus();
   resetNavigator();
-  globalThis.__nodeTestSpike.resetVisualizations?.();
   globalThis.__nodeTestSpike.restoreRealm?.();
   globalThis.__nodeTestSpike.restoreEnvironment?.();
-  if (FRESH_WINDOW && isolated) {
-    const previous = dom;
-    dom = createDom();
-    win = dom.window;
-    installWindowGlobals(true);
-    globalThis.__nodeTestSpike.remirror();
-    repointScreen();
-    if (!process.env.NT_FRESH_WINDOW_KEEP) try { previous.window.close(); } catch {}
+  const previous = dom;
+  dom = createDom();
+  win = dom.window;
+  installWindowGlobals(true);
+  globalThis.__nodeTestSpike.remirror();
+  repointScreen();
+  try { previous.window.close(); } catch {}
+  const evicted = new Set();
+  for (const cachedFile of Object.keys(require.cache)) {
+    if (!WINDOW_BOUND_PACKAGES.test(cachedFile)) continue;
+    evicted.add(require.cache[cachedFile]);
+    delete require.cache[cachedFile];
   }
-  if (windowBoundPattern) {
-    const pattern = windowBoundPattern;
-    const evicted = new Set();
-    for (const cachedFile of Object.keys(require.cache)) {
-      if (!pattern.test(cachedFile)) continue;
-      evicted.add(require.cache[cachedFile]);
-      delete require.cache[cachedFile];
-    }
-    releaseEvicted(evicted);
-    // A package that is loaded again registers its hooks again.
-    for (const kind of Object.keys(packageHooks)) packageHooks[kind] = packageHooks[kind].filter((fn) => !pattern.test(packageHookOwners.get(fn) ?? ""));
-  }
+  releaseEvicted(evicted);
+  // A package that is loaded again registers its hooks again.
+  for (const kind of Object.keys(packageHooks)) packageHooks[kind] = packageHooks[kind].filter((fn) => !WINDOW_BOUND_PACKAGES.test(packageHookOwners.get(fn) ?? ""));
   globalThis.__nodeTestSpike.restoreSharedPackages?.();
-  globalThis.__nodeTestSpike.resetLets?.();
   restoreSetupMocks();
   globalThis.__nodeTestSpike.betweenFiles?.();
   resetDayjsLocale();
-  resetSettings();
-  if (isolated) {
-    mocks.clear();
-    for (const [key, factory] of preloadMocks) mocks.set(key, factory);
-    state.mockExports.clear(); globalThis.__nodeTestSpike.clearActualModules?.();
-    // The stub modules live outside the project, so eviction spares them, and
-    // their cached exports would hand the next file objects from the old graph.
-    for (const stubFile of mockStubs.values()) delete require.cache[stubFile];
-    evictProjectModules();
-    globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
-    resetNavigator();
-    runSetupChain();
-    if (FRESH_WINDOW) { globalThis.__nodeTestSpike.wrapCanvasGetContext(); globalThis.__nodeTestSpike.rebaseline(); }
-  }
-  require("metabase/plugins").reinitialize();
+  mocks.clear();
+  for (const [key, factory] of preloadMocks) mocks.set(key, factory);
+  state.mockExports.clear();
+  actualModules.clear();
+  // The stub modules live outside the project, so eviction spares them, and
+  // their cached exports would hand the next file objects from the old graph.
+  for (const stubFile of mockStubs.values()) delete require.cache[stubFile];
+  evictProjectModules();
+  resetNavigator();
+  runSetupChain();
+  wrapCanvasGetContext();
+  rebaseline();
 };
 
 let filesRunHere = 0;
@@ -838,29 +771,12 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
   fileStarted = Date.now();
   preloadMocks ??= new Map(mocks);
   currentFile = path.relative(root, file);
-  const isolated = ISOLATE_ALL || MOCKING_API.test(fs.readFileSync(file, "utf8"));
   startSnapshots(file);
-  mockedThisFile = false;
-  if (isolated) {
-    evictProjectModules();
-    globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
-    runSetupChain();
-  }
-  let fileSuite = newSuite(file);
+  evictProjectModules();
+  runSetupChain();
+  const fileSuite = newSuite(file);
   suiteStack.push(fileSuite);
   try { require(file); } finally { suiteStack.pop(); }
-  // A file whose jest.mock calls sit in an imported helper was not isolated at
-  // its start, so modules from earlier files have their real dependencies
-  // resolved already and would never see these mocks. The file starts again
-  // on a fresh registry, with its mocks now known, before any test body runs.
-  if (mockedThisFile && !isolated) {
-    evictProjectModules();
-    globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
-    runSetupChain();
-    fileSuite = newSuite(file);
-    suiteStack.push(fileSuite);
-    try { require(file); } finally { suiteStack.pop(); }
-  }
   try {
     for (const fn of [...packageHooks.beforeAll, ...rootSuite.beforeAll]) await fn();
     actEnvironmentForFile = globalThis.IS_REACT_ACT_ENVIRONMENT;
@@ -874,11 +790,8 @@ globalThis.__nodeTestSpike.runFile = async (t, file) => {
       filesRunHere += 1;
       process.stderr.write(`[file] pid=${process.pid} idx=${filesRunHere} ms=${Date.now() - fileStarted} rss=${Math.round(process.memoryUsage().rss / 1048576)} mods=${Object.keys(require.cache).length} ${currentFile}\n`);
     }
-    // A jest.mock reached from an imported helper is invisible to the source scan,
-    // so the run's own record decides: a file that mocked gets the isolated cleanup.
-    await fileCleanup(isolated || mockedThisFile);
+    await fileCleanup();
   }
-  return isolated;
 };
 
 const { expect } = require(bunModule("expect"));
@@ -955,7 +868,6 @@ const requireFromActualDirectory = Module.createRequire(path.join(processDir, "a
 // So the real module of a mocked file never stays in Node's cache: it is held
 // here, for requireActual and for automocks.
 const actualModules = new Map();
-globalThis.__nodeTestSpike.clearActualModules = () => actualModules.clear();
 const requireFromActual = (file) => {
   if (actualModules.has(file)) return actualModules.get(file);
   const actual = requireFromActualDirectory(file);
@@ -988,7 +900,6 @@ const jestMock = (id, factory) => {
   state.mockExports.delete(file);
   actualModules.delete(file);
   if (!file.startsWith("node:")) delete require.cache[file];
-  mockedThisFile = true;
   // Consumers require the mock through a stub path, and Node caches that module,
   // so a later file's factory would otherwise never be read.
   const stubFile = mockStubs.get(file);
@@ -1005,7 +916,7 @@ const setupProcessListeners = [];
 let pristineConsole;
 const runSetupChain = () => {
   // The setup files register the root hooks each time they run. Without this
-  // every isolated file would add another copy for all later tests to run.
+  // every file would add another copy for all later tests to run.
   for (const kind of ["beforeAll", "afterAll", "beforeEach", "afterEach"]) rootSuite[kind].length = 0;
   // The same goes for the mocks they install. The old ones also hold the window
   // of the file they were made for, and with it everything that file rendered.
@@ -1041,7 +952,7 @@ const restoreSetupMocks = () => {
 const takeProjectModules = () => {
   const taken = new Map();
   for (const file of Object.keys(require.cache)) {
-    if (isEvictable(file)) { taken.set(file, require.cache[file]); delete require.cache[file]; }
+    if (isProjectSource(file)) { taken.set(file, require.cache[file]); delete require.cache[file]; }
   }
   return taken;
 };
@@ -1072,9 +983,11 @@ globalThis.jest = {
     return mocks.has(file) ? globalThis.__nodeTestSpike.mockExports(file) : Module.createRequire(from)(file);
   },
   // Project modules load again on their next require. Packages stay, as they
-  // do for an isolated file, so React and the testing library keep one copy.
+  // do between files, so React and the testing library keep one copy.
   resetModules: () => {
-    { evictProjectModules(); state.mockExports.clear(); globalThis.__nodeTestSpike.clearActualModules?.(); }
+    evictProjectModules();
+    state.mockExports.clear();
+    actualModules.clear();
     return globalThis.jest;
   },
   isolateModules: (fn) => {
@@ -1085,11 +998,7 @@ globalThis.jest = {
     const outer = takeProjectModules();
     try { await fn(); } finally { putProjectModules(outer); }
   },
-  useFakeTimers: (config) => {
-    fakeTimers.useFakeTimers(config);
-    usedFakeTimers = true;
-    return globalThis.jest;
-  },
+  useFakeTimers: (config) => { fakeTimers.useFakeTimers(config); return globalThis.jest; },
   useRealTimers: () => { fakeTimers.useRealTimers(); return globalThis.jest; },
   advanceTimersByTime: (ms) => fakeTimers.advanceTimersByTime(ms),
   advanceTimersByTimeAsync: (ms) => fakeTimers.advanceTimersByTimeAsync(ms),
@@ -1109,33 +1018,16 @@ globalThis.jest = {
 globalThis.ga = {};
 
 // --- setupFiles + setupFilesAfterEnv, in jest order ---------------------------------
-const trackedLets = new Map();
-// With every project module loaded again for each file there is nothing to put
-// back, and a tracked module would stay alive after its file.
-globalThis.__nodeTestSpike.trackLets = (file, read, write) => { if (!ISOLATE_ALL) trackedLets.set(file, { baseline: read(), read, write }); };
-// Other modules write into these bindings while they load: a registry gets its
-// default, a renderer gets installed. Those modules will not load again, so a
-// value written during a load is part of the baseline. Only what test code
-// writes, outside any load, is undone between files.
 {
   const NodeModule = require("node:module");
   const loadModule = NodeModule._load;
   let loadDepth = 0;
-  let valuesBeforeLoad = null;
-  const readAll = () => {
-    const values = new Map();
-    for (const [file, tracked] of trackedLets) {
-      try { values.set(file, tracked.read()); } catch {}
-    }
-    return values;
-  };
-  globalThis.__nodeTestSpike.isLoading = () => loadDepth > 0;
-  // With the UI packages shared between isolated files, project code can still
+  // The UI packages stay loaded across files, and project code can still
   // write onto a package's own objects while it loads, as the popover dropdown
   // registration does. The package would then keep pointing at one file's copy
   // of that code. Each package export is recorded as it was when control first
   // came back to project code, and put back between files.
-  const SHARED_UI = process.env.NT_SHARE_UI_PACKAGES === "1" ? /\/node_modules\/(@mantine|@emotion)\// : null;
+  const SHARED_UI = /\/node_modules\/(@mantine|@emotion)\//;
   const packageModulesPending = [];
   const packageBaselines = [];
   const packageSeen = new WeakSet();
@@ -1199,13 +1091,13 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { if (!ISOLATE_ALL
       }
     };
   }
-  if (SHARED_UI) {
+  {
     const compilePackage = NodeModule.prototype._compile;
     NodeModule.prototype._compile = function (content, filename, ...rest) {
       const result = compilePackage.call(this, content, filename, ...rest);
       // A package that is loaded again for each file needs no baseline, and one
       // would keep every old copy of it alive.
-      if (SHARED_UI.test(filename) && !windowBoundPattern?.test(filename)) packageModulesPending.push(this);
+      if (SHARED_UI.test(filename) && !WINDOW_BOUND_PACKAGES.test(filename)) packageModulesPending.push(this);
       return result;
     };
   }
@@ -1225,7 +1117,6 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { if (!ISOLATE_ALL
     return restored;
   };
   NodeModule._load = function (...args) {
-    if (loadDepth === 0 && trackedLets.size > 0) valuesBeforeLoad = readAll();
     loadDepth += 1;
     try {
       return loadModule.apply(this, args);
@@ -1233,26 +1124,9 @@ globalThis.__nodeTestSpike.trackLets = (file, read, write) => { if (!ISOLATE_ALL
       if (packageModulesPending.length > 0 && args[1]?.filename && isProjectSource(args[1].filename)) recordPackageExports();
       loadDepth -= 1;
       if (loadDepth === 0 && packagesLoadedSinceMirror) mirrorGlobalsOntoWindow();
-      if (loadDepth === 0 && valuesBeforeLoad) {
-        for (const [file, tracked] of trackedLets) {
-          const before = valuesBeforeLoad.get(file);
-          let now;
-          try { now = tracked.read(); } catch { continue; }
-          if (!before) { tracked.baseline = now; continue; }
-          for (let index = 0; index < now.length; index += 1) {
-            if (now[index] !== before[index]) tracked.baseline[index] = now[index];
-          }
-        }
-        valuesBeforeLoad = null;
-      }
     }
   };
 }
-globalThis.__nodeTestSpike.resetLets = () => {
-  for (const [file, { baseline, read, write }] of trackedLets) {
-    try { write(baseline); } catch {}
-  }
-};
 // React's scheduler keeps the timer functions it finds when it loads. It is one
 // copy for the whole process, so it has to find Node's own: a timer of its that
 // was tracked would be cleared at the end of a file, and the scheduler would go
@@ -1263,15 +1137,12 @@ globalThis.__nodeTestSpike.resetLets = () => {
 }
 trackTimers();
 runSetupChain();
-initialBootstrap = { ...globalThis.window.MetabaseBootstrap };
 
-// --- shared-realm baseline ----------------------------------------------------
-// jest hands every file a fresh jsdom, so a spec that patches document or a DOM
-// prototype and never restores it leaks nothing. Here the realm is shared, so the
-// descriptors present once the setup chain has run are the baseline, and whatever
-// a file changed is put back between files. globalThis only has changed keys
-// restored, never added ones removed: a shared module that set a global during
-// its one evaluation would otherwise lose it for every later file.
+// --- what a file may change, put back between files ---------------------------
+// jest hands every file a fresh global object. Here the global object is shared,
+// so the descriptors present once the setup files have run are the baseline, and
+// whatever a file changed or added is undone between files. A key that a
+// package added while it loaded stays, because the package will not load again.
 const realmObjects = () => [
   globalThis.document,
   win.Document.prototype,
@@ -1300,7 +1171,7 @@ const snapshotDescriptors = (target) => {
 };
 for (const target of realmObjects()) realmBaseline.set(target, snapshotDescriptors(target));
 const globalBaseline = snapshotDescriptors(globalThis);
-globalThis.__nodeTestSpike.rebaseline = () => {
+const rebaseline = () => {
   realmBaseline.clear();
   for (const target of realmObjects()) realmBaseline.set(target, snapshotDescriptors(target));
   globalBaseline.clear();
@@ -1323,7 +1194,7 @@ const restoreDescriptors = (target, descriptors, removeAdded, keepAdded) => {
 };
 const restoreRealm = () => {
   for (const [target, descriptors] of realmBaseline) restoreDescriptors(target, descriptors, true);
-  restoreDescriptors(globalThis, globalBaseline, ISOLATE_ALL, sharedGlobalKeys);
+  restoreDescriptors(globalThis, globalBaseline, true, sharedGlobalKeys);
 };
 globalThis.__nodeTestSpike.restoreRealm = restoreRealm;
 // jest gives each file its own copy of process.env.
@@ -1353,28 +1224,10 @@ try {
     if (dayjs.locale() !== baselineLocale) dayjs.locale(baselineLocale);
   };
 } catch {}
-// The settings singleton is filled from the bootstrap object when its module
-// loads, and specs then write into it. jest reloads it for each file. Here its
-// contents go back to what a fresh load would hold.
-const resetSettings = () => {
-  try {
-    const settingsFile = resolveProject("metabase/utils/settings", abs("frontend/test/__support__/ui.tsx"));
-    const settings = require.cache[settingsFile]?.exports?.default;
-    if (!settings?._settings) return;
-    for (const key of Object.keys(settings._settings)) delete settings._settings[key];
-    Object.assign(settings._settings, initialBootstrap);
-  } catch {}
-};
-// Three more things jest resets by giving each file a new environment.
 // The translation library is a shared package, so the locale a spec selects
 // would stay for every later file.
 const resetTranslationLocale = () => {
   try { Module.createRequire(abs("frontend/src/index.js"))("ttag").useLocale("en"); } catch {}
-};
-// One window serves every file, so a spec that navigates leaves its URL behind.
-const resetLocation = () => {
-  if (FRESH_WINDOW) return;
-  try { if (globalThis.window.location.href !== "http://localhost/") dom.reconfigure({ url: "http://localhost/" }); } catch {}
 };
 // The chart library keeps one canvas context for measuring text. Its methods
 // are mocks from jest-canvas-mock, and a spec's resetAllMocks strips their
@@ -1432,56 +1285,6 @@ const patchCallHistory = () => {
   } catch {}
 };
 patchCallHistory();
-// The custom elements registry belongs to the window and has no way to remove
-// a definition. A module that defines its elements once, guarded by "if not
-// defined yet", would leave every later file with the classes of the first
-// file that loaded it. A new window has an empty registry, so empty this one.
-const resetCustomElements = () => {
-  if (FRESH_WINDOW) return;
-  try {
-    const { implForWrapper } = require(path.join(bunModule("jsdom"), "lib/jsdom/living/generated/utils.js"));
-    const registry = implForWrapper(globalThis.window.customElements);
-    registry._customElementDefinitions.length = 0;
-    registry._whenDefinedPromiseMap = Object.create(null);
-  } catch {}
-};
-// More of what a new window gives a file under jest, each behind its own switch.
-const jsdomUtils = () => require(path.join(bunModule("jsdom"), "lib/jsdom/living/generated/utils.js"));
-// Event listeners on the window and the document. Code from an earlier file
-// that listens for keys, clicks or focus would still run for every later file.
-const listenerTargets = () => [dom.window, dom.window.document, dom.window.document.documentElement, dom.window.document.body];
-let baselineListeners = null;
-const resetWindowListeners = () => {
-  if (FRESH_WINDOW) return;
-  try {
-    baselineListeners ??= listenerTargets().map(() => ({}));
-    listenerTargets().forEach((target, index) => {
-      const impl = jsdomUtils().implForWrapper(target);
-      if (!impl?._eventListeners) return;
-      for (const type of Object.keys(impl._eventListeners)) {
-        const kept = baselineListeners[index][type];
-        if (kept) impl._eventListeners[type] = [...kept];
-        else delete impl._eventListeners[type];
-      }
-      // React marks a node once it has put its listeners there, and would not
-      // put them back after they are removed here.
-      for (const key of Object.keys(target)) if (key.startsWith("_reactListening") || key.startsWith("__react")) { try { delete target[key]; } catch {} }
-    });
-  } catch {}
-};
-// Storage, cookies, the title, and attributes on <html> and <body>.
-const resetWindowData = () => {
-  if (FRESH_WINDOW) return;
-  try { dom.window.localStorage.clear(); dom.window.sessionStorage.clear(); } catch {}
-  try { dom.cookieJar.removeAllCookiesSync(); } catch {}
-  try {
-    const { document } = dom.window;
-    if (document.title !== "") document.title = "";
-    for (const element of [document.documentElement, document.body]) {
-      for (const attribute of [...element.attributes]) element.removeAttribute(attribute.name);
-    }
-  } catch {}
-};
 // React Testing Library's configuration: a spec that calls configure() changes
 // it for the one shared copy of the library.
 let testingLibraryConfig = null;
@@ -1494,23 +1297,5 @@ const resetTestingLibraryConfig = () => {
   } catch {}
 };
 resetTestingLibraryConfig();
-globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); resetCustomElements(); resetWindowListeners(); resetWindowData(); resetTestingLibraryConfig(); };
+globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); restoreCanvasMocks(); wrapCanvasGetContext(); resetTestingLibraryConfig(); };
 wrapCanvasGetContext();
-globalThis.__nodeTestSpike.wrapCanvasGetContext = wrapCanvasGetContext;
-// A spec that registers its own visualization would otherwise collide with the
-// next file's registration, since the registry outlives the file.
-let baselineVisualizations = null;
-try {
-  baselineVisualizations = new Set(require("metabase/viz-core/lib/registry").visualizations.keys());
-} catch {}
-const resetVisualizations = () => {
-  if (!baselineVisualizations) return;
-  try {
-    const { visualizations } = require("metabase/viz-core/lib/registry");
-    for (const key of [...visualizations.keys()]) {
-      if (!baselineVisualizations.has(key)) visualizations.delete(key);
-    }
-  } catch {}
-};
-globalThis.__nodeTestSpike.resetVisualizations = resetVisualizations;
-
