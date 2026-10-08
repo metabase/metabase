@@ -433,39 +433,6 @@ describe("scenarios > embedding > full app", () => {
         },
       );
 
-      it(
-        "should select a table in a schema-less database",
-        { tags: "@external" },
-        () => {
-          H.restore("mysql-8");
-          cy.signInAsAdmin();
-          startNewEmbeddingQuestion();
-          selectFirstDataSource("Reviews");
-          verifyTableSelected({
-            tableName: "Reviews",
-            databaseName: "QA MySQL8",
-          });
-        },
-      );
-
-      it(
-        "should select a table when there are multiple schemas",
-        { tags: "@external" },
-        () => {
-          H.restore("postgres-writable");
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
-          cy.signInAsAdmin();
-          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-          startNewEmbeddingQuestion();
-          selectDataSource("Birds");
-          verifyTableSelected({
-            tableName: "Birds",
-            schemaName: "Wild",
-            databaseName: "Writable Postgres12",
-          });
-        },
-      );
-
       it("should be able to join a table when the data source is a table", () => {
         startNewEmbeddingQuestion();
         selectDataSource("Orders");
@@ -831,13 +798,29 @@ describe("scenarios > embedding > full app", () => {
       );
 
       it(
-        "should select a table in a schema-less database",
+        "should select a table in a schema-less database with the simple and staged data pickers",
         { tags: "@external" },
         () => {
           H.restore("mysql-8");
           cy.signInAsAdmin();
+
+          cy.log("simple data picker");
+          const simpleAliases = interceptDataPickerRequests("Simple");
+          startNewEmbeddingQuestion();
+          selectFirstDataSource("Reviews");
+          cy.wait(simpleAliases.tableMetadataAlias).then(({ response }) => {
+            expect(response.body.display_name).to.equal("Reviews");
+            expect(response.body.db.name).to.equal("QA MySQL8");
+          });
+
+          cy.log("staged data picker");
+          const stagedAliases = interceptDataPickerRequests("Staged");
           startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-          selectTable({ tableName: "Reviews", databaseName: "QA MySQL8" });
+          selectTable({
+            tableName: "Reviews",
+            databaseName: "QA MySQL8",
+            aliases: stagedAliases,
+          });
           clickOnDataSource("Reviews");
           verifyTableSelected({
             tableName: "Reviews",
@@ -847,18 +830,32 @@ describe("scenarios > embedding > full app", () => {
       );
 
       it(
-        "should select a table when there are multiple schemas",
+        "should select a table when there are multiple schemas with the simple and staged data pickers",
         { tags: "@external" },
         () => {
           H.restore("postgres-writable");
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          cy.log("simple data picker");
+          const simpleAliases = interceptDataPickerRequests("Simple");
+          startNewEmbeddingQuestion();
+          selectDataSource("Birds");
+          cy.wait(simpleAliases.tableMetadataAlias).then(({ response }) => {
+            expect(response.body.display_name).to.equal("Birds");
+            expect(response.body.schema).to.equal("Wild");
+            expect(response.body.db.name).to.equal("Writable Postgres12");
+          });
+
+          cy.log("staged data picker");
+          const stagedAliases = interceptDataPickerRequests("Staged");
           startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
           selectTable({
             tableName: "Animals",
             schemaName: "Domestic",
             databaseName: "Writable Postgres12",
+            aliases: stagedAliases,
           });
           clickOnDataSource("Animals");
           verifyTableSelected({
