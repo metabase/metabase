@@ -77,7 +77,7 @@ describe("DatabaseForm > test connection", () => {
     expect(request.body.details.id).toBe(id);
   });
 
-  it("should show the result until the form is edited, including while re-testing", async () => {
+  it("should show the result until the form is edited or re-tested", async () => {
     await setupTestConnection({
       initialValues: POSTGRES_VALUES,
       validateDelayMs: 200,
@@ -89,11 +89,13 @@ describe("DatabaseForm > test connection", () => {
     ).toBeInTheDocument();
 
     await clickTestConnection();
-    expect(screen.getByLabelText("Connection successful")).toBeInTheDocument();
-    await waitFor(async () => {
-      expect(await findValidateRequests()).toHaveLength(2);
-    });
-    expect(screen.getByLabelText("Connection successful")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Connection successful"),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("Connection successful"),
+    ).toBeInTheDocument();
+    expect(await findValidateRequests()).toHaveLength(2);
 
     await userEvent.type(screen.getByLabelText("Host"), "x");
     expect(

@@ -2,14 +2,15 @@ name: Active Recent Filter
 description: Combines Active Product Filter with Date Range Filter
 entity_id: c5PMqT66HwWoy0m52WTI5
 created_at: '2026-04-02T02:59:02.778668Z'
-content: '{{snippet: Active Product Filter}} AND {{snippet: Date Range Filter}}'
+content: '{{snippet: Active Product Filter}} AND {{snippet: Date Range Filter}} AND {{snippet: Missing Filter}}
+  AND category = {{category}} AND id IN (SELECT id FROM {{#1-basic-aggregations}})'
 creator_id: admin@example.com
 template_tags:
   'snippet: Active Product Filter':
     display-name: 'Snippet: Active Product Filter'
     id: dd000001-0000-0000-0000-000000000001
     name: 'snippet: Active Product Filter'
-    snippet-id: 1
+    snippet-id: WyQWnT23PF-SfbYLROllJ
     snippet-name: Active Product Filter
     type: snippet
   'snippet: Date Range Filter':
@@ -18,7 +19,22 @@ template_tags:
     name: 'snippet: Date Range Filter'
     snippet-name: Date Range Filter
     type: snippet
+  'snippet: Missing Filter':
+    display-name: 'Snippet: Missing Filter'
+    id: dd000003-0000-0000-0000-000000000003
+    name: 'snippet: Missing Filter'
+    snippet-name: Missing Filter
+    type: snippet
+  category:
+    display-name: Category
+    id: dd000004-0000-0000-0000-000000000004
+    name: category
+    type: text
+  '#1-basic-aggregations':
+    card-id: h5F2EjHsRd73Dqqh8sAtd
+    display-name: '#1 Basic Aggregations'
+    id: dd000005-0000-0000-0000-000000000005
+    name: '#1-basic-aggregations'
+    type: card
 serdes/meta:
-- id: c5PMqT66HwWoy0m52WTI5
-  label: active_recent_filter
-  model: NativeQuerySnippet
+- model: NativeQuerySnippet

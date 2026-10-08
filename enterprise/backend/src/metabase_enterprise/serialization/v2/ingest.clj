@@ -78,7 +78,8 @@
   [file]
   (-> file
       (yaml/from-file {:key-fn parse-key})
-      read-timestamps))
+      read-timestamps
+      serdes/restore-path))
 
 (defn- check-resource-path!
   "Throws unless `path` is a relative path that stays inside its entity's directory."

@@ -12870,6 +12870,9 @@
               "type" : "null"
             } ]
           },
+          "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details"
+          },
           "user-parameters" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
           },
@@ -13111,6 +13114,69 @@
       "metabase.lib.schema..query.snapshot" : {
         "description" : "A whole copy of a query stashed on the query itself under one of the internal keys below: the same shape as\n  [[::query]] minus the `:and`-level constraints, so validating the stashed copy does not re-run uniqueness checks\n  against the query it was copied from.",
         "$ref" : "#/components/schemas/metabase.lib.schema..query.map"
+      },
+      "metabase.lib.schema..sandboxing.details" : {
+        "description" : "Audit-log details for the sandboxes (row-level restrictions) applied to a query, keyed by the Table ID each one sandboxes. Stashed on the query by the enterprise sandboxing middleware and copied into the results metadata so the restrictions can be recorded in the QueryExecution log.",
+        "type" : "object",
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details.entry"
+        }
+      },
+      "metabase.lib.schema..sandboxing.details.entry" : {
+        "description" : "Audit-log entry describing one applied sandbox (row-level restriction): which Table it sandboxes, which sandbox/group/Card it came from, and which login attributes were remapped to which Fields. An attribute's `:value` is the user's actual attribute value, recorded only when `analytics-pii-retention-enabled` is set.",
+        "type" : "object",
+        "properties" : {
+          "attributes" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : {
+                "field_id" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "value" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.parameter..parameter.value"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "required" : [ "field_id" ],
+              "additionalProperties" : false
+            }
+          },
+          "card_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "group_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sandbox_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          }
+        },
+        "required" : [ "table_id", "sandbox_id", "group_id", "card_id", "attributes" ],
+        "additionalProperties" : false
       },
       "metabase.lib.schema..sandboxing.original-metadata" : {
         "description" : "The legacy columns a query was expected to return before sandboxes replaced its source tables, stashed on the query by the enterprise sandboxing middleware and merged into the sandboxed results.",
@@ -18776,6 +18842,9 @@
                 "type" : "null"
               } ]
             },
+            "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details"
+            },
             "user-parameters" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
             },
@@ -23454,13 +23523,6 @@
                 "additionalProperties" : false
               }
             },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.notification.models.EchoedUser"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "updated_at" : {
               "oneOf" : [ {
                 "anyOf" : [ {
@@ -23616,13 +23678,6 @@
                 "required" : [ "channel_type" ],
                 "additionalProperties" : false
               }
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.notification.models.EchoedUser"
-              }, {
-                "type" : "null"
-              } ]
             },
             "updated_at" : {
               "oneOf" : [ {
@@ -28712,6 +28767,13 @@
               "$ref" : "#/components/schemas/metabase.query-processor.schema..result-metadata.column"
             }
           },
+          "sandbox_details" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
           "results_timezone" : {
             "type" : "string"
           },
@@ -31985,13 +32047,9 @@
                           "type" : "boolean"
                         },
                         "resource_collection_id" : {
-                          "oneOf" : [ {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }, {
-                            "type" : "null"
-                          } ]
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
                         },
                         "description" : {
                           "oneOf" : [ {
@@ -32108,13 +32166,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -32324,13 +32378,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -32506,13 +32556,9 @@
                         "type" : "boolean"
                       },
                       "resource_collection_id" : {
-                        "oneOf" : [ {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }, {
-                          "type" : "null"
-                        } ]
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
                       },
                       "description" : {
                         "oneOf" : [ {
@@ -32681,13 +32727,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -32994,13 +33036,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -40149,7 +40187,7 @@
       "get" : {
         "operationId" : "get-api-database",
         "summary" : "GET /api/database",
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `include_stubs` includes stub DBs, which serialization creates for missing databases. Default: `false`.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "in" : "query",
           "name" : "saved",
@@ -40199,6 +40237,18 @@
             } ]
           },
           "description" : "include must be either empty, 'tables', or 'schemas'"
+        }, {
+          "in" : "query",
+          "name" : "include_stubs",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         }, {
           "in" : "query",
           "name" : "router_database_id",
