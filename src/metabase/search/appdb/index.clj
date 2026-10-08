@@ -119,20 +119,23 @@
   (map (comp keyword u/lower-case-en :table_name)
        (search.db/orphan-index-table-names)))
 
+(defn- drop-orphan-index!
+  "Drop the orphan index `table`, returning it, or nil if the drop failed.
+  A failed drop is logged and never propagates."
+  [table]
+  (try
+    (search.db/drop-search-index-table! table)
+    table
+    ;; Deletion could fail if it races with other instances
+    (catch Exception e
+      (log/warnf "Failed to drop orphan index %s: %s" table (ex-message e))
+      nil)))
+
 (defn- drop-orphan-indexes!
   "Drop every index table that has no metadata row, returning those dropped.
   Best effort: a failed drop is logged and never propagates."
   []
-  (let [dropped (into []
-                      (keep (fn [table]
-                              (try
-                                (search.db/drop-search-index-table! table)
-                                table
-                                ;; Deletion could fail if it races with other instances
-                                (catch Exception e
-                                  (log/warnf "Failed to drop orphan index %s: %s" table (ex-message e))
-                                  nil))))
-                      (orphan-indexes))]
+  (let [dropped (into [] (keep drop-orphan-index!) (orphan-indexes))]
     (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)
     dropped))
 
