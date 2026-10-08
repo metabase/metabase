@@ -192,18 +192,24 @@ describe("scenarios > embedding > native questions", () => {
 
       H.assertEmbeddingParameter("Total", "Editable");
 
+      cy.log(
+        "should let the user lock a text parameter to a specific value (metabase#20634)",
+      );
+      H.setEmbeddingParameter("Source", "Locked");
+      H.modal().findByPlaceholderText("Source").type("Organic{enter}");
+
       H.publishChanges("card", ({ request }) => {
         const actual = request.body.embedding_params;
 
         // We only expect total to be "enabled" because the rest
-        // weren't touched and therefore aren't changed, whereas
-        // "enabled" must be set by default for required params.
+        // (except the locked source) weren't touched and therefore aren't changed,
+        // whereas "enabled" must be set by default for required params.
         const expected = {
           id: "disabled",
           state: "disabled",
           created_at: "disabled",
           total: "enabled",
-          source: "disabled",
+          source: "locked",
           product_id: "disabled",
         };
 
@@ -213,10 +219,14 @@ describe("scenarios > embedding > native questions", () => {
       H.visitIframe();
 
       // Filter widget must be visible
-      H.filterWidget().contains("Total");
+      H.filterWidget().should("have.length", 1).and("contain", "Total");
 
       // And its default value must be in the URL
       cy.location("search").should("eq", "?total=100");
+
+      H.tableInteractiveBody()
+        .should("contain", "Organic")
+        .and("not.contain", "Affiliate");
     });
   });
 
