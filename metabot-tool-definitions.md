@@ -301,7 +301,15 @@ Nothing in the adapter can tell that string from a real result. Converting the t
 
 Unconverted tools do get the new checks, because those come from the declaration: argument validation, the scope check, and the result shape.
 
-### 5.4 When the adapter goes away
+### 5.4 What a conversion touches
+
+One tool and its tests. Nothing else.
+
+The runtime is already wired into the agent loop, and `metabase.metabot.tools/->entries` already adapts whatever a profile lists. A profile names every tool as a var either way — `adapt` reads the metadata of an unconverted one and dereferences a converted one — so no profile changes as tools convert.
+
+`get_timeline_details` is converted. `list_timelines`, in the same namespace, is not. Both are in the same profile.
+
+### 5.5 When the adapter goes away
 
 `metabase.metabot.tools.legacy` and `metabase.metabot.tools.recoverable.legacy` are deleted when the last tool is converted. The `adapt-all` call goes with them. The description strip moves out of the adapters at the same time, because a converted tool's description needs none.
 
@@ -419,22 +427,34 @@ no SQL permission -> "This call failed and the user was shown the error (...). D
 
 One call, one result. The result has one row or many. The cardinality does not matter.
 
+`get_timeline_details` is the converted one, so this is its real code:
+
 ```clojure
 (defrecord GetTimelineDetailsTool []
   tools/Tool
   (declaration [_]
     {:name        "get_timeline_details"
-     :description "Get the full details of a timeline including its events."
+     :description (str "Get the full details of a timeline including its events.\n\n"
+                       "Use this tool to retrieve the events on a timeline after identifying it "
+                       "with list_timelines. Events include timestamps, names, and descriptions.")
      :scope       scope/agent-timelines-read
-     :args        [:map {:closed true} [:timeline_id pos-int?]]})
+     :args        [:map {:closed true} [:timeline_id :int]]})
   (handle [_ {:keys [timeline_id]} _ctx]
     (let [timeline (tools/with-entity {:kind :timeline :id timeline_id}
-                     (timeline/include-events-singular (timeline/get-timeline timeline_id)))]
-      {:output (format "<timeline name=\"%s\">%s events</timeline>"
-                       (:name timeline) (count (:events timeline)))})))
+                     (or (get-timeline-details timeline_id)
+                         (recoverable.common/not-found! {:kind :timeline :id timeline_id})))]
+      {:output (format-timeline-details-output timeline)})))
+
+(def get-timeline-details-tool
+  "The `get_timeline_details` tool."
+  (->GetTimelineDetailsTool))
 ```
 
-The whole tool is one converter. `with-entity` turns a 403 or a 404 into a declared error. Every other exception ends the turn.
+The whole tool is two converters. `with-entity` turns the 403 a read check raises into a declared error. A nil — `timeline/get-timeline` is `[:maybe ...]` — is the other way it misses, and reports the same thing. Every other exception ends the turn.
+
+The conversion fixed a real bug. A missing timeline used to return `{:structured_output nil}` with no `:output`, so the adapters fell back to printing the map and the model was shown `{:structured_output nil}`.
+
+It carries no `:structured-output`, because nothing reads one for a timeline: it is not in `persistence/persisted-structured-output-keys`, the agent loop keeps no timeline memory, and `used-tables` does not look at it. Before the conversion it had one, because success used to mean "has `:structured-output`".
 
 `search` is also this class. It runs several queries and merges them into one list. That is internal.
 
