@@ -246,7 +246,7 @@
                  :id        "call-1"
                  :function  "construct_notebook_query"
                  :arguments {:query query}}
-          ;; the stream parser decodes the arguments with keyword keys at every depth
+          ;; the stream parser keywordizes only the top-level argument names
           parts (into [] (self.core/aisdk-xf) (metabot.tu/parts->aisdk-chunks [call]))]
       (is (=? {:messages [{:role       "assistant"
                            :tool_calls [{:function {:name      "construct_notebook_query"
@@ -264,7 +264,7 @@
     (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
       (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
                            (replay arguments))
-        ;; keyword keys, as the stream decodes them
+        ;; keyword keys at every depth, as Clojure builds them
         {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
         ;; string keys, as replayed history decodes them
         {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
