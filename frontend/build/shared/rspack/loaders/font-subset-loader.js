@@ -82,7 +82,12 @@ async function rewrite(loader) {
           continue;
         }
         writeAtomic(chunkPath, subset);
-        for (const extension of fallbackFormatsFor(dir)) {
+        // Only the first chunk, which is what a page needs to render at all.
+        // The second is already fetched on demand, so a browser too old for
+        // woff2 falls back for those scripts exactly as it does today.
+        for (const extension of name === "latin"
+          ? fallbackFormatsFor(dir)
+          : []) {
           writeAtomic(
             chunkPath.replace(/woff2$/, extension),
             await convertFace(subset, extension),
@@ -94,8 +99,8 @@ async function rewrite(loader) {
     return made;
   };
 
-  const sourcesFor = (chunkRel) =>
-    ["woff2", ...fallbackFormatsFor(path.dirname(chunkRel))]
+  const sourcesFor = (chunkRel, extras) =>
+    ["woff2", ...extras]
       .map(
         (extension) =>
           `url("~generated-fonts/${chunkRel.replace(/woff2$/, extension)}") format("${FORMATS[extension]}")`,
@@ -119,18 +124,25 @@ async function rewrite(loader) {
     const { latin, rest } = await chunksFor(rel);
     if (!rest) {
       // Nothing outside latin, so a second request would render nothing.
-      return block.replace(urls[0][0], sourcesFor(latin));
+      return block.replace(
+        urls[0][0],
+        sourcesFor(latin, fallbackFormatsFor(path.dirname(latin))),
+      );
     }
 
-    const withChunk = (chunkRel, range) =>
+    const withChunk = (chunkRel, range, extras) =>
       block
-        .replace(urls[0][0], sourcesFor(chunkRel))
+        .replace(urls[0][0], sourcesFor(chunkRel, extras))
         .replace(/\}$/, `  unicode-range: ${range};\n}`);
 
     return (
-      withChunk(latin, LATIN_UNICODE_RANGE) +
+      withChunk(
+        latin,
+        LATIN_UNICODE_RANGE,
+        fallbackFormatsFor(path.dirname(latin)),
+      ) +
       "\n\n" +
-      withChunk(rest, REST_UNICODE_RANGE)
+      withChunk(rest, REST_UNICODE_RANGE, [])
     );
   };
 
