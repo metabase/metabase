@@ -1,6 +1,12 @@
 // Register mocks before loading the modules under test.
 // oxfmt-ignore
-import { createMockStore, resetTestState, stagesOf } from "./setup";
+import {
+  PUBLISHED_QUESTION_ENTITY_ID,
+  createMockStore,
+  mockRunRtkEndpoint,
+  resetTestState,
+  stagesOf,
+} from "./setup";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
@@ -15,7 +21,10 @@ afterEach(() => {
   EMBEDDING_SDK_CONFIG.isDataAppDev = false;
 });
 
-const STATIC_QUERY = { source: TEST_SCHEMA.tables.orders };
+const STATIC_QUERY = {
+  source: TEST_SCHEMA.tables.orders,
+  savedQuestionEntityId: PUBLISHED_QUESTION_ENTITY_ID,
+};
 
 const statusFilter = filter(
   TEST_SCHEMA.tables.orders.fields.status,
@@ -23,27 +32,101 @@ const statusFilter = filter(
   "paid",
 );
 
-describe("a table source", () => {
-  it.each([
-    ["a deployed data app", { isDataApp: true, isDataAppDev: false }],
-    ["the dev preview", { isDataApp: true, isDataAppDev: true }],
-    ["outside a data app", { isDataApp: false, isDataAppDev: false }],
-  ])("runs as a table query in %s", async (_, config) => {
-    Object.assign(EMBEDDING_SDK_CONFIG, config);
+describe("a table source without a saved question", () => {
+  const QUERY_WITHOUT_SAVED_QUESTION = { source: TEST_SCHEMA.tables.orders };
 
-    const datasetQuery =
-      await resolveDatasetQueryInBundle(createMockStore())(STATIC_QUERY);
+  it("is refused in a deployed data app", async () => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(
+        QUERY_WITHOUT_SAVED_QUESTION,
+      ),
+    ).rejects.toThrow(
+      "This query has no saved question. Write it to the app's collection under `collections/data_apps/`",
+    );
+  });
+
+  it("still runs in the dev preview, before the app's resources exist", async () => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      QUERY_WITHOUT_SAVED_QUESTION,
+    );
+
+    expect(stagesOf(datasetQuery)).toMatchObject([{ "source-table": 1 }]);
+  });
+
+  it("still runs outside a data app, where the SDK addresses tables directly", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      QUERY_WITHOUT_SAVED_QUESTION,
+    );
 
     expect(stagesOf(datasetQuery)).toMatchObject([{ "source-table": 1 }]);
   });
 });
 
-describe("dynamic query clauses", () => {
+describe("a table source backed by a saved question in a deployed data app", () => {
   beforeEach(() => {
     EMBEDDING_SDK_CONFIG.isDataApp = true;
   });
 
-  it("layers the dynamic stage on top of the static query", async () => {
+  it("looks the published card up by its entity ID", async () => {
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(STATIC_QUERY);
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({ "source-card": 41 });
+    expect(mockRunRtkEndpoint).toHaveBeenCalledWith(
+      { id: PUBLISHED_QUESTION_ENTITY_ID },
+      expect.anything(),
+      expect.objectContaining({ name: "getCard" }),
+      { forceRefetch: false },
+    );
+  });
+
+  it("explains a published card the instance hasn't imported yet", async () => {
+    mockRunRtkEndpoint.mockRejectedValueOnce({
+      status: 404,
+      data: "Not found.",
+    });
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(STATIC_QUERY),
+    ).rejects.toThrow("This app's saved questions have not been imported.");
+  });
+});
+
+describe("dynamic query clauses", () => {
+  // The swap these cover is a data-app rule; elsewhere the table is what runs.
+  beforeEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+  });
+
+  it("runs the published card in production and layers the dynamic stage on top", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      STATIC_QUERY,
+      { filters: [statusFilter] },
+    );
+
+    expect(stagesOf(datasetQuery)).toMatchObject([
+      { "source-card": 41 },
+      {
+        filters: [
+          [
+            "=",
+            expect.anything(),
+            ["field", expect.anything(), "STATUS"],
+            "paid",
+          ],
+        ],
+      },
+    ]);
+  });
+
+  it("keeps the table source in the dev preview, with the same dynamic stage", async () => {
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
       STATIC_QUERY,
       { filters: [statusFilter] },
@@ -64,17 +147,35 @@ describe("dynamic query clauses", () => {
     ]);
   });
 
-  it("keeps the static clauses in the first stage", async () => {
-    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
-      {
-        source: TEST_SCHEMA.tables.orders,
-        aggregations: [count()],
-        breakouts: [TEST_SCHEMA.tables.orders.fields.status],
-      },
+  // The static clauses are already inside the published card, so the swapped
+  // source must drop them rather than apply them a second time.
+  it("drops the static clauses when it swaps in the published card", async () => {
+    const aggregatingQuery = {
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+      savedQuestionEntityId: PUBLISHED_QUESTION_ENTITY_ID,
+    };
+
+    const production = await resolveDatasetQueryInBundle(createMockStore())(
+      aggregatingQuery,
+      { filters: [filter({ type: "column", name: "STATUS" }, "=", "paid")] },
+    );
+
+    expect(stagesOf(production)[0]).toEqual({
+      "lib/type": "mbql.stage/mbql",
+      "source-card": 41,
+    });
+
+    // The dev preview keeps them, since nothing has been published into a card.
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const preview = await resolveDatasetQueryInBundle(createMockStore())(
+      aggregatingQuery,
       { filters: [filter({ type: "column", name: "count" }, ">", 1)] },
     );
 
-    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+    expect(stagesOf(preview)[0]).toMatchObject({
       "source-table": 1,
       aggregation: [["count", expect.anything()]],
       breakout: [["field", expect.anything(), 101]],
@@ -85,7 +186,21 @@ describe("dynamic query clauses", () => {
     const datasetQuery =
       await resolveDatasetQueryInBundle(createMockStore())(STATIC_QUERY);
 
-    expect(stagesOf(datasetQuery)).toHaveLength(1);
+    expect(stagesOf(datasetQuery)).toMatchObject([{ "source-card": 41 }]);
+  });
+
+  it("layers the dynamic stage on a preview query that has no card", async () => {
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      { source: TEST_SCHEMA.tables.orders },
+      { filters: [statusFilter] },
+    );
+
+    expect(stagesOf(datasetQuery)).toMatchObject([
+      { "source-table": 1 },
+      { filters: [expect.anything()] },
+    ]);
   });
 
   it("groups and orders in the dynamic stage", async () => {

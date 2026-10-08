@@ -13,6 +13,7 @@ Keep the semantic layer and presentation layer separate.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Every query is a `defineQuery(...)` named export in the root-level `queries/` directory, and every action a `defineAction(...)` named export in the root-level `actions/` directory, both beside `package.json`. Create both directories before writing the first hook call; the template ships them, each with a README. The hooks enforce this at compile time: `useMetabaseQuery`, `useMetabaseQueryObject`, and `useAction` reject an inline object, a `satisfies MetabaseQueryOptions` object, and a spread copy of a definition. The error reads `Property 'definedWithDefineQuery' is missing` (or `'definedWithDefineAction'`); the fix is always to move the object into `queries/` or `actions/` as a definition and import it, never a cast.
+- Every `defineQuery` carries `savedQuestionEntityId` and every `defineAction` carries `copiedActionEntityId`: the entity ID of the saved question, or of the action copy, in the app's collection that production runs. Keep it through refactors and renames, and never copy it to another definition.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
@@ -122,13 +123,19 @@ import { defineAction, defineQuery } from "@metabase/embedding-sdk-react/data-ap
 import schema from "../src/metabase.data";
 
 // queries/revenue.query.ts
-export const RevenueQuery = defineQuery({ source: schema.tables.orders });
+export const RevenueQuery = defineQuery({
+  savedQuestionEntityId: "<entity ID of its saved question>",
+  source: schema.tables.orders,
+});
 
 // actions/orders.action.ts
 export const CreateOrder = defineAction({
+  copiedActionEntityId: "<entity ID of its copied action>",
   action: schema.actions.createOrder,
 });
 ```
+
+Production runs copies, not what the schema names. Outside the dev preview, the SDK swaps a query's table source for the saved question `savedQuestionEntityId` names, which is what lets the app's viewers run it through the app's collection, and runs the action `copiedActionEntityId` names instead of the schema's. The dev preview keeps running the authored table and action, so an app works before its copies exist; in production a definition without its ID is refused with a message naming it. The copies are written into the app's collection and give the IDs their values.
 
 Pass the definition itself to the hook:
 
@@ -140,7 +147,7 @@ const { data } = useMetabaseQuery(RevenueQuery, {
 const { execute, isExecuting, error } = useAction(CreateOrder);
 ```
 
-Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. TypeScript rejects most of these: the hooks accept only what `defineQuery`/`defineAction` returned, so an inline object, a `satisfies`-typed object, a spread copy, and `schema.actions.<action>` all fail to compile. When `tsc` reports `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing`, the argument is not a definition: move it into `queries/` or `actions/` and import the export. Do not silence it with a cast or by wrapping the inline object in `defineQuery(...)` at the call site. Keep fixed filters, aggregations, and breakouts inside `defineQuery`, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
+Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionEntityId`, `copiedActionEntityId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary. TypeScript rejects most of these: the hooks accept only what `defineQuery`/`defineAction` returned, so an inline object, a `satisfies`-typed object, a spread copy, and `schema.actions.<action>` all fail to compile. When `tsc` reports `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing`, the argument is not a definition: move it into `queries/` or `actions/` and import the export. Do not silence it with a cast or by wrapping the inline object in `defineQuery(...)` at the call site. Keep fixed filters, aggregations, and breakouts inside `defineQuery`, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
 
 ## Standard pattern
 
@@ -689,6 +696,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 
 - Creating or searching for Metabase content during app building.
 - Writing the query object at the hook call instead of exporting it from `queries/` with `defineQuery`, or the action at `useAction` instead of from `actions/` with `defineAction`. Both are compile errors now; the fix is the directory, not a cast.
+- Removing `savedQuestionEntityId` from a query definition, or `copiedActionEntityId` from an action definition, or copying one to another definition. Each names the copy production runs.
 - Wrapping the inline object in `defineQuery(...)` or `defineAction(...)` at the call site. It compiles, but the definition belongs in `queries/` or `actions/`.
 - Putting definitions under `src/queries/` or `src/actions/` instead of the root-level directories.
 - Importing older hooks instead of `useMetabaseQuery`.

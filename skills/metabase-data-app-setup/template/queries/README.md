@@ -18,9 +18,14 @@ import schema from "../src/metabase.data";
 
 const orders = schema.tables.orders;
 
-export const OrdersList = defineQuery({ source: orders, limit: 100 });
+export const OrdersList = defineQuery({
+  savedQuestionEntityId: "<entity ID of its saved question>",
+  source: orders,
+  limit: 100,
+});
 
 export const OrdersByMonth = defineQuery({
+  savedQuestionEntityId: "<entity ID of its saved question>",
   source: orders,
   aggregations: [aggregations.count()],
   breakouts: [breakout(orders.fields.createdAt, { unit: "month" })],
@@ -60,3 +65,9 @@ Rules:
 - One export per query the app renders. Filter-option queries, KPI queries, and
   helper queries are queries too.
 - Pass the export itself to the hook. Never spread or copy it.
+- Each definition carries `savedQuestionEntityId`, the entity ID of its saved
+  question in the app's collection. Production runs that saved question instead
+  of the table; the dev preview runs the table, so the app works before the
+  saved question exists.
+- Never copy a `savedQuestionEntityId` to another definition, or remove it while
+  its card exists.
