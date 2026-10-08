@@ -959,7 +959,29 @@ const describeExports = (specifier, keys) => {
   const shape = keys.map((key) => `${key}=${typeof exported[key]}`).join(" ");
   return `${specifier}: object#${exportIds.get(exported)} keys=${Object.keys(exported).length} ${shape}`;
 };
+// React's scheduler is one queue for the whole process. A render that a file
+// queued and never finished would run inside the next file, where jest would
+// have dropped it with the environment. It is run to the end here, unheard,
+// while the file's window still exists.
+let sharedScheduler;
+const drainScheduler = async () => {
+  if (process.env.NT_NO_SCHEDULER_DRAIN || !sharedScheduler?.unstable_getFirstCallbackNode) return;
+  if (sharedScheduler.unstable_getFirstCallbackNode() === null) return;
+  const silent = () => {};
+  const methods = ["log", "info", "warn", "error", "debug"];
+  const original = methods.map((name) => console[name]);
+  for (const name of methods) console[name] = silent;
+  try {
+    for (let turn = 0; turn < 50 && sharedScheduler.unstable_getFirstCallbackNode() !== null; turn += 1) {
+      await new Promise((resolve) => realSetTimeout(resolve, 1));
+    }
+  } finally {
+    methods.forEach((name, index) => { if (console[name] === silent) console[name] = original[index]; });
+  }
+  if (process.env.NT_DEBUG_DRAIN) process.stderr.write(`[drain] ${currentFile} left=${sharedScheduler.unstable_getFirstCallbackNode() !== null}\n`);
+};
 const fileCleanup = async (isolated) => {
+  await drainScheduler();
   if (process.env.NT_DEBUG_EXPORTS) {
     const apiFile = resolveProject("metabase/api", abs("frontend/test/__support__/ui.tsx"));
     console.error(`[exports] after ${currentFile} isolated=${isolated} mockedThisFile=${mockedThisFile} mocks=${mocks.size} apiMocked=${mocks.has(apiFile)}\n  ${describeExports("metabase/api", ["Api", "shouldSchemaBePassedAsQueryParam"])}\n  ${describeExports("metabase/metadata-store", ["createMockEntitiesState"])}`);
@@ -1550,7 +1572,7 @@ globalThis.__nodeTestSpike.resetLets = () => {
 // on believing that its callback is still due.
 {
   const fromProject = Module.createRequire(abs("frontend/src/index.js"));
-  Module.createRequire(fromProject.resolve("react-dom"))("scheduler");
+  sharedScheduler = Module.createRequire(fromProject.resolve("react-dom"))("scheduler");
 }
 if (!process.env.NT_NO_TIMER_CLEAR) trackTimers();
 runSetupChain();
