@@ -1448,7 +1448,7 @@ describe("scenarios - setup guide", () => {
       });
     });
 
-    it("should show 'no compatible databases' message when only Sample Database exists", () => {
+    it("creates a tenant with database_role attribute when using connection impersonation", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
 
       cy.log("select connection impersonation strategy");
@@ -1472,21 +1472,6 @@ describe("scenarios - setup guide", () => {
       H.main()
         .findByRole("link", { name: "Add database" })
         .should("have.attr", "href", "/admin/databases/create");
-    });
-
-    it("creates a tenant with database_role attribute when using connection impersonation", () => {
-      cy.visit("/admin/embedding/setup-guide/permissions");
-
-      cy.log("select connection impersonation strategy");
-      H.main()
-        .findByRole("radio", { name: /Connection impersonation/ })
-        .scrollIntoView()
-        .click();
-
-      H.main()
-        .findByRole("button", { name: "Use connection impersonation" })
-        .scrollIntoView()
-        .click();
 
       cy.log("navigate to create tenants step");
       H.main().findByRole("listitem", { name: "Create tenants" }).click();
