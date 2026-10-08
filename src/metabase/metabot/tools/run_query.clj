@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -100,25 +99,17 @@
              (not (query-perms/can-run-query? query)))
     (throw (no-permission))))
 
-(defn- reads-hidden-card?
-  "Whether `query` reads, at any depth, a saved question that is missing or that the current user can't read.
-   A user may run a question they can read even when it reads one they can't, so this is no refusal by itself."
+(defn- saved-questions-read
+  "The saved questions `query` reads at any depth: its source, in a join, or through another saved question.
+   Holds a nil for each question that no longer exists."
   [query]
-  (not-every? #(some-> (metabot.db/card %) mi/can-read?)
-              (lib/all-source-card-ids-recursive query)))
+  (map metabot.db/card (lib/all-source-card-ids-recursive query)))
 
-(defn- reads-metabot-sql-card?
-  "Whether `query` reads, at any depth, a saved SQL question that Metabot wrote: as its source, in a join, or
-   through another saved question.
-   A saved question runs here as it does for the user anywhere else, SQL or not. The exception is SQL that Metabot
-   saved itself, which would otherwise be a way to run SQL it may not run. A question keeps the mark of its Metabot
-   origin until someone edits its query or display."
-  [query]
-  (boolean
-   (some (fn [card-id]
-           (and (some-> (lib.metadata/card query card-id) :dataset-query not-empty lib/any-native-stage?)
-                (some-> (metabot.db/card card-id) ((some-fn :metabot_conversation_id :metabot_chart_id)))))
-         (lib/all-source-card-ids-recursive query))))
+(defn- metabot-sql-card?
+  "Whether `card` is a SQL question that Metabot saved and nobody has edited since."
+  [card]
+  (boolean (and (= :native (:query_type card))
+                (or (:metabot_conversation_id card) (:metabot_chart_id card)))))
 
 (defn- sql-refusal
   []
@@ -127,16 +118,16 @@
                 "then run that query with run_query.")
            {:agent-error? true}))
 
-(defn- sql-card-refusal
-  "The refusal for a notebook query that reads a SQL question Metabot saved. Rebuilding the query over the same
-   question would be refused again, so the hint points away from it."
+(defn- metabot-sql-card-refusal
   []
+  ;; Rebuilding the query over the same question would be refused again, so the hint points away from it.
   (ex-info (str "run_query only runs notebook queries, and this one reads a saved question that holds SQL you "
                 "wrote. To get values, build the question from tables with construct_notebook_query instead.")
            {:agent-error? true}))
 
 (defn- runnable-query
-  "The serialized MBQL 5 form of `query`, which state may hold as MBQL 4 (the user's viewing context) or MBQL 5."
+  "The serialized MBQL 5 form of `query`, which state may hold as MBQL 4 (the user's viewing context) or MBQL 5.
+   Throws an agent error for a query that can't be read, that is SQL, or that the current user may not run."
   [query]
   (let [normalized (lib-be/normalize-query query)]
     ;; Normalizing recovers to an empty map from a query it can't read.
@@ -147,11 +138,16 @@
     (when (lib/any-native-stage? normalized)
       (throw (sql-refusal)))
     (check-cards-runnable! normalized)
-    (when (reads-metabot-sql-card? normalized)
-      ;; The SQL refusal says what a question holds, so it goes only to a user who can read every question involved.
-      (throw (if (reads-hidden-card? normalized)
-               (no-permission)
-               (sql-card-refusal))))
+    ;; A saved question runs here as it does for the user anywhere else, SQL or not. The exception is SQL that
+    ;; Metabot saved itself, which would otherwise be a way to run SQL it may not run. A question keeps the mark
+    ;; of its Metabot origin until someone edits its query or display.
+    (let [cards (saved-questions-read normalized)]
+      (when (some metabot-sql-card? cards)
+        ;; The SQL refusal says what a question holds, so it goes only to a user who can read every question
+        ;; involved. Such a user may still run a question they can read that reads one they can't.
+        (throw (if (every? #(some-> % mi/can-read?) cards)
+                 (metabot-sql-card-refusal)
+                 (no-permission)))))
     (lib/prepare-for-serialization normalized)))
 
 (defn- cell-text
