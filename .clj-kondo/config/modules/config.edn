@@ -3785,6 +3785,7 @@
                     :model/Collection
                     :model/DataPermissions
                     :model/Database
+                    :model/Field
                     :model/Permissions
                     :model/PermissionsGroup
                     :model/QueryAction

@@ -596,3 +596,8 @@
   (t2/select-pks-set :model/Card {:where [:and
                                           [:in :id card-ids]
                                           [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
+
+(defn other-cards-in-collection
+  "The cards in the collection with `collection-id`, leaving out the card with `card-id`."
+  [collection-id card-id]
+  (t2/select :model/Card :collection_id collection-id :id [:not= card-id]))

@@ -381,6 +381,22 @@
       (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
         (is (some #(str/includes? % "which does not exist on this instance") (messages (shop resources))))))))
 
+(deftest warns-of-a-field-that-is-inactive-test
+  (testing "an inactive field is one that sync no longer finds: one column isn't the app, so the file loads and the
+            pull logs the field rather than refusing the repository until the file changes"
+    (let [resources (data-apps.tu/build-resources
+                     collection-name collection-eid
+                     [{:entity_id question-eid :name "VenuePrices"
+                       :query {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                         :fields [{:type "column" :name "PRICE"}]}]}}]
+                     [])
+          warnings  (fn [tree] (mapv :message (data-apps/warnings (files tree))))]
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:active false}
+        (is (= [] (messages (shop resources))))
+        (is (some #(str/includes? % "references field") (warnings (shop resources)))))
+      (testing "an active field is nothing to log"
+        (is (= [] (warnings (shop resources))))))))
+
 (deftest refuses-a-collection-inside-the-apps-collection-test
   (testing "a data app's collection holds no collections, and a load would refuse one only after it had started"
     (let [inner "innerCollectionEnt01"

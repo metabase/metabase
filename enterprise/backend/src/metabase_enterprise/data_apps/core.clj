@@ -10,4 +10,5 @@
  [resource-tables
   record-table-dependencies!]
  [resource-validation
-  problems])
+  problems
+  warnings])

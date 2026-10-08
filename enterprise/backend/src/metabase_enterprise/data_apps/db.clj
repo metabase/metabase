@@ -157,6 +157,12 @@
   (some? (t2/select-one-pk :model/Table :id table-id :active true
                            {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})))
 
+(defn active-field?
+  "Whether the field with `field-id` is active."
+  [field-id]
+  (some? (t2/select-one-pk :model/Field :id field-id :active true
+                           {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
+
 (defn collections-by-entity-ids
   "The `:id`, `:entity_id` and `:namespace` of the collections with `entity-ids`."
   [entity-ids]

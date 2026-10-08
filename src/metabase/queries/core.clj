@@ -56,6 +56,7 @@
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
+  check-data-app-card-deletable
   fully-parameterized?
   maybe-unverify!
   model?

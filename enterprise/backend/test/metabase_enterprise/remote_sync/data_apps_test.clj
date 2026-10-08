@@ -421,6 +421,57 @@
             (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
               (mt/user-http-request :crowberto :put 200 (str "card/" other-id) {:archived true}))))))))
 
+(deftest a-card-another-app-card-reads-stays-in-the-apps-collection-test
+  (testing "a card that another card of the app reads can't leave the collection or be deleted: the export would write
+            the reader into a file every pull refuses"
+    (with-data-apps-sync
+      (let [mock     (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
+            mp       (mt/metadata-provider)
+            venues-q (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
+              collection-id (shop-collection-id)
+              reads-card    (fn [id] (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp id))))
+              reader-id     (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                       {:name                   "Reads VenuesList"
+                                                        :display                "table"
+                                                        :visualization_settings {}
+                                                        :collection_id          collection-id
+                                                        :dataset_query          (reads-card card-id)}))]
+          (testing "the card it reads can't be moved out"
+            (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id nil})
+            (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id card-id))))
+          (testing "or deleted"
+            (mt/user-http-request :crowberto :delete 400 (str "card/" card-id))
+            (is (t2/exists? :model/Card :id card-id)))
+          (testing "one request that moves a card in and changes its query from a card outside to a table is fine"
+            (mt/with-temp [:model/Card {outside-id :id} {:name "Outside" :dataset_query venues-q}
+                           :model/Card {mover-id :id}   {:name "Mover" :dataset_query (reads-card outside-id)}]
+              (mt/user-http-request :crowberto :put 200 (str "card/" mover-id)
+                                    {:collection_id collection-id :dataset_query venues-q})))
+          (testing "once the reader has left, the card can leave too"
+            (mt/user-http-request :crowberto :put 200 (str "card/" reader-id) {:collection_id nil})
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:collection_id nil})))))))
+
+(deftest deleting-an-app-deletes-cards-that-read-each-other-test
+  (testing "the refusal to delete a card another app card reads is the endpoint's: deleting the app deletes its
+            collection with every card in it, readers and read"
+    (with-data-apps-sync
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
+            mp   (mt/metadata-provider)]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
+              collection-id (shop-collection-id)
+              reader-id     (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                       {:name                   "Reads VenuesList"
+                                                        :display                "table"
+                                                        :visualization_settings {}
+                                                        :collection_id          collection-id
+                                                        :dataset_query          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))}))]
+          (mt/user-http-request :crowberto :delete 204 "apps/shop")
+          (is (not (t2/exists? :model/Collection :id collection-id)))
+          (is (not (t2/exists? :model/Card :id [:in [card-id reader-id]]))))))))
+
 (deftest a-pull-of-the-commit-already-imported-is-skipped-test
   (testing "a pull that would load nothing isn't failed by the state of the instance"
     (with-data-apps-sync

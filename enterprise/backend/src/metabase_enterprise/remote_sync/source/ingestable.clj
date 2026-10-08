@@ -41,18 +41,20 @@
   manifest that doesn't is kept, so that its own problem names it rather than the app being deleted as no longer in
   the repository."
   [snapshot]
-  (let [files    (for [path (source.p/list-files snapshot)
-                       :when (serialization/entity-file-path? path)
-                       :let [entity (try
-                                      (ingest-content (source.p/read-file snapshot path))
-                                      (catch Exception _ nil))]
-                       :when (or entity (re-matches #"data_apps/[^/]+/data_app\.yaml" path))]
-                   {:path path :entity entity})
+  (let [files    (vec (for [path (source.p/list-files snapshot)
+                            :when (serialization/entity-file-path? path)
+                            :let [entity (try
+                                           (ingest-content (source.p/read-file snapshot path))
+                                           (catch Exception _ nil))]
+                            :when (or entity (re-matches #"data_apps/[^/]+/data_app\.yaml" path))]
+                        {:path path :entity entity}))
         problems (data-apps/problems files)]
     (when (seq problems)
       (throw (ex-info (str/join " " (map (fn [{:keys [file message]}] (format "Invalid data app file %s: %s" file message))
                                          problems))
-                      {:files (mapv :file problems) :error ::invalid-data-app-files})))))
+                      {:files (mapv :file problems) :error ::invalid-data-app-files})))
+    (doseq [{:keys [file message]} (data-apps/warnings files)]
+      (log/warnf "Data app file %s: %s" file message))))
 
 (defn- ingest-all
   "Returns {:entities {stripped-hierarchy {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}.

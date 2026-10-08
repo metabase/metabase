@@ -212,6 +212,19 @@
       (problem path (tru "{0} references {1} {2}, which does not exist on this instance."
                          path (if (= kind :table) "table" "field") (pr-str ref))))))
 
+(defn- inactive-field-warnings
+  "A field that exists but is inactive is one that sync no longer finds, and the app's query would run against a
+  column that is gone. One column isn't the app, so the file loads and the pull logs the field, rather than refusing
+  the repository until the file changes, as it does for a table."
+  [{:keys [path] :as file}]
+  (for [[kind [db-name schema table-name & field-names :as ref]] (sort-by second (portable-refs (:entity file)))
+        :when (= kind :field)
+        :let  [field-id (some-> (models.db/database-id-by-name db-name)
+                                (as-> database-id (models.db/table-id-by-name table-name schema database-id))
+                                (models.db/field-pk-in-path (reverse field-names)))]
+        :when (and field-id (not (data-apps.db/active-field? field-id)))]
+    (problem path (tru "{0} references field {1}, which is inactive on this instance." path (pr-str ref)))))
+
 (defn- ownership-problems
   "Serdes would update any row carrying an entity ID a file names, so a file may only name what this app owns:
   the collection its manifest names, if it exists, must be the collection the app has, or one of the namespace that
@@ -375,16 +388,29 @@
               (filter (comp #{"NativeQuerySnippet" "Segment" "Measure"} first)))
         files))
 
+(defn- manifests-among
+  "The manifest files among `files`: the entities that say they are a DataApp, and the files at a manifest's path too,
+  as one that doesn't say what it is would be skipped by the load, and the app deleted as no longer in the repository."
+  [files]
+  (filter #(or (= "DataApp" (model-of (:entity %)))
+               (re-matches #"data_apps/[^/]+/data_app\.yaml" (:path %)))
+          files))
+
+(defn warnings
+  "What a pull logs about the data apps among the entity files `files` (see [[problems]]), each as `{:file :message}`:
+  what loads, but may not run as the author meant it."
+  [files]
+  (for [{:keys [entity]} (manifests-among files)
+        resource         (app-resources (:collection entity) files)
+        warning          (inactive-field-warnings resource)]
+    warning))
+
 (defn problems
   "The problems with the data apps among the entity files `files` (`{:path :entity}`, every entity file of the
   snapshot), each as `{:file :message}`. An app whose resources have a problem can't be loaded as the author meant
   it, so an import that sees one fails naming the file."
   [files]
-  (let [manifests (filter #(or (= "DataApp" (model-of (:entity %)))
-                               ;; a manifest by its path too: one that doesn't say what it is would be skipped by
-                               ;; the load, and the app deleted as no longer in the repository
-                               (re-matches #"data_apps/[^/]+/data_app\.yaml" (:path %)))
-                          files)
+  (let [manifests (manifests-among files)
         defined   (defined-dependencies files)]
     (concat
      (shared-entity-id-problems manifests)
