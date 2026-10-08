@@ -86,12 +86,22 @@ describe("scenarios > data apps > viewing & routing", () => {
   });
 
   describe("internal routing", () => {
-    it("mirrors internal route changes into the parent URL", () => {
+    it("starts on a deep-linked sub-route, and mirrors link and imperative route changes into the parent URL", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
       });
 
+      cy.log("deep-link directly to a sub-route");
+      visitAppRoute("details");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Order details" }).should(
+          "be.visible",
+        );
+        cy.findByTestId("current-pathname").should("have.text", "/details");
+      });
+
+      cy.log("navigate with a DataAppLink");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByRole("heading", { name: "Orders overview" }).should(
@@ -109,29 +119,8 @@ describe("scenarios > data apps > viewing & routing", () => {
       // The iframe's client-side navigation is mirrored to the parent's URL bar
       // (via replaceState), so the top-level path reflects the nested route.
       cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
-    });
 
-    it("starts on the target page when deep-linked directly to a sub-route", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
-
-      visitAppRoute("details");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByRole("heading", { name: "Order details" }).should(
-          "be.visible",
-        );
-        cy.findByTestId("current-pathname").should("have.text", "/details");
-      });
-    });
-
-    it("navigates imperatively via useDataAppLocation().navigate", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
-
+      cy.log("navigate imperatively via useDataAppLocation().navigate");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByRole("heading", { name: "Orders overview" }).should(
