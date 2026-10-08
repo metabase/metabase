@@ -375,16 +375,8 @@
                                               :parent_id   collection-eid}))]
       (is (some #(str/includes? % "is a collection inside a data app's collection") (messages tree))))))
 
-(deftest refuses-the-collection-files-of-an-app-the-commit-no-longer-holds-test
-  (testing "the pull would delete the app, whose hook deletes the collection with what it holds, while the files remain"
-    (mt/with-temp [:model/Collection {collection-id :id} {:entity_id collection-eid :name "Mine" :namespace :data-apps}
-                   :model/DataApp    _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
-                                        :entity_id (data-apps.tu/app-entity-id "shop")
-                                        :resource_collection_id collection-id}]
-      (let [tree (dissoc (shop (question-resources)) "data_apps/shop/data_app.yaml" "data_apps/shop/index.js")]
-        (is (= 2 (count (filter #(str/includes? % "which the commit no longer holds") (messages tree))))
-            "the collection's file and the card's")
-        (testing "with the app's directory the files are the app's"
-          (is (= [] (messages (shop (question-resources))))))
-        (testing "a commit that deletes the directory and the collection's files is a deletion"
-          (is (= [] (messages {}))))))))
+(deftest accepts-the-collection-files-of-an-app-the-commit-no-longer-holds-test
+  (testing "the files of a collection no manifest names, what a deleted app's directory leaves behind, don't fail the
+            pull: it deletes the app, whose hook deletes the collection, and the next export removes the files"
+    (let [tree (dissoc (shop (question-resources)) "data_apps/shop/data_app.yaml" "data_apps/shop/index.js")]
+      (is (= [] (messages tree))))))

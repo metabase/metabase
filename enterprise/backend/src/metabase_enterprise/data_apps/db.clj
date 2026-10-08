@@ -151,14 +151,6 @@
   []
   (t2/select [:model/DataApp :id :resource_collection_id] :resource_collection_id [:not= nil]))
 
-(defn data-apps-and-collection-entity-ids
-  "The `:entity_id` and `:name` of every DataApp that has a resource collection, with the collection's entity ID as
-  `:collection_entity_id`."
-  []
-  (t2/query {:select [[:a.entity_id :entity_id] [:a.name :name] [:c.entity_id :collection_entity_id]]
-             :from   [[:data_app :a]]
-             :join   [[:collection :c] [:= :c.id :a.resource_collection_id]]}))
-
 (defn active-table?
   "Whether the table with `table-id` is active."
   [table-id]

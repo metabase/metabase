@@ -657,6 +657,25 @@
             (is (not (t2/exists? :model/Collection :id collection-id)))
             (is (not (t2/exists? :model/Card :entity_id question-eid)))))))))
 
+(deftest deleting-an-apps-directory-without-its-collection-files-still-deletes-the-app-test
+  (testing "an author deletes an app's directory but leaves its collection's files: the pull doesn't fail, it deletes
+            the app, and with it its collection and what it held; the next export removes the files"
+    (with-data-apps-sync
+      (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
+                                                    [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                    [])
+            v0        (shop-tree resources)
+            v1        (dissoc v0 "data_apps/shop/data_app.yaml" "data_apps/shop/index.js")
+            src       (test-helpers/versioned-source :trees {"v0" v0 "v1" v1} :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (let [collection-id (shop-collection-id)]
+          (is (t2/exists? :model/Card :entity_id question-eid :collection_id collection-id))
+          (let [result (import-at! src "v1")]
+            (is (= :success (:status result)) (:message result)))
+          (is (not (t2/exists? :model/DataApp :name "shop")))
+          (is (not (t2/exists? :model/Collection :id collection-id)))
+          (is (not (t2/exists? :model/Card :entity_id question-eid))))))))
+
 (deftest a-read-only-instance-still-serves-the-root-collection-test
   (testing "with remote sync read-only, a card in no collection is read and edited as before: nothing there is synced"
     (with-data-apps-sync

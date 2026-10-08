@@ -348,18 +348,6 @@
           :when (and (= "Collection" (model-of entity)) (contains? app-collections (:parent_id entity)))]
       (problem path (tru "{0} is a collection inside a data app''s collection, which can''t hold one." path)))))
 
-(defn- deleted-app-problems
-  "An app on this instance that `manifests` no longer hold is deleted by the pull, and its hook deletes its collection
-  with what it holds, so the files of that collection can't stay behind in the repository."
-  [manifests files]
-  (let [held (into #{} (keep (comp :entity_id :entity)) manifests)]
-    (for [{:keys [entity_id collection_entity_id] slug :name} (data-apps.db/data-apps-and-collection-entity-ids)
-          :when (not (contains? held entity_id))
-          {:keys [path]} (app-resources collection_entity_id files)]
-      (problem path
-               (tru "{0} belongs to the collection of data app {1}, which the commit no longer holds. Delete an app''s collection files with its directory, or put the directory back."
-                    path slug)))))
-
 (defn- defined-dependencies
   "The `[model entity-id]` of each snippet, segment and measure that `files` load: a resource that names one counts
   it as present, since the same pull brings it."
@@ -385,5 +373,4 @@
      (shared-collection-problems manifests)
      (shared-resource-problems manifests files)
      (child-collection-problems manifests files)
-     (deleted-app-problems manifests files)
      (mapcat #(app-problems defined % files) manifests))))
