@@ -106,7 +106,7 @@ The code snippet has three parts:
 
 - Loading the modular embedding library from your Metabase instance.
 - Setting global configuration settings, like the URL of your Metabase and the `theme`. See [Page-level config](#page-level-config).
-- The component(s) to embed, with their parameters. See [Components](./components.md).
+- The component(s) to embed, with their attributes. To pick a component, see [Modular embedding components](./components.md). For the attributes each one takes, see the [dashboard](./dashboard-reference.md), [question](./question-reference.md), and [browser](./browser-reference.md) component references.
 
 Here's an example snippet:
 
@@ -162,7 +162,7 @@ In addition to this, we consider shared accounts to be unfair usage. Fair usage 
 
 The exact customization options you see will depend on which type of entity you're embedding. These are the settings for authenticated embeds available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans. For guest embeds (OSS and paid), see [guest embedding options](./guest-embedding.md#component-attributes).
 
-When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all of the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all of the following customization options in the interactive creation flow. These options correspond to attributes on the component you're embedding. For each attribute, see the [dashboard](./dashboard-reference.md) and [question](./question-reference.md) component references.
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](../questions/visualizations/drill-through.md) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
@@ -170,7 +170,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Allow people to save new questions**. If you embed the query builder (visual or SQL) but disable this option, people can still do their own explorations, they just won't be able to save them.
 
-- **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter.
+- **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter. Check out [Embedding parameters](./parameters.md#parameters-differ-between-guest-and-sso-embeds).
 
 - **Show title**: what it says on the tin.
 
@@ -180,25 +180,11 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 ## Pass parameter values to embedded components
 
-See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).
+Your page can [set starting values](./parameters.md#set-starting-values) for dashboard filters and SQL variables, [control them from your app](./parameters.md#control-values-from-your-app), and [hide their widgets](./parameters.md#hide-parameter-widgets).
 
 ## Page-level config
 
-To define the configuration that applies to every embed on the page, use the `defineMetabaseConfig()` function. Its parameters include:
-
-- `instanceUrl: "https://your-metabase-url"` (required): the URL of your Metabase instance, like `https://youlooknicetoday.metabaseapp.com`
-
-- `theme: {...}` (optional): [appearance options for the embeds](./appearance.md).
-
-- `useExistingUserSession: true|false` (optional, for development only) - lets you preview the embed locally using your Metabase admin account session. Only supported in Google Chrome.
-
-- `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
-
-- `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).
-
-- `pluginsConfig` : plugins to customize the behavior of embedded components. Use the `handleLink` function to customize what happens when people click a link in your embedded questions and dashboards. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
-
-- `allowedCustomVisualizations: ["custom:Calendar Heatmap"]` (optional): the [custom visualizations](./custom-visualizations.md) that the components on the page are allowed to load. Not available in guest embeds.
+To define the configuration that applies to every embed on the page, like the URL of your Metabase, the authentication mode, and the theme, use the `defineMetabaseConfig()` function. See [Configure your embeds](./config.md). For the full list of settings, see the [config reference](./config-reference.md#web-component-definemetabaseconfig-settings).
 
 ## Authentication
 

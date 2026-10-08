@@ -10,3 +10,6 @@ build
 
 # debug
 npm-debug.log*
+
+# generated test action declarations
+/actions/

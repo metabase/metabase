@@ -2,25 +2,34 @@ import { Outlet, Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 const dataAppLayout = () =>
-  import("./components/DataAppLayout/DataAppLayout").then(
-    ({ DataAppLayout }) => ({
-      Component: function DataAppLayoutRoute() {
-        return (
-          <DataAppLayout>
-            <Outlet />
-          </DataAppLayout>
-        );
-      },
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-apps" */ "./components/DataAppLayout/DataAppLayout"
+  ).then(({ DataAppLayout }) => ({
+    Component: function DataAppLayoutRoute() {
+      return (
+        <DataAppLayout>
+          <Outlet />
+        </DataAppLayout>
+      );
+    },
+  }));
 
 const dataAppView = () =>
-  import("./components/DataAppView/DataAppView").then(({ DataAppView }) => ({
+  import(
+    /* webpackChunkName: "data-apps" */ "./components/DataAppView/DataAppView"
+  ).then(({ DataAppView }) => ({
     Component: DataAppView,
   }));
 
-registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppLayout);
-registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppView);
+/**
+ * Called from the licensed branch of `initializePlugin`, so only the pages this
+ * instance mounts are registered. The background pass reads the registrations too,
+ * and fetching a page nobody can reach would spend a download on nothing.
+ */
+export function registerDataAppsPagePrefetch(): void {
+  registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppLayout);
+  registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppView);
+}
 
 /**
  * Data-app host routes. Open to any signed-in user.

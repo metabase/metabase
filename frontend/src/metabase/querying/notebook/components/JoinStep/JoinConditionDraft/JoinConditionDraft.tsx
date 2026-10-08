@@ -122,7 +122,7 @@ export function JoinConditionDraft({
 
   return (
     <Flex className={S.JoinConditionRoot}>
-      <Flex align="center" gap="xs" p="sm">
+      <Flex align="center" gap="xxs" p="sm">
         <Box>
           <JoinConditionColumnPicker
             query={query}

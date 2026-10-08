@@ -1,12 +1,14 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Locale } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
-import { Button, Stack } from "metabase/ui";
+import { Box, Button, Stack } from "metabase/ui";
 
 import { useStep } from "../..//useStep";
 import { goToNextStep, updateLocale } from "../../actions";
@@ -16,13 +18,7 @@ import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 
-import {
-  LocaleButton,
-  LocaleGroup,
-  LocaleInput,
-  LocaleLabel,
-  StepDescription,
-} from "./LanguageStep.styled";
+import S from "./LanguageStep.module.css";
 
 export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("language");
@@ -59,13 +55,20 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
 
   return (
     <ActiveStep title={t`What's your preferred language?`} label={stepLabel}>
-      <StepDescription>
-        <Stack gap="md">
-          {t`This language will be used throughout Metabase and will be the default for new users.`}
-          <CommunityLocalizationNotice isAdminView />
-        </Stack>
-      </StepDescription>
-      <LocaleGroup role="radiogroup">
+      <Stack c="text-secondary" my="md" gap="lg">
+        {t`This language will be used throughout Metabase and will be the default for new users.`}
+        <CommunityLocalizationNotice isAdminView />
+      </Stack>
+      <Box
+        component="ol"
+        className={CS.overflowYScroll}
+        role="radiogroup"
+        mb="xxl"
+        p="sm"
+        mah="17.5rem"
+        bd="1px solid var(--mb-color-border-neutral)"
+        bdrs="xxs"
+      >
         {locales.map((item) => (
           <LocaleItem
             key={item.code}
@@ -75,7 +78,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
             onLocaleChange={handleLocaleChange}
           />
         ))}
-      </LocaleGroup>
+      </Box>
       <Button
         variant={selectedLocale != null ? "filled" : "default"}
         disabled={selectedLocale == null}
@@ -105,8 +108,9 @@ const LocaleItem = ({
   }, [locale, onLocaleChange]);
 
   return (
-    <LocaleLabel key={locale.code}>
-      <LocaleInput
+    <Box component="label" display="block">
+      <input
+        className={S.localeInput}
         type="radio"
         name={fieldId}
         value={locale.code}
@@ -114,7 +118,16 @@ const LocaleItem = ({
         autoFocus={checked}
         onChange={handleChange}
       />
-      <LocaleButton checked={checked}>{locale.name}</LocaleButton>
-    </LocaleLabel>
+      <Box
+        component="span"
+        className={cx(S.localeButton, { [S.localeButtonChecked]: checked })}
+        display="block"
+        p="sm"
+        bdrs="xxs"
+        fw={700}
+      >
+        {locale.name}
+      </Box>
+    </Box>
   );
 };

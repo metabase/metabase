@@ -8,7 +8,7 @@ const esmPackages = require("./jest.esm-packages.js");
 module.exports = {
   moduleNameMapper: {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
-    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
+    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)(\\?url)?$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     // The timezone CI job doesn't build cljs (it only needs it at import
     // time), so the one cljs module in the tz specs' import graph is mocked.

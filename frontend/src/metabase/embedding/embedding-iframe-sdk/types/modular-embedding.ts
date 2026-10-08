@@ -234,8 +234,10 @@ export interface MetabaseBrowserAttributes {
   /**
    * Which collection to start from. Values: regular ID, entity ID, `"root"` for
    * the top-level "Our Analytics" collection, `"personal"` for the viewer's
-   * personal collection, or `"tenant"` for the viewer's tenant collection.
-   * People who aren't tenant members get an error for `"tenant"`.
+   * personal collection, `"tenant"` for the viewer's tenant collection, or
+   * `"all"` to show everything the viewer can access: their personal collection
+   * plus the shared collections. People who aren't tenant members get an error
+   * for `"tenant"`.
    */
   "initial-collection": number | string;
 
@@ -333,6 +335,105 @@ export interface MetabaseMetabotAttributes {
    * The collection to save a question to.
    */
   "target-collection"?: number | string;
+}
+
+/**
+ * Settings for `defineMetabaseConfig()`.
+ *
+ * Page-level configuration shared by every web component on the page.
+ */
+export interface MetabaseConfig {
+  /**
+   * The URL of your Metabase, like `https://youlooknicetoday.metabaseapp.com`.
+   */
+  instanceUrl: string;
+
+  /**
+   * Whether the components authenticate as guest embeds, with a signed JWT
+   * instead of a Metabase session. See
+   * [Configure a guest embed](https://www.metabase.com/docs/latest/embedding/config#configure-a-guest-embed).
+   *
+   * @defaultValue false
+   */
+  isGuest?: boolean;
+
+  /**
+   * Guest embeds only. Your app's endpoint that signs guest tokens. The embed
+   * calls this endpoint for a token on load, and again when the current token
+   * expires. The endpoint should return `{ jwt: string }`. See
+   * [Configure a guest embed](https://www.metabase.com/docs/latest/embedding/config#configure-a-guest-embed).
+   */
+  guestEmbedProviderUri?: string;
+
+  /**
+   * The display language for every embed, as an ISO language code like `en`
+   * or `de`. Defaults to your Metabase instance's locale. See
+   * [Set the language](https://www.metabase.com/docs/latest/embedding/config#set-the-language).
+   */
+  locale?: string;
+
+  /**
+   * Colors, fonts, and per-component appearance overrides. See
+   * [Appearance](https://www.metabase.com/docs/latest/embedding/appearance).
+   */
+  theme?: object;
+
+  /**
+   * Plugins that customize component behavior. Web components support
+   * `handleLink`, for customizing what happens when people click a link.
+   * See [Web component plugins](https://www.metabase.com/docs/latest/embedding/config#web-component-plugins).
+   */
+  pluginsConfig?: {
+    /**
+     * Called when people click a link in an embed. Return `{ handled: true }`
+     * to handle the link yourself, or `{ handled: false }` to open the link
+     * in a new tab.
+     */
+    handleLink?: (url: string) => { handled: boolean };
+  };
+
+  /**
+   * The custom visualizations that components on the page can load, each
+   * prefixed with `custom:`, like `["custom:Calendar Heatmap"]`. Not available
+   * in guest embeds. See
+   * [Custom visualizations in embeds](https://www.metabase.com/docs/latest/embedding/custom-visualizations).
+   */
+  allowedCustomVisualizations?: `custom:${string}`[];
+
+  /**
+   * SSO embeds only. Which SSO method to use. If you've set up both SAML and
+   * JWT, embeds default to SAML. See
+   * [Authentication](https://www.metabase.com/docs/latest/embedding/authentication#if-both-saml-and-jwt-are-enabled-modular-embedding-will-default-to-saml).
+   */
+  preferredAuthMethod?: "jwt" | "saml";
+
+  /**
+   * SSO embeds with JWT only. The URL of your JWT provider. When set, embeds
+   * use JWT and skip the request that discovers the SSO method.
+   */
+  jwtProviderUri?: string;
+
+  /**
+   * SSO embeds with JWT only. A function that fetches the JWT for embeds. See
+   * [Customizing JWT authentication](https://www.metabase.com/docs/latest/embedding/authentication#customizing-jwt-authentication).
+   */
+  fetchRequestToken?: () => Promise<{ jwt: string }>;
+
+  /**
+   * Development only. Whether to render embeds with your own Metabase
+   * session. Only supported in Google Chrome. See
+   * [Preview embeds during development](https://www.metabase.com/docs/latest/embedding/config#preview-embeds-during-development).
+   *
+   * @defaultValue false
+   */
+  useExistingUserSession?: boolean;
+
+  /**
+   * Development only. An API key from your Metabase, which embeds use to
+   * render on localhost. See
+   * [Preview embeds during development](https://www.metabase.com/docs/latest/embedding/config#preview-embeds-during-development).
+   */
+  apiKey?: string;
 }
 
 /**

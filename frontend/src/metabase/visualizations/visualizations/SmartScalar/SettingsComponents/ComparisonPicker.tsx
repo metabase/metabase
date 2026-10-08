@@ -7,8 +7,8 @@ import _ from "underscore";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Menu, Stack, Text, rem } from "metabase/ui";
-import type { ComparisonMenuOption } from "metabase/visualizations/types";
+import { Button, Icon, Menu, Stack, Text, rem } from "metabase/ui";
+import type { ComparisonMenuOption } from "metabase/viz-core";
 import type {
   DatasetColumn,
   SmartScalarComparison,
@@ -18,15 +18,9 @@ import type {
 import { COMPARISON_TYPES } from "../constants";
 
 import { AnotherColumnForm } from "./AnotherColumnForm";
+import S from "./ComparisonPicker.module.css";
 import { MenuItemStyled } from "./MenuItem.styled";
 import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
-import {
-  ComparisonPickerButton,
-  ComparisonPickerSecondaryText,
-  DragHandleIcon,
-  ExpandIcon,
-  RemoveIcon,
-} from "./SmartScalarSettingsWidgets.styled";
 import { StaticNumberForm } from "./StaticNumberForm";
 
 type Tab = "anotherColumn" | "staticNumber" | null;
@@ -158,20 +152,25 @@ export function ComparisonPicker({
       })}
     >
       <Menu.Target>
-        <ComparisonPickerButton
+        <Button
+          className={S.pickerButton}
           disabled={isDisabled}
-          leftSection={isDraggable && <DragHandleIcon name="grabber" />}
+          leftSection={
+            isDraggable && (
+              <Icon className={CS.cursorGrab} name="grabber" c="text-primary" />
+            )
+          }
           rightSection={
             isRemovable && (
               <IconButtonWrapper
                 aria-label={t`Remove`}
                 onClick={handleRemoveClick}
               >
-                <RemoveIcon name="close" />
+                <Icon name="close" c="text-primary" />
               </IconButtonWrapper>
             )
           }
-          px="1rem"
+          size="lg"
           fullWidth
           data-testid="comparisons-widget-button"
           styles={{
@@ -180,12 +179,13 @@ export function ComparisonPicker({
           }}
         >
           <DisplayName value={editedValue} option={selectedOption} />
-          <ExpandIcon
+          <Icon
             className={cx(CS.inline, CS.verticalAlignMiddle)}
             name="chevrondown"
             size={14}
+            ml="sm"
           />
-        </ComparisonPickerButton>
+        </Button>
       </Menu.Target>
 
       <Menu.Dropdown miw={rem(344)} data-testid="comparison-picker-dropdown">
@@ -281,14 +281,22 @@ function DisplayName({
 
   if (value.type === COMPARISON_TYPES.ANOTHER_COLUMN) {
     const columnName = (
-      <ComparisonPickerSecondaryText key="column-name">{`(${value.label})`}</ComparisonPickerSecondaryText>
+      <Text
+        key="column-name"
+        className={S.secondaryText}
+        component="span"
+      >{`(${value.label})`}</Text>
     );
     return <span>{jt`Column ${columnName}`}</span>;
   }
 
   if (value.type === COMPARISON_TYPES.STATIC_NUMBER) {
     const label = (
-      <ComparisonPickerSecondaryText key="label">{`(${value.label})`}</ComparisonPickerSecondaryText>
+      <Text
+        key="label"
+        className={S.secondaryText}
+        component="span"
+      >{`(${value.label})`}</Text>
     );
     return <span>{jt`Custom value ${label}`}</span>;
   }

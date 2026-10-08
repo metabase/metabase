@@ -24,7 +24,7 @@ export const UsageConditionsInfoIcon = ({
     </HoverCard.Target>
 
     <HoverCard.Dropdown>
-      <Stack maw={340} p="md" gap="md">
+      <Stack maw={340} p="lg" gap="lg">
         {children}
       </Stack>
     </HoverCard.Dropdown>

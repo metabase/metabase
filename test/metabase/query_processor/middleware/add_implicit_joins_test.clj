@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -18,8 +19,11 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel fk-field-infos->joins-test
   (is (=? [{:lib/type    :mbql/join
@@ -76,11 +80,11 @@
                 :query)))))
 
 (mu/defn- add-implicit-joins :- ::qp.schema/any-query
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (add-implicit-joins meta/metadata-provider query))
 
-  ([metadata-provider
-    query :- ::qp.schema/any-query]
+  ([metadata-provider :- ::lib.schema.metadata/metadata-providerable
+    query             :- ::qp.schema/any-query]
    (if (:lib/type query)
      (qp.add-implicit-joins/add-implicit-joins query)
      (-> (lib/query metadata-provider query)
@@ -766,26 +770,26 @@
                                               :fk-field-id  %product-id}]
                               :fields       [[:field
                                               %product-id
-                                              {::namespaced true}]
+                                              {:qp/ignore-coercion true}]
                                              [:field
                                               %products.title
                                               {:source-field %product-id
                                                :join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                               ::namespaced  true}]]}
-               :fields       [[:field %product-id {::namespaced true}]
+                                               :qp/ignore-coercion true}]]}
+               :fields       [[:field %product-id {:qp/ignore-coercion true}]
                               [:field
                                %products.title
                                {:source-field %product-id
                                 :join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                ::namespaced  true}]]})
+                                :qp/ignore-coercion true}]]})
             (-> (lib.tu.macros/mbql-query orders
                   {:source-query    {:source-table $$orders
                                      :fields       [[:field
                                                      %product-id
-                                                     {::namespaced true}]
+                                                     {:qp/ignore-coercion true}]
                                                     [:field
                                                      %products.title
-                                                     {:source-field %product-id, ::namespaced true}]]}
+                                                     {:source-field %product-id, :qp/ignore-coercion true}]]}
                    :source-metadata [{:base_type         :type/Text
                                       :coercion_strategy nil
                                       :display_name      "Product → Title"
@@ -798,10 +802,10 @@
                                       :semantic_type     nil
                                       :settings          nil
                                       :table_id          $$products}]
-                   :fields          [[:field %product-id {::namespaced true}]
+                   :fields          [[:field %product-id {:qp/ignore-coercion true}]
                                      [:field
                                       %products.title
-                                      {:source-field %product-id, ::namespaced true}]]})
+                                      {:source-field %product-id, :qp/ignore-coercion true}]]})
                 add-implicit-joins
                 (m/dissoc-in [:query :source-metadata]))))))
 

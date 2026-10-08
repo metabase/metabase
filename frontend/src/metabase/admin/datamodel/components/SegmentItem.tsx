@@ -1,6 +1,9 @@
+import { useGetTableQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { TableBreadcrumbs } from "metabase/metadata/components";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Box, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
@@ -11,12 +14,19 @@ import S from "./SegmentItem.module.css";
 interface Props {
   segment: Segment;
   onRetire?: () => void;
-  readOnly?: boolean;
 }
 
-export const SegmentItem = ({ segment, onRetire, readOnly }: Props) => {
+export const SegmentItem = ({ segment, onRetire }: Props) => {
   const canEdit = !!onRetire;
   const segmentIcon = modelIconMap.segment;
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
+  const { data: table } = useGetTableQuery({ id: segment.table_id });
+  // Treat a table that has not loaded as published, so the write actions stay
+  // closed until the answer is known.
+  const isTablePublished = table?.is_published ?? true;
+  const readOnly = isRemoteSyncReadOnly && isTablePublished;
 
   return (
     <tr>

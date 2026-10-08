@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver]
+   [metabase.indexes.reconcile :as reconcile]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.query-test-util :as query-test-util]
@@ -92,6 +93,27 @@
               (is (nil? (:request e)))))
           (testing "nothing unmanaged was persisted"
             (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id))))))))))
+
+(deftest warehouse-read-failure-is-reported-test
+  (testing "a failed warehouse read still lists the managed requests, with the driver's reason"
+    (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+      (let [created (mt/user-http-request :crowberto :post 200 "index/request"
+                                          {:transform_id transform-id :structured btree})
+            denied  (str "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED) "
+                         "(version 26.6.1.2047 (official build))")]
+        (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] (throw (ex-info denied {})))]
+          (let [{:keys [data warehouse_error]} (mt/user-http-request :crowberto :get 200
+                                                                     (str "index?transform-id=" transform-id))]
+            (testing "the response is still a 200 carrying the trimmed driver message"
+              (is (= (reconcile/driver-error-message (:engine (mt/db)) (ex-info denied {})) warehouse_error)))
+            (testing "the managed request is projected as absent rather than dropped"
+              (is (= [(:id created)] (map #(get-in % [:request :id]) data)))
+              (is (false? (:present_in_warehouse (first data))))))))
+      (testing "a successful read carries no warehouse_error"
+        (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
+          (is (not (contains? (mt/user-http-request :crowberto :get 200
+                                                    (str "index?transform-id=" transform-id))
+                              :warehouse_error))))))))
 
 (deftest index-endpoints-require-transform-permission-test
   (testing "every index endpoint inherits the transform's permission: a user without access is blocked from all of them"

@@ -5,8 +5,8 @@ import {
   setupCollectionByIdEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,

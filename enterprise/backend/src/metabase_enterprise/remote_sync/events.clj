@@ -11,12 +11,14 @@
 
    Tracked model types:
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
-   - Table (when published in a remote-synced collection)
-   - Field, Segment (when belonging to a published table in a remote-synced collection)
+   - Table and TableUserSettings (when published in a remote-synced collection)
+   - FieldUserSettings and Dimension, keyed by their Field (when its Table is published in a remote-synced collection)
+   - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
-   - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
+   - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)"
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
@@ -25,56 +27,131 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(defn enable-snippet-tracking!
-  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
+(defn- glossary-tracking-rows
+  "A 'create' ledger row for each of the glossary `entries`."
+  [entries timestamp]
+  (for [entry entries]
+    {:model_type        "Glossary"
+     :model_id          (:id entry)
+     :model_name        (:term entry)
+     :status            "create"
+     :status_changed_at timestamp}))
+
+(defn- data-action-collections
+  "The `:id` and `:name` of the data actions Collections."
   []
-  (let [timestamp (t/offset-date-time)
+  (remote-sync.db/collections-with-names-in-namespace (name collections/data-actions-ns)))
+
+(defn- library-actions
+  "The Actions without a model in the data actions root or a data actions Collection."
+  [data-action-collection-ids]
+  (remote-sync.db/actions-without-model-in (vec data-action-collection-ids)))
+
+(defn enable-library-tracking!
+  "Mark all existing snippets, data actions, their namespaces' collections, and glossary entries as 'create' for
+  initial sync."
+  []
+  (let [timestamp               (t/offset-date-time)
+        data-action-collections (data-action-collections)
         rows      (concat
-                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
+                   (for [coll (concat (remote-sync.db/snippet-collections) data-action-collections)]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
                       :status            "create"
                       :status_changed_at timestamp})
-                   (for [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
+                   (for [snippet (remote-sync.db/snippets)]
                      {:model_type          "NativeQuerySnippet"
                       :model_id            (:id snippet)
                       :model_name          (:name snippet)
                       :model_collection_id (:collection_id snippet)
                       :status              "create"
-                      :status_changed_at   timestamp}))]
+                      :status_changed_at   timestamp})
+                   (for [action (library-actions (map :id data-action-collections))]
+                     {:model_type          "Action"
+                      :model_id            (:id action)
+                      :model_name          (:name action)
+                      :model_collection_id (:collection_id action)
+                      :status              "create"
+                      :status_changed_at   timestamp})
+                   (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
     (when (seq rows)
-      (t2/insert! :model/RemoteSyncObject rows))))
+      (remote-sync.db/insert-rsos! rows))))
 
-(defn disable-snippet-tracking!
-  "Remove all snippet-related tracking entries."
+(defn backfill-glossary-tracking!
+  "Insert a 'create' ledger row for every glossary entry that has none, so an instance upgraded with the Library
+  already synced still pushes its entries. Returns the number of rows inserted."
   []
-  (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets")]
-    (t2/delete! :model/RemoteSyncObject
-                :model_type "NativeQuerySnippet")
-    (when (seq snippet-coll-ids)
-      (t2/delete! :model/RemoteSyncObject
-                  :model_type "Collection"
-                  :model_id [:in snippet-coll-ids]))))
+  (let [rows (vec (glossary-tracking-rows (remote-sync.db/untracked-glossary-entries) (t/offset-date-time)))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn backfill-action-tracking!
+  "Insert a 'create' ledger row for every unarchived Action in a remote-synced collection that has none, returning the
+  number of rows inserted."
+  []
+  (let [action-spec    (spec/spec-for-model-key :model/Action)
+        collection-ids (remote-sync.db/remote-synced-collection-ids)
+        tracked        (remote-sync.db/tracked-model-ids "Action")
+        timestamp      (t/offset-date-time)
+        rows           (when (seq collection-ids)
+                         (for [action (remote-sync.db/instances-in-collections :model/Action collection-ids :archived)
+                               :when  (not (contains? tracked (:id action)))]
+                           (merge {:model_type        "Action"
+                                   :model_id          (:id action)
+                                   :status            "create"
+                                   :status_changed_at timestamp}
+                                  (spec/build-sync-object-fields action-spec action))))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn backfill-data-app-tracking!
+  "Insert a 'create' ledger row for every published DataApp that has none, returning the number of rows inserted."
+  []
+  (let [data-app-spec (spec/spec-for-model-key :model/DataApp)
+        tracked       (remote-sync.db/tracked-model-ids "DataApp")
+        timestamp     (t/offset-date-time)
+        rows          (for [app (remote-sync.db/instances-where :model/DataApp (:conditions data-app-spec))
+                            :when (not (contains? tracked (:id app)))]
+                        (merge {:model_type        "DataApp"
+                                :model_id          (:id app)
+                                :status            "create"
+                                :status_changed_at timestamp}
+                               (spec/build-sync-object-fields data-app-spec app)))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn disable-library-tracking!
+  "Remove all snippet, data action, their namespaces' collection, and glossary tracking entries."
+  []
+  (let [data-action-coll-ids (into #{} (map :id) (data-action-collections))
+        coll-ids             (into (remote-sync.db/snippet-collection-ids) data-action-coll-ids)
+        action-ids           (into #{} (map :id) (library-actions data-action-coll-ids))]
+    (remote-sync.db/delete-rsos-of-type! "NativeQuerySnippet")
+    (remote-sync.db/delete-rsos-of-type! "Glossary")
+    (when (seq coll-ids)
+      (remote-sync.db/delete-rsos-of-models! "Collection" coll-ids))
+    (when (seq action-ids)
+      (remote-sync.db/delete-rsos-of-models! "Action" action-ids))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
 (defn- resolve-status
-  "Suppresses a no-op 'update' based on status and content_hash, otherwise keep status unchanged."
+  "Suppresses a no-op 'update' whose content_hash and stored file_path both still match, otherwise keeps status
+  unchanged."
   [model-type model-id status existing]
-  (cond
-    (not= "update" status)
+  (if (or (not= "update" status)
+          (nil? (:content_hash existing)))
     status
-
-    (nil? (:content_hash existing))
-    status
-
-    (not= (:content_hash existing)
-          (source/row->content-hash {:model_type model-type :model_id model-id}))
-    status
-
-    :else ;; hash has not changed
-    "synced"))
+    (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
+      (if (and (= (:content_hash existing) content-hash)
+               (or (nil? (:file_path existing))
+                   (= (:file_path existing) path)))
+        "synced"
+        status))))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
@@ -86,36 +163,36 @@
    - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
                          and optionally :display, :table_id, :table_name"
   [model-type model-id status hydrate-details-fn]
-  (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
+  (let [existing (remote-sync.db/rso model-type model-id)]
     (cond
       (not existing)
       (let [model-details (hydrate-details-fn model-id)]
-        (t2/insert! :model/RemoteSyncObject
-                    {:model_type model-type
-                     :model_id model-id
-                     :model_name (:name model-details)
-                     :model_collection_id (:collection_id model-details)
-                     :model_display (some-> model-details :display name)
-                     :model_table_id (:table_id model-details)
-                     :model_table_name (:table_name model-details)
-                     :status status
-                     :status_changed_at (t/offset-date-time)}))
+        (remote-sync.db/insert-rso!
+         {:model_type model-type
+          :model_id model-id
+          :model_name (:name model-details)
+          :model_collection_id (:collection_id model-details)
+          :model_display (some-> model-details :display name)
+          :model_table_id (:table_id model-details)
+          :model_table_name (:table_name model-details)
+          :status status
+          :status_changed_at (t/offset-date-time)}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
-      (t2/delete! :model/RemoteSyncObject (:id existing))
+      (remote-sync.db/delete-rso! (:id existing))
       (= "delete" (:status existing))
-      (t2/update! :model/RemoteSyncObject (:id existing)
-                  {:status status
-                   :status_changed_at (t/offset-date-time)})
+      (remote-sync.db/update-rso! (:id existing)
+                                  {:status status
+                                   :status_changed_at (t/offset-date-time)})
       (not (= "create" (:status existing)))
       (let [model-details (hydrate-details-fn model-id)]
-        (t2/update! :model/RemoteSyncObject (:id existing)
-                    {:status (resolve-status model-type model-id status existing)
-                     :status_changed_at (t/offset-date-time)
-                     :model_name (:name model-details)
-                     :model_collection_id (:collection_id model-details)
-                     :model_display (some-> model-details :display name)
-                     :model_table_id (:table_id model-details)
-                     :model_table_name (:table_name model-details)})))))
+        (remote-sync.db/update-rso! (:id existing)
+                                    {:status (resolve-status model-type model-id status existing)
+                                     :status_changed_at (t/offset-date-time)
+                                     :model_name (:name model-details)
+                                     :model_collection_id (:collection_id model-details)
+                                     :model_display (some-> model-details :display name)
+                                     :model_table_id (:table_id model-details)
+                                     :model_table_name (:table_name model-details)})))))
 
 ;;; ----------------------------------------- Spec-based Event Handling ------------------------------------------------
 
@@ -123,7 +200,7 @@
   "Re-checks `model-id`'s eligibility against current DB state. The eligibility that got us here was computed
    from an event payload, which a concurrent change may have invalidated in the meantime."
   [model-spec model-id]
-  (boolean (when-let [instance (t2/select-one (:model-key model-spec) :id model-id)]
+  (boolean (when-let [instance (remote-sync.db/instance (:model-key model-spec) model-id)]
              (spec/check-eligibility model-spec instance))))
 
 (defn- create-or-update-sync-object-from-spec!
@@ -137,30 +214,31 @@
   [model-spec model-id status]
   (t2/with-transaction [_conn]
     (let [model-type (:model-type model-spec)
-          existing   (t2/select-one :model/RemoteSyncObject
-                                    {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
-                                     :for   :update})]
+          existing   (remote-sync.db/lock-rso model-type model-id)]
       (cond
+        (and (not existing)
+             (contains? #{"removed" "delete"} status))
+        nil
+
         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
         ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
         (and (not existing)
-             (not (contains? #{"removed" "delete"} status))
              (not (still-eligible? model-spec model-id)))
         nil
 
         (not existing)
         (let [model-details (spec/hydrate-model-details model-spec model-id)
               fields        (spec/build-sync-object-fields model-spec model-details)]
-          (t2/insert! :model/RemoteSyncObject
-                      (merge {:model_type        model-type
-                              :model_id          model-id
-                              :status            status
-                              :status_changed_at (t/offset-date-time)}
-                             fields)))
+          (remote-sync.db/insert-rso!
+           (merge {:model_type        model-type
+                   :model_id          model-id
+                   :status            status
+                   :status_changed_at (t/offset-date-time)}
+                  fields)))
 
         (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
-        (t2/delete! :model/RemoteSyncObject (:id existing))
+        (remote-sync.db/delete-rso! (:id existing))
 
         ;; A pending removal must not be resurrected by a tracked-status write whose eligibility check was
         ;; overtaken by a concurrent un-sync: that check ran against the event payload, well before this
@@ -171,17 +249,17 @@
         nil
 
         (= "delete" (:status existing))
-        (t2/update! :model/RemoteSyncObject (:id existing)
-                    {:status            status
-                     :status_changed_at (t/offset-date-time)})
+        (remote-sync.db/update-rso! (:id existing)
+                                    {:status            status
+                                     :status_changed_at (t/offset-date-time)})
 
         (not= "create" (:status existing))
         (let [model-details (spec/hydrate-model-details model-spec model-id)
               fields        (spec/build-sync-object-fields model-spec model-details)]
-          (t2/update! :model/RemoteSyncObject (:id existing)
-                      (merge {:status            (resolve-status model-type model-id status existing)
-                              :status_changed_at (t/offset-date-time)}
-                             fields)))))))
+          (remote-sync.db/update-rso! (:id existing)
+                                      (merge {:status            (resolve-status model-type model-id status existing)
+                                              :status_changed_at (t/offset-date-time)}
+                                             fields)))))))
 
 (defn- cascade-filter
   "Derives the filter conditions for querying eligible children from a child spec."
@@ -200,14 +278,11 @@
           filter (cascade-filter child-spec)]
       (if eligible?
         ;; Eligible branch: query actual entities and create RSOs for eligible children
-        (doseq [child (apply t2/select (:model-key child-spec) (into [fk model-id] cat filter))]
+        (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
         ;; Ineligible branch: mark existing child RSOs as removed
-        (doseq [child-rso (t2/select :model/RemoteSyncObject
-                                     :model_type (:model-type child-spec)
-                                     :model_table_id model-id
-                                     :status [:not-in ["removed" "delete"]])]
+        (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
 (defn- handle-model-event-from-spec
@@ -217,9 +292,14 @@
   (let [model-type     (:model-type model-spec)
         model-id       (:id object)
         eligible?      (spec/check-eligibility model-spec object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)
+        existing-entry (remote-sync.db/rso model-type model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
+      ;; a synced item on a read-only instance can still change (e.g. an admin's public link), but that change can
+      ;; never be pushed, so tracking it would only block the next pull
+      (not (spec/model-editable? (:model-key model-spec) object))
+      nil
+
       eligible?
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
@@ -251,7 +331,7 @@
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field)]
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)]
   (register-events-for-spec! model-spec))
 
 ;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
@@ -266,29 +346,61 @@
 (defn- hydrate-collection-details
   "Hydrates details for a Collection."
   [id]
-  (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))
+  (remote-sync.db/collection-name-and-id id))
 
 (defn- handle-library-sync-status-change!
-  "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
-   This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
+  "When the Library collection's is_remote_synced status changes, trigger Library content sync tracking.
+   This ensures all snippets and glossary entries are tracked/untracked when Library sync is enabled/disabled."
   [is-now-synced?]
-  (let [snippets-already-tracked? (t2/exists? :model/RemoteSyncObject :model_type "NativeQuerySnippet")]
+  (let [library-already-tracked? (or (remote-sync.db/rso-of-type-exists? "NativeQuerySnippet")
+                                     (remote-sync.db/rso-of-type-exists? "Glossary"))]
     (cond
-      (and is-now-synced? (not snippets-already-tracked?))
+      (and is-now-synced? (not library-already-tracked?))
       (do
-        (log/info "Library collection became remote-synced, enabling snippet sync tracking")
-        (enable-snippet-tracking!))
-      (and (not is-now-synced?) snippets-already-tracked?)
+        (log/info "Library collection became remote-synced, enabling Library content sync tracking")
+        (enable-library-tracking!))
+      (and (not is-now-synced?) library-already-tracked?)
       (do
-        (log/info "Library collection is no longer remote-synced, disabling snippet sync tracking")
-        (disable-snippet-tracking!)))))
+        (log/info "Library collection is no longer remote-synced, disabling Library content sync tracking")
+        (disable-library-tracking!)))))
+
+(defn- cascade-archived-state!
+  "Brings the RemoteSyncObject rows of `collection`'s subtree, other than its own row, in line with the archived state
+  of each entity and of the collection it is in: rows of entities that are archived or in an archived collection
+  become 'delete', and 'delete' rows of existing entities that are neither become 'update'."
+  [collection]
+  ;; Archiving a collection archives its subtree in bulk SQL, which publishes no event per descendant. Transforms
+  ;; have no archived column, so only their collection shows that they were archived.
+  (let [collection-ids       (remote-sync.db/subtree-collection-ids [collection])
+        collection-archived? (remote-sync.db/archived-by-id :model/Collection (vec collection-ids))
+        rows                 (->> (remote-sync.db/content-rsos collection-ids)
+                                  (remove #(and (= "Collection" (:model_type %)) (= (:id collection) (:model_id %)))))
+        now                  (t/offset-date-time)]
+    (doseq [[model-type type-rows] (group-by :model_type rows)
+            :let  [{:keys [model-key archived-key]} (spec/spec-for-model-type model-type)]
+            :when (= :archived archived-key)
+            :let  [entity-archived? (remote-sync.db/archived-by-id model-key (mapv :model_id type-rows))
+                   archived?        (fn [{:keys [model_id model_collection_id]}]
+                                      (or (true? (entity-archived? model_id))
+                                          (true? (collection-archived? model_collection_id))))
+                   deleted          (filter #(and (archived? %)
+                                                  (not (contains? #{"delete" "removed"} (:status %))))
+                                            type-rows)
+                   restored         (filter #(and (contains? entity-archived? (:model_id %))
+                                                  (not (archived? %))
+                                                  (= "delete" (:status %)))
+                                            type-rows)]]
+      (when (seq deleted)
+        (remote-sync.db/set-rsos-status! (map :id deleted) "delete" now))
+      (when (seq restored)
+        (remote-sync.db/set-rsos-status! (map :id restored) "update" now)))))
 
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object]} event
         should-sync? (spec/should-sync-collection? object)
         is-remote-synced? (collections/remote-synced-collection? object)
-        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
+        existing-entry (remote-sync.db/rso "Collection" (:id object))
         status (if (:archived object)
                  "delete"
                  (case topic
@@ -301,33 +413,66 @@
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details)
+        (when (and (= topic :event/collection-update)
+                   (or (:archived object) (= "delete" (:status existing-entry))))
+          (cascade-archived-state! object)))
       (and existing-entry (not should-sync?))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
 
-;;; ----------------------------------------- FieldUserSettings Tracking -----------------------------------------------
-;; When a field is updated in a published table, also track any FieldUserSettings row for that field.
-;; FieldUserSettings has no separate event; it piggybacks on :event/field-update.
+;;; ------------------------------------------- User Settings Tracking -------------------------------------------------
 
+(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
 (def ^:private field-spec (get spec/remote-sync-specs :model/Field))
+
+(defn- hydrate-table-user-settings-details
+  "The RemoteSyncObject details of the Table with `table-id`, as its own `:table_id`/`:table_name`."
+  [table-id]
+  (let [details (spec/hydrate-model-details table-spec table-id)]
+    (assoc details :table_id (:id details) :table_name (:name details))))
+
+(defn- hydrate-field-details
+  "The RemoteSyncObject details of the Field with `field-id`."
+  [field-id]
+  (spec/hydrate-model-details field-spec field-id))
+
+(defn- sync-user-settings!
+  "Track `model-type` `id` as updated when `eligible?` and `exists?` holds for it, else mark it removed when tracked."
+  [model-type id eligible? exists? hydrate-details]
+  (cond
+    (and eligible? (exists? id))
+    (create-or-update-remote-sync-object-entry! model-type id "update" hydrate-details)
+
+    (remote-sync.db/rso-exists? model-type id)
+    (create-or-update-remote-sync-object-entry! model-type id "removed" hydrate-details)))
 
 (events/derive! :event/field-update ::field-update-event)
 (events/derive! ::field-update-event :metabase/event)
 
 (methodical/defmethod events/publish-event! ::field-update-event
   [_topic {:keys [object]}]
-  (let [field-id  (:id object)
-        eligible? (spec/check-eligibility field-spec object)]
-    (cond
-      (and eligible? (t2/exists? :model/FieldUserSettings :field_id field-id))
-      (create-or-update-remote-sync-object-entry!
-       "FieldUserSettings" field-id "update"
-       (fn [id] (spec/hydrate-model-details field-spec id)))
+  (let [eligible? (spec/check-eligibility field-spec object)]
+    (sync-user-settings! "FieldUserSettings" (:id object) eligible?
+                         remote-sync.db/field-user-settings-exist? hydrate-field-details)
+    (sync-user-settings! "Dimension" (:id object) eligible?
+                         remote-sync.db/dimension-exists-for-field? hydrate-field-details)))
 
-      (and (not eligible?)
-           (t2/exists? :model/RemoteSyncObject :model_type "FieldUserSettings" :model_id field-id))
-      (create-or-update-remote-sync-object-entry!
-       "FieldUserSettings" field-id "removed"
-       (fn [id] (spec/hydrate-model-details field-spec id))))))
+(defn- handle-table-event!
+  "The generic Table handler plus the Table's TableUserSettings; one handler, since a second primary method on the
+  same events would displace the generic one."
+  [topic {:keys [object] :as event}]
+  (handle-model-event-from-spec table-spec topic event)
+  (sync-user-settings! "TableUserSettings" (:id object) (spec/check-eligibility table-spec object)
+                       remote-sync.db/table-user-settings-exist? hydrate-table-user-settings-details))
+
+(let [event-kws (spec/event-keywords table-spec)
+      parent-kw (:parent event-kws)]
+  (events/derive! parent-kw :metabase/event)
+  (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
+    (events/derive! event-kw parent-kw))
+  (methodical/add-primary-method!
+   #'events/publish-event!
+   parent-kw
+   (fn [topic event] (handle-table-event! topic event))))

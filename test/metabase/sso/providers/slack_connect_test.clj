@@ -27,9 +27,9 @@
 
 (deftest ^:parallel provider-hierarchy-test
   (testing "Slack Connect provider derives from OIDC provider"
-    (is (isa? :provider/slack-connect :provider/oidc)))
+    (is (auth-identity/isa? :provider/slack-connect :provider/oidc)))
   (testing "Slack Connect provider derives from create-user-if-not-exists"
-    (is (isa? :provider/slack-connect ::provider/create-user-if-not-exists))))
+    (is (auth-identity/isa? :provider/slack-connect ::provider/create-user-if-not-exists))))
 
 ;;; -------------------------------------------------- Configuration Tests --------------------------------------------------
 

@@ -40,6 +40,4 @@ target:
   schema: TRANSFORMS
   type: table
 serdes/meta:
-- id: 1fNzUt_CgppinjPk7pGKH
-  label: monthly_order_summary
-  model: Transform
+- model: Transform

@@ -29,7 +29,7 @@ export default {
 
 const Template: StoryFn<StaticQuestionComponentProps> = (args) => {
   return (
-    <Box p="md">
+    <Box p="lg">
       <StaticQuestion {...args} />
     </Box>
   );

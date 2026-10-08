@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { addWidgetStringFilter } from "../native/helpers/e2e-field-filter-helpers";
 
 import {
   dashboardDetails,
@@ -234,7 +234,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       getDashboardFilter("Name").click();
       H.toggleRequiredParameter();
       H.sidebar().findByText("Default value").next().click();
-      addWidgetStringFilter("Ferne Rosenbaum", {
+      setRequiredParameterDefaultValue("Ferne Rosenbaum", {
         buttonLabel: "Update filter",
       });
       H.saveDashboard();
@@ -1128,7 +1128,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
     cy.signOut();
 
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.intercept("/app/locales/de.json").as("deLocale");
+    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
 
     H.visitEmbeddedPage(
       {
@@ -1483,6 +1483,53 @@ function getDashboardFilter(name) {
   return cy
     .findByTestId("edit-dashboard-parameters-widget-container")
     .findByText(name);
+}
+
+// The default-value picker for a field-based parameter can render as either
+// a search combobox or a checkbox list, depending on the field's values
+// configuration; handle both so the test isn't sensitive to which one shows.
+function setRequiredParameterDefaultValue(value, { buttonLabel } = {}) {
+  // The widget can still be loading (neither mode rendered yet) right after
+  // the popover opens; wait until one of them actually shows up before
+  // deciding which branch to take.
+  H.popover()
+    .first()
+    .should(($popover) => {
+      const hasList =
+        $popover.find('[placeholder="Search the list"]').length > 0;
+      const hasCombobox = $popover.find("input").length > 0;
+      expect(hasList || hasCombobox, "default value widget to be ready").to.be
+        .true;
+    });
+
+  cy.get("body").then(($body) => {
+    if ($body.find('[placeholder="Search the list"]').length > 0) {
+      H.popover()
+        .first()
+        .within(() => {
+          // The list can still be settling (e.g. a background values fetch
+          // replacing the initial options) right as we click, so retry the
+          // click itself until the checkbox actually ends up checked.
+          checkFilterValueCheckbox(value);
+          cy.button(buttonLabel).click();
+        });
+    } else {
+      addWidgetStringFilter(value, { buttonLabel });
+    }
+  });
+}
+
+function checkFilterValueCheckbox(value, attempt = 0) {
+  cy.findByTestId(`${value}-filter-value`).then(($checkbox) => {
+    if ($checkbox.prop("checked")) {
+      return;
+    }
+    if (attempt > 5) {
+      throw new Error(`Could not check the "${value}" filter value checkbox`);
+    }
+    cy.wrap($checkbox).click({ force: true });
+    checkFilterValueCheckbox(value, attempt + 1);
+  });
 }
 
 function assertRequiredEnabledForName({ name, enabled }) {

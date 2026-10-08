@@ -19,9 +19,5 @@
   remapped-value
   search-values-from-field-id]
  [metabase.parameters.schema
-  normalize-parameter
-  normalize-parameter-mapping
-  normalize-parameter-mappings
-  normalize-parameters
   transform-parameter-mappings
   transform-parameters])

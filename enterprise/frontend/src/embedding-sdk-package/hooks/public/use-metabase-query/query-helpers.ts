@@ -4,7 +4,6 @@ import type { SchemaColumn } from "../data-schema";
 
 import type {
   BetweenFilterOperatorForDimension,
-  BinningOptions,
   BreakoutOptionsArgument,
   FilterLiteralValue,
   FilterOperator,
@@ -89,8 +88,10 @@ export function breakout<TDimension extends object>(
 ) {
   return {
     ...dimension,
-    unit: options && "unit" in options ? options.unit : undefined,
-    ...getBinningOptions(options),
+    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
+    ...(options?.binning !== undefined
+      ? { binning: options.binning }
+      : undefined),
   };
 }
 
@@ -138,8 +139,10 @@ export function orderBy<TDimension>(
   return {
     ...orderableDimension,
     ...(direction ? { direction } : undefined),
-    unit: options && "unit" in options ? options.unit : undefined,
-    ...getBinningOptions(options),
+    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
+    ...(options?.binning !== undefined
+      ? { binning: options.binning }
+      : undefined),
   };
 }
 
@@ -166,42 +169,6 @@ function isSchemaColumn(value: unknown): value is SchemaColumn {
     "name" in value &&
     typeof value.name === "string"
   );
-}
-
-function getBinningOptions(
-  options:
-    | {
-        binning?: BinningOptions;
-        bins?: number | "auto";
-        binWidth?: number | "auto";
-      }
-    | undefined,
-) {
-  if (!options) {
-    return undefined;
-  }
-
-  if ("bins" in options && options.bins != null) {
-    return { bins: options.bins };
-  }
-
-  if ("binWidth" in options && options.binWidth != null) {
-    return { binWidth: options.binWidth };
-  }
-
-  if (options.binning?.strategy === "num-bins") {
-    return { bins: options.binning["num-bins"] };
-  }
-
-  if (options.binning?.strategy === "bin-width") {
-    return { binWidth: options.binning["bin-width"] };
-  }
-
-  if (options.binning?.strategy === "default") {
-    return { bins: "auto" as const };
-  }
-
-  return undefined;
 }
 
 function toFilterLiteral(value: unknown): {

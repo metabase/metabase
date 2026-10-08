@@ -187,6 +187,36 @@ describe("EditableDashboard", () => {
     expect(dataPickerDataCallUrl).not.toContain("models=table");
   });
 
+  it("should allow to pass `dataPickerProps.dataPicker` to the query builder", async () => {
+    await setupEnterprise({
+      dataPickerProps: {
+        dataPicker: "staged",
+      },
+    });
+    setupSimpleDataPickerEndpoints();
+
+    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("dashboard-header")).getByLabelText(
+        "Edit dashboard",
+      ),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add questions" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "New Question" }));
+
+    // The instance is below the 100-source threshold, so only `dataPicker`
+    // can be keeping the simple picker away.
+    expect(
+      await screen.findByRole("button", { name: "Pick your starting data" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("embedding-simple-data-picker-trigger"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should show 'Add a chart' button on empty dashboards", async () => {
     await setupEnterprise({ dashcards: [] });
 

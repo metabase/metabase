@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -23,6 +24,7 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2])
   (:import
@@ -34,6 +36,13 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
+(defn- user-table-fn
+  "The value of `column` on the Table with `table-id` as users see it: what they set, else what sync wrote. A bare
+  `t2/select :model/Table` shows sync's values only."
+  [column table-id]
+  (t2/select-one-fn column :model/Table :id table-id
+                    {:from [(warehouse-schema-overlay/table-query)]}))
+
 (deftest ^:parallel unauthenticated-test
   (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "table")))
@@ -43,6 +52,7 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :entity_id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :default_schema
                          :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
                          :uploads_table_prefix])
    {:engine                      "h2"
@@ -274,11 +284,13 @@
                                        :database_is_auto_increment true
                                        :name_field                 {:base_type "type/Text",
                                                                     :display_name "Name",
+                                                                    :effective_type "type/Text",
                                                                     :fk_target_field_id nil,
                                                                     :has_field_values "list",
                                                                     :id (mt/id :users :name),
                                                                     :name "NAME",
                                                                     :semantic_type "type/Name",
+                                                                    :settings nil,
                                                                     :table_id (mt/id :users)})
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
                                        :semantic_type              "type/Name"
@@ -356,11 +368,13 @@
                                        :database_is_auto_increment true
                                        :name_field {:base_type "type/Text",
                                                     :display_name "Name",
+                                                    :effective_type "type/Text",
                                                     :fk_target_field_id nil,
                                                     :has_field_values "list",
                                                     :id (mt/id :users :name),
                                                     :name "NAME",
                                                     :semantic_type "type/Name",
+                                                    :settings nil,
                                                     :table_id (mt/id :users)})
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
                                        :table_id         (mt/id :users)
@@ -392,6 +406,18 @@
                  :id           (mt/id :users)})
                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
             "Make sure that getting the User table does *not* include password info")))))
+
+(deftest query-metadata-data-sensitivity-test
+  (testing "GET api/table/:id/query_metadata returns each field's data_sensitivity, nil when unclassified"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db)}
+                   :model/Field    _     {:table_id (:id table) :name "email" :data_sensitivity :PII}
+                   :model/Field    _     {:table_id (:id table) :name "id"}]
+      (is (= {"email" "PII"
+              "id"    nil}
+             (->> (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" (:id table)))
+                  :fields
+                  (into {} (map (juxt :name :data_sensitivity)))))))))
 
 (deftest query-metadata-transform-hydration-test
   (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
@@ -445,7 +471,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
@@ -479,7 +505,7 @@
         (mt/with-temp [:model/Table table {:visibility_type "hidden"}]
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {property (mt/random-name)})
-          (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (:id table)))))))))
+          (is (= :hidden (user-table-fn :visibility_type (:id table)))))))))
 
 (deftest ^:parallel update-table-test-4
   (testing "PUT /api/table/:id"
@@ -492,23 +518,23 @@
     (testing "data_authority field behavior"
       (mt/with-temp [:model/Table table {}]
         (testing "Initially data_authority should be unconfigured"
-          (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :unconfigured (user-table-fn :data_authority (u/the-id table)))))
         (testing "Can save an unrelated change with this field redundantly included"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:active false, :data_authority "unconfigured"})
-          (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :unconfigured (user-table-fn :data_authority (u/the-id table)))))
         (testing "Can set data_authority to authoritative"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "authoritative"})
-          (is (= :authoritative (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :authoritative (user-table-fn :data_authority (u/the-id table)))))
         (testing "Can set data_authority between different values"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "computed"})
-          (is (= :computed (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :computed (user-table-fn :data_authority (u/the-id table)))))
         (testing "Can set data_authority to ingested"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "ingested"})
-          (is (= :ingested (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
+          (is (= :ingested (user-table-fn :data_authority (u/the-id table)))))
         (testing "Cannot un-configure again"
           (is (= "Cannot set data_authority back to unconfigured once it has been configured"
                  (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
@@ -685,11 +711,13 @@
                                 :database_is_auto_increment true
                                 :name_field        {:base_type "type/Text",
                                                     :display_name "Name",
+                                                    :effective_type "type/Text",
                                                     :fk_target_field_id nil,
                                                     :has_field_values "list",
                                                     :id (mt/id :categories :name),
                                                     :name "NAME",
                                                     :semantic_type "type/Name",
+                                                    :settings nil,
                                                     :table_id (mt/id :categories)}})
                               (merge
                                (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
@@ -1077,7 +1105,7 @@
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
 (deftest field-ordering-test
-  (let [original-field-order (t2/select-one-fn :field_order :model/Table :id (mt/id :venues))]
+  (let [original-field-order (user-table-fn :field_order (mt/id :venues))]
     (try
       (testing "Can we set alphabetical field ordering?"
         (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
@@ -1116,8 +1144,11 @@
                  (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
-      (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
-                                     {:field_order original-field-order})))))
+      (finally
+        (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
+                              {:field_order original-field-order})
+        (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
+        (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-vec :model/Field :table_id (mt/id :venues))])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/table/:id/append-csv                                        |
@@ -1397,13 +1428,13 @@
       (testing "updating visibility_type syncs to data_layer"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:visibility_type "hidden"})
-        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
-        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+        (is (= :hidden (user-table-fn :data_layer (u/the-id table))))
+        (is (= :hidden (user-table-fn :visibility_type (u/the-id table)))))
       (testing "updating data_layer syncs to visibility_type"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:data_layer "internal"})
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+        (is (= :internal (user-table-fn :data_layer (u/the-id table))))
+        (is (= nil (user-table-fn :visibility_type (u/the-id table)))))
       (testing "cannot update both visibility_type and data_layer at once"
         (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
@@ -1571,8 +1602,74 @@
       (mt/user-http-request :crowberto :put 200 "table"
                             {:ids [t1 t2] :visibility_type "hidden"})
       (is (= [:hidden :hidden]
-             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2])))
+             (map #(user-table-fn :visibility_type %) [t1 t2])))
       (mt/user-http-request :crowberto :put 200 "table"
                             {:ids [t1 t2] :visibility_type nil})
       (is (= [nil nil]
-             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2]))))))
+             (map #(user-table-fn :visibility_type %) [t1 t2]))))))
+
+;;; ---------------------------------- #83937 dimension-backfill canary -----------------------------------
+
+(defn- counting-dimension-pairs
+  "Calls `thunk` with [[lib-metric.dimension.jvm/compute-dimension-pairs]] counted, returning
+  `[result call-count]`.
+
+  That function is the expensive primitive behind the `card_schema` 24 dimension backfill: it runs
+  `lib/visible-columns` over the metric's table *plus* every FK-reachable table and fetches every one of those
+  Fields. Running it once per metric is what made `query_metadata` for a wide table take minutes and exhaust the
+  heap in #83937, so these tests assert it never runs at all on that path."
+  [thunk]
+  (let [calls (atom 0)
+        orig  lib-metric.dimension.jvm/compute-dimension-pairs]
+    (mt/with-dynamic-fn-redefs [lib-metric.dimension.jvm/compute-dimension-pairs
+                                (fn [& args]
+                                  (clojure.core/swap! calls inc)
+                                  (apply orig args))]
+      [(thunk) @calls])))
+
+(defn- make-pre-curation-metric!
+  "Put `card-id` back into the pre-64 shape: `card_schema` 23 with no stored dimensions, so reading it is what
+  triggers the backfill. Needs a raw UPDATE because before-insert forces `:card_schema` to current."
+  [card-id]
+  (t2/query-one {:update :report_card
+                 :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
+                 :where  [:= :id card-id]}))
+
+(deftest query-metadata-does-not-backfill-metric-dimensions-test
+  (testing "query_metadata must not run the pre-64 dimension backfill for a table's metrics (#83937)"
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card {question-id :id} {:database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id, :card_id question-id}]
+      (make-pre-curation-metric! metric-id)
+      ;; Without this the whole test could pass vacuously: if the fixture ever stopped being a genuine
+      ;; pre-curation metric, nothing would backfill and the zero-call assertions below would be meaningless.
+      (testing "the fixture really is a metric whose dimensions get backfilled on an ordinary read"
+        (is (pos? (second (counting-dimension-pairs
+                           #(t2/select-one :model/Card :id metric-id))))))
+      (testing "GET /api/table/:id/query_metadata"
+        (let [[response calls] (counting-dimension-pairs
+                                #(mt/user-http-request :crowberto :get 200
+                                                       (format "table/%d/query_metadata" (mt/id :venues))))
+              metrics          (:metrics response)]
+          (is (zero? calls)
+              "the dimension backfill ran while hydrating a table's metrics")
+          (is (some #(= metric-id (:id %)) metrics)
+              "the metric should still be hydrated, just without its backfilled dimensions")
+          (is (every? (comp nil? :dimensions) metrics)
+              "no metric should come back carrying a backfilled dimension set")))
+      (testing "GET /api/dashboard/:id/query_metadata"
+        (let [[_response calls] (counting-dimension-pairs
+                                 #(mt/user-http-request :crowberto :get 200
+                                                        (format "dashboard/%d/query_metadata" dash-id)))]
+          (is (zero? calls)
+              "the dimension backfill ran while loading dashboard query metadata")))
+      (testing "the stored row is untouched — still schema 23, so a later write still upgrades it"
+        (is (= 23 (:card_schema (t2/query-one {:select [:card_schema]
+                                               :from   [:report_card]
+                                               :where  [:= :id metric-id]}))))))))

@@ -40,9 +40,11 @@
    [metabase-enterprise.security-center.api]
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
+   [metabase-enterprise.session-management.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
+   [metabase-enterprise.transform-testing.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
@@ -61,7 +63,7 @@
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
-   :data-apps-preview          (deferred-tru "Data Apps")
+   :data-apps                  (deferred-tru "Data Apps")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :schema-viewer              (deferred-tru "Schema Viewer")
@@ -73,6 +75,7 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :admin-security-center      (deferred-tru "Security Center")
    :serialization              (deferred-tru "Serialization")
+   :session-management         (deferred-tru "Session management")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
@@ -80,7 +83,8 @@
    :metabot-v3                (deferred-tru "Metabot")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
-   :transforms-python          (deferred-tru "Transforms Python")})
+   :transforms-python          (deferred-tru "Transforms Python")
+   :transforms-testing         (deferred-tru "Transforms Testing")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -97,7 +101,7 @@
    ;; Data-app bundle hosting. Naughty because the FE route lives at `/apps/:slug`
    ;; (and `/api/apps/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
    ;; assets, so we keep the public path stable here. Superuser-only inside the handler.
-   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps-preview)
+   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -150,6 +154,7 @@
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
@@ -157,6 +162,7 @@
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/session-management"           (premium-handler metabase-enterprise.session-management.api/routes :session-management)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)

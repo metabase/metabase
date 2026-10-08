@@ -10,16 +10,25 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.recovery-hints :as v2-hints]
+   [metabase.metabot.agent.links :as links]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve :as serdes.resolve]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,36 +84,58 @@
   ([entity id & _conditions] {:model entity :id id}))
 
 (defn- with-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (defn- with-ambiguous-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (def ^:private mp-coerced
-  "ORDERS with a UNIX-seconds column coerced to a timestamp: `base-type :type/Integer`,
-  `effective-type :type/DateTime`. Exercises the editor gate's unsuppressed expression
-  type check against coerced columns (the #41122 false-positive class that
-  `*suppress-expression-type-check?*` exists for)."
+  "ORDERS with two columns an admin coerced to a timestamp - UNIX seconds and ISO-8601 text - each
+  paired with a plain column of the same `base-type`, so a test can vary the coercion alone.
+
+  Exercises the editor gate's unsuppressed expression type check against coerced columns (the
+  #41122 false-positive class that `*suppress-expression-type-check?*` exists for), and the
+  temporal-bucket gate, whose whole job is telling a coerced column from a non-temporal one."
   (lib.tu/mock-metadata-provider
    {:database {:id 1 :name "Sample"}
     :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
     :fields   [{:id 100 :name "ID"              :table-id 10 :base-type :type/Integer}
                {:id 104 :name "CREATED_AT_UNIX" :table-id 10 :base-type :type/Integer
-                :effective-type :type/DateTime :coercion-strategy :Coercion/UNIXSeconds->DateTime}]}))
+                :effective-type :type/DateTime :coercion-strategy :Coercion/UNIXSeconds->DateTime}
+               {:id 105 :name "STATUS"          :table-id 10 :base-type :type/Text}
+               {:id 106 :name "CREATED_AT_ISO"  :table-id 10 :base-type :type/Text
+                :effective-type :type/DateTime :coercion-strategy :Coercion/ISO8601->DateTime}]}))
 
 (defn- with-coerced-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
+    (f)))
+
+(def ^:private mp-temporal
+  "ORDERS with a plain `:type/DateTime` column, for the temporal-clause round-trip tests."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 102 :name "USER_ID"    :table-id 10 :base-type :type/Integer}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+               {:id 104 :name "STATUS"     :table-id 10 :base-type :type/Text}]}))
+
+(defn- with-temporal-mp-and-stubs! [f]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-temporal)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (defn- query-data
@@ -226,17 +257,17 @@
     ;; This fixture's MP-name is "Sample Database". We DON'T stub `resolve-database-id-from-first-stage`
     ;; here - we want the actual function to run against `name = "Sample"` and observe the
     ;; not-found behaviour.
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
-                  construct/resolve-database-id-from-first-stage
-                  (fn [parsed]
-                    (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
-                      (if (= db-name "Sample Database")
-                        1
-                        (throw (ex-info (str "Unknown database: `" db-name "`.")
-                                        {:agent-error? true
-                                         :status-code  400
-                                         :error        :unknown-database
-                                         :database     db-name})))))]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
+                                construct/resolve-database-id-from-first-stage
+                                (fn [parsed]
+                                  (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
+                                    (if (= db-name "Sample Database")
+                                      1
+                                      (throw (ex-info (str "Unknown database: `" db-name "`.")
+                                                      {:agent-error? true
+                                                       :status-code  400
+                                                       :error        :unknown-database
+                                                       :database     db-name})))))]
       (let [query (query-data
                    {"lib/type" "mbql/query"
                     "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -361,10 +392,14 @@
             (is (= "metric" (:entity-type d)))
             (is (= "76" (:entity-id d)))
             (is (= "metabase://metric/76" (:source-table d)))
-            (is (re-find #"aggregation" (ex-message e))
-                "message should point at aggregation-clause recovery")
-            (is (re-find #"base_table_fully_qualified_name" (ex-message e))
-                "message should name the attribute the LLM needs to look up on the metric")))))
+            (testing "the recovery sentence is the caller's, so the throw carries only the facts to build it"
+              (is (= "`source-table:` does not accept URIs like `metabase://metric/76`." (ex-message e)))
+              (is (re-find #"aggregation" (v1-hints/recovery-hint d))
+                  "v1's table points at aggregation-clause recovery")
+              (is (re-find #"base_table_fully_qualified_name" (v1-hints/recovery-hint d))
+                  "v1's table names the attribute the LLM looks up on the metric")
+              (is (re-find #"aggregation" (message/render (v2-hints/recovery-hint d)))
+                  "v2's table points at aggregation-clause recovery too, in its own vocabulary"))))))
     (testing "question / model URI - hint points at `source-card:`"
       (doseq [t ["question" "model" "card"]]
         (try
@@ -377,8 +412,10 @@
             (let [d (ex-data e)]
               (is (= :uri-in-source-table (:error d)))
               (is (= t (:entity-type d)))
-              (is (re-find #"source-card" (ex-message e))
-                  (str "message for " t " should point at source-card:")))))))
+              (is (re-find #"source-card" (v1-hints/recovery-hint d))
+                  (str "v1 hint for " t " points at source-card:"))
+              (is (re-find #"source-card" (message/render (v2-hints/recovery-hint d)))
+                  (str "v2 hint for " t " points at source-card:")))))))
     (testing "table URI - hint points at portable FK form"
       (try
         (construct/resolve-database-id-from-first-stage
@@ -390,7 +427,8 @@
           (let [d (ex-data e)]
             (is (= :uri-in-source-table (:error d)))
             (is (= "table" (:entity-type d)))
-            (is (re-find #"portable FK" (ex-message e)))))))))
+            (is (re-find #"portable FK" (v1-hints/recovery-hint d)))
+            (is (re-find #"numeric table id" (message/render (v2-hints/recovery-hint d))))))))))
 
 (deftest execute-representations-query-unknown-db-in-source-table-test
   (testing (str "Post step-14-follow-up the first stage's `source-table[0]` is the sole source\n"
@@ -398,17 +436,17 @@
                 "DB surfaces `:unknown-database` at the `resolve-database-id-from-first-stage`\n"
                 "step, reflagged `:agent-error?` for the LLM.")
     ;; No with-mp-and-stubs! - we want the DB-name-not-found path to trigger.
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                  construct/resolve-database-id-from-first-stage
-                  (fn [parsed]
-                    (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
-                      (if (= db-name "Sample")
-                        1
-                        (throw (ex-info (str "Unknown database: `" db-name "`.")
-                                        {:agent-error? true
-                                         :status-code  400
-                                         :error        :unknown-database
-                                         :database     db-name})))))]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
+                                construct/resolve-database-id-from-first-stage
+                                (fn [parsed]
+                                  (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
+                                    (if (= db-name "Sample")
+                                      1
+                                      (throw (ex-info (str "Unknown database: `" db-name "`.")
+                                                      {:agent-error? true
+                                                       :status-code  400
+                                                       :error        :unknown-database
+                                                       :database     db-name})))))]
       (try
         (construct/execute-representations-query
          (query-data
@@ -1065,6 +1103,338 @@
           (is (= "type/Float" (get opts "base-type"))))))))
 
 ;;; ============================================================
+;;; Numeric-id dialect — accepted on the MCP v2 surface, rejected on the default (v1) surface
+;;; ============================================================
+
+(defmacro ^:private with-v2-surface
+  "Run `body` with numeric ids accepted, the way
+  `metabase.mcp.v2.common/execute-representations-query` binds it for the v2 dialect."
+  [& body]
+  `(binding [serdes.resolve/*numeric-ids-allowed?* true]
+     ~@body))
+
+(deftest numeric-ids-rejected-on-default-surface-test
+  (testing "the v1 surface keeps the portable-only contract: a numeric field id is a teaching error"
+    (with-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["field" {} 100] 0]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :numeric-field-id (:error d))))))))))
+
+(deftest numeric-source-rejected-on-default-surface-test
+  (testing "the v1 surface does not recognize a numeric source-table as a source at all"
+    (try
+      (construct/resolve-database-id-from-first-stage
+       {"lib/type" "mbql/query"
+        "stages"   [{"lib/type" "mbql.stage/mbql" "source-table" 10}]})
+      (is false "expected throw")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :missing-source-in-first-stage (:error (ex-data e))))))))
+
+(deftest numeric-ids-resolve-on-v2-surface-test
+  (testing "on the MCP v2 surface a fully numeric query body resolves like the portable one"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "filters"      [[">" {} ["field" {} 101] 0]]}]}))
+                q      (get-in result [:structured-output :query])]
+            (is (= :mbql/query (:lib/type q)))
+            (is (= 1 (:database q)))
+            (is (= 10 (get-in q [:stages 0 :source-table])))
+            (testing "the numeric field ref survives resolution and gets its base-type stamped"
+              (let [filter-ref (nth (get-in q [:stages 0 :filters 0]) 2)]
+                (is (= [:field 101] [(first filter-ref) (nth filter-ref 2)]))
+                (is (= :type/Float (get-in filter-ref [1 :base-type])))))))))))
+
+(deftest numeric-implicit-join-resolves-on-v2-surface-test
+  (testing "repair auto-wires `source-field` for a numeric field ref on an FK-related table"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "breakout"     [["field" {} 201]]}]}))
+                q            (get-in result [:structured-output :query])
+                breakout-ref (get-in q [:stages 0 :breakout 0])]
+            (is (= 201 (nth breakout-ref 2)))
+            (is (= 102 (get-in breakout-ref [1 :source-field]))
+                "the FK column from ORDERS to PRODUCTS is filled in, same as for a portable ref")))))))
+
+(deftest with-recovery-hint-preserves-original-as-cause-test
+  (testing (str "`with-recovery-hint` rebuilds the ex-info with the ORIGINAL exception as its\n"
+                "cause, so the throw-site stack trace survives — not the original's own cause,\n"
+                "which would drop the frame where the agent error was actually raised.")
+    (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})
+          hinted   (#'construct/with-recovery-hint original (constantly "do the thing"))]
+      (testing "message carries the hint"
+        (is (= "boom do the thing" (ex-message hinted))))
+      (testing "the original exception is the direct cause (not its cause, which is nil here)"
+        (is (identical? original (ex-cause hinted)))))))
+
+(defn- with-recording-query-check!
+  "Run `f`, recording every `[model id]` pair passed to `api/query-check`. Returns the set of
+  `:model/Table` ids that were checked."
+  [f]
+  (let [checked (atom [])
+        record  (fn ([obj] obj)
+                  ([entity id] (swap! checked conj [entity id]) {:model entity :id id})
+                  ([entity id & _] (swap! checked conj [entity id]) {:model entity :id id}))]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                api/read-check  record
+                                api/query-check record]
+      (f))
+    (into #{} (comp (filter (fn [[m _]] (= m :model/Table))) (map second)) @checked)))
+
+(deftest numeric-field-ref-permission-checks-fk-target-table-test
+  (testing (str "a bare numeric field ref on an FK-related table is permission-checked on that\n"
+                "table before repair — the numeric surface must not bypass the check the portable\n"
+                "form gets. Without collecting the numeric field id, `api/query-check` would never\n"
+                "see the FK-target table, and a sandboxed user could break out by an id on a table\n"
+                "they have no data perms for.")
+    (with-v2-surface
+      (let [tables (with-recording-query-check!
+                     (fn []
+                       (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "breakout"     [["field" {} 201]]}]}))))]
+        (testing "the source table (ORDERS, 10) is checked"
+          (is (contains? tables 10)))
+        (testing "the FK-target table the numeric field lives on (PRODUCTS, 20) is checked"
+          (is (contains? tables 20)))))))
+
+(deftest numeric-field-ref-permission-check-blocks-forbidden-fk-target-test
+  (testing (str "when data perms on the FK-target table are denied, the numeric field ref surfaces\n"
+                "the 403 during the pre-repair check — the query never reaches repair's implicit-join\n"
+                "auto-wire, so no `source-field` path for the forbidden table is exported to the agent.")
+    (with-v2-surface
+      (let [deny-table-20 (fn deny
+                            ([obj] obj)
+                            ([entity id] (deny entity id nil))
+                            ([entity id & _]
+                             (if (and (= entity :model/Table) (= id 20))
+                               (throw (ex-info "You don't have permissions to do that." {:status-code 403}))
+                               {:model entity :id id})))]
+        (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                                    construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                    api/read-check  deny-table-20
+                                    api/query-check deny-table-20]
+          (try
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" 10
+                            "aggregation"  [["count" {}]]
+                            "breakout"     [["field" {} 201]]}]}))
+            (is false "expected a throw, got a resolved query (permission bypass)")
+            (catch clojure.lang.ExceptionInfo e
+              ;; Numeric refs collapse a query-check denial to the same not-found a missing id
+              ;; gets, so the status cannot be used to probe for tables. What this test guards is
+              ;; unchanged: the denial stops resolution before repair's implicit-join auto-wire.
+              (is (= 400 (:status-code (ex-data e))))
+              (is (= :unknown-table-id (:error (ex-data e)))))))))))
+
+;;; ----- numeric `source-card:` -----------------------------------------------------------
+
+(defn- numeric-card-source
+  "A v2-dialect first stage sourcing `card-id` by bare numeric id."
+  [card-id]
+  {"lib/type" "mbql/query"
+   "stages"   [{"lib/type" "mbql.stage/mbql" "source-card" card-id}]})
+
+(defn- with-stubbed-card!
+  "Run `f` with `metabot.db/card` serving only card 500, and `api/read-check` bound to
+  `read-check`. Stubs the model lookup rather than the content store: the numeric
+  `source-card` branch resolves the database id straight off the card row, before any
+  metadata provider or resolver exists."
+  [read-check f]
+  (mt/with-dynamic-fn-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
+                              api/read-check  read-check]
+    (f)))
+
+(deftest numeric-source-card-resolves-database-id-test
+  (testing "on the v2 surface a bare numeric `source-card:` resolves to the card's database id"
+    (with-v2-surface
+      (with-stubbed-card! allow-read-check
+        (fn []
+          (is (= 1 (construct/resolve-database-id-from-first-stage (numeric-card-source 500)))))))))
+
+(deftest numeric-source-card-is-read-checked-test
+  (testing "the numeric `source-card:` branch read-checks the card it resolves"
+    (with-v2-surface
+      (let [checked (atom [])]
+        (with-stubbed-card! (fn [obj] (swap! checked conj obj) obj)
+          (fn []
+            (construct/resolve-database-id-from-first-stage (numeric-card-source 500))))
+        (is (= [{:id 500 :database_id 1}] @checked)
+            "the resolved card row is handed to api/read-check")))))
+
+(deftest numeric-source-card-denied-never-yields-database-id-test
+  (testing "a numeric `source-card:` the user cannot read never yields the database id"
+    (with-v2-surface
+      (with-stubbed-card! (fn [_] (throw (ex-info "You don't have permissions to do that."
+                                                  {:status-code 403})))
+        (fn []
+          (try
+            (construct/resolve-database-id-from-first-stage (numeric-card-source 500))
+            (is false "expected a throw, got a resolved database id (permission bypass)")
+            (catch clojure.lang.ExceptionInfo e
+              ;; Collapsed to not-found, not 403: an unreadable card and an absent one must be
+              ;; indistinguishable, or the status code probes for hidden cards. The check still
+              ;; runs — that is what this test guards.
+              (is (= :unknown-card-id (:error (ex-data e)))))))))))
+
+(deftest numeric-source-card-read-checked-without-current-user-test
+  (testing (str "the read check does not depend on `api/*current-user-id*` being bound.\n"
+                "A user-less caller must fail closed like any other: guarding the check on a\n"
+                "bound user makes the numeric branch fail OPEN, while its portable sibling\n"
+                "(`tools.u/get-card-by-entity-id`) read-checks unconditionally.")
+    (with-v2-surface
+      (binding [api/*current-user-id* nil]
+        (with-stubbed-card! (fn [_] (throw (ex-info "You don't have permissions to do that."
+                                                    {:status-code 403})))
+          (fn []
+            (try
+              (construct/resolve-database-id-from-first-stage (numeric-card-source 500))
+              (is false "expected a throw, got a resolved database id (permission bypass)")
+              (catch clojure.lang.ExceptionInfo e
+                ;; The point here is that the check RUNS with no bound user; the denial is
+                ;; collapsed to not-found like every other one.
+                (is (= :unknown-card-id (:error (ex-data e))))))))))))
+
+(deftest numeric-source-card-unknown-id-surfaces-agent-error-test
+  (testing (str "a numeric `source-card:` naming no card surfaces `:unknown-card-id`, not a 404 — "
+                "the numeric-specific key, since a numeric miss and a portable-entity_id miss want "
+                "different recovery advice")
+    (with-v2-surface
+      (with-stubbed-card! allow-read-check
+        (fn []
+          (try
+            (construct/resolve-database-id-from-first-stage (numeric-card-source 999))
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (let [d (ex-data e)]
+                (is (true? (:agent-error? d)))
+                (is (= :unknown-card-id (:error d)))
+                (is (= 999 (:card-id d)))))))))))
+
+;;; ----- numeric `source-table:` that resolves to nothing ----------------------------------
+
+(deftest numeric-source-table-unknown-id-surfaces-agent-error-test
+  (testing (str "a numeric `source-table:` naming no active table surfaces `:unknown-table-id`,\n"
+                "distinct from the portable form's `:unknown-table` — the two want different\n"
+                "recovery vocabulary, so the keys must not be collapsed.")
+    (with-v2-surface
+      (mt/with-dynamic-fn-redefs [metabot.db/readable-active-table-database-id (fn [_] nil)]
+        (try
+          (construct/resolve-database-id-from-first-stage
+           {"lib/type" "mbql/query"
+            "stages"   [{"lib/type" "mbql.stage/mbql" "source-table" 999}]})
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-table-id (:error d)))
+              (is (= 999 (:table-id d)))
+              (testing "the id renders without locale digit grouping"
+                (is (str/includes? (ex-message e) "999"))))))))))
+
+;;; ----- recovery-hint passthrough ---------------------------------------------------------
+
+(deftest with-recovery-hint-passthrough-test
+  (testing "an error is returned unchanged when there is no hint to add"
+    (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})]
+      (testing "no recovery-hint function at all"
+        (is (identical? original (#'construct/with-recovery-hint original nil))))
+      (testing "a recovery-hint function with nothing to say about this error"
+        (is (identical? original (#'construct/with-recovery-hint original (constantly nil))))))))
+
+(deftest portable-dialect-still-resolves-on-v2-surface-test
+  (testing "surface isolation: the identical portable query resolves under both surfaces"
+    (with-mp-and-stubs!
+      (fn []
+        (let [q  (query-data
+                  {"lib/type" "mbql/query"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  [["count" {}]]}]})
+              strip-run-specific
+              (fn [query]
+                (walk/postwalk (fn [node]
+                                 (cond-> node (map? node) (dissoc :lib/uuid :lib/metadata)))
+                               query))
+              v1 (get-in (construct/execute-representations-query q) [:structured-output :query])
+              v2 (with-v2-surface
+                   (get-in (construct/execute-representations-query q) [:structured-output :query]))]
+          (is (= 10 (get-in v1 [:stages 0 :source-table])))
+          (is (= (strip-run-specific v1) (strip-run-specific v2))))))))
+
+(deftest v2-surface-error-hints-name-v2-tools-test
+  (testing "resolution errors under the v2 surface steer to browse_data/search, never read_resource"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (try
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "NOPE"]
+                            "aggregation"  [["count" {}]]}]}))
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (let [hint (message/render (v2-hints/recovery-hint (ex-data e)))]
+                (is (= :unknown-table (:error (ex-data e))))
+                (is (re-find #"browse_data" hint))
+                (is (not (re-find #"read_resource|metabase://" (str (ex-message e) hint))))))))))))
+
+(deftest numeric-aggregation-index-ref-in-order-by-v2-test
+  (testing (str "`[aggregation, {}, <index>]` composes with numeric field refs: the repair pass\n"
+                "rewrites it to the canonical UUID-keyed form, so the agent never authors a lib/uuid")
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result    (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" 10
+                                          "aggregation"  [["sum" {} ["field" {} 101]]
+                                                          ["count" {}]]
+                                          "breakout"     [["field" {} 102]]
+                                          "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}))
+                q         (get-in result [:structured-output :query])
+                agg-uuid  (get-in q [:stages 0 :aggregation 0 1 :lib/uuid])
+                order-ref (get-in q [:stages 0 :order-by 0 2])]
+            (is (string? agg-uuid))
+            (is (= :aggregation (first order-ref)))
+            (is (= agg-uuid (nth order-ref 2)))))))))
+
+;;; ============================================================
 ;;; Metric aggregations end-to-end: YoY growth via metric + offset
 ;;; ============================================================
 
@@ -1174,6 +1544,11 @@
   "Metric123_456DefGhI78")
 
 (def ^:private mock-db-id
+  "Must not exist as a `metabase_database` row. `mp-metric` composes two mocks, and a
+  `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `resolve.mp/table-candidates`
+  treats it as app-DB-backed once the app DB is up and resolves portable FKs against the app DB
+  rather than this provider. With db id 1 that found the real Sample Database's ORDERS, which has
+  no CAMPAIGN_ID, and the failure surfaced only once another namespace had booted the app DB."
   Integer/MAX_VALUE)
 
 (def ^:private mp-metric-base
@@ -1265,8 +1640,9 @@
 
 (deftest metric-joined-breakout-without-join-errors-actionably-test
   (testing (str "A consumer query that OMITS the join (bare breakout on CAMPAIGNS.NAME) is NOT "
-                "silently repaired: it errors :no-fk-path with an actionable message that points the "
-                "LLM at the metric's dimensions resource for the exact join to add (BOT-1612).")
+                "silently repaired: it errors :no-fk-path with an actionable message that explains "
+                "the explicit join. The `metabase://` metric-dimensions URI is surface-specific "
+                "vocabulary, so it lives in the v1 recovery-hint, not the base message (BOT-1612).")
     (with-joined-metric-mp-and-stubs!
       (fn []
         (try
@@ -1277,15 +1653,18 @@
              "stages"   [{"lib/type"     "mbql.stage/mbql"
                           "source-table" ["Sample" "PUBLIC" "ORDERS"]
                           "aggregation"  [["metric" {} metric-eid]]
-                          "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]})
+           {:recovery-hint v1-hints/recovery-hint})
           (is false "expected throw")
           (catch clojure.lang.ExceptionInfo e
             (let [d (ex-data e)]
               (is (= :no-fk-path (:error d)))
               (is (:agent-error? d))
-              (testing "message is actionable: explains the explicit join and points at the metric resource"
-                (is (str/includes? (ex-message e) "joins:"))
-                (is (str/includes? (ex-message e) "metabase://metric"))))))))))
+              (testing "base message is actionable and surface-neutral: explains the explicit join, no URI"
+                (is (str/includes? (ex-message e) "joins:")))
+              (testing "the v1 recovery-hint carries the `metabase://` metric-dimensions vocabulary"
+                (is (str/includes? (ex-message e) "metabase://metric"))
+                (is (str/includes? (v1-hints/recovery-hint d) "metabase://metric"))))))))))
 
 (deftest metric-details-surfaced-artifacts-round-trip-test
   (testing (str "END-TO-END: the join AND the per-dimension reference that `metric-details` surfaces "
@@ -1319,3 +1698,352 @@
               (is (= 1 (count (get-in structured [:query :stages 0 :joins]))))
               (is (some #(= 301 (:field_id %)) (:result-columns structured))
                   "CAMPAIGNS.NAME resolves from the surfaced artifacts"))))))))
+
+(deftest repair-runs-with-refusal-auditing-off-test
+  (testing "repair's source-card lookups are best-effort and the query is resolved for real afterwards,
+            so a refusal in there must not be audited as an access attempt"
+    (let [seen   (atom ::never-called)
+          repair (mt/original-fn #'repr.repair/repair)]
+      (mt/with-dynamic-fn-redefs
+        [repr.repair/repair (fn [& args]
+                              (reset! seen resolve.mp/*audit-refusals?*)
+                              (apply repair args))]
+        (with-mp-and-stubs!
+          (fn []
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "aggregation"  [["count" {}]]}]})))))
+      (is (false? @seen)))))
+
+(defn- legacy-json-wire
+  "Run the tool on a single-stage ORDERS query carrying `stage-kvs`, returning `[before wire]`.
+
+  `before` is the MBQL 5 query the tool built; `wire` is that query converted to legacy the way
+  `links` does for the `/question#` hash and JSON round-tripped."
+  [stage-kvs]
+  (let [result (construct/execute-representations-query
+                (query-data {"lib/type" "mbql/query"
+                             "database" "Sample"
+                             "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                                stage-kvs)]}))
+        before (get-in result [:structured-output :query])]
+    [before (-> before links/->legacy-mbql json/encode (json/decode true))]))
+
+(defn- stage-clause-counts
+  "Per-stage counts of the clause vectors on a query, for comparing a query with its round-trip."
+  [query]
+  (mapv (fn [stage]
+          (into (sorted-map)
+                (for [k     [:filters :aggregation :expressions :breakout :order-by :fields :joins]
+                      :when (contains? stage k)]
+                  [k (count (get stage k))])))
+        (:stages query)))
+
+(defn- assert-survives-json-hop! [[before wire]]
+  ;; `->legacy-mbql` returns the MBQL 5 query unchanged if conversion throws, and a
+  ;; JSON-round-tripped MBQL 5 query passes `lib/query` - so without this the
+  ;; assertion below could hold while proving nothing.
+  (is (= "query" (:type wire))
+      "->legacy-mbql fell back to MBQL 5 instead of converting")
+  ;; ... and `lib/query` does not throw on a wire whose clause `clean-stage-schema-errors` deleted,
+  ;; so "no throw" is not survival. Compare the clauses - by count, since uuids and idents are
+  ;; regenerated across the hop and deep equality is not available. A clause swapped for a different
+  ;; clause of the same arity would slip through; deletion, the failure mode here, would not.
+  (let [after (lib/query mp-temporal wire)]
+    (is (map? after) "did not survive the JSON round-trip")
+    (is (= (stage-clause-counts before) (stage-clause-counts after))
+        "a clause was silently dropped by the round-trip")))
+
+;; A Metabot-built question reaches the frontend as legacy MBQL inside a base64 `/question#` hash,
+;; so it makes a JSON hop that turns every keyword into a string. Legacy normalization has no
+;; `:decode/normalize` on the temporal-unit enums used by `:absolute-datetime`, `:during` or
+;; `:temporal-extract`, so a query carrying one came back un-normalized and the question page 400'd
+;; on `/api/dataset/query_metadata`. The JSON hop is what makes this reproduce - converting to
+;; legacy alone does not, which is why the plain legacy round-trip gates above never caught it
+;; (BOT-2095).
+(deftest legacy-json-round-trip-temporal-filters-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+            abs-dt     (fn [literal unit] ["absolute-datetime" {} literal unit])]
+        (doseq [[label filter-clause]
+                {"bare date range"
+                 ["between" {} created-at "2025-01-01" "2025-12-31"]
+                 "absolute-datetime literal carrying a bucket"
+                 ["=" {} created-at (abs-dt "2025-01-01" "month")]
+                 "absolute-datetime literal with the default unit"
+                 ["=" {} created-at (abs-dt "2025-01-01" "default")]
+                 "absolute-datetime datetime literal with the default unit"
+                 [">" {} created-at (abs-dt "2025-01-01T10:30:00" "default")]
+                 "absolute-datetime datetime literal bucketed by hour"
+                 ["=" {} created-at (abs-dt "2025-01-01T10:00:00" "hour")]
+                 "absolute-datetime year-month literal"
+                 ["=" {} created-at (abs-dt "2025-01" "month")]
+                 "several bucketed literals in one `in`"
+                 ["in" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-03-01" "month")]
+                 "between with one redundant bucket and `now`"
+                 ["between" {} created-at (abs-dt "2025-01-01" "day") "now"]
+                 "during"
+                 ["during" {} created-at "2025-01-01" "month"]
+                 "during with a sub-day unit"
+                 ["during" {} created-at "2025-01-01T10:00:00" "hour"]
+                 "temporal-extract"
+                 ["=" {} ["temporal-extract" {} created-at "day-of-week"] 2]
+                 "temporal-extract carrying a week mode"
+                 ["=" {} ["temporal-extract" {} created-at "week-of-year-iso"] 2]
+                 "temporal-extract with the optional week-mode slot"
+                 ["=" {} ["temporal-extract" {} created-at "day-of-week" "iso"] 2]}]
+          (testing label
+            (assert-survives-json-hop! (legacy-json-wire {"filters"     [filter-clause]
+                                                          "aggregation" [["count" {}]]}))))
+        (testing "a bucketed literal compared to a custom column"
+          (assert-survives-json-hop!
+           (legacy-json-wire {"expressions" [["datetime-add" {"lib/expression-name" "Ship Date"} created-at 3 "day"]]
+                              "filters"     [["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "month")]]
+                              "aggregation" [["count" {}]]})))
+        (testing "a bucketed literal inside a `case` under `expressions`"
+          (assert-survives-json-hop!
+           (legacy-json-wire {"expressions" [["case" {"lib/expression-name" "Jan"}
+                                              [[["=" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0]]
+                              "aggregation" [["count" {}]]})))
+        (testing "a post-aggregation filter, which repair moves into a second stage"
+          (assert-survives-json-hop!
+           (legacy-json-wire {"aggregation" [["max" {} created-at]]
+                              "breakout"    [["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
+                              "filters"     [["<" {} ["aggregation" {} 0] (abs-dt "2025-01-01" "month")]]})))))))
+
+;; A bucketed temporal clause that Pass 2.95 cannot hoist does not survive the `/question#` hash the
+;; frontend opens: 400 in dev, and in production `lib/query`'s cleaner deletes the clause and the
+;; question silently answers something else. Pass 6 turns each into a retryable agent error (BOT-2095).
+(deftest unencodable-temporal-clause-reaches-the-agent-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+            abs-dt     (fn [literal unit] ["absolute-datetime" {} literal unit])]
+        (doseq [[label stage-kvs]
+                {"in `count-where`"
+                 {"aggregation" [["count-where" {} [">" {} created-at (abs-dt "2025-01-01" "month")]]]}
+                 "in a join condition"
+                 {"joins"       [{"lib/type"   "mbql/join"
+                                  "alias"      "O2"
+                                  "stages"     [{"lib/type" "mbql.stage/mbql"
+                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                                  "conditions" [[">" {} created-at (abs-dt "2025-01-01" "month")]]}]
+                  "aggregation" [["count" {}]]}
+                 "a `value` clause carrying a unit"
+                 {"filters"     [["=" {} created-at
+                                  ["value" {"base-type" "type/DateTime" "unit" "day"} "2025-01-01"]]]
+                  "aggregation" [["count" {}]]}}]
+          (testing label
+            (try
+              (construct/execute-representations-query
+               (query-data {"lib/type" "mbql/query"
+                            "database" "Sample"
+                            "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                                                "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                               stage-kvs)]}))
+              (is false "expected throw")
+              (catch clojure.lang.ExceptionInfo e
+                (let [d (ex-data e)]
+                  (is (true? (:agent-error? d)))
+                  (is (= :unencodable-temporal-clause (:error d))))))))))))
+
+;; Repair moves a bucket onto the ref without knowing the column's type; lib accepts a bucket on a
+;; text column, and the QP would then drop it silently on a `field` ref and keep it on an
+;; `expression` ref, where it compiles to nonsense. The gate after resolve turns either into an
+;; agent-facing error (the pre-hoist shape used to be rejected by the expression editor gate).
+(deftest temporal-bucket-on-non-temporal-column-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [status     ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
+            abs-dt     (fn [literal unit] ["absolute-datetime" {} literal unit])
+            label-expr ["concat" {"lib/expression-name" "Label"} status "x"]]
+        (doseq [[label stage-kvs]
+                {"hoisted from a bucketed literal"
+                 {"filters"     [["<" {} status (abs-dt "2025-01-01" "month")]]
+                  "aggregation" [["count" {}]]}
+                 "written by the model"
+                 {"filters"     [["=" {} ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "2025-01-01"]]
+                  "aggregation" [["count" {}]]}
+                 "hoisted onto a text custom column"
+                 {"expressions" [label-expr]
+                  "filters"     [["<" {} ["expression" {} "Label"] (abs-dt "2025-01-01" "month")]]
+                  "aggregation" [["count" {}]]}
+                 "written by the model onto a text custom column"
+                 {"expressions" [label-expr]
+                  "filters"     [["=" {} ["expression" {"temporal-unit" "month"} "Label"] "2025-01-01"]]
+                  "aggregation" [["count" {}]]}
+                 "hoisted onto a text custom column inside an `expressions` definition"
+                 {"expressions" [label-expr
+                                 ["case" {"lib/expression-name" "Cohort"}
+                                  [[["<" {} ["expression" {} "Label"] (abs-dt "2025-01-01" "month")] "a"]] "b"]]
+                  "aggregation" [["count" {}]]}
+                 ;; an extraction unit stamps the *bucket's* type on `effective-type`, so the gate
+                 ;; has to look past it to the column's own type - here still Text
+                 "written by the model with the bucket's own type stamped on the ref"
+                 {"expressions" [label-expr]
+                  "breakout"    [["expression" {"temporal-unit"  "month-of-year"
+                                                "effective-type" "type/Integer"} "Label"]]
+                  "aggregation" [["count" {}]]}
+                 ;; the join condition's left-hand ref belongs to the *parent* stage, so the gate has
+                 ;; to type it there - the join's own stage has no `Label`
+                 "written by the model onto a text custom column in a join condition"
+                 {"expressions" [label-expr]
+                  "joins"       [{"lib/type"   "mbql/join"
+                                  "alias"      "O2"
+                                  "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                                  "conditions" [["=" {} ["expression" {"temporal-unit" "month"} "Label"]
+                                                 ["field" {"join-alias" "O2"} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]]}]
+                  "aggregation" [["count" {}]]}}]
+          (testing label
+            (try
+              (construct/execute-representations-query
+               (query-data {"lib/type" "mbql/query"
+                            "database" "Sample"
+                            "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                                                "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                               stage-kvs)]}))
+              (is false "expected throw")
+              (catch clojure.lang.ExceptionInfo e
+                (let [d (ex-data e)]
+                  (is (true? (:agent-error? d)))
+                  (is (= :temporal-unit-on-non-temporal-column (:error d))))))))
+        (testing "the message names a custom column as such"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"`Label` is a Text custom column"
+               (construct/execute-representations-query
+                (query-data {"lib/type" "mbql/query"
+                             "database" "Sample"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                          "expressions"  [label-expr]
+                                          "filters"      [["<" {} ["expression" {} "Label"] (abs-dt "2025-01-01" "month")]]
+                                          "aggregation"  [["count" {}]]}]}))))
+          (is (thrown-with-msg?
+               ;; Text, not the `Integer` the extraction bucket stamped on `effective-type`
+               clojure.lang.ExceptionInfo #"`Label` is a Text custom column"
+               (construct/execute-representations-query
+                (query-data {"lib/type" "mbql/query"
+                             "database" "Sample"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                          "expressions"  [label-expr]
+                                          "breakout"     [["expression" {"temporal-unit"  "month-of-year"
+                                                                         "effective-type" "type/Integer"} "Label"]]
+                                          "aggregation"  [["count" {}]]}]}))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"`Status` is a Text column"
+               (construct/execute-representations-query
+                (query-data {"lib/type" "mbql/query"
+                             "database" "Sample"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                          "filters"      [["<" {} status (abs-dt "2025-01-01" "month")]]
+                                          "aggregation"  [["count" {}]]}]}))))))
+      ;; The gate is only useful if it leaves working queries alone. Typing an `expression` ref needs
+      ;; the ref's stage, and a join condition mixes two of them: this query runs today, and a gate
+      ;; that resolved every join ref in the join's own stage would reject it with `No expression
+      ;; named "Ship"`.
+      (testing "a join condition bucketing a temporal custom column from the parent stage is accepted"
+        (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+              result     (construct/execute-representations-query
+                          (query-data {"lib/type" "mbql/query"
+                                       "database" "Sample"
+                                       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                    "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                    "expressions"  [["datetime-add" {"lib/expression-name" "Ship"} created-at 3 "day"]]
+                                                    "joins"        [{"lib/type"   "mbql/join"
+                                                                     "alias"      "O2"
+                                                                     "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                                                    "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                                                                     "conditions" [["=" {}
+                                                                                    ["expression" {"temporal-unit" "month"} "Ship"]
+                                                                                    ["field" {"join-alias" "O2" "temporal-unit" "month"}
+                                                                                     ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]]}]
+                                                    "aggregation"  [["count" {}]]}]}))]
+          (is (some? (get-in result [:structured-output :query])))))
+      ;; The mirror of the Text case above: an extraction unit stamps `:type/Integer` on
+      ;; `effective-type` while `base-type` keeps the column's own type. This query runs and answers
+      ;; correctly, so reading the stamped type would reject a working query.
+      (testing "a `day-of-week` bucket on a temporal custom column carrying the bucket's type is accepted"
+        (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+              result     (construct/execute-representations-query
+                          (query-data {"lib/type" "mbql/query"
+                                       "database" "Sample"
+                                       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                    "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                    "expressions"  [["datetime-add" {"lib/expression-name" "Ship"} created-at 3 "day"]]
+                                                    "breakout"     [["expression" {"temporal-unit"  "day-of-week"
+                                                                                   "effective-type" "type/Integer"
+                                                                                   "base-type"      "type/DateTime"} "Ship"]]
+                                                    "aggregation"  [["count" {}]]}]}))]
+          (is (some? (get-in result [:structured-output :query])))))
+      ;; `with-temporal-bucket` records the pre-bucket type in `:lib/original-effective-type` and
+      ;; stamps the bucketed one on `:effective-type`, so an extraction unit makes a datetime column
+      ;; look like an integer. The gate strips the bucket before asking for the type; reading the
+      ;; ref's own options instead would reject this legitimate query builder output.
+      (testing "a `month-of-year` bucket on a field ref the query builder produced is accepted"
+        (let [q0  (lib/query mp-temporal (lib.metadata/table mp-temporal 10))
+              col (first (filter #(= 103 (:id %)) (lib/filterable-columns q0)))
+              ref (lib/with-temporal-bucket (lib/ref col) :month-of-year)
+              q   (lib/filter q0 (lib/= ref 6))]
+          (is (= [:type/Integer :type/DateTime]
+                 ((juxt :effective-type :lib/original-effective-type) (second ref))))
+          (is (= q (repr.repair/assert-temporal-buckets-on-temporal-columns! q))))))))
+
+;; A coerced column's `:effective-type` is its own post-coercion type, not the artifact of an
+;; extraction bucket, so the gate has to keep it: strip it and an ISO-8601 timestamp column reads
+;; back as `:type/Text`. Pass 2.95 funnels every way of asking "filter this column by year" into the
+;; bucketed-ref shape below, so rejecting it left the model with no phrasing that worked - and advice
+;; ("bucket a date / datetime column instead") that pointed back at the same column.
+(deftest temporal-bucket-on-coerced-column-accepted-test
+  (with-coerced-mp-and-stubs!
+    (fn []
+      (doseq [column ["CREATED_AT_UNIX" "CREATED_AT_ISO"]
+              :let   [bare     ["field" {} ["Sample" "PUBLIC" "ORDERS" column]]
+                      bucketed ["field" {"temporal-unit" "year"} ["Sample" "PUBLIC" "ORDERS" column]]]
+              [shape filters]
+              {"a bucketed literal"    [["=" {} bare ["absolute-datetime" {} "2024-01-01" "year"]]]
+               "a `during`"            [["during" {} bare "2024-01-01" "year"]]
+               "the bucket on the ref" [["=" {} bucketed "2024-01-01"]]
+               "a bucketed `between`"  [["between" {} bucketed "2024-01-01" "2024-12-31"]]}]
+        (testing (str column " bucketed by year, written as " shape)
+          (let [result (construct/execute-representations-query
+                        (query-data {"lib/type" "mbql/query"
+                                     "database" "Sample"
+                                     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                  "filters"      filters
+                                                  "aggregation"  [["count" {}]]}]}))]
+            (is (some? (get-in result [:structured-output :query])))))))))
+
+;; The pin for the test above: `year` is an extraction unit as well as a truncation one, and what
+;; buys a coerced column its bucket is the coercion, not the unit. `ID` and `STATUS` are the
+;; uncoerced twins of the two columns accepted above - same `base-type`, no `effective-type`.
+(deftest temporal-bucket-by-year-on-non-temporal-column-rejected-test
+  (with-coerced-mp-and-stubs!
+    (fn []
+      (doseq [[column type-name] {"ID" "Integer", "STATUS" "Text"}]
+        (testing (str column " bucketed by year")
+          (try
+            (construct/execute-representations-query
+             (query-data {"lib/type" "mbql/query"
+                          "database" "Sample"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                       "filters"      [["=" {} ["field" {"temporal-unit" "year"}
+                                                                ["Sample" "PUBLIC" "ORDERS" column]]
+                                                        "2024-01-01"]]
+                                       "aggregation"  [["count" {}]]}]}))
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (let [d (ex-data e)]
+                (is (true? (:agent-error? d)))
+                (is (= :temporal-unit-on-non-temporal-column (:error d)))
+                (is (str/includes? (ex-message e) (str "is a " type-name " column")))))))))))

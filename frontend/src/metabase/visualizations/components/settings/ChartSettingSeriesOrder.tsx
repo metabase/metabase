@@ -6,16 +6,25 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { getAccentColors } from "metabase/ui/colors/groups";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { getEventTarget } from "metabase/utils/dom";
 import { isEmpty } from "metabase/utils/validate";
 import type {
   ChartSettingSeriesOrderItem,
   ChartSettingSeriesOrderProps,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 
 import { ChartSettingMessage } from "./ChartSettingMessage";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
@@ -99,7 +108,7 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const getItemTitle = useCallback((item: ChartSettingSeriesOrderItem) => {
-    return isEmpty(item.name) ? NULL_DISPLAY_VALUE : item.name;
+    return isEmpty(item.name) ? getNullDisplayValue() : item.name;
   }, []);
 
   const handleOnEdit = useCallback(
@@ -117,8 +126,12 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleColorChange = useCallback(
-    (item: ChartSettingSeriesOrderItem, color: string) => {
-      onChangeSeriesColor(item.key, color);
+    (
+      item: ChartSettingSeriesOrderItem,
+      hexValue: string,
+      colorName?: string,
+    ) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );
@@ -155,16 +168,17 @@ export const ChartSettingSeriesOrder = ({
             <Group p={4} gap="sm">
               <ColorSelector
                 value={otherColor ?? color("text-disabled")}
-                colors={getAccentColors()}
+                colors={getNamedAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
               />
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
-              size="compact-md"
-              color="text-secondary"
               variant="subtle"
+              color="neutral"
+              size="sm"
               leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
@@ -181,7 +195,7 @@ export const ChartSettingSeriesOrder = ({
   ]);
 
   return (
-    <Box pl="md" pb="sm">
+    <Box pl="lg" pb="sm">
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems
@@ -199,24 +213,26 @@ export const ChartSettingSeriesOrder = ({
             getItemColor={getItemColor}
             dividers={dividers}
           />
-          {truncatedItems.length > 0 ? (
-            <div>
+          <Stack gap="md" mt="md" align="flex-start">
+            {truncatedItems.length > 0 && (
               <Button
-                variant="subtle"
+                variant="transparent"
+                size="compact-md"
                 onClick={() => setIsListTruncated(false)}
               >
                 {t`${truncatedItems.length} more series`}
               </Button>
-            </div>
-          ) : null}
-          {canAddSeries && !isSeriesPickerVisible && (
-            <Button
-              variant="subtle"
-              onClick={() => setSeriesPickerVisible(true)}
-            >
-              {addButtonLabel}
-            </Button>
-          )}
+            )}
+            {canAddSeries && !isSeriesPickerVisible && (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                onClick={() => setSeriesPickerVisible(true)}
+              >
+                {addButtonLabel}
+              </Button>
+            )}
+          </Stack>
           {isSeriesPickerVisible && (
             <Select
               dropdownOpened

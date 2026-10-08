@@ -8,7 +8,8 @@
   along on the next flush as an [[dropped-metric]] :inc event so dashboards can tell 'quiet
   system' apart from 'we dropped half your events'."
   (:require
-   [metabase.analytics-interface.core :as analytics.interface]))
+   [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.util.performance :refer [dropv]]))
 
 (def ^:private flush-interval-ms 5000)
 
@@ -23,7 +24,7 @@
   [{:keys [events dropped]} event capacity]
   (let [events'  (conj events event)
         overflow (max 0 (- (count events') capacity))]
-    {:events  (if (pos? overflow) (vec (drop overflow events')) events')
+    {:events  (if (pos? overflow) (dropv overflow events') events')
      :dropped (+ dropped overflow)}))
 
 (defn- take-pending

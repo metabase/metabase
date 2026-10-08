@@ -1,7 +1,6 @@
 (ns metabase.dashboards.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.queries.models.card-test :as card-test]
@@ -180,7 +179,6 @@
       (testing "return value from the update call should be nil"
         (is (nil? (dashboard-card/update-dashboard-card!
                    {:id                     dashcard-id
-                    :actor_id               (mt/user->id :rasta)
                     :dashboard_id           nil
                     :card_id                nil
                     :size_x                 5
@@ -232,21 +230,21 @@
         (testing "Should have more calls if there are changes to the dashcards"
           (t2/with-call-count [call-count]
             (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
                                                      :size_y 4
                                                      :series [{:id series-id-1}]}
                                                     {:id     (:id dashcard-2)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
                                                      :size_y 4
                                                      :series [{:id series-id-2}]}
                                                     {:id     (:id dashcard-3)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
@@ -420,14 +418,3 @@
                                    :column_settings
                                    {"[\"name\",\"abc\"]"
                                     {:click_behavior {:type "link" :linkType "question" :targetId card-id}}}}}))))))))
-
-(deftest ^:parallel link-card-id-compiles-as-query-parameter-test
-  (testing "a non-integer id is rejected when building the link-card query"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"must be an integer"
-         (dashboard-card/link-card-info-query-for-model "card" {:raw "x"}))))
-  (testing "single-id and collection forms both pass a legitimate id as a bind parameter"
-    (doseq [ids [42 #{42} [42]]]
-      (let [[query & params] (sql/format (dashboard-card/link-card-info-query-for-model "card" ids))]
-        (is (re-find #"\?" query) "the id appears as a bind parameter")
-        (is (= [42] params))))))

@@ -69,6 +69,7 @@
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
 
+;; referenced from with-slackbot-setup's syntax-quoted with-redefs, which clojure-lsp cannot see
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn validate-bot-token!
   "Validate a Slack bot token using the auth.test endpoint.

@@ -97,32 +97,26 @@ export function PythonEditorBody({
       />
 
       {isEditMode && (
-        <Stack m="1rem" gap="md" mt="auto">
+        <Stack m="1rem" gap="lg" mt="auto">
           {proposedSource && onRejectProposed && onAcceptProposed && (
             <>
               <Tooltip label={t`Accept proposed changes`} position="left">
                 <Button
                   data-testid="accept-proposed-changes-button"
-                  variant="filled"
-                  bg="feedback-positive"
-                  px="0"
-                  w="2.5rem"
+                  variant="light"
+                  color="positive"
                   onClick={onAcceptProposed}
-                >
-                  <Icon name="check" />
-                </Button>
+                  leftSection={<Icon name="check" />}
+                />
               </Tooltip>
               <Tooltip label={t`Reject proposed changes`} position="left">
                 <Button
                   data-testid="reject-proposed-changes-button"
-                  w="2.5rem"
-                  px="0"
-                  variant="filled"
-                  bg="feedback-negative"
+                  variant="light"
+                  color="negative"
                   onClick={onRejectProposed}
-                >
-                  <Icon name="close" />
-                </Button>
+                  leftSection={<Icon name="close" />}
+                />
               </Tooltip>
             </>
           )}

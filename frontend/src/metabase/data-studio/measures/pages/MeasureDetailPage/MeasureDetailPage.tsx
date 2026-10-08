@@ -6,13 +6,12 @@ import { useUpdateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import type { Measure } from "metabase-types/api";
+import type { Measure, Table } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
 import { MeasureHeader } from "../../components/MeasureHeader";
@@ -21,6 +20,7 @@ import type { MeasureTabUrls } from "../../types";
 
 type MeasureDetailPageProps = {
   measure: Measure;
+  table: Table;
   tabUrls: MeasureTabUrls;
   breadcrumbs: ReactNode;
   onRemove: () => Promise<void>;
@@ -28,14 +28,13 @@ type MeasureDetailPageProps = {
 
 export function MeasureDetailPage({
   measure,
+  table,
   tabUrls,
   breadcrumbs,
   onRemove,
 }: MeasureDetailPageProps) {
-  const metadata = useSelector(getMetadata);
-  const table = metadata.tables[measure.table_id];
   const canWriteMeasures = useSelector((state) =>
-    getUserCanWriteMeasures(state, !!table?.is_published),
+    getUserCanWriteMeasures(state, table.is_published),
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -43,7 +42,7 @@ export function MeasureDetailPage({
   const [definition, setDefinition] = useState(measure.definition);
   const [savedMeasure, setSavedMeasure] = useState(measure);
 
-  const { query, aggregations } = useMeasureQuery(definition, metadata);
+  const { query, aggregations } = useMeasureQuery(definition);
 
   const isDirty = useMemo(
     () =>

@@ -22,7 +22,7 @@ export const GitSyncOptionsDropdown = ({
   if (isPullError) {
     return (
       <Combobox.Dropdown p={0}>
-        <Box p="md">
+        <Box p="lg">
           <Text size="sm" c="feedback-negative" ta="center">
             {t`Failed to check for changes — check your authentication token`}
           </Text>
@@ -43,7 +43,7 @@ export const GitSyncOptionsDropdown = ({
             py="sm"
             value="push"
           >
-            <Group gap="md" wrap="nowrap">
+            <Group gap="lg" wrap="nowrap">
               <Icon name="arrow_up" size={12} />
               <Text>{t`Push changes`}</Text>
             </Group>
@@ -59,7 +59,7 @@ export const GitSyncOptionsDropdown = ({
             py="sm"
             value="pull"
           >
-            <Group gap="md" wrap="nowrap">
+            <Group gap="lg" wrap="nowrap">
               {isLoadingPull ? (
                 <Loader size={12} data-testid="pull-changes-loader" />
               ) : (

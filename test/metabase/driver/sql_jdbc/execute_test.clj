@@ -7,6 +7,9 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
@@ -95,7 +98,7 @@
             (identical? (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)
                         (get-method sql-jdbc.execute/do-with-connection-with-options driver/*driver*))
 
-            orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source
+            orig-do-with-resolved-connection-data-source (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)
             closed-conn (proxy [Connection] []
                           (isClosed [] true)
                           (close [] nil))
@@ -121,19 +124,18 @@
                          (vswap! connection-option-calls conj [:setHoldability holdability]))
                        (setNetworkTimeout [executor timeout-ms]
                          (vswap! connection-option-calls conj [:setNetworkTimeout timeout-ms])))]
-        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [driver db options]
-                        (if (:keep-open? options)
-                          (reify javax.sql.DataSource
-                            (getConnection [_] new-conn))
-                          (orig-do-with-resolved-connection-data-source driver db options)))
-
-                      sql-jdbc.execute/recursive-connection?
-                      (let [original-recursive-fn sql-jdbc.execute/recursive-connection?]
-                        (fn []
-                          (let [ret (original-recursive-fn)]
-                            (vswap! connection-option-calls conj [:recursive-connection-check ret])
-                            ret)))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db options]
+                                      (if (:keep-open? options)
+                                        (reify javax.sql.DataSource
+                                          (getConnection [_] new-conn))
+                                        (orig-do-with-resolved-connection-data-source driver db options)))
+                                    sql-jdbc.execute/recursive-connection?
+                                    (let [original-recursive-fn (mt/original-fn #'sql-jdbc.execute/recursive-connection?)]
+                                      (fn []
+                                        (let [ret (original-recursive-fn)]
+                                          (vswap! connection-option-calls conj [:recursive-connection-check ret])
+                                          ret)))]
           (driver/do-with-resilient-connection
            driver/*driver* (mt/id)
            (fn [driver _db]
@@ -216,18 +218,19 @@
 
 (deftest bad-connection-details-throw-client-error-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    ;; needs a real Database row: the query goes through the HTTP API, not a metadata provider
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                            :engine  driver/*driver*}]
       ;; It's not straightforward to trigger a `.getConnection` error for some drivers (e.g. sqlite)
       ;; so just mock the exception. Also need to mock this h2 method so that the query doesn't fail
       ;; before it gets to `do-with-resolved-connection-data-source`.
-      (with-redefs [h2/check-read-only-statements (fn [_query] nil)
-                    sql-jdbc.execute/do-with-resolved-connection-data-source
-                    (fn [_driver _db-or-id-or-spec _options]
-                      (reify javax.sql.DataSource
-                        (getConnection [_]
-                          (throw (java.sql.SQLException. "connection error")))))]
+      (mt/with-dynamic-fn-redefs [h2/check-read-only-statements (fn [_query] nil)
+                                  sql-jdbc.execute/do-with-resolved-connection-data-source
+                                  (fn [_driver _db-or-id-or-spec _options]
+                                    (reify javax.sql.DataSource
+                                      (getConnection [_]
+                                        (throw (java.sql.SQLException. "connection error")))))]
         (let [query    {:database (:id tmp-db)
                         :type     :native
                         :native   {:query "SELECT 1"}}
@@ -237,17 +240,18 @@
 (deftest connection-pool-checkout-timeout-returns-503-test
   (testing "A c3p0 checkout timeout (saturated pool) surfaces to the frontend as a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      ;; needs a real Database row: the query goes through the HTTP API, not a metadata provider
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                              :engine  driver/*driver*}]
-        (with-redefs [h2/check-read-only-statements (fn [_query] nil)
-                      sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [_driver _db-or-id-or-spec _options]
-                        (reify javax.sql.DataSource
-                          (getConnection [_]
-                            (throw (java.sql.SQLException.
-                                    "An attempt by a client to checkout a Connection has timed out."
-                                    (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))))]
+        (mt/with-dynamic-fn-redefs [h2/check-read-only-statements (fn [_query] nil)
+                                    sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [_driver _db-or-id-or-spec _options]
+                                      (reify javax.sql.DataSource
+                                        (getConnection [_]
+                                          (throw (java.sql.SQLException.
+                                                  "An attempt by a client to checkout a Connection has timed out."
+                                                  (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))))]
           (let [query    {:database (:id tmp-db)
                           :type     :native
                           :native   {:query "SELECT 1"}}
@@ -274,18 +278,49 @@
 (deftest connection-pool-full-checkout-queue-returns-503-test
   (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      ;; needs a real Database row: the query goes through the HTTP API, not a metadata provider
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                              :engine  driver/*driver*}]
         (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 1]
-          (with-redefs [h2/check-read-only-statements (fn [_query] nil)
-                        sql-jdbc.execute/do-with-resolved-connection-data-source
-                        (fn [_driver _db-or-id-or-spec _options]
-                          ;; a pool that already has more queries waiting than the configured max
-                          (reify com.mchange.v2.c3p0.PooledDataSource
-                            (getNumThreadsAwaitingCheckoutDefaultUser [_] 5)))]
+          (mt/with-dynamic-fn-redefs [h2/check-read-only-statements (fn [_query] nil)
+                                      sql-jdbc.execute/do-with-resolved-connection-data-source
+                                      (fn [_driver _db-or-id-or-spec _options]
+                                        ;; a pool that already has more queries waiting than the configured max
+                                        (reify com.mchange.v2.c3p0.PooledDataSource
+                                          (getNumThreadsAwaitingCheckoutDefaultUser [_] 5)))]
             (let [query    {:database (:id tmp-db)
                             :type     :native
                             :native   {:query "SELECT 1"}}
                   response (mt/user-http-request :crowberto :post 503 "dataset" query)]
               (is (= "connection-pool-checkout-queue-full" (:error_type response))))))))))
+
+(defn- venues-rows
+  "Run an unaggregated venues query limited to `n` rows."
+  [n]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/limit n)
+        qp/process-query
+        mt/rows)))
+
+(deftest cancel-statement-only-when-rows-remain-test
+  (testing "the statement is canceled only when reduction stopped before the ResultSet ran out of rows"
+    (mt/test-drivers (mt/normal-driver-select
+                      {:+parent :sql-jdbc
+                       :-fns    [#'sql-jdbc.execute/drivers-exempt-from-cancelation]})
+      ;; take the dataset creation and sync queries before anything is counted
+      (venues-rows 1)
+      (let [cancels (atom 0)]
+        ;; the stub reports that no cancelation was issued, so nothing downstream acts on one
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/cancel-statement! (fn [_driver _stmt]
+                                                                         (swap! cancels inc)
+                                                                         false)]
+          (testing "rows ran out, so there is nothing left to cancel"
+            (reset! cancels 0)
+            (is (= 100 (count (venues-rows 1000))))
+            (is (zero? @cancels)))
+          (testing "reduction stopped at the row limit while the statement was still producing (#39018)"
+            (reset! cancels 0)
+            (is (= 4 (count (venues-rows 4))))
+            (is (pos? @cancels))))))))

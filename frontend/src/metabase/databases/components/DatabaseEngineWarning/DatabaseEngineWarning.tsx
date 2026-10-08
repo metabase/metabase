@@ -68,7 +68,7 @@ interface NewEngineWarningProps {
 }
 
 const NewEngineWarning = ({ engineName, onChange }: NewEngineWarningProps) => (
-  <Box mb="xl">
+  <Box mb="xxl">
     <Alert size="compact" variant="light">
       {t`This driver will be removed in a future release.`}{" "}
       {jt`We recommend you upgrade to the ${(
@@ -92,7 +92,7 @@ interface OldEngineWarningProps {
 }
 
 const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
-  <Box mb="xl">
+  <Box mb="xxl">
     <Alert variant="light">
       {t`This is our new ${engineName} driver.`}{" "}
       {t`The old driver has been deprecated and will be removed in a future release.`}{" "}
@@ -112,7 +112,7 @@ const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
 );
 
 const CommunityEngineWarning = () => (
-  <Box mb="xl">
+  <Box mb="xxl">
     <Alert variant="light" icon={<Icon name="info" />}>
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
       {t`This is a community-developed driver and not supported by Metabase. `}

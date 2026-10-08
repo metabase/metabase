@@ -4,7 +4,7 @@ import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
 import { useDispatch } from "metabase/redux";
 import { loginGoogle } from "metabase/redux/auth";

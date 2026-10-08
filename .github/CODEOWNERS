@@ -42,11 +42,20 @@ docs/api.json # auto-generated
 docs/configuring-metabase/environment-variables.md # auto-generated
 docs/configuring-metabase/config-template.md # auto-generated
 docs/installation-and-operation/commands.md # auto-generated
+docs/ai/providers.md # auto-generated
+docs/ai/mcp-tools.md # auto-generated
 docs/embedding/sdk/api # auto-generated
 docs/embedding/eajs/snippets # auto-generated
 
 # @metabase/devexp
 .github @metabase/devexp
+
+# These files are left unowned on purpose.
+# They change in most backend PRs, so an owning team would review many changes for little benefit.
+# Ratchet budgets may split per module in future, which would give each module's team its own file.
+# .clj-kondo/ratchets.edn @metabase/devexp
+# .clj-kondo/ratchets-test.edn @metabase/devexp
+# .clj-kondo/config.edn @metabase/devexp
 
 # @metabase/cloud-ops
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
@@ -54,3 +63,34 @@ src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 # @metabase/metabot-frontend
 enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend
+
+# @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/embeddings @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/entity_retrieval @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/search @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/semantic_search @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/embeddings @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/entity_retrieval @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/search @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/semantic_search @metabase/metabot-backend
+frontend/src/metabase-types/api/search.ts @metabase/metabot-backend
+frontend/src/metabase/api/search.ts @metabase/metabot-backend
+modules/embedder @metabase/metabot-backend
+src/metabase/embeddings @metabase/metabot-backend
+src/metabase/entity_retrieval @metabase/metabot-backend
+src/metabase/search @metabase/metabot-backend
+test/metabase/embeddings @metabase/metabot-backend
+test/metabase/entity_retrieval @metabase/metabot-backend
+test/metabase/search @metabase/metabot-backend
+
+# @metabase/core-frontend-gadget
+bin/custom-viz @metabase/core-frontend-gadget
+docs/developers-guide/custom-visualizations.md @metabase/core-frontend-gadget
+enterprise/frontend/src/custom-viz @metabase/core-frontend-gadget
+enterprise/frontend/src/metabase-enterprise/api/custom-viz-plugin.ts @metabase/core-frontend-gadget
+enterprise/frontend/src/metabase-enterprise/custom_viz @metabase/core-frontend-gadget
+frontend/src/metabase-types/api/custom-viz-plugin.ts @metabase/core-frontend-gadget
+frontend/src/metabase/plugins/oss/custom-viz.ts @metabase/core-frontend-gadget
+frontend/src/metabase/visualizations/custom-visualizations @metabase/core-frontend-gadget
+frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
+.github/workflows/release-custom-viz.yml @metabase/devexp @metabase/core-frontend-gadget

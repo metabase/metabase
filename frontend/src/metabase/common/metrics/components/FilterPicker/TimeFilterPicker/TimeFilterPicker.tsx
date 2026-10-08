@@ -83,7 +83,7 @@ export function TimeFilterPicker({
       </FilterPickerHeader>
       <Box>
         {valueCount > 0 && (
-          <Flex p="md">
+          <Flex p="lg">
             <TimeValueInput
               values={values}
               valueCount={valueCount}

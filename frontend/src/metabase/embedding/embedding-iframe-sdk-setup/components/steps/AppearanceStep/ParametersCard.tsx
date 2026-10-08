@@ -13,12 +13,12 @@ export const ParametersCard = () => {
   }
 
   return (
-    <Card p="md">
-      <Text size="lg" fw="bold" mb="xs">
+    <Card p="lg">
+      <Text size="lg" fw="bold" mb="xxs">
         {t`Parameters`}
       </Text>
 
-      <Text size="sm" c="text-secondary" mb="lg">
+      <Text size="sm" c="text-secondary" mb="xl">
         {experience === "dashboard"
           ? t`Set default values and control visibility`
           : t`Set default values`}

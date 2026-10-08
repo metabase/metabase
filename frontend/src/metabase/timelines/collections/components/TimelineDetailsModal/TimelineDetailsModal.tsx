@@ -77,7 +77,7 @@ const TimelineDetailsModal = ({
         onGoBack={canGoBack ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
-          <Menu position="bottom-end" shadow="md">
+          <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Timeline menu`}>
                 <Icon name="ellipsis" />
@@ -98,11 +98,12 @@ const TimelineDetailsModal = ({
           />
           {canWrite && !isArchive && (
             <Button
+              size="lg"
               component={ForwardRefLink}
               to={Urls.newEventInCollection(timeline)}
               role="button"
               flex="0 0 auto"
-              ml="md"
+              ml="lg"
             >{t`Create event`}</Button>
           )}
         </ModalToolbar>

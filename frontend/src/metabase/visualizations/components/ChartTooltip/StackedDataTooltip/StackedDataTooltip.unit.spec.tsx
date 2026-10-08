@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { StackedTooltipModel } from "metabase/visualizations/types";
+import type { StackedTooltipModel } from "metabase/viz-core";
 
 import StackedDataTooltip from "./StackedDataTooltip";
 

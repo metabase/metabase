@@ -101,11 +101,11 @@ export function MetabaseAIProviderSetup({
       await metabaseManagedAiPurchase.purchaseMetabaseManagedAi(
         hasAcceptedTerms,
       );
-      await handleConnect();
+      await createLlmProvider({ type: "metabase" }).unwrap();
     } catch {
       setIsSettingUpModalOpen(false);
     }
-  }, [handleConnect, hasAcceptedTerms, metabaseManagedAiPurchase]);
+  }, [createLlmProvider, hasAcceptedTerms, metabaseManagedAiPurchase]);
 
   const connectAction = match({
     hasMetabaseManagedAiProviderFeature,
@@ -153,7 +153,7 @@ export function MetabaseAIProviderSetup({
         />
       ) : (
         <>
-          <Stack gap="md">
+          <Stack gap="lg">
             <Text>{
               // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
               t`The simplest way to get started with AI in Metabase. We pick a benchmarked, cost effective model for you, and billing is managed through your Metabase account.`
@@ -256,7 +256,10 @@ export function MetabaseAIProviderSetup({
             metabaseManagedAiPurchase.isLoading)
         }
         opened={isSettingUpModalOpen}
-        onClose={() => setIsSettingUpModalOpen(false)}
+        onClose={() => {
+          setIsSettingUpModalOpen(false);
+          onConnect?.();
+        }}
       />
     </>
   );
@@ -288,7 +291,7 @@ function MetabaseManagedProviderCard({
   const hasFreeTokens = freeTokens > 0 && tokens <= freeTokens;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {!hasMetabaseManagedAiProviderFeature &&
         hasDeprecatedMetabaseAiProvider &&
         offerMetabaseManagedAi && (
@@ -304,7 +307,7 @@ function MetabaseManagedProviderCard({
       })
         .with({ hasMetabaseManagedAiProviderFeature: false }, () => null)
         .with({ isLocked: true }, () => (
-          <Flex direction="column" gap="xs">
+          <Flex direction="column" gap="xxs">
             <Text c="text-primary" fw={500} lh={1.4}>
               {t`You've run out of AI service tokens`}
             </Text>
@@ -329,7 +332,7 @@ function MetabaseManagedProviderCard({
                   label={t`Price per token afterward`}
                 />
               ) : (
-                <Flex align="center" justify="space-between" gap="md">
+                <Flex align="center" justify="space-between" gap="lg">
                   <Skeleton h="1rem" w="7rem" />
                   <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
@@ -350,7 +353,7 @@ function MetabaseManagedProviderCard({
               {!isLoadingPricing && pricing ? (
                 <MetabasePricingRow pricing={pricing} />
               ) : (
-                <Flex align="center" justify="space-between" gap="md">
+                <Flex align="center" justify="space-between" gap="lg">
                   <Skeleton h="1rem" w="7rem" />
                   <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
@@ -370,7 +373,7 @@ function MetabaseManagedProviderCard({
 
 function MetabaseUsageRow({ label, value }: { label: string; value: string }) {
   return (
-    <Flex align="center" justify="space-between" gap="md">
+    <Flex align="center" justify="space-between" gap="lg">
       <Text lh={1}>{label}</Text>
       <Box
         flex={1}
@@ -395,7 +398,7 @@ function MetabasePricingRow({
   pricing: MetabaseManagedAiPricing;
 }) {
   return (
-    <Flex align="center" justify="space-between" gap="md">
+    <Flex align="center" justify="space-between" gap="lg">
       <Text lh="1">
         <Flex align="center" gap="sm">
           {label ?? t`Price per token`}
@@ -431,7 +434,7 @@ function MetabasePricingRow({
 
 function PricingCallout({ children }: { children: ReactNode }) {
   return (
-    <Stack gap="xs" bg="background-secondary" p="md" bdrs="md">
+    <Stack gap="xxs" bg="background-secondary" p="lg" bdrs="sm">
       {children}
     </Stack>
   );
@@ -449,7 +452,7 @@ export function MetabasePricingText({
           {t`You get ${pricing.freeUnits} tokens for free.`}
         </Text>
       )}
-      <Group gap="xs" align="center">
+      <Group gap="xxs" align="center">
         <Text lh="1">
           {pricing.freeUnits
             ? t`Price per token afterward - ${pricing.price} per ${pricing.unit} tokens`

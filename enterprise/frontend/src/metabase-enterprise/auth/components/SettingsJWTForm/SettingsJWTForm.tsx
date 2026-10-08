@@ -1,13 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
+import * as Yup from "yup";
 
 import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
-import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
+  getDefaultPlaceholder,
+  getExtraFormFieldProps,
+  getStoredFieldValue,
+} from "metabase/admin/settings/utils";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -15,20 +15,42 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSecretKey,
-  FormSection,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   useAdminSetting,
   useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
 } from "metabase/settings";
-import { Flex, Stack } from "metabase/ui";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_DESCRIPTION_PROPS,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
+import { Box, Flex, Stack } from "metabase/ui";
+import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type {
   EnterpriseSettings,
+  SettingDefinition,
   SettingDefinitionMap,
 } from "metabase-types/api";
+
+import { JWTGroupMappingSection } from "./JWTGroupMappingSection";
+
+/**
+ * Attribute-key fields show the backend default as a placeholder, no helper text.
+ * Env-locked fields swap the placeholder for the readOnly "Using MB_..." notice.
+ */
+const getAttributeFieldProps = (setting: SettingDefinition | undefined) =>
+  setting?.is_env_setting
+    ? getExtraFormFieldProps(setting)
+    : { placeholder: getDefaultPlaceholder(setting) };
 
 export type JWTFormValues = Pick<
   EnterpriseSettings,
@@ -37,7 +59,20 @@ export type JWTFormValues = Pick<
   | "jwt-attribute-email"
   | "jwt-attribute-firstname"
   | "jwt-attribute-lastname"
+  | "jwt-attribute-groups"
+  | "jwt-attribute-tenant"
 >;
+
+type JWTTextKey = Exclude<keyof JWTFormValues, "jwt-shared-secret">;
+
+const JWT_TEXT_KEYS = [
+  "jwt-identity-provider-uri",
+  "jwt-attribute-email",
+  "jwt-attribute-firstname",
+  "jwt-attribute-lastname",
+  "jwt-attribute-groups",
+  "jwt-attribute-tenant",
+] satisfies JWTTextKey[];
 
 export const SettingsJWTForm = () => {
   const {
@@ -45,17 +80,50 @@ export const SettingsJWTForm = () => {
     isLoading: isLoadingDetails,
     refetch: refetchSettingDetails,
   } = useGetAdminSettingsDetailsQuery();
+  const { data: settingValues, isLoading: isLoadingValues } =
+    useGetSettingsQuery();
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
+  const applicationName = useSelector(getApplicationName);
   const [sendToast] = useToast();
 
-  const handleSubmit = async (values: Partial<JWTFormValues>) => {
+  const isServerConfigured = settingValues?.["jwt-configured"] ?? false;
+  // a saved URI or mapping means the setup is not new, even if the shared secret went missing since
+  const uriSetting = settingDetails?.["jwt-identity-provider-uri"];
+  const hasSavedUri =
+    Boolean(uriSetting?.value) || (uriSetting?.is_env_setting ?? false);
+  const hasMappings =
+    Object.keys(settingValues?.["jwt-group-mappings"] ?? {}).length > 0;
+  const isNewSetup = !hasSavedUri && !hasMappings;
+
+  // either env var locks the whole group mapping section, since the two settings act as one feature
+  const groupMappingEnvNames = [
+    settingDetails?.["jwt-group-sync"],
+    settingDetails?.["jwt-group-mappings"],
+  ].flatMap((setting) =>
+    setting?.is_env_setting && setting.env_name ? [setting.env_name] : [],
+  );
+  const isGroupMappingEnvConfigured = groupMappingEnvNames.length > 0;
+  const turnsOnGroupMapping = isNewSetup && !isGroupMappingEnvConfigured;
+
+  const saveSettings = async (values: JWTFormValues) => {
     const { "jwt-shared-secret": jwtSecret, ...rest } = values;
-    const settingsToUpdate: Partial<JWTFormValues> = { ...rest };
+    const envLockedKeys = JWT_TEXT_KEYS.filter(
+      (key) => settingDetails?.[key]?.is_env_setting,
+    );
+    const settingsToUpdate: Partial<EnterpriseSettings> = _.omit(
+      rest,
+      envLockedKeys,
+    );
 
     // jwt-shared-secret may be initialized with the obfuscated value from /api/setting.
     // Only send it to the backend if it's a newly generated plaintext value.
     if (jwtSecret != null && !isObfuscatedValue(jwtSecret)) {
       settingsToUpdate["jwt-shared-secret"] = jwtSecret;
+    }
+
+    if (turnsOnGroupMapping) {
+      settingsToUpdate["jwt-group-sync"] = true;
+      settingsToUpdate["jwt-group-mappings"] = {};
     }
 
     const result = await updateSettings({
@@ -64,49 +132,70 @@ export const SettingsJWTForm = () => {
       toast: false,
     });
     // Make sure the shared token obfuscated value is fetched from the backend.
-    refetchSettingDetails();
+    await refetchSettingDetails();
 
     if (result.error) {
       throw new Error(t`Error saving JWT Settings`);
     }
 
-    sendToast({ message: t`Changes saved`, icon: "check_filled" });
+    sendToast({
+      message: turnsOnGroupMapping
+        ? t`Changes saved. Group mapping is set to Automatic.`
+        : t`Changes saved`,
+      icon: "check_filled",
+    });
   };
 
-  if (isLoadingDetails) {
+  if (isLoadingDetails || isLoadingValues) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!settingDetails) {
+  if (!settingDetails || !settingValues) {
     return (
       <LoadingAndErrorWrapper error={t`Error loading JWT configuration`} />
     );
   }
 
+  const isSigningKeyEnvSet =
+    settingDetails["jwt-shared-secret"]?.is_env_setting ?? false;
+  const validationSchema = Yup.object({
+    "jwt-shared-secret": Yup.string()
+      .nullable()
+      .when("jwt-identity-provider-uri", {
+        is: (uri: string | null) => Boolean(uri) && !isSigningKeyEnvSet,
+        then: (schema) =>
+          schema.required(t`Set up a signing key before saving`),
+      }),
+  });
   const usingTenants = settingDetails["use-tenants"]?.value;
+  const hasUserAttributes = [
+    settingDetails["jwt-attribute-email"],
+    settingDetails["jwt-attribute-firstname"],
+    settingDetails["jwt-attribute-lastname"],
+    settingDetails["jwt-attribute-groups"],
+    ...(usingTenants ? [settingDetails["jwt-attribute-tenant"]] : []),
+  ].some(
+    // env-configured attributes come back as nil with only the is_env_setting flag set
+    (setting) => Boolean(setting?.value) || (setting?.is_env_setting ?? false),
+  );
 
   return (
     <SettingsPageWrapper title={t`JWT`}>
-      {jwtEnabled && (
-        <SettingsSection>
-          <AdminSettingInput
-            name="jwt-user-provisioning-enabled?"
-            title={t`User provisioning`}
-            inputType="radio"
-            options={provisioningOptions("JWT")}
-          />
-        </SettingsSection>
-      )}
-      <SettingsSection>
-        <FormProvider
-          initialValues={getFormValues(settingDetails)}
-          onSubmit={handleSubmit}
-          enableReinitialize
-        >
-          {({ dirty }) => (
-            <Form>
-              <FormSection title={"Server Settings"}>
-                <Stack gap="lg">
+      <FormProvider
+        initialValues={getFormValues(settingDetails, settingValues)}
+        onSubmit={saveSettings}
+        validationSchema={validationSchema}
+        enableReinitialize
+      >
+        {({ dirty, isSubmitting }) => (
+          <Form>
+            <Stack gap="xl">
+              <SettingsSection
+                title={t`Server settings`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+              >
+                <Stack gap="xl">
                   <FormTextInput
                     name="jwt-identity-provider-uri"
                     label={t`JWT Identity Provider URI`}
@@ -126,60 +215,74 @@ export const SettingsJWTForm = () => {
                     )}
                   />
                 </Stack>
-              </FormSection>
-              <FormSection
-                title={"User attribute configuration (optional)"}
-                collapsible
+              </SettingsSection>
+              <UserProvisioningSection
+                settingKey="jwt-user-provisioning-enabled?"
+                providerName="JWT"
+                reactivatesAccounts
+              />
+              <CollapsibleSettingsSection
+                title={t`User attribute configuration`}
+                description={t`You can send additional user attributes to ${applicationName} by adding the attributes as key/value pairs to your JWT`}
+                defaultOpened={hasUserAttributes}
+                disabled={!isServerConfigured}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="jwt-attribute-email"
-                    label={t`Email attribute`}
-                    {...getExtraFormFieldProps(
+                    label={t`Email attribute key`}
+                    {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-email"],
                     )}
                   />
                   <FormTextInput
                     name="jwt-attribute-firstname"
-                    label={t`First name attribute`}
-                    {...getExtraFormFieldProps(
+                    label={t`First name attribute key`}
+                    {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-firstname"],
                     )}
                   />
                   <FormTextInput
                     name="jwt-attribute-lastname"
-                    label={t`Last name attribute`}
-                    {...getExtraFormFieldProps(
+                    label={t`Last name attribute key`}
+                    {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-lastname"],
                     )}
                   />
                   <FormTextInput
                     name="jwt-attribute-groups"
-                    label={t`Group assignment attribute`}
-                    {...getExtraFormFieldProps(
+                    label={t`Group assignment attribute key`}
+                    {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-groups"],
                     )}
                   />
                   {usingTenants && (
                     <FormTextInput
                       name="jwt-attribute-tenant"
-                      label={t`Tenant assignment attribute`}
-                      {...getExtraFormFieldProps(
+                      label={t`Tenant assignment attribute key`}
+                      {...getAttributeFieldProps(
                         settingDetails?.["jwt-attribute-tenant"],
                       )}
                     />
                   )}
                 </Stack>
-              </FormSection>
-              <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
-                <GroupMappingsWidget
-                  setting={{ key: "jwt-group-sync" }}
-                  onChange={handleSubmit}
-                  mappingSetting="jwt-group-mappings"
-                  groupHeading={t`Group Name`}
-                  groupPlaceholder={t`Group Name`}
-                />
-              </FormSection>
+              </CollapsibleSettingsSection>
+              <SettingsSection
+                title={t`Group mapping`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                description={t`Lets you assign users to custom ${applicationName} groups based on their JWT attributes`}
+                descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+                disabled={!isServerConfigured}
+              >
+                {/* the section saves on its own, so it stays out of the form's values */}
+                <Box data-testid="jwt-group-schema">
+                  <JWTGroupMappingSection
+                    isServerConfigured={isServerConfigured}
+                    lockedEnvNames={groupMappingEnvNames}
+                  />
+                </Box>
+              </SettingsSection>
               <FormErrorMessage />
               <Flex justify="end">
                 <FormSubmitButton
@@ -188,28 +291,32 @@ export const SettingsJWTForm = () => {
                   variant="filled"
                 />
               </Flex>
-            </Form>
-          )}
-        </FormProvider>
-      </SettingsSection>
+            </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
+          </Form>
+        )}
+      </FormProvider>
     </SettingsPageWrapper>
   );
 };
 
-const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
-  const jwtSettings = _.pick(settingDetails, [
-    "jwt-identity-provider-uri",
-    "jwt-shared-secret",
-    "jwt-group-sync",
-    "jwt-attribute-email",
-    "jwt-attribute-firstname",
-    "jwt-attribute-lastname",
-    "jwt-attribute-groups",
-    "jwt-attribute-tenant",
-  ]);
+const getFormValues = (
+  settingDetails: SettingDefinitionMap,
+  settingValues: EnterpriseSettings,
+): JWTFormValues => {
+  const storedValue = (key: JWTTextKey): string | null =>
+    getStoredFieldValue(settingDetails[key], settingValues[key]);
 
-  // cast undefined to null
-  return _.mapObject(jwtSettings, (val) => val?.value ?? null) as JWTFormValues;
+  return {
+    "jwt-identity-provider-uri": storedValue("jwt-identity-provider-uri"),
+    // sensitive, so only the admin settings list carries it, obfuscated
+    "jwt-shared-secret": settingDetails["jwt-shared-secret"]?.value ?? null,
+    "jwt-attribute-email": storedValue("jwt-attribute-email"),
+    "jwt-attribute-firstname": storedValue("jwt-attribute-firstname"),
+    "jwt-attribute-lastname": storedValue("jwt-attribute-lastname"),
+    "jwt-attribute-groups": storedValue("jwt-attribute-groups"),
+    "jwt-attribute-tenant": storedValue("jwt-attribute-tenant"),
+  };
 };
 
 const isObfuscatedValue = (value: string | null | undefined): boolean =>

@@ -4,6 +4,7 @@ import {
   setupBookmarksEndpoints,
   setupCommentEndpoints,
   setupDocumentEndpoints,
+  setupTimelinesEndpoints,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
@@ -21,6 +22,7 @@ const setup = () => {
     }),
   );
   setupCommentEndpoints([], { target_type: "document", target_id: 1 });
+  setupTimelinesEndpoints([]);
 
   renderWithProviders(
     <>
@@ -35,6 +37,7 @@ const setup = () => {
 
 const setupNewDocument = () => {
   setupBookmarksEndpoints([]);
+  setupTimelinesEndpoints([]);
 
   return renderWithProviders(
     <Route path="/document/:entityId" element={<DocumentPage />} />,

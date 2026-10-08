@@ -19,6 +19,12 @@ export * from "./misc";
 export * from "./monitor";
 export * from "./models";
 export * from "./modelToUrl";
+export {
+  captureClickModifierKeys,
+  getUrlTarget,
+  openUrl,
+  shouldOpenInBlankWindow,
+} from "./open-url";
 export * from "./permissions";
 export * from "./questions";
 export * from "./timelines";

@@ -1,5 +1,7 @@
 (ns metabase.metabot.models.metabot-prompt
   (:require
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -21,7 +23,7 @@
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/generate-path "MetabotPrompt" [_ entity]
-  (conj (serdes/generate-path "Metabot" (t2/select-one :model/Metabot (:metabot_id entity)))
+  (conj (serdes/generate-path "Metabot" (metabot.db/metabot (:metabot_id entity)))
         (serdes/infer-self-path "MetabotPrompt" entity)))
 
 (defmethod serdes/deserialization-dependencies "MetabotPrompt" [prompt]

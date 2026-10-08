@@ -433,6 +433,7 @@ Columns:
 - Metabase Version
 - Auth Method
 - Is Sandboxed
+- Sandbox Details
 - Is Impersonated
 - Is Db Routed
 - Parameters
@@ -608,6 +609,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - measure-update
 - mfa-disabled
 - mfa-enrolled
+- mfa-required-enrollment-failed
 - mfa-verification-failed
 - notification-create
 - notification-unsubscribe
@@ -647,6 +649,11 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-run-canceled
 - transform-run-start
 - transform-run-timeout
+- transform-test-create
+- transform-test-delete
+- transform-test-run-start
+- transform-test-run-timeout
+- transform-test-update
 - update-permission-failure
 - update-transform
 - upload-append
@@ -664,6 +671,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 The Query Source column on the [Query log](#query-log) model takes one of:
 
 - action
+- action-execute
 - ad-hoc
 - agent
 - cache-refresh
@@ -680,6 +688,7 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - json-download
 - map-tiles
 - metric
+- public-action-execute
 - public-csv-download
 - public-dashboard
 - public-json-download

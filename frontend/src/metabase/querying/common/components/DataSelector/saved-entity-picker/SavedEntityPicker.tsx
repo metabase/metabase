@@ -19,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import type {
   CardType,
   Collection,
@@ -54,9 +55,9 @@ const getOurAnalyticsCollection = (
 
 // A sentinel root node that buildCollectionTree special-cases by id; it isn't a
 // real Collection, so we assert the type here rather than fabricate every field.
-const ALL_PERSONAL_COLLECTIONS_ROOT = {
-  ...PERSONAL_COLLECTIONS,
-} as Collection;
+const ALL_PERSONAL_COLLECTIONS_ROOT = mergeLazily(
+  PERSONAL_COLLECTIONS,
+) as Collection;
 
 export function SavedEntityPicker(props: SavedEntityPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery({

@@ -70,7 +70,7 @@ type InfoSectionItemProps = {
 
 function InfoSectionItem({ label, date, children }: InfoSectionItemProps) {
   return (
-    <Stack className={S.section} p="md" gap="xs">
+    <Stack className={S.section} p="lg" gap="xxs">
       <Box className={CS.textWrap} c="text-secondary" fz="sm" lh="h5">
         {label}
       </Box>

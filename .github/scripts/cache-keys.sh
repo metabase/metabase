@@ -50,7 +50,11 @@ digest() {
 }
 
 shopt -s nullglob
-DEPS_FILES=(deps.edn modules/drivers/deps.edn modules/drivers/*/deps.edn)
+DEPS_FILES=(deps.edn
+            bin/lint-migrations-file/deps.edn
+            bin/load-namespaces/deps.edn
+            modules/drivers/deps.edn
+            modules/drivers/*/deps.edn)
 shopt -u nullglob
 
 DEPS_HASH="$(digest "${DEPS_FILES[@]}")"
@@ -70,9 +74,9 @@ if [ "$CYPRESS_MATCHES" != "1" ]; then
 fi
 CYPRESS_VERSION="$CYPRESS_VERSIONS"
 
-# An incremental lint cache is only ever an accelerator, so it keys on the commit and always falls back
-# to the newest entry on the prefix. The exact key never pre-exists, which keeps the entry current.
-ESLINT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+# The Clojure CLI version CI installs. It lives here rather than in prepare-backend so that the version
+# and the key that identifies its cache entry cannot drift apart.
+CLOJURE_VERSION="1.12.0.1488"
 
 emit_multiline() {
   local name="$1"; shift
@@ -96,13 +100,18 @@ spec() {
   echo "bun-store-key=bun-store-$OS-$LOCK_HASH"
   echo "bun-store-restore-key=bun-store-$OS-"
 
+  # No restore-key: an entry from another version installs a working `clojure` of the wrong version, and
+  # the freshness check in prepare-backend - running the binary - would accept it.
+  #
+  # The installer bakes this prefix into the clj/clojure shims, so the tree only works when restored to
+  # the same absolute path it was built at; prepare-backend reinstalls when it is not.
+  echo "clojure-path=$HOME/.clojure-cli"
+  echo "clojure-key=clojure-cli-$OS-$CLOJURE_VERSION"
+  echo "clojure-version=$CLOJURE_VERSION"
+
   echo "cypress-path=$HOME/.cache/Cypress"
   echo "cypress-key=cypress-$OS-$CYPRESS_VERSION"
   echo "cypress-restore-key=cypress-$OS-"
-
-  echo "eslint-path=.eslintcache"
-  echo "eslint-key=eslint-$OS-$ESLINT_SHA"
-  echo "eslint-restore-key=eslint-$OS-"
 }
 
 # Print one output's value, including the multiline form, and fail on a name that does not exist. A

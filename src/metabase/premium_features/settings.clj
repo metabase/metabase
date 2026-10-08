@@ -14,7 +14,7 @@
   in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :base       setting/uuid-nonce-base
   :doc        false)
@@ -32,6 +32,7 @@
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :encryption :no
   :visibility :admin
   :type       :json
   :audit      :never
@@ -191,6 +192,10 @@
   "Should we enable configuring session timeouts?"
   :session-timeout-config)
 
+(define-premium-feature ^{:added "0.65.0"} enable-session-management?
+  "Should we enable listing and revoking users' sessions?"
+  :session-management)
+
 (define-premium-feature can-disable-password-login?
   "Can we disable login by password?"
   :disable-password-login)
@@ -293,9 +298,9 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
-(define-premium-feature ^{:added "0.65.0"} enable-data-apps?
+(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
   "Should we allow users to publish and run data apps?"
-  :data-apps-preview)
+  :data-apps)
 
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
@@ -304,6 +309,10 @@
 (define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
   "Should we allow users to use Python transforms?"
   :transforms-python)
+
+(define-premium-feature enable-transform-testing?
+  "Should we allow users to author and run tests against their transforms?"
+  :transforms-testing)
 
 (define-premium-feature ^{:added "0.57.0"} enable-dependencies?
   "Should we allow users to use dependency tracking?"
@@ -424,6 +433,7 @@
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
+   :session-management             (enable-session-management?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)
    :sso_google                     (enable-sso-google?)
@@ -436,6 +446,7 @@
    :tenants                        (enable-tenants?)
    :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
+   :transforms-testing             (enable-transform-testing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
@@ -443,6 +454,7 @@
 
 (defsetting token-features
   "Features registered for this instance's token"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     -token-features

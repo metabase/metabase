@@ -10,17 +10,8 @@ database_type: CHARACTER VARYING
 base_type: type/Text
 effective_type: type/Text
 semantic_type: type/Name
-dimensions: []
 position: 4
-custom_position: 0
 database_position: 4
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PEOPLE
-  model: Table
-- id: NAME
-  model: Field
+- model: Field
 database_indexed: false

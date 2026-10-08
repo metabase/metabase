@@ -20,6 +20,7 @@
    [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
+   ;; mt re-exports with-metadata-provider, which legacy-pipeline tests still rely on
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -100,9 +101,12 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
+;; re-exported vars keep their deprecated/discouraged status for callers; the facade must require them
 #_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
+  action-executions
+  latest-query-execution-id
   with-actions
   with-actions-disabled
   with-actions-enabled
@@ -185,6 +189,7 @@
   with-no-data-perms-for-all-users!
   with-full-data-perms-for-all-users!
   with-db-perm-for-group!
+  with-db-perms-for-group!
   with-perm-for-group!
   with-perm-for-group-and-table!
   with-data-analyst-role!]

@@ -28,6 +28,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -116,6 +117,7 @@
                     :pulse_id         nil
                     :card_id          nil
                     :is_sandboxed     false
+                    :sandbox_details  nil
                     :dashboard_id     nil
                     :transform_id     nil
                     :lens_id          nil
@@ -766,6 +768,23 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest ^:parallel pivot-dataset-error-response-test
+  (mt/dataset test-data
+    (testing "POST /api/dataset/pivot"
+      (testing "a failed query returns the usual formatted error response, not an empty body"
+        (doseq [[cause query] {"an out-of-range pivot row index"
+                               (assoc (qp.pivot.test-util/pivot-query) :pivot_rows [0 1 2 3])
+
+                               "a reference to a nonexistent column"
+                               (assoc-in (qp.pivot.test-util/pivot-query) [:query :filter]
+                                         [:= [:field Integer/MAX_VALUE nil] 1])}]
+          (testing cause
+            (let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :post "dataset/pivot" query)]
+              (is (contains? #{400 500} status))
+              (is (=? {:status "failed"
+                       :error  string?}
+                      body)))))))))
 
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)

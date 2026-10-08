@@ -7,8 +7,8 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -152,6 +152,8 @@ describe("MonitorLayout", () => {
       ["Scheduled jobs", Urls.monitorJobs()],
       ["Application logs", Urls.monitorLogs()],
       ["Model persistence log", Urls.monitorModelPersistenceLog()],
+      ["Session management", Urls.monitorSessions()],
+      ["API key usage", Urls.monitorApiKeyUsage()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -194,6 +196,16 @@ describe("MonitorLayout", () => {
       label: "Model persistence log",
       route: Urls.monitorModelPersistenceLog(),
       section: "model-caching",
+    },
+    {
+      label: "Session management",
+      route: Urls.monitorSessions(),
+      section: "session-management",
+    },
+    {
+      label: "API key usage",
+      route: Urls.monitorApiKeyUsage(),
+      section: "api-key-usage",
     },
   ] as const;
 
@@ -249,8 +261,14 @@ describe("MonitorLayout", () => {
     },
   ] as const;
 
-  it.each(AI_AUDITING_SECTION_CASES)(
-    "marks $label as the current page for its route",
+  it.each([
+    ...AI_AUDITING_SECTION_CASES,
+    {
+      label: "Conversations",
+      route: Urls.monitorAiAuditingConversationDetail("convo-0"),
+    },
+  ])(
+    "marks $label as the current page for $route",
     async ({ label, route }) => {
       setup({
         initialRoute: route,
@@ -283,6 +301,7 @@ describe("MonitorLayout", () => {
 
   it("hides the migrated Tools tabs for an analyst without the monitoring permission", async () => {
     setup({
+      tokenFeatures: { advanced_permissions: true },
       user: createMockUser({
         is_superuser: false,
         is_data_analyst: true,
@@ -313,7 +332,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
+  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management and API key usage (admin-only)", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -340,10 +359,15 @@ describe("MonitorLayout", () => {
     expect(
       screen.queryByRole("link", { name: "Alerts management" }),
     ).not.toBeInTheDocument();
+    // the page loads GET /api/api-key, which is superuser-only
+    expect(
+      screen.queryByRole("link", { name: "API key usage" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides Alerts management for an analyst even with the monitoring permission", async () => {
     setup({
+      tokenFeatures: { advanced_permissions: true },
       user: createMockUser({
         is_superuser: false,
         is_data_analyst: true,
@@ -418,6 +442,33 @@ describe("MonitorLayout", () => {
     expect(onRender).toHaveBeenCalledTimes(renderCount);
   });
 
+  it.each([
+    {
+      description: "an analyst",
+      user: createMockUser({ is_superuser: false, is_data_analyst: true }),
+    },
+    {
+      description: "a non-admin with the monitoring permission",
+      user: createMockUser({
+        is_superuser: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    },
+  ])(
+    "hides Session management (admin-only) for $description",
+    async ({ user }) => {
+      setup({ user });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole("link", { name: "Session management" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   const getTabGem = (name: string) =>
     within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
 
@@ -452,6 +503,29 @@ describe("MonitorLayout", () => {
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      expectation:
+        "gates Session management without the session-management feature",
+      hasFeature: false,
+      isGated: true,
+    },
+    {
+      expectation:
+        "does not gate Session management with the session-management feature",
+      hasFeature: true,
+      isGated: false,
+    },
+  ])("$expectation", async ({ hasFeature, isGated }) => {
+    setup({ tokenFeatures: { "session-management": hasFeature } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Session management") !== null).toBe(isGated);
   });
 
   const AI_AUDITING_GROUP = "AI Auditing";

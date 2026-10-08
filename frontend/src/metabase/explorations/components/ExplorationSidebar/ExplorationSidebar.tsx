@@ -23,9 +23,9 @@ import {
   type IconProps,
   Menu,
   SegmentedControl,
+  type SegmentedControlItem,
   Stack,
   Text,
-  Tooltip,
 } from "metabase/ui";
 import type { Exploration, ExplorationPageNodeId } from "metabase-types/api";
 
@@ -40,9 +40,11 @@ import {
   ExplorationTreeNode,
 } from "./ExplorationTreeNode";
 import {
+  EXPLORATION_SUMMARY_TREE_ID,
   type ExplorationSidebarContentMode,
   type ExplorationSidebarTabsInfo,
   type ExplorationTreeNode as ExplorationTreeNodeDataType,
+  type SelectedSidebarEntity,
   flattenTree,
 } from "./utils";
 
@@ -52,8 +54,9 @@ interface ExplorationSidebarProps {
   selectedSidebarTab: ExplorationSidebarTab;
   getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNodeDataType>[];
-  selectedPageId: ExplorationPageNodeId | null;
+  selectedEntity: SelectedSidebarEntity | null;
   getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
+  getSelectedSummaryUrl: () => string;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   isOpen: boolean;
   readPageIds: ReadonlySet<string>;
@@ -73,8 +76,9 @@ export function ExplorationSidebar({
   selectedSidebarTab,
   getSelectedSidebarTabUrl,
   tree,
-  selectedPageId,
+  selectedEntity,
   getSelectedPageUrl,
+  getSelectedSummaryUrl,
   shouldScrollSelectionRef,
   isOpen,
   readPageIds,
@@ -88,9 +92,15 @@ export function ExplorationSidebar({
   onPrefetchPage,
 }: ExplorationSidebarProps) {
   const navigate = useNavigate();
+  const selectedTreeId =
+    selectedEntity?.type === "page"
+      ? selectedEntity.id
+      : selectedEntity?.type === "summary"
+        ? EXPLORATION_SUMMARY_TREE_ID
+        : undefined;
   const treeController = useTree({
     data: tree,
-    selectedId: selectedPageId ?? undefined,
+    selectedId: selectedTreeId,
     freezeAutoExpandOnManualToggle: true,
   });
 
@@ -106,17 +116,18 @@ export function ExplorationSidebar({
   // the tree to reveal the selected item. useTree's auto-expand is frozen
   // after a manual chevron toggle, so we bypass it here.
   useEffect(() => {
-    if (shouldScrollSelectionRef.current && selectedPageId) {
+    if (shouldScrollSelectionRef.current && selectedTreeId) {
       setExpandedIds(
         (prev) =>
-          new Set([...prev, ...getInitialExpandedIds(selectedPageId, tree)]),
+          new Set([...prev, ...getInitialExpandedIds(selectedTreeId, tree)]),
       );
     }
-  }, [selectedPageId, shouldScrollSelectionRef, setExpandedIds, tree]);
+  }, [selectedTreeId, shouldScrollSelectionRef, setExpandedIds, tree]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (selectedPageId == null) {
+      // Arrow keys skip the Summary (flattenTree is page-only).
+      if (selectedEntity?.type !== "page") {
         return;
       }
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
@@ -126,10 +137,10 @@ export function ExplorationSidebar({
         return;
       }
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextItem = getAdjacentById(flatItems, selectedPageId, direction);
+      const nextItem = getAdjacentById(flatItems, selectedEntity.id, direction);
       if (
         nextItem == null ||
-        nextItem.id === selectedPageId ||
+        nextItem.id === selectedEntity.id ||
         nextItem.data?.type !== "page"
       ) {
         return;
@@ -147,7 +158,9 @@ export function ExplorationSidebar({
           new Set([...prev, ...getInitialExpandedIds(nextItem.id, tree)]),
       );
       // if we moved into a different folder, collapse the previous folder
-      const currentItem = flatItems.find((item) => item.id === selectedPageId);
+      const currentItem = flatItems.find(
+        (item) => item.id === selectedEntity.id,
+      );
       if (
         currentItem?.data?.parent_id &&
         currentItem.data.parent_id !== nextItem?.data?.parent_id
@@ -160,9 +173,9 @@ export function ExplorationSidebar({
   }, [
     flatItems,
     tree,
-    selectedPageId,
     onPreviousPage,
     onNextPage,
+    selectedEntity,
     setExpandedIds,
     collapse,
     exploration.id,
@@ -176,6 +189,7 @@ export function ExplorationSidebar({
       onPrefetchPage,
       shouldScrollSelectionRef,
       getSelectedPageUrl,
+      getSelectedSummaryUrl,
       readPageIds,
     }),
     [
@@ -184,6 +198,7 @@ export function ExplorationSidebar({
       onPrefetchPage,
       shouldScrollSelectionRef,
       getSelectedPageUrl,
+      getSelectedSummaryUrl,
       readPageIds,
     ],
   );
@@ -248,12 +263,10 @@ export function ExplorationSidebar({
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Group pl="0.5rem" gap="md" wrap="nowrap" align="center">
+      <Group pl="0.5rem" gap="lg" wrap="nowrap" align="center">
         <Box flex={1} miw={0}>
           <SegmentedControl<ExplorationSidebarTab>
             fullWidth
-            radius="xl"
-            bg="background-tertiary"
             value={selectedSidebarTab}
             onChange={(value) => {
               if (
@@ -265,10 +278,7 @@ export function ExplorationSidebar({
               }
             }}
             data={Object.values(explorationSidebarTabsInfo).map(
-              ({ value, label }) => ({
-                value,
-                label: <SidebarTabLabel tab={value} label={label} />,
-              }),
+              getSidebarTabItem,
             )}
           />
         </Box>
@@ -289,24 +299,19 @@ const TAB_ICON: Partial<Record<ExplorationSidebarTab, IconProps["name"]>> = {
   discussions: "comment",
 };
 
-function SidebarTabLabel({
-  tab,
+function getSidebarTabItem({
+  value,
   label,
-}: {
-  tab: ExplorationSidebarTab;
-  label: string;
-}) {
-  const iconName = TAB_ICON[tab];
+}: ExplorationSidebarTabsInfo[ExplorationSidebarTab]): SegmentedControlItem<ExplorationSidebarTab> {
+  const iconName = TAB_ICON[value];
 
-  return iconName ? (
-    <Tooltip label={label}>
-      <Center component="span" aria-label={label}>
-        <Icon name={iconName} />
-      </Center>
-    </Tooltip>
-  ) : (
-    label
-  );
+  return iconName
+    ? {
+        value,
+        ariaLabel: label,
+        icon: <Icon name={iconName} tooltip={label} />,
+      }
+    : { value, label };
 }
 
 function SidebarShowFilterMenu({

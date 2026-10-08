@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library.validation
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.library.db :as library.db]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
@@ -9,8 +10,9 @@
   "A map from the `:type` of the parent collection to a spec for what contents it permits."
   {collection/library-collection-type
    {:allowed-content-types #{collection/library-data-collection-type
-                             collection/library-metrics-collection-type}
-    :error-message         "Cannot add anything to the Library collection"}
+                             collection/library-metrics-collection-type
+                             collection/library-dashboards-collection-type}
+    :error-message         "Cannot add anything to the semantic layer"}
 
    collection/library-data-collection-type
    {:allowed-content-types #{:table collection/library-data-collection-type}
@@ -18,7 +20,15 @@
 
    collection/library-metrics-collection-type
    {:allowed-content-types #{:metric collection/library-metrics-collection-type}
-    :error-message         "Can only add metrics to the 'Metrics' collection"}})
+    :error-message         "Can only add metrics to the 'Metrics' collection"}
+
+   collection/library-dashboards-collection-type
+   {:allowed-content-types #{:model/Dashboard
+                             :dashboard-question
+                             :model/Pulse
+                             :model/Timeline
+                             collection/library-dashboards-collection-type}
+    :error-message         "Can only add dashboards to the 'Dashboards' collection"}})
 
 (defenterprise check-allowed-content
   "Check if the collection's content matches the allowed content.
@@ -26,7 +36,7 @@
   :feature :library
   [content-type collection-id]
   (when collection-id
-    (let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
+    (let [collection-type (library.db/collection-type collection-id)]
       (when-let [{:keys [allowed-content-types error-message]} (some-> collection-type
                                                                        library-collection-content-specs)]
         (when-not (allowed-content-types content-type)
@@ -44,10 +54,10 @@
     (when (and (collection/library-root-collection? collection)
                (seq (set/intersection change-keys
                                       #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
-      (throw (ex-info "Cannot update properties on a Library collection" {})))
+      (throw (ex-info "Cannot update properties on a semantic layer collection" {})))
     (when (and (collection/is-library-collection? (:id collection))
                (contains? change-keys :location)
                (when-let [parent-id (collection/location-path->parent-id (:location collection))]
-                 (not= (:type collection) (t2/select-one-fn :type :model/Collection :id parent-id))))
-      (throw (ex-info "Cannot move a Library collection outside the Library" {}))))
+                 (not= (:type collection) (library.db/collection-type parent-id))))
+      (throw (ex-info "Cannot move a semantic layer collection outside the semantic layer" {}))))
   true)

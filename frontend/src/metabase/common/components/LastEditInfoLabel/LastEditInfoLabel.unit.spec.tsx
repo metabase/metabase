@@ -1,5 +1,3 @@
-import mockDate from "mockdate";
-
 import { renderWithProviders, screen } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -8,7 +6,7 @@ import { LastEditInfoLabel } from "./LastEditInfoLabel";
 
 describe("LastEditInfoLabel", () => {
   afterEach(() => {
-    mockDate.reset();
+    jest.useRealTimers();
   });
 
   const NOW_REAL = dayjs().toISOString();
@@ -78,7 +76,8 @@ describe("LastEditInfoLabel", () => {
 
   testCases.forEach(({ date, expectedTimestamp }) => {
     it(`should display "${expectedTimestamp}" timestamp correctly`, () => {
-      mockDate.set(date.toDate(), 0);
+      jest.useFakeTimers();
+      jest.setSystemTime(date.toDate());
       setup();
       expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
         new RegExp(`Edited ${expectedTimestamp} by .*`, "i"),

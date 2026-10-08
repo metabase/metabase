@@ -1,5 +1,5 @@
 (ns metabase.lib.query.test-spec
-  (:refer-clojure :exclude [mapv name])
+  (:refer-clojure :exclude [mapv name not-empty])
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -32,7 +33,8 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv not-empty]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
   [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
@@ -44,9 +46,10 @@
 (mu/defn- matches-column? :- :boolean
   [query                                   :- ::lib.schema/query
    _stage-number                           :- :int
-   {:keys [name table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-column-spec
+   name-key                                :- :keyword
+   {:keys [name table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-order-by-spec
    column                     :- ::lib.schema.metadata/column]
-  (cond-> (= name (:name column))
+  (cond-> (= name (name-key column))
     (some? table-id) (and (= table-id (:table-id column)))
     (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
     (some? source-field-id) (and (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
@@ -56,8 +59,13 @@
   [query             :- ::lib.schema/query
    stage-number      :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
-   column-spec       :- ::lib.schema.test-spec/test-column-spec]
-  (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
+   column-spec       :- ::lib.schema.test-spec/test-order-by-spec]
+  (let [matching (fn [name-key]
+                   (filterv (partial matches-column? query stage-number name-key column-spec) available-columns))
+        ;; A saved card stores repeated names deduplicated (`ID`, `ID_2`), so a spec naming the column as its table
+        ;; does matches nothing; the name it had before deduplication still finds it.
+        columns  (or (not-empty (matching :name))
+                     (matching :lib/original-name))]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (first columns)
@@ -100,48 +108,40 @@
        (lib.temporal-bucket/with-temporal-bucket column)))
 
 (mu/defn- matches-binning? :- :boolean
-  [strategy       :- ::lib.schema.binning/strategy
-   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width ::lib.schema.test-spec/test-auto-bin-spec]
-   {:keys [mbql]} :- ::lib.schema.binning/binning-option]
-  (or
-   (and
-    (= :default (:strategy mbql))
-    (= value :auto))
-   (and
-    (= strategy (:strategy mbql))
-    (== value (strategy mbql)))))
+  [{:keys [strategy] :as binning} :- ::lib.schema.test-spec/test-binning-spec
+   {:keys [mbql]}                 :- ::lib.schema.binning/binning-option]
+  (and (= strategy (:strategy mbql))
+       (or (= strategy :default)
+           (== (strategy binning) (strategy mbql)))))
 
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
-        matches (filterv (partial matches-binning? strategy value) binning-strategies)]
+        matches (filterv (partial matches-binning? binning) binning-strategies)]
     (case (count matches)
-      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies strategy value}))
+      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :binning binning}))
       1 (first matches)
-      (throw (ex-info "Multiple binning strategies found" {:matches matches strategy value})))))
+      (throw (ex-info "Multiple binning strategies found" {:matches matches :binning binning})))))
 
 (mu/defn- add-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
-  (->> (find-binning-strategy query stage-number strategy value column)
+  (->> (find-binning-strategy query stage-number binning column)
        (lib.binning/with-binning column)))
 
 (mu/defn- apply-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
-  [query                         :- ::lib.schema/query
-   stage-number                  :- :int
-   {:keys [unit bins bin-width]} :- ::lib.schema.test-spec/test-column-with-binning-spec
-   column                       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [unit binning]} :- [:or ::lib.schema.test-spec/test-order-by-spec ::lib.schema.test-spec/test-join-source-spec]
+   column                 :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (cond->> column
-    unit      (add-temporal-bucket query stage-number unit)
-    bins      (add-binning query stage-number :num-bins bins)
-    bin-width (add-binning query stage-number :bin-width bin-width)))
+    unit    (add-temporal-bucket query stage-number unit)
+    binning (add-binning query stage-number binning)))
 
 (mu/defn- append-breakout :- ::lib.schema/query
   [query               :- ::lib.schema/query
@@ -164,7 +164,7 @@
 (mu/defn- expression-spec->expression-parts
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   expression-spec   :- ::lib.schema.test-spec/test-expression-spec
+   expression-spec   :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-join-source-spec]
    available-columns :- [:sequential ::lib.schema.metadata/column]]
   (case (:type expression-spec)
     :literal  (:value expression-spec)
@@ -176,7 +176,10 @@
                            (:args expression-spec))}))
 
 (mu/defn- named-expression-spec? :- :boolean
-  [expression-spec :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-named-expression-spec]]
+  [expression-spec :- [:or
+                       ::lib.schema.test-spec/test-expression-spec
+                       ::lib.schema.test-spec/test-join-source-spec
+                       ::lib.schema.test-spec/test-named-expression-spec]]
   (and
    (contains? expression-spec :name)
    (contains? expression-spec :value)
@@ -185,7 +188,10 @@
 (mu/defn- expression-spec->expression-clause :- ::lib.schema.expression/expression
   [query                                    :- ::lib.schema/query
    stage-number                             :- :int
-   {:keys [name value] :as expression-spec} :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-named-expression-spec]
+   {:keys [name value] :as expression-spec} :- [:or
+                                                ::lib.schema.test-spec/test-expression-spec
+                                                ::lib.schema.test-spec/test-join-source-spec
+                                                ::lib.schema.test-spec/test-named-expression-spec]
    available-columns                        :- [:sequential ::lib.schema.metadata/column]]
   (if (named-expression-spec? expression-spec)
     (-> (expression-spec->expression-clause query stage-number value available-columns)
@@ -298,9 +304,12 @@
     (if-let [aggregation (saved-aggregation query aggregation-spec)]
       (lib.aggregation/aggregate query stage-number aggregation)
       (throw (ex-info "No saved aggregation found" {:aggregation-spec aggregation-spec})))
-    (->> (lib.aggregation/aggregable-columns query stage-number)
-         (expression-spec->expression-clause query stage-number aggregation-spec)
-         (lib.aggregation/aggregate query stage-number))))
+    (let [clause (->> (lib.aggregation/aggregable-columns query stage-number)
+                      (expression-spec->expression-clause query stage-number aggregation-spec))]
+      (lib.aggregation/aggregate query stage-number
+                                 (cond-> clause
+                                   ;; Only the name a later stage refers to; the display name stays derived.
+                                   (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec)))))))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query
@@ -344,6 +353,10 @@
     fields             (append-fields stage-number fields)
     limit              (lib.limit/limit stage-number limit)))
 
+(mr/def ::raw-spec
+  "A test query spec as callers write it, possibly with string or camelCase keys and without defaults, before parsing."
+  [:map {:closed false, ::mr/deliberately-open true, :description "an unparsed test query spec"}])
+
 (def parse-query-spec
   "Parser for query-spec."
   (mc/decoder [:ref ::lib.schema.test-spec/test-query-spec]
@@ -357,10 +370,10 @@
 (mu/defn test-query :- ::lib.schema/query
   "Creates a query from a test query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   query-spec            :- :any]
+   query-spec            :- ::raw-spec]
   (let [{:keys [stages]} (parse-query-spec query-spec)
-        source (->> stages first :source (find-source metadata-providerable))
-        query  (lib.query/query metadata-providerable source)]
+        source           (->> stages first :source (find-source metadata-providerable))
+        query            (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
 (mu/defn- field-id->field-ref :- :mbql.clause/field
@@ -409,13 +422,14 @@
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
-               mtx/default-value-transformer
-               {:name :normalize})))
+               {:name :normalize}
+               mtx/strip-extra-keys-transformer
+               mtx/default-value-transformer)))
 
 (mu/defn test-native-query :- ::lib.schema/query
   "Creates a native query from a test native query spec."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   native-query-spec     :- :any]
+   native-query-spec     :- ::raw-spec]
   (let [{:keys [query template-tags]} (parse-native-query-spec native-query-spec)]
     (-> (lib.native/native-query metadata-providerable query)
         (add-template-tags template-tags))))

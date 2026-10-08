@@ -51,7 +51,7 @@ If Metabase is connected to a database using a database user account with write 
 When people upload a CSV to a collection, Metabase will:
 
 - Create a table to store that data in the database and schema that the Admin selected to store uploads.
-- Create a [model](../data-modeling/models.md) that wraps the uploaded table, and save that model to the collection the person uploaded the CSV data to.
+- Create a [model](../data-modeling/models/models.md) that wraps the uploaded table, and save that model to the collection the person uploaded the CSV data to.
 
 ## Specify a prefix for Metabase to prepend to the uploaded tables
 
@@ -65,7 +65,7 @@ People also need [Curate access](../permissions/collections.md#curate-access) to
 
 ## Note on uploading data to a MySQL database
 
-For speeding up uploads to a MySQL database, we recommend that you set a `local_infile` to `ON`. You'll need to set this `local_infile` in MySQL, not Metabase. The command-line format is `--local-infile=ON`.
+For speeding up uploads to a MySQL database, we recommend that you set `local_infile` to `ON`. You'll need to set this `local_infile` in MySQL, not Metabase. The command-line format is `--local-infile=ON`.
 
 If `local_infile` is disabled (set to `OFF`), Metabase will automatically fall back to uploading CSVs in a much slower way.
 

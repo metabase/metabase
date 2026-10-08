@@ -2,12 +2,12 @@ import {
   setupSegmentRevisionsEndpoint,
   setupSegmentRevisionsEndpointError,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Revision, Segment } from "metabase-types/api";
 import {
   createMockRevision,

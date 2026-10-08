@@ -25,6 +25,10 @@ export const datePickerOverrides = {
       calendarHeaderControl: Styles.calendarHeaderControl,
     },
     styles: {
+      levelsGroup: {
+        // Mantine uses spacing.md here; pin the previous 16px gap.
+        gap: "var(--mantine-spacing-lg)",
+      },
       weekdaysRow: {
         boxSizing: "border-box",
       },

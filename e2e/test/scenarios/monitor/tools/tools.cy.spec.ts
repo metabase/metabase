@@ -31,6 +31,42 @@ describe("issue 14636", () => {
     ).as(alias);
   }
 
+  function stubFilteredResponse({
+    status,
+    task,
+    data,
+    alias,
+  }: {
+    status?: string;
+    task?: string;
+    data: ReturnType<typeof createMockTask>[];
+    alias: string;
+  }) {
+    cy.intercept(
+      {
+        method: "GET",
+        pathname: "/api/task",
+        query: {
+          limit: String(limit),
+          offset: "0",
+          sort_column: "started_at",
+          sort_direction: "desc",
+          ...(status ? { status } : {}),
+          ...(task ? { task } : {}),
+        },
+      },
+      {
+        statusCode: 200,
+        body: {
+          data,
+          limit,
+          offset: 0,
+          total: data.length,
+        },
+      },
+    ).as(alias);
+  }
+
   /**
    * @typedef {Object} Row
    *
@@ -77,7 +113,7 @@ describe("issue 14636", () => {
     stubPageResponses({ page: 1, alias: "second" });
   });
 
-  it("pagination should work (metabase#14636)", () => {
+  it("pagination and filtering should work (metabase#14636)", () => {
     cy.visit("/monitor/tasks/list");
     cy.wait("@first");
 
@@ -86,10 +122,9 @@ describe("issue 14636", () => {
     cy.findByRole("heading", { name: "Background tasks" }).should("be.visible");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("field values scanning");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("513");
+    cy.findByTestId("tasks-table")
+      .should("contain.text", "field values scanning")
+      .and("contain.text", "513");
 
     cy.findByLabelText("Previous page").should("be.disabled");
     cy.findByLabelText("Next page").should("not.be.disabled").click();
@@ -101,15 +136,20 @@ describe("issue 14636", () => {
       .findByText(`51 - ${total}`)
       .should("be.visible");
     cy.findByLabelText("pagination").findByText("1 - 50").should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("analyze");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("200");
+    cy.findByTestId("tasks-table")
+      .should("contain.text", "analyze")
+      .and("contain.text", "200")
+      .and("not.contain.text", "field values scanning");
 
     cy.findByLabelText("Next page").should("be.disabled");
     cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByTestId("tasks-table").should(
+      "contain.text",
+      "field values scanning",
+    );
 
     cy.log("pagination should affect browser history");
     cy.go("back");
@@ -119,23 +159,43 @@ describe("issue 14636", () => {
     cy.location("pathname").should("eq", "/monitor/tasks/list");
     cy.location("search").should("eq", "");
 
-    cy.log("it should respect page query param on page load");
-    cy.visit("/monitor/tasks/list?page=1");
-    cy.wait("@second");
+    cy.log("filtering");
+    const task = "field values scanning";
+    const filteredTask = createMockTask({ task });
 
-    cy.findByLabelText("pagination")
-      .findByText(`51 - ${total}`)
-      .should("be.visible");
-  });
+    stubPageResponses({ page: 0, alias: "unfilteredFirst" });
+    stubPageResponses({ page: 1, alias: "unfilteredSecond" });
+    // Keep this test independent of background tasks created asynchronously by H.restore().
+    // The task picker only shows a value that is in the unique task list.
+    cy.intercept("GET", "/api/task/unique-tasks", [task]);
+    // Register the less-specific routes first because Cypress matches intercepts in reverse order.
+    stubFilteredResponse({
+      status: "success",
+      data: [filteredTask],
+      alias: "successfulTasks",
+    });
+    stubFilteredResponse({
+      task,
+      data: [filteredTask],
+      alias: "filteredTasks",
+    });
+    stubFilteredResponse({
+      status: "failed",
+      task,
+      data: [],
+      alias: "failedFilteredTasks",
+    });
+    stubFilteredResponse({
+      status: "success",
+      task,
+      data: [filteredTask],
+      alias: "successfulFilteredTasks",
+    });
 
-  it("filtering should work", () => {
-    const total = 57;
     cy.visit("/monitor/tasks/list?status=success&task=field+values+scanning");
+    cy.wait("@successfulFilteredTasks");
 
-    cy.findByPlaceholderText("Filter by task").should(
-      "have.value",
-      "field values scanning",
-    );
+    cy.findByPlaceholderText("Filter by task").should("have.value", task);
     getFilterByStatus().should("have.value", "Success");
     cy.findAllByTestId("task").should("have.length", 1);
     cy.findByTestId("task")
@@ -145,6 +205,7 @@ describe("issue 14636", () => {
 
     getFilterByStatus().click();
     H.popover().findByText("Failed").click();
+    cy.wait("@failedFilteredTasks");
     cy.location("search").should(
       "eq",
       "?status=failed&task=field+values+scanning",
@@ -153,6 +214,7 @@ describe("issue 14636", () => {
     cy.findByTestId("monitor-main").should("contain.text", "No results");
 
     getFilterByStatus().parent().findByLabelText("Clear").click();
+    cy.wait("@filteredTasks");
     cy.location("search").should("eq", "?task=field+values+scanning");
     getFilterByStatus().should("have.value", "");
     cy.findAllByTestId("task").should("have.length", 1);
@@ -166,9 +228,12 @@ describe("issue 14636", () => {
       .findByLabelText("Clear")
       .click();
     cy.location("search").should("eq", "");
-    cy.wait("@first");
+    cy.wait("@unfilteredFirst");
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+
+    cy.log("it should respect page query param on page load");
     cy.visit("/monitor/tasks/list?page=1");
+    cy.wait("@unfilteredSecond");
     cy.findByLabelText("pagination")
       .findByText(`51 - ${total}`)
       .should("be.visible");
@@ -176,10 +241,12 @@ describe("issue 14636", () => {
     cy.log("should reset pagination when changing filters");
     getFilterByStatus().click();
     H.popover().findByText("Success").click();
+    cy.wait("@successfulTasks");
     cy.location("search").should("eq", "?status=success");
 
     cy.log("should remove invalid query params");
     cy.visit("/monitor/tasks/list?status=foobar");
+    cy.wait("@unfilteredFirst");
     cy.location("search").should("eq", "");
     getFilterByStatus().should("have.value", "");
   });
@@ -192,6 +259,7 @@ describe("scenarios > monitor > tools > tasks", () => {
         information: true,
       },
     },
+    logs: [],
   });
 
   const formattedTaskJson = JSON.stringify(task.task_details, null, 2);
@@ -214,7 +282,7 @@ describe("scenarios > monitor > tools > tasks", () => {
     }).as("getTask");
   });
 
-  it("shows task details page", () => {
+  it("shows task details page with and without logs", () => {
     cy.visit("/monitor/tasks/list");
     cy.wait("@getTasks");
 
@@ -229,6 +297,12 @@ describe("scenarios > monitor > tools > tasks", () => {
     cy.get("@lines").eq(2).should("have.text", '    "information": true');
     cy.get("@lines").eq(3).should("have.text", "  }");
     cy.get("@lines").eq(4).should("have.text", "}");
+
+    cy.log("empty logs");
+    cy.findByTestId("monitor-main")
+      .findByText("There are no captured logs")
+      .should("be.visible");
+    cy.findByTestId("task-logs").should("not.exist");
 
     cy.log("copy button");
     cy.window().then((window) => {
@@ -247,9 +321,8 @@ describe("scenarios > monitor > tools > tasks", () => {
       // Ideally, we would compare raw strings here, but Cypress automatically parses JSON files
       task.task_details,
     );
-  });
 
-  it("should render logs when they are present", () => {
+    cy.log("logs");
     const taskWithLogs = {
       ...task,
       logs: [
@@ -276,7 +349,7 @@ describe("scenarios > monitor > tools > tasks", () => {
       body: taskWithLogs,
     }).as("getTaskWithLogs");
 
-    cy.visit(`/monitor/tasks/list/${task.id}`);
+    cy.reload();
     cy.wait("@getTaskWithLogs");
 
     cy.findByTestId("task-logs").scrollIntoView().should("be.visible");
@@ -284,25 +357,9 @@ describe("scenarios > monitor > tools > tasks", () => {
       cy.findByText(new RegExp(taskWithLogs.logs[0].msg)).should("be.visible");
       cy.findByText(new RegExp(taskWithLogs.logs[1].msg)).should("be.visible");
     });
-  });
-
-  it("should show empty state when no logs are present", () => {
-    const taskWithoutLogs = {
-      ...task,
-      logs: [],
-    };
-
-    cy.intercept("GET", `/api/task/${task.id}`, {
-      body: taskWithoutLogs,
-    }).as("getTaskWithoutLogs");
-
-    cy.visit(`/monitor/tasks/list/${task.id}`);
-    cy.wait("@getTaskWithoutLogs");
-
-    cy.findByTestId("task-logs").should("not.exist");
     cy.findByTestId("monitor-main")
       .findByText("There are no captured logs")
-      .should("be.visible");
+      .should("not.exist");
   });
 });
 
@@ -334,7 +391,7 @@ describe("scenarios > monitor > tools > logs", () => {
     cy.wait("@getLogs");
   });
 
-  it("should allow to download logs", () => {
+  it("should allow to download all logs and filtered logs", () => {
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
       "equal",
@@ -343,9 +400,8 @@ describe("scenarios > monitor > tools > logs", () => {
         `[9da436dc-d79c-42f9-89e3-322c22cd0cd3] ${formatTimestamp(log2.timestamp)} ERROR metabase.server.middleware.log message`,
       ].join("\n"),
     );
-  });
 
-  it("should allow to download filtered logs", () => {
+    cy.deleteDownloadsFolder();
     cy.findByPlaceholderText("Filter logs").type("error");
     cy.button(/Download/).click();
     cy.readFile("cypress/downloads/logs.txt").should(
@@ -363,7 +419,7 @@ describe("scenarios > monitor > tools > logs", () => {
   }
 });
 
-describe("monitor > tools > erroring questions ", () => {
+describe("monitor > tools > erroring questions", () => {
   const TOOLS_ERRORS_URL = "/monitor/errors";
   // The filter is required but doesn't have a default value set
   const brokenQuestionDetails = {
@@ -398,11 +454,13 @@ describe("monitor > tools > erroring questions ", () => {
     cy.icon("variable").click();
     cy.findByPlaceholderText("Enter a default value…").type("Foo");
 
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.findByText("Save").click();
 
     H.modal().within(() => {
       cy.button("Save").click();
     });
+    cy.wait("@updateCard");
   }
 
   function selectQuestion(name: string) {
@@ -413,155 +471,165 @@ describe("monitor > tools > erroring questions ", () => {
       });
   }
 
-  describe("when feature enabled", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    // Unjustified type cast. FIXME
+    H.createNativeQuestion(brokenQuestionDetails as NativeQuestionDetails, {
+      loadMetadata: true,
     });
 
-    describe("without broken questions", () => {
-      it("should render the Monitor nav and navigate to Erroring questions by clicking on it", () => {
-        cy.visit("/monitor");
+    cy.visit(TOOLS_ERRORS_URL);
+  });
 
-        cy.findByTestId("monitor-nav")
-          .findByRole("link", { name: /Erroring questions/ })
-          .click();
-        cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
+  it("should rerun, search and clear a broken question", () => {
+    cy.wait("@dataset");
 
-        cy.log("test no results state");
+    cy.findByRole("heading", { name: "Erroring questions" }).should(
+      "be.visible",
+    );
+    cy.findByTestId("erroring-questions-table")
+      .findByText(brokenQuestionDetails.name)
+      .should("be.visible");
+    // nothing selected -> the bulk action bar (and its button) is hidden
+    cy.button("Rerun selected").should("not.exist");
+    selectQuestion(brokenQuestionDetails.name);
 
-        cy.findByTestId("erroring-questions-table")
-          .findByText("No results")
-          .should("be.visible");
-        // nothing selected -> the bulk action bar (and its button) is hidden
-        cy.button("Rerun selected").should("not.exist");
-        cy.findByPlaceholderText(
-          "Search by question, error, database, or collection",
-        ).should("be.enabled");
-      });
-    });
+    cy.intercept("POST", "/api/dataset").as("rerunRefetch");
+    cy.button("Rerun selected").should("not.be.disabled").click();
 
-    describe("with the existing broken questions", () => {
-      beforeEach(() => {
-        // Unjustified type cast. FIXME
-        H.createNativeQuestion(brokenQuestionDetails as NativeQuestionDetails, {
-          loadMetadata: true,
-        });
+    cy.wait("@rerunRefetch");
+    cy.findByTestId("erroring-questions-table").should(
+      "have.attr",
+      "aria-busy",
+      "false",
+    );
 
-        cy.visit(TOOLS_ERRORS_URL);
-      });
+    // The question is still there because we didn't fix it
+    cy.findByTestId("erroring-questions-table")
+      .findByText(brokenQuestionDetails.name)
+      .should("be.visible");
+    // rerunning clears the selection, so the bulk action bar closes
+    cy.button("Rerun selected").should("not.exist");
 
-      it("should render correctly", () => {
-        cy.wait("@dataset");
+    cy.intercept("POST", "/api/dataset").as("searchRefetch");
+    cy.findByPlaceholderText(
+      "Search by question, error, database, or collection",
+    )
+      .should("be.enabled")
+      .type("foo");
 
-        selectQuestion(brokenQuestionDetails.name);
+    cy.wait("@searchRefetch");
 
-        cy.button("Rerun selected").should("not.be.disabled").click();
+    cy.findByTestId("erroring-questions-table")
+      .findByText("No results")
+      .should("be.visible");
 
-        cy.wait("@dataset");
+    cy.findByPlaceholderText(
+      "Search by question, error, database, or collection",
+    ).clear();
 
-        // The question is still there because we didn't fix it
-        cy.findByTestId("erroring-questions-table").findByText(
-          brokenQuestionDetails.name,
-        );
-        // rerunning clears the selection, so the bulk action bar closes
-        cy.button("Rerun selected").should("not.exist");
+    fixQuestion(brokenQuestionDetails.name);
 
-        cy.findByPlaceholderText(
-          "Search by question, error, database, or collection",
-        )
-          .should("be.enabled")
-          .type("foo");
+    cy.visit(TOOLS_ERRORS_URL);
 
-        cy.wait("@dataset");
+    selectQuestion(brokenQuestionDetails.name);
 
-        cy.findByTestId("erroring-questions-table")
-          .findByText("No results")
-          .should("be.visible");
+    cy.intercept("POST", "/api/dataset").as("fixedRerunRefetch");
+    cy.button("Rerun selected").should("not.be.disabled").click();
 
-        cy.findByPlaceholderText(
-          "Search by question, error, database, or collection",
-        ).clear();
+    cy.wait("@fixedRerunRefetch");
 
-        fixQuestion(brokenQuestionDetails.name);
-
-        cy.visit(TOOLS_ERRORS_URL);
-
-        selectQuestion(brokenQuestionDetails.name);
-
-        cy.button("Rerun selected").should("not.be.disabled").click();
-
-        cy.wait("@dataset");
-
-        cy.findByTestId("erroring-questions-table")
-          .findByText("No results")
-          .should("be.visible");
-      });
-    });
+    cy.findByTestId("erroring-questions-table")
+      .findByText("No results")
+      .should("be.visible");
   });
 });
 
 describe("monitor > tools", () => {
+  const TOOLS_ERRORS_URL = "/monitor/errors";
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
   });
 
-  it("should show either the erroring questions or the upsell (based on the `audit_app` feature flag)", () => {
+  it("should navigate the Monitor tools and show the upsell without the `audit_app` feature flag", () => {
     cy.log(
       "Enable model persistence in order to have multiple tabs/routes in tools",
     );
     cy.request("POST", "/api/persist/enable");
-    cy.visit("/monitor/errors");
+    cy.visit("/monitor");
+    cy.location("pathname").should(
+      "match",
+      /^\/monitor\/dependency-diagnostics/,
+    );
+
+    cy.findByTestId("monitor-nav")
+      .findByRole("link", { name: /Erroring questions/ })
+      .click();
+    cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
 
     cy.findByRole("heading", {
       name: "Erroring questions",
     }).should("be.visible");
 
+    cy.log("test no results state");
+    cy.findByTestId("erroring-questions-table")
+      .findByText("No results")
+      .should("be.visible");
+    cy.findByPlaceholderText(
+      "Search by question, error, database, or collection",
+    ).should("be.enabled");
+
     cy.log("We should be able to switch to the model persistence log page");
 
     cy.findByTestId("monitor-nav").findByText("Model persistence log").click();
     cy.location("pathname").should("eq", "/monitor/model-persistence-log");
+    cy.findByTestId("monitor-main")
+      .findByRole("heading", { name: "Model persistence log" })
+      .should("be.visible");
+
+    cy.log(
+      "Back to Tasks should go to the tasks list even with no browser history (metabase#57113)",
+    );
+    cy.visit("/monitor/tasks/list");
+
+    cy.log("Pick an existing task url");
+
+    cy.findAllByTestId("task").should("be.visible").first().click();
+
+    cy.location("pathname")
+      .should("match", /\/monitor\/tasks\/list\/[0-9]+$/)
+      .then((pathname) => {
+        // Clear all history and navigate to the task detail page
+        cy.window().then((window) => {
+          window.history.replaceState(null, "", pathname);
+          // Clear the entire history stack by going to about:blank first
+          window.location.href = "about:blank";
+        });
+
+        cy.visit(pathname);
+        cy.findByText("Back to Tasks").click();
+        cy.location("pathname").should("eq", "/monitor/tasks/list");
+      });
 
     cy.log(
       "Once the audit_app feature flag is gone, tools should display an upsell",
     );
     H.deleteToken();
-    cy.visit("/monitor/errors");
+    cy.visit(TOOLS_ERRORS_URL);
 
     cy.findByRole("heading", {
       name: "Troubleshoot faster",
     }).should("be.visible");
-    cy.findByRole("link", { name: "Upgrade to Pro" });
-  });
-
-  describe("issue 57113", () => {
-    it("should navigate to /monitor/tasks/list when clicking Back to Tasks even with no browser history", () => {
-      cy.visit("/monitor/tasks/list");
-
-      cy.log("Pick an existing task url");
-
-      cy.findAllByTestId("task").should("be.visible").first().click();
-
-      cy.location("pathname")
-        .should("match", /\/monitor\/tasks\/list\/[0-9]+$/)
-        .then((pathname) => {
-          // Clear all history and navigate to the task detail page
-          cy.window().then((window) => {
-            window.history.replaceState(null, "", pathname);
-            // Clear the entire history stack by going to about:blank first
-            window.location.href = "about:blank";
-          });
-
-          cy.visit(pathname);
-          cy.findByText("Back to Tasks").click();
-          cy.location("pathname").should("eq", "/monitor/tasks/list");
-        });
-    });
+    cy.findByTestId("erroring-questions-table").should("not.exist");
+    cy.findByRole("link", { name: "Upgrade to Pro" }).should("be.visible");
   });
 });
 
@@ -642,26 +710,20 @@ describe("scenarios > monitor > tools > task runs", () => {
     }).as("getTaskRun");
   });
 
-  it("should switch between Tasks and Runs tabs", () => {
+  it("should switch tabs, open task run details and follow their links", () => {
     cy.visit("/monitor/tasks/list");
 
-    cy.findByTestId("tasks-table").should("be.visible");
+    cy.findByTestId("tasks-table")
+      .findAllByTestId("task")
+      .should("have.length.at.least", 1);
 
     cy.findByRole("link", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
-    cy.findByTestId("task-runs-table").should("be.visible");
-
-    cy.findByRole("link", { name: "Tasks" }).click();
-    cy.location("pathname").should("eq", "/monitor/tasks/list");
-    cy.findByTestId("tasks-table").should("be.visible");
-  });
-
-  it("should navigate to task run details and show associated tasks", () => {
-    cy.visit("/monitor/tasks/runs");
     cy.wait("@getTaskRuns");
 
     cy.findByTestId("task-runs-table")
       .findAllByTestId("task-run")
+      .should("have.length.at.least", 1)
       .first()
       .click();
     cy.wait("@getTaskRun");
@@ -670,43 +732,54 @@ describe("scenarios > monitor > tools > task runs", () => {
 
     cy.findByTestId("monitor-main").within(() => {
       cy.findByText("Run type").should("be.visible");
+      cy.findByText("Sync").should("be.visible");
       cy.findByText("Entity").should("be.visible");
       cy.findByText("Sample Database").should("be.visible");
     });
 
     cy.findByTestId("task-run-tasks-table").should("be.visible");
     cy.findAllByTestId("task-run-task").should("have.length", 3);
-  });
 
-  it("should navigate back to runs list from run details", () => {
-    cy.visit(`/monitor/tasks/runs/${taskRun.id}`);
-    cy.wait("@getTaskRun");
-
-    cy.findByRole("link", { name: /Back to Runs/i }).click();
-    cy.location("pathname").should("eq", "/monitor/tasks/runs");
-  });
-
-  it("should have clickable entity link in task run details", () => {
-    cy.visit(`/monitor/tasks/runs/${taskRun.id}`);
-    cy.wait("@getTaskRun");
-
-    cy.findByRole("link", { name: /Sample Database/i }).click();
-    cy.location("pathname").should("eq", "/admin/databases/1");
-  });
-
-  it("should navigate to task details from task run details", () => {
-    cy.visit(`/monitor/tasks/runs/${taskRun.id}`);
-    cy.wait("@getTaskRun");
-
+    cy.log("associated task row opens the task details");
     cy.findByTestId("task-run-tasks-table")
       .findAllByTestId("task-run-task")
       .first()
       .click();
-
     cy.location("pathname").should(
       "eq",
       `/monitor/tasks/list/${taskRunExtended.tasks[0].id}`,
     );
+
+    cy.go("back");
+    cy.location("pathname").should("eq", `/monitor/tasks/runs/${taskRun.id}`);
+
+    cy.log("entity link opens the database");
+    cy.findByRole("link", { name: /Sample Database/i }).click();
+    cy.location("pathname").should("eq", "/admin/databases/1");
+
+    cy.go("back");
+    cy.location("pathname").should("eq", `/monitor/tasks/runs/${taskRun.id}`);
+
+    cy.log("cold load of the run details page fetches the run");
+    cy.reload();
+    cy.wait("@getTaskRun");
+    cy.findByTestId("monitor-main")
+      .findByText("Sample Database")
+      .should("be.visible");
+    cy.findByTestId("task-run-tasks-table")
+      .findAllByTestId("task-run-task")
+      .should("have.length", 3);
+
+    cy.log("Back to Runs opens the runs list");
+    cy.findByRole("link", { name: /Back to Runs/i }).click();
+    cy.location("pathname").should("eq", "/monitor/tasks/runs");
+
+    cy.log("Tasks tab opens the tasks list");
+    cy.findByRole("link", { name: "Tasks" }).click();
+    cy.location("pathname").should("eq", "/monitor/tasks/list");
+    cy.findByTestId("tasks-table")
+      .findAllByTestId("task")
+      .should("have.length.at.least", 1);
   });
 });
 
@@ -793,6 +866,8 @@ describe("scenarios > monitor > tools > task runs pagination", () => {
     cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByTestId("task-runs-table").should("contain.text", "Sync");
   });
 });
 
@@ -801,7 +876,7 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("GET", "/api/task/runs?*", (request) => {
+    cy.intercept({ method: "GET", pathname: "/api/task/runs" }, (request) => {
       request.reply((response) => {
         response.body = {
           data: [],
@@ -811,61 +886,9 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
         };
       });
     }).as("getTaskRuns");
-
-    cy.intercept("GET", "/api/task/runs/entities?*", (request) => {
-      request.reply((response) => {
-        response.body = [
-          {
-            entity_type: "database",
-            entity_id: 1,
-            entity_name: "Sample Database",
-          },
-          {
-            entity_type: "database",
-            entity_id: 2,
-            entity_name: "Test Database",
-          },
-        ];
-      });
-    }).as("getEntities");
   });
 
-  it("filtering should work for task runs", () => {
-    cy.visit("/monitor/tasks/runs");
-    cy.wait("@getTaskRuns");
-
-    cy.log("Filter by run type");
-    getFilterByRun().click();
-    H.popover().findByText("Sync").click();
-    cy.location("search").should("contain", "run-type=sync");
-    cy.wait("@getTaskRuns");
-    cy.log("Filter by started at");
-    selectStartedAt("Previous 30 days");
-    cy.location("search").should("contain", "started-at=past30days");
-    cy.wait("@getTaskRuns");
-
-    cy.wait("@getEntities");
-    cy.log("Filter by entity");
-    getFilterByEntity().click();
-    H.popover().findByText("Sample Database").click();
-    cy.location("search").should("contain", "entity-type=database");
-    cy.location("search").should("contain", "entity-id=1");
-    cy.wait("@getTaskRuns");
-
-    cy.log("Filter by status");
-    getFilterByStatus().click();
-    H.popover().findByText("Success").click();
-    cy.location("search").should("contain", "status=success");
-    cy.wait("@getTaskRuns");
-
-    cy.log("Clear all filters");
-    getFilterByRun().parent().findByLabelText("Clear").click();
-    getFilterByStartedAt().parent().findByLabelText("Clear").click();
-    getFilterByStatus().parent().findByLabelText("Clear").click();
-    cy.location("search").should("eq", "");
-  });
-
-  it("entity picker should be disabled/enabled based on run type, started at and entities availability", () => {
+  it("filtering and the entity picker should work for task runs", () => {
     cy.visit("/monitor/tasks/runs");
     cy.wait("@getTaskRuns");
     cy.intercept("GET", "/api/task/runs/entities?*", {
@@ -883,8 +906,13 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     getFilterByEntity().should("be.disabled");
     assertFilterByEntityTooltipText("Select a run type first");
 
+    cy.log("Filter by run type");
     getFilterByRun().click();
     H.popover().findByText("Sync").click();
+    cy.location("search").should("contain", "run-type=sync");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "run-type=sync");
 
     cy.log("Should be still disabled until started at is selected");
     getFilterByEntity().should("be.disabled");
@@ -892,6 +920,7 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     cy.log("Should show tooltip 'Select a start time' when hovering");
     assertFilterByEntityTooltipText("Select a start time first");
 
+    cy.log("Filter by started at");
     selectStartedAt("Previous 30 days");
 
     cy.log("Should show loader while loading entities");
@@ -901,20 +930,46 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
       .find(".mb-mantine-Loader-root")
       .should("exist");
 
+    cy.location("search").should("contain", "started-at=past30days");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "started-at=past30days");
     cy.wait("@getEntitiesDelayed");
 
-    cy.log("Should be enabled after entities are loaded");
-    getFilterByEntity().should("not.be.disabled");
+    cy.log("Filter by entity, enabled after entities are loaded");
+    getFilterByEntity().should("not.be.disabled").click();
+    H.popover().findByText("Sample Database").click();
+    getFilterByEntity().should("have.value", "Sample Database");
+    cy.location("search").should("contain", "entity-type=database");
+    cy.location("search").should("contain", "entity-id=1");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "entity-type=database")
+      .and("contain", "entity-id=1");
+
+    cy.log("Filter by status");
+    getFilterByStatus().click();
+    H.popover().findByText("Success").click();
+    cy.location("search").should("contain", "status=success");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "status=success");
 
     cy.log("Should clear and disable entity filter when run type is cleared");
     getFilterByRun().parent().findByLabelText("Clear").click();
 
     getFilterByEntity().should("be.disabled");
     getFilterByEntity().should("have.value", "");
+    cy.location("search")
+      .should("not.contain", "run-type")
+      .and("not.contain", "entity-id");
 
     cy.log("Should clear and disable entity filter when started at is cleared");
     getFilterByRun().click();
     H.popover().findByText("Sync").click();
+    getFilterByEntity().should("not.be.disabled").click();
+    H.popover().findByText("Sample Database").click();
+    getFilterByEntity().should("have.value", "Sample Database");
     getFilterByStartedAt().parent().findByLabelText("Clear").click();
 
     getFilterByEntity().should("be.disabled");
@@ -932,6 +987,12 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
 
     getFilterByEntity().should("be.disabled");
     assertFilterByEntityTooltipText("No entities available");
+
+    cy.log("Clear all filters");
+    getFilterByRun().parent().findByLabelText("Clear").click();
+    getFilterByStartedAt().parent().findByLabelText("Clear").click();
+    getFilterByStatus().parent().findByLabelText("Clear").click();
+    cy.location("search").should("eq", "");
   });
 });
 

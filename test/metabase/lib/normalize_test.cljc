@@ -131,8 +131,7 @@
                                                     :lib/uuid       "ff3dc321-27a7-42d8-a7fc-518160250984"
                                                     :effective-type "type/Integer"}
                                                    76329)))
-                                                :stages      ({:lib/type "mbql.stage/mbql", :source-card 13281})
-                                                :lib/options #:lib{:uuid "517699ac-dede-4f6b-bc53-272def3eea8b"}})
+                                                :stages      ({:lib/type "mbql.stage/mbql", :source-card 13281})})
                                 :lib/type     "mbql.stage/mbql"
                                 :source-table 11763
                                 :fields       (("field"
@@ -213,7 +212,6 @@
                                                         76329]]]
                                         :fields      :all
                                         :stages      [{:source-card 13281, :lib/type :mbql.stage/mbql}]
-                                        :lib/options {:lib/uuid "517699ac-dede-4f6b-bc53-272def3eea8b"}
                                         :lib/type    :mbql/join}]
                         :limit        3
                         :source-table 11763
@@ -224,12 +222,12 @@
 #?(:clj
    (deftest ^:synchronized normalize-error-containment-test
      (testing "an AssertionError from the coercer is contained (wrapped), not propagated"
-       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema] (fn [_x] (throw (AssertionError. "boom"))))}
+       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema _legacy-int-field-ids?] (fn [_x] (throw (AssertionError. "boom"))))}
          (fn []
            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uncaught normalization error"
                                  (lib/normalize {:lib/type :mbql/query}))))))
      (testing "a fatal Error from the coercer propagates unwrapped"
-       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema] (fn [_x] (throw (Error. "boom"))))}
+       (with-redefs-fn {#'lib.normalize/coercer (fn [_schema _legacy-int-field-ids?] (fn [_x] (throw (Error. "boom"))))}
          (fn []
            (is (thrown? Error
                         (lib/normalize {:lib/type :mbql/query}))))))))

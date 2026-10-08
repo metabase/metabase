@@ -249,15 +249,15 @@
       query)))
 
 (mu/defn- remove-replace* :- :map
-  [query             :- :map
+  [query             :- ::lib.schema/query
    stage-number      :- :int
    target-clause     :- ::lib.schema.mbql-clause/clause
    remove-or-replace :- [:enum :remove :replace]
    replacement       :- [:maybe [:or
                                  ::lib.schema.mbql-clause/clause
                                  ;; a metadata or `:lib/external-op` or something
-                                 [:map
-                                  [:lib/type qualified-keyword?]]]]]
+                                 ::lib.metadata.calculation/displayable
+                                 :metabase.lib.schema.common/external-op]]]
   {:pre [(vector? target-clause)]}
   (mu/disable-enforcement
     (let [target-clause (lib.common/->op-arg target-clause)
@@ -311,8 +311,10 @@
 (mu/defn remove-clause :- ::lib.schema/query
   "Removes the `target-clause` from the stage specified by `stage-number` of `query`.
   If `stage-number` is not specified, the last stage is used."
-  ([query :- ::lib.schema/query
-    target-clause]
+  ([query         :- ::lib.schema/query
+    target-clause :- [:or
+                      ::lib.schema.mbql-clause/clause
+                      ::lib.schema.join/join]]
    (remove-clause query -1 target-clause))
 
   ([query         :- ::lib.schema/query
@@ -527,7 +529,11 @@
 
   If you want to drop the old clause and replace it, that's [[remove-clause]] plus adding the new one
   with [[lib.expression/expression]] and similar."
-  ([query target-clause new-clause]
+  ([query         :- ::lib.schema/query
+    target-clause :- [:or
+                      ::lib.schema.mbql-clause/clause
+                      ::lib.schema.join/join]
+    new-clause    :- [:maybe ::lib.metadata.calculation/displayable]]
    (replace-clause query -1 target-clause new-clause))
 
   ([query         :- ::lib.schema/query
@@ -537,7 +543,7 @@
                       ::lib.schema.join/join]
     ;; replacement can be basically anything, an MBQL clause or literal allowed in MBQL, or `nil` (to remove it), or a
     ;; join, or a metadata that can get turned into a clause.
-    new-clause    :- :any]
+    new-clause    :- [:maybe ::lib.metadata.calculation/displayable]]
    (cond
      (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
      (replace-join query stage-number target-clause new-clause)
@@ -592,7 +598,9 @@
   If the specified join cannot be found, then `query` is returned as is.
   If renaming the join to `new-name` would clash with an existing join, a
   suffix is appended to `new-name` to make it unique."
-  ([query join-spec new-name]
+  ([query        :- ::lib.schema/query
+    join-spec    :- [:or ::lib.schema.join/join ::lib.schema.join/alias :int]
+    new-name     :- ::lib.schema.join/alias]
    (rename-join query -1 join-spec new-name))
 
   ([query        :- ::lib.schema/query
@@ -674,7 +682,8 @@
   If `stage-number` is not provided, the last stage is used.
   If the specified join cannot be found, then `query` is returned as is.
   Top level clauses containing references to the removed join are removed too."
-  ([query join-spec]
+  ([query     :- ::lib.schema/query
+    join-spec :- [:or ::lib.schema.join/join :string :int]]
    (remove-join query -1 join-spec))
 
   ([query        :- ::lib.schema/query
@@ -700,13 +709,15 @@
   If `stage-number` is not provided, the last stage is used.
   If the specified join cannot be found, then `query` is returned as is.
   Top level clauses containing references to the removed join are removed too."
-  ([query join-spec new-join]
+  ([query     :- ::lib.schema/query
+    join-spec :- [:or ::lib.schema.join/join :string :int]
+    new-join  :- [:maybe [:ref ::lib.join.util/join-with-optional-alias]]]
    (replace-join query -1 join-spec new-join))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
     join-spec    :- [:or ::lib.schema.join/join :string :int]
-    new-join]
+    new-join     :- [:maybe [:ref ::lib.join.util/join-with-optional-alias]]]
    (if (nil? new-join)
      (remove-join query stage-number join-spec)
      (update-joins query stage-number join-spec
@@ -781,7 +792,7 @@
   ([query :- ::lib.schema/query]
    (normalize-fields-clauses query nil))
   ([query            :- ::lib.schema/query
-    removed-location :- [:maybe [:sequential :any]]]
+    removed-location :- [:maybe [:sequential [:or :keyword :int]]]]
    (reduce #(normalize-fields-for-stage %1 %2 removed-location)
            query
            (range (count (:stages query))))))

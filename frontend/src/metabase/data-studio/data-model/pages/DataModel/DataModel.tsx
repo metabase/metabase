@@ -204,7 +204,7 @@ function DataModelContent() {
               h="100%"
               justify="center"
               miw={rem(400)}
-              p="xl"
+              p="xxl"
             >
               <LoadingAndErrorWrapper error={t`Not found.`} />
             </Stack>
@@ -242,29 +242,30 @@ function DataModelContent() {
               justify="space-between"
               w="100%"
               data-testid="table-section-header"
-              py="lg"
+              py="xl"
               bg="background_page-secondary"
               className={S.header}
-              px="lg"
+              px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                p="sm"
-                size="compact-sm"
+                leftSection={<Icon name="close" />}
                 onClick={() => {
                   closePreview();
                   resetSelection();
                 }}
               />
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {table && (
                   <TableSection
@@ -309,25 +310,27 @@ function DataModelContent() {
               justify="space-between"
               w="100%"
               data-testid="field-section-header"
-              p="lg"
+              p="xl"
               bg="background_page-secondary"
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
+                leftSection={<Icon name="close" />}
                 onClick={closePreview}
               />
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && databaseId != null && (
                   <>
@@ -362,7 +365,7 @@ function DataModelContent() {
           <Box
             flex={COLUMN_CONFIG.preview.flex}
             h="100%"
-            p="lg"
+            p="xl"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
             ref={scrollToPanel}

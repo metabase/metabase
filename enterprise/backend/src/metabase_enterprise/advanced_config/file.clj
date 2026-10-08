@@ -132,6 +132,7 @@
        (s/assert* spec section-config))
      true)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *supported-versions*
   "Range of config file versions (inclusive) that we'll support. If the version is out of this range, spec validation
   will fail and trigger an error. See ns documentation for [[metabase.config.file]] for more details."
@@ -147,6 +148,7 @@
   (s/keys :req-un [:metabase.config.file.config/version
                    :metabase.config.file.config/config]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *env*
   "Environment variables and system properties used in this namespace. This is a dynamic version
   of [[environ.core/env]]; it is dynamic for test mocking purposes.

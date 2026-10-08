@@ -16,7 +16,7 @@
 (defsetting store-api-url
   (deferred-tru "Store API URL.")
   :type       :string
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :internal
   :default    (str "https://store-api" (when (default-to-staging?) ".staging") ".metabase.com")
   :doc        false

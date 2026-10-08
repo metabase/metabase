@@ -1,5 +1,5 @@
+import { createMockState } from "__support__/state";
 import { PLUGIN_DATA_PERMISSIONS, reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
 

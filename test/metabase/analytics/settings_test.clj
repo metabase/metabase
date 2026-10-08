@@ -3,10 +3,13 @@
    [clojure.test :refer :all]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest instance-creation-test
   (let [original-value (t2/select-one-fn :value :model/Setting :key "instance-creation")]

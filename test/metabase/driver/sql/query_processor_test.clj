@@ -24,6 +24,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -683,9 +684,7 @@
          (-> (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:alias        "cat"
-                                :source-query {:source-table $$categories
-                                               ;; this will prevent the nesting from getting collapsed
-                                               ::whatever true}
+                                :source-query {:source-table $$categories}
                                 :condition    [:= $category-id &cat.*categories.id]}]
                 :order-by     [[:asc $name]]
                 :limit        3})

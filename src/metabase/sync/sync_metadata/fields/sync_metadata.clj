@@ -4,6 +4,7 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -12,8 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
 
 (defn- normalize-nfc-path
   "Normalize a `nfc-path` to a vector of strings so a driver emitting keywords doesn't churn against the
@@ -84,7 +84,6 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
-        ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-semantic-type?
         (and (nil? old-semantic-type)
              (not= old-semantic-type new-semantic-type))
@@ -128,22 +127,16 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           (doto
-            {:base_type           new-base-type
-             :effective_type      new-base-type
-             :coercion_strategy   nil
-             ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
-             :fingerprint_version 0
-             :fingerprint         nil
-             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
-             :semantic_type       nil}
-             ;; we must override user-set values
-             (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
-         ;; GHY-3388 self-heal: a Field with no coercion_strategy must have effective_type=base_type.
-         ;; We've observed customer instances where these drifted apart (likely from older Metabase
-         ;; versions). When base_type didn't change at this sync but the row is in the broken state,
-         ;; repair it. Wipe user-settings's stale effective_type too so sync-user-settings's merge-back
-         ;; doesn't re-introduce drift on the next field update.
+           (field-user-settings/unset-user-settings!
+            (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type])
+           {:base_type           new-base-type
+            :effective_type      new-base-type
+            :coercion_strategy   nil
+            ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+            :fingerprint_version 0
+            :fingerprint         nil
+            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+            :semantic_type       nil})
          (when (and (not new-base-type?)
                     (nil? old-coercion-strategy)
                     (some? old-effective-type)
@@ -152,9 +145,8 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-effective-type
                       new-base-type)
-           (let [et {:effective_type new-base-type}]
-             (schema.field-user-settings/upsert-user-settings metabase-field et)
-             et))
+           (field-user-settings/unset-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
+           {:effective_type new-base-type})
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
@@ -243,7 +235,7 @@
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
+             (pos? (sync.db/update-field! (u/the-id metabase-field) updates)))
       1
       0)))
 

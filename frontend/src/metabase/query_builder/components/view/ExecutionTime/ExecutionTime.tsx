@@ -21,7 +21,7 @@ export const ExecutionTime = ({ time }: Props) => {
     <Tooltip label={label}>
       <Flex
         align="center"
-        gap="xs"
+        gap="xxs"
         fw="bold"
         data-testid="execution-time"
         aria-label={label}

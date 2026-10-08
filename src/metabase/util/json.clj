@@ -1,6 +1,7 @@
 (ns metabase.util.json
   "Functions for encoding and decoding JSON that abstract away the underlying implementation."
   (:require
+   ;; this ns is the JSON facade; it wraps cheshire directly
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as cheshire]
    [cheshire.factory]
@@ -9,7 +10,7 @@
    [clojure.string :as str])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (java.io InputStream Reader)))
+   (java.io InputStream Reader StringReader)))
 
 (set! *warn-on-reflection* true)
 
@@ -96,6 +97,15 @@
   "Decode a value from a JSON from a string, InputStream, or Reader, keywordizing map keys."
   [source]
   (decode source true))
+
+(defn decode-document+kw
+  "Decode the single JSON value that makes up string `s`, keywordizing map keys.
+  Throws if anything other than whitespace follows that value."
+  [^String s]
+  (let [[value & more] (cheshire/parsed-seq (io/reader (StringReader. s)) true)]
+    (when more
+      (throw (ex-info "Expected one JSON value, found more" {})))
+    value))
 
 (defn- parse-charset
   "Parse charset from content-type header, e.g. 'application/json; charset=utf-8' -> 'utf-8'.

@@ -19,7 +19,7 @@ export const ReadOnlyBranchSection = () => {
 
   return (
     <RemoteSyncSettingsSection title={t`Branch to sync with`}>
-      <Stack gap="md">
+      <Stack gap="lg">
         <Box style={{ flex: 1 }}>
           <FormTextInput
             name={BRANCH_KEY}
@@ -34,7 +34,6 @@ export const ReadOnlyBranchSection = () => {
           description={t`Periodically import changes from the sync branch. When auto-sync is off, you'll need to pull changes from the sync branch manually.`}
           mb="0.6125rem"
           name={AUTO_IMPORT_KEY}
-          size="sm"
           {...getEnvSettingProps(settingDetails?.[AUTO_IMPORT_KEY], {
             disabled: true,
           })}

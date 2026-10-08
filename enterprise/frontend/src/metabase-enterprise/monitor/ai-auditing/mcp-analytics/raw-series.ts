@@ -1,3 +1,4 @@
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
@@ -12,7 +13,28 @@ type Opts = {
   maxCategories?: number;
   otherLabel: string;
   getColor: GetColor;
+  /**
+   * Every row already represents an error, so slices must never land on the app's
+   * success-green accent — that would read as "this share succeeded" right below a
+   * chart using red/green for error/success.
+   */
+  errorsOnly?: boolean;
 };
+
+/**
+ * Color a pie's dimension values, keeping the success-green accent out of the mix so no
+ * slice of an all-error breakdown can be misread as "succeeded".
+ */
+function getErrorPieColors(
+  rows: unknown[][],
+  dimensionIndex: number,
+  getColor: GetColor,
+): Record<string, string> {
+  const values = [...new Set(rows.map((row) => String(row[dimensionIndex])))];
+  return getColorsForValues(values, null, {
+    accent1: getColor("feedback-negative-strong"),
+  });
+}
 
 /**
  * Keep the top `max - 1` rows (already count-ordered) and fold the remaining long tail into a
@@ -56,7 +78,7 @@ export function toCountBreakoutRawSeries(
     return null;
   }
 
-  const { display, maxCategories, otherLabel, getColor } = opts;
+  const { display, maxCategories, otherLabel, getColor, errorsOnly } = opts;
   const cols = response.data.cols;
   const dimensionIndex = cols.findIndex((c) => c.source === "breakout");
   const metricIndex = cols.findIndex((c) => c.source === "aggregation");
@@ -65,11 +87,24 @@ export function toCountBreakoutRawSeries(
   const countColumnName =
     metricIndex >= 0 ? (cols[metricIndex].name ?? "count") : "count";
 
+  const rows = collapseToTopN(
+    response.data.rows,
+    dimensionIndex,
+    metricIndex,
+    maxCategories,
+    otherLabel,
+    cols.length,
+  );
+
   const visualizationSettings =
     display === "pie"
       ? {
           "pie.dimension": dimensionName,
           "pie.metric": countColumnName,
+          ...(errorsOnly &&
+            dimensionIndex >= 0 && {
+              "pie.colors": getErrorPieColors(rows, dimensionIndex, getColor),
+            }),
         }
       : {
           "graph.x_axis.title_text": "",
@@ -91,14 +126,7 @@ export function toCountBreakoutRawSeries(
       },
       data: {
         ...response.data,
-        rows: collapseToTopN(
-          response.data.rows,
-          dimensionIndex,
-          metricIndex,
-          maxCategories,
-          otherLabel,
-          cols.length,
-        ),
+        rows,
       },
     },
   ];

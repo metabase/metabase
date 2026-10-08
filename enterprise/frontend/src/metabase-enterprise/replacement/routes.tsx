@@ -2,11 +2,20 @@ import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 const migrateModelsPage = () =>
-  import("./pages/MigrateModelsPage").then(({ MigrateModelsPage }) => ({
+  import(
+    /* webpackChunkName: "model-replacement" */ "./pages/MigrateModelsPage"
+  ).then(({ MigrateModelsPage }) => ({
     Component: MigrateModelsPage,
   }));
 
-registerPagePrefetch(Urls.transformMigrateModels(), migrateModelsPage);
+/**
+ * Called from the licensed branch of `initializePlugin`, so only a page this
+ * instance mounts is registered. The background pass reads the registrations too,
+ * and fetching a page nobody can reach would spend a download on nothing.
+ */
+export function registerReplacementPagePrefetch(): void {
+  registerPagePrefetch(Urls.transformMigrateModels(), migrateModelsPage);
+}
 
 export function getTransformToolsRoutes() {
   return (

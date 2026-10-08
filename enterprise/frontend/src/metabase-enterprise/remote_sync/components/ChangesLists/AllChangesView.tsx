@@ -54,6 +54,9 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
     namespace: "snippets",
   });
+  const { data: dataActionCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "data-actions",
+  });
 
   // Build namespace-to-collection-ids map in a single pass
   const namespaceCollectionMap = useMemo(
@@ -61,8 +64,9 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
       buildNamespaceCollectionMap([
         ...collectionTree,
         ...snippetCollectionTree,
+        ...dataActionCollectionTree,
       ]),
-    [collectionTree, snippetCollectionTree],
+    [collectionTree, snippetCollectionTree, dataActionCollectionTree],
   );
 
   // Find the Transforms root entity (id=-1) if it exists
@@ -113,14 +117,14 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   return (
     <Box>
       {!!title && (
-        <Title order={4} mb="md" c="text-secondary">
+        <Title order={4} mb="lg" c="text-secondary">
           {title}
         </Title>
       )}
 
       <Paper
         withBorder
-        radius="md"
+        radius="sm"
         mah={400}
         styles={{
           root: {
@@ -134,15 +138,15 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
               group.items.length > 0 || group.tableGroups.length > 0;
 
             return (
-              <Fragment key={group.collectionId}>
+              <Fragment key={group.collectionId ?? "root"}>
                 {groupIndex > 0 && <Divider />}
-                <Box p="md">
+                <Box p="lg">
                   <Group
                     p="sm"
                     gap="sm"
                     mb={hasItems ? "0.75rem" : 0}
                     bg="background_page-secondary"
-                    bdrs="md"
+                    bdrs="sm"
                   >
                     <Icon
                       name={getGroupIcon(group.spec)}
@@ -166,8 +170,8 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                   {hasItems && (
                     <Stack
                       gap="0.75rem"
-                      ml="md"
-                      pl="xs"
+                      ml="lg"
+                      pl="xxs"
                       style={{
                         borderLeft: "2px solid var(--mb-color-border-neutral)",
                       }}
@@ -188,8 +192,8 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                           {tableGroup.children.length > 0 && (
                             <Stack
                               gap="0.75rem"
-                              ml="md"
-                              pl="xs"
+                              ml="lg"
+                              pl="xxs"
                               mt="0.75rem"
                               style={{
                                 borderLeft:

@@ -15,7 +15,7 @@
 .block {
   background: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
 }
 
 .blockHeader {

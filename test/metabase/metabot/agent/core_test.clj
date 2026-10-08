@@ -1,5 +1,7 @@
 (ns metabase.metabot.agent.core-test
   (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
    [metabase.ai-tracing.log :as ait.log]
@@ -14,10 +16,17 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.features :as features]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -106,6 +115,149 @@
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
+(defn- tools-registered-for-request!
+  ([capabilities] (tools-registered-for-request! :internal capabilities))
+  ([profile-id capabilities]
+   (let [captured (atom nil)]
+     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                        llm-metabot-provider test-provider]
+       (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts tools _tracking-opts _llm-opts]
+                                                   (reset! captured (set (keys tools)))
+                                                   (mut/mock-llm-response [{:type :text :text "Hello"}]))]
+         (into [] (agent/run-agent-loop
+                   {:messages   [{:role :user :content "Open the SQL editor"}]
+                    :state      {}
+                    :profile-id profile-id
+                    :context    {:capabilities capabilities}}))))
+     @captured)))
+
+(deftest client-claimed-sql-capability-is-clamped-to-actual-permissions-test
+  (mt/with-no-data-perms-for-all-users!
+    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+    (testing "a query-builder-only user gets no SQL tools even when the request claims the capability"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! ["permission:write_sql_queries"])]
+          (is (contains? tools "construct_notebook_query"))
+          (is (not (contains? tools "create_sql_query")))
+          (is (not (contains? tools "edit_sql_query")))
+          (is (not (contains? tools "replace_sql_query"))))))
+    (testing "a user with native permission gets the SQL tools for the same request"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! ["permission:write_sql_queries"])]
+          (is (contains? tools "create_sql_query"))
+          (is (contains? tools "edit_sql_query"))
+          (is (contains? tools "replace_sql_query")))))))
+
+(deftest document-sql-chart-tool-requires-native-permission-test
+  (mt/with-no-data-perms-for-all-users!
+    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+    (testing "a query-builder-only user is offered neither half of the document SQL path"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! :document-generate-content ["permission:write_sql_queries"])]
+          (is (contains? tools "document_construct_model_chart"))
+          (is (not (contains? tools "document_construct_sql_chart")))
+          ;; leaving this one registered strands the model: its output tells it to call
+          ;; document_construct_sql_chart, which is not in its tool set, under :required-tool-call?
+          (is (not (contains? tools "document_schema_collect"))))))
+    (testing "a user with native permission is offered both document chart tools"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! :document-generate-content ["permission:write_sql_queries"])]
+          (is (contains? tools "document_construct_model_chart"))
+          (is (contains? tools "document_construct_sql_chart"))
+          (is (contains? tools "document_schema_collect")))))))
+
+(deftest terminal-error-message-test
+  (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
+                {:type :tool-output :id "a" :result {:output "No native permission."
+                                                     :terminal-error? true}}]]
+    (testing "reads the message off a tool result marked terminal"
+      (is (= "No native permission." (#'agent/terminal-error-message denial))))
+    (testing "an ordinary tool failure is not terminal"
+      (is (nil? (#'agent/terminal-error-message
+                 [{:type :tool-output :id "b" :result {:output "syntax error"}}]))))
+    (testing "a terminal marker with no message yields nil so no empty text part is emitted"
+      (is (nil? (#'agent/terminal-error-message
+                 [{:type :tool-output :id "c" :result {:output "" :terminal-error? true}}]))))
+    (testing "the first denial wins when an iteration produces several"
+      (is (= "first" (#'agent/terminal-error-message
+                      [{:type :tool-output :id "a" :result {:output "first" :terminal-error? true}}
+                       {:type :tool-output :id "b" :result {:output "second" :terminal-error? true}}]))))
+    (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
+      (is (#'agent/should-continue? 0 20 #{} denial)))))
+
+(defn- run-sql-denial-turn!
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id`."
+  [profile-id database-id]
+  (let [call-count (atom 0)]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      ;; the tool executor lives inside `call-llm`, so redef the transport to let the tool run
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                          (if (= 1 (swap! call-count inc))
+                                                            (mut/mock-llm-response
+                                                             [{:type      :tool-input
+                                                               :id        "t1"
+                                                               :function  "create_sql_query"
+                                                               :arguments {:database_id database-id
+                                                                           :sql_query   "SELECT 1"
+                                                                           :title       "Results"}}])
+                                                            (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
+        (let [parts (into [] (agent/run-agent-loop
+                              {:messages   [{:role :user :content "Query that database"}]
+                               :state      {}
+                               :profile-id profile-id
+                               :context    {:capabilities    ["permission:write_sql_queries"]
+                                            :user_is_viewing [{:type    "code_editor"
+                                                               :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}}))]
+          {:llm-calls @call-count :parts parts})))))
+
+(deftest permission-denial-ends-a-forced-tool-call-turn-test
+  (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
+                 :model/Database {builder-db :id}    {:engine :h2}
+                 :model/Database {unreadable-db :id} {:engine :h2}]
+    (mt/with-no-data-perms-for-all-users!
+      (doseq [db-id [native-db builder-db unreadable-db]]
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+      ;; native on one database keeps the capability, so the denial can only happen per call
+      (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
+      (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
+      (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing ":sql forbids the model from answering in text, so the loop stops on the denial"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
+            (is (= 1 llm-calls)
+                "one call, not the profile's 20 iterations")
+            (is (= :terminal-error (:finish-reason (last parts))))
+            (is (some #(and (= :text (:type %))
+                            (str/includes? (:text %) "do not have permission"))
+                      parts)
+                "the refusal is emitted as assistant text — a tool result is not rendered to the user")
+            (is (some #(= :data (:type %)) parts)
+                "state data part still closes the turn")))
+        (testing ":internal lets the model explain the denial itself, so the loop continues"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
+            (is (= 2 llm-calls))
+            (is (= :stop (:finish-reason (last parts))))
+            (is (not-any? #(and (= :text (:type %))
+                                (str/includes? (str (:text %)) "do not have permission"))
+                          parts)
+                "no canned text — the model's own wording is used")))
+        (testing "a database the user cannot read at all stops the turn the same way"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
+            (is (= 1 llm-calls)
+                "the read-check denial is terminal too -- otherwise the stricter permission loops")
+            (is (= :terminal-error (:finish-reason (last parts))))
+            (is (some #(and (= :text (:type %))
+                            (str/includes? (:text %) "do not have access to this database"))
+                      parts))))
+        (testing "a database the user can query natively is not denied"
+          (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
+            (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
@@ -185,6 +337,23 @@
               (is (some #(and (= :usage (:type %)) (= "length" (:finish-reason %))) result))
               (is (some #(= :data (:type %)) result)
                   "state data part still closes the turn")))))
+      (testing "a turn whose stream failed stops the loop, even with a tool call present"
+        (let [call-count (atom 0)]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (swap! call-count inc)
+                                                              (mut/mock-llm-response
+                                                               [{:type      :tool-input
+                                                                 :id        "t1"
+                                                                 :function  "search"
+                                                                 :arguments {:query "test"}}
+                                                                {:type :error :errorText "Overloaded"}]))]
+            (let [result (into [] (agent/run-agent-loop
+                                   {:messages   [{:role :user :content "Hi"}]
+                                    :state      {}
+                                    :profile-id :embedding_next
+                                    :context    {}}))]
+              (is (= 1 @call-count))
+              (is (= {:type :finish :finish-reason :error} (last result)))))))
       (testing "handles errors gracefully"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (throw (ex-info "Mock error" {})))]
@@ -332,7 +501,39 @@
                   :result {:structured-output {:data []}}}]
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-charts memory parts)]
-      (is (empty? (:charts (memory/get-state updated)))))))
+      (is (empty? (:charts (memory/get-state updated))))))
+  (testing "merges onto an existing chart entry instead of replacing it"
+    ;; Regression: edit-chart-tool writes the full edited chart (including
+    ;; :image_base_64/:timeline_events/:chart_config carried over from the source
+    ;; chart) into memory before update-memory runs extract-charts over the same
+    ;; tool's structured-output. A full replace here would wipe those fields back
+    ;; out even though the tool-output never claimed to know about them.
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          chart-data {:chart-id "c-456"
+                      :query-id "q-123"
+                      :query query
+                      :chart-type :bar}
+          parts [{:type :tool-output
+                  :id "t1"
+                  :function "edit_chart"
+                  :result {:structured-output chart-data}}]
+          memory {:state {:queries {}
+                          :charts {"c-456" {:chart_id "c-456"
+                                            :query_id "q-123"
+                                            :queries [query]
+                                            :image_base_64 "abc123"
+                                            :timeline_events []
+                                            :chart_config {:some "config"}
+                                            :visualization_settings {:chart_type :pie}}}}}
+          updated (#'agent/extract-charts memory parts)]
+      (is (= {:chart_id "c-456"
+              :query_id "q-123"
+              :queries [query]
+              :image_base_64 "abc123"
+              :timeline_events []
+              :chart_config {:some "config"}
+              :visualization_settings {:chart_type :bar}}
+             (get-in (memory/get-state updated) [:charts "c-456"]))))))
 
 ;;; ===================== Integration Tests =====================
 ;;;
@@ -464,6 +665,107 @@
               (testing "should complete 3 LLM iterations"
                 (is (= 3 @llm-call-count)
                     "Should have exactly 3 LLM calls (search, construct, final text)")))))))))
+
+(defn- chat-completions-chunks
+  "Raw Chat Completions stream chunks for one assistant turn: a tool call when `tool-call` is given, text otherwise."
+  [message-id {:keys [tool-call text]}]
+  [{:id      message-id
+    :model   "anthropic/claude-haiku-4-5"
+    :choices [{:index 0
+               :delta (if tool-call
+                        {:tool_calls [{:index    0
+                                       :id       (:id tool-call)
+                                       :type     "function"
+                                       :function {:name      (:name tool-call)
+                                                  :arguments (json/encode (:arguments tool-call))}}]}
+                        {:content text})}]}
+   {:id      message-id
+    :choices [{:index 0 :delta {} :finish_reason (if tool-call "tool_calls" "stop")}]}])
+
+(deftest replayed-tool-history-reaches-the-provider-adapter-test
+  (testing "a tool call's replayed parts, with their tool-owned result payloads, pass the adapter's request schema"
+    (mt/as-admin
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [requests  (atom [])
+              responses [(chat-completions-chunks "chatcmpl-1"
+                                                  {:tool-call {:id        "call-search-1"
+                                                               :name      "search"
+                                                               :arguments {:semantic_queries ["orders table"]
+                                                                           :keyword_queries  ["orders"]
+                                                                           :entity_types     ["table"]}}})
+                         (chat-completions-chunks "chatcmpl-2" {:text "The orders table has what you need."})]]
+          (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                      http/request            (fn [req]
+                                                                (let [n (count (swap! requests conj req))]
+                                                                  {:status 200 :body (get responses (dec n) [])}))
+                                      metabot-search/search   (fn [_args]
+                                                                [{:id               (mt/id :orders)
+                                                                  :type             "table"
+                                                                  :name             "ORDERS"
+                                                                  :display_name     "Orders"
+                                                                  :description      "Confirmed orders."
+                                                                  :database_id      (mt/id)
+                                                                  :database_schema  "PUBLIC"
+                                                                  :moderated_status nil
+                                                                  :collection       {:id nil :name nil}}])]
+            (let [result      (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                                (into [] (agent/run-agent-loop
+                                          {:messages   [{:role :user :content "Where are the orders?"}]
+                                           :state      {}
+                                           :profile-id :internal
+                                           :context    {}})))
+                  replay-body (some-> (second @requests) :body json/decode+kw)]
+              (is (= [] (filterv #(= :error (:type %)) result)))
+              (is (=? {:type :tool-output :function "search" :duration-ms number?}
+                      (first (filter #(= :tool-output (:type %)) result))))
+              (is (= 2 (count @requests)))
+              (is (=? [{:role       "assistant"
+                        :tool_calls [{:id "call-search-1" :function {:name "search"}}]}
+                       {:role "tool" :tool_call_id "call-search-1" :content string?}]
+                      (filterv #(or (:tool_calls %) (= "tool" (:role %))) (:messages replay-body))))
+              (is (=? {:type :text :text "The orders table has what you need."}
+                      (last (filter #(= :text (:type %)) result)))))))))))
+
+(deftest later-calls-resend-what-the-turn-already-sent-test
+  (testing "edits made during a turn don't change the system prompt, tools or messages its earlier calls sent"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Ops original"}]
+      (mt/as-admin
+        (mt/with-premium-features #{:ai-controls}
+          (mt/with-temporary-setting-values [llm-providers              llm.tu/default-connections
+                                             llm-metabot-provider       "anthropic/claude-opus-5-5"
+                                             metabot-chat-system-prompt "Use British spelling."]
+            (let [requests        (atom [])
+                  semantic-search (atom true)]
+              (mt/with-dynamic-fn-redefs [features/feature-available? (fn [_] @semantic-search)
+                                          claude/claude
+                                          (fn [opts]
+                                            (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
+                                              (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                                  (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
+                                                  (reset! semantic-search false)
+                                                  (mut/mock-llm-response [{:type      :tool-input
+                                                                           :id        "call-1"
+                                                                           :function  "load_skill"
+                                                                           :arguments {:ids ["read-resource"]}}]))
+                                              (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                (into [] (agent/run-agent-loop
+                          {:messages   [{:role :user :content "Help me with this dashboard."}]
+                           :state      {}
+                           :profile-id :internal
+                           :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                        :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+                (let [[{system-1 :system tools-1 :tools messages-1 :messages}
+                       {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
+                  (is (str/includes? (pr-str system-1) "Use British spelling."))
+                  (is (str/includes? (pr-str tools-1) "semantic_queries"))
+                  (is (str/includes? (pr-str messages-1) "Ops original"))
+                  (is (= system-1 system-2))
+                  (is (= tools-1 tools-2))
+                  (is (= messages-1 (take (count messages-1) messages-2)))
+                  (is (=? [{:role "assistant" :content [{:type "tool_use" :name "load_skill"}]}
+                           {:role "user" :content [{:type "tool_result"}]}]
+                          (drop (count messages-1) messages-2))))))))))))
 
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
@@ -640,6 +942,38 @@
             (is (= 2 @call-count)
                 "Should have called LLM twice (1 failure + 1 success")))))))
 
+(deftest provider-failure-error-part-test
+  (let [credit-error (ex-info "Anthropic API error (HTTP 400)"
+                              {:status     400
+                               :body       {:type  "error"
+                                            :error {:type    "invalid_request_error"
+                                                    :message "Your credit balance is too low to access the Anthropic API."}}
+                               :api-error  true
+                               :provider   "anthropic"
+                               :error-code :provider-api-error})
+        error-parts  (fn [model-ref]
+                       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                                          llm-metabot-provider model-ref]
+                         (mt/with-dynamic-fn-redefs [claude/claude (fn [_] (throw credit-error))]
+                           (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                             (filterv #(= :error (:type %))
+                                      (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                             :state      {}
+                                                             :profile-id :embedding_next
+                                                             :context    {}}))))))]
+    (testing "on the customer's own key, the error part says what to fix instead of passing the provider's text on"
+      (is (=? [{:error {:error-code "ai_provider_billing" :message #"Anthropic rejected the request .*"}}]
+              (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6"))))
+      (is (=? [{:error {:error-code "ai_provider_billing" :message #"The AI provider rejected the request .*"}}]
+              (mt/with-current-user (mt/user->id :rasta)
+                (error-parts "anthropic/claude-sonnet-4-6")))))
+    (testing "on the managed provider, the error part keeps today's generic shape"
+      (is (= [{:type  :error
+               :error {:message (ex-message credit-error)
+                       :type    (str (type credit-error))
+                       :data    (ex-data credit-error)}}]
+             (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6")))))))
+
 ;;; ===================== Prometheus Metrics Tests =====================
 
 (deftest run-agent-loop-prometheus-test
@@ -672,7 +1006,8 @@
                                    {:profile-id "internal"})))
         (is (== 2 (mt/metric-value system :metabase-metabot/llm-requests
                                    {:model "openrouter/anthropic/claude-haiku-4-5"
-                                    :source "agent"})))
+                                    :source "agent"
+                                    :provider "openrouter"})))
         (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                            {:profile-id "internal"}))))
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
@@ -698,7 +1033,8 @@
                                    {:profile-id "internal"})))
         (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
                                    {:model "openrouter/anthropic/claude-haiku-4-5"
-                                    :source "agent"})))
+                                    :source "agent"
+                                    :provider "openrouter"})))
         (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                            {:profile-id "internal"}))))
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
@@ -866,7 +1202,10 @@
         chart-key (first (keys charts))]
     (testing "Loaded charts from chart configs into memory"
       (is (string? chart-key))
+      ;; :query_id must match :chart_id — it's how edit_chart later carries a
+      ;; query-id through for this chart (see chart-config->chart, extract-charts).
       (is (=? {chart-key {:chart_id chart-key
+                          :query_id chart-key
                           :timeline_events []
                           :queries [query]
                           :chart_config chart-config}}
@@ -875,6 +1214,24 @@
       (is (every? string? (keys chart-configs)))
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
+
+(deftest viewing-context-item-id-persists-once-stored-test
+  (let [query  {:database 1 :type :query :query {:source-table 1}}
+        agent  (#'agent/init-agent {:profile-id :internal
+                                    :context    {:user_is_viewing [{:type "adhoc" :query query}]}})
+        memory @(:memory-atom agent)
+        id     (get-in agent [:context :user_is_viewing 0 :id])]
+    (testing "a turn that stores nothing under an ad hoc item's minted id persists no state"
+      (is (nil? (memory/turn-state memory))))
+    (testing "a chart created from the item's query persists the id with the query"
+      (is (= #{id}
+             (-> (#'agent/update-memory memory [{:type   :tool-output
+                                                 :result {:structured-output {:chart-id   "chart-1"
+                                                                              :query-id   id
+                                                                              :query      query
+                                                                              :chart-type :bar}}}])
+                 memory/turn-state
+                 :client-ids))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Profile permission checks
@@ -892,6 +1249,11 @@
                               (check! :slackbot {:permission/metabot :no})))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :embedding_next {:permission/metabot :no}))))
+      (testing "the 403 carries only the permission-denied tag and status, so the
+                exception middleware keeps the body a plain message"
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                                      (check! :slackbot {:permission/metabot :no})))]
+          (is (= {:status-code 403 :type :metabot/permission-denied} (ex-data e)))))
       (testing "metabot :yes allows non-gated profiles"
         (is (nil? (check! :internal {:permission/metabot :yes})))
         (is (nil? (check! :slackbot {:permission/metabot :yes})))
@@ -905,10 +1267,6 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes}))))
-      (testing "transforms_codegen profile"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-                              (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (nil? (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "document-generate-content profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))

@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Popover } from "metabase/ui";
-import type { HoveredObject } from "metabase/visualizations/types";
+import type { HoveredObject } from "metabase/viz-core";
 
 import {
   LegendLink,

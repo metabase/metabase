@@ -21,9 +21,6 @@ const fetchQuestions = (dispatch: Dispatch) =>
 export const fetchTableData = (dispatch: Dispatch, tableId: TableId) =>
   dispatch(fetchTableMetadataAndForeignKeys({ id: tableId }));
 
-export const fetchSegmentListData = (dispatch: Dispatch) =>
-  dispatch(fetchSegments());
-
 export const fetchSegmentDetailData = (
   dispatch: Dispatch,
   segmentId: SegmentId,

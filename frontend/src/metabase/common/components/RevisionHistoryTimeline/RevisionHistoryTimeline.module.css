@@ -7,9 +7,9 @@
 .event:not(:last-child)::before {
   content: "";
   position: absolute;
-  top: calc(var(--mantine-spacing-md) + var(--icon-size) / 2);
-  bottom: calc(-1 * var(--mantine-spacing-md) - var(--icon-size) / 2);
-  left: calc(var(--mantine-spacing-lg) + var(--icon-size) / 2 - 1px);
+  top: calc(var(--mantine-spacing-lg) + var(--icon-size) / 2);
+  bottom: calc(-1 * var(--mantine-spacing-lg) - var(--icon-size) / 2);
+  left: calc(var(--mantine-spacing-xl) + var(--icon-size) / 2 - 1px);
   border-inline-start: 2px dotted var(--mb-color-text-disabled);
 }
 
@@ -19,10 +19,10 @@
   position: relative;
   z-index: 0;
   transition: background 150ms ease;
-  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg)
-    var(--mantine-spacing-md)
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-xl)
+    var(--mantine-spacing-lg)
     calc(
-      var(--mantine-spacing-lg) + var(--icon-size) + var(--mantine-spacing-md)
+      var(--mantine-spacing-xl) + var(--icon-size) + var(--mantine-spacing-lg)
     );
 }
 
@@ -47,7 +47,7 @@
 
 .iconCircle {
   position: absolute;
-  left: var(--mantine-spacing-lg);
+  left: var(--mantine-spacing-xl);
   z-index: 1;
   border-radius: 50%;
   flex-shrink: 0;

@@ -17,7 +17,6 @@ dimensions:
   serdes/meta:
   - {id: 5kq3mRRgC9Ea4OZspf0Hs, label: card_qualified_id, model: Dimension}
 position: 9
-custom_position: 0
 database_position: 9
 has_field_values: auto-list
 serdes/meta:

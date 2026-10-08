@@ -3,8 +3,8 @@
 }
 
 .box {
-  border-radius: var(--mantine-radius-md);
-  padding: var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-lg);
   background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
 }

@@ -288,14 +288,17 @@
   []
   (let [original                (slurp config-path)
         {:keys [text warnings]} (rewrite-config original (compute-desired))]
+    ;; CLI tool output: mage fix-modules-config callers read these lines from stdout
     #_{:clj-kondo/ignore [:discouraged-var]}
     (doseq [w warnings]
       (println (str "WARNING: " w)))
     (if (= text original)
+      ;; CLI tool output: mage fix-modules-config callers read these lines from stdout
       (do #_{:clj-kondo/ignore [:discouraged-var]}
        (println "config.edn already up to date.")
           :unchanged)
       (do (spit config-path text)
+          ;; CLI tool output: mage fix-modules-config callers read these lines from stdout
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println "Updated" config-path)
           :updated))))

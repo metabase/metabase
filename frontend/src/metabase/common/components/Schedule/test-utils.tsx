@@ -2,9 +2,9 @@ import { useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -14,17 +14,14 @@ import {
 import type { ScheduleProps } from "./Schedule";
 import { Schedule } from "./Schedule";
 import type {
-  ScheduleBuilderType,
-  ScheduleChangeEvent,
+  GetScheduleDefaults,
   ScheduleValue,
   ScheduleValueType,
-} from "./types";
-import type { ScheduleDefaults } from "./utils";
-import { getScheduleDefaults } from "./utils";
+} from "./domain";
+import { getScheduleDefaults } from "./domain";
+import type { ScheduleChangeEvent } from "./types";
 
-export const getDefaultsWithoutHour = (
-  scheduleType: ScheduleBuilderType,
-): ScheduleDefaults => ({
+export const getDefaultsWithoutHour: GetScheduleDefaults = (scheduleType) => ({
   ...getScheduleDefaults(scheduleType),
   schedule_hour: null,
 });

@@ -80,13 +80,13 @@ export const JobRunSidebar = memo(function JobRunSidebar({
         bg="background_page-primary"
         data-testid="job-run-list-sidebar"
       >
-        <Box className={S.header} p="lg">
+        <Box className={S.header} p="xl">
           <JobRunSidebarHeader onClose={onClose} />
         </Box>
-        <Box className={S.scrollArea} flex={1} mih={0} p="lg">
-          <Stack gap="xl">
+        <Box className={S.scrollArea} flex={1} mih={0} p="xl">
+          <Stack gap="xxl">
             <JobRunInfoSection run={run} />
-            <Stack gap="md">
+            <Stack gap="lg">
               <Group gap="sm" wrap="nowrap">
                 <Badge color="brand" size="sm" variant="filled">
                   {transformRuns.length}

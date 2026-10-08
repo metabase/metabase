@@ -32,8 +32,8 @@ export const EmbedCodeCard = ({ snippet, onCopy }: EmbedCodeCardProps) => {
   );
 
   return (
-    <Card p="md">
-      <Stack gap="xs" mb="md">
+    <Card p="lg">
+      <Stack gap="xxs" mb="lg">
         <Text size="lg" fw="bold">
           {t`Embed code`}
         </Text>
@@ -43,10 +43,10 @@ export const EmbedCodeCard = ({ snippet, onCopy }: EmbedCodeCardProps) => {
         </Text>
       </Stack>
 
-      <Divider mb="md" />
+      <Divider mb="lg" />
 
       <Stack gap="sm">
-        <div onCopy={onCopy}>
+        <div onCopy={onCopy} data-testid="embed-code-snippet">
           <CodeEditor
             language="html"
             value={snippet}

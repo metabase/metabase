@@ -36,6 +36,8 @@
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
+   (com.mchange.v2.c3p0 C3P0ProxyConnection ComboPooledDataSource)
+   (java.sql DriverManager)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)
@@ -233,6 +235,35 @@
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= "null" db-nm))))))
 
+(deftest ^:parallel c3p0-pool-type-suffix-covers-every-non-default-type-test
+  (testing "every non-default connection type has a pool-name suffix, or two of its pools would share a metrics label"
+    (is (= (disj (set driver.conn/connection-types) :default)
+           (set (keys @#'sql-jdbc.conn/pool-type->name-suffix))))))
+
+(deftest c3p0-datasource-name-pool-type-suffix-test
+  (mt/test-driver :h2
+    (when config/ee-available?
+      (mt/with-premium-features #{:writable-connection}
+        (testing "a non-default pool type gets a name suffix, so two pools of one warehouse never share a metrics label"
+          (mt/with-temp [:model/Database database {:engine             :h2
+                                                   :details            {:db "mem:pool_name_default_db"}
+                                                   :write_data_details {:db "mem:pool_name_write_db"}}]
+            (let [pool-name #(get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 database) "dataSourceName")
+                  db-id     (u/the-id database)]
+              (is (= (format "db-%d-h2-mem:pool_name_default_db" db-id)
+                     (pool-name)))
+              (is (= (format "db-%d-h2-mem:pool_name_write_db-write" db-id)
+                     (driver.conn/with-write-connection (pool-name)))))))
+        (testing "a write connection without write details resolves to the default pool, so its name has no suffix"
+          (mt/with-temp [:model/Database database {:engine :h2, :details {:db "mem:pool_name_default_only_db"}}]
+            (let [pool-name #(get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 database) "dataSourceName")
+                  db-id     (u/the-id database)]
+              (is (= (format "db-%d-h2-mem:pool_name_default_only_db" db-id)
+                     (driver.conn/with-write-connection (pool-name))))
+              (testing "but the transform pool is always separate, so its name always carries the suffix"
+                (is (= (format "db-%d-h2-mem:pool_name_default_only_db-transform" db-id)
+                       (driver.conn/with-transform-connection (pool-name))))))))))))
+
 (deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details
@@ -279,7 +310,7 @@
             ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
             ;; `driver-supports? :connection-impersonation`. That perturbs the call count, so add a special case
             ;; to [[driver.u/supports?]].
-            original-supports?       driver.u/supports?
+            original-supports?       (mt/original-fn #'driver.u/supports?)
             supports?-fn             (fn [driver feature database]
                                        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                                        (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
@@ -289,8 +320,8 @@
                                          (original-supports? driver feature database)))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
-          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
-                        driver.u/supports?                           supports?-fn]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
+                                      driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
                   db-hash-1   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key db))]
               (testing "hash value calculated correctly for new pooled conn"
@@ -340,6 +371,7 @@
                                          :value      (.getBytes "super secret")
                                          :creator_id (mt/user->id :crowberto)}]
       (let [db {:lib/type :metadata/database
+                :id       1
                 :engine   :postgres
                 :details  {:ssl                      true
                            :ssl-mode                 "verify-ca"
@@ -823,3 +855,38 @@
     (is (integer? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*))))
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :-fns [has-default-port?]})
     (is (nil? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*)))))
+
+(def ^:private raw-connection-to-string-method
+  (.getMethod Object "toString" (make-array Class 0)))
+
+(defn- raw-connection-identity
+  "Identify the physical Connection behind a c3p0 proxy, to tell a recycled connection from a freshly acquired one."
+  [^C3P0ProxyConnection conn]
+  (.rawConnectionOperation conn
+                           raw-connection-to-string-method
+                           C3P0ProxyConnection/RAW_CONNECTION
+                           (make-array Object 0)))
+
+(deftest discard-pooled-connection-test
+  (testing "discarding destroys the physical Connection, so the pool acquires a fresh one rather than recycling it"
+    (with-open [ds (doto (ComboPooledDataSource.)
+                     (.setJdbcUrl "jdbc:h2:mem:discard-pooled-connection-test;DB_CLOSE_DELAY=-1")
+                     (.setInitialPoolSize 1)
+                     (.setMinPoolSize 1)
+                     (.setMaxPoolSize 1))]
+      (letfn [(checked-out-identity []
+                (with-open [conn (.getConnection ds)]
+                  (raw-connection-identity conn)))]
+        (let [before (checked-out-identity)]
+          (testing "a plain check-in/check-out cycle hands back the same physical Connection"
+            (is (= before (checked-out-identity))))
+          (with-open [conn (.getConnection ds)]
+            (sql-jdbc.conn/discard-pooled-connection! conn))
+          (testing "after discarding, the next checkout is a different physical Connection"
+            (is (not= before (checked-out-identity)))))))))
+
+(deftest discard-pooled-connection-leaves-unpooled-connection-alone-test
+  (testing "a Connection with no pool behind it has no next query to poison, so it is left open"
+    (with-open [conn (DriverManager/getConnection "jdbc:h2:mem:discard-unpooled-test;DB_CLOSE_DELAY=-1")]
+      (sql-jdbc.conn/discard-pooled-connection! conn)
+      (is (not (.isClosed conn))))))

@@ -1,3 +1,5 @@
+import type { MatcherOptions } from "@testing-library/cypress";
+
 import type {
   MeasureId,
   SegmentId,
@@ -19,8 +21,17 @@ const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
+  visit: () => {
+    cy.visit("/data-studio");
+    // The target is only known once the `hasSeenGuide` request comes back.
+    cy.location("pathname").should("match", /^\/data-studio\/.+/);
+    DataStudio.nav().should("be.visible");
+  },
   Transforms: {
-    header: () => cy.findByTestId("transforms-header"),
+    // The transform page shows a loader until the transform, databases and the
+    // lazy editor chunk have loaded, which can take longer than the default 4s
+    header: (options: MatcherOptions = {}) =>
+      cy.findByTestId("transforms-header", { timeout: 10_000, ...options }),
     sectionHeader: () => cy.findByTestId("transforms-section-header"),
     transformsTab: () =>
       DataStudio.Transforms.sectionHeader().findByText("Transforms"),
@@ -153,10 +164,17 @@ export const DataStudio = {
       DataStudio.Library.libraryPage().should("be.visible");
       DataStudio.Library.collectionItem("Data").should("be.visible");
       DataStudio.Library.collectionItem("Metrics").should("be.visible");
-      DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
+      DataStudio.Library.collectionItem("Dashboards")
+        .scrollIntoView()
+        .should("be.visible");
+      DataStudio.Library.collectionItem("SQL snippets")
+        .scrollIntoView()
+        .should("be.visible");
     },
     noResults: () =>
-      libraryPage().findByText("No tables, metrics, or snippets yet"),
+      libraryPage().findByText(
+        "No tables, metrics, dashboards, or snippets yet",
+      ),
     libraryPage,
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>

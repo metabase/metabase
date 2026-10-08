@@ -82,11 +82,10 @@ function NewVersionAvailable({
           {t`Metabase ${formatVersion(latestVersion)} is available. You're running ${currentVersion}.`}
         </span>
         <Button
-          className={S.updateButton}
+          variant="on-dark-primary"
           component={ExternalLink}
           flex="0 0 auto"
           ml="sm"
-          size="sm"
           href={
             "https://www.metabase.com/docs/" +
             latestVersion +
@@ -107,7 +106,7 @@ export function NewVersionInfo() {
   );
 
   return (
-    <Tabs mt="md" defaultValue="whats-new">
+    <Tabs mt="lg" defaultValue="whats-new">
       <Tabs.List>
         <Tabs.Tab value="whats-new">{t`What's new`}</Tabs.Tab>
         <Tabs.Tab value="changelog">{t`Changelog`}</Tabs.Tab>

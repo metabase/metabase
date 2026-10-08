@@ -2,13 +2,13 @@ import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { setupDashboardQueryMetadataEndpoint } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { Api } from "metabase/api";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { Api } from "metabase/api";
 import {
   createMockCard,
   createMockDashboard,

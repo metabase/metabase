@@ -1,6 +1,6 @@
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import styled from "@emotion/styled";
 import cx from "classnames";
 import type React from "react";
@@ -8,7 +8,7 @@ import { forwardRef } from "react";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useComputedColorScheme } from "metabase/ui";
-import { getSaveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import S from "./PublicComponentStylesWrapper.style.css";
 

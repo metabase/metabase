@@ -2,8 +2,17 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [dev.module-cycle-names :as cycle-names]
+   [dev.module-explorer :as module-explorer]
+   [hooks.common.modules :as modules]
+   [mage.color]
    [mage.modules]))
+
+(set! *warn-on-reflection* true)
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
 (def keep-me :loaded)
@@ -198,7 +207,7 @@
 
 (deftest modules-can-trigger-cloud-drivers
   (doseq [module '#{query-processor transforms
-                    enterprise/transforms enterprise/transforms-python}
+                    enterprise/transforms enterprise/transforms.python}
           driver [:athena :bigquery :databricks :redshift :snowflake]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
@@ -305,7 +314,10 @@
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
           ;; 2026-06-04 Bumped to 42 due to run-tracking addition (Zombie transform reaper #75194)
           ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
-          max-allowed-count 44]
+          ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
+          ;;            lib and query-processor, which already trigger driver tests
+          ;; 2026-10-01 Bumped to 48: parameters.schema is carved out of parameters, which already triggers driver tests
+          max-allowed-count 48]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
@@ -320,8 +332,215 @@
     ;; note in the future, this won't be all dependent modules see
     ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
     (let [changed-file "enterprise/backend/test/metabase_enterprise/transforms_python/api_test.clj"]
-      (is (= '#{enterprise/transforms-python}
+      (is (= '#{enterprise/transforms.python}
              (mage.modules/updated-files->updated-modules [changed-file])))
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
               mage.modules/driver-deps-affected?)))))
+
+(deftest module-tree-lines-test
+  (let [config '{lib                          {}
+                 lib.be                       {:ns-prefix "metabase.lib-be"}
+                 transforms                   {}
+                 transforms.base              {:ns-prefix "metabase.transforms-base"}
+                 transforms.base.deep         {}
+                 transforms.python            {:ns-prefix "metabase.transforms-python"}
+                 enterprise-tools             {}
+                 enterprise/transforms        {}
+                 enterprise/transforms.python {:ns-prefix "metabase-enterprise.transforms-python"}
+                 enterprise/billing           {}}
+        lines  (binding [mage.color/*disable-colors* true]
+                 (into []
+                       (mapcat (fn [[segment node]]
+                                 (#'mage.modules/tree-node-lines config false [segment] node)))
+                       (#'mage.modules/sorted-children (#'mage.modules/module-display-tree config))))]
+    (testing "the tree sorts and marks modules with custom prefixes"
+      (is (= ["enterprise-tools"
+              "lib"
+              "- lib.be *"
+              "transforms"
+              "- transforms.base *"
+              "-- transforms.base.deep"
+              "- transforms.python *"
+              "- transforms.enterprise"
+              "-- transforms.enterprise.python *"
+              "enterprise/billing"]
+             lines)))))
+
+(deftest module-tree-enterprise-default-prefix-not-starred-test
+  (testing "default enterprise prefixes are not marked as custom"
+    (is (nil? (module-explorer/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
+    (is (nil? (module-explorer/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
+                                                  'enterprise/billing)))
+    (is (= "metabase.lib-be"
+           (module-explorer/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
+
+(deftest explorer-data-test
+  (let [config '{core                 {:uses :any, :team "Core"}
+                 widget               {:uses #{gadget}, :api #{metabase.widget.core}}
+                 gadget               {:uses #{}, :team "Gadgets", :ns-prefix "metabase.gizmo"}
+                 gadget.part          {:uses #{gadget}}
+                 enterprise/gadget    {:uses #{gadget}}
+                 enterprise/cloud     {:uses #{}}}
+        modules (into {} (map (juxt :id identity)) (:modules (module-explorer/explorer-data config {})))]
+    (testing ":uses :any remains unresolved without source data"
+      (is (empty? (get-in modules ["core" :uses])))
+      (is (= ["enterprise/gadget" "gadget.part" "widget"]
+             (get-in modules ["gadget" :used-by]))))
+    (testing "teams are inherited from the nearest ancestor"
+      (is (= "Gadgets" (get-in modules ["gadget.part" :team])))
+      (is (= "Gadgets" (get-in modules ["enterprise/gadget" :team]))))
+    (testing "tree paths nest children and keep enterprise companions under their OSS module"
+      (is (= ["gadget" "part"] (get-in modules ["gadget.part" :path])))
+      (is (= ["gadget" "enterprise"] (get-in modules ["enterprise/gadget" :path])))
+      (is (= ["enterprise/cloud"] (get-in modules ["enterprise/cloud" :path]))))
+    (testing "only custom prefixes are reported"
+      (is (= "metabase.gizmo" (get-in modules ["gadget" :ns-prefix])))
+      (is (nil? (get-in modules ["widget" :ns-prefix]))))
+    (testing "an omitted :api uses the same defaults as the module linter"
+      (is (= ["metabase.gizmo.api" "metabase.gizmo.core" "metabase.gizmo.init"]
+             (get-in modules ["gadget" :api]))))))
+
+(deftest explorer-data-with-namespace-edges-test
+  (let [config '{core   {:uses :any}
+                 widget {:uses #{gadget}}
+                 gadget {:uses #{}}}
+        edges  [["core" "gadget" "metabase.gadget.core"]
+                ["widget" "gadget" "metabase.gadget.core"]]
+        modules (into {}
+                      (map (juxt :id identity))
+                      (:modules (module-explorer/explorer-data config {:ns-edges edges})))]
+    (testing "observed namespace edges resolve unrestricted and reverse dependencies"
+      (is (= ["gadget"] (get-in modules ["core" :uses])))
+      (is (= ["core" "widget"] (get-in modules ["gadget" :used-by]))))))
+
+(deftest explorer-data-cycles-test
+  (let [config '{a {:uses #{b}}
+                 b {:uses #{a c}}
+                 c {:uses #{b}}
+                 d {:uses #{a}}}
+        {:keys [modules cycles]} (module-explorer/explorer-data config {})
+        modules                  (into {} (map (juxt :id identity)) modules)]
+    (testing "cycles carry their metrics and string members"
+      (is (= [{:size           3
+               :edges          4
+               :density        (double (/ 4 6))
+               :cycle-rank     2
+               :modules        ["a" "b" "c"]
+               :name           nil
+               :strong-bridges [["a" "b"] ["b" "a"] ["b" "c"] ["c" "b"]]}]
+             cycles)))
+    (testing "only modules in a cycle carry its index"
+      (is (= 0 (get-in modules ["b" :cycle])))
+      (is (not (contains? (get modules "d") :cycle))))))
+
+(deftest explorer-cycle-name-test
+  (let [anchors '{deep-thought metabot, tardis lib, stargate api-routes}]
+    (testing "a cycle takes the name anchored in it"
+      (is (= "tardis" (#'module-explorer/cycle-name anchors '[lib lib.schema]))))
+    (testing "a cycle holding two anchors shows both names"
+      (is (= "deep-thought + tardis" (#'module-explorer/cycle-name anchors '[lib metabot]))))
+    (testing "a cycle without an anchor, or with no names to read, has no name"
+      (is (nil? (#'module-explorer/cycle-name anchors '[sync])))
+      (is (nil? (#'module-explorer/cycle-name nil '[lib]))))))
+
+(deftest explorer-cycle-anchors-fallback-test
+  (let [file (java.io.File/createTempFile "cycle-clusters" ".edn")]
+    (try
+      (testing "the names file loads under Babashka"
+        (spit file "{tardis lib}")
+        (with-redefs [cycle-names/clusters-file (str file)]
+          (is (= '{tardis lib} (#'module-explorer/cycle-anchors)))))
+      (testing "an invalid or missing names file leaves the cycles unnamed"
+        (spit file "{tardis lib} {stargate api-routes}")
+        (with-redefs [cycle-names/clusters-file (str file)]
+          (is (nil? (#'module-explorer/cycle-anchors))))
+        (with-redefs [cycle-names/clusters-file "no/such/cycle-clusters.edn"]
+          (is (nil? (#'module-explorer/cycle-anchors)))))
+      (finally (.delete file)))))
+
+(deftest explorer-file-requires-test
+  (let [file (java.io.File/createTempFile "requires" ".cljc")]
+    (try
+      (spit file (str "(ns metabase.widget.core\n"
+                      "  (:require\n"
+                      "   [metabase.gadget.core :as gadget]\n"
+                      "   [metabase.lib [core :as lib] schema]\n"
+                      "   #?(:clj [metabase.server.core] :cljs [metabase.frontend.core]))\n"
+                      "  (:use metabase.util))\n"))
+      (testing "requires and uses are read as Clojure, with prefix lists expanded"
+        (is (= '#{metabase.gadget.core metabase.lib.core metabase.lib.schema metabase.server.core metabase.util}
+               (#'module-explorer/file-requires (str file)))))
+      (finally (.delete file)))))
+
+(deftest explorer-any-uses-test
+  (let [config '{core   {:uses :any}
+                 gadget {}
+                 widget {}}
+        dir    (doto (java.io.File/createTempFile "any-uses" "") (.delete) (.mkdirs))
+        source (fn [path ns-form]
+                 (let [file (io/file dir path)]
+                   (io/make-parents file)
+                   (spit file (pr-str ns-form))
+                   (str file)))
+        clj    (source "src/core/init.clj" '(ns metabase.core.init (:require
+                                                                    [metabase.widget.core] [metabase.core.util])))
+        tst    (source "test/core/init_test.clj" '(ns metabase.core.init-test (:require [metabase.gadget.core])))
+        cljs   (source "src/core/ui.cljs" '(ns metabase.core.ui (:require [metabase.gadget.core])))]
+    (try
+      (testing "a :uses :any module gets the modules its sources require, not its tests, ClojureScript, or itself"
+        (is (= '{core #{widget}}
+               (#'module-explorer/any-uses config {clj 'core, tst 'core, cljs 'core}))))
+      (finally (run! io/delete-file (reverse (file-seq dir)))))))
+
+(deftest explorer-resolved-any-uses-test
+  (let [config '{core   {:uses :any}
+                 widget {:uses #{core}}
+                 gadget {:uses #{}}}]
+    (testing "resolved requires stand in for :uses :any, which still marks the module"
+      (is (= '{core #{widget gadget}, widget #{core}, gadget #{}}
+             (#'module-explorer/build-module->uses config nil '{core #{widget gadget}})))
+      (is (true? (:uses-any (#'module-explorer/module-node config {} {} 'core)))))
+    (testing "an unresolved :uses :any has no dependencies"
+      (is (= #{} (get (#'module-explorer/build-module->uses config nil nil) 'core))))))
+
+(deftest explorer-file->module-test
+  (let [file->module   #'module-explorer/file->module
+        prefix->module (modules/build-prefix->module '{lib {} lib.schema {} driver {}})]
+    (testing "files resolve through the declared prefixes, tests included"
+      (is (= 'lib.schema (file->module prefix->module "src/metabase/lib/schema/join.cljc")))
+      (is (= 'lib.schema (file->module prefix->module "test/metabase/lib/schema_test.cljc")))
+      (is (= 'lib (file->module prefix->module "src/metabase/lib/core.cljc"))))
+    (testing "driver-plugin files belong to the driver module regardless of namespace"
+      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/src/metabase/driver/mysql.clj")))
+      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/test/metabase/test/data/mysql.clj"))))))
+
+(deftest explorer-page-test
+  (let [html (module-explorer/page {:modules [{:id "</script>"}]})]
+    (testing "the data and state codec replace their placeholders"
+      (is (not (str/includes? html "/*DATA*/null")))
+      (is (not (str/includes? html "/*STATE-CODEC*/")))
+      (is (str/includes? html "<\\/script>")))))
+
+(deftest explorer-git-failure-test
+  (is (thrown-with-msg? Exception #"Git failed:"
+                        (#'module-explorer/git-output! "not-a-real-git-subcommand"))))
+
+(deftest explorer-state-codec-test
+  (let [{:keys [exit out err]} (shell/sh "node" "mage/test/mage/module_explorer_state_test.js")]
+    (is (zero? exit) (str out err))))
+
+(deftest dotted-module-files-mark-correct-module-changes
+  (testing "dotted module files resolve to the dotted module when its prefix exists"
+    (let [prefix->module (modules/build-prefix->module {'lib.schema {}})]
+      (is (= 'lib.schema
+             (#'mage.modules/file->module prefix->module "test/metabase/lib/schema_test.cljc")))
+      (is (= 'lib.schema
+             (#'mage.modules/file->module prefix->module "src/metabase/lib/schema/config.edn"))))))
+
+(deftest top-level-files-belong-only-to-declared-modules-test
+  (testing "a file directly under metabase/ belongs to a module only when a declared prefix owns its namespace"
+    (let [prefix->module (modules/build-prefix->module '{driver {}})]
+      (is (= 'driver (#'mage.modules/file->module prefix->module "src/metabase/driver.clj")))
+      (is (nil? (#'mage.modules/file->module prefix->module "test/metabase/test_runner.clj")))
+      (is (nil? (#'mage.modules/file->module prefix->module "src/metabase/DO_NOT_ADD_NEW_FILES_HERE.txt"))))))

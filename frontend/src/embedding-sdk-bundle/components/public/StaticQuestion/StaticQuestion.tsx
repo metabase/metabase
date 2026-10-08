@@ -17,6 +17,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  RefreshButton,
   SqlParametersList,
   Summarize,
   SummarizeDropdown,
@@ -33,6 +34,7 @@ import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/not
 import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { EmbeddingSdkStaticMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkStaticMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import { resolveDeserializedCard } from "embedding-sdk-bundle/lib/sdk-question/resolve-deserialized-card";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
@@ -41,11 +43,12 @@ import type {
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
 import { Box, Group, Stack } from "metabase/ui";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 import { staticQuestionSchema } from "./StaticQuestion.schema";
+
+const staticClickActionMode = getEmbeddingMode({
+  queryMode: EmbeddingSdkStaticMode,
+});
 
 type StaticQuestionBaseProps = PropsWithChildren<
   Pick<
@@ -87,6 +90,7 @@ export type StaticQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
+  RefreshButton: typeof RefreshButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
@@ -164,26 +168,12 @@ const StaticQuestionInner = (
 
   const { ref: containerRef, isMobile } = useMobileLayout();
 
-  const getClickActionMode: ClickActionModeGetter = ({
-    question,
-  }: {
-    question: Question;
-  }) => {
-    return (
-      question &&
-      getEmbeddingMode({
-        question,
-        queryMode: EmbeddingSdkStaticMode,
-      })
-    );
-  };
-
   return (
     <SdkQuestion
       questionId={questionId}
       token={token}
       deserializedCard={deserializedCard}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={staticClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
       sqlParameters={sqlParameters}
@@ -204,13 +194,13 @@ const StaticQuestionInner = (
             className={InteractiveQuestionS.Container}
             w="100%"
             h="100%"
-            gap="xs"
+            gap="xxs"
           >
             <RenderIfHasContent
               component={Stack}
               className={InteractiveQuestionS.TopBar}
               gap="sm"
-              p="md"
+              p="lg"
               data-testid="static-question-top-bar"
             >
               {title && <DefaultViewTitle title={title} />}
@@ -252,6 +242,7 @@ const subComponents: StaticQuestionComponents = {
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
+  RefreshButton: RefreshButton,
   Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,

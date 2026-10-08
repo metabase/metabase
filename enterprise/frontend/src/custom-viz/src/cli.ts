@@ -60,10 +60,7 @@ program
       writeFile(join(name, "package.json"), generatePackageJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
-      writeFile(
-        join(name, "src", "index.tsx"),
-        generateIndexTsx(name, displayName),
-      ),
+      writeFile(join(name, "src", "index.tsx"), generateIndexTsx(displayName)),
       writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
       writeFile(join(name, ".gitignore"), generateGitignore()),

@@ -69,7 +69,7 @@
   (testing "send email succeeds w/o retry"
     (let [[hook state] (rt/retry-analytics-config-hook)]
       (binding [retry/*test-time-config-hook* hook]
-        (with-redefs [email/send-email! mt/fake-inbox-email-fn]
+        (mt/with-dynamic-fn-redefs [email/send-email! mt/fake-inbox-email-fn]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -79,7 +79,7 @@
   (testing "send email fails b/c retry limit"
     (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
       (binding [retry/*test-time-config-hook* hook]
-        (with-redefs [email/send-email! (tu/works-after 2 mt/fake-inbox-email-fn)]
+        (mt/with-dynamic-fn-redefs [email/send-email! (tu/works-after 2 mt/fake-inbox-email-fn)]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -90,7 +90,7 @@
   (testing "send email succeeds w/ retry"
     (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
       (binding [retry/*test-time-config-hook* hook]
-        (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)]
+        (mt/with-dynamic-fn-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)

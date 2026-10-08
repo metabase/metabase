@@ -83,14 +83,14 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
   }, [prompt, submitInput, goToPlanPage]);
 
   return (
-    <Stack h="100%" bg="background-primary" align="center" p="2rem">
-      <Stack w="100%" maw="42rem" align="flex-start" gap="lg" mih={0}>
+    <Stack h="100%" align="center" p="2rem" className={S.page}>
+      <Stack w="100%" maw="42rem" align="flex-start" gap="xl" mih={0}>
         {hasNlqAccess && (
           <Button
             component={ForwardRefLink}
             to={Urls.newQuestion({ mode: "ask" })}
-            c="text-secondary"
-            bd="none"
+            variant="subtle"
+            color="neutral"
             flex="none"
             leftSection={<Icon name="arrow_left" />}
           >
@@ -130,9 +130,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
           )}
           <Flex justify="space-between" align="center">
             <Button
-              c="text-secondary"
-              bd="none"
-              className={S.buttonHoverSecondary}
+              variant="subtle"
+              color="neutral"
               leftSection={<Icon name="collection" />}
               onClick={() => setIsCollectionPickerOpen(true)}
             >
@@ -140,9 +139,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
             </Button>
             <Flex gap="sm">
               <Button
-                c="text-secondary"
-                bd="none"
-                className={S.buttonHoverSecondary}
+                variant="subtle"
+                color="neutral"
                 onClick={handleManualSetup}
               >
                 {t`Manual setup`}
@@ -207,12 +205,12 @@ function Banner() {
     <Flex
       justify="space-between"
       align="center"
-      gap="lg"
+      gap="xl"
       bg="background-brand"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       bd="1px solid border"
-      bdrs="md"
+      bdrs="sm"
       data-testid="research-mode-banner"
     >
       <Text>
@@ -248,9 +246,9 @@ function ExplorationList({ explorations }: ExplorationListProps) {
               component={ForwardRefLink}
               to={Urls.exploration(id)}
               key={id}
-              px="md"
+              px="lg"
               py="sm"
-              bdrs="md"
+              bdrs="sm"
               className={S.explorationLink}
               style={{
                 animationDelay: `${index * 75}ms`,

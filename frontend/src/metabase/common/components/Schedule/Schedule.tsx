@@ -6,7 +6,6 @@ import { c } from "ttag";
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
 import { Box, Flex, type FlexProps } from "metabase/ui";
 import { formatCronExpressionForUI } from "metabase/utils/cron";
-import type { ScheduleSettings } from "metabase-types/api";
 
 import {
   GROUP_ATTRIBUTES,
@@ -22,23 +21,20 @@ import {
   SelectWeekdayOfMonth,
 } from "./components";
 import { scheduleValueToCron, toScheduleBuilderValue } from "./cron";
-import { byTheMinuteIntervals } from "./strings";
-import type {
-  ScheduleBuilderValue,
-  ScheduleChangeEvent,
-  ScheduleValue,
-  ScheduleValueType,
-  UpdateSchedule,
-} from "./types";
-import { isScheduleCronValue } from "./types";
 import {
   type GetScheduleDefaults,
-  clearDayForMidFrame,
+  type NormalizedScheduleValue,
+  type ScheduleValue,
+  type ScheduleValueType,
+  changeScheduleType,
   getScheduleDefaults,
   isScheduleComplete,
+  isScheduleCronValue,
   normalizeScheduleValue,
-  resetScheduleToTypeDefaults,
-} from "./utils";
+  setScheduleField,
+} from "./domain";
+import { byTheMinuteIntervals } from "./strings";
+import type { ScheduleChangeEvent, UpdateSchedule } from "./types";
 
 export interface ScheduleProps {
   className?: string;
@@ -53,7 +49,7 @@ export interface ScheduleProps {
   layout?: "vertical" | "horizontal";
   fullWidthSelects?: boolean;
   renderScheduleDescription?: (
-    value: ScheduleValue,
+    value: NormalizedScheduleValue,
     cronInputValue: string,
   ) => JSX.Element | string | null;
 }
@@ -73,7 +69,7 @@ export const Schedule = ({
   renderScheduleDescription,
   ...flexProps
 }: ScheduleProps & FlexProps & HTMLAttributes<HTMLDivElement>) => {
-  const normalizedValue = useMemo<ScheduleValue>(
+  const normalizedValue = useMemo(
     () => normalizeScheduleValue(value, getDefaults),
     [value, getDefaults],
   );
@@ -82,7 +78,7 @@ export const Schedule = ({
   );
 
   const emitChange = useCallback(
-    (nextValue: ScheduleValue) => {
+    (nextValue: NormalizedScheduleValue) => {
       onScheduleChange({
         value: nextValue,
         cronString: isScheduleComplete(nextValue)
@@ -103,7 +99,7 @@ export const Schedule = ({
       }
 
       emitChange(
-        resetScheduleToTypeDefaults(
+        changeScheduleType(
           toScheduleBuilderValue(normalizedValue),
           scheduleType,
           getDefaults,
@@ -111,22 +107,6 @@ export const Schedule = ({
       );
     },
     [emitChange, getDefaults, normalizedValue],
-  );
-
-  const createUpdateSchedule = useCallback(
-    (schedule: ScheduleBuilderValue): UpdateSchedule =>
-      (
-        updatedField: keyof ScheduleSettings,
-        newValue: ScheduleSettings[typeof updatedField],
-      ) => {
-        const nextValue: ScheduleBuilderValue = {
-          ...schedule,
-          [updatedField]: newValue,
-        };
-
-        emitChange(clearDayForMidFrame(nextValue));
-      },
-    [emitChange],
   );
 
   const renderedSchedule = useMemo(() => {
@@ -154,7 +134,8 @@ export const Schedule = ({
 
     const { schedule_frame, schedule_day, schedule_hour, schedule_minute } =
       normalizedValue;
-    const updateSchedule = createUpdateSchedule(normalizedValue);
+    const updateSchedule: UpdateSchedule = (field, value) =>
+      emitChange(setScheduleField(normalizedValue, field, value));
 
     const selectMinute = (
       <SelectMinute
@@ -269,7 +250,6 @@ export const Schedule = ({
     normalizedValue,
     scheduleOptions,
     timezone,
-    createUpdateSchedule,
     updateScheduleType,
     verb,
     cronInputValue,

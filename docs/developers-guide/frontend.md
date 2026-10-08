@@ -40,8 +40,9 @@ You'll note several styling patterns in the codebase. Currently you should prefe
 
 1. [Mantine Style Props](https://mantine.dev/styles/style-props/) for most simple styling
 2. [CSS Modules](https://github.com/css-modules/css-modules) for more complex styling
+3. Global utility classes (in `/css/core`) should only be used where Mantine style props cannot be used.
 
-Other patterns, such as emotion styled components and global utility CSS classes are deprecated and should not be used for new code. Where convenient, please updated deprecated styling patterns to the updated ones.
+Other patterns, such as emotion styled components should not be used for new code. Where convenient, please updated deprecated styling patterns to the updated ones.
 
 Familiarize yourself with Mantine's Layout components. You can often save a lot of CSS with built-in components like [`Center`](https://mantine.dev/core/center/) and [`SimpleGrid`](https://mantine.dev/core/simple-grid/)
 
@@ -152,7 +153,7 @@ The frontend uses [ttag](https://www.npmjs.com/package/ttag) to localize strings
 <div>{t`This is a user-facing string`}</div>
 
 <div>
-	{c("{0} is a number of engineers").t`${numEngineers} engineers at metabase`}
+ {c("{0} is a number of engineers").t`${numEngineers} engineers at metabase`}
 </div>
 ```
 
@@ -174,16 +175,16 @@ const output = c("{0} and {2} are people's names, and {1} is a place")
 
 The first rule of frontend style, is we want to avoid talking about frontend style. Wherever possible, style-level considerations should be encapsulated in lint rules.
 
-### oxfmt + ESlint
+### oxfmt + oxlint
 
-We use [oxfmt](https://oxc.rs/) to format our JavaScript and TypeScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run format`, and verify it has been formatted correctly using `bun run lint-format-pure`.
+We use [oxfmt](https://oxc.rs/) to format our JavaScript and TypeScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run format`, and verify it has been formatted correctly using `bun run lint-format-pure`. Oxfmt also sorts imports, so `bun run format` fixes import order too.
 
-We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `bun run lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
+We use [oxlint](https://oxc.rs/) to enforce JavaScript and TypeScript lint rules, including module boundaries. Run `bun run lint-oxlint` to lint, or `bun run lint-oxlint-fix` to apply lint fixes. For how the lint configuration works, see `frontend/lint/OXLINT.md`.
 
 ### Miscellaneous notes on coding style
 
 - Avoid creating separate `Container` and `Components` directories. In some cases it makes sense to separate components for data loading and viewing, but this is easy to do in a single file.
-- Avoid nested ternaries as they often result in code that is difficult to read. If you have logical branches in your code that are dependent on the value of a string, prefer using an object as a map to multiple values (when evaluation is trivial) or a `switch` statement. Where logic is complex, we often use [ts-pattern](https://github.com/gvergnaud/ts-pattern) over a set of if/else statement.
+- Avoid nested ternaries as they often result in code that is difficult to read. If you have logical branches in your code that are dependent on the value of a string, prefer using an object as a map to multiple values (when evaluation is trivial) or a `switch` statement. Where logic is complex, we often use [ts-pattern](https://github.com/gvergnaud/ts-pattern) over a set of if/else statements.
 - Be conservative with what comments you add to the codebase. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
 - Avoid using `renderThing()` functions within a component. These are sometimes (but rarely!) useful for performance reasons, but in nearly all cases, simple subcomponents are more readable, testable, and maintainable.
 

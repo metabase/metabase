@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isLibraryCollection } from "metabase/common/collections/utils";
+import { dataAppsSettings, transformList } from "metabase/urls";
 import type {
   Collection,
   CollectionId,
@@ -18,6 +19,23 @@ import type {
 export const TRANSFORMS_ROOT_ID = -1;
 
 /**
+ * Sentinel value for the virtual Data apps root collection.
+ */
+const DATA_APPS_ROOT_ID = -2;
+
+/**
+ * A synthetic root collection for a group whose entities have no real one.
+ */
+export type VirtualRoot = {
+  /** Sentinel collection ID (e.g., -1 for Transforms) */
+  id: number;
+  /** i18n function for the root's name */
+  name: () => string;
+  /** Page the root links to, since it has no collection page */
+  url: () => string;
+};
+
+/**
  * Configuration for how entities are grouped and displayed in the changes view.
  * Similar to the backend remote-sync-specs pattern.
  */
@@ -28,10 +46,10 @@ export type DisplayGroupSpec = {
   namespace?: string;
   /** Model types that belong to this group */
   models?: Set<RemoteSyncEntityModel>;
-  /** Virtual root ID for groups that have a synthetic root (e.g., -1 for Transforms) */
-  virtualRootId?: number;
-  /** i18n function for virtual root name */
-  virtualRootName?: () => string;
+  /** Other entities that belong to this group */
+  matches?: (entity: RemoteSyncEntity) => boolean;
+  /** Synthetic root for groups whose entities have no real collection */
+  virtualRoot?: VirtualRoot;
   /** Icon to display for this group's collections */
   icon: IconName;
   /** ID of another group whose path should be prepended */
@@ -48,9 +66,17 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
   {
     id: "transforms",
     namespace: "transforms",
-    models: new Set(["transform", "transformtag", "pythonlibrary"]),
-    virtualRootId: TRANSFORMS_ROOT_ID,
-    virtualRootName: () => t`Transforms`,
+    models: new Set([
+      "transform",
+      "transformtag",
+      "transformtest",
+      "pythonlibrary",
+    ]),
+    virtualRoot: {
+      id: TRANSFORMS_ROOT_ID,
+      name: () => t`Transforms`,
+      url: transformList,
+    },
     icon: "transform",
     priority: 100,
   },
@@ -61,6 +87,32 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     icon: "snippet",
     pathPrefixGroupId: "library",
     priority: 90,
+  },
+  {
+    id: "data-actions",
+    namespace: "data-actions",
+    matches: (entity) => entity.model === "action" && entity.card_id === null,
+    icon: "bolt",
+    pathPrefixGroupId: "library",
+    priority: 85,
+  },
+  {
+    id: "glossary",
+    models: new Set(["glossary"]),
+    icon: "glossary",
+    pathPrefixGroupId: "library",
+    priority: 80,
+  },
+  {
+    id: "data-apps",
+    models: new Set(["dataapp"]),
+    virtualRoot: {
+      id: DATA_APPS_ROOT_ID,
+      name: () => t`Data apps`,
+      url: dataAppsSettings,
+    },
+    icon: "app",
+    priority: 70,
   },
   {
     id: "tables",
@@ -121,7 +173,7 @@ const getSpecForEntity = (
   namespaceCollectionMap: NamespaceCollectionMap,
 ): DisplayGroupSpec => {
   for (const spec of displayGroupSpecs) {
-    if (spec.models?.has(entity.model)) {
+    if (spec.models?.has(entity.model) || spec.matches?.(entity)) {
       return spec;
     }
     if (entity.model === "collection" && spec.namespace) {
@@ -167,10 +219,13 @@ const getGroupKeyInfo = (
     }
     return { groupKey: entity.collection_id, spec };
   }
+  if (spec.virtualRoot) {
+    return { groupKey: spec.virtualRoot.id, spec };
+  }
   if (entity.collection_id != null) {
     return { groupKey: entity.collection_id, spec };
   }
-  if (spec.id === "snippets" && libraryCollectionId != null) {
+  if (spec.pathPrefixGroupId === "library" && libraryCollectionId != null) {
     return { groupKey: libraryCollectionId, spec };
   }
   return { groupKey: 0, spec };
@@ -234,15 +289,20 @@ const getPathPrefixSegments = (
   collectionMap: Map<number, Collection>,
   libraryCollectionId: number | null,
 ): CollectionPathSegment[] => {
-  if (spec.id === "transforms" && spec.virtualRootId != null) {
-    return [{ id: spec.virtualRootId, name: spec.virtualRootName?.() ?? "" }];
+  if (spec.id === "transforms" && spec.virtualRoot) {
+    return [getVirtualRootSegment(spec.virtualRoot)];
   }
   if (
     spec.pathPrefixGroupId === "library" &&
     libraryCollectionId != null &&
     collectionId !== libraryCollectionId &&
     collectionId != null &&
-    isCollectionInNamespace(collectionId, "snippets", namespaceCollectionMap)
+    spec.namespace != null &&
+    isCollectionInNamespace(
+      collectionId,
+      spec.namespace,
+      namespaceCollectionMap,
+    )
   ) {
     const libraryCollection = collectionMap.get(libraryCollectionId);
     if (libraryCollection) {
@@ -251,6 +311,16 @@ const getPathPrefixSegments = (
   }
   return [];
 };
+
+/**
+ * Get the virtual root with this sentinel collection ID.
+ */
+export const getVirtualRoot = (id: CollectionId): VirtualRoot | undefined =>
+  displayGroupSpecs.find((spec) => spec.virtualRoot?.id === id)?.virtualRoot;
+
+const getVirtualRootSegment = (
+  virtualRoot: VirtualRoot,
+): CollectionPathSegment => ({ id: virtualRoot.id, name: virtualRoot.name() });
 
 /**
  * Get the spec by ID.
@@ -418,8 +488,10 @@ const buildCollectionGroup = ({
     ? TRANSFORMS_ROOT_ID
     : Number(collectionId) || undefined;
 
-  let pathSegments = isTransformsRoot
-    ? [{ id: TRANSFORMS_ROOT_ID, name: t`Transforms` }]
+  const virtualRoot =
+    numericCollectionId != null ? getVirtualRoot(numericCollectionId) : null;
+  let pathSegments = virtualRoot
+    ? [getVirtualRootSegment(virtualRoot)]
     : getCollectionPathSegments(numericCollectionId, collectionMap);
   const prefixSegments = getPathPrefixSegments(
     groupSpec,

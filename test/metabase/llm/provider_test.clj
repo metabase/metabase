@@ -1,8 +1,11 @@
 (ns metabase.llm.provider-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.string :as str]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -86,6 +89,48 @@
                                        :secret-access-key "rotated-secret"
                                        :region            "us-west-1"})))))
 
+(deftest ^:parallel merge-config-preserves-a-masked-multi-line-secret-test
+  (testing (str "a service account key file is JSON that ends with a newline, so its mask straddles a line break — "
+                "echoing it back still has to keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (is (= {:auth-method         "service-account-key"
+              :service-account-key key-file}
+             (llm.provider/merge-config "google"
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key key-file}
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key (setting/obfuscate-value key-file)}))))))
+
+(deftest set-single-provider-setting!-ignores-a-masked-multi-line-secret-test
+  (testing (str "the setter trims before storing, but the mask of a newline-terminated secret only matches "
+                "untrimmed — echoing it back must keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (setting/obfuscate-value key-file))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-ignores-a-whitespace-padded-mask-test
+  (testing "a mask that picked up surrounding whitespace in transit is still an echo, not a new value"
+    (let [key-file "{\"type\": \"service_account\", \"project_id\": \"my-project\"}"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (str " " (setting/obfuscate-value key-file) " "))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-stores-a-fresh-value-test
+  (testing "a freshly entered value still replaces the stored one"
+    (let [old-key "{\"type\": \"service_account\", \"project_id\": \"old-project\"}"
+          new-key "{\"type\": \"service_account\", \"project_id\": \"new-project\"}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key old-key})]]
+        (llm.settings/llm-google-service-account-key! new-key)
+        (testing "trimmed, the way the setter has always stored"
+          (is (= (str/trim new-key) (llm.settings/llm-google-service-account-key))))))))
+
 (deftest validate-config!-test
   (testing "an unknown provider type is rejected"
     (is (thrown-with-msg?
@@ -141,6 +186,86 @@
     (is (nil? (llm.provider/validate-config! "google" {:oauth-access-token "ya29.token"
                                                        :project-id         "my-project"})))))
 
+(deftest validate-config!-key-pair-test
+  (testing "a bedrock key is taken only together with the other, so half a pair never reaches the signer"
+    (is (nil? (llm.provider/validate-config! "bedrock" {})))
+    (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                        :secret-access-key "test-secret"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Access key ID only together with Secret access key"
+         (llm.provider/validate-config! "bedrock" {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Access key ID only together with Secret access key"
+         (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                   :secret-access-key "  "})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Secret access key only together with Access key ID"
+         (llm.provider/validate-config! "bedrock" {:secret-access-key "test-secret"})))))
+
+(deftest config-complete?-requires-test
+  (testing "a session token rides along with the bedrock pair, never alone"
+    (is (false? (llm.provider/config-complete? "bedrock" {:session-token "FwoGZXIvYXdzEXAMPLE"})))
+    (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                         :secret-access-key "test-secret"
+                                                         :session-token     "FwoGZXIvYXdzEXAMPLE"})))))
+
+(deftest validate-config!-requires-test
+  (testing "a dependent field is taken only together with the fields it requires"
+    (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                        :secret-access-key "test-secret"
+                                                        :session-token     "FwoGZXIvYXdzEXAMPLE"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Session token only together with Access key ID \+ Secret access key"
+         (llm.provider/validate-config! "bedrock" {:session-token "FwoGZXIvYXdzEXAMPLE"})))))
+
+(deftest hosted-bedrock-requires-key-pair-test
+  (testing "on a hosted deployment keyless bedrock is neither valid nor complete, since the default chain would sign as the operator"
+    (mt/with-premium-features #{:hosting}
+      (is (false? (llm.provider/config-complete? "bedrock" {})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
+           (llm.provider/validate-config! "bedrock" {})))
+      (testing "the pair is a mandatory set, so the form marks each of its fields required"
+        (is (= {:access-key-id true :secret-access-key true :region false :model-id false :session-token false}
+               (->> (llm.provider/provider-type "bedrock")
+                    :fields
+                    (into {} (map (juxt :key (comp boolean :required?))))))))
+      (testing "an explicit customer pair stays valid"
+        (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                            :secret-access-key "test-secret"})))
+        (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                             :secret-access-key "test-secret"})))))))
+
+(deftest indeterminate-hosting-bedrock-requires-key-pair-test
+  (testing "a token status the token service could not confirm counts as hosted, since the chain would sign as the
+            operator on a Cloud instance that cannot reach it"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly nil)]
+      (is (true? (llm.provider/hosted?)))
+      (is (false? (llm.provider/config-complete? "bedrock" {})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
+           (llm.provider/validate-config! "bedrock" {})))))
+  (testing "a token the service did answer for leaves a self-hosted deployment keyless"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly false)]
+      (is (false? (llm.provider/hosted?)))
+      (is (nil? (llm.provider/validate-config! "bedrock" {}))))))
+
+(deftest provider-types-carry-hosted-policy-test
+  (testing "enumeration applies hosted policy too, so the connection form sees the same requirements as validation"
+    (mt/with-premium-features #{:hosting}
+      (let [bedrock   (m/find-first #(= "bedrock" (:type %)) (llm.provider/provider-types))
+            key-field (m/find-first #(= :access-key-id (:key %)) (:fields bedrock))]
+        (is (true? (:required? key-field)))
+        (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+               (str (:help key-field))))))
+    (testing "and leaves the self-hosted entry alone"
+      (let [key-field (->> (llm.provider/provider-types)
+                           (m/find-first #(= "bedrock" (:type %)))
+                           :fields
+                           (m/find-first #(= :access-key-id (:key %))))]
+        (is (nil? (:required? key-field)))
+        (is (str/starts-with? (str (:help key-field)) "Leave the keys blank"))))))
+
 (deftest validate-config!-field-validator-test
   (testing "a field's own validator runs on a non-blank value"
     (is (thrown-with-msg?
@@ -151,6 +276,25 @@
          clojure.lang.ExceptionInfo #"not a valid Google Cloud location"
          (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"
                                                   :location            "US Central"})))))
+
+(deftest validate-config!-base-url-network-policy-test
+  (testing "every provider's base URL is checked against llm-allowed-networks"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (doseq [[type config] [["anthropic" {:api-key "sk-ant-valid"}]
+                             ["openai"    {:api-key "sk-valid"}]
+                             ["vllm"      {}]
+                             ["azure"     {:api-key "azure-key" :deployment-name "gpt-4.1-mini"}]]]
+        (testing type
+          (is (=? {:status-code 400 :field :base-url}
+                  (try (llm.provider/validate-config! type (assoc config :base-url "http://127.0.0.1:8000"))
+                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (nil? (llm.provider/validate-config! type (assoc config :base-url "https://8.8.8.8/v1"))))))))
+  (testing "under :allow-all a loopback base URL is fine, but it still has to be an http(s) URL"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (nil? (llm.provider/validate-config! "vllm" {:base-url "http://127.0.0.1:8000/v1"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"must start with http"
+           (llm.provider/validate-config! "vllm" {:base-url "127.0.0.1:8000/v1"}))))))
 
 (deftest validate-config!-select-options-test
   (testing "a select field's value must be one of its options"
@@ -174,6 +318,10 @@
     (is (= "anthropic/claude-sonnet-4-5"
            (llm.provider/connection-model "azure" {:model-family    "anthropic"
                                                    :deployment-name "claude-sonnet-4-5"}))))
+  (testing "Google names a Model Garden endpoint by the collection its ID belongs to, and nothing without an ID"
+    (is (= "endpoints/1234567890123456789"
+           (llm.provider/connection-model "google" {:endpoint-id " 1234567890123456789 "})))
+    (is (nil? (llm.provider/connection-model "google" {:oauth-access-token "ya29.token"}))))
   (testing "a half-filled connection names no model rather than a malformed one"
     (is (nil? (llm.provider/connection-model "azure" {:model-family "openai"})))
     (is (nil? (llm.provider/connection-model "azure" {:model-family    "openai"
@@ -225,13 +373,16 @@
     (is (false? (llm.provider/config-complete? "vllm" {:api-key "local-dev-key"})))
     (is (false? (llm.provider/config-complete? "vllm" {:base-url "  "})))
     (is (false? (llm.provider/config-complete? "vllm" nil))))
-  (testing "bedrock needs both AWS keys, and neither the region nor the session token"
+  (testing "bedrock takes both AWS keys or none: a keyless connection signs with the AWS default credentials chain"
     (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                          :secret-access-key "test-secret"})))
-    (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
-    (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
-                                                          :secret-access-key ""})))
-    (is (false? (llm.provider/config-complete? "bedrock" {:secret-access-key "test-secret"}))))
+    (is (true? (llm.provider/config-complete? "bedrock" {})))
+    (is (true? (llm.provider/config-complete? "bedrock" nil)))
+    (testing "but half a pair authenticates nothing and is not complete"
+      (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
+      (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                            :secret-access-key ""})))
+      (is (false? (llm.provider/config-complete? "bedrock" {:secret-access-key "test-secret"})))))
   (testing "the managed type carries no credentials and is complete exactly when the LLM proxy is configured"
     (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example.com"]
@@ -304,6 +455,23 @@
       (testing "and a key on its own does not: it authenticates nothing without a server to send it to"
         (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "local-dev-key"]
           (is (= [] (llm.provider/connections)))))))
+  (testing "Bedrock's region is a credential too: a keyless connection signs with the AWS default chain, so it alone synthesizes one"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-bedrock-region "eu-central-1"]
+        (is (= [{:key        "bedrock"
+                 :type       "bedrock"
+                 :name       "Amazon Bedrock"
+                 :source     :env
+                 :env-vars   #{"MB_LLM_BEDROCK_REGION"}
+                 :env-fields #{:region}
+                 :config     {:region "eu-central-1"}}]
+               (llm.provider/connections)))
+        (is (true? (llm.provider/connection-usable? "bedrock"))))
+      (testing "and a lone key synthesizes a connection that is not usable: half a pair authenticates nothing"
+        (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"]
+          (is (=? [{:key "bedrock" :config {:access-key-id "AKIAIOSFODNN7EXAMPLE"}}]
+                  (llm.provider/connections)))
+          (is (false? (llm.provider/connection-usable? "bedrock")))))))
   (testing "a metabase/ reference pinned by the environment synthesizes the managed connection it names"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
@@ -314,25 +482,128 @@
 
 (deftest connections-shadowed-by-the-environment-test
   (testing "the environment shadows a stored connection with the same key field by field, not wholesale"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:service-account-key "{\"type\":\"db\"}"
+                                                                   :project-id          "stored-project"
+                                                                   :location            "us-central1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-google-service-account-key "{\"type\":\"env\"}"]
+        (is (= [{:key        "google"
+                 :type       "google"
+                 :name       "google"
+                 ;; the env credential wins; everything the environment does not supply stays as stored
+                 :config     {:service-account-key "{\"type\":\"env\"}"
+                              :project-id          "stored-project"
+                              :location            "us-central1"}
+                 :env-vars   #{"MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY"}
+                 :env-fields #{:service-account-key}
+                 :source     :db}]
+               (llm.provider/connections)))))))
+
+(deftest a-region-survives-keys-from-the-environment-test
+  (testing "the region only picks an AWS endpoint, so keys from the environment do not reset it to the default"
+    (mt/with-temporary-setting-values [llm-providers [(connection "bedrock" "bedrock" {:region "eu-central-1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id     "AKIAENV"
+                                    mb-llm-bedrock-secret-access-key "env-secret"]
+        (is (=? [{:key "bedrock" :config {:region "eu-central-1"}}]
+                (llm.provider/connections)))))))
+
+(deftest connections-drop-a-stored-base-url-an-env-credential-would-reach-test
+  (testing (str "A base URL saved through the API is not where an environment-supplied credential gets sent: the "
+                "credential may have arrived after the URL, which is the one order the set-time check cannot see.")
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
                                                                   {:api-key  "sk-ant-db"
-                                                                   :base-url "https://stored.example.com"})]]
+                                                                   :base-url "https://planted.example.com"})]]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (= [{:key        "anthropic"
-                 :type       "anthropic"
-                 :name       "anthropic"
-                 ;; the env key wins; the stored base URL survives, so a lone base-url var can equally reach a
-                 ;; stored connection instead of doing nothing
-                 :config     {:api-key "sk-ant-env" :base-url "https://stored.example.com"}
-                 :env-vars   #{"MB_LLM_ANTHROPIC_API_KEY"}
-                 :env-fields #{:api-key}
-                 :source     :db}]
-               (llm.provider/connections))))))
-  (testing "a lone base-url variable reaches the stored connection's base URL"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
-               (llm.provider/credentials "anthropic")))))))
+        (testing "the type's default base URL stands in, and the stored one is left editable rather than owned"
+          (is (= {:api-key "sk-ant-env"} (llm.provider/credentials "anthropic")))
+          (is (= #{:api-key} (:env-fields (llm.provider/connection "anthropic")))))
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "https://planted.example.com"
+                 (get-in (first (llm.provider/stored-connections)) [:config :base-url])))))))
+  (testing "the environment's own base URL is used, since the operator supplied both halves"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:base-url "https://planted.example.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      "sk-ant-env"
+                                    mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (= {:api-key "sk-ant-env" :base-url "https://env.example.com"}
+               (llm.provider/credentials "anthropic"))))))
+  (testing "a connection the llm-providers variable supplies is the operator's too, so its base URL stands"
+    (mt/with-temp-env-var-value! [mb-llm-providers (str "[{\"key\":\"anthropic\",\"type\":\"anthropic\","
+                                                        "\"name\":\"Anthropic\","
+                                                        "\"config\":{\"base-url\":\"https://operator.example.com\"}}]")
+                                  mb-llm-anthropic-api-key "sk-ant-env"]
+      (is (= {:api-key "sk-ant-env" :base-url "https://operator.example.com"}
+             (llm.provider/credentials "anthropic")))))
+  (testing "a type whose base URL has no default is left unusable rather than pointed anywhere"
+    (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
+                                                                  {:base-url "https://planted.example.com/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "vllm-env-key"]
+        (is (= {:api-key "vllm-env-key"} (llm.provider/credentials "vllm")))
+        (is (false? (llm.provider/connection-usable? "vllm")))))))
+
+(def ^:private self-hosted-ollama
+  "A self-hosted Ollama an admin gave a key to — a server of their own behind an authenticating proxy."
+  {:base-url "http://ollama.internal:11434/v1"
+   :api-key  "sk-entered-for-our-own-server"})
+
+(deftest connections-drop-a-stored-secret-an-env-base-url-would-move-test
+  (testing (str "The other order: an address arriving from the environment over a credential already stored. A key "
+                "is entered for the server it will be sent to, so a variable pointing elsewhere does not take it along.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+        (is (= {:base-url "http://elsewhere.example.com:11434/v1"} (llm.provider/credentials "ollama"))
+            "the key an admin entered for a server of their own does not go to the other one")
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "sk-entered-for-our-own-server"
+                 (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+  (testing "Ollama Cloud is one more address, so a variable naming it moves the connection the same way"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))
+            "a key typed for the operator's own server does not go to ollama.com"))))
+  (testing "an address the environment restates is not a move, so the key it was entered with stands"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://ollama.internal:11434/v1"]
+        (is (= "sk-entered-for-our-own-server" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "an address the environment restates with a trailing slash is not a move either"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://ollama.internal:11434/v1/"]
+        (is (= "sk-entered-for-our-own-server" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "the environment supplying both halves moves nothing it does not also credential"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"
+                                    mb-llm-ollama-api-key      "sk-operator-key"]
+        (is (= {:base-url "https://ollama.com/v1" :api-key "sk-operator-key"}
+               (llm.provider/credentials "ollama"))))))
+  (testing "a connection the llm-providers variable supplies is the operator's own, so its key stands"
+    (mt/with-temp-env-var-value! [mb-llm-providers (str "[{\"key\":\"ollama\",\"type\":\"ollama\","
+                                                        "\"name\":\"Ollama\","
+                                                        "\"config\":{\"base-url\":\"http://ollama.internal:11434/v1\","
+                                                        "\"api-key\":\"sk-operator-key\"}}]")
+                                  mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+      (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
+
+(deftest env-base-url-moves-a-key-stored-without-an-address-test
+  (testing (str "A key stored with no address, on a type with no default, has no address recorded with it. Thus, "
+                "nothing shows that it is for the address the variable names.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:api-key "sk-no-address"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (= {:base-url "https://ollama.com/v1"} (llm.provider/credentials "ollama")))))))
+
+(deftest env-base-url-keeps-the-key-on-types-it-always-shadowed-test
+  (testing (str "on a type in the compatibility exemption, a base-URL variable shadows the address alone and a "
+                "key typed in the UI goes along with it, whatever the connection stored: the gateway setup an "
+                "upgrade must not break")
+    (doseq [[label stored-url] {"left blank"            nil
+                                "stored at the default" "https://api.anthropic.com"
+                                "chosen by the admin"   "https://chosen.example.com"}]
+      (testing label
+        (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                      (cond-> {:api-key "sk-ant-db"}
+                                                                        stored-url (assoc :base-url stored-url)))]]
+          (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+            (is (= {:api-key "sk-ant-db" :base-url "https://gateway.example.com"}
+                   (llm.provider/credentials "anthropic")))))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
@@ -414,6 +685,33 @@
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
       (is (nil? (llm.provider/resolve-model-ref nil))))))
 
+(deftest resolve-model-ref-reads-a-retired-model-as-its-successor-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id resolves to the model that now serves it"
+      (is (= "qwen/qwen3.8-max-0902" (:model (llm.provider/resolve-model-ref "openrouter/qwen/qwen3.8-max")))))
+    (testing "the same id under another provider type is not retired there"
+      (is (= "qwen/qwen3.8-max" (:model (llm.provider/resolve-model-ref "anthropic/qwen/qwen3.8-max")))))))
+
+(deftest canonical-model-ref-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id reads as the model that now serves it"
+      (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max"))))
+    (testing "any other reference is returned unchanged"
+      (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max-0902")))
+      (is (= "anthropic/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "anthropic/qwen/qwen3.8-max")))
+      (is (= "nope/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "nope/qwen/qwen3.8-max")))
+      (is (nil? (llm.provider/canonical-model-ref nil))))))
+
+(deftest ^:parallel retired-models-map-straight-to-a-current-model-test
+  (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
+                "lookup, so a chain would leave a saved selection naming a retired id")
+    (doseq [{:keys [type retired-models]} (llm.provider/provider-types)
+            successor                     (vals retired-models)]
+      (testing type
+        (is (not (contains? retired-models successor)))))))
+
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
     (is (= "https://api.mistral.ai/v1"
@@ -458,8 +756,8 @@
                 "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
-    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-             "vllm" "metabase"}
+    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+             "bedrock" "vllm" "ollama" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -480,6 +778,11 @@
     (testing "google's service account key is a file field, but it is the whole credential"
       (is (= #{:service-account-key :oauth-access-token} (llm.provider/secret-field-keys "google"))))
     (is (= #{} (llm.provider/secret-field-keys "metabase"))))
+  (testing "every type other than the managed one is always available"
+    (is (true? (llm.provider/type-available? "anthropic")))
+    (is (false? (llm.provider/type-available? "evilai")))))
+
+(deftest ^:parallel provider-type-models-test
   (testing "every type's default model, which is what a first connection of that type gets selected for it"
     (is (= {"anthropic"  "claude-sonnet-4-6"
             "openai"     "gpt-5.4"
@@ -488,13 +791,15 @@
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
             "deepseek"   "deepseek-v4-pro"
+            "xai"        "grok-4.7"
             "google"     "google/gemini-3.5-flash"
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
             "bedrock"    "anthropic.claude-opus-4-8"
-            ;; nor is there for vLLM, which serves whatever the operator loaded: connecting adopts the model
-            ;; its probe exercised
+            ;; nor is there for the self-hosted types, which serve whatever the operator loaded or pulled:
+            ;; connecting adopts the model its probe exercised
             "vllm"       nil
+            "ollama"     nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -507,15 +812,64 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            "deepseek"   "deepseek-v4-flash"
+            "deepseek"   "deepseek-flash"
+            "xai"        "grok-4.3"
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"
-            ;; a vLLM server serves the one model the operator loaded, so there is no cheaper tier to fall back to
+            ;; a self-hosted server serves the models the operator chose to host, so there is no cheaper tier
+            ;; to fall back to
             "vllm"       nil
+            "ollama"     nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
-    (is (nil? (llm.provider/mini-model "evilai"))))
-  (testing "every type other than the managed one is always available"
-    (is (true? (llm.provider/type-available? "anthropic")))
-    (is (false? (llm.provider/type-available? "evilai")))))
+    (is (nil? (llm.provider/mini-model "evilai")))))
+
+(deftest ^:parallel env-base-url-shadowing-types-test
+  (testing (str "The types whose base-URL variable is exempt from tying credentials to their address. A type "
+                "added from now on starts outside it, so growing this set is a decision, not an accident.")
+    (is (= #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "xai" "zai"}
+           @#'llm.provider/env-base-url-shadowing-types))))
+
+(deftest per-setting-write-refuses-a-key-the-environment-moved-away-from-test
+  (testing "a key written through the per-provider setting is refused, not stored for every read to drop"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:base-url "http://ollama.internal:11434/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (=? {:message #".*MB_LLM_OLLAMA_API_BASE_URL.*MB_LLM_OLLAMA_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-new"})))
+        (is (nil? (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+
+(deftest typed-value-test
+  (testing "what counts as a value the caller really typed"
+    (are [submitted expected] (= expected (#'llm.provider/typed-value {:k submitted} :k))
+      "sk-new"           "sk-new"
+      "  sk-new  "       "sk-new"
+      nil                nil
+      "   "              nil
+      "**********ew"     nil
+      "**********ew  "   nil
+      ;; the mask of a newline-terminated JSON key file
+      "**********}\n"    nil)))
+
+(deftest ^:parallel served-mini-model-test
+  (testing "a listing that includes the type's mini model records it on the connection"
+    (is (= {:mini-model "claude-haiku-4-5-20251001"}
+           (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]))))
+  (testing "one that leaves it out records nothing, so an earlier answer is retired rather than kept"
+    (is (= {:mini-model nil}
+           (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}])))
+    (is (= {:mini-model nil} (llm.provider/served-mini-model "anthropic" []))))
+  (testing "a type with no mini model has nothing to record"
+    (is (= {:mini-model nil}
+           (llm.provider/served-mini-model "azure" [{:id "openai/gpt-4.1" :display_name "gpt-4.1"}])))))
+
+(deftest ^:parallel connection-mini-model-test
+  (testing "reads the model the connection's listing recorded"
+    (is (= "claude-haiku-4-5-20251001"
+           (llm.provider/connection-mini-model {:key "anthropic" :type "anthropic"
+                                                :config {:api-key "sk-ant" :mini-model "claude-haiku-4-5-20251001"}}))))
+  (testing "and nothing for a connection no listing has answered for, whatever its type would offer"
+    (is (nil? (llm.provider/connection-mini-model {:key "anthropic" :type "anthropic" :config {:api-key "sk-ant"}})))
+    (is (nil? (llm.provider/connection-mini-model nil)))))

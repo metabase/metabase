@@ -90,7 +90,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
       title={t`Editing ${collection.name}`}
       opened
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       onKeyDown={stopPropagation}
     >
       <FormProvider
@@ -101,7 +101,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
       >
         {({ dirty }) => (
           <Form>
-            <Stack gap="lg" mt="sm">
+            <Stack gap="xl" mt="sm">
               <FormTextInput
                 name="name"
                 label={t`Name`}
@@ -153,6 +153,10 @@ function getPickerEntityType(
 
   if (collectionType === "library-metrics") {
     return "metric";
+  }
+
+  if (collectionType === "library-dashboards") {
+    return "dashboard";
   }
 
   return undefined;

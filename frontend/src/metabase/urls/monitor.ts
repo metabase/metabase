@@ -1,4 +1,5 @@
 import type {
+  GroupId,
   TaskRunDateFilterOption,
   TaskRunEntityType,
   TaskRunType,
@@ -89,12 +90,25 @@ export function monitorNotificationDetail(id: number) {
   return `${monitorNotifications()}/${id}`;
 }
 
+export function monitorSessions() {
+  return `${ROOT_URL}/sessions`;
+}
+
+export function monitorSessionDetail(sessionId: string) {
+  return `${monitorSessions()}/${sessionId}`;
+}
+
 export function monitorAiAuditing() {
   return `${ROOT_URL}/ai-auditing`;
 }
 
-export function monitorAiAuditingUsage() {
-  return `${monitorAiAuditing()}/usage`;
+export function monitorAiAuditingUsage(opts?: { groupId?: GroupId }) {
+  const path = `${monitorAiAuditing()}/usage`;
+  return opts?.groupId == null ? path : `${path}?group=${opts.groupId}`;
+}
+
+export function monitorAiAuditingUsageMetric(metric: string) {
+  return `${monitorAiAuditingUsage()}/${metric}`;
 }
 
 export function monitorAiAuditingConversations() {
@@ -127,4 +141,16 @@ export function monitorAiAuditingCliUsage() {
 
 export function monitorAiAuditingCliCalls() {
   return `${monitorAiAuditingCli()}/calls`;
+}
+
+export function monitorApiKeyUsage() {
+  return `${ROOT_URL}/api-key-usage`;
+}
+
+export function monitorApiKeyUsageOverview() {
+  return `${monitorApiKeyUsage()}/usage`;
+}
+
+export function monitorApiKeyUsageEvents() {
+  return `${monitorApiKeyUsage()}/events`;
 }

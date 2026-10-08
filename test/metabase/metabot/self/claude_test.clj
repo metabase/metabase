@@ -208,10 +208,12 @@
     (testing "the AI SDK finish reason rides the usage chunk alongside the raw provider value"
       (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
                                    (usage-chunk raw))
-        "max_tokens" "length"
-        "end_turn"   "stop"
-        "pause_turn" "stop"
-        "compaction" "other"))))
+        "max_tokens"                    "length"
+        "model_context_window_exceeded" "length"
+        "refusal"                       "content-filter"
+        "end_turn"                      "stop"
+        "pause_turn"                    "stop"
+        "compaction"                    "other"))))
 
 (deftest ^:parallel claude-thinking-blocks-translated-test
   (testing "thinking content blocks become reasoning chunks; signature rides the end"
@@ -320,6 +322,152 @@
             (claude/parts->claude-messages
              [{:type :reasoning :id "r1" :text "unsigned"}
               {:type :tool-input :id "call-1" :function "search" :arguments {}}])))))
+
+(deftest ^:parallel claude-request-body-fast-mode-test
+  (let [input [{:role :user :content "hi"}]
+        speed #(:speed (claude/claude-request-body (merge {:input input} %)))]
+    (testing ":fast? requests fast mode on models that support it"
+      (is (= "fast" (speed {:model "claude-opus-5-5" :fast? true})))
+      (is (= "fast" (speed {:model "claude-opus-5" :fast? true})))
+      (is (= "fast" (speed {:model "claude-opus-4-8" :fast? true}))))
+    (testing "no speed without :fast?"
+      (is (nil? (speed {:model "claude-opus-5"}))))
+    (testing "no speed on models without fast mode"
+      (is (nil? (speed {:model "claude-opus-4-7" :fast? true})))
+      (is (nil? (speed {:model "claude-opus-6" :fast? true})))
+      (is (nil? (speed {:model "claude-sonnet-4-6" :fast? true})))
+      (is (nil? (speed {:model "claude-haiku-4-5" :fast? true}))))
+    (testing "no speed through the AI proxy"
+      (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
+
+(defn- close-tracking-json-body
+  "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
+  response body the adapter must not leak."
+  [closed? m]
+  ;; ByteArrayInputStream.close is documented as having no effect, so there is nothing to
+  ;; pass on to the parent
+  (proxy [java.io.ByteArrayInputStream] [(.getBytes (json/encode m) "UTF-8")]
+    (close []
+      (reset! closed? true))))
+
+(defn- rejection-ex
+  [closed? status message]
+  (ex-info (str "clj-http: status " status)
+           {:status  status
+            :headers {"content-type" "application/json"}
+            :body    (close-tracking-json-body
+                      closed?
+                      {:type  "error"
+                       :error {:type    ({400 "invalid_request_error"
+                                          429 "rate_limit_error"
+                                          529 "overloaded_error"} status)
+                               :message message}})}))
+
+(deftest claude-raw-fast-mode-fallback-test
+  (testing "a fast-mode rejection is retried once at standard speed, closing the failed body"
+    (doseq [[status message] [[400 "Unexpected value(s) `fast-mode-2026-02-01` for the `anthropic-beta` header"]
+                              [429 "This request would exceed the rate limit for your organization"]]]
+      (testing (str "HTTP " status)
+        (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+          (let [requests (atom [])
+                closed?  (atom false)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (swap! requests conj req)
+                                                                  (if (:speed (json/decode+kw (:body req)))
+                                                                    (throw (rejection-ex closed? status message))
+                                                                    {:body req}))]
+              (claude/claude-raw {:model       "claude-opus-5"
+                                  :fast?       true
+                                  :credentials byok-credentials
+                                  :input       [{:role :user :content "hi"}]})
+              (let [[fast-req retry-req] @requests]
+                (is (= 2 (count @requests)))
+                (is (true? @closed?))
+                (is (= "fast" (:speed (json/decode+kw (:body fast-req)))))
+                (is (= "fast-mode-2026-02-01" (get-in fast-req [:headers "anthropic-beta"])))
+                (is (nil? (:speed (json/decode+kw (:body retry-req)))))
+                (is (nil? (get-in retry-req [:headers "anthropic-beta"])))))))))))
+
+(deftest claude-raw-unrelated-400-not-retried-test
+  (testing "a 400 that does not read as a fast-mode rejection surfaces instead of retrying"
+    (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+      (let [requests (atom [])
+            closed?  (atom false)]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                    http/request            (fn [req]
+                                                              (swap! requests conj req)
+                                                              (throw (rejection-ex closed? 400 "max_tokens: Input should be greater than 0")))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API error \(HTTP 400\)"
+                                (claude/claude-raw {:model       "claude-opus-5"
+                                                    :fast?       true
+                                                    :credentials byok-credentials
+                                                    :input       [{:role :user :content "hi"}]})))
+          (is (= 1 (count @requests)))
+          (is (true? @closed?)))))))
+
+(deftest claude-raw-fast-mode-529-test
+  (testing "a fast-mode 529 arms the cooldown but surfaces for the caller's retry loop to pace"
+    (with-redefs [claude/fast-mode-cooldown-until (atom 0)]
+      (let [requests (atom [])
+            closed?  (atom false)
+            call!    #(claude/claude-raw {:model       "claude-opus-5"
+                                          :fast?       true
+                                          :credentials byok-credentials
+                                          :input       [{:role :user :content "hi"}]})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                    http/request            (fn [req]
+                                                              (swap! requests conj req)
+                                                              (if (:speed (json/decode+kw (:body req)))
+                                                                (throw (rejection-ex closed? 529 "Overloaded"))
+                                                                {:body req}))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API is overloaded"
+                                (call!)))
+          (is (true? @closed?))
+          (call!)
+          (is (= ["fast" nil]
+                 (map (comp :speed json/decode+kw :body) @requests))))))))
+
+(deftest claude-raw-fast-mode-cooldown-test
+  (let [cooldown (atom 0)
+        requests (atom [])]
+    (with-redefs [claude/fast-mode-cooldown-until cooldown]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                  http/request            (fn [req]
+                                                            (swap! requests conj req)
+                                                            (if (:speed (json/decode+kw (:body req)))
+                                                              (throw (rejection-ex (atom false) 429 "This request would exceed the rate limit for your organization"))
+                                                              {:body req}))]
+        (let [call!  #(claude/claude-raw {:model       "claude-opus-5"
+                                          :fast?       true
+                                          :credentials byok-credentials
+                                          :input       [{:role :user :content "hi"}]})
+              speeds #(map (comp :speed json/decode+kw :body) @requests)]
+          (testing "a rejection arms the cooldown, so the next call goes straight to standard speed"
+            (call!)
+            (call!)
+            (is (= ["fast" nil nil] (speeds))))
+          (testing "fast mode is attempted again once the cooldown expires"
+            (reset! cooldown 0)
+            (call!)
+            (is (= ["fast" nil nil "fast" nil] (speeds)))))))))
+
+(deftest claude-fast-mode-beta-header-test
+  (let [headers (fn [opts]
+                  (let [captured (atom nil)]
+                    (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                                http/request            (fn [req]
+                                                                          (reset! captured (:headers req))
+                                                                          {:body req})]
+                      (claude/claude-raw (merge {:credentials byok-credentials
+                                                 :input       [{:role :user :content "hi"}]}
+                                                opts)))
+                    @captured))]
+    (testing "fast-mode requests carry the beta header"
+      (is (= "fast-mode-2026-02-01"
+             (get (headers {:model "claude-opus-5" :fast? true}) "anthropic-beta"))))
+    (testing "other requests don't"
+      (is (nil? (get (headers {:model "claude-opus-5"}) "anthropic-beta"))))))
 
 (deftest ^:parallel claude-request-body-reasoning-disabled-test
   (testing ":reasoning? false disables thinking and strips reasoning replay"
@@ -483,7 +631,10 @@
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-8"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
         (testing "bedrock vendor prefix is stripped"
-          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"})))))
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"}))))
+        (testing "the dotted display-name spelling of the minor version parses the same
+                 (Azure admins name deployments freely)"
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4.8"})))))
       (testing "4.6 models also get an explicit display param, not just the (currently matching) default"
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-6"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-4-6"}))))
@@ -497,22 +648,53 @@
                              :tools       [(metabot.tu/get-time-tool)]
                              :tool_choice "required"})))))))
 
-(deftest ^:parallel every-supported-model-has-a-ceiling-test
-  (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
-    (is (pos-int? max-tokens) id)
+(deftest ^:parallel forced-tool-choice-test
+  (let [schema {:type "object" :properties {:answer {:type "string"}}}
+        tools  [(metabot.tu/get-time-tool)]
+        body   #(claude/claude-request-body (merge {:input [{:role :user :content "hi"}]} %))]
+    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names"
+      (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"
+                     "claude-fable-5" "claude-mythos-5"]]
+        (testing model
+          (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
+                  (body {:model model :schema schema :max-tokens 512})))
+          (is (=? {:tool_choice {:type "any"}}
+                  (body {:model model :tools tools :tool_choice "required"}))))))
+    (testing "Opus/Sonnet >=5.5 and Fable/Mythos >=5.1 get auto tool choice and keep thinking"
+      (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"
+                     "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"
+                     "claude-fable-5-1" "anthropic.claude-fable-5-1" "claude-fable-5-1-prod" "claude-fable-5.1-prod"
+                     "claude-mythos-5-1"]]
+        (testing model
+          (is (=? {:tool_choice {:type "auto"}
+                   :tools       [{:name "structured_output"}]
+                   :thinking    {:type "adaptive"}}
+                  (body {:model model :schema schema})))
+          (is (=? {:tool_choice {:type "auto"} :thinking {:type "adaptive"}}
+                  (body {:model model :tools tools :tool_choice "required"}))))))
+    (testing "their structured-output cap is floored, since the thinking bills against it"
+      (are [expected opts] (= expected (:max_tokens (body (assoc opts :model "claude-opus-5-5"))))
+        2048 {:schema schema :max-tokens 512}
+        4096 {:schema schema :max-tokens 4096}
+        512  {:max-tokens 512}))))
+
+(deftest ^:parallel every-supported-model-has-a-display-name-test
+  (doseq [[id {:keys [display-name]}] @#'claude/supported-models]
     (is (seq display-name) id)))
 
 (deftest claude-max-tokens-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
     (let [max-tokens #(:max_tokens (capture-claude-request-body!
                                     (merge {:input [{:role :user :content "hi"}]} %)))]
-      (are [opts tokens] (= tokens (max-tokens opts))
-        {:model "claude-opus-4-8"}                             128000
-        {:model "claude-haiku-4-5-20251001"}                    64000
-        {:model "claude-opus-4-8" :max-tokens 32000}            32000
-        ;; Bedrock ids reach us vendor-prefixed
-        {:model "anthropic.claude-opus-4-8"}                   128000
-        {:model "my-deployment-3"} @#'claude/default-max-tokens))))
+      (testing "every model gets the same default cap, and a caller's own cap wins"
+        (are [opts tokens] (= tokens (max-tokens opts))
+          {:model "claude-opus-4-8"}                     32000
+          {:model "claude-fable-5-1"}                    32000
+          {:model "claude-haiku-4-5-20251001"}           32000
+          {:model "claude-opus-4-8" :max-tokens 4096}     4096
+          ;; Bedrock ids reach us vendor-prefixed
+          {:model "anthropic.claude-opus-4-8"}           32000
+          {:model "my-deployment-3"}                     32000)))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
@@ -599,7 +781,7 @@
                                                               :headers {"anthropic-version" "2023-06-01"
                                                                         "x-api-key"        "sk-ant-byok"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
@@ -609,7 +791,7 @@
                                                               :headers {"anthropic-version"         "2023-06-01"
                                                                         "x-metabase-instance-token" "proxy-token"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:ai-proxy? true})))))
         (testing "Does not fall back to ai proxy when the connection carries no key"
@@ -646,7 +828,7 @@
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                  (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
                                                          req))
-                                                 {:body "{\"data\":[]}"})]
+                                                 {:status 200 :body {:data []}})]
         (is (= {:models []}
                (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
 
@@ -666,22 +848,24 @@
            #"No Anthropic API key is set"
            (claude/list-models {:credentials {:api-key ""}}))))))
 
-(deftest ^:parallel supported-model?-test
+(deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
-    (doseq [id ["claude-fable-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
-      (is (true? (#'claude/supported-model? {:id id})) id)))
+    (doseq [id ["claude-fable-5" "claude-opus-5-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5-5" "claude-sonnet-5"
+                "claude-haiku-4-5-20251001"]]
+      (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
     (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
-      (is (false? (#'claude/supported-model? {:id id})) id))))
+      (is (not (contains? claude/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
+    ;; the catalog request is `:as :json`, so clj-http hands the adapter an already-decoded body
     (with-redefs [http/request (fn [_]
-                                 {:body (json/encode
-                                         {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
-                                                 {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
-                                                 {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
-                                                 {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
+                                 {:status 200
+                                  :body   {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                  {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                  {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                  {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]}})]
       (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
               {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
@@ -690,14 +874,16 @@
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"
     (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
-                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1" "claude-opus-4-20250514"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
   (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
-                   "claude-opus-5" "claude-opus-5-0"
-                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
-                   "claude-fable-5"]]
+                   "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
+                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-5-5" "claude-sonnet-6"
+                   "claude-fable-5" "claude-fable-5-1" "claude-mythos-5-1"
+                   ;; an Azure deployment name without a version
+                   "claude-fable-prod"]]
       (is (false? (#'claude/model-supports-temperature? model))
           model))))
 

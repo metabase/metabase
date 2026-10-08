@@ -1,195 +1,76 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
-import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
-import TimelinePanel from "metabase/query_builder/components/timelines/containers/TimelinePanel";
-import {
-  getTimeseriesDataInterval,
-  getUiControls,
-} from "metabase/query_builder/selectors";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { useListTimelinesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { onOpenTimelines } from "metabase/redux/query-builder";
-import { Box, Button, Icon } from "metabase/ui";
-import { formatDateTimeWithUnit } from "metabase/value-formatting";
-import type { CartesianChartDateTimeAbsoluteUnit } from "metabase/visualizations/echarts/cartesian/model/types";
-import type Question from "metabase-lib/v1/Question";
-import type { DatetimeUnit, Timeline, TimelineEvent } from "metabase-types/api";
+import { TimelineSidebar as SharedTimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { TimelineEvent } from "metabase-types/api";
 
-export interface TimelineSidebarProps {
-  question: Question;
-  timelines: Timeline[];
-  visibleTimelineEventIds: number[];
-  selectedTimelineEventIds: number[];
-  xDomain?: [Dayjs, Dayjs];
-  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
-  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
-  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
-  onDeselectTimelineEvents?: () => void;
-  onOpenModal?: (modal: QueryModalType, modalContext?: unknown) => void;
-  onClose?: () => void;
-}
+import {
+  deselectTimelineEvents,
+  selectTimelineEvents,
+  updateTimelineEventsVisibility,
+} from "../../../../actions/timelines";
+import { onCloseTimelines, onOpenTimelines } from "../../../../store/actions";
+import {
+  getFocusedTimelineEventIds,
+  getQuestion,
+  getSelectedTimelineEventIds,
+  getTimeseriesXAxis,
+  getVisibleTimelineEventIds,
+} from "../../../../store/selectors";
 
-export const TimelineSidebar = ({
-  question,
-  timelines,
-  visibleTimelineEventIds,
-  selectedTimelineEventIds,
-  xDomain,
-  onOpenModal,
-  onShowTimelineEvents,
-  onHideTimelineEvents,
-  onSelectTimelineEvents,
-  onDeselectTimelineEvents,
-  onClose,
-}: TimelineSidebarProps) => {
+export const TimelineSidebar = () => {
   const dispatch = useDispatch();
-  const { focusedTimelineEventIds } = useSelector(getUiControls);
-  const dataInterval = useSelector(getTimeseriesDataInterval);
-
-  const displayedTimelines = useMemo(
-    () => getFocusedTimelines(timelines, focusedTimelineEventIds),
-    [timelines, focusedTimelineEventIds],
+  const collectionId = useSelector((state) =>
+    getQuestion(state)?.collectionId(),
   );
+  const timelines = useSelector(getTransformedTimelines);
+  const visibleEventIds = useSelector(getVisibleTimelineEventIds);
+  const selectedEventIds = useSelector(getSelectedTimelineEventIds);
+  const focusedEventIds = useSelector(getFocusedTimelineEventIds);
+  const xAxis = useSelector(getTimeseriesXAxis);
+  const xAxes = useMemo(() => (xAxis ? [xAxis] : null), [xAxis]);
+  const { isLoading, error } = useListTimelinesQuery({ include: "events" });
 
-  const focusedXDomain = useMemo(
-    () =>
-      focusedTimelineEventIds != null
-        ? getEventsXDomain(displayedTimelines)
-        : undefined,
-    [focusedTimelineEventIds, displayedTimelines],
+  const handleUpdateVisibility = useCallback(
+    (update: TimelineEventsVisibilityUpdate) =>
+      dispatch(updateTimelineEventsVisibility(update)),
+    [dispatch],
   );
-
-  const title = focusedXDomain
-    ? formatTitle(focusedXDomain, toDatetimeUnit(dataInterval?.unit))
-    : formatTitle(xDomain);
-
-  const handleShowAllEvents = useCallback(() => {
-    dispatch(onOpenTimelines());
-  }, [dispatch]);
-
-  const handleNewEvent = useCallback(() => {
-    onOpenModal?.(MODAL_TYPES.NEW_EVENT);
-  }, [onOpenModal]);
-
-  const handleEditEvent = useCallback(
-    (event: TimelineEvent) => {
-      onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
-    },
-    [onOpenModal],
+  const handleSelectEvents = useCallback(
+    (events: TimelineEvent[]) => dispatch(selectTimelineEvents(events)),
+    [dispatch],
   );
-
-  const handleMoveEvent = useCallback(
-    (event: TimelineEvent) => {
-      onOpenModal?.(MODAL_TYPES.MOVE_EVENT, event.id);
-    },
-    [onOpenModal],
+  const handleDeselectEvents = useCallback(
+    () => dispatch(deselectTimelineEvents()),
+    [dispatch],
   );
-
-  const handleToggleEventSelected = useCallback(
-    (event: TimelineEvent, isSelected: boolean) => {
-      if (isSelected) {
-        onSelectTimelineEvents?.([event]);
-      } else {
-        onDeselectTimelineEvents?.();
-      }
-    },
-    [onSelectTimelineEvents, onDeselectTimelineEvents],
+  const handleShowAllEvents = useCallback(
+    () => dispatch(onOpenTimelines()),
+    [dispatch],
+  );
+  const handleClose = useCallback(
+    () => dispatch(onCloseTimelines()),
+    [dispatch],
   );
 
   return (
-    <SidebarContent title={title} onClose={onClose}>
-      {focusedTimelineEventIds != null && (
-        <Box mx="lg" mb="sm">
-          <Button
-            p={0}
-            variant="subtle"
-            leftSection={<Icon name="chevronleft" />}
-            onClick={handleShowAllEvents}
-            data-testid="timeline-sidebar-show-all"
-          >
-            {t`All events`}
-          </Button>
-        </Box>
-      )}
-      <TimelinePanel
-        timelines={displayedTimelines}
-        collectionId={question.collectionId()}
-        visibleEventIds={visibleTimelineEventIds}
-        selectedEventIds={selectedTimelineEventIds}
-        onNewEvent={handleNewEvent}
-        onEditEvent={handleEditEvent}
-        onMoveEvent={handleMoveEvent}
-        onToggleEventSelected={handleToggleEventSelected}
-        onShowTimelineEvents={onShowTimelineEvents}
-        onHideTimelineEvents={onHideTimelineEvents}
-      />
-    </SidebarContent>
+    <SharedTimelineSidebar
+      collectionId={collectionId}
+      timelines={timelines}
+      visibleEventIds={visibleEventIds}
+      selectedEventIds={selectedEventIds}
+      focusedEventIds={focusedEventIds}
+      xAxes={xAxes}
+      isLoading={isLoading}
+      error={error}
+      onUpdateVisibility={handleUpdateVisibility}
+      onSelectEvents={handleSelectEvents}
+      onDeselectEvents={handleDeselectEvents}
+      onShowAllEvents={handleShowAllEvents}
+      onClose={handleClose}
+    />
   );
-};
-
-export const getFocusedTimelines = (
-  timelines: Timeline[],
-  focusedTimelineEventIds: number[] | null,
-): Timeline[] => {
-  if (focusedTimelineEventIds == null) {
-    return timelines;
-  }
-  const focusedIds = new Set(focusedTimelineEventIds);
-  return timelines
-    .map((timeline) => ({
-      ...timeline,
-      events: (timeline.events ?? []).filter((event) =>
-        focusedIds.has(event.id),
-      ),
-    }))
-    .filter((timeline) => timeline.events.length > 0);
-};
-
-export const getEventsXDomain = (
-  timelines: Timeline[],
-): [Dayjs, Dayjs] | undefined => {
-  const timestamps = timelines
-    .flatMap((timeline) => timeline.events ?? [])
-    .map((event) => dayjs.utc(event.timestamp));
-
-  if (timestamps.length === 0) {
-    return undefined;
-  }
-
-  const min = timestamps.reduce((a, b) => (b.isBefore(a) ? b : a));
-  const max = timestamps.reduce((a, b) => (b.isAfter(a) ? b : a));
-  return [min, max];
-};
-
-const toDatetimeUnit = (
-  unit?: CartesianChartDateTimeAbsoluteUnit,
-): DatetimeUnit | undefined =>
-  unit == null || unit === "second" || unit === "ms" ? undefined : unit;
-
-const isPeriodUnit = (unit?: DatetimeUnit) =>
-  unit === "week" || unit === "month" || unit === "quarter" || unit === "year";
-
-export const formatTitle = (xDomain?: [Dayjs, Dayjs], unit?: DatetimeUnit) => {
-  if (!xDomain) {
-    return t`Events`;
-  }
-  const startLabel = formatDate(xDomain[0], unit);
-  const endLabel = formatDate(xDomain[1], unit);
-  if (startLabel !== endLabel) {
-    return t`Events between ${startLabel} and ${endLabel}`;
-  }
-
-  return isPeriodUnit(unit)
-    ? t`Events in ${startLabel}`
-    : t`Events on ${startLabel}`;
-};
-
-const formatDate = (date: Dayjs, unit?: DatetimeUnit) => {
-  if (unit == null) {
-    return date.format("ll");
-  }
-  // Unjustified type cast. FIXME
-  return formatDateTimeWithUnit(date.startOf(unit as OpUnitType), unit);
 };

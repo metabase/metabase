@@ -29,9 +29,11 @@ import * as Urls from "metabase/urls";
 import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
+  CanAccessApiKeyUsage,
   CanAccessMonitor,
   CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools,
+  CanAccessSessionManagement,
 } from "./route-guards";
 
 /** Lands on the first Monitor section the user can access. */
@@ -46,47 +48,67 @@ function MonitorIndexRedirect() {
  * is small. The log levels modal is not, so it has a loader of its own below.
  */
 const monitorLayout = () =>
-  import("./components/MonitorLayout").then(({ MonitorLayout }) => ({
-    Component: MonitorLayout,
-  }));
+  import(/* webpackChunkName: "monitor" */ "./components/MonitorLayout").then(
+    ({ MonitorLayout }) => ({
+      Component: MonitorLayout,
+    }),
+  );
 
 const dependencyDiagnosticsSectionLayout = () =>
-  import("metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout").then(
-    ({ DependencyDiagnosticsSectionLayout }) => ({
-      Component: DependencyDiagnosticsSectionLayout,
-    }),
-  );
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout"
+  ).then(({ DependencyDiagnosticsSectionLayout }) => ({
+    Component: DependencyDiagnosticsSectionLayout,
+  }));
 
 const dependencyDiagnosticsUpsellPage = () =>
-  import("metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage").then(
-    ({ DependencyDiagnosticsUpsellPage }) => ({
-      Component: DependencyDiagnosticsUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage"
+  ).then(({ DependencyDiagnosticsUpsellPage }) => ({
+    Component: DependencyDiagnosticsUpsellPage,
+  }));
+
+const apiKeyUsageUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/api-key-usage/ApiKeyUsageUpsellPage"
+  ).then(({ ApiKeyUsageUpsellPage }) => ({
+    Component: ApiKeyUsageUpsellPage,
+  }));
 
 const jobInfoApp = () =>
-  import("metabase/monitor/tools/components/JobInfoApp").then(
-    ({ JobInfoApp }) => ({ Component: JobInfoApp }),
-  );
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/JobInfoApp"
+  ).then(({ JobInfoApp }) => ({ Component: JobInfoApp }));
 
 const logs = () =>
-  import("metabase/monitor/tools/components/Logs").then(({ Logs }) => ({
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/Logs"
+  ).then(({ Logs }) => ({
     Component: Logs,
   }));
 
 const modelPersistenceLogPage = () =>
-  import("metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs").then(
-    ({ ModelPersistenceLogPage }) => ({
-      Component: ModelPersistenceLogPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs"
+  ).then(({ ModelPersistenceLogPage }) => ({
+    Component: ModelPersistenceLogPage,
+  }));
+
+const sessionManagementUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/session-management/SessionManagementUpsellPage"
+  ).then(({ SessionManagementUpsellPage }) => ({
+    Component: SessionManagementUpsellPage,
+  }));
 
 // The log levels modal renders a code editor, which nothing else on the logs
 // page needs. Its parent route is already lazy, but a modal declared with
 // `modalRoute` holds its component eagerly.
 const logLevelsModal = () =>
   Promise.all([
-    import("metabase/monitor/tools/components/LogLevelsModal"),
+    import(
+      /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/LogLevelsModal"
+    ),
     // Awaited here so the modal appears with its editor already in place,
     // rather than opening around an empty area that fills in a moment later.
     loadCodeEditor(),
@@ -132,8 +154,37 @@ export function getMonitorRoutes() {
           </Route>
         </Route>
 
+        {/* Admin-only, unlike the rest of Monitoring tools above — the page loads
+            `GET /api/api-key`, superuser-only, so a non-admin with just the monitoring
+            application permission would hit a 403. */}
+        <Route element={<CanAccessApiKeyUsage />}>
+          {PLUGIN_MONITOR.isApiKeyUsageEnabled ? (
+            <Route path="api-key-usage">
+              {PLUGIN_MONITOR.getApiKeyUsageRoutes()}
+            </Route>
+          ) : (
+            <Route path="api-key-usage">
+              <Route index lazy={apiKeyUsageUpsellPage} />
+              <Route path="*" lazy={apiKeyUsageUpsellPage} />
+            </Route>
+          )}
+        </Route>
+
         <Route element={<CanAccessAlertsManagement />}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
+        </Route>
+
+        <Route element={<CanAccessSessionManagement />}>
+          {PLUGIN_MONITOR.isSessionManagementEnabled ? (
+            <Route path="sessions">
+              {PLUGIN_MONITOR.getSessionManagementRoutes()}
+            </Route>
+          ) : (
+            <Route path="sessions">
+              <Route index lazy={sessionManagementUpsellPage} />
+              <Route path="*" lazy={sessionManagementUpsellPage} />
+            </Route>
+          )}
         </Route>
 
         <Route element={<CanAccessAiAuditing />}>

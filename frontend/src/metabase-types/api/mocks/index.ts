@@ -41,6 +41,7 @@ export * from "./search";
 export * from "./segment";
 export * from "./series";
 export * from "./session";
+export * from "./session-management";
 export * from "./settings";
 export * from "./slack";
 export * from "./snippets";

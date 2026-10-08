@@ -284,7 +284,7 @@
         (perms/set-database-permission! (perms/all-users-group) (:id old-sample) :perms/create-queries :no)
         (perms/set-database-permission! custom-group            (:id old-sample) :perms/create-queries :query-builder)
         (let [expected-perms (db-level-perms (:id old-sample))]
-          (with-redefs [config/load-sample-content? (constantly true)]
+          (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
             (#'sample-data/update-sample-database-if-needed! old-sample))
           (let [new-sample (t2/select-one :model/Database :is_sample true :engine :sqlite)]
             (is (some? new-sample) "the swap created a SQLite sample database")

@@ -35,10 +35,10 @@ export const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <Flex {...props} ref={ref} direction="column" mb="md">
+    <Flex {...props} ref={ref} direction="column" mb="lg">
       {(hasTitle || hasDescription) && (
         <Box>
-          <Flex align="center" mb={hasDescription ? "xs" : undefined}>
+          <Flex align="center" mb={hasDescription ? "xxs" : undefined}>
             {hasTitle && (
               <Text
                 component="label"
@@ -61,7 +61,7 @@ export const FormField = forwardRef(function FormField(
                 c={"text-secondary"}
                 fw="900"
                 fz="sm"
-                ml="xs"
+                ml="xxs"
               >{t`(optional)`}</Text>
             )}
             {(infoLabel || infoTooltip) && (

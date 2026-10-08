@@ -56,9 +56,9 @@
                                           {:terms_of_service true})))))
         (testing "succeeds"
           (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-            (with-redefs [hm.client/call                store-api-proxy
-                          premium-features/clear-cache! clear-token-cache-proxy]
+                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+            (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                        premium-features/clear-cache! clear-token-cache-proxy]
               (is (=? {}
                       (mt/user-http-request :crowberto :post 200 "ee/cloud-add-ons/metabase-ai"
                                             {:terms_of_service true})))
@@ -93,7 +93,7 @@
                   (mt/user-http-request :crowberto :post 400 (str "ee/cloud-add-ons/" product-type) {})))))
       (testing "succeeds when all conditions are met"
         (mt/with-premium-features #{:hosting}
-          (with-redefs [hm.client/call (constantly nil)]
+          (mt/with-dynamic-fn-redefs [hm.client/call (constantly nil)]
             (is (=? {}
                     (mt/user-http-request :crowberto :post 200 (str "ee/cloud-add-ons/" product-type) {})))))))))
 
@@ -118,9 +118,9 @@
     (testing "succeeds, provisioning dwh-rent and etl-connections together"
       (mt/with-premium-features #{:hosting :audit-app}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-          (with-redefs [hm.client/call                store-api-proxy
-                        premium-features/clear-cache! clear-token-cache-proxy]
+              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+          (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                      premium-features/clear-cache! clear-token-cache-proxy]
             (is (=? {}
                     (mt/user-http-request :crowberto :post 200 "ee/cloud-add-ons/dwh-rent" {})))
             (is (= [{:args [:change-add-ons
@@ -147,7 +147,7 @@
     (testing "is rejected as a bundle-only product type without calling the Store"
       (mt/with-premium-features #{:hosting}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))]
-          (with-redefs [hm.client/call store-api-proxy]
+          (mt/with-dynamic-fn-redefs [hm.client/call store-api-proxy]
             (is (=? "This add-on can only be purchased as part of a bundle."
                     (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/etl-connections" {})))
             (is (empty? @store-api-calls)
@@ -179,9 +179,9 @@
                     (mt/user-http-request :crowberto :delete 500 "ee/cloud-add-ons/metabase-ai-managed")))))
         (testing "succeeds"
           (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-            (with-redefs [hm.client/call                store-api-proxy
-                          premium-features/clear-cache! clear-token-cache-proxy]
+                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+            (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                        premium-features/clear-cache! clear-token-cache-proxy]
               (is (=? {}
                       (mt/user-http-request :crowberto :delete 200 "ee/cloud-add-ons/metabase-ai-managed")))
               (is (= [{:args [:change-add-ons
@@ -205,9 +205,9 @@
     (testing "succeeds, removing dwh-rent and etl-connections together"
       (mt/with-premium-features #{:hosting}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
-              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
-          (with-redefs [hm.client/call                store-api-proxy
-                        premium-features/clear-cache! clear-token-cache-proxy]
+              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy (mt/original-fn #'premium-features/clear-cache!))]
+          (mt/with-dynamic-fn-redefs [hm.client/call                store-api-proxy
+                                      premium-features/clear-cache! clear-token-cache-proxy]
             (is (=? {}
                     (mt/user-http-request :crowberto :delete 200 "ee/cloud-add-ons/dwh-rent")))
             (is (= [{:args [:change-add-ons
@@ -228,7 +228,7 @@
     (testing "is rejected as a bundle-only product type without calling the Store"
       (mt/with-premium-features #{:hosting}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))]
-          (with-redefs [hm.client/call store-api-proxy]
+          (mt/with-dynamic-fn-redefs [hm.client/call store-api-proxy]
             (is (=? "This add-on can only be purchased as part of a bundle."
                     (mt/user-http-request :crowberto :delete 400 "ee/cloud-add-ons/etl-connections")))
             (is (empty? @store-api-calls)

@@ -206,6 +206,7 @@
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *loading-data*
   "HACK! Whether we're loading data (e.g. in [[metabase.test.data.athena]]). We can't use `timestamp with time zone`
   literals when loading data because Athena doesn't let you use a `timestamp with time zone` value for a `timestamp`
@@ -519,10 +520,14 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_:clj-kondo/ignore
+;; one-off REPL script kept for reference; requires test namespaces a driver module can't normally use
+#_{:clj-kondo/ignore [:discouraged-var :metabase/modules]}
 (comment
+  (require
+   '[metabase.test.data.dataset-definitions]
+   '[metabase.test.data.interface])
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
-  (with-open [conn (clojure.java.jdbc/get-connection
+  (with-open [conn (jdbc/get-connection
                     (sql-jdbc.conn/connection-details->spec
                      :athena
                      (metabase.test.data.interface/dbdef->connection-details

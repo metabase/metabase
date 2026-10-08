@@ -1,13 +1,15 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.native-query-snippets.schema]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -66,8 +68,7 @@
                        (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
-                         (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
-                                                               :name snippet-name)]
+                         (if-let [snippet-id (native-query-snippets.db/snippet-id-by-name snippet-name)]
                            (assoc tag :snippet-id snippet-id)
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
@@ -90,8 +91,20 @@
   (u/prog1 (t2.realize/realize snippet)
     (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
+(defenterprise pre-update-check-sandbox-constraints-for-snippet
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_ _])
+
+(defenterprise pre-delete-check-sandbox-constraints-for-snippet
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_])
+
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  ;; additional checks (Enterprise Edition only)
+  (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
@@ -107,6 +120,8 @@
 
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
+  ;; additional checks (Enterprise Edition only)
+  (pre-delete-check-sandbox-constraints-for-snippet snippet)
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
@@ -157,48 +172,76 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-query "NativeQuerySnippet" [_ {:keys [collection-set where skip-archived]}]
+(defmethod serdes/extract-query "NativeQuerySnippet" [_ {:keys [collection-set filter-column filter-ids skip-archived]}]
   ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
-                                                                  (when skip-archived [:not :archived])
-                                                                  [:or
-                                                                   (when-let [collection-ids (not-empty (remove nil? collection-set))]
-                                                                     [:in :collection_id collection-ids])
-                                                                   (when (some nil? collection-set)
-                                                                     [:= :collection_id nil])]]
-                                                          ;; stable filename de-dup suffixes across exports, see GHY-3754
-                                                          :order-by serdes/stable-storage-order}
-                                                   where (sql.helpers/where :or where))))
+  (native-query-snippets.db/exportable-snippets
+   (not-empty (remove nil? collection-set))
+   (boolean (some nil? collection-set))
+   skip-archived
+   filter-column
+   filter-ids))
+
+(defn- import-template-tags
+  "The imported `template-tags` of a snippet, and the renames of the card tags whose `#<id>-slug` name embeds the
+  exporting instance's card id."
+  [template-tags]
+  (when-let [tags (some->> template-tags
+                           serdes/import-mbql
+                           (lib/normalize :metabase.lib.schema.template-tag/template-tag-map))]
+    {:tags    tags
+     :renames (into {}
+                    (keep (fn [[tag-name tag]]
+                            (some->> (serdes/card-template-tag-rename tag) (vector tag-name))))
+                    tags)}))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name]
+  {:copy      [:archived :description :entity_id :name]
    :skip      []
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               ;; Normalize on import so template-tag name keys come back as strings (YAML ingest keywordizes
-               ;; them).
-               :template_tags {:export identity
-                               :import #(lib/normalize :metabase.lib.schema.template-tag/template-tag-map %)}}
+               :content       {:export identity
+                               :import-with-context
+                               (fn [current _ content]
+                                 (let [{:keys [renames]} (import-template-tags (:template_tags current))]
+                                   (cond-> content
+                                     (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames))))}
+               :template_tags {:export serdes/export-mbql
+                               :import (fn [template-tags]
+                                         (let [{:keys [tags renames]} (import-template-tags template-tags)]
+                                           (some-> tags (lib/rename-template-tags renames))))}}
    :defaults {:archived false}})
 
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
-  (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
+  (when-let [collection_id (native-query-snippets.db/snippet-collection-id id)]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
-  [{:keys [collection_id]}]
-  (when collection_id
-    [[{:model "Collection" :id collection_id}]]))
+  [{:keys [collection_id template_tags]}]
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (serdes/mbql-deps false template_tags))))
 
 (defmethod serdes/serialization-dependencies "NativeQuerySnippet"
-  [_model-name {:keys [collection_id]}]
-  ;; A snippet only references its containing Collection, which a selective export may legitimately omit.
-  (when collection_id
-    #{[{:model "Collection" :id collection_id}]}))
+  [_model-name {:keys [collection_id template_tags]}]
+  ;; A snippet's containing Collection may legitimately be omitted by a selective export.
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (serdes/mbql-deps true template_tags))))
+
+(defmethod serdes/descendants "NativeQuerySnippet" [_model-name id _opts]
+  (into {}
+        (for [path                   (serdes/mbql-deps true (:template_tags (native-query-snippets.db/snippet id)))
+              :let                   [{:keys [model] ref-id :id} (last path)]
+              :when                  (#{"Card" "NativeQuerySnippet"} model)]
+          [[model ref-id] {"NativeQuerySnippet" id}])))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   (serdes/storage-default-collection-path snippet ctx "snippets"))
@@ -207,8 +250,7 @@
   ;; if we got local snippet in db and it has same name as incoming one, we can be sure
   ;; there will be no conflicts and skip the query to the db
   (if (and (not= (:name ingested) (:name maybe-local))
-           (t2/exists? :model/NativeQuerySnippet
-                       :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
+           (native-query-snippets.db/other-snippet-with-name-exists? (:name ingested) (:entity_id ingested)))
     (recur (update ingested :name str " (copy)")
            maybe-local)
     (serdes/default-load-one! ingested maybe-local)))

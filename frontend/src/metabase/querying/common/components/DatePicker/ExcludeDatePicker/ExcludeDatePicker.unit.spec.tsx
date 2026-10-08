@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -12,7 +13,6 @@ import type {
   DatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/common/types";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import type { DatePickerSubmitButtonProps } from "../types";
 

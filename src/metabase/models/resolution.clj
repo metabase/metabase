@@ -17,6 +17,7 @@
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
     :model/ApiKey                            metabase.api-keys.models.api-key
+    :model/ApiKeyUsageLog                    metabase.api-keys.models.api-key-usage-log
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/AuthIdentity metabase.auth-identity.models.auth-identity
@@ -60,10 +61,10 @@
     :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
+    :model/TableUserSettings                 metabase.warehouse-schema.models.table-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
-    :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
@@ -147,6 +148,8 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
+    :model/TransformTest                     metabase-enterprise.transform-testing.models
+    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
@@ -174,7 +177,8 @@
     ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
     ;; before side effects like `deftransforms` and `define-before-insert` have run
     (when-let [nspace (get model->namespace x)]
-      ;; [[classloader/require]] for thread safety
+      ;; The registry selects the namespace dynamically; use [[classloader/require]] for thread safety.
+      #_{:clj-kondo/ignore [:metabase/modules]}
       (classloader/require nspace)))
   x)
 
@@ -187,6 +191,7 @@
        (t2.model/resolve-model metabase-models-keyword)))
    (next-method symb)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *table-name-resolved* false)
 
 (methodical/defmethod t2.model/table-name :around :default

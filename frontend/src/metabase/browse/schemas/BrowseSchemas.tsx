@@ -22,6 +22,7 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 type Schema = { id: string; name: string };
 
@@ -45,7 +46,7 @@ const BrowseSchemasContainer = ({
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
       data-testid="browse-schemas"
     >
       <BrowseDataHeader />
@@ -61,20 +62,27 @@ const BrowseSchemasContainer = ({
             />
           ) : (
             <>
-              <Flex align="center" pt="md" pr="sm" pb="sm">
+              <Flex
+                align="center"
+                justify="space-between"
+                pt="lg"
+                pr="sm"
+                pb="sm"
+              >
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
                     { title: database?.name ?? "" },
                   ]}
                 />
+                <DatabaseQuickLinksMenu databaseId={dbId} />
               </Flex>
               {schemas.length === 0 ? (
                 <h2
                   className={cx(CS.full, CS.textCentered, CS.textMedium)}
                 >{t`This database doesn't have any tables.`}</h2>
               ) : (
-                <BrowseGrid pt="lg">
+                <BrowseGrid pt="xl">
                   {schemas.map((schema) => (
                     <BrowseCard
                       key={schema.id}

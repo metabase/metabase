@@ -1,6 +1,6 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import { Link } from "metabase/common/components/Link";
@@ -63,7 +63,7 @@ const baseActionCardStyles = css`
 export const CodeBlock = styled.pre`
   ${baseActionCardStyles}
 
-  font-family: Monaco, monospace;
+  font-family: var(--mb-default-monospace-font-family);
   font-size: 0.7rem;
   white-space: pre-wrap;
   margin: 0;

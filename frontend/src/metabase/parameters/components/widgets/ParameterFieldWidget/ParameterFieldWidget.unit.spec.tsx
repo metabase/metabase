@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupParameterSearchValuesEndpoint,
   setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -66,7 +66,7 @@ function setup({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   const field = metadata.field(FIELD_ID);
   const fieldsToUse = field ? [field] : fields;
 

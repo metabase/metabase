@@ -25,7 +25,7 @@ const BrowseTablesPage = ({
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
     >
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>

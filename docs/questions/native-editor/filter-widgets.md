@@ -18,7 +18,7 @@ Date fields will either have a simple date filter (for date variables) or a dyna
 
 ID parameters also support all three widget types (input box, search box, and dropdown list), so you can power an ID filter with a dropdown or search box instead of a plain input box.
 
-If you want to change the default filter widget for a particular field, you'll need to ask an admin to update that field in [the Table Metadata](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
+If you want to change the default filter widget for a particular field, you'll need to ask an admin to update that field in [the Table Metadata](../../data-modeling/metadata/metadata-editing.md) and set the desired "Filtering on this field" option.
 
 For dropdown lists and search boxes, you can also customize values available in the list. See below.
 

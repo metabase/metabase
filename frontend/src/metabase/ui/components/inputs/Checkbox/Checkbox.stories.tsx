@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 
 import { Box, Checkbox, type CheckboxProps, Stack, Text } from "metabase/ui";
 import {
@@ -225,7 +225,7 @@ const CardTemplate: StoryFn<CheckboxProps> = () => (
             w="16rem"
             label="React"
             description="A library for building user interfaces"
-            defaultChecked={state.checked ?? false}
+            checked={state.checked ?? false}
             disabled={state.disabled ?? false}
             data-state-row={state.id}
           />
@@ -245,5 +245,76 @@ export const Card = {
       ),
     },
     controls: { disable: true },
+  },
+};
+
+const INTERACTIVE_CARDS = [
+  {
+    value: "react",
+    label: "React",
+    description: "A library for building user interfaces",
+    attrs: "",
+    props: {},
+  },
+  {
+    value: "svelte",
+    label: "Svelte",
+    description: "Cybernetically enhanced web apps",
+    attrs: "",
+    props: {},
+  },
+  {
+    value: "ng",
+    label: "Angular",
+    description: "The web development framework for modern apps",
+    attrs: " disabled",
+    props: { disabled: true },
+  },
+  {
+    value: "vue",
+    label: "Vue",
+    description: "The progressive JavaScript framework",
+    attrs: " withIndicator={false}",
+    props: { withIndicator: false },
+  },
+];
+
+const INTERACTIVE_JSX = [
+  `<Checkbox.Group>`,
+  ...INTERACTIVE_CARDS.map(({ attrs }) => `  <Checkbox.Card${attrs} />`),
+  `</Checkbox.Group>`,
+].join("\n");
+
+const InteractiveCardTemplate: StoryFn<CheckboxProps> = () => {
+  const [value, setValue] = useState(["react"]);
+
+  return (
+    <StoryBoard title="Checkbox.Card" background="background_page-primary">
+      <Stack gap="1.5rem">
+        <StoryJsx>{INTERACTIVE_JSX}</StoryJsx>
+        <Checkbox.Group value={value} onChange={setValue}>
+          <Stack gap="0.375rem" w="16rem">
+            {INTERACTIVE_CARDS.map(({ value, label, description, props }) => (
+              <Checkbox.Card
+                key={value}
+                value={value}
+                label={label}
+                description={description}
+                {...props}
+              />
+            ))}
+          </Stack>
+        </Checkbox.Group>
+      </Stack>
+    </StoryBoard>
+  );
+};
+
+export const InteractiveCard = {
+  render: InteractiveCardTemplate,
+  name: "Checkbox.Card (interactive)",
+  parameters: {
+    controls: { disable: true },
+    loki: { skip: true },
   },
 };

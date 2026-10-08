@@ -1,12 +1,16 @@
 (ns metabase.pulse.send
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
+   [clojure.string :as str]
    [metabase.models.interface :as mi]
+   [metabase.notification.core :as notification]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.task-history.core :as task-history]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,8 +38,9 @@
       (if-not (:id recipient)
         {:type :notification-recipient/raw-value
          :details {:value (:email recipient)}}
-        {:type :notification-recipient/user
-         :user recipient}))
+        {:type    :notification-recipient/user
+         :user_id (:id recipient)
+         :user    recipient}))
     :http
     []
     (do
@@ -43,18 +48,15 @@
       [])))
 
 (defn- pc->channel
-  "Given a pulse channel, return the channel object.
-
-  Only supports HTTP channels for now, returns a map with type key for slack and email"
+  "The Channel row of an HTTP pulse channel, or nil for email and Slack pulse channels, which have none."
   [{channel-type :channel_type :as pulse-channel}]
-  (if (= :http (keyword channel-type))
-    (t2/select-one :model/Channel :id (:channel_id pulse-channel))
-    {:type (keyword "channel" (name channel-type))}))
+  (when (= :http (keyword channel-type))
+    (pulse.db/channel (:channel_id pulse-channel))))
 
 (defn- get-notification-handler
   [pulse-channel]
   (let [channel      (pc->channel pulse-channel)
-        channel-type (:type channel)]
+        channel-type (keyword "channel" (name (:channel_type pulse-channel)))]
     {:channel_type    channel-type
      :channel         channel
      :recipients      (channel-recipients pulse-channel)
@@ -92,13 +94,34 @@
                                        :else                               :goal_below)}
 
      :subscriptions [{:type :notification-subscription/cron
-                      :cron_schedule (u.cron/schedule-map->cron-string (-> pulse-channel
+                      :cron_schedule (u.cron/schedule-map->cron-string (-> (select-keys pulse-channel u.cron/schedule-keys)
                                                                            (update :schedule_type maybe-name)
                                                                            (update :schedule_day maybe-name)
                                                                            (update :schedule_frame maybe-name)))}]
      :handlers      [(get-notification-handler pulse-channel)]}))
 
-(def ^:private send-notification! (requiring-resolve 'metabase.notification.core/send-notification!))
+(defn- delivery-failure?
+  "Whether `e`, thrown by [[notification/send-notification!]], is a delivery failure."
+  [e]
+  (= :notification/delivery-failed (:error-code (ex-data e))))
+
+(defn- failed-channel-names
+  "One line that names each failed channel once: the channel type, and the channel id when there is one."
+  [failed-handlers]
+  (str/join ", " (distinct (for [{:keys [channel_type channel_id]} failed-handlers]
+                             (cond-> (u/qualified-name channel_type)
+                               channel_id (str " " channel_id))))))
+
+(defn- delivery-failure
+  "One exception for the delivery failures of a pulse: the failed channels in the message, all their entries under
+  `:failed-handlers`, `:error-code :notification/delivery-failed` and `:status-code 502`."
+  [pulse delivery-failures]
+  (let [failed-handlers (into [] (mapcat (comp :failed-handlers ex-data)) delivery-failures)]
+    (ex-info (tru "Failed to deliver to {0}" (failed-channel-names failed-handlers))
+             {:status-code     502
+              :error-code      :notification/delivery-failed
+              :notification-id (:id pulse)
+              :failed-handlers failed-handlers})))
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard async?]
@@ -106,11 +129,19 @@
         channels (if (seq channel-ids)
                    (filter #((set channel-ids) (:id %)) channels)
                    channels)]
-    (doseq [pulse-channel channels]
-      (try
-        (send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
-        (catch Exception e
-          (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e)))))
+    (let [delivery-failures (volatile! [])]
+      (doseq [pulse-channel channels]
+        (try
+          (notification/send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
+          (catch Exception e
+            (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e))
+            (when (delivery-failure? e)
+              (vswap! delivery-failures conj e)))))
+      ;; A synchronous send is a test send from `POST /api/pulse/test`, and its caller must learn that a channel did not
+      ;; deliver. The scheduled job sends asynchronously, so its failures are logged by the notification worker. Other
+      ;; errors keep the old behaviour: logged, not raised.
+      (when-let [failed (and (not async?) (seq @delivery-failures))]
+        (throw (delivery-failure pulse failed))))
     nil))
 
 (defn pulse->task-run-info
@@ -149,7 +180,7 @@
   ;; with-task-run is a no-op if already nested (e.g., from scheduler)
   (task-history/with-task-run (some-> (pulse->task-run-info pulse)
                                       (assoc :auto-complete (not async?)))
-    (let [dashboard (t2/select-one :model/Dashboard :id dashboard_id)
+    (let [dashboard (pulse.db/dashboard dashboard_id)
           pulse     (-> (mi/instance :model/Pulse pulse)
                         ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                         ;; to fetch the Pulse.

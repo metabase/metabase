@@ -52,6 +52,19 @@ const nonArchivableCollection = createMockCollectionItem({
 
 const defaultItems = [pinnedDashboard, tableQuestion];
 
+// Enough items to keep the search input and type filters visible.
+const toolbarItems = [
+  ...defaultItems,
+  ...Array.from({ length: 10 }, (_, index) =>
+    createMockCollectionItem({
+      id: 100 + index,
+      name: `Extra card ${index + 1}`,
+      model: "card",
+      collection_position: null,
+    }),
+  ),
+];
+
 async function setup({
   collection = defaultCollection,
   collectionItems = defaultItems,
@@ -295,7 +308,7 @@ describe("CollectionContent selection shortcuts", () => {
   );
 
   it("closes the type filter with Escape and keeps the selection", async () => {
-    await setup();
+    await setup({ collectionItems: toolbarItems });
     await selectTableQuestion();
     const popover = await openTypeFilter();
     popover.focus();
@@ -313,7 +326,7 @@ describe("CollectionContent selection shortcuts", () => {
   it.each(["Delete", "Backspace"])(
     "does not open the trash confirmation with %s while the type filter is open",
     async (key) => {
-      await setup();
+      await setup({ collectionItems: toolbarItems });
       await selectTableQuestion();
       const popover = await openTypeFilter();
       const filterCheckbox = within(popover).getByRole("checkbox", {
@@ -335,7 +348,7 @@ describe("CollectionContent selection shortcuts", () => {
   );
 
   it("does not open the confirmation from the collection search input", async () => {
-    await setup();
+    await setup({ collectionItems: toolbarItems });
     await selectTableQuestion();
     const searchInput = screen.getByRole("textbox", {
       name: "Search items in this collection",

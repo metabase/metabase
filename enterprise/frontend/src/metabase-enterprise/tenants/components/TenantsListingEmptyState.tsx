@@ -8,7 +8,7 @@ export const TenantsListingEmptyState = ({
 }: {
   onCreateTenant: () => void;
 }) => (
-  <Flex justify="space-between" align="center" gap="lg">
+  <Flex justify="space-between" align="center" gap="xl">
     <Box flex="1">
       <Text size="md" c="text-primary">
         {c(

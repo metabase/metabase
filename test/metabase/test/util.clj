@@ -1,6 +1,7 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -17,6 +18,7 @@
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.transient-error :as transient-error]
    [metabase.audit-app.core :as audit]
    [metabase.classloader.core :as classloader]
@@ -31,6 +33,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -44,6 +47,7 @@
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.random :as u.random]
@@ -149,7 +153,7 @@
    (fn [_] (default-timestamped
             {:target_type "document"
              :creator_id  (rasta-id)
-             :content     {:text (u.random/random-name)}}))
+             :content     {:type "text", :text (u.random/random-name)}}))
 
    :model/Dashboard
    (fn [_] (default-timestamped
@@ -174,6 +178,12 @@
       {:entity_id (u/generate-nano-id)
        :name (u.random/random-name)
        :position 0}))
+
+   :model/DataApp
+   (fn [_] {:entity_id    (u/generate-nano-id)
+            :name         (u/lower-case-en (u.random/random-name))
+            :display_name (u.random/random-name)
+            :bundle_path  "dist/index.js"})
 
    :model/Database
    (fn [_] (default-timestamped
@@ -402,6 +412,20 @@
        :schedule        "0 0 * * * ?"
        :ui_display_type :cron/raw}))
 
+   :model/TransformTest
+   (fn [_]
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Transform Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
+   :model/TransformTestRun
+   (fn [_]
+     {:status         "started"
+      :start_time     (t/instant)
+      :last_heartbeat (t/instant)})
+
    :model/TransformRun
    (fn [_]
      {:status     "succeeded"
@@ -433,6 +457,39 @@
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
   [model explicit-attributes f]
   (binding [pgm/*allow-direct-deletion* true]
+    (next-method model explicit-attributes f)))
+
+;; A Personal Collection created within `with-temp` is rolled back, but the production cache assumes it cannot be
+;; deleted. Evicting only the temporary User's entry is insufficient: a committed User's collection may be created
+;; inside another User's `with-temp` scope. Clear the cache whenever a `with-temp` scope exits.
+;; Use a unique method key because [[metabase.test.redefs]] already defines `:around :default`. Methods with the same
+;; key overwrite one another, which would disable either this eviction or the rollback-only transaction wrapper.
+(methodical/add-aux-method-with-unique-key!
+ #'t2.with-temp/do-with-temp* :around :default
+ (fn [next-method model explicit-attributes f]
+   (next-method model explicit-attributes
+                (fn [temp-object]
+                  (try
+                    (f temp-object)
+                    (finally
+                      (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
+ ::evict-personal-collection-cache)
+
+(def ^:private dimension-lock
+  "Serialises temporary Dimensions against each other.
+
+  A Dimension names a Field the whole suite shares, and it lives until its scope ends. Two threads creating one at
+  once deadlock on the unique index over `dimension.field_id`: each holds the record lock the other's uniqueness
+  check wants, while asking for the insert-intention gap in front of it. MySQL and MariaDB pick a victim and roll
+  it back, taking its savepoints with it.
+
+  Tests that create no Dimension keep running in parallel alongside these."
+  (Object.))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Dimension
+  [model explicit-attributes f]
+  ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
+  (locking dimension-lock
     (next-method model explicit-attributes f)))
 
 (defn- set-with-temp-defaults! []
@@ -497,6 +554,7 @@
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
   :visibility :internal
+  :encryption :no
   :setter :none
   :default "abc")
 
@@ -532,21 +590,31 @@
       (list `with-temp-env-var-value! '[a])
       (list `with-temp-env-var-value! '[a b c]))))
 
+(defn- raw-setting
+  "The `setting` row for `setting-k` as it sits in the table, or nil."
+  [setting-k]
+  (t2/select-one [:setting :value :value_with_aad] :key setting-k))
+
 (defn- upsert-raw-setting!
-  [original-value setting-k value]
+  "Write `value` for `setting-k` straight into the table, bypassing the model and so any setter: `value` bare, and
+  `value_with_aad` the way the model stores it, so the app reads the value back. A nil `value` removes the row."
+  [original setting-k value]
   (if (some? value)
-    (if original-value
-      (t2/update! :model/Setting setting-k {:value value})
-      (t2/insert! :model/Setting :key setting-k :value value))
-    (when original-value
-      (t2/delete! :model/Setting :key setting-k)))
+    (let [row {:value          value
+               :value_with_aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad setting-k)})}]
+      (if original
+        (t2/update! :setting :key setting-k row)
+        (t2/insert! :setting (assoc row :key setting-k))))
+    (when original
+      (t2/delete! :setting :key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
-  [original-value setting-k]
-  (if original-value
-    (t2/update! :model/Setting setting-k {:value original-value})
-    (t2/delete! :model/Setting :key setting-k))
+  "Put back the row [[raw-setting]] found, byte for byte, or remove the one written over nothing."
+  [original setting-k]
+  (if original
+    (t2/update! :setting :key setting-k original)
+    (t2/delete! :setting :key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value!
@@ -575,7 +643,7 @@
     (if (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
-                             (t2/select-one-fn :value :model/Setting :key setting-k)
+                             (raw-setting setting-k)
                              (if skip-init?
                                (setting/read-setting setting-k)
                                (setting/get setting-k)))]
@@ -904,6 +972,21 @@
     model
     [model (first (t2/primary-keys model))]))
 
+(defn- delete-new-rows!
+  "Delete the rows of `model` whose `pk` exceeds `old-max-id`, skipping Toucan hooks. Returns the row count."
+  [model pk old-max-id]
+  (t2/query-one {:delete-from (t2/table-name model)
+                 :where       [:and
+                               ;; The first use in a test run may have no previous maximum ID.
+                               (if old-max-id [:> pk old-max-id] true)
+                               (with-model-cleanup-additional-conditions model)]}))
+
+(defn- search-relevant-models
+  "Models whose rows, deleted with raw SQL, can leave stale rows in the search index."
+  []
+  ;; Deleting a user cascades to their personal collection, which is indexed.
+  (conj (set (keys (search.spec/model-hooks))) :model/User))
+
 (defn- reindex-search-index! []
   ;; Wiping and repopulating the whole index table can deadlock against a concurrent writer — search ingestion from
   ;; another test's writes, or another test's cleanup doing this same thing. The loser of a deadlock has lost nothing
@@ -935,17 +1018,14 @@
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (doseq [[model pk] models
-                ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let [old-max-id (get model->old-max-id model)
-                      max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)
-                      where-clause [:and max-id-condition additional-conditions]]]
-          (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where where-clause}))
-        ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (reindex-search-index!)))))
+        (let [search-relevant? (search-relevant-models)
+              reindex?        (some (comp search-relevant? first) models)]
+          (doseq [[model pk] models]
+            (delete-new-rows! model pk (get model->old-max-id model)))
+          ;; Search has no delete hook, so a row the body deleted may still have its document in the index.
+          ;; Reindex whenever the cleanup scope touches search, even when nothing is left to delete here.
+          (when reindex?
+            (reindex-search-index!)))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.
@@ -995,23 +1075,31 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
 
+(deftest with-model-cleanup-reindexes-search-models-test
+  (testing "a search-relevant cleanup reindexes even when the body already removed every new row"
+    (let [reindexes (atom 0)]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [reindex-search-index! #(swap! reindexes inc)]
+        (with-model-cleanup [:model/Card]))
+      (is (= 1 @reindexes)))))
+
 (deftest reindex-search-index!-test
   (testing "a transient appdb failure is retried"
     (let [attempts (atom 0)]
       ;; Diehard also consults `:retry-if` on success, with a nil exception — a `(constantly true)` stub would retry
       ;; the successful attempt too. The real predicate returns false for nil.
-      (with-redefs [transient-error/transient-error? (fn [_db-type e] (some? e))
-                    search/reindex!                  (fn [& _]
-                                                       (when (= 1 (swap! attempts inc))
-                                                         (throw (java.sql.SQLException. "Deadlock detected"))))]
+      (dynamic-redefs/with-dynamic-fn-redefs [transient-error/transient-error? (fn [_db-type e] (some? e))
+                                              search/reindex!                  (fn [& _]
+                                                                                 (when (= 1 (swap! attempts inc))
+                                                                                   (throw (java.sql.SQLException. "Deadlock detected"))))]
         (#'reindex-search-index!)
         (is (= 2 @attempts)))))
   (testing "any other failure is not"
     (let [attempts (atom 0)]
-      (with-redefs [transient-error/transient-error? (constantly false)
-                    search/reindex!                  (fn [& _]
-                                                       (swap! attempts inc)
-                                                       (throw (java.sql.SQLException. "Syntax error")))]
+      (dynamic-redefs/with-dynamic-fn-redefs [transient-error/transient-error? (constantly false)
+                                              search/reindex!                  (fn [& _]
+                                                                                 (swap! attempts inc)
+                                                                                 (throw (java.sql.SQLException. "Syntax error")))]
         (is (thrown? java.sql.SQLException (#'reindex-search-index!)))
         (is (= 1 @attempts))))))
 
@@ -1078,6 +1166,7 @@
         called-query? (promise)
         pause-query (promise)
         query-thunk (fn []
+                      ;; legacy query builder; helper not yet migrated to Lib
                       #_{:clj-kondo/ignore [:deprecated-var]}
                       (data/run-mbql-query checkins
                         {:aggregation [[:count]]}))
@@ -1306,8 +1395,6 @@
   [locale-tag & body]
   `(call-with-locale! ~locale-tag (fn [] ~@body)))
 
-;;; TODO -- this could be made thread-safe if we made [[with-temp-vals-in-db]] thread-safe which I think is pretty
-;;; doable (just do it in a transaction?)
 (defn do-with-column-remappings! [orig->remapped thunk]
   (transduce
    identity
@@ -1364,6 +1451,7 @@
          (= (first x) 'values-of))
     (let [[_ table+field] x
           [table field] (str/split (str table+field) #"\.")]
+      ;; legacy query builder; helper not yet migrated to Lib
       #_{:clj-kondo/ignore [:deprecated-var]}
       `(into {} (get-in (data/run-mbql-query ~(symbol table)
                           {:fields [~'$id ~(symbol (str \$ field))]})
@@ -1799,3 +1887,14 @@
   "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
   [adj-map]
   (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))
+
+(deftype DeferredStr [deferred]
+  java.lang.Object
+  (toString [_] (str @deferred)))
+
+(defmacro deferred-str
+  "Return an opaque deferred computable object that, when `str` is called on it, realizes itself and produces a string.
+  Useful for wrapping expensive context strings in `testing` macro when the context string is only needed to be
+  computed when the test fails."
+  [& body]
+  `(->DeferredStr (delay ~@body)))

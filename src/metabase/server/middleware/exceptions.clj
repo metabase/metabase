@@ -18,6 +18,12 @@
 
 (declare api-exception-response)
 
+(def ^:private cors-key ::cors)
+
+(defn- security-headers [request]
+  (mw.security/security-headers :origin (get-in request [:headers "origin"])
+                                :cors (get request cors-key)))
+
 (defmulti api-exception-response
   "Convert an uncaught exception from an API endpoint into an appropriate format to be returned by the REST API (e.g. a
   map, which eventually gets serialized to JSON, or a plain string message). `request` is the Ring request that
@@ -27,7 +33,7 @@
     (class e)))
 
 (defmethod api-exception-response Throwable
-  [^Throwable e _request]
+  [^Throwable e request]
   (let [{:keys [status-code], :as info} (ex-data e)
         other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context)
         body                            (cond
@@ -42,6 +48,11 @@
                                           ;; ex-data.
                                           (and status-code (:errors other-info))
                                           other-info
+
+                                          ;; a machine-readable error code means the throw site authored this as an
+                                          ;; API response; return it as-is, without a stacktrace
+                                          (and status-code (not= status-code 500) (:error-code other-info))
+                                          (merge {:message (ex-message e)} other-info)
 
                                           ;; allow administrators to configure their instances to suppress stacktraces
                                           ;; returns 500 with a generic message
@@ -58,7 +69,7 @@
     (when (nil? status-code)
       (analytics/inc! :metabase-api/unhandled-errors))
     {:status  (or status-code 500)
-     :headers (mw.security/security-headers)
+     :headers (security-headers request)
      :body    body}))
 
 (defmethod api-exception-response SQLException
@@ -73,17 +84,19 @@
              (or (some-> request-method name u/upper-case-en) "?")
              uri
              (or (request/ip-address request) "unknown"))
-  {:status-code 204, :body nil, :headers (mw.security/security-headers)})
+  {:status-code 204, :body nil, :headers (security-headers request)})
 
 (defn catch-api-exceptions
   "Middleware (with `[request respond raise]`) that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
   Stacktrace page, which is not so useful for our frontend."
-  [handler]
-  (fn [request respond _raise]
-    (handler
-     request
-     respond
-     #(respond (api-exception-response % request)))))
+  ([handler]
+   (catch-api-exceptions handler nil))
+  ([handler cors]
+   (fn [request respond _raise]
+     (handler
+      request
+      respond
+      #(respond (api-exception-response % (assoc request cors-key cors)))))))
 
 (defn catch-uncaught-exceptions
   "Middleware (with `[request respond raise]`) that catches any unexpected Exceptions and reroutes them through `raise`

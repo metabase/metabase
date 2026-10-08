@@ -1,5 +1,5 @@
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";

@@ -1,0 +1,21 @@
+.userListContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+}
+
+.userListContent.transitioningUserListContent {
+  display: grid;
+}
+
+.transitioningUserListContent > * {
+  grid-area: 1 / 1;
+}
+
+.userTable thead {
+  display: none;
+}
+
+.userTable tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border);
+}

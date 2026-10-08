@@ -155,9 +155,9 @@
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
-                            :breakouts [{:type :column
-                                         :name "PRICE"
-                                         :bins 10}]}]})]
+                            :breakouts [{:type    :column
+                                         :name    "PRICE"
+                                         :binning {:strategy :num-bins :num-bins 10}}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :num-bins :num-bins 10}}
                 (meta/id :venues :price)]]
@@ -169,12 +169,42 @@
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
-                            :breakouts [{:type      :column
-                                         :name      "LATITUDE"
-                                         :bin-width 20}]}]})]
+                            :breakouts [{:type    :column
+                                         :name    "LATITUDE"
+                                         :binning {:strategy :bin-width :bin-width 20}}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :bin-width :bin-width 20.0}}
                 (meta/id :venues :latitude)]]
+              (lib/breakouts query))))))
+
+(deftest ^:parallel test-query-with-default-binning-breakout-test
+  (testing "test-query adds breakouts with default binning"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source    {:type :table
+                                        :id   (meta/id :venues)}
+                            :breakouts [{:type    :column
+                                         :name    "PRICE"
+                                         :binning {:strategy :default}}]}]})]
+      (is (=? [[:field
+                {:binning {:strategy :default}}
+                (meta/id :venues :price)]]
+              (lib/breakouts query))))))
+
+(deftest ^:parallel test-query-with-camel-case-binning-test
+  (testing "test-query reads camelCase binning keys and string strategies"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {"stages" [{"source"    {"type" "table"
+                                          "id"   (meta/id :venues)}
+                             "breakouts" [{"type"    "column"
+                                           "name"    "PRICE"
+                                           "binning" {"strategy" "num-bins" "numBins" 10}}
+                                          {"type"    "column"
+                                           "name"    "LATITUDE"
+                                           "binning" {"strategy" "bin-width" "binWidth" 20}}]}]})]
+      (is (=? [[:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]
+               [:field {:binning {:strategy :bin-width :bin-width 20.0}} (meta/id :venues :latitude)]]
               (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-order-bys-test
@@ -417,12 +447,12 @@
                                                    :id   (meta/id :venues)}
                                       :strategy   :left-join
                                       :conditions [{:operator  :=
-                                                    :left      {:type      :column
-                                                                :name      "LATITUDE"
-                                                                :bin-width 20}
-                                                    :right     {:type      :column
-                                                                :name      "LONGITUDE"
-                                                                :bin-width 20}}]}]}]})]
+                                                    :left      {:type    :column
+                                                                :name    "LATITUDE"
+                                                                :binning {:strategy :bin-width :bin-width 20}}
+                                                    :right     {:type    :column
+                                                                :name    "LONGITUDE"
+                                                                :binning {:strategy :bin-width :bin-width 20}}}]}]}]})]
       (is (=? [{:lib/type   :mbql/join
                 :strategy   :left-join
                 :conditions [[:= {}
@@ -496,7 +526,7 @@
                                         :id   (meta/id :venues)}
                             :order-bys [{:type      :column
                                          :name      "PRICE"
-                                         :bins      10
+                                         :binning   {:strategy :num-bins :num-bins 10}
                                          :direction :asc}]}]})]
       (is (=? [[:asc {} [:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]]]
               (lib/order-bys query))))))
@@ -690,6 +720,7 @@
       (is (= 1 (count (lib/filters query 1))))
       (is (= 5 (lib/current-limit query 2))))))
 
+;; intentionally one giant spec: the test-query features compose in one build (:fields covered below)
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel test-query-comprehensive-all-features-test
   (testing "test-query exercises all functionality in a comprehensive multi-stage query"
@@ -770,9 +801,9 @@
                                          :name        "CREATED_AT"
                                          :source-name "ORDERS"
                                          :unit        :month}
-                                        {:type :column
-                                         :name "QUANTITY"
-                                         :bins 10}]
+                                        {:type    :column
+                                         :name    "QUANTITY"
+                                         :binning {:strategy :num-bins :num-bins 10}}]
 
                             :order-bys [{:type        :column
                                          :name        "CREATED_AT"
@@ -1183,7 +1214,7 @@
                 :display-name "Custom Name"
                 :default      "Foo"
                 :required     true
-                :widget-type  "string/contains"
+                :widget-type  :string/contains
                 :id           string?}]
               (lib/template-tags query))))))
 
@@ -1217,7 +1248,7 @@
                 :display-name "Custom Name"
                 :default      "Foo"
                 :required     true
-                :widget-type  "string/contains"
+                :widget-type  :string/contains
                 :id           string?}]
               (lib/template-tags query))))))
 
@@ -1240,6 +1271,95 @@
                 :display-name "Custom Name"
                 :default      "Foo"
                 :required     true
-                :widget-type  "string/contains"
+                :widget-type  :string/contains
                 :id           string?}]
               (lib/template-tags query))))))
+
+(defn- orders-column
+  [column-name]
+  {:type :column :name column-name :table-id (meta/id :orders)})
+
+(defn- orders-then
+  [first-stage second-stage]
+  (lib.query.test-spec/test-query
+   meta/metadata-provider
+   {:stages [(assoc first-stage :source {:type :table :id (meta/id :orders)})
+             second-stage]}))
+
+(deftest ^:parallel test-query-later-stage-column-with-table-id-test
+  (testing "USER_ID in the result makes PEOPLE.CREATED_AT joinable next to the CREATED_AT result column; the table
+            tells them apart"
+    (is (=? [[:> {} [:field {:inherited-temporal-unit :month} "CREATED_AT"] "2024-01-01"]]
+            (lib/filters
+             (orders-then {:aggregations [{:type :operator :operator :count :args []}]
+                           :breakouts    [(assoc (orders-column "CREATED_AT") :unit :month)
+                                          (orders-column "USER_ID")]}
+                          {:filters [{:type     :operator
+                                      :operator :>
+                                      :args     [(orders-column "CREATED_AT")
+                                                 {:type :literal :value "2024-01-01"}]}]})
+             1)))))
+
+(def ^:private named-sums
+  {:aggregations [{:type :operator :operator :sum :name "sum A" :args [(orders-column "TOTAL")]}
+                  {:type :operator :operator :sum :name "sum B" :args [(orders-column "SUBTOTAL")]}]
+   :breakouts    [(orders-column "PRODUCT_ID")]})
+
+(deftest ^:parallel test-query-aggregation-result-name-test
+  (let [query (orders-then named-sums {:order-bys [{:type :column :name "sum B" :direction :desc}]})]
+    (testing "an aggregation's :name names its result column, and keeps the display name"
+      (is (=? [{:name "PRODUCT_ID"}
+               {:name "sum A" :display-name "Sum of Total"}
+               {:name "sum B" :display-name "Sum of Subtotal"}]
+              (lib/returned-columns query 0))))
+    (testing "a later stage refers to it by that name"
+      (is (=? [[:desc {} [:field {} "sum B"]]]
+              (lib/order-bys query 1))))))
+
+(deftest ^:parallel test-query-aggregation-result-name-through-card-test
+  (testing "a stage on a saved question refers to the question's named aggregation by that name"
+    (let [card-query (lib.query.test-spec/test-query
+                      meta/metadata-provider
+                      {:stages [(assoc named-sums :source {:type :table :id (meta/id :orders)})]})
+          query      (lib.query.test-spec/test-query
+                      (lib.tu/metadata-provider-with-card-from-query 1 card-query)
+                      {:stages [{:source {:type :card :id 1}}
+                                {:order-bys [{:type :column :name "sum B" :direction :desc}]}]})]
+      (is (=? [[:desc {} [:field {} "sum B"]]]
+              (lib/order-bys query 1))))))
+
+(deftest ^:parallel test-query-later-stage-tells-joined-result-columns-apart-by-fk-test
+  (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; the FK they were reached through picks one"
+    (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
+            (lib/filters
+             (orders-then {:aggregations [{:type :operator :operator :count :args []}]
+                           :breakouts    [{:type :column :name "ID" :source-field-id (meta/id :orders :product-id)}
+                                          {:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}]}
+                          {:filters [{:type     :operator
+                                      :operator :<
+                                      :args     [{:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}
+                                                 {:type :literal :value 10}]}]})
+             1)))))
+
+(deftest ^:parallel test-query-joined-result-column-through-card-test
+  (testing "a saved card stores the second joined ID as ID_2; its original name and FK still pick it"
+    (let [card-query (lib.query.test-spec/test-query
+                      meta/metadata-provider
+                      {:stages [{:source       {:type :table :id (meta/id :orders)}
+                                 :aggregations [{:type :operator :operator :count :args []}]
+                                 :breakouts    [{:type :column :name "ID" :source-field-id (meta/id :orders :product-id)}
+                                                {:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}]}]})
+          ;; Saved result metadata carries the deduplicated names, as the query processor returns them.
+          mp         (lib.tu/metadata-provider-with-card-from-query
+                      meta/metadata-provider 1 card-query
+                      {:result-metadata (mapv #(assoc % :name (:lib/deduplicated-name %))
+                                              (lib/returned-columns card-query))})
+          query      (lib.query.test-spec/test-query
+                      mp
+                      {:stages [{:source {:type :card :id 1}}
+                                {:filters [{:type     :operator
+                                            :operator :<
+                                            :args     [{:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}
+                                                       {:type :literal :value 10}]}]}]})]
+      (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
+              (lib/filters query 1))))))

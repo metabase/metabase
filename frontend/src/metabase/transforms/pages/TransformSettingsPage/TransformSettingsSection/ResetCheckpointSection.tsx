@@ -8,7 +8,7 @@ import {
   useResetCheckpointMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
 import { isTransformRunning } from "metabase/transforms/utils";
 import { Box, Button, Code, Group, Icon, Text } from "metabase/ui";
@@ -57,7 +57,7 @@ export function ResetCheckpointSection({
     : t`Last processed record`;
 
   return (
-    <Group gap="md" align="center">
+    <Group gap="lg" align="center">
       <Box c="text-secondary" role="group" aria-labelledby={labelId}>
         <span id={labelId}>{label}: </span>
         <Text component="span" fw="bold" c="text-primary">

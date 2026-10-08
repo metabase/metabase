@@ -1,0 +1,32 @@
+## Add a nullable data_sensitivity classification label to metabase_field and metabase_field_user_settings
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-01T00:00:00
+      author: tplude
+      comment: Add nullable data_sensitivity classification column to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: data_sensitivity
+                  type: varchar(32)
+                  remarks: "Data sensitivity classification of the field. One of PII, SEC_KEY, PHI, PCI_FIN, BIO_GEN, SENS_PERS, CORP_IP, SYS_TELEMETRY, BIZ_CONF, PUBLIC."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-09-01T00:00:01
+      author: tplude
+      comment: Add nullable data_sensitivity column to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: data_sensitivity
+                  type: varchar(32)
+                  remarks: "User-set data_sensitivity for the Field. A non-NULL value here overrides any value an automated writer puts in metabase_field.data_sensitivity."
+                  constraints:
+                    nullable: true

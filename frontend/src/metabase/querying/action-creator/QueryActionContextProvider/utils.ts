@@ -2,12 +2,16 @@ import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
+  Card,
   FieldType,
   InputSettingType,
+  NativeDatasetQuery,
   Parameter,
   ParameterType,
   TemplateTag,
   TemplateTagType,
+  VisualizationSettings,
+  WritebackQueryAction,
 } from "metabase-types/api";
 
 type FieldTypeMap = Record<string, ParameterType>;
@@ -86,3 +90,40 @@ export const setParameterTypesFromFieldSettings = (
     };
   });
 };
+
+export function convertActionToQuestionCard(
+  action: WritebackQueryAction,
+): Card<NativeDatasetQuery> {
+  return {
+    id: action.id,
+    entity_id: action.entity_id,
+    created_at: action.created_at,
+    updated_at: action.updated_at,
+    name: action.name,
+    description: action.description,
+    dataset_query: action.dataset_query,
+    display: "action",
+    visualization_settings:
+      // Unjustified type cast. FIXME
+      action.visualization_settings as VisualizationSettings,
+    type: "question",
+    can_write: true,
+    can_restore: false,
+    can_delete: false,
+    public_uuid: null,
+    collection_id: null,
+    collection_position: null,
+    dashboard: null,
+    result_metadata: [],
+    cache_ttl: null,
+    last_query_start: null,
+    average_query_time: null,
+    archived: false,
+    enable_embedding: false,
+    embedding_params: null,
+    initially_published_at: null,
+    can_manage_db: true,
+    dashboard_count: null,
+    dashboard_id: null,
+  };
+}

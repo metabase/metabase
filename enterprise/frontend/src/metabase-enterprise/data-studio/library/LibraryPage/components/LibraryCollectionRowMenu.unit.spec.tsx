@@ -6,8 +6,8 @@ import {
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -25,8 +25,7 @@ function setup({
   }),
   childCount = 0,
 }: Partial<Parameters<typeof LibraryCollectionRowMenu>[0]> = {}) {
-  const refreshMetricCollections = jest.fn();
-  const refreshTableCollections = jest.fn();
+  const refreshCollections = jest.fn();
   const parentCollection = createMockCollection({
     id: 22,
     name: "Data",
@@ -42,8 +41,7 @@ function setup({
     <LibraryCollectionRowMenu
       childCount={childCount}
       collection={collection}
-      refreshMetricCollections={refreshMetricCollections}
-      refreshTableCollections={refreshTableCollections}
+      refreshCollections={refreshCollections}
     />,
     {
       storeInitialState: createMockState({
@@ -58,12 +56,12 @@ function setup({
     },
   );
 
-  return { refreshMetricCollections, refreshTableCollections };
+  return { refreshCollections };
 }
 
 describe("LibraryCollectionRowMenu", () => {
-  it("refreshes table collections after saving a Library Data collection", async () => {
-    const { refreshMetricCollections, refreshTableCollections } = setup();
+  it("refreshes the parent collection after saving", async () => {
+    const { refreshCollections } = setup();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Collection options" }),
@@ -75,34 +73,8 @@ describe("LibraryCollectionRowMenu", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
-      expect(refreshTableCollections).toHaveBeenCalledWith([22]);
+      expect(refreshCollections).toHaveBeenCalledWith([22]);
     });
-    expect(refreshMetricCollections).not.toHaveBeenCalled();
-  });
-
-  it("refreshes metric collections after saving a Library Metrics collection", async () => {
-    const { refreshMetricCollections, refreshTableCollections } = setup({
-      collection: createMockCollection({
-        id: 2,
-        name: "Library Metrics Collection",
-        type: "library-metrics",
-        parent_id: 22,
-      }),
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Collection options" }),
-    );
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: /Edit collection details/ }),
-    );
-    await userEvent.type(screen.getByLabelText("Name"), " Updated");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(refreshMetricCollections).toHaveBeenCalledWith([22]);
-    });
-    expect(refreshTableCollections).not.toHaveBeenCalled();
   });
 
   it("shows a table unpublish warning when archiving a non-empty Library Data collection", async () => {

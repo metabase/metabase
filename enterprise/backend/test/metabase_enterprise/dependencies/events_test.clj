@@ -165,10 +165,10 @@
                                                                         :document {:type "doc"
                                                                                    :content [{:type "paragraph"
                                                                                               :content [{:type "smartLink"
-                                                                                                         :attrs {:entityId card-id
-                                                                                                                 :model "card"}}]}
+                                                                                                         :attrs {"entityId" card-id
+                                                                                                                 "model" "card"}}]}
                                                                                              {:type "cardEmbed"
-                                                                                              :attrs {:id embedded-card-id}}]}}]
+                                                                                              :attrs {"id" embedded-card-id}}]}}]
            (events/publish-event! :event/document-create {:object document :user-id api/*current-user-id*})
            (assert-stale :document document-id)
            (deps.test/synchronously-run-backfill!)
@@ -185,11 +185,11 @@
            (let [updated-doc (assoc document :document {:type "doc"
                                                         :content [{:type "paragraph"
                                                                    :content [{:type "smartLink"
-                                                                              :attrs {:entityId dashboard-id
-                                                                                      :model "dashboard"}}
+                                                                              :attrs {"entityId" dashboard-id
+                                                                                      "model" "dashboard"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {:entityId products-id
-                                                                                      :model "table"}}]}]})]
+                                                                              :attrs {"entityId" products-id
+                                                                                      "model" "table"}}]}]})]
              (t2/update! :model/Document document-id updated-doc)
              (events/publish-event! :event/document-update {:object updated-doc :user-id api/*current-user-id*})
              (deps.test/synchronously-run-backfill!)
@@ -255,7 +255,7 @@
            (assert-stale :card card-id)))))))
 
 (deftest metric-dimensions-update-marks-stale-and-includes-mapped-table-test
-  (testing ":event/metric-dimensions-update marks the metric card stale and recomputes deps, including mapped-dimension tables"
+  (testing "a metric dimension write marks the metric card stale and recomputes deps, including mapped-dimension tables"
     (run-with-dependencies-setup!
      (fn [mp]
        (let [base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
@@ -265,12 +265,18 @@
            ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
-           (t2/update! :model/Card card-id
-                       {:dimension_mappings [{:type         :table
-                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                              :table-id     (mt/id :categories)
-                                              :target       [:field {} (mt/id :categories :name)]}]})
-           (events/publish-event! :event/metric-dimensions-update {:object {:id card-id}})
+           ;; The dimension endpoints announce their writes as card updates; see
+           ;; [[metabase.metrics.api/notify-dimensions-changed!]].
+           (let [before (t2/select-one :model/Card :id card-id)]
+             (t2/update! :model/Card card-id
+                         {:dimension_mappings [{:type         :table
+                                                :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                :table-id     (mt/id :categories)
+                                                :target       [:field {} (mt/id :categories :name)]}]})
+             (events/publish-event! :event/card-update
+                                    {:object          (t2/select-one :model/Card :id card-id)
+                                     :previous-object before
+                                     :user-id         api/*current-user-id*}))
            (assert-stale :card card-id)
            (deps.test/synchronously-run-backfill!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id

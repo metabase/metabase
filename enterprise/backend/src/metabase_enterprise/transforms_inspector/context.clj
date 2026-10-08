@@ -1,20 +1,25 @@
 (ns metabase-enterprise.transforms-inspector.context
   "Context building for Transform Inspector."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
    [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
    [metabase-enterprise.transforms-inspector.schema :as transforms-inspector.schema]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +29,7 @@
   "Fetch tables by ID and build source info maps."
   [table-ids]
   (when (seq table-ids)
-    (t2/select [:model/Table [:id :table-id] [:name :table-name] :schema [:db_id :db-id]] :id [:in table-ids])))
+    (transforms-inspector.db/table-source-rows table-ids)))
 
 (defmulti extract-sources
   "Extract source table information for a transform.
@@ -51,7 +56,7 @@
                     transforms-base.u/massage-sql-query
                     qp.preprocess/preprocess)
           db-id (transforms-base.u/transform-source-database transform)
-          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          driver (keyword (transforms-inspector.db/database-engine db-id))
           deps (driver/native-query-deps driver query)
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
@@ -91,32 +96,39 @@
 ;;; -------------------------------------------------- Field Metadata --------------------------------------------------
 
 (mu/defn- get-field-stats :- [:maybe ::transforms-inspector.schema/field-stats]
-  "Extract fingerprint stats for a field."
-  [field]
-  (let [fp (:fingerprint field)]
-    (not-empty
-     (into {}
-           (remove (comp nil? val))
-           (cond-> (merge (when-let [dc (get-in fp [:global :distinct-count])]
-                            {:distinct_count dc})
-                          (select-keys (get-in fp [:type :type/Number]) [:min :max :avg :q1 :q3])
-                          (select-keys (get-in fp [:type :type/DateTime]) [:earliest :latest]))
-             (some? (get-in fp [:global :nil%]))
-             (assoc :nil_percent (get-in fp [:global :nil%])))))))
+  "Extract fingerprint stats for a field's fingerprint."
+  [fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
+  (not-empty
+   (into {}
+         (remove (comp nil? val))
+         (cond-> (merge (when-let [dc (get-in fingerprint [:global :distinct-count])]
+                          {:distinct_count dc})
+                        (select-keys (get-in fingerprint [:type :type/Number]) [:min :max :avg :q1 :q3])
+                        (select-keys (get-in fingerprint [:type :type/DateTime]) [:earliest :latest]))
+           (some? (get-in fingerprint [:global :nil%]))
+           (assoc :nil_percent (get-in fingerprint [:global :nil%]))))))
 
 (mu/defn- collect-field-metadata :- [:sequential ::transforms-inspector.schema/field]
   "Collect metadata for fields in a table."
-  [table-id]
-  (let [fields (t2/select :model/Field :table_id table-id :active true)]
+  [table-id :- ::lib.schema.id/table]
+  (let [fields (transforms-inspector.db/active-fields-for-table table-id)]
     (mapv (fn [field]
-            (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
-              (get-field-stats field)
-              (assoc :stats (get-field-stats field))))
+            (let [stats (get-field-stats (:fingerprint field))]
+              (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
+                stats (assoc :stats stats))))
           fields)))
+
+(def ^:private TableRef
+  "A table reference: table, name, schema, and owning database, keyed for lookups."
+  [:map {:closed true}
+   [:table-id ::lib.schema.id/table]
+   [:table-name :string]
+   [:schema [:maybe :string]]
+   [:db-id ::lib.schema.id/database]])
 
 (mu/defn- build-table-info :- ::transforms-inspector.schema/table
   "Build table info map with fields."
-  [{:keys [table-id table-name schema db-id]}]
+  [{:keys [table-id table-name schema db-id]} :- TableRef]
   (let [fields (collect-field-metadata table-id)]
     {:table_id     table-id
      :table_name   table-name
@@ -195,11 +207,48 @@
                         :name              (:name returned-col)
                         :id                (:id returned-col)}]})))
 
+(mr/def ::honeysql-value
+  "A HoneySQL scalar value from a parsed native join clause: an identifier or a lifted SQL literal."
+  [:or h2x/Identifier [:tuple [:= :lift] [:maybe [:or :string number? :boolean]]]])
+
+(mr/def ::honeysql-condition
+  "A single HoneySQL boolean condition from a parsed native join clause's ON expression."
+  [:or
+   [:tuple :keyword [:ref ::honeysql-condition] [:ref ::honeysql-condition]]
+   [:tuple :keyword ::honeysql-value ::honeysql-value]])
+
+(mr/def ::honeysql-table-ref
+  "A HoneySQL FROM/JOIN table reference: an identifier, optionally aliased."
+  [:or [:tuple h2x/Identifier] [:tuple h2x/Identifier :keyword]])
+
+(mr/def ::join-structure-entry
+  [:map {:closed true}
+   [:strategy       {:optional true} [:maybe [:or :keyword :string]]]
+   [:alias          {:optional true} [:maybe :string]]
+   [:source-table   {:optional true} [:maybe ::lib.schema.id/table]]
+   [:conditions     {:optional true} ::lib.schema.join/conditions]
+   [:join-table     {:optional true} ::honeysql-table-ref]
+   [:join-condition {:optional true} [:maybe [:or ::honeysql-condition
+                                              [:and
+                                               [:fn {:error/message "an :and of conditions"} #(= :and (first %))]
+                                               [:sequential [:or [:= :and] [:ref ::honeysql-condition]]]]]]]])
+
+(def ^:private QueryInfo
+  [:map {:closed true}
+   [:preprocessed-query {:optional true} [:maybe ::lib.schema/query]]
+   [:driver             {:optional true} [:maybe :keyword]]
+   [:from-table-id      {:optional true} [:maybe ::lib.schema.id/table]]
+   [:from-table         {:optional true} [:maybe ::honeysql-table-ref]]
+   [:join-structure     {:optional true} [:maybe [:sequential ::join-structure-entry]]]
+   [:visited-fields     {:optional true} [:maybe [:map {:closed true} [:all {:optional true} [:maybe [:set ::lib.schema.id/field]]]]]]])
+
 (mu/defn- match-columns :- [:maybe [:sequential ::column-match]]
   "Find columns that relate between input and output tables.
    Uses field ID-based matching for MBQL queries (more accurate),
    falls back to name-based matching for native queries."
-  [sources target {:keys [preprocessed-query join-structure]}]
+  [sources :- [:sequential ::transforms-inspector.schema/table]
+   target :- ::transforms-inspector.schema/table
+   {:keys [preprocessed-query join-structure]} :- [:maybe QueryInfo]]
   (if preprocessed-query
     (match-columns-mbql preprocessed-query sources target)
     (match-columns-by-name sources target join-structure)))
@@ -253,12 +302,15 @@
 
 (mu/defn build-context :- ::context
   "Build context for lens discovery and generation."
-  [transform]
+  [transform :- ::transforms.schema/transform]
   (let [source-type (transforms-base.u/transform-source-type (:source transform))
         sources-info (mapv build-table-info (extract-sources transform))
         target-table (get-target-table transform)
         target-info (when target-table
-                      (build-table-info (set/rename-keys target-table {:id :table-id :name :table-name :db_id :db-id})))
+                      (build-table-info {:table-id   (:id target-table)
+                                         :table-name (:name target-table)
+                                         :schema     (:schema target-table)
+                                         :db-id      (:db_id target-table)}))
         query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)
@@ -269,7 +321,7 @@
              :target              target-info
              :db-id               db-id
              :driver              (or (:driver query-info)
-                                      (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id))
+                                      (keyword (transforms-inspector.db/database-engine db-id)))
              :from-table-id       (:from-table-id query-info)
              :has-joins?          (boolean (seq join-structure))
              :visited-fields      (:visited-fields query-info)

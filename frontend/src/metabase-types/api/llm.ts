@@ -41,10 +41,12 @@ export type LlmProviderTypeName =
   | "zai"
   | "moonshot"
   | "deepseek"
+  | "xai"
   | "google"
   | "azure"
   | "bedrock"
   | "vllm"
+  | "ollama"
   | "metabase";
 
 export type LlmProviderFieldType =
@@ -77,7 +79,9 @@ export interface LlmProviderType {
   available: boolean;
   default_model: string | null;
   models: LlmModel[];
+  model_fields: string[];
   required_any: string[][];
+  requires: Record<string, string[]>;
   fields: LlmProviderField[];
 }
 

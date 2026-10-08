@@ -4,7 +4,7 @@
   (:refer-clojure :exclude [every? run! some mapv replace empty?])
   (:require
    [metabase.util.match.impl]
-   [metabase.util.performance :as perf :refer [empty? every? mapv run! some]]))
+   [metabase.util.performance :as perf :refer [empty? every? mapv run! some dropv]]))
 
 (defn- parse-pattern
   "Parse a pattern vector into bindings and conditions"
@@ -78,7 +78,7 @@
                                                              `metabase.util.match.impl/count=) s cnt)
                                                      {:depends-on s})))
                 (when rest-part
-                  (process-pattern rest-part `(into [] (drop ~cnt) ~s) bindings conditions false)))
+                  (process-pattern rest-part `(dropv ~cnt ~s) bindings conditions false)))
       :map (let [s (if (symbol? value) value (gensym "map"))]
              (vswap! bindings conj [s `(metabase.util.match.impl/map! ~value)])
              (run! (fn [[k v]]
@@ -384,6 +384,21 @@
   [value & clauses]
   (match-many* value clauses))
 
+(defn- matches?* [value clause]
+  (let [;; Wrap explicit nil values.
+        value (if (nil? value) `(identity nil) value)
+        processed (process-clause [clause true] '&match)]
+    `(let [~'&match ~value
+           ~@(mapcat identity (:bindings processed))]
+       ~(expand-conditions `and (:conditions processed) true true))))
+
+(defmacro matches?
+  "Pattern matching macro for a single clause that returns `true` if the pattern matches, and `false` otherwise. See
+  `match-one` for pattern and return expression syntax."
+  {:style/indent :defn}
+  [value clause]
+  (matches?* value clause))
+
 ;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
 ;; e.g. with a query like
 ;;
@@ -412,10 +427,23 @@
       ~form
       ~(when contains-&parents? []))))
 
+(defmacro replace-all
+  "Like [[replace]], but walks the `form` from the inside outwards, thus applying the transform multiple times (in a
+  \"postwalk\" fashion). Doesn't support `&parents` anaphora yet. NB: unlike [[replace]], this macro walks map keys
+  individually. Make sure that the match body doesn't trigger on map keys. "
+  [form & clauses]
+  (let [replace-fn-symb (gensym "replace-")
+        contains-&parents? (contains-symbol? clauses '&parents)]
+    (when contains-&parents?
+      (throw (ex-info "&parents is not supported by replace-all." {})))
+    `(perf/postwalk (fn ~replace-fn-symb [~'&match]
+                      (match-one ~'&match
+                        ~@clauses
+                        ~'_ ~'&match))
+                    ~form)))
+
 (defmacro replace-in
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
   {:style/indent :defn}
   [x ks & patterns-and-results]
   `(metabase.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace x# ~@patterns-and-results))))
-
-;; TODO - it would be useful to have something like a `replace-all` function as well

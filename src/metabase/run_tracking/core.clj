@@ -10,7 +10,6 @@
 
 (p/import-vars
  [metabase.run-tracking.ops
-  cutoff
   detection-latency-ms
   heartbeat-and-reconcile!
   heartbeat-ids!

@@ -15,7 +15,7 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
+import type { SdkBrowserCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
 import { Box, Button, Group, Stack } from "metabase/ui";
 
@@ -28,11 +28,13 @@ interface MetabaseBrowserProps {
 }
 
 type MetabaseBrowserView =
-  | { type: "collection"; id: SdkCollectionId }
+  | { type: "collection"; id: SdkBrowserCollectionId }
   | { type: "dashboard"; id: number | string }
   | { type: "question" | "metric" | "model"; id: number | string }
   | { type: "new-question" }
   | { type: "create-dashboard" };
+
+type EntityBreadcrumbType = Exclude<SdkBreadcrumbItemType, "all-collections">;
 
 const BREADCRUMB_HEIGHT = "3.5rem";
 
@@ -70,6 +72,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   }, [navigationContext.stack]);
 
   // Use the last collection in the breadcrumb as the target for saving new questions.
+  // The virtual "all-collections" root has its own breadcrumb type, so it's excluded here.
   const targetCollection = useMemo(() => {
     const collectionBreadcrumbs = breadcrumbs.filter(
       (item) => item.type === "collection",
@@ -77,14 +80,18 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
     const lastCollectionItem = _.last(collectionBreadcrumbs);
 
-    return lastCollectionItem?.id ?? initialCollection;
+    if (lastCollectionItem) {
+      return lastCollectionItem.id;
+    }
+
+    return initialCollection === "all" ? undefined : initialCollection;
   }, [breadcrumbs, initialCollection]);
 
   const viewContent = hasNavigatedAway
     ? null
     : match(currentView)
         .with({ type: "new-question" }, () => (
-          <Box px="xl" h="100%">
+          <Box px="xxl" h="100%">
             <InteractiveQuestion
               key={newQuestionKey}
               questionId="new"
@@ -115,7 +122,10 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
               }, 0);
             }}
             onClose={() =>
-              setCurrentView({ type: "collection", id: targetCollection })
+              setCurrentView({
+                type: "collection",
+                id: targetCollection ?? "all",
+              })
             }
             initialCollectionId={targetCollection}
           />
@@ -149,7 +159,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
         .with(
           { type: P.union("question", "metric", "model"), id: P.nonNullable },
           ({ id }) => (
-            <Box px="xl" h="100%">
+            <Box px="xxl" h="100%">
               <InteractiveQuestion
                 questionId={id}
                 height="100%"
@@ -161,7 +171,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
           ),
         )
         .with({ type: "collection" }, (view) => (
-          <Box px="xl" pt="lg" style={{ overflowY: "auto" }}>
+          <Box px="xxl" pt="xl" style={{ overflowY: "auto" }}>
             <CollectionBrowser
               collectionId={view.id}
               visibleColumns={settings.collectionVisibleColumns}
@@ -169,11 +179,11 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
               showDashboardQuestions={settings.collectionShowDashboardQuestions}
               pageSize={settings.collectionPageSize}
               onClick={(item) => {
-                const type = match<string, SdkBreadcrumbItemType>(item.model)
+                const type = match<string, EntityBreadcrumbType>(item.model)
                   .with("card", () => "question")
                   .with("dataset", () => "model")
-                  // Unjustified type cast. FIXME
-                  .otherwise((model) => model as SdkBreadcrumbItemType);
+                  // A collection item is never the virtual "all collections" root.
+                  .otherwise((model) => model as EntityBreadcrumbType);
 
                 setCurrentView({ type, id: item.id });
 
@@ -193,8 +203,6 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
                     virtual: true,
                     id: item.id,
                     name: item.name,
-                    onPop: () =>
-                      setCurrentView({ type: "collection", id: view.id }),
                   });
                 }
               }}
@@ -227,15 +235,18 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
           align="flex-start"
           gap="sm"
           h={BREADCRUMB_HEIGHT}
-          px="xl"
-          py="lg"
+          px="xxl"
+          py="xl"
           w="100%"
         >
           <Group>
             <SdkBreadcrumbs
               onBreadcrumbClick={(item) => {
-                if (item.type === "collection") {
-                  setCurrentView({ type: item.type, id: item.id });
+                if (
+                  item.type === "collection" ||
+                  item.type === "all-collections"
+                ) {
+                  setCurrentView({ type: "collection", id: item.id });
 
                   // If we selected a collection, we go back to the browser component, we need to clear the stack
                   // metabase-browser is always at index 0, so we can pop length-1 times

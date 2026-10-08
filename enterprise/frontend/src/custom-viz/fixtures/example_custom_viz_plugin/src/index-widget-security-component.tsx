@@ -19,8 +19,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
 }) => {
   return defineConfig<Settings>({
-    id: "example_custom_viz_plugin",
-    getName: () => "example_custom_viz_plugin",
     minSize: { width: 2, height: 2 },
     checkRenderable(series) {
       if (series.length !== 1) {

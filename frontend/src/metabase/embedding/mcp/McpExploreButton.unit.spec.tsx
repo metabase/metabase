@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -19,6 +20,8 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockNumericColumn,
+  createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -58,8 +61,24 @@ const QUERY_RESULT = createMockDataset({
   }),
 });
 
-function setup() {
-  const { state } = setupSdkState({ currentUser: TEST_USER });
+function setup({ applicationName }: { applicationName?: string } = {}) {
+  const { state } = setupSdkState({
+    currentUser: TEST_USER,
+    ...(applicationName && {
+      settingValues: createMockSettings({
+        "enable-embedding-sdk": true,
+        "application-name": applicationName,
+      }),
+      tokenFeatures: createMockTokenFeatures({
+        embedding_sdk: true,
+        whitelabel: true,
+      }),
+    }),
+  });
+  if (applicationName) {
+    setupEnterpriseOnlyPlugin("whitelabel");
+  }
+
   const app = { openLink: jest.fn() };
   const instanceUrl = "https://metabase.example";
 
@@ -113,5 +132,13 @@ describe("McpExploreButton", () => {
           }),
       });
     });
+  });
+
+  it("uses the custom application name when white-labelled", async () => {
+    setup({ applicationName: "Acme Analytics" });
+
+    expect(
+      await screen.findByRole("button", { name: "Explore in Acme Analytics" }),
+    ).toBeInTheDocument();
   });
 });

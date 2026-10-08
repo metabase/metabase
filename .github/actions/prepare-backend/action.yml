@@ -5,9 +5,6 @@ inputs:
   java-version:
     required: true
     default: "25"
-  clojure-version:
-    required: true
-    default: "1.12.0.1488"
 
 runs:
   using: "composite"
@@ -17,12 +14,40 @@ runs:
       with:
         java-version: ${{ inputs.java-version }}
         distribution: "temurin"
+    - name: Cache spec
+      id: cache-spec
+      shell: bash
+      run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
+
+    - name: Restore Clojure CLI
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.cache-spec.outputs.clojure-path }}
+        key: ${{ steps.cache-spec.outputs.clojure-key }}
+
     - name: Install Clojure CLI
       shell: bash
+      env:
+        CLOJURE_PREFIX: ${{ steps.cache-spec.outputs.clojure-path }}
+        CLOJURE_VERSION: ${{ steps.cache-spec.outputs.clojure-version }}
       run: |
+        set -uo pipefail
+        echo "$CLOJURE_PREFIX/bin" >> "$GITHUB_PATH"
+        export PATH="$CLOJURE_PREFIX/bin:$PATH"
+
+        # Whether the prefix already holds the right install is decided by running it, not by the
+        # cache-hit flag. The installer bakes the prefix into the clj/clojure shims, so a tree restored
+        # under a different $HOME points at a directory that is not there; and on a runner that is not
+        # ephemeral, a previous version's prefix outlives the cache entry that stopped matching it.
+        if clojure --version | grep -qF "$CLOJURE_VERSION"; then
+          clojure --version
+          exit 0
+        fi
+
+        cd "$RUNNER_TEMP"
         for attempt in 1 2 3; do
-          curl --retry 3 --retry-delay 5 --fail -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh \
-            && sudo bash ./linux-install-${{ inputs.clojure-version }}.sh \
+          curl --retry 3 --retry-delay 5 --fail -O "https://download.clojure.org/install/linux-install-$CLOJURE_VERSION.sh" \
+            && bash "./linux-install-$CLOJURE_VERSION.sh" --prefix "$CLOJURE_PREFIX" \
             && break
           echo "::warning::Clojure install attempt $attempt failed, retrying in 10s..."
           sleep 10
@@ -38,11 +63,6 @@ runs:
         enable-cache: false
         version: "0.10.2" # keep in sync with mise.toml
         github-token: ${{ github.token }}
-
-    - name: Cache spec
-      id: cache-spec
-      shell: bash
-      run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
 
     - name: Restore M2 cache
       uses: actions/cache/restore@v5

@@ -8,7 +8,8 @@
    [metabase-enterprise.transforms-inspector.lens.generic]
    [metabase-enterprise.transforms-inspector.lens.join-analysis]
    [metabase-enterprise.transforms-inspector.lens.unmatched-rows]
-   [metabase-enterprise.transforms-inspector.schema]
+   [metabase-enterprise.transforms-inspector.schema :as inspector.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -22,7 +23,7 @@
   "Discover available lenses for a transform.
    Returns structural metadata and available lens types.
    This is a cheap operation - no query execution."
-  [transform :- :map]
+  [transform :- ::transforms.schema/transform]
   (let [{:keys [sources target] :as ctx} (context/build-context transform)]
     (if-not target
       {:name             (tru "Transform Inspector: {0}" (:name transform))
@@ -43,8 +44,8 @@
   "Get full lens contents for a transform.
    Returns sections, cards, and trigger definitions.
    Optional params can filter/customize drill lens output."
-  [transform :- :map
+  [transform :- ::transforms.schema/transform
    lens-id :- :string
-   params :- [:maybe :map]]
+   params :- [:maybe ::inspector.schema/lens-params.request]]
   (let [ctx (context/build-context transform)]
     (lens.core/get-lens ctx lens-id params)))

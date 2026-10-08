@@ -1,15 +1,21 @@
 (ns metabase.llm.api.provider-test
   (:require
    [clj-http.client :as http]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.string :as str]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.bedrock-test :as bedrock-test]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -28,14 +34,38 @@
   (fn [& _]
     (throw (ex-info message {:api-error true :status-code 401}))))
 
+(defn- do-with-another-instances-write!
+  [conns thunk]
+  (let [stale-conns   (get (setting.cache/cache) "llm-providers")
+        stale-updated (setting/cache-last-updated-at)]
+    (assert (some? stale-updated) "the cached settings-last-updated is what the rewind below makes stale")
+    (llm.provider/set-connections! (vec conns))
+    ;; close the once-a-minute window first, so nothing but an explicit forced check can reload the cache and the
+    ;; test is measuring the endpoint rather than a poll that happened to come due
+    (setting/restore-cache-if-needed! :force-check? true)
+    (setting.cache/update-cache! "llm-providers" stale-conns)
+    (setting.cache/update-cache! "settings-last-updated" stale-updated)
+    ;; the cache is process-wide, so a body that leaves it stale hands the staleness to whatever test runs next
+    (try
+      (thunk)
+      (finally
+        (setting.cache/restore-cache!)))))
+
+(defmacro ^:private with-another-instances-write!
+  "Run `body` with `conns` committed to the app DB while this instance's settings cache still holds what it held
+  before — where every instance but the writer sits until its cache next polls, up to a minute later."
+  {:style/indent 1}
+  [conns & body]
+  `(do-with-another-instances-write! ~conns (fn [] ~@body)))
+
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
-      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-               "vllm" "metabase"}
+      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+               "bedrock" "vllm" "ollama" "metabase"}
              (set (map :type types))))
-      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-              "vllm"]
+      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+              "bedrock" "vllm" "ollama"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -49,7 +79,7 @@
                                 :required true
                                 :advanced false
                                 :prefix   "sk-ant-"
-                                :docs_url "https://console.anthropic.com/settings/keys"}
+                                :docs_url "https://platform.claude.com/settings/keys"}
                                {:key      "base-url"
                                 :label    "API base URL"
                                 :type     "text"
@@ -68,7 +98,8 @@
       (testing "the API-key prefixes reach the client, which uses them to recognize a pasted key"
         (is (= {"anthropic"  "sk-ant-"
                 "openai"     "sk-"
-                "openrouter" "sk-or-v1-"}
+                "openrouter" "sk-or-v1-"
+                "xai"        "xai-"}
                (into {}
                      (keep (fn [{:keys [type fields]}]
                              (when-let [prefix (some :prefix fields)]
@@ -80,12 +111,18 @@
         (is (= {"access-key-id"     false
                 "secret-access-key" false
                 "region"            false
+                "model-id"          false
                 "session-token"     true}
                (->> types
                     (filter #(= "bedrock" (:type %)))
                     first
                     :fields
-                    (into {} (map (juxt :key :advanced))))))))))
+                    (into {} (map (juxt :key :advanced)))))))
+      (testing "each Bedrock key travels as requiring the other, which the form uses to gate half a pair"
+        (is (= {:access-key-id     ["secret-access-key"]
+                :secret-access-key ["access-key-id"]
+                :session-token     ["access-key-id" "secret-access-key"]}
+               (:requires (m/find-first #(= "bedrock" (:type %)) types))))))))
 
 (deftest provider-types-google-fields-test
   (testing "Google's credentials hang off the authentication method it is asked for, and its models are a fixed list"
@@ -93,7 +130,8 @@
                       (filter #(= "google" (:type %)))
                       first)
           fields (into {} (map (juxt :key identity)) (:fields google))]
-      (is (= ["project-id" "location" "auth-method" "service-account-key" "oauth-access-token" "base-url"]
+      (is (= ["project-id" "location" "auth-method" "service-account-key" "oauth-access-token" "endpoint-id"
+              "base-url"]
              (map :key (:fields google))))
       (is (=? {:type    "segmented"
                :default "service-account-key"
@@ -110,13 +148,34 @@
         (is (nil? (fields "model")))
         (is (= "google/gemini-3.5-flash" (:default_model google)))
         (testing "and the catalog rides along so the connection form can offer the model to validate against"
-          (is (= [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                  {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                  {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
-                 (:models google)))))
+          (is (= [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
+                  {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
+                  {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                  {:id "anthropic/claude-fable-5-1" :display_name "Claude Fable 5.1"}
+                  {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                  {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
+                  {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
+                  {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                  {:id "anthropic/claude-sonnet-5-5" :display_name "Claude Sonnet 5.5"}
+                  {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
+                  {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                  {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+                 (:models google))))
+        (testing "and the endpoint ID is the field that names a model in place of the catalog"
+          (is (= ["endpoint-id"] (:model_fields google)))))
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
                (:required_any google)))))))
+
+(deftest provider-types-hosted-bedrock-test
+  (testing "the listed Bedrock entry carries hosted policy, so the form asks for the keys the backend will demand"
+    (mt/with-premium-features #{:hosting}
+      (let [bedrock (m/find-first #(= "bedrock" (:type %))
+                                  (mt/user-http-request :crowberto :get 200 "llm/provider-types"))]
+        (is (= {"access-key-id" true "secret-access-key" true "region" false "model-id" false "session-token" false}
+               (->> bedrock :fields (into {} (map (juxt :key :required))))))
+        (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+               (:help (m/find-first #(= "access-key-id" (:key %)) (:fields bedrock)))))))))
 
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]
@@ -237,6 +296,56 @@
                                 {:type "openai" :config {:api-key "sk-valid"}})
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-metabot-provider))))))))
 
+(deftest create-records-whether-the-listing-offered-the-mini-model-test
+  (testing "a connection whose listing includes its type's mini model runs quick tasks on it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                    {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
+                                               llm-mini-model nil]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+          (is (= {:api-key "sk-ant-valid" :mini-model "claude-haiku-4-5-20251001"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model)))))))
+  (testing "one whose listing leaves it out runs them on the Metabot model, not on a guess the account cannot serve"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
+                                               llm-mini-model nil]
+          (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+          (is (= {:api-key "sk-ant-valid"} (stored-config "anthropic")))
+          (is (nil? (setting/db-stored-value :llm-mini-model)))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model))))))))
+
+(deftest update-relists-the-mini-model-test
+  (testing "editing a connection asks its listing again, and the form echoing the old answer back does not keep it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                    {:api-key    "sk-ant-stored"
+                                                                     :mini-model "claude-haiku-4-5-20251001"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
+                                               llm-mini-model nil]
+          (is (= [:api-key]
+                 (keys (:config (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                                      {:config {:api-key    "sk-ant-rotated"
+                                                                :mini-model "claude-haiku-4-5-20251001"}})))))
+          (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model)))))))
+  (testing "and records the mini model once the account serves it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                    {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
+                                               llm-mini-model nil]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:name "Anthropic (prod)"})
+          (is (= {:api-key "sk-ant-stored" :mini-model "claude-haiku-4-5-20251001"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
+
 (deftest create-vllm-connection-adopts-the-model-its-probe-exercised-test
   (testing (str "A vLLM server serves whatever the operator loaded, so there is no default model to select: "
                 "connecting adopts the model the connect-time probe actually ran the agent-loop contract "
@@ -245,10 +354,10 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                   (fn [_provider o]
                                     (reset! opts o)
-                                    {:models         [{:id "vllm-test" :display_name "vllm-test"}
-                                                      {:id "other" :display_name "other"}]
-                                     :probed-model   "vllm-test"
-                                     :learned-config {:model-reasoning "true"}})]
+                                    {:models          [{:id "vllm-test" :display_name "vllm-test"}
+                                                       {:id "other" :display_name "other"}]
+                                     :connection-info {:model-reasoning "true"
+                                                       :probed-model    "vllm-test"}})]
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
             (is (=? {:key    "vllm"
@@ -263,7 +372,8 @@
             (is (= "vllm/vllm-test" (metabot.settings/llm-metabot-provider)))
             (testing "and what the probe learned is stored on the connection, where the request path reads it"
               (is (= {:base-url        "http://vllm.internal:8000/v1"
-                      :model-reasoning "true"}
+                      :model-reasoning "true"
+                      :probed-model    "vllm-test"}
                      (stored-config "vllm")))
               (is (true? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
 
@@ -292,6 +402,42 @@
                                                 :config {:base-url "http://vllm.internal:8000/v1"}}))))
         (is (= [] (llm.provider/connections)))))))
 
+(deftest create-rejects-a-malformed-model-catalog-test
+  (testing (str "a 2xx whose body is not a model list means the base URL reached something that is not the API. "
+                "Failing closed is only useful if the admin sees why, so it comes back as the adapter's message "
+                "on the form — not as the 500 an untagged error would produce, which `MB_HIDE_STACKTRACES=true` "
+                "would collapse to \"Something went wrong\".")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (is (= "Anthropic returned an unexpected model list response"
+               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                               {:type "anthropic" :config {:api-key "sk-ant-nope"}}))))
+        (is (= [] (llm.provider/connections)))))))
+
+(deftest a-refused-listing-logs-only-a-malformed-catalog-test
+  (testing "a model list that was not a catalog is logged with its cause, which the admin never sees"
+    (let [cause (Exception. "Unexpected character '<'")]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [& _]
+                                    (throw (ex-info "vLLM returned an unexpected model list response"
+                                                    {:api-error true :status-code 400 :error-code :malformed-model-catalog}
+                                                    cause)))]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (log.capture/with-log-messages-for-level [messages [metabase.llm.api.provider :warn]]
+            (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                  {:type "vllm" :config {:base-url "https://vllm.example.com/v1"}})
+            (is (some #(= cause (ex-cause (:e %))) (messages))))))))
+  (testing "any other refusal is not, since its ex-data carries the provider's response"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _]
+                                  (throw (ex-info "Invalid API key"
+                                                  {:api-error true :status-code 401 :body {:secret "response"}})))]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (log.capture/with-log-messages-for-level [messages [metabase.llm.api.provider :warn]]
+          (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                {:type "vllm" :config {:base-url "https://vllm.example.com/v1"}})
+          (is (empty? (messages))))))))
+
 (deftest models-listing-does-not-probe-test
   (testing "listing models is a page load; only a write may spend a generation on the operator's server"
     (let [opts (atom nil)]
@@ -312,9 +458,9 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                   (fn [_provider o]
                                     (reset! opts o)
-                                    {:models         [{:id "served-a" :display_name "served-a"}]
-                                     :probed-model   "served-b"
-                                     :learned-config {:model-reasoning "false"}})]
+                                    {:models          [{:id "served-a" :display_name "served-a"}]
+                                     :connection-info {:model-reasoning "false"
+                                                       :probed-model    "served-b"}})]
         (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
                                                                       {:base-url        "http://old.internal:8000/v1"
                                                                        :model-reasoning "true"})]]
@@ -324,9 +470,56 @@
             (is (=? {:model "served-b" :probe? true} @opts))
             (testing "and the probe's fresh verdict replaces the one the connection was carrying"
               (is (= {:base-url        "http://vllm.internal:8000/v1"
-                      :model-reasoning "false"}
+                      :model-reasoning "false"
+                      :probed-model    "served-b"}
                      (stored-config "vllm")))
               (is (false? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
+
+(deftest update-adopts-the-model-a-vllm-server-is-serving-now-test
+  (testing "vLLM still reports configured models even if no longer serving the previously :probed-model"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider {:keys [model] :as o}]
+                                    (reset! opts o)
+                                    (when model
+                                      (throw (ex-info "The vLLM server is not serving Qwen/Qwen3-8B. It is serving: Qwen/Qwen3-32B."
+                                                      {:api-error true :status-code 400})))
+                                    {:models          [{:id "Qwen/Qwen3-32B" :display_name "Qwen/Qwen3-32B"}]
+                                     :connection-info {:model-reasoning "false"
+                                                       :probed-model    "Qwen/Qwen3-32B"}})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
+                                                                      {:base-url        "http://old.internal:8000/v1"
+                                                                       :model-reasoning "false"
+                                                                       :probed-model    "Qwen/Qwen3-8B"})]]
+          ;; Metabot points elsewhere, so nothing but the recorded probe names a model for this connection
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-8"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/vllm"
+                                  {:config {:base-url "http://vllm.internal:8000/v1"}})
+            (testing "the recorded model is offered as a proposal the probe may decline, not as a request"
+              (is (=? {:proposed-model "Qwen/Qwen3-8B" :probe? true} @opts))
+              (is (not (contains? @opts :model))))
+            (testing "and the connection records what the server is serving now"
+              (is (= {:base-url        "http://vllm.internal:8000/v1"
+                      :model-reasoning "false"
+                      :probed-model    "Qwen/Qwen3-32B"}
+                     (stored-config "vllm"))))))))))
+
+(deftest update-still-verifies-against-a-model-the-client-names-test
+  (testing "a model the admin picks is a request, and stays binding even though a recorded probe names another"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider o]
+                                    (reset! opts o)
+                                    {:models          [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}]
+                                     :connection-info {:probed-model (:model o)}})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :probed-model       "anthropic/claude-sonnet-4-6"})]]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                {:config {:oauth-access-token "ya29.token" :project-id "my-project"}
+                                 :model  "google/gemini-3.7-flash"})
+          (is (= "google/gemini-3.7-flash" (:model @opts))))))))
 
 (deftest create-selects-a-model-composed-from-the-config-test
   (testing (str "Azure names its deployment in `:config` rather than listing models, and the form leaves a field it "
@@ -341,6 +534,60 @@
                                           :base-url        "https://r.services.ai.azure.com/openai"
                                           :deployment-name "gpt-4.1-mini"}})
           (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest create-google-connection-with-an-endpoint-verifies-and-selects-the-endpoint-test
+  (doseq [[sent model] [["no model" nil]
+                        ["a catalog model beside it" "google/gemini-3.5-flash"]]]
+    (testing (str "with " sent)
+      (let [opts (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model] :as o}]
+                                                               (reset! opts o)
+                                                               {:models [] :connection-info {:probed-model model}})]
+          (mt/with-temporary-setting-values [llm-providers []]
+            (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+              (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                    (cond-> {:type   "google"
+                                             :config {:oauth-access-token "ya29.token"
+                                                      :project-id         "my-project"
+                                                      :endpoint-id        "1234567890123456789"}}
+                                      model (assoc :model model)))
+              (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
+              (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
+
+(def ^:private bedrock-inference-profile-connection
+  {:type   "bedrock"
+   :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+            :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+            :region            "eu-central-1"
+            :model-id          "eu.anthropic.claude-sonnet-4-6"}})
+
+(deftest create-bedrock-connection-with-an-inference-profile-test
+  (testing "a Bedrock connection that names an inference profile is checked on bedrock-runtime and Metabot runs on it"
+    (let [requested (atom [])]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (swap! requested conj (:url req))
+                                                 (bedrock-test/runtime-response-for bedrock-test/one-token-completion))]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers" bedrock-inference-profile-connection)
+            (is (= [(str "https://bedrock-runtime.eu-central-1.amazonaws.com/model/eu.anthropic.claude-sonnet-4-6"
+                         "/invoke-with-response-stream")]
+                   @requested))
+            (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest create-bedrock-connection-is-rejected-when-the-model-does-not-finish-test
+  (testing "the connection is not saved when the model errors partway through or never finishes its response"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (let [connect!   (fn [messages]
+                         (mt/with-dynamic-fn-redefs [http/request (fn [_] (bedrock-test/runtime-response-for messages))]
+                           (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                                           bedrock-inference-profile-connection))))
+            incomplete "AWS Bedrock returned an incomplete response from \"eu.anthropic.claude-sonnet-4-6\""]
+        (are [messages error] (= error (connect! messages))
+          [bedrock-test/message-start bedrock-test/stream-error] "Model stream error"
+          []                                                     incomplete
+          [bedrock-test/message-start]                           incomplete))
+      (is (= [] (llm.provider/connections))))))
 
 (deftest writes-keep-a-stored-connection-the-environment-shadows-test
   (testing (str "The environment wins on read, but it must not take the stored credentials with it: they are what "
@@ -399,6 +646,32 @@
                (mt/user-http-request :crowberto :post 400 "llm/providers"
                                      {:type "evilai" :config {:api-key "whatever"}}))))
       (is (= [] (llm.provider/connections))))))
+
+(deftest create-rejects-a-base-url-on-a-blocked-network-before-calling-the-provider-test
+  (testing (str "verifying credentials fetches the provider's model catalog from the base URL, so a base URL "
+                "on a network the policy forbids is refused before that request is made")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [& _] (is false "should reject before verifying credentials"))]
+          (let [create #(mt/user-http-request :crowberto :post 400 "llm/providers"
+                                              {:type   "anthropic"
+                                               :config {:api-key  "sk-ant-valid"
+                                                        :base-url "http://127.0.0.1:9"}})]
+            (testing "self-hosted, the message names the setting to change"
+              (mt/with-premium-features #{}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is on a network Metabase is not allowed to "
+                                       "connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on "
+                                       "your private network, or allow-all for one on this machine.")
+                         :field   "base-url"}
+                        (create)))))
+            (testing "on Cloud there is no setting to change, and the message says so"
+              (mt/with-premium-features #{:hosting}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is not permitted by Metabase Cloud's LLM network policy. "
+                                       "Use an LLM provider on the public internet.")
+                         :field   "base-url"}
+                        (create))))))
+          (is (= [] (llm.provider/connections))))))))
 
 (deftest create-suffixes-a-colliding-key-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-first"})]]
@@ -526,7 +799,7 @@
                                                                  :base-url "https://api.anthropic.com"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [_provider {:keys [credentials]}]
-                                  (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} credentials)
+                                  (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"} credentials)
                                       "the stored secret is what gets verified, not the mask")
                                   {:models []})]
       (is (= {:key        "anthropic"
@@ -536,12 +809,243 @@
               :usable     true
               :env_vars   []
               :env_fields []
-              :config     {:api-key "**********ed" :base-url "https://new.example.com"}}
+              :config     {:api-key "**********ed" :base-url "https://api.anthropic.com"}}
              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                    {:name   "Anthropic (prod)"
-                                    :config {:api-key  "**********ed"
-                                             :base-url "https://new.example.com"}})))
-      (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} (stored-config "anthropic"))))))
+                                    :config {:api-key "**********ed"}})))
+      (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"} (stored-config "anthropic"))))))
+
+(deftest update-requires-fresh-secrets-to-change-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-stored"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (let [probes (atom [])]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [_provider {:keys [credentials]}]
+                                      (swap! probes conj credentials)
+                                      {:models []})]
+          (doseq [config [{:base-url "https://new.example.com"}
+                          {:api-key "**********ed" :base-url "https://new.example.com"}]]
+            (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                    (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic" {:config config}))))
+          (is (empty? @probes) "the old key was rejected before credential verification made a request")
+          (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
+                 (stored-config "anthropic")))
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                {:config {:api-key  "sk-ant-fresh"
+                                          :base-url "https://new.example.com"}})
+          (is (= [{:api-key "sk-ant-fresh" :base-url "https://new.example.com"}] @probes))
+          (is (= {:api-key "sk-ant-fresh" :base-url "https://new.example.com"}
+                 (stored-config "anthropic"))))))))
+
+(deftest update-requires-every-kind-of-sensitive-field-to-change-base-url-test
+  (testing "the rule comes from the registry rather than being special-cased to API keys"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:auth-method         "service-account-key"
+                                                                   :service-account-key "{\"private_key\":\"stored\"}"
+                                                                   :project-id          "my-project"
+                                                                   :base-url            "https://discoveryengine.googleapis.com"})]]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (is false "the stored service-account key must not leave")
+                                                             {:models []})]
+        (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                (mt/user-http-request :crowberto :put 400 "llm/providers/google"
+                                      {:config {:base-url "https://new.example.com"}})))))))
+
+(deftest update-refuses-to-move-an-environment-owned-secret-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                {:api-key  "sk-ant-stored"
+                                                                 :base-url "https://api.anthropic.com"})]]
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (is false "the environment key must not leave")
+                                                             {:models []})]
+        (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                               "has to as well. Set MB_LLM_ANTHROPIC_API_BASE_URL.")}
+                (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
+                                      {:config {:api-key  "sk-ant-attempted-override"
+                                                :base-url "https://new.example.com"}})))))))
+
+(deftest update-keeps-a-location-the-environment-does-not-set-test
+  (testing "a location only picks among Google's own endpoints, so a key from the environment keeps it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:project-id "my-project"
+                                                                     :location   "europe-west4"})]]
+        (mt/with-temp-env-var-value! [mb-llm-google-oauth-access-token "ya29.env"]
+          (is (=? {:config {:location "europe-west4"}}
+                  (mt/user-http-request :crowberto :put 200 "llm/providers/google" {:name "renamed"}))))))))
+
+(deftest update-does-not-verify-with-a-key-the-environment-moved-away-from-test
+  (testing (str "A connection the environment has moved no longer carries the key an admin entered for where "
+                "it used to point — a read of it drops that key. An edit merges its config from storage, so "
+                "without the same rule a rename would hand the key to the server it was moved to.")
+    (let [seen (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& args] (swap! seen conj args) {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                      {:base-url "http://ollama.internal:11434/v1"
+                                                                       :api-key  "sk-own-proxy"})]]
+          (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+            (mt/user-http-request :crowberto :put "llm/providers/ollama" {:name "renamed"})
+            (is (not (str/includes? (pr-str @seen) "sk-own-proxy"))
+                "the key an admin entered for their own server is not sent to ollama.com")
+            (is (= "sk-own-proxy"
+                   (get-in (first (llm.provider/stored-connections)) [:config :api-key]))
+                "while the stored key stays, so dropping the variable brings it back")))))))
+
+(deftest write-names-the-variable-a-captured-key-has-to-come-from-test
+  (testing (str "A credential entered for a connection the environment points elsewhere is dropped from what the "
+                "connection runs on, so without this the admin would be told the key is missing a moment after "
+                "entering it. The variables it has to come from, and the one that moved the connection, are named.")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                           (is false "a captured key must not leave")
+                                                           {:models []})]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (let [refused {:message    (str "MB_LLM_OLLAMA_API_BASE_URL points this connection at another server, so "
+                                        "its credentials have to come from the environment as well. Set "
+                                        "MB_LLM_OLLAMA_API_KEY to keep using it.")
+                       :error-code "llm-credentials-must-come-from-env"
+                       :field      "api-key"}]
+          (testing "editing a stored connection"
+            (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                          {:base-url "http://ollama.internal:11434/v1"})]]
+              (is (=? refused (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
+                                                    {:config {:api-key "sk-new"}})))
+              (is (nil? (:api-key (stored-config "ollama")))
+                  "and nothing was stored for the key the admin cannot use here")))))))
+  (testing "while a mask is the form echoing back a stored key rather than an admin entering one"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                    {:base-url "http://ollama.internal:11434/v1"
+                                                                     :api-key  "sk-ollama"})]]
+        (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+          (is (=? {:name "renamed"}
+                  (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
+                                        {:name   "renamed"
+                                         :config {:api-key (setting/obfuscate-value "sk-ollama")}}))))))))
+
+(deftest env-gateway-base-url-with-a-key-typed-in-the-ui-keeps-working-test
+  (testing (str "A base-URL variable pointing a connection at a gateway, with the key typed in the UI: the setup "
+                "the docs give as the example. It keeps working on the types that always allowed it.")
+    (let [probed (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (swap! probed conj credentials)
+                                                             {:models [{:id "m" :display_name "m"}]})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-ui"})]]
+          (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+            (testing "the connection reads back usable, on the gateway, with its key"
+              (is (=? [{:key        "anthropic"
+                        :usable     true
+                        :env_fields ["base-url"]
+                        :config     {:api-key  (setting/obfuscate-value "sk-ant-ui")
+                                     :base-url "https://gateway.example.com"}}]
+                      (mt/user-http-request :crowberto :get 200 "llm/providers"))))
+            (testing "retyping the key in the connection form is accepted, and verified against the gateway"
+              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-new"}})
+              (is (=? {:api-key "sk-ant-new" :base-url "https://gateway.example.com"} (last @probed)))
+              (is (= "sk-ant-new" (:api-key (stored-config "anthropic")))))
+            (testing "and so is writing it through the per-provider setting"
+              (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-other"})
+              (is (= "sk-ant-other" (:api-key (stored-config "anthropic")))))))))
+    (testing "semantic search keeps the OpenAI key under an OpenAI base-URL variable"
+      (mt/with-temporary-setting-values [llm-providers [(connection "openai" "openai" {:api-key "sk-openai-ui"})]]
+        (mt/with-temp-env-var-value! [mb-llm-openai-api-base-url "https://gateway.example.com"]
+          (is (= "sk-openai-ui" (setting/get :llm-openai-api-key))))))))
+
+(deftest generic-setting-api-cannot-write-provider-connections-test
+  (let [planted [(connection "anthropic" "anthropic" {:base-url "https://attacker.example.com"})]]
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (doseq [[endpoint body] [["setting/llm-providers" {:value planted}]
+                                 ["setting"               {:llm-providers planted}]]]
+          (is (=? {:message "Manage LLM provider connections through the provider connection settings."}
+                  (mt/user-http-request :crowberto :put 400 endpoint body))))
+        (is (= [] (llm.provider/stored-connections))
+            "neither generic settings endpoint may plant a URL that later receives the environment key")))))
+
+(deftest legacy-base-url-setting-refuses-to-move-a-stored-secret-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                {:api-key  "sk-ant-stored"
+                                                                 :base-url "https://api.anthropic.com"})]]
+    (is (=? {:message "Use the provider connection settings to change the base URL and enter the credentials again."}
+            (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                  {:value "https://new.example.com"})))
+    (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
+           (stored-config "anthropic")))
+    (testing "and explains when the credential must be moved through deployment configuration"
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                               "has to as well. Set MB_LLM_ANTHROPIC_API_BASE_URL.")}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://new.example.com"}))))))
+  (testing "and never plants a dormant value underneath an environment-owned base URL"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-stored"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (=? {:message    "This connection's base URL comes from an environment variable. Change it there."
+                 :error-code "llm-base-url-is-env-managed"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://attacker.example.com"}))))
+      (is (= "https://api.anthropic.com" (:base-url (stored-config "anthropic")))
+          "removing the environment overlay leaves the original stored URL, not the rejected one")))
+  (testing (str "not even the value the variable already holds: storing it would change nothing today and "
+                "become the live address the day the operator drops the variable. This API can be that "
+                "strict because nothing echoes it — the connection settings cannot, since the form "
+                "resubmits every field it disables.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key "sk-ant-stored"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (=? {:error-code "llm-base-url-is-env-managed"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://env.example.com"}))))
+      (is (nil? (:base-url (stored-config "anthropic")))
+          "and with the overlay gone nothing was planted: the connection is back on the type's default"))))
+
+(deftest legacy-credential-setting-refuses-a-connection-on-its-own-base-url-test
+  (testing (str "The per-provider settings write one field at a time, so a credential entered through them arrives "
+                "with no sight of the base URL it would be sent to. A connection on its own URL takes its "
+                "credentials through the connection settings, which submit both together.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:base-url "https://proxy.example.com"})]]
+      (is (=? {:message "This connection has its own base URL. Use the provider connection settings to enter its credentials."}
+              (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-key"
+                                    {:value "sk-ant-fresh"})))
+      (is (nil? (:api-key (stored-config "anthropic"))))))
+  (testing "a connection still on the type's default URL is the ordinary first-time setup, and is allowed"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+      (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))
+  (testing "so is a base URL the environment supplies on a type whose variable shadows only the address"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+        (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic")))))))
+  (testing (str "but on Ollama, a key typed with nothing stored has no address recorded with it, so it cannot "
+                "follow the address the environment supplies. It has to come from the environment as well.")
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (=? {:message #".*MB_LLM_OLLAMA_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-fresh"})))
+        (is (nil? (:api-key (stored-config "ollama"))))))))
+
+(deftest update-preserves-a-masked-service-account-key-test
+  (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
+                "that ends in a newline — the stored key has to survive it rather than be replaced by the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [_provider {:keys [credentials]}]
+                                      (is (= key-file (:service-account-key credentials))
+                                          "the stored key is what gets probed, not the mask")
+                                      {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                {:config {:auth-method         "service-account-key"
+                                          :service-account-key (setting/obfuscate-value key-file)}})
+          (is (= key-file (:service-account-key (stored-config "google")))))))))
 
 (deftest update-replaces-a-freshly-entered-secret-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
@@ -576,16 +1080,21 @@
   (testing (str "Azure's model reference bakes in the deployment name, so renaming the deployment of the connection "
                 "Metabot is pointed at has to move the selection with it — otherwise the next request resolves a "
                 "deployment that no longer exists.")
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
-      (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
-                                                                    {:api-key         "azure-key"
-                                                                     :base-url        "https://r.services.ai.azure.com/openai"
-                                                                     :model-family    "openai"
-                                                                     :deployment-name "gpt-4.1-mini"})]]
-        (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
-          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
-                                {:config {:deployment-name "gpt-4.1"}})
-          (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider))))))))
+    (let [checked (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                             (reset! checked model)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
+                                                                      {:api-key         "azure-key"
+                                                                       :base-url        "https://r.services.ai.azure.com/openai"
+                                                                       :model-family    "openai"
+                                                                       :deployment-name "gpt-4.1-mini"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                  {:config {:deployment-name "gpt-4.1"}})
+            (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider)))
+            (testing "and the edit checks the deployment the connection now names, not the one Metabot was on"
+              (is (= "openai/gpt-4.1" @checked)))))))))
 
 (deftest update-follows-the-model-picked-for-a-fixed-catalog-connection-test
   (testing (str "Google's edit form carries a model pick rather than a probe input, so saving with a different "
@@ -605,6 +1114,27 @@
                                   {:config {}
                                    :model  "google/gemini-3.6-flash"})
             (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest update-verifies-and-follows-the-endpoint-a-google-connection-names-test
+  (testing "adding an endpoint to the Google connection Metabot runs on checks the endpoint and moves Metabot onto it"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model] :as o}]
+                                                             (reset! opts o)
+                                                             {:models [] :connection-info {:probed-model model}})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :probed-model       "google/gemini-3.5-flash"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                  {:config {:endpoint-id "1234567890123456789"}})
+            (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
+            (is (= "endpoints/1234567890123456789" (:probed-model (stored-config "google"))))
+            (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider)))
+            (testing "and saving it again leaves Metabot there"
+              (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                    {:config {:oauth-access-token "ya29.rotated"}})
+              (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
 
 (deftest ref-writes-leave-an-env-pinned-selection-alone-test
   (testing (str "MB_LLM_METABOT_PROVIDER pins the selection, so the automatic follow-ups — pointing Metabot at a "
@@ -766,7 +1296,8 @@
     (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-5.4"
                                            llm-mini-model "anthropic/claude-haiku-4-5"]
       (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
-                                                        (connection "openai" "openai" {:api-key "sk-stored"})]]
+                                                        (connection "openai" "openai" {:api-key    "sk-stored"
+                                                                                       :mini-model "gpt-5.4-mini"})]]
         (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
         (is (nil? (setting/db-stored-value :llm-mini-model)))
         (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-mini-model)))))))
@@ -850,24 +1381,196 @@
           (mt/user-http-request :crowberto :get 200 "llm/models"))
         (is (= ["sk-ant-first" "sk-ant-rotated"] @keys-seen))))))
 
+(deftest models-are-refetched-when-the-selected-model-changes-test
+  (testing "repointing Metabot at another of a connection's models reprobes instead of reusing the cached listing"
+    (let [probed (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (swap! probed conj (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "cache-keying-model" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "cache-keying-model/google/gemini-3.5-flash"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (mt/user-http-request :crowberto :get 200 "llm/models"))
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "cache-keying-model/anthropic/claude-opus-5"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")))
+        (is (= ["google/gemini-3.5-flash" "anthropic/claude-opus-5"] @probed))))))
+
+(deftest models-cache-is-seeded-under-the-post-save-selection-test
+  (testing "creating the first usable connection caches its listing under the model selected by the save"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (swap! calls inc)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                  {:type   "google"
+                                   :key    "post-save-create"
+                                   :model  "anthropic/claude-opus-5"
+                                   :config {:oauth-access-token "ya29.token"
+                                            :project-id         "my-project"}})
+            (is (= "post-save-create/anthropic/claude-opus-5"
+                   (metabot.settings/llm-metabot-provider)))
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= 1 @calls) "the post-save model refetch reuses the credential probe"))))))
+  (testing "editing the active fixed-catalog model caches its listing under the followed selection"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (swap! calls inc)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "post-save-update" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider
+                                                 "post-save-update/google/gemini-3.5-flash"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/post-save-update"
+                                  {:config {}
+                                   :model  "anthropic/claude-opus-5"})
+            (is (= "post-save-update/anthropic/claude-opus-5"
+                   (metabot.settings/llm-metabot-provider)))
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= 1 @calls) "the post-save model refetch reuses the credential probe")))))))
+
 (deftest models-for-a-connection-with-a-fixed-catalog-test
   (testing (str "Google's models are the registry's, so every connection of the type offers both of them in the "
                 "model picker — but the call is still made, because it is what verifies the credentials")
     (let [probed (atom nil)]
-      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
-                                                             (reset! probed model)
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
                                                              {:models []})]
         (mt/with-temporary-setting-values [llm-providers [(connection "gemini-catalog" "google"
                                                                       {:oauth-access-token "ya29.token"
                                                                        :project-id         "my-project"})]]
-          (is (= [{:key    "gemini-catalog"
-                   :name   "gemini-catalog"
-                   :type   "google"
-                   :models [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                            {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                            {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]}]
-                 (mt/user-http-request :crowberto :get 200 "llm/models")))
-          (is (= "google/gemini-3.5-flash" @probed)))))))
+          ;; nothing names a model for this connection, so the probe has only the catalog to go on
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (is (= [{:key    "gemini-catalog"
+                     :name   "gemini-catalog"
+                     :type   "google"
+                     :models [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
+                              {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
+                              {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                              {:id "anthropic/claude-fable-5-1" :display_name "Claude Fable 5.1"}
+                              {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                              {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
+                              {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
+                              {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                              {:id "anthropic/claude-sonnet-5-5" :display_name "Claude Sonnet 5.5"}
+                              {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
+                              {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                              {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]}]
+                   (mt/user-http-request :crowberto :get 200 "llm/models")))
+            (is (= "google/gemini-3.5-flash" @probed))))))))
+
+(deftest models-listing-probes-the-model-the-connection-was-verified-against-test
+  (testing (str "Google's catalog spans two families served in different locations, so probing whichever model the "
+                "registry lists first can fail on a connection that works — the model the connection was verified "
+                "against is probed instead, while the picker still offers the whole catalog")
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "claude-only" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :location           "us-east5"
+                                                                       :probed-model       "anthropic/claude-sonnet-4-6"})]]
+          (is (=? [{:key "claude-only" :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]}]
+                  (mt/user-http-request :crowberto :get 200 "llm/models")))
+          (is (= "anthropic/claude-sonnet-4-6" @probed)))))))
+
+(deftest models-listing-probes-the-model-metabot-is-pointed-at-test
+  (testing (str "an environment-configured connection is never written back to, so it carries no probed model — the "
+                "selection Metabot runs on names it instead")
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "env-google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "env-google/anthropic/claude-opus-5"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= "anthropic/claude-opus-5" @probed))))))))
+
+(deftest models-listing-prefers-the-selection-over-the-recorded-probe-test
+  (testing "a selection made since the connection was saved is fresher than what it was last verified against"
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "reselected-google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :probed-model       "anthropic/claude-sonnet-4-6"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "reselected-google/anthropic/claude-opus-5"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= "anthropic/claude-opus-5" @probed))))))))
+
+(deftest models-listing-keeps-the-fixed-catalog-when-the-probed-model-is-not-served-test
+  (testing (str "a selection naming a model the project cannot serve fails the probe — the catalog it was picked "
+                "from is still offered, so the admin can select a model that works instead of facing an empty picker")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [_provider _opts]
+                                  (throw (ex-info "Google API error: model not found"
+                                                  {:api-error true :status 404})))]
+      (mt/with-temporary-setting-values [llm-providers [(connection "wrong-model-google" "google"
+                                                                    {:oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "wrong-model-google/anthropic/claude-opus-5"]
+          (is (=? [{:key    "wrong-model-google"
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
+                    :error  "Google API error: model not found"}]
+                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+(deftest models-listing-keeps-the-fixed-catalog-when-the-model-is-not-permitted-test
+  (testing (str "a 403 for a publisher whose terms the project has not accepted is about the model, not the "
+                "credentials — the catalog stays, because picking another model is the admin's way out")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [_provider _opts]
+                                  (throw (ex-info "Google API error: PERMISSION_DENIED"
+                                                  {:api-error true :status 403})))]
+      (mt/with-temporary-setting-values [llm-providers [(connection "forbidden-model-google" "google"
+                                                                    {:oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "forbidden-model-google/anthropic/claude-opus-5"]
+          (is (=? [{:key    "forbidden-model-google"
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
+                    :error  "Google API error: PERMISSION_DENIED"}]
+                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+(deftest models-listing-keeps-the-fixed-catalog-when-the-credentials-are-rejected-test
+  (testing (str "rejected credentials are reported as the error on the connection rather than implied by an empty "
+                "picker — a catalog the type owns does not depend on the call that failed")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [_provider _opts]
+                                  (throw (ex-info "Google API error: invalid authentication credentials"
+                                                  {:api-error true :status 401})))]
+      (mt/with-temporary-setting-values [llm-providers [(connection "bad-key-google" "google"
+                                                                    {:oauth-access-token "ya29.expired"
+                                                                     :project-id         "my-project"})]]
+        (is (=? [{:key    "bad-key-google"
+                  :name   "bad-key-google"
+                  :type   "google"
+                  :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
+                  :error  "Google API error: invalid authentication credentials"}]
+                (mt/user-http-request :crowberto :get 200 "llm/models")))))))
+
+(deftest create-records-the-model-the-probe-verified-test
+  (testing "connecting Google against a partner model records it, so the listing that follows probes it too"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                           {:models          []
+                                                            :connection-info {:probed-model model}})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/user-http-request :crowberto :post 200 "llm/providers"
+                              {:type   "google"
+                               :config {:oauth-access-token "ya29.token" :project-id "my-project"}
+                               :model  "anthropic/claude-sonnet-4-6"})
+        (is (= {:oauth-access-token "ya29.token"
+                :project-id         "my-project"
+                :probed-model       "anthropic/claude-sonnet-4-6"}
+               (stored-config "google")))))))
 
 (deftest models-for-a-connection-that-names-its-own-model-test
   (testing "Azure serves a deployment its listing endpoint never returns, so the connection's own model is reported"
@@ -887,6 +1590,23 @@
                  (mt/user-http-request :crowberto :get 200 "llm/models")))
           (testing "and the call still happens, because it is what verifies the credentials"
             (is (= "openai/gpt-4.1-mini" (:model @listed-with)))))))))
+
+(deftest models-for-a-google-connection-that-names-an-endpoint-test
+  (testing "a Google connection with a Model Garden endpoint offers that endpoint in place of the catalog"
+    (mt/with-temporary-setting-values [llm-providers [(connection "glm" "google"
+                                                                  {:oauth-access-token "ya29.token"
+                                                                   :project-id         "my-project"
+                                                                   :endpoint-id        "1234567890123456789"})]]
+      (let [listed-with (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider opts]
+                                                               (reset! listed-with opts)
+                                                               {:models []})]
+          (is (= [{:key    "glm"
+                   :name   "glm"
+                   :type   "google"
+                   :models [{:id "endpoints/1234567890123456789" :display_name "1234567890123456789"}]}]
+                 (mt/user-http-request :crowberto :get 200 "llm/models")))
+          (is (= "endpoints/1234567890123456789" (:model @listed-with))))))))
 
 (deftest models-isolate-per-connection-failures-test
   (mt/with-temporary-setting-values [llm-providers [(connection "failing-anthropic" "anthropic" {:api-key "sk-ant-bad"})
@@ -935,3 +1655,164 @@
                    :type   "metabase"
                    :models [{:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+;;; ------------------------------------- Reading another instance's changes ----------------------------------------
+
+(deftest list-providers-sees-another-instances-connection-test
+  (testing "the list an admin is shown is not the one this instance happened to cache a minute ago"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant"})]]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant"})
+                                      (connection "openai" "openai" {:api-key "sk-openai"})]
+        (is (= ["anthropic" "openai"]
+               (map :key (mt/user-http-request :crowberto :get 200 "llm/providers"))))))))
+
+(deftest create-is-not-rejected-by-a-connection-another-instance-deleted-test
+  (testing "a create is allowed or refused on the list in the app DB, not on a stale one that still holds a
+            connection another instance has removed"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")]
+                                         llm-proxy-base-url "https://proxy.example.com"]
+        (with-another-instances-write! []
+          (is (=? {:key "metabase" :type "metabase"}
+                  (mt/user-http-request :crowberto :post 200 "llm/providers" {:type "metabase"}))
+              "the singleton check must not fire on a connection that is already gone"))))))
+
+(deftest update-is-not-rejected-by-a-connection-another-instance-added-test
+  (testing "a connection this instance has not cached yet is still editable"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                {:config {:api-key "sk-ant-rotated"}}))
+        (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))
+
+(deftest provisioning-connections-validates-changed-fields-test
+  (testing "trusted provisioning still validates changed fields after direct settings API writes are forbidden"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (let [conn #(connection "vllm" "vllm" {:base-url %})]
+          (is (=? {:status-code 400, :field :base-url}
+                  (try
+                    (setting/set! :llm-providers [(conn "http://127.0.0.1:8000/v1")])
+                    (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (= [] (vec (llm.provider/stored-connections))))
+          (testing "a base URL the policy permits still saves"
+            (setting/set! :llm-providers [(conn "https://8.8.8.8/v1")])
+            (is (= [(conn "https://8.8.8.8/v1")] (vec (llm.provider/stored-connections)))))
+          (testing "a base URL stored before the check does not make its connection unwritable"
+            (let [grandfathered (assoc-in (conn "http://127.0.0.1:8000/v1") [:config :api-key] "sk-old")]
+              (mt/with-temporary-raw-setting-values [llm-providers (json/encode [grandfathered])]
+                (testing "another connection can still be added"
+                  (setting/set! :llm-providers [grandfathered
+                                                (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})])
+                  (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))
+                (testing "and its own API key can still be rotated"
+                  (setting/set! :llm-providers [(assoc-in grandfathered [:config :api-key] "sk-new")])
+                  (is (= "sk-new" (get-in (first (llm.provider/stored-connections)) [:config :api-key]))))
+                (testing "but changing the base URL itself is still checked"
+                  (is (=? {:status-code 400, :field :base-url}
+                          (try
+                            (setting/set! :llm-providers
+                                          [(assoc-in grandfathered [:config :base-url] "http://10.0.0.1/v1")])
+                            (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))))))
+
+(deftest update-requires-fresh-secrets-to-move-ollama-to-cloud-test
+  (testing (str "Moving a self-hosted connection to Ollama Cloud is a base URL change like any other, so it must "
+                "not carry a stored key the caller never supplied to ollama.com")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (mt/with-temporary-setting-values
+        [llm-providers [(connection "ollama" "ollama"
+                                    {:base-url "http://internal.example.com:11434/v1"
+                                     :api-key  "ollama-stored"})]]
+        (let [probes (atom [])]
+          (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                      (fn [_provider {:keys [credentials]}]
+                                        (swap! probes conj credentials)
+                                        {:models []})]
+            (testing "supplying nothing but the address is refused"
+              (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                      (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
+                                            {:config {:base-url "https://ollama.com/v1"}}))))
+            (testing "and so is echoing the stored key back masked"
+              (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                      (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
+                                            {:config {:base-url "https://ollama.com/v1" :api-key "**********ed"}}))))
+            (is (empty? @probes)
+                "the stored key was rejected before credential verification could send it to ollama.com")
+            (is (= {:base-url "http://internal.example.com:11434/v1"
+                    :api-key  "ollama-stored"}
+                   (stored-config "ollama")))
+            (testing "a caller who holds a Cloud key may move it"
+              (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
+                                    {:config {:base-url "https://ollama.com/v1" :api-key "ollama-fresh"}})
+              (is (= ["ollama-fresh"] (map :api-key @probes))
+                  "and only the freshly supplied key ever reaches Cloud"))))))))
+
+(deftest ollama-base-url-setting-cannot-move-a-connection-holding-a-stored-key-test
+  (testing "the per-provider settings write one field at a time, which is the other way to move a connection to Cloud"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (mt/with-temporary-setting-values
+        [llm-providers [(connection "ollama" "ollama"
+                                    {:base-url "http://internal.example.com:11434/v1"
+                                     :api-key  "ollama-stored"})]]
+        (is (=? {:message "Use the provider connection settings to change the base URL and enter the credentials again."}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-base-url"
+                                      {:value "https://ollama.com/v1"})))
+        (is (= "http://internal.example.com:11434/v1" (:base-url (stored-config "ollama"))))))))
+
+(deftest create-judges-the-connection-the-environment-will-leave-behind-test
+  (let [probed (atom [])]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [_provider {:keys [credentials]}]
+                                  (swap! probed conj credentials)
+                                  {:models [{:id "m" :display_name "m"}]})]
+      (testing (str "A key the environment supplies goes only where the environment points. Ollama has no default "
+                    "address, so a create naming its own is refused before anything is probed.")
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-operator"]
+            (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                                   "has to as well. Set MB_LLM_OLLAMA_API_BASE_URL.")}
+                    (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                          {:type   "ollama"
+                                           :config {:base-url "http://ollama.internal:11434/v1"}})))
+            (is (empty? @probed))
+            (is (empty? (llm.provider/stored-connections))))))
+      (testing (str "A base-URL variable brings the `ollama` connection into existence itself, so a create beside it "
+                    "takes a key of its own, which no variable names, and is judged on its own config")
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+            (let [created (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                                {:type   "ollama"
+                                                 :config {:base-url "http://second.internal:11434/v1"
+                                                          :api-key  "sk-own-proxy"}})]
+              (is (=? {:key "ollama-2" :env_fields []} created))
+              (is (=? {:base-url "http://second.internal:11434/v1" :api-key "sk-own-proxy"} (last @probed))))))))))
+
+(deftest create-does-not-send-an-environment-key-to-an-address-the-admin-typed-test
+  (testing "a key the environment supplies goes only where the environment points, so a create naming its own address is refused before anything is probed"
+    (let [probed (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (swap! probed conj credentials)
+                                                             {:models [{:id "m" :display_name "m"}]})]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "sk-operator"]
+            (is (=? {:message (str "This connection's credentials come from environment variables, so its base URL "
+                                   "has to as well. Set MB_LLM_VLLM_API_BASE_URL.")}
+                    (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                          {:type "vllm" :config {:base-url "https://elsewhere.example.com/v1"}}))
+                "naming the variable the operator has to set, since a create has no base URL of its own to change")
+            (is (not (str/includes? (pr-str @probed) "sk-operator")))
+            (is (empty? (llm.provider/stored-connections)))))))))
+
+(deftest create-selects-the-model-the-environment-leaves-test
+  (testing "Metabot is pointed at the deployment the connection runs on, not the one the form named"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+          (mt/with-temp-env-var-value! [mb-llm-azure-deployment-name "prod"]
+            (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                  {:type   "azure"
+                                   :config {:api-key         "azure-key"
+                                            :base-url        "https://r.services.ai.azure.com/openai"
+                                            :deployment-name "dev"}})
+            (is (= "azure/openai/prod" (metabot.settings/llm-metabot-provider)))))))))

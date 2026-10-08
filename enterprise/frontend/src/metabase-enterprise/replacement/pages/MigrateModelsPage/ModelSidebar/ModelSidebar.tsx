@@ -53,7 +53,7 @@ export const ModelSidebar = memo(function ModelSidebar({
     >
       <Box
         className={S.sidebar}
-        p="lg"
+        p="xl"
         bg="background_page-primary"
         data-testid="model-sidebar"
       >
@@ -62,8 +62,8 @@ export const ModelSidebar = memo(function ModelSidebar({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack gap="xl">
-            <Stack gap="lg">
+          <Stack gap="xxl">
+            <Stack gap="xl">
               <SidebarHeader card={card} onClose={onClose} />
               <LocationSection card={card} />
               <ActionSection card={card} database={database} />

@@ -18,6 +18,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
@@ -30,7 +31,6 @@ import type { NotificationId, UserId } from "metabase-types/api";
 
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
-import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
 import { NotificationsFilters } from "../NotificationsFilters";
 import { NotificationsTable } from "../NotificationsTable";
 import { NotificationsTabs } from "../NotificationsTabs";
@@ -219,7 +219,7 @@ export const NotificationsAdminPage = () => {
       title: count === 1 ? t`Delete 1 alert?` : t`Delete ${count} alerts?`,
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Delete`,
-      confirmButtonProps: { color: "feedback-negative" },
+      confirmButtonProps: { color: "negative" },
       size: "md",
       onConfirm: () =>
         deleteNotifications(
@@ -235,7 +235,7 @@ export const NotificationsAdminPage = () => {
         title: t`Delete this alert?`,
         message: t`Recipients will stop receiving this alert.`,
         confirmButtonText: t`Delete`,
-        confirmButtonProps: { color: "feedback-negative" },
+        confirmButtonProps: { color: "negative" },
         onConfirm: () => deleteNotifications([id], "detail_sidebar"),
       });
     },
@@ -334,7 +334,7 @@ export const NotificationsAdminPage = () => {
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
-          <Flex gap="md" align="center">
+          <Flex gap="lg" align="center">
             <DebouncedSearchInput
               value={urlState.query}
               placeholder={t`Search by question or owner…`}

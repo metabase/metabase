@@ -38,7 +38,7 @@ export function Reaction({ reaction, onReaction, onReactionRemove }: Props) {
     <Tooltip label={reactionLabel}>
       <Flex
         align="center"
-        gap="xs"
+        gap="xxs"
         fz="sm"
         fw={700}
         className={cx(S.reaction, {

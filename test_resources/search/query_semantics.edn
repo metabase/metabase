@@ -1,0 +1,644 @@
+;; Isolated search scenarios shared by the in-place, app-db, and semantic tests.
+;; Hits are compared as sets, not ranks.
+;; A comparison inherits the scenario query and hits unless an engine gives an alternative {:query, :hits}.
+;; Comparisons belong here only when at least one engine uses a different query.
+;; `:correct` declares the intended results, which no engine need achieve.
+;; Semantic search returns the union of a keyword arm and a vector arm.
+;; The keyword arm gives the appdb/PostgreSQL results for every scenario here, but not for every query.
+;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
+;; does not, so a half-typed word such as "runni" finds "running" on appdb but not in the keyword arm.
+;; Both arms are recorded, but comparisons and statistics count only the vector arm.
+[{:id     "multiword-defaults"
+  :focus  "default multiword Boolean and cross-field matches"
+  :config "simple"
+  :query  "amber cobalt"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}
+           :C {:name "amber cobalt"}
+           :D {:name "amber", :description "cobalt"}
+           :E {:name "indigo"}}
+  ;; In-place's OR favors recall; app-db's AND favors precision.
+  ;; Neither default is universally better without knowing the user's intent.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:C :D]
+           :appdb-postgres [:C :D]
+           :semantic       {:keyword [:C :D], :vector [:A :B :C :D]}}
+  :comparisons
+  [{:focus   "OR across ordinary tokens"
+    :correct [:A :B :C :D]
+    :alternatives
+    {:appdb-h2       {:query "amber", :hits [:A :C :D]}
+     :appdb-postgres {:query "amber or cobalt", :hits [:A :B :C :D]}}}
+   {:focus   "conjunction of substrings"
+    :correct [:C :D]
+    :alternatives
+    {:in-place {:query "amber", :hits [:A :C :D]}}}]}
+ {:id     "infix-substring"
+  :focus  "infix substring versus lexeme-start completion"
+  :config "simple"
+  :query  "hat"
+  :docs   {:A {:name "chatty"}
+           :B {:name "hatter"}
+           :C {:name "top hat"}
+           :D {:name "coat"}}
+  ;; Infix matching finds "hat" in "chatty"; lexeme-prefix matching avoids that likely false positive, but
+  ;; cannot serve arbitrary substring lookup.
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:A :B :C]
+           :appdb-postgres [:B :C]
+           :semantic       {:keyword [:B :C], :vector [:C]}}}
+ {:id     "two-substrings-one-word"
+  :focus  "H2 satisfies two required substrings inside one word"
+  :config "simple"
+  :query  "hat cher"
+  :docs   {:A {:name "hatchery"}
+           :B {:name "hatter"}
+           :C {:name "cherub"}
+           :D {:name "hat cher"}}
+  ;; H2 requires both substrings, not two separate words.
+  ;; In-place needs only one substring; PostgreSQL's lexemes match only the separate-word card.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:A :D]
+           :appdb-postgres [:D]
+           :semantic       {:keyword [:D], :vector [:D]}}}
+ {:id     "last-word-prefix"
+  :focus  "last-word prefix versus arbitrary substring"
+  :config "simple"
+  :query  "amber co"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber corgi"}
+           :C {:name "amber taco"}
+           :D {:name "amber"}
+           :E {:name "co amber"}}
+  :expect {:in-place       [:A :B :C :D :E]
+           :appdb-h2       [:A :B :C :E]
+           :appdb-postgres [:A :B :E]
+           :semantic       {:keyword [:A :B :E], :vector [:A :B :C :D :E]}}}
+ {:id     "nonfinal-prefix"
+  :focus  "only the final PostgreSQL word is prefix-completed"
+  :config "simple"
+  :query  "amb cobalt"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amb cobalt"}
+           :C {:name "amber macobalt"}
+           :D {:name "cobalt"}}
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:A :B :C]
+           :appdb-postgres [:B]
+           :semantic       {:keyword [:B], :vector [:A :B :C :D]}}}
+ {:id     "or-operator"
+  :focus  "unquoted or operator versus literal substring"
+  :config "simple"
+  :query  "amber or cobalt"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}
+           :C {:name "amber cobalt"}
+           :D {:name "amber or cobalt"}
+           :E {:name "orbit"}}
+  ;; PostgreSQL parses `or` as an operator; H2 searches for the literal substring, and in-place matches any
+  ;; word, including "or" in "orbit".
+  :expect {:in-place       [:A :B :C :D :E]
+           :appdb-h2       [:D]
+           :appdb-postgres [:A :B :C :D]
+           :semantic       {:keyword [:A :B :C :D], :vector [:A :B :C :D]}}
+  :comparisons
+  [{:focus   "`or` must literally occur"
+    :correct [:D]
+    :alternatives
+    {:in-place       {:query "or", :hits [:D :E]}
+     :appdb-postgres {:query "amber \"or\" cobalt", :hits [:D]}}}
+   {:focus   "explicit alternation"
+    :correct [:A :B :C :D]
+    :alternatives
+    {:in-place {:query "amber cobalt", :hits [:A :B :C :D]}
+     :appdb-h2 {:query "amber", :hits [:A :C :D]}}}]}
+ {:id     "negation"
+  :focus  "leading hyphen negation"
+  :config "simple"
+  :query  "amber -cobalt"
+  :docs   {:A {:name "amber"}
+           :B {:name "amber cobalt"}
+           :C {:name "cobalt"}
+           :D {:name "amber -cobalt"}}
+  ;; Keyword negation excludes B, but it cannot veto the vector arm, which still retrieves it.
+  ;; This is a current-behavior contract, not approval.
+  :expect {:in-place       [:A :B :D]
+           :appdb-h2       [:D]
+           :appdb-postgres [:A]
+           :semantic       {:keyword [:A], :vector [:A :B :D]}}
+  :comparisons
+  [{:focus   "exclusion"
+    :correct [:A]
+    :alternatives
+    {:in-place {:query "amber", :hits [:A :B :D]}
+     :appdb-h2 {:query "amber", :hits [:A :B :D]}}}]}
+ {:id     "phrase-boundary"
+  :focus  "ordered phrase, including the name/searchable-text boundary"
+  :config "simple"
+  :query  "\"amber cobalt\""
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber bright cobalt"}
+           :C {:name "cobalt amber"}
+           :D {:name "\"amber cobalt\""}}
+  :expect {:in-place       [:D]
+           :appdb-h2       [:D]
+           :appdb-postgres [:A :C :D]
+           :semantic       {:keyword [:A :C :D], :vector [:A :B :C :D]}}
+  :comparisons
+  [{:focus   "ordered phrase"
+    :correct [:A :D]
+    :alternatives
+    {:in-place {:query "amber cobalt", :hits [:A :B :C :D]}
+     :appdb-h2 {:query "amber cobalt", :hits [:A :B :C :D]}}}]}
+ {:id     "and-literal"
+  :focus  "unquoted and is discarded only by the tsquery parser"
+  :config "simple"
+  :query  "amber and cobalt"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber and cobalt"}
+           :C {:name "amber and"}
+           :D {:name "cobalt"}
+           :E {:name "and"}
+           :F {:name "cobalt and amber"}}
+  :expect {:in-place       [:A :B :C :D :E :F]
+           :appdb-h2       [:B :F]
+           :appdb-postgres [:A :B :F]
+           :semantic       {:keyword [:A :B :F], :vector [:A :B :C :D :F]}}
+  :comparisons
+  ;; F defeats the phrase "amber and cobalt", which would otherwise conform only because no document orders
+  ;; the three words differently.
+  [{:focus   "`and` is a required word"
+    :correct [:B :F]
+    :alternatives
+    {:appdb-postgres {:query "amber \"and\" cobalt", :hits [:B :F]}}}]}
+ {:id     "english-stopword"
+  :focus  "English stopword removal"
+  :config "english"
+  :query  "the widget"
+  :docs   {:A {:name "the widget"}
+           :B {:name "widget"}
+           :C {:name "the gadget"}}
+  ;; PostgreSQL's English dictionary drops "the".
+  ;; That generally helps a natural-language query, but not a search intended to find literal text.
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:A]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A :B :C]}}
+  :comparisons
+  ;; A stopword the user typed is probably intentional, e.g. a band name.
+  ;; The English dictionary strips "the" from indexed documents too, so no PostgreSQL query, quoted or not,
+  ;; can require it.
+  [{:focus   "`the` is part of the intended match"
+    :correct [:A]
+    :alternatives
+    {:appdb-postgres {:query "\"the widget\"", :hits [:A :B]}}}]}
+ {:id     "simple-stopword"
+  :focus  "same documents/query without English stopword removal"
+  :config "simple"
+  :query  "the widget"
+  :docs   {:A {:name "the widget"}
+           :B {:name "widget"}
+           :C {:name "the gadget"}}
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:A]
+           :appdb-postgres [:A]
+           :semantic       {:keyword [:A], :vector [:A :B :C]}}}
+ {:id     "english-stemming"
+  :focus  "English stemming of a non-final word"
+  :config "english"
+  :query  "running gate"
+  :docs   {:A {:name "running gate"}
+           :B {:name "run gate"}
+           :C {:name "runner gate"}
+           :D {:name "running garden"}
+           :E {:name "run meadow"}}
+  ;; English stemming includes "run gate" for "running gate".
+  ;; This improves recall for inflections while broadening beyond exact-word matching.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:A]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A :B :C :D]}}
+  :comparisons
+  [{:focus   "English stemming"
+    :correct [:A :B]
+    :alternatives
+    {:in-place {:query "run gate", :hits [:A :B :C :D :E]}
+     :appdb-h2 {:query "run gate", :hits [:A :B :C]}}}]}
+ {:id     "simple-no-stemming"
+  :focus  "same documents/query with simple rather than English stemming"
+  :config "simple"
+  :query  "running gate"
+  :docs   {:A {:name "running gate"}
+           :B {:name "run gate"}
+           :C {:name "runner gate"}
+           :D {:name "running garden"}
+           :E {:name "run meadow"}}
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:A]
+           :appdb-postgres [:A]
+           :semantic       {:keyword [:A], :vector [:A :B :C :D]}}}
+ {:id     "not-literal"
+  :focus  "not is an ordinary word, not a negation operator"
+  :config "simple"
+  :query  "amber not cobalt"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber not cobalt"}
+           :C {:name "amber"}
+           :D {:name "not cobalt"}}
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:B]
+           :appdb-postgres [:B]
+           :semantic       {:keyword [:B], :vector [:A :B :C :D]}}}
+ {:id     "english-not-stopword"
+  :focus  "same documents/query with English dropping not as a stopword"
+  :config "english"
+  :query  "amber not cobalt"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber not cobalt"}
+           :C {:name "amber"}
+           :D {:name "not cobalt"}}
+  ;; With "not" dropped, PostgreSQL asks only for "amber" and "cobalt", so A matches too.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A :B :C :D]}}}
+ {:id     "vector-only-match"
+  :focus  "vector-only match enters semantic union without lexical overlap"
+  :config "simple"
+  :query  "customers"
+  :docs   {:A {:name "customers"}
+           :B {:name "clients"}
+           :C {:name "accounts"}
+           :D {:name "amber"}}
+  ;; B shares no word with the query but falls within the vector distance cutoff.
+  ;; C is related too, but the model places it outside the cutoff.
+  :expect {:in-place       [:A]
+           :appdb-h2       [:A]
+           :appdb-postgres [:A]
+           :semantic       {:keyword [:A], :vector [:A :B]}}}
+ {:id     "english-stopword-only"
+  :focus  "a query consisting only of an English stopword"
+  :config "english"
+  :query  "the"
+  :docs   {:A {:name "the"}
+           :B {:name "theater"}
+           :C {:name "other"}
+           :D {:name "widget"}}
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:A :B :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A]}}}
+ {:id     "simple-stopword-only"
+  :focus  "same stopword-only query with simple configuration"
+  :config "simple"
+  :query  "the"
+  :docs   {:A {:name "the"}
+           :B {:name "theater"}
+           :C {:name "other"}
+           :D {:name "widget"}}
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:A :B :C]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A]}}}
+ {:id     "percent-punctuation"
+  :focus  "percent is literal in substring search but token punctuation in PostgreSQL"
+  :config "simple"
+  :query  "foo%bar"
+  :docs   {:A {:name "fooxbar"}
+           :B {:name "foobar"}
+           :C {:name "foo%bar"}
+           :D {:name "foo bar"}
+           :E {:name "barfoo"}
+           :F {:name "foo-bar"}
+           :G {:name "foopizza"}}
+  ;; PostgreSQL treats % as token punctuation; H2 and in-place require the literal character.
+  ;; Tokenization suits prose, literal matching code-like text.
+  :expect {:in-place       [:C]
+           :appdb-h2       [:C]
+           :appdb-postgres [:C :D :F]
+           :semantic       {:keyword [:C :D :F], :vector [:A :B :C :D :F :G]}}}
+ {:id     "underscore-punctuation"
+  :focus  "underscore is literal in substring search but token punctuation in PostgreSQL"
+  :config "simple"
+  :query  "a_b"
+  :docs   {:A {:name "acb"}
+           :B {:name "a_b"}
+           :C {:name "ab"}
+           :D {:name "a b"}
+           :E {:name "a-b"}
+           :F {:name "xacb"}}
+  :expect {:in-place       [:B]
+           :appdb-h2       [:B]
+           :appdb-postgres [:B :D :E]
+           :semantic       {:keyword [:B :D :E], :vector [:B :C :D :E]}}}
+ {:id     "percent-only"
+  :focus  "percent alone matches only literal percent text in substring search"
+  :config "simple"
+  :query  "%"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}
+           :C {:name "indigo"}
+           :D {:name "100% complete"}}
+  :expect {:in-place       [:D]
+           :appdb-h2       [:D]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}}
+ {:id     "english-phrase-stopword"
+  :focus  "English stopword inside a positional phrase"
+  :config "english"
+  :query  "\"amber and cobalt\""
+  :docs   {:A {:name "amber and cobalt"}
+           :B {:name "amber cobalt"}
+           :C {:name "amber bright cobalt"}
+           :D {:name "amber and bright cobalt"}
+           :E {:name "\"amber and cobalt\""}}
+  :expect {:in-place       [:A :D :E]
+           :appdb-h2       [:E]
+           :appdb-postgres [:A :C :E]
+           :semantic       {:keyword [:A :C :E], :vector [:A :B :C :D :E]}}
+  :comparisons
+  ;; PostgreSQL keeps the stopword's position, so any word can fill it and C matches.
+  ;; Without phrase support, H2 cannot exclude D.
+  [{:focus   "English stopword inside a phrase"
+    :correct [:A :E]
+    :alternatives
+    {:appdb-h2 {:query "amber and cobalt", :hits [:A :D :E]}}}]}
+ {:id     "simple-phrase-and"
+  :focus  "same phrase with simple configuration retaining and"
+  :config "simple"
+  :query  "\"amber and cobalt\""
+  :docs   {:A {:name "amber and cobalt"}
+           :B {:name "amber cobalt"}
+           :C {:name "amber bright cobalt"}
+           :D {:name "amber and bright cobalt"}
+           :E {:name "\"amber and cobalt\""}}
+  :expect {:in-place       [:A :D :E]
+           :appdb-h2       [:E]
+           :appdb-postgres [:A :E]
+           :semantic       {:keyword [:A :E], :vector [:A :B :C :D :E]}}}
+ {:id     "unfinished-quote"
+  :focus  "unfinished opening quote keeps phrase but completes final word"
+  :config "simple"
+  :query  "\"amber co"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber corgi"}
+           :C {:name "amber bright cobalt"}
+           :D {:name "\"amber co"}
+           :E {:name "amber co"}
+           :F {:name "\"amber co\""}}
+  :expect {:in-place       [:A :B :C :D :E :F]
+           :appdb-h2       [:D :F]
+           :appdb-postgres [:A :B :D :E :F]
+           :semantic       {:keyword [:A :B :D :E :F], :vector [:A :B :C :D :E :F]}}
+  :comparisons
+  [{:focus   "unfinished quote with final-word completion"
+    :correct [:A :B :D :E :F]
+    :alternatives
+    {:in-place {:query "amber co", :hits [:A :B :C :D :E :F]}
+     :appdb-h2 {:query "amber co", :hits [:A :B :C :D :E :F]}}}]}
+ {:id     "closed-quote"
+  :focus  "closing quote disables final-word completion"
+  :config "simple"
+  :query  "\"amber co\""
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber corgi"}
+           :C {:name "amber bright cobalt"}
+           :D {:name "\"amber co"}
+           :E {:name "amber co"}
+           :F {:name "\"amber co\""}}
+  :expect {:in-place       [:D :F]
+           :appdb-h2       [:F]
+           :appdb-postgres [:D :E :F]
+           :semantic       {:keyword [:D :E :F], :vector [:A :B :C :D :E :F]}}}
+ {:id     "or-branch-prefix"
+  :focus  "only final OR-branch term receives prefix completion"
+  :config "simple"
+  :query  "amb or co"
+  :docs   {:A {:name "amber"}
+           :B {:name "amb"}
+           :C {:name "cobalt"}
+           :D {:name "corgi"}
+           :E {:name "taco"}
+           :F {:name "amber cobalt"}
+           :G {:name "amb or cobalt"}
+           :H {:name "orbit"}}
+  :expect {:in-place       [:A :B :C :D :E :F :G :H]
+           :appdb-h2       [:G]
+           :appdb-postgres [:B :C :D :F :G]
+           :semantic       {:keyword [:B :C :D :F :G], :vector [:B :G]}}
+  :comparisons
+  ;; Both typed terms are word prefixes; PostgreSQL completes only the last.
+  [{:focus   "prefix completion on every OR branch"
+    :correct [:A :B :C :D :F :G]
+    :alternatives
+    {:in-place {:query "amb co", :hits [:A :B :C :D :E :F :G]}
+     :appdb-h2 {:query "co", :hits [:C :D :E :F :G]}}}]}
+ {:id     "negated-prefix"
+  :focus  "final negated term is also prefix-completed"
+  :config "simple"
+  :query  "amber -co"
+  :docs   {:A {:name "amber"}
+           :B {:name "amber cobalt"}
+           :C {:name "amber corgi"}
+           :D {:name "amber taco"}
+           :E {:name "amber -co"}
+           :F {:name "cobalt"}}
+  :expect {:in-place       [:A :B :C :D :E]
+           :appdb-h2       [:E]
+           :appdb-postgres [:A :D]
+           :semantic       {:keyword [:A :D], :vector [:A :B :C :D :E]}}
+  :comparisons
+  [{:focus   "negation of a prefix"
+    :correct [:A :D]
+    :alternatives
+    {:in-place {:query "amber", :hits [:A :B :C :D :E]}
+     :appdb-h2 {:query "amber", :hits [:A :B :C :D :E]}}}]}
+ {:id     "negation-only"
+  :focus  "negation-only query is a broad PostgreSQL complement"
+  :config "simple"
+  :query  "-cobalt"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}
+           :C {:name "amber cobalt"}
+           :D {:name "-cobalt"}
+           :E {:name "indigo"}}
+  ;; PostgreSQL treats this as the complement of "cobalt", returning otherwise unrelated rows.
+  ;; That broad result is likely poor search UX, but is current.
+  :expect {:in-place       [:D]
+           :appdb-h2       [:D]
+           :appdb-postgres [:A :E]
+           :semantic       {:keyword [:A :E], :vector [:D]}}}
+ {:id     "like-escape-percent"
+  :focus  "LIKE escape character and percent are both literal query text"
+  :config "simple"
+  :query  "!%"
+  :docs   {:A {:name "literal !% marker"}
+           :B {:name "literal % marker"}
+           :C {:name "literal ! marker"}
+           :D {:name "literal marker"}}
+  :expect {:in-place       [:A]
+           :appdb-h2       [:A]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A :C]}}}
+ {:id     "or-only-operator"
+  :focus  "operator-only or is literal for substring engines but empty for tsquery"
+  :config "simple"
+  :query  "or"
+  :docs   {:A {:name "or"}
+           :B {:name "orbit"}
+           :C {:name "north"}
+           :D {:name "amber"}}
+  ;; PostgreSQL sees only an operator, so it has no searchable lexeme.
+  ;; Literal substring engines still find "or", including its occurrences inside words.
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:A :B :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A]}}
+  :comparisons
+  ;; The intended match is the word or a word starting with it; "north" only contains it.
+  [{:focus   "quoting or recovers the word but not prefix matches"
+    :correct [:A :B]
+    :alternatives
+    {:appdb-postgres {:query "\"or\"", :hits [:A]}}}]}
+ ;; Controls: with the simple configuration, every lexical engine can express these intents, some only by
+ ;; adapting the query.
+ ;; No document contains the word inside a longer word; see or-only-operator for that trap.
+ {:id     "or-word-control"
+  :focus  "control: or as a literal word"
+  :config "simple"
+  :query  "or"
+  :docs   {:A {:name "or"}
+           :B {:name "amber"}
+           :C {:name "this or that"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A :C]}}
+  :comparisons
+  [{:focus   "quoting or makes it a searchable word"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"or\"", :hits [:A :C]}}}]}
+ {:id     "and-word-control"
+  :focus  "control: and as a literal word"
+  :config "simple"
+  :query  "and"
+  :docs   {:A {:name "and"}
+           :B {:name "amber"}
+           :C {:name "salt and pepper"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A]}}
+  :comparisons
+  [{:focus   "quoting and makes it a searchable word"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"and\"", :hits [:A :C]}}}]}
+ ;; The same controls with English, the default on an English-locale instance with a PostgreSQL app db.
+ ;; Both words are English stopwords, so PostgreSQL cannot require them even when quoted.
+ {:id     "english-or-word"
+  :focus  "same or control with English dropping or as a stopword"
+  :config "english"
+  :query  "or"
+  :docs   {:A {:name "or"}
+           :B {:name "amber"}
+           :C {:name "this or that"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A :C]}}
+  :comparisons
+  [{:focus   "quoting or cannot recover an English stopword"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"or\"", :hits []}}}]}
+ {:id     "english-and-word"
+  :focus  "same and control with English dropping and as a stopword"
+  :config "english"
+  :query  "and"
+  :docs   {:A {:name "and"}
+           :B {:name "amber"}
+           :C {:name "salt and pepper"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A]}}
+  :comparisons
+  [{:focus   "quoting and cannot recover an English stopword"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"and\"", :hits []}}}]}
+ {:id     "field-term-agreement"
+  :focus  "ordinary term matches either indexed text field"
+  :config "simple"
+  :query  "amber"
+  :docs   {:A {:name "amber"}
+           :B {:name "indigo", :description "amber"}
+           :C {:name "cobalt"}}
+  ;; All four engines agree on an exact ordinary term in either field.
+  :expect {:in-place       [:A :B]
+           :appdb-h2       [:A :B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A :B]}}}
+ {:id     "multiword-agreement"
+  :focus  "multiword terms present together, including across fields"
+  :config "simple"
+  :query  "amber cobalt"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber", :description "cobalt"}
+           :C {:name "indigo"}}
+  ;; With no one-term-only document, OR and AND produce the same result.
+  :expect {:in-place       [:A :B]
+           :appdb-h2       [:A :B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A :B]}}}
+ {:id     "prefix-agreement"
+  :focus  "final-word prefix without partial or infix distractors"
+  :config "simple"
+  :query  "amber co"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber corgi"}
+           :C {:name "indigo"}}
+  ;; Last-word completion and substring matching coincide on these documents.
+  :expect {:in-place       [:A :B]
+           :appdb-h2       [:A :B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector [:A :B]}}}
+ {:id     "operator-empty-agreement"
+  :focus  "operator-only query without a literal occurrence"
+  :config "simple"
+  :query  "or"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}
+           :C {:name "indigo"}}
+  ;; PostgreSQL discards the operator; the substring engines find no literal.
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}}
+ {:id     "unmatched-term"
+  :focus  "ordinary term absent from every document"
+  :config "simple"
+  :query  "zircon"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}}
+  ;; Unlike operator-empty-agreement, every engine searches for a term but finds no match.
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}}
+ {:id     "lexical-and-vector-union"
+  :focus  "lexical conjunction versus semantic vector union"
+  :config "simple"
+  :query  "cats dogs"
+  :docs   {:A {:name "cats"}
+           :B {:name "dogs"}
+           :C {:name "cats dogs"}
+           :D {:name "quarterly revenue"}}
+  ;; App-db needs both words in one row.
+  ;; The vector arm also retrieves each one-word row.
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:C]
+           :appdb-postgres [:C]
+           :semantic       {:keyword [:C], :vector [:A :B :C]}}}]

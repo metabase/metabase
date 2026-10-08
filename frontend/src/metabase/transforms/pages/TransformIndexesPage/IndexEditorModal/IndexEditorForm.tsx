@@ -44,7 +44,7 @@ export function IndexEditorForm({
 
   return (
     <Form>
-      <Stack gap="lg" mt="sm">
+      <Stack gap="xl" mt="sm">
         {firstField && (
           <IndexFieldInput
             key={firstField.name}
@@ -88,7 +88,11 @@ export function IndexEditorForm({
         ))}
 
         <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            variant="subtle"
+            color="neutral"
+            onClick={onClose}
+          >{t`Cancel`}</Button>
           <FormSubmitButton label={submitLabel} variant="filled" />
         </Group>
       </Stack>

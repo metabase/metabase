@@ -1,13 +1,12 @@
-/* eslint-disable react/display-name */
 import { Component, type ComponentType } from "react";
 import _ from "underscore";
 
-import { updateSettings } from "metabase/visualizations/lib/settings";
-import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  type VisualizationSettingsDefinitions,
+  getSettingsWidgets,
+  updateSettings,
+} from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";

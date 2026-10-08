@@ -7,7 +7,7 @@
 (def ^:private chunks
   "A representative chunk for each uiMessageChunkSchema union member."
   [{:type "text-start" :id "t1"}
-   {:type "text-delta" :id "t1" :delta "Hi" :providerMetadata {:openai {:x 1}}}
+   {:type "text-delta" :id "t1" :delta "Hi" :providerMetadata {:openai {:itemId "rs_1"}}}
    {:type "text-end" :id "t1"}
    {:type "error" :errorText "boom"}
    {:type "tool-input-start" :toolCallId "tc1" :toolName "search" :dynamic false}
@@ -47,7 +47,7 @@
    {:type "tool-search" :toolCallId "tc1" :state "approval-responded" :input {:q "x"}
     :approval {:id "ap1" :approved true :reason "ok"}}
    {:type "tool-search" :toolCallId "tc1" :state "output-available" :input {:q "x"}
-    :output {:rows []} :preliminary false}
+    :output {:output "No rows."} :preliminary false}
    {:type "tool-search" :toolCallId "tc1" :state "output-error" :input {:q "x"}
     :rawInput "{\"q\"" :errorText "failed"}
    {:type "tool-search" :toolCallId "tc1" :state "output-denied" :input {:q "x"}
@@ -67,9 +67,9 @@
   (is (nil? (mr/explain [:sequential ::schema.v2/ui-message-part] ui-message-parts))))
 
 (deftest ^:parallel aisdk-runtime-validator-equivalence-test
-  (testing "at-rest parts are open maps: the upstream validator strips undeclared keys rather than rejecting"
-    (is (mr/validate ::schema.v2/ui-message-part
-                     {:type "text" :text "hi" :somethingExtra 1})))
+  (testing "at-rest parts are closed maps: only the keys persistence writes are accepted"
+    (is (not (mr/validate ::schema.v2/ui-message-part
+                          {:type "text" :text "hi" :somethingExtra 1}))))
   (testing "wire chunks are closed maps: the upstream validator rejects undeclared keys"
     (is (not (mr/validate ::schema.v2/ui-message-chunk
                           {:type "text-start" :id "t1" :somethingExtra 1}))))
@@ -97,7 +97,7 @@
       (is (not (mr/validate ::schema.v2/ui-message-part (update part :approval dissoc :approved))))))
   (testing "output-available approvals must be approved"
     (let [part {:type "tool-search" :toolCallId "tc1" :state "output-available"
-                :input {:q "x"} :output {:rows []} :approval {:id "ap1" :approved true}}]
+                :input {:q "x"} :output {:output "No rows."} :approval {:id "ap1" :approved true}}]
       (is (mr/validate ::schema.v2/ui-message-part part))
       (is (not (mr/validate ::schema.v2/ui-message-part (assoc-in part [:approval :approved] false))))))
   (testing "output-denied approvals must be denied"
@@ -112,4 +112,4 @@
                          :role  "assistant"
                          :parts [{:type "text" :text "Hello"}
                                  {:type "tool-search" :toolCallId "tc1" :state "output-available"
-                                  :input {:q "x"} :output {:rows []}}]}))))
+                                  :input {:q "x"} :output {:output "No rows."}}]}))))

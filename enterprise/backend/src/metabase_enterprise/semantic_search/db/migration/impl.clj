@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.util :as semantic.util]
@@ -11,8 +12,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (def schema-version
   "Version to compare the [[metabase-enterprise.semantic-search.db.migration/db-version]] with. If this is higher,
@@ -211,11 +211,8 @@
   ;; Catch covers test setups that exercise pgvector before the appdb schema is up;
   ;; production semantic-search init always runs after appdb migration.
   (try
-    (u/for-map [{root-id :id root-type :type} (t2/select [:model/Collection :id :type]
-                                                         :type [:in library-types]
-                                                         :location "/")
-                coll-id (cons root-id (t2/select-pks-set :model/Collection
-                                                         :location [:like (str "/" root-id "/%")]))]
+    (u/for-map [{root-id :id root-type :type} (semantic-search.db/library-root-collections library-types)
+                coll-id (cons root-id (semantic-search.db/descendant-collection-ids root-id))]
       [coll-id root-type])
     (catch Exception e
       (log/warnf "Skipping Library forest backfill — appdb lookup failed: %s" (ex-message e))
@@ -276,11 +273,7 @@
            (= :authoritative data_authority)        (update :authoritative conj id)
            (and is_published (= :final data_layer)) (update :published conj id))))
      {:authoritative [] :published []}
-     (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                          {:where [:and
-                                   [:= :active true]
-                                   [:or [:= :is_published true]
-                                    [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
+     (semantic-search.db/curated-tables-reducible))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
@@ -294,13 +287,11 @@
   Throws outside tests if the appdb lookup fails."
   []
   (try
-    (let [official-coll-ids (t2/select-pks-set :model/Collection :authority_level :official)]
+    (let [official-coll-ids (semantic-search.db/official-collection-ids)]
       (if (empty? official-coll-ids)
         []
         (into [] (map (comp str :id))
-              (t2/reducible-select [:model/Dashboard :id]
-                                   {:where [:and [:= :archived false]
-                                            [:in :collection_id (vec official-coll-ids)]]}))))
+              (semantic-search.db/unarchived-dashboard-ids-in-collections-reducible (vec official-coll-ids)))))
     (catch Exception e
       (when-not config/is-test?
         (throw e))

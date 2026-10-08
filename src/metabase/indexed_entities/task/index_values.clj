@@ -5,18 +5,19 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
+   [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.core :as task]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.util TimeZone)
    (org.quartz ObjectAlreadyExistsException)))
 
 (set! *warn-on-reflection* true)
 
+;; reference list of possible model-index :state values; not consulted by code
 #_{:clj-kondo/ignore [:unused-private-var]}
 ;; Possible values for the :state field on model index records.
 ;; Unused, but kept here for reference.
@@ -31,23 +32,18 @@
       (not= (:type model) :model)
       (:archived model)))
 
-(defn- model-index-trigger-key
-  [model-index-id]
-  (triggers/key
-   (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
-
 (defn- refresh-index!
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
   etc, (see [[should-deindex?]])) will delete the indexing job."
   [model-index-id]
-  (let [model-index (t2/select-one :model/ModelIndex :id model-index-id)
+  (let [model-index (indexed-entities.db/model-index model-index-id)
         model       (when model-index
-                      (t2/select-one :model/Card :id (:model_id model-index)))]
+                      (indexed-entities.db/card (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
-        (let [trigger-key (model-index-trigger-key model-index-id)]
+        (let [trigger-key (model-index/trigger-key model-index-id)]
           (task/delete-trigger! trigger-key)
-          (t2/delete! :model/ModelIndex model-index-id)))
+          (indexed-entities.db/delete-model-index! model-index-id)))
       (model-index/add-values! model-index))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
@@ -71,7 +67,7 @@
 (defn- refresh-trigger ^org.quartz.CronTrigger [model-index]
   (triggers/build
    (triggers/with-description (format "Refresh index on model %d" (:model_id model-index)))
-   (triggers/with-identity (model-index-trigger-key (:id model-index)))
+   (triggers/with-identity (model-index/trigger-key (:id model-index)))
    (triggers/using-job-data {"model-index-id" (u/the-id model-index)})
    (triggers/for-job (jobs/key refresh-model-index-key))
    (triggers/start-now)
@@ -94,12 +90,6 @@
          (catch Exception e
            (log/warnf "Error scheduling indexing for model: %s: %s" (:model_id model-index) (ex-message e))))))
 
-(defn remove-indexing-job
-  "Public API to remove an indexing job on a model."
-  [model-index]
-  (let [trigger-key (model-index-trigger-key (:id model-index))]
-    (task/delete-trigger! trigger-key)))
-
 (defn- recreate-missing-triggers!
   "Ensure all model indexes in the database have triggers in Quartz."
   []
@@ -113,8 +103,8 @@
                                                (log/warnf "Error fetching existing triggers from Quartz, will recreate all triggers: %s" (ex-message e))
                                                #{}))
           missing-trigger-model-indexes (if (seq existing-trigger-model-index-ids)
-                                          (t2/select :model/ModelIndex :id [:not-in existing-trigger-model-index-ids])
-                                          (t2/select :model/ModelIndex))]
+                                          (indexed-entities.db/model-indexes-except existing-trigger-model-index-ids)
+                                          (indexed-entities.db/all-model-indexes))]
       (when (seq missing-trigger-model-indexes)
         (log/infof "Found %d model index(es) without triggers, recreating..."
                    (count missing-trigger-model-indexes))

@@ -115,7 +115,7 @@
   (into ["docker" "run" "-d"]
         (concat
          (mapcat (fn [[host-port internal-port]]
-                   ["-p" (str host-port ":" internal-port)])
+                   ["-p" (str "127.0.0.1:" host-port ":" internal-port)])
                  port-mappings)
          (mapcat (fn [[k v]]
                    ["-e" (str k "=" v)])

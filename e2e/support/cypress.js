@@ -3,11 +3,16 @@ registerCypressGrep();
 // No-op when the bundle isn't instrumented (window.__coverage__ undefined),
 // so always-on is safe and avoids env-conditional support imports.
 import "@cypress/code-coverage/support";
-import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
+
+import {
+  assertNoDataAppScopeDenials,
+  resetDataAppScopeGuard,
+} from "e2e/support/helpers/e2e-data-app-helpers";
+
 import "./commands";
 // Must stay imported after "@cypress/code-coverage/support": its afterEach
 // zeroes the window coverage counters after collecting each test's fires,
@@ -197,3 +202,8 @@ beforeEach(function () {
     }).as("globalIntercept");
   }
 });
+
+// A data app's scope rejections are recorded by the intercept H.openDataApp installs; see
+// e2e/support/helpers/e2e-data-app-helpers.ts.
+beforeEach(resetDataAppScopeGuard);
+afterEach(assertNoDataAppScopeDenials);

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
@@ -37,6 +38,66 @@
                          :breakout    [[:field 31 {:temporal-unit :day
                                                    :base-type     :type/DateTime}]]}}
              (links/->legacy-mbql rehydrated))))))
+
+(defn- strip-lib-keys
+  "Recursively remove all namespaced `:lib/*` keys from a query, mimicking how a
+  pMBQL query that round-trips through the frontend's viewing context comes back:
+  structurally pMBQL (`:stages`, pMBQL-order field clauses, `:effective-type`s)
+  but stripped of its internal `:lib/type`, `:lib/uuid`, and `:lib/metadata`."
+  [x]
+  (cond
+    (map? x)        (into {} (keep (fn [[k v]]
+                                     (when-not (and (keyword? k) (= "lib" (namespace k)))
+                                       [k (strip-lib-keys v)])))
+                          x)
+    (sequential? x) (mapv strip-lib-keys x)
+    :else           x))
+
+(deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
+  (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
+    ;; Regression for the BOT-1604 follow-up: a query that round-trips through the
+    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as pMBQL
+    ;; without `:lib/type`. The old guard keyed only on `:lib/type`, so such a query
+    ;; fell through unchanged and the raw pMBQL (`:stages`, pMBQL-order field clauses)
+    ;; leaked into the `/question#<base64>` hash — the frontend then crashed with
+    ;; "Error calculating display info for query: Stage 0 does not exist".
+    (let [fe-query (strip-lib-keys (lib.tu/venues-query))
+          legacy   (links/->legacy-mbql fe-query)]
+      (is (not (contains? fe-query :lib/type)))
+      (is (contains? fe-query :stages))
+      (testing "is normalized + converted to legacy MBQL, not passed through as raw pMBQL"
+        (is (= :query (:type legacy)))
+        (is (not (contains? legacy :stages)))
+        (is (map? (:query legacy)))
+        (is (some? (:database legacy)))))))
+
+(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-falls-back-test
+  (testing "falls back to the raw query instead of throwing when the stripped query's positional aggregation ref can't be resolved after normalize"
+    ;; Regression: `strip-lib-keys` drops the aggregation's `:lib/uuid`, but an
+    ;; `[:aggregation {} <uuid>]` ref elsewhere in the query (e.g. an order-by on the
+    ;; query's own aggregation) still points at the old uuid. `normalize` mints a fresh
+    ;; uuid, the ref lookup misses, and conversion throws — this used to take down the
+    ;; whole agent turn instead of just producing a broken link.
+    (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
+          q2       (lib/order-by q (lib/aggregation-ref q 0) :desc)
+          stripped (strip-lib-keys q2)]
+      (is (not (contains? stripped :lib/type)))
+      (is (= stripped (links/->legacy-mbql stripped))))))
+
+(deftest ^:parallel resolve-chart-link-lib-type-less-query-test
+  (testing "chart link whose query lost :lib/type resolves to a renderable legacy /question# URL"
+    (let [chart-id     "chart-fe-1"
+          fe-query     (strip-lib-keys (lib.tu/venues-query))
+          charts-state {chart-id {:chart_id               chart-id
+                                  :queries                [fe-query]
+                                  :visualization_settings {:chart_type :bar}}}
+          result       (links/resolve-metabase-uri (str "metabase://chart/" chart-id) {} charts-state)
+          decoded      (decode-question-url result)]
+      (is (str/starts-with? result "/question#"))
+      (testing "decoded dataset_query is legacy MBQL — raw pMBQL :stages would crash the FE"
+        (is (= "query" (get-in decoded [:dataset_query :type])))
+        (is (not (contains? (:dataset_query decoded) :stages)))
+        (is (map? (get-in decoded [:dataset_query :query])))))))
 
 ;;; resolve-metabase-uri tests
 
@@ -78,12 +139,34 @@
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 
 (deftest ^:parallel resolve-metabase-uri-table-link-test
-  (testing "resolves table links to ad-hoc question URLs"
-    (let [result (links/resolve-metabase-uri (str "metabase://table/" (mt/id :venues)) {} {})]
-      (is (string? result))
-      (is (str/starts-with? result "/question#"))))
-  (testing "returns nil for non-existent table"
-    (is (nil? (links/resolve-metabase-uri "metabase://table/999999999" {} {})))))
+  (testing "resolves table links to the table page"
+    (is (= (str "/table/" (mt/id :venues))
+           (links/resolve-metabase-uri (str "metabase://table/" (mt/id :venues)) {} {})))))
+
+(deftest resolve-metabase-uri-measure-link-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue Count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                    (lib/aggregate (lib/count)))}]
+      (testing "resolves measure links to the measure's Data Studio page"
+        (is (= (str "/data-studio/library/tables/" (mt/id :venues) "/measures/" measure-id)
+               (links/resolve-metabase-uri (str "metabase://measure/" measure-id) {} {}))))))
+  (testing "returns nil for non-existent or malformed measure ids"
+    (is (nil? (links/resolve-metabase-uri "metabase://measure/999999999" {} {})))
+    (is (nil? (links/resolve-metabase-uri "metabase://measure/abc" {} {})))))
+
+(deftest resolve-metabase-uri-segment-link-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Segment {segment-id :id} {:name       "Cheap Venues"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                    (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 2)))}]
+      (testing "resolves segment links to an ad-hoc question filtered by the segment"
+        (is (= (str "/question#?db=" (mt/id) "&table=" (mt/id :venues) "&segment=" segment-id)
+               (links/resolve-metabase-uri (str "metabase://segment/" segment-id) {} {}))))))
+  (testing "returns nil for non-existent segment"
+    (is (nil? (links/resolve-metabase-uri "metabase://segment/999999999" {} {})))))
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"

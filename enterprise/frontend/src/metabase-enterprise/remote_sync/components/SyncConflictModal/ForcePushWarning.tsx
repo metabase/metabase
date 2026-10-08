@@ -60,20 +60,20 @@ export const ForcePushWarning = ({
 
   return (
     <Box
-      mt="md"
-      p="md"
+      mt="lg"
+      p="lg"
       bg="background_surface-error-subtle"
-      style={{ borderRadius: "var(--mantine-radius-md)" }}
+      style={{ borderRadius: "var(--mantine-radius-sm)" }}
     >
       <Group gap="sm" align="flex-start" wrap="nowrap">
         <Icon name="warning" c="feedback-negative" mt="2px" />
         <Box>
           {historyRewritten && (
-            <Text fw="bold" mb="xs">
+            <Text fw="bold" mb="xxs">
               {t`The remote branch’s history was rewritten, so there’s no common base. Force pushing replaces it entirely with this instance’s content:`}
             </Text>
           )}
-          <Stack gap="xs">
+          <Stack gap="xxs">
             {deletedText && (
               <Text fw="bold" c="feedback-negative">
                 {deletedText}
@@ -85,7 +85,7 @@ export const ForcePushWarning = ({
             component="button"
             type="button"
             size="sm"
-            mt="xs"
+            mt="xxs"
             onClick={() => setExpanded((value) => !value)}
           >
             {expanded ? t`Hide files` : t`Show files`}
@@ -94,11 +94,11 @@ export const ForcePushWarning = ({
             <Stack gap="sm" mt="sm">
               {deleted.length > 0 && (
                 <Box>
-                  <Text size="sm" fw="bold" mb="xs">
+                  <Text size="sm" fw="bold" mb="xxs">
                     {c("Header for a list of files that will be deleted")
                       .t`Will be deleted`}
                   </Text>
-                  <List spacing="xs" size="sm" withPadding>
+                  <List spacing="xxs" size="sm" withPadding>
                     {deleted.map((label) => (
                       <List.Item key={label}>{label}</List.Item>
                     ))}
@@ -107,11 +107,11 @@ export const ForcePushWarning = ({
               )}
               {overwritten.length > 0 && (
                 <Box>
-                  <Text size="sm" fw="bold" mb="xs">
+                  <Text size="sm" fw="bold" mb="xxs">
                     {c("Header for a list of files that will be overwritten")
                       .t`Will be overwritten`}
                   </Text>
-                  <List spacing="xs" size="sm" withPadding>
+                  <List spacing="xxs" size="sm" withPadding>
                     {overwritten.map((label) => (
                       <List.Item key={label}>{label}</List.Item>
                     ))}

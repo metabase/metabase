@@ -23,9 +23,14 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
+type EntityBreadcrumbType = Exclude<SdkBreadcrumbItemType, "all-collections">;
+
 type View =
   | { type: "collection"; id: SdkCollectionId }
-  | { type: Exclude<SdkBreadcrumbItemType, "collection">; id: string | number };
+  | {
+      type: Exclude<EntityBreadcrumbType, "collection">;
+      id: string | number;
+    };
 
 const SdkBreadcrumbStory = () => {
   const { currentLocation } = useSdkBreadcrumbs();
@@ -44,11 +49,11 @@ const SdkBreadcrumbStory = () => {
       <CollectionBrowser
         collectionId={view.id}
         onClick={(item) => {
-          const type = match<string, SdkBreadcrumbItemType>(item.model)
+          const type = match<string, EntityBreadcrumbType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
-            // Unjustified type cast. FIXME
-            .otherwise((model) => model as SdkBreadcrumbItemType);
+            // A collection item is never the virtual "all collections" root.
+            .otherwise((model) => model as EntityBreadcrumbType);
 
           setView({ type, id: item.id });
         }}
@@ -63,8 +68,8 @@ const SdkBreadcrumbStory = () => {
     .exhaustive();
 
   return (
-    <Stack p="md">
-      <Stack mb="xs">
+    <Stack p="lg">
+      <Stack mb="xxs">
         <SdkBreadcrumbs />
       </Stack>
 

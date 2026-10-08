@@ -19,8 +19,8 @@ export function ExplorationChartAreaSkeleton() {
         w="100%"
         bg="background-primary"
         bd="1px solid border"
-        bdrs="md"
-        p="lg"
+        bdrs="sm"
+        p="xl"
       >
         <ExplorationChartSkeleton name={null} />
       </Stack>

@@ -22,7 +22,7 @@ export function ProviderConnectionModal({
       opened
       onClose={() => onClose()}
       title={connection ? t`Edit provider` : t`Add a provider`}
-      padding="xl"
+      padding="xxl"
       size="lg"
     >
       <ProviderConnectionForm

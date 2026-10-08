@@ -1,20 +1,19 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellBanner } from "metabase/common/components/upsells/components";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import {
   PLUGIN_ADMIN_SETTINGS,
-  PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
+import { SettingTitle, SettingsSection } from "metabase/settings-components";
 import { Box, Text } from "metabase/ui";
 
-import { SettingTitle } from "../../SettingHeader";
 import { EmbeddedResources } from "../../widgets/PublicLinksListing/EmbeddedResources";
 import { EmbeddingSecretKeyWidget } from "../EmbeddingSecretKeyWidget";
 
@@ -76,7 +75,7 @@ export function SharedCombinedEmbeddingSettings({
             <SettingTitle
               id="static-embeds"
               fz="lg"
-              mb="md"
+              mb="lg"
             >{t`Published embeds`}</SettingTitle>
 
             <EmbeddedResources />

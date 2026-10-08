@@ -13,6 +13,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt])
   (:import
@@ -56,19 +57,23 @@
       (is (= "https://embed.example/v1/embeddings"
              (semantic.embedding/embedder-circuit-endpoint {:provider "ai-service"}))))
     (mt/with-dynamic-fn-redefs
-      [semantic.settings/openai-api-base-url (constantly "https://openai.example")
-       semantic.settings/openai-api-key      (constantly "test-key")]
+      [llm.provider/connection (constantly {:key    "openai"
+                                            :type   "openai"
+                                            :config {:api-key "test-key" :base-url "https://openai.example"}})]
       (is (= "https://openai.example/v1/embeddings"
              (semantic.embedding/embedder-circuit-endpoint {:provider "openai"}))))))
 
 (deftest ^:synchronized request-failure-does-not-change-service-failure-history-test
-  (testing "request- and model-specific failures neither trip the circuit nor reset service-failure history"
+  (testing "request-, model-, and policy-specific failures neither trip the circuit nor reset service-failure history"
     (let [breaker (dh.cb/circuit-breaker {:failure-threshold 2 :success-threshold 1 :delay-ms 60000})]
       (with-redefs [semantic.embedding/embedder-circuit-breakers (atom {test-endpoint breaker})]
         (is (thrown? Exception (call-through boom)))
         (doseq [request-error [(ex-info "bad request" {:status 400})
                                (ex-info "model not found" {:status 404})
-                               (ex-info "wrong dimensions" {:cause :embedder/unexpected-dimensions})]]
+                               (ex-info "wrong dimensions" {:cause :embedder/unexpected-dimensions})
+                               (ex-info "network policy rejected the address" {:ssrf true})
+                               (ex-info "HTTP client wrapper" {}
+                                        (ex-info "network policy rejected the address" {:ssrf true}))]]
           (is (thrown? Exception (call-through #(throw request-error)))))
         (is (= :closed (circuit-state)))
         (is (thrown? Exception (call-through boom)))

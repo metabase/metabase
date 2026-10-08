@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,7 +14,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -364,7 +362,7 @@
                nil))))))
 
 (mu/defn- query->params-map
-  ([inner-query]
+  ([inner-query :- ::mbql.s/SourceQuery]
    (query->params-map meta/metadata-provider inner-query))
   ([metadata-provider :- ::lib.schema.metadata/metadata-provider
     inner-query       :- ::mbql.s/SourceQuery]
@@ -390,7 +388,7 @@
             mp         (lib.tu/metadata-provider-with-cards-for-queries
                         meta/metadata-provider
                         [{:database (meta/id)
-                          :type     "native"
+                          :type     :native
                           :native   {:query test-query}}])]
         (is (=? {:card-id 1, :query test-query, :parameters nil}
                 (value-for-tag
@@ -406,8 +404,7 @@
     (testing "Card query template tag generates native query for MBQL query"
       (driver/with-driver :h2
         (let [mbql-query   (lib.tu.macros/mbql-query venues
-                             {:database (meta/id)
-                              :filter   [:< [:field $price nil] 3]})
+                             {:filter [:< $price 3]})
               expected-sql (str "SELECT "
                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
                                 "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
@@ -444,6 +441,7 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+            ;; persist-models! and the persistence job machinery need real app-db rows
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
@@ -509,7 +507,7 @@
                              :template-tags {"#1" {:id           "#1"
                                                    :name         "#1"
                                                    :display-name "#1"
-                                                   :type         "card"
+                                                   :type         :card
                                                    :card-id      1}}}
                   :database (meta/id)}])
             tag      {:name         "card-template-tag-test"
@@ -616,31 +614,6 @@
           (is (= expected
                  (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
 
-(deftest snippet-read-permissions-test
-  (let [mp       (lib.tu/mock-metadata-provider
-                  meta/metadata-provider
-                  {:native-query-snippets [{:id      1
-                                            :name    "expensive_venues"
-                                            :content "venues WHERE price = 4"}]})
-        expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
-        query    (native-query-with-snippet mp :snippet-id 1)
-        resolve! #(#'params.values/stage->params-map query (lib/query-stage query -1))]
-    (testing "Snippet resolves when the current user can read it"
-      (binding [api/*current-user-id* 1]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
-          (is (= expected (resolve!))))))
-    (testing "Snippet does not resolve when the current user cannot read it"
-      (binding [api/*current-user-id* 1]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Snippet [\d,]+ \"expensive_venues\" not found\."
-               (resolve!))))))
-    (testing "Snippet resolves when there is no current user, e.g. subscriptions"
-      (binding [api/*current-user-id* nil]
-        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
-          (is (= expected (resolve!))))))))
-
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"
     (let [mp    (lib.tu/mock-metadata-provider
@@ -728,17 +701,20 @@
            (query->params-map query))))))
 
 (deftest ^:parallel dont-be-too-strict-test
-  (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
-    (testing "\nUnknown key 'filteringParameters'"
+  (testing "values-for-tag should allow the extra keys the FE sends along (#13868)"
+    ;; `:filteringParameters` used to stand in for "some key the FE tacked on". Template tags and parameters are
+    ;; closed schemas now, and the request decoder drops whatever they do not declare before a query gets here, so
+    ;; the keys that actually have to survive are the *declared* ones nothing in this code path reads.
+    (testing "\nExtra declared key 'id'"
       (testing "in tag"
         (is (= "2"
                (value-for-tag
-                {:name                "id"
-                 :display-name        "ID"
-                 :type                :text
-                 :required            true
-                 :default             "100"
-                 :filteringParameters "222b245f"}
+                {:name         "id"
+                 :display-name "ID"
+                 :type         :text
+                 :required     true
+                 :default      "100"
+                 :id           "222b245f"}
                 [{:type   :category
                   :target [:variable [:template-tag "id"]]
                   :value  "2"}]))))
@@ -750,10 +726,10 @@
                  :type         :text
                  :required     true
                  :default      "100"}
-                [{:type                :category
-                  :target              [:variable [:template-tag "id"]]
-                  :value               "2"
-                  :filteringParameters "222b245f"}])))))))
+                [{:type   :category
+                  :target [:variable [:template-tag "id"]]
+                  :value  "2"
+                  :id     "222b245f"}])))))))
 
 (deftest ^:parallel parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"

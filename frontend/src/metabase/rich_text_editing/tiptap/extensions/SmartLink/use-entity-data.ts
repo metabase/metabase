@@ -5,6 +5,7 @@ import {
   useGetDashboardQuery,
   useGetDatabaseQuery,
   useGetDocumentQuery,
+  useGetMeasureQuery,
   useGetSegmentQuery,
   useGetTableQuery,
   useGetTransformQuery,
@@ -70,6 +71,10 @@ export const useEntityData = (
     skip: !entityId || model !== "segment",
   });
 
+  const measureQuery = useGetMeasureQuery(entityId!, {
+    skip: !entityId || model !== "measure",
+  });
+
   const usersQuery = useListMentionsQuery(undefined, {
     skip: !entityId || model !== "user",
   });
@@ -80,74 +85,90 @@ export const useEntityData = (
     case "dataset":
     case "metric":
       return {
+        model,
         entity: cardQuery.data,
         isLoading: cardQuery.isLoading,
         error: cardQuery.error,
       };
     case "dashboard":
       return {
+        model,
         entity: dashboardQuery.data,
         isLoading: dashboardQuery.isLoading,
         error: dashboardQuery.error,
       };
     case "collection":
       return {
+        model,
         entity: collectionQuery.data,
         isLoading: collectionQuery.isLoading,
         error: collectionQuery.error,
       };
     case "table":
       return {
+        model,
         entity: tableQuery.data,
         isLoading: tableQuery.isLoading,
         error: tableQuery.error,
       };
     case "database":
       return {
+        model,
         entity: databaseQuery.data,
         isLoading: databaseQuery.isLoading,
         error: databaseQuery.error,
       };
     case "document":
       return {
+        model,
         entity: documentQuery.data,
         isLoading: documentQuery.isLoading,
         error: documentQuery.error,
       };
     case "transform":
       return {
+        model,
         entity: transformQuery.data,
         isLoading: transformQuery.isLoading,
         error: transformQuery.error,
       };
     case "action":
       return {
+        model,
         entity: actionQuery.data,
         isLoading: actionQuery.isLoading,
         error: actionQuery.error,
       };
     case "segment":
       return {
+        model,
         entity: segmentQuery.data,
         isLoading: segmentQuery.isLoading,
         error: segmentQuery.error,
+      };
+    case "measure":
+      return {
+        model,
+        entity: measureQuery.data,
+        isLoading: measureQuery.isLoading,
+        error: measureQuery.error,
       };
     case "user": {
       const user = usersQuery.data?.data.find((user) => user.id === entityId);
 
       return {
+        model,
         entity: user ? { ...user, name: user.common_name } : null,
         isLoading: usersQuery.isLoading,
         error: usersQuery.error,
       };
     }
     case "indexed-entity":
-    case "measure":
     case "exploration":
     case null:
-      return { entity: null, isLoading: false, error: null };
+      return { model, entity: null, isLoading: false, error: null };
     default:
       assertUnreachable(model);
-      return { entity: null, isLoading: false, error: null };
+      return { model, entity: null, isLoading: false, error: null };
   }
 };

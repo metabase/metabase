@@ -203,3 +203,9 @@
     (is (nil? (manifest/asset-content-type "data.csv")))
     ;; .html has MIME text/html — should be rejected
     (is (nil? (manifest/asset-content-type "page.html")))))
+
+(deftest identifier-error-test
+  (testing "`:` is the viz-settings key separator"
+    (is (nil? (manifest/identifier-error "demo-viz")))
+    (is (= "Plugin identifier \"demo:viz\" must not contain \":\""
+           (manifest/identifier-error "demo:viz")))))

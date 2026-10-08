@@ -5,8 +5,8 @@ import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDimensionIcon } from "metabase/common/utils/columns";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   trackMetricDimensionRemoveDefault,
   trackMetricDimensionSetDefault,
@@ -154,12 +154,12 @@ export function DimensionSettingsPanel({
     <Stack
       className={S.column}
       data-testid="dimension-settings-panel"
-      gap="lg"
-      pt="lg"
+      gap="xl"
+      pt="xl"
     >
       <Group
         align="center"
-        flex="0 0 2.25rem"
+        flex="0 0 2rem"
         justify="space-between"
         wrap="nowrap"
       >
@@ -168,8 +168,6 @@ export function DimensionSettingsPanel({
           <Button
             loading={isSettingDefault || isFetching}
             onClick={dimension.default ? handleRemoveDefault : handleSetDefault}
-            size="sm"
-            variant="default"
           >
             {dimension.default ? t`Remove default` : t`Set as default`}
           </Button>
@@ -217,7 +215,7 @@ export function DimensionSettingsPanel({
       )}
 
       {dimension.default && (
-        <Group gap="xs">
+        <Group gap="xxs">
           <Icon name="star_filled" c="brand" />
           <Text fw="bold">{t`Default dimension`}</Text>
         </Group>

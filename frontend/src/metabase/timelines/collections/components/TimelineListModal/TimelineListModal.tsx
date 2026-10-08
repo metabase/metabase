@@ -61,7 +61,7 @@ const TimelineListModal = ({
         pathOptions={pathOptions}
       >
         {hasMenuItems && (
-          <Menu position="bottom-end" shadow="md">
+          <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Timelines menu`}>
                 <Icon name="ellipsis" />

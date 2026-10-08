@@ -10,6 +10,7 @@
   check driven by [[metabase.models.serialization/serialization-dependencies]]."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -24,7 +25,7 @@
     "[no collection]"))
 
 (defn- entity-label [{:keys [model id]}]
-  (let [entity (t2/select-one [model :collection_id] :id id)]
+  (let [entity (serialization.db/collection-id-row model id)]
     (format "%s %d (from collection %s)" (name model) id (collection-label (:collection_id entity)))))
 
 (defn- resize-batch
@@ -61,7 +62,8 @@
       (mapcat resize-batch)
       (mapcat (fn [[model batch]]
                 (serdes/extract-query model (merge opts {:collection-set coll-set
-                                                         :where          [:in :id batch]}))))
+                                                         :filter-column  :id
+                                                         :filter-ids     batch}))))
       (map entity-deps))
      merge-entity-deps
      by-model)))
@@ -72,24 +74,23 @@
   (into #{}
         (comp (distinct)
               (partition-all serdes/query-batch-size)
-              (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]})))
+              (mapcat #(serialization.db/existing-ids (keyword "model" model) %)))
         ids))
 
-(def ^:private structural-content-models
+(def ^:private optional-content-models
   "Content models whose absence from the archive is tolerated on import, so a reference to one is never a completeness
-   failure. A selective export routinely omits the Collection tree an entity lives in; the entity then loads at the
-   root of the target rather than producing a dangling reference."
-  #{"Collection"})
+   failure. Omitted Collections resolve to the target root; [[serdes.models/elidable-content-models]] are dropped."
+  (conj serdes.models/elidable-content-models "Collection"))
 
 (defn- unsatisfied-dependencies
   "The `deps` that won't be satisfied in the archive, each tagged with a `:reason` (see the namespace docstring for the
    data-model vs content classification). Two subtleties are encoded below: a content reference to a *deleted* entity
    is not a failure (export can't emit a portable id for a gone row, so `fk-elide` just drops it), and
-   [[structural-content-models]] references are ignored entirely."
+   [[optional-content-models]] references are ignored entirely."
   [deps visited analytics-cards]
   (let [content-models (set serdes.models/content)
         {content-deps true data-deps false} (group-by #(contains? content-models (:model %)) deps)
-        content-deps   (remove (comp structural-content-models :model) content-deps)
+        content-deps   (remove (comp optional-content-models :model) content-deps)
         existing-data    (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))
         existing-content (m/map-kv-vals existing-ids (u/group-by :model :id content-deps))]
     (concat

@@ -10,17 +10,8 @@ database_type: DOUBLE PRECISION
 base_type: type/Float
 effective_type: type/Float
 semantic_type: type/Longitude
-dimensions: []
 position: 6
-custom_position: 0
 database_position: 6
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PEOPLE
-  model: Table
-- id: LONGITUDE
-  model: Field
+- model: Field
 database_indexed: false

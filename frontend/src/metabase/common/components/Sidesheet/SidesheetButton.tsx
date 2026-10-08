@@ -1,7 +1,7 @@
-import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
+import { Button, type ButtonProps, Icon } from "metabase/ui";
 
 export const SidesheetButton = (props: ButtonProps) => (
-  <Button variant="subtle" p={0} {...props} />
+  <Button variant="transparent" size="compact-md" {...props} />
 );
 
 export const SidesheetButtonWithChevron = ({
@@ -9,12 +9,10 @@ export const SidesheetButtonWithChevron = ({
   ...props
 }: ButtonProps) => (
   <SidesheetButton
-    styles={props.fullWidth ? { label: { width: "100%" } } : undefined}
+    justify="space-between"
+    rightSection={<Icon name="chevronright" />}
     {...props}
   >
-    <Flex justify="space-between" gap="sm">
-      {children}
-      <Icon name="chevronright" c="text-primary" />
-    </Flex>
+    {children}
   </SidesheetButton>
 );

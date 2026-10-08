@@ -1,11 +1,13 @@
 (ns metabase.queries.models.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.models.card-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,9 +15,15 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.card-schema :as card-schema]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.search.ingestion :as search.ingestion]
@@ -55,7 +63,16 @@
         (testing "add to a second Dashboard"
           (add-card-to-dash! dash-2)
           (is (= 2
-                 (get-dashboard-count))))))))
+                 (get-dashboard-count))))
+        (testing "a series placement on another card's dashcard counts too"
+          (mt/with-temp [:model/Card                {other-card-id :id} {}
+                         :model/DashboardCard       {dashcard-id :id}   {:card_id      other-card-id
+                                                                         :dashboard_id (u/the-id dash-1)}
+                         :model/DashboardCardSeries _                   {:dashboardcard_id dashcard-id
+                                                                         :card_id          card-id
+                                                                         :position         0}]
+            (is (= 3
+                   (get-dashboard-count)))))))))
 
 (deftest dropdown-widget-values-usage-count-test
   (let [hydrated-count (fn [card] (-> card
@@ -101,7 +118,7 @@
   [database-id]
   {:database database-id
    :type :query
-   :query {:source-table 1}})
+   :query {:source-table (mt/id :venues)}})
 
 (deftest database-id-test
   (mt/with-temp [:model/Card {:keys [id]} {:name          "some name"
@@ -165,16 +182,14 @@
 (deftest disable-implicit-actions-if-needed-test-3
   (mt/with-actions-enabled
     (testing "unhappy paths\n"
-      (testing "only disable implicit actions, not http and query"
+      (testing "only disable implicit actions, not query"
         (mt/with-actions [{model-id :id}           {:type :model, :dataset_query (mt/mbql-query users)}
                           {implicit-id :action-id} {:type :implicit}
-                          {http-id :action-id}     {:type :http}
                           {query-id :action-id}    {:type :query}]
           ;; make sure we have thing exists to start with
-          (is (= 3 (t2/count :model/Action :id [:in [implicit-id http-id query-id]])))
+          (is (= 2 (t2/count :model/Action :id [:in [implicit-id query-id]])))
           (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (not (t2/exists? :model/Action :id implicit-id)))
-          (is (t2/exists? :model/Action :id http-id))
           (is (t2/exists? :model/Action :id query-id)))))))
 
 (deftest disable-implicit-actions-if-needed-test-4
@@ -351,7 +366,7 @@
                :slug "date"
                :default nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
@@ -363,7 +378,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
@@ -375,7 +390,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (defn- native-query-card
   "Build a card map with a native query containing the given template tags.
@@ -402,7 +417,7 @@
                :slug     "name"
                :default  "Alice"
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-boolean-tag-test
   (testing ":boolean template tag without widget-type produces :boolean/= parameter type (QUE2-326)"
@@ -420,7 +435,7 @@
                :slug     "active"
                :default  nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-dimension-category-widget-test
   (testing ":dimension template tag with :category widget-type passes through widget-type (QUE2-326)"
@@ -440,7 +455,7 @@
                :slug     "cat"
                :default  nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
@@ -744,6 +759,15 @@
       (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card) {}))))))
 
+(deftest ^:parallel excluded-only-timeline-events-deps-test
+  (testing "a card that only excludes events still depends on their Timeline, so it imports in the right order"
+    (mt/with-temp [:model/Timeline {timeline-id :id} {}
+                   :model/TimelineEvent {event-id :id} {:timeline_id timeline-id}]
+      (is (= #{[{:model "Timeline" :id timeline-id}]}
+             (serdes/visualization-settings-deps
+              true
+              {:timeline.excluded_timeline_event_ids [event-id]}))))))
+
 (deftest ^:parallel descendants-test-4
   (testing "cards which have parameter's source is another card"
     (mt/with-temp [:model/Card card1 {:name "base card"}
@@ -754,6 +778,124 @@
                                                     :values_source_config {:card_id (:id card1)}}]}]
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
+
+(defn- action-events-during!
+  "The set of `[topic action-id archived?]` for the action events `thunk` publishes."
+  [thunk]
+  (let [published (atom #{})]
+    (with-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                          (when (#{:event/action-create :event/action-update :event/action-delete} topic)
+                                            (swap! published conj [topic (:id object) (boolean (:archived object))])))]
+      (thunk))
+    @published))
+
+(defn- do-with-model-actions!
+  "Runs `f` with `{:model-id :implicit :query :archived}`: a model with an implicit action, a query action, and an
+  already-archived query action."
+  [f]
+  (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                 :model/Action {implicit :id} {:type :implicit :name "Create" :model_id model-id}
+                 :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
+                 :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true
+                                               :archived_directly true}]
+    ;; the implicit_action row is what marks an action implicit to the queries that retire them
+    (t2/insert! :model/ImplicitAction {:action_id implicit :kind "row/create"})
+    (f {:model-id model-id :implicit implicit :query query :archived archived})))
+
+(defn- update-model!
+  "Updates the model Card with `model-id` through [[card/update-card!]], as the API does."
+  [model-id changes]
+  (mt/with-test-user :crowberto
+    (card/update-card! {:card-before-update (t2/select-one :model/Card model-id)
+                        :card-updates       changes})))
+
+(defn- filtered-venues-query
+  "A venues query with a filter, which does not support implicit actions."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))))
+
+(deftest model-becoming-question-publishes-action-events-test
+  (testing "update-card! announces the actions it archives and deletes when a model becomes a question"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query]}]
+       (is (= #{[:event/action-update query true]
+                [:event/action-delete implicit false]}
+              (action-events-during! #(update-model! model-id {:type :question}))))))))
+
+(deftest model-query-without-implicit-support-publishes-action-events-test
+  (testing "GHY-4722: update-card! announces the implicit actions it deletes when a model query no longer supports them"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit]}]
+       (is (= #{[:event/action-delete implicit false]}
+              (action-events-during! #(update-model! model-id {:dataset_query (filtered-venues-query)}))))))))
+
+(deftest model-move-publishes-action-events-test
+  (testing "update-card! announces the unarchived actions that move with a model to another collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (do-with-model-actions!
+       (fn [{:keys [model-id implicit query]}]
+         (is (= #{[:event/action-update implicit false]
+                  [:event/action-update query false]}
+                (action-events-during! #(update-model! model-id {:collection_id coll-id})))))))))
+
+(deftest question-move-publishes-action-events-test
+  (testing "update-card! announces the actions that move with a question"
+    (mt/with-temp [:model/Collection {coll-id :id}     {}
+                   :model/Card       {question-id :id} {:type :question :dataset_query (mt/mbql-query venues)}
+                   :model/Action     {action-id :id}   {:type :query :name "On a question" :model_id question-id}]
+      (is (= #{[:event/action-update action-id false]}
+             (action-events-during! #(update-model! question-id {:collection_id coll-id})))))))
+
+(deftest model-archive-cascades-to-actions-test
+  (testing "archiving a model archives its actions, and unarchiving it restores only those"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query archived]}]
+       (let [archived-state #(t2/select-pk->fn (juxt :archived :archived_directly) :model/Action :model_id model-id)]
+         (is (= #{[:event/action-update implicit true]
+                  [:event/action-update query true]}
+                (action-events-during! #(update-model! model-id {:archived true}))))
+         (is (= {implicit [true false], query [true false], archived [true true]} (archived-state)))
+         (is (= #{[:event/action-update implicit false]
+                  [:event/action-update query false]}
+                (action-events-during! #(update-model! model-id {:archived false}))))
+         (is (= {implicit [false false], query [false false], archived [true true]} (archived-state))))))))
+
+(deftest model-actions-follow-model-collection-test
+  (testing "the actions of a model are kept in the model's collection"
+    (mt/with-temp [:model/Collection {coll-1 :id} {}
+                   :model/Collection {coll-2 :id} {}
+                   :model/Card       {model-id :id} {:type :model :collection_id coll-1 :dataset_query (mt/mbql-query venues)}
+                   :model/Card       {other-id :id} {:type :model :collection_id coll-2 :dataset_query (mt/mbql-query venues)}
+                   :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
+      (let [action-collection #(t2/select-one-fn :collection_id :model/Action :id action-id)]
+        (testing "an inserted action takes its model's collection"
+          (is (= coll-1 (action-collection))))
+        (testing "moving the model moves its actions"
+          (t2/update! :model/Card model-id {:collection_id coll-2})
+          (is (= coll-2 (action-collection)))
+          (t2/update! :model/Card model-id {:collection_id nil})
+          (is (nil? (action-collection))))
+        (testing "attaching an action to another model moves it to that model's collection"
+          (t2/update! :model/Card model-id {:collection_id coll-1})
+          (t2/update! :model/Action action-id {:model_id other-id})
+          (is (= coll-2 (action-collection))))))))
+
+(deftest model-changes-outside-update-card-publish-no-action-events-test
+  (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"
+    (testing "a model becoming a question"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/update! :model/Card model-id {:type :question})))))))
+    (testing "a model query that no longer supports implicit actions"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/update! :model/Card model-id {:dataset_query (filtered-venues-query)})))))))
+    (testing "a deleted model"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/delete! :model/Card model-id)))))))))
 
 (deftest ^:parallel extract-result-metadata-non-model-test
   (testing "non-model Card extraction drops :result_metadata entirely"
@@ -819,6 +961,31 @@
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
         (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
 
+(deftest serdes-load-legacy-query-integer-literals-test
+  (testing "a Card loaded from a legacy-MBQL export keeps integer literals in comparisons and runs"
+    (let [db-name  (t2/select-one-fn :name :model/Database (mt/id))
+          price-id (mt/id :venues :price)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+              ;; `price-id` is the Field ID of VENUES.PRICE, so coercing it would silently filter on that column
+              legacy    {:database db-name
+                         :type     "query"
+                         :query    {:source-table [db-name "PUBLIC" "VENUES"]
+                                    :aggregation  [["count"]]
+                                    :filter       ["=" price-id price-id]
+                                    :joins        [{:source-table [db-name "PUBLIC" "CATEGORIES"]
+                                                    :alias        "C"
+                                                    :strategy     "left-join"
+                                                    :condition    ["=" 1 1]}]}}]
+          (serdes/load-one! (assoc extracted :dataset_query legacy)
+                            (t2/select-one :model/Card :id card-id))
+          (let [query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+            (is (=? {:stages [{:filters [[:= {} price-id price-id]]
+                               :joins   [{:conditions [[:= {} 1 1]]}]}]}
+                    query))
+            (is (= [[(* 100 75)]]
+                   (mt/rows (qp/process-query query))))))))))
+
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
     (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
@@ -838,13 +1005,40 @@
                  :visualization_settings
                  json/decode+kw))))))
 
+(def ^:private complete-card
+  "A card carrying every column the schema upgrade could need. Any SELECT that reads a schema-governed
+   column must project all of these — see [[metabase.queries.card-schema/schema-upgrade-triggers]]."
+  {:id                 1
+   :type               :question
+   :entity_id          "cardcardcardcardcard1"
+   :database_id        1
+   :dataset_query      {}
+   :result_metadata    nil
+   :dimensions         nil
+   :dimension_mappings nil})
+
 (deftest ^:parallel upgrade-card-schema-after-downgrade
-  (testing "We exit the loop if a chard_schema is higher than the current schema."
-    (let [card {:id 1
-                :dataset_query {}
-                :card_schema (inc @#'card/current-schema-version)}]
+  (testing "We exit the loop if a card_schema is higher than the current schema."
+    (let [card (assoc complete-card :card_schema (inc @#'card/current-schema-version))]
       (is (= card
              (#'card/upgrade-card-schema-to-latest card))))))
+
+(deftest ^:parallel upgrade-card-schema-requires-every-trigger-column-test
+  (testing (str "Reading a schema-governed column without the rest of the columns an upgrade needs is a "
+                "programming error in the query, not a condition to recover from at read time. It throws "
+                "unconditionally — including when this row happens to be current — so the bug surfaces on "
+                "every instance rather than only the ones holding an out-of-date card.")
+    (doseq [omitted (disj card-schema/schema-upgrade-triggers :card_schema)]
+      (testing (str "omitting " omitted)
+        (let [card (dissoc (assoc complete-card :card_schema @#'card/current-schema-version) omitted)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
+               (#'card/upgrade-card-schema-to-latest card))
+              "a current-schema row is rejected just the same, so the missing column is never latent")))))
+  (testing "a card with no schema-governed column at all is passed through untouched"
+    (let [card {:id 1 :name "no governed columns here"}]
+      (is (= card (#'card/upgrade-card-schema-to-latest card))))))
 
 (deftest storing-metabase-version
   (testing "Newly created Card should know a Metabase version used to create it"
@@ -1109,6 +1303,42 @@
         (is (card/update-card! {:card-before-update card
                                 :card-updates {:type :question}}))))))
 
+(deftest updating-dashboard-internal-card-used-on-other-dashboards-test
+  ;; #82237
+  (mt/with-temp [:model/Dashboard     {home-dash-id :id}  {}
+                 :model/Dashboard     {other-dash-id :id} {}
+                 :model/Dashboard     {third-dash-id :id} {}
+                 :model/Card          card                {:dashboard_id home-dash-id}
+                 :model/DashboardCard _                   {:card_id (:id card) :dashboard_id other-dash-id}]
+    (mt/with-test-user :rasta
+      (testing "re-sending the unchanged dashboard_id alongside an edit succeeds"
+        (is (= "edited"
+               (:name (card/update-card! {:card-before-update card
+                                          :card-updates       {:name "edited" :dashboard_id home-dash-id}})))))
+      (testing "moving it into a different dashboard is still rejected"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can't move question into dashboard"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates       {:dashboard_id third-dash-id}})))))))
+
+(deftest moving-collection-card-into-dashboard-while-on-other-dashboards-test
+  ;; Model-level guard for the narrowed check above; the API layer covers the same moves in
+  ;; `metabase.queries-rest.api.card-test`.
+  (mt/with-temp [:model/Dashboard     {dash-id :id}       {}
+                 :model/Dashboard     {other-dash-id :id} {}
+                 :model/Card          card                {}
+                 :model/DashboardCard _                   {:card_id (:id card) :dashboard_id other-dash-id}]
+    (mt/with-test-user :rasta
+      (testing "without delete-old-dashcards? the move is rejected"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can't move question into dashboard"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates       {:dashboard_id dash-id}}))))
+      (testing "with delete-old-dashcards? the other dashcards are removed and the move succeeds"
+        (is (= dash-id
+               (:dashboard_id (card/update-card! {:card-before-update    card
+                                                  :card-updates          {:dashboard_id dash-id}
+                                                  :delete-old-dashcards? true}))))
+        (is (not (t2/exists? :model/DashboardCard :card_id (:id card) :dashboard_id other-dash-id)))))))
+
 (deftest update-does-not-break
   ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your
   ;; `update` would change a subset of selected rows, and 3) part of your `update` would change *every* selected row
@@ -1189,12 +1419,43 @@
        (is (= "Orders, Metric A"
               (:query_description (t2/select-one :model/Card :id b-id))))))))
 
+(defn- stored-card-schema
+  "Read `card_schema` straight out of `report_card`. A `t2/select-one` would run the after-select schema
+   upgrade and report the current version whether or not it was ever written."
+  [card-id]
+  (:card_schema (t2/query-one {:select [:card_schema]
+                               :from   [:report_card]
+                               :where  [:= :id card-id]})))
+
+(defn- age-card!
+  "Put `card-id`'s stored `card_schema` behind the current version. Needs a raw UPDATE because
+   before-insert forces `:card_schema` to current, so passing it to `with-temp` is silently ignored."
+  [card-id schema-version]
+  (t2/query-one {:update :report_card
+                 :set    {:card_schema schema-version}
+                 :where  [:= :id card-id]})
+  (assert (= schema-version (stored-card-schema card-id))))
+
 (deftest before-update-card-schema-test
-  (testing "card_schema gets set to current-schema-version on update"
-    (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
-      (t2/update! :model/Card card-id {:name "Updated Name"})
-      (is (= @#'card/current-schema-version
-             (t2/select-one-fn :card_schema :model/Card :id card-id))))))
+  (testing "card_schema moves as a unit with the columns it governs"
+    (testing "an update touching no schema-governed column leaves the vintage alone"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (age-card! card-id 20)
+        (t2/update! :model/Card card-id {:name "Updated Name"})
+        (is (= "Updated Name" (t2/select-one-fn :name :model/Card :id card-id))
+            "the update itself is persisted")
+        (is (= 20 (stored-card-schema card-id))
+            (str "stamping the current version here would strand the row: the columns the schema governs "
+                 "still hold their old representation, and upgrade-card-schema-to-latest would never run "
+                 "over them again."))))
+    (testing "an update touching a schema-governed column migrates the group and stamps the version"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (age-card! card-id 20)
+        (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query venues)})
+        (is (= @#'card/current-schema-version (stored-card-schema card-id))
+            (str "the bump must reach the database. t2/update! diffs changes against a baseline SELECT; if "
+                 "the after-select schema upgrade runs on that baseline it already reads as current, the "
+                 "diff drops :card_schema, and the row stays behind forever."))))))
 
 (deftest before-update-dashboard-question-updates-test
   (testing "apply-dashboard-question-updates is called"
@@ -1294,7 +1555,7 @@
 
 (deftest assert-no-source-card-id-for-native-query-test
   (testing "assertion fires if native query has source_card_id set"
-    (with-redefs [card/populate-query-fields identity]
+    (mt/with-dynamic-fn-redefs [card/populate-query-fields identity]
       (is (thrown-with-msg? Exception #"Assert failed"
                             (t2/insert! :model/Card
                                         {:name "Bad Card"
@@ -1459,7 +1720,6 @@
                                   :name "Card with parameter reference"
                                   :parameters [{:id "test-param"
                                                 :name "test-param"
-                                                :display_param "test param"
                                                 :type :category
                                                 :values_source_type "card"
                                                 :values_source_config {:card_id remote-synced-card-id}}]}]
@@ -1685,16 +1945,19 @@
                    :model/Card     question3    (dependent-card db1-id question1)
                    :model/Card     question4    (dependent-card db1-id question2)
                    :model/Card     question5    (dependent-card db1-id question4)]
-      (mt/with-test-user :crowberto
-        (card/update-card! {:card-before-update model
-                            :card-updates       {:dataset_query {:lib/type :mbql/query
-                                                                 :database db2-id
-                                                                 :stages   [{:lib/type :mbql.stage/native
-                                                                             :native   "SELECT 1"}]}}}))
+      ;; H2 returns these rows source-first. Reverse them to cover a valid result order from PostgreSQL.
+      (mt/with-dynamic-fn-redefs [queries.db/cards-queries-info
+                                  (comp reverse (mt/original-fn #'queries.db/cards-queries-info))]
+        (mt/with-test-user :crowberto
+          (card/update-card! {:card-before-update model
+                              :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                   :database db2-id
+                                                                   :stages   [{:lib/type :mbql.stage/native
+                                                                               :native   "SELECT 1"}]}}})))
       (doseq [question [question1 question2 question3 question4 question5]]
-        (let [updated-card (t2/select-one :model/Card :id (:id question))]
-          (is (= db2-id (get-in updated-card [:dataset_query :database])))
-          (is (= db2-id (:database_id updated-card))))))))
+        (is (=? {:database_id   db2-id
+                 :dataset_query {:database db2-id}}
+                (t2/select-one :model/Card :id (:id question))))))))
 
 (deftest find-stale-query-test
   (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
@@ -1745,3 +2008,274 @@
       (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
              (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                             :id card-id))))))
+
+(deftest serdes-extract-query-excludes-exploration-summary-cards-test
+  (testing "serdes never extracts a Card scoped to an exploration Summary document"
+    (mt/with-temp [:model/Collection  {coll-id :id}     {}
+                   :model/User        {user-id :id}     {:email "serdes-card@example.com"}
+                   :model/Exploration {expl-id :id}     {:name "Explo" :creator_id user-id}
+                   :model/Document    {summary-id :id}  {:name           "Summary"
+                                                         :creator_id     user-id
+                                                         :collection_id  coll-id
+                                                         :exploration_id expl-id}
+                   :model/Document    {plain-doc :id}   {:name "Plain doc" :creator_id user-id
+                                                         :collection_id coll-id}
+                   :model/Card        {plain-card :id}  {:collection_id coll-id}
+                   :model/Card        {doc-card :id}    {:collection_id coll-id :document_id plain-doc}
+                   :model/Card        {summary-card :id} {:collection_id coll-id :document_id summary-id
+                                                          :name "Orders for Customer = ACME Corp over time"}]
+      (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
+            extracted (into #{}
+                            (map :entity_id)
+                            (serdes/extract-all "Card" {:filter-column :id
+                                                        :filter-ids    [plain-card doc-card summary-card]}))]
+        (is (contains? extracted (eid plain-card))
+            "an ordinary card is still exported")
+        (is (contains? extracted (eid doc-card))
+            "a card belonging to an ordinary document still travels with that document")
+        (is (not (contains? extracted (eid summary-card)))
+            "a card belonging to an exploration Summary is never exported — its name and dataset_query
+             carry values discovered under the creator's lens, and its parent document is excluded")))))
+
+(deftest before-update-schema-upgrade-uses-incoming-query-test
+  (testing "a query edit to a legacy metric persists dimensions derived from the new query, not the old one"
+    (mt/with-temp [:model/Card {card-id :id} {:type          :metric
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
+                     :where  [:= :id card-id]})
+      (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query categories {:aggregation [[:count]]})})
+      (is (= #{(mt/id :categories)}
+             (into #{} (map :table-id) (t2/select-one-fn :dimension_mappings :model/Card :id card-id)))))))
+
+(deftest new-card-timeline-selection-permissions-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline {:collection_id (:id collection)}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    (mt/with-test-user :rasta
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"You don't have permissions"
+           (mt/with-temp [:model/Card _ {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+             nil))))
+    (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (is (= [(:id timeline)] (get-in card [:visualization_settings :timeline.selected_timeline_ids])))))))
+
+(deftest with-copy-source-card-timeline-selection-permissions-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline-a {:collection_id (:id collection)}
+                 :model/Timeline timeline-b {:collection_id (:id collection)}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    ;; source cards are created outside `with-test-user` so their own insert isn't permission-checked
+    (testing "a copy inheriting the exact source selection does not need a fresh read check"
+      (mt/with-temp [:model/Card source {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
+        (mt/with-test-user :rasta
+          (card/with-copy-source-card source
+            (mt/with-temp [:model/Card copy {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
+              (is (= [(:id timeline-a)] (get-in copy [:visualization_settings :timeline.selected_timeline_ids]))))))))
+    (testing "a copy whose selection differs from the source is still permission-checked"
+      (mt/with-temp [:model/Card source {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline-a)]}}]
+        (mt/with-test-user :rasta
+          (card/with-copy-source-card source
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"You don't have permissions"
+                 (mt/with-temp [:model/Card _ {:visualization_settings
+                                               {:timeline.selected_timeline_ids [(:id timeline-a) (:id timeline-b)]}}]
+                   nil)))))))))
+
+(deftest card-timeline-visibility-update-permissions-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline {:collection_id (:id collection)}
+                 :model/TimelineEvent excluded {:timeline_id (:id timeline)}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    (doseq [[description before after]
+            [["revealing an excluded event"
+              {:timeline.selected_timeline_ids [(:id timeline)]
+               :timeline.excluded_timeline_event_ids [(:id excluded)]}
+              {:timeline.selected_timeline_ids [(:id timeline)]
+               :timeline.excluded_timeline_event_ids []}]
+             ["re-enabling an inaccessible timeline"
+              {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled false}
+              {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled true}]]]
+      (testing description
+        (mt/with-temp [:model/Card card {:display :line :visualization_settings before}]
+          (mt/with-test-user :rasta
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                  (t2/update! :model/Card (:id card) {:visualization_settings after}))))
+          (is (= before (t2/select-one-fn :visualization_settings :model/Card (:id card)))))))))
+
+(deftest card-timeline-visibility-on-a-display-without-events-test
+  (testing "a display that cannot draw events shows nothing, so its visibility settings need no timeline access"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {:display                :table
+                                     :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]
+                                                              :timeline_events.enabled        false}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-test-user :rasta
+        (let [settings {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled true}]
+          (t2/update! :model/Card (:id card) {:visualization_settings settings})
+          (is (= settings (t2/select-one-fn :visualization_settings :model/Card (:id card)))))
+        (testing "switching to a display that draws them is still checked"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                (t2/update! :model/Card (:id card) {:display :line}))))))))
+
+(deftest partially-readable-card-timeline-selection-test
+  (testing "on a card that also selects a timeline the user cannot read"
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline private-timeline {:collection_id (:id restricted)}
+                   :model/TimelineEvent private-event {:timeline_id (:id private-timeline)}
+                   :model/Timeline readable-timeline {}
+                   :model/TimelineEvent readable-event {:timeline_id (:id readable-timeline)}
+                   :model/Card card {:display :line
+                                     :visualization_settings
+                                     {:timeline.selected_timeline_ids       [(:id readable-timeline) (:id private-timeline)]
+                                      :timeline.excluded_timeline_event_ids []}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (let [settings         (fn [& {:as overrides}]
+                               (merge {:timeline.selected_timeline_ids       [(:id readable-timeline) (:id private-timeline)]
+                                       :timeline.excluded_timeline_event_ids []}
+                                      overrides))
+            ;; no bound user, so this restores the starting point without a permission check
+            restore!         #(t2/update! :model/Card (:id card) {:visualization_settings (settings)})
+            update-settings! (fn [settings]
+                               (mt/with-test-user :rasta
+                                 (t2/update! :model/Card (:id card) {:visualization_settings settings}))
+                               (t2/select-one-fn :visualization_settings :model/Card (:id card)))]
+        (testing "an event of the readable timeline can be hidden and shown again"
+          (restore!)
+          (let [hidden (settings :timeline.excluded_timeline_event_ids [(:id readable-event)])]
+            (is (= hidden (update-settings! hidden)))
+            (is (= (settings) (update-settings! (settings))))))
+        (testing "an event of the unreadable timeline can be hidden but not shown again"
+          (restore!)
+          (let [hidden (settings :timeline.excluded_timeline_event_ids [(:id private-event)])]
+            (is (= hidden (update-settings! hidden)))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                  (update-settings! (settings))))
+            (is (= hidden (t2/select-one-fn :visualization_settings :model/Card (:id card))))))
+        (testing "the readable timeline can be deselected and selected again"
+          (restore!)
+          (let [deselected (settings :timeline.selected_timeline_ids [(:id private-timeline)])]
+            (is (= deselected (update-settings! deselected)))
+            (is (= (settings) (update-settings! (settings))))))
+        (testing "another unreadable timeline cannot be selected"
+          (restore!)
+          (mt/with-temp [:model/Timeline other-private {:collection_id (:id restricted)}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                  (update-settings!
+                                   (settings :timeline.selected_timeline_ids
+                                             [(:id readable-timeline) (:id private-timeline) (:id other-private)]))))))))))
+
+(deftest unchanged-or-cleared-card-timeline-selection-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline {:collection_id (:id collection)}
+                 :model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    (mt/with-test-user :rasta
+      (testing "unrelated visualization edits preserve inaccessible saved selections"
+        (let [settings (assoc (:visualization_settings card) :graph.show_values true)]
+          (t2/update! :model/Card (:id card) {:visualization_settings settings})
+          (is (= settings (t2/select-one-fn :visualization_settings :model/Card (:id card)))))
+        (testing "an explicit empty selection can hide all events"
+          (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids []}})
+          (is (= [] (get-in (t2/select-one :model/Card (:id card))
+                            [:visualization_settings :timeline.selected_timeline_ids]))))))))
+
+(deftest card-timeline-selection-validation-test
+  (mt/with-temp [:model/Card card {}]
+    (mt/with-test-user :rasta
+      (doseq [invalid-ids [false 1 "1" [0] [-1] ["1"] [nil]]]
+        (testing (pr-str invalid-ids)
+          (let [settings {:timeline.selected_timeline_ids invalid-ids}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Selected timeline IDs must be"
+                                  (t2/update! :model/Card (:id card) {:visualization_settings settings}))))
+          (let [settings {:timeline.excluded_timeline_event_ids invalid-ids}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Excluded timeline event IDs must be"
+                                  (t2/update! :model/Card (:id card) {:visualization_settings settings})))))))))
+
+(deftest card-timeline-malformed-saved-selection-test
+  (testing "a malformed selection saved before it was validated can still be repaired"
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/Card card {:display                :line
+                                     :visualization_settings {:timeline.selected_timeline_ids 7}}]
+      (doseq [repaired [[(:id timeline)] []]]
+        ;; no bound user, so each case starts from the malformed value again
+        (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids 7}})
+        (mt/with-test-user :rasta
+          (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids repaired}}))
+        (is (= repaired
+               (get-in (t2/select-one :model/Card (:id card))
+                       [:visualization_settings :timeline.selected_timeline_ids])))))))
+
+(deftest card-timeline-malformed-saved-exclusions-test
+  (testing "a malformed excluded-event list saved before it was validated does not block later edits"
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/Card card {:display :line
+                                     :visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
+                                                              :timeline.excluded_timeline_event_ids 5}}]
+      (mt/with-test-user :rasta
+        (t2/update! :model/Card (:id card)
+                    {:visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
+                                              :timeline.excluded_timeline_event_ids []}})
+        (is (= [] (get-in (t2/select-one :model/Card (:id card))
+                          [:visualization_settings :timeline.excluded_timeline_event_ids])))))))
+
+(deftest card-timeline-selection-deleted-timeline-test
+  (testing "a selection pointing at a deleted timeline still saves, so the card is not stuck"
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (t2/delete! :model/Timeline (:id timeline))
+      (mt/with-test-user :rasta
+        (t2/update! :model/Card (:id card) {:display :line})
+        (is (= :line (t2/select-one-fn :display :model/Card (:id card))))))))
+
+(deftest card-timeline-selection-without-user-context-test
+  (mt/with-temp [:model/Timeline timeline {}]
+    (t2/delete! :model/Timeline (:id timeline))
+    (mt/with-current-user nil
+      (mt/with-temp [:model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids []}})
+        (is (= [] (get-in (t2/select-one :model/Card (:id card))
+                          [:visualization_settings :timeline.selected_timeline_ids])))))))
+
+(deftest skip-dimension-backfill-skips-only-upgrade-24-test
+  (testing "card-schema/*skip-dimension-backfill?* skips the 24 dimension backfill and nothing else (#83937)"
+    (mt/with-temp [:model/Card {card-id :id} {:type          :metric
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      ;; A pre-curation metric: schema 23, no stored dimensions, and a `:result_metadata` still carrying one of
+      ;; the abandoned `:ident`s that the upgrade to 22 exists to strip. Written raw because before-insert
+      ;; forces `:card_schema` to current and normalizes the card.
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema        23
+                              :dimensions         nil
+                              :dimension_mappings nil
+                              :result_metadata    (json/encode [{:name      "count"
+                                                                 :ident     "abandoned-ident"
+                                                                 :base_type "type/Integer"}])}
+                     :where  [:= :id card-id]})
+      (testing "precondition: the stored row really does carry the stale ident"
+        (is (str/includes? (:result_metadata (t2/query-one {:select [:result_metadata]
+                                                            :from   [:report_card]
+                                                            :where  [:= :id card-id]}))
+                           "abandoned-ident")))
+      (testing "without the flag the backfill runs"
+        (is (seq (:dimensions (t2/select-one :model/Card card-id)))))
+      (binding [card-schema/*skip-dimension-backfill?* true]
+        (let [card (t2/select-one :model/Card card-id)]
+          (testing "the expensive 24 backfill is skipped"
+            (is (nil? (:dimensions card)))
+            (is (nil? (:dimension_mappings card))))
+          (testing "the other upgrades still run -- 22 strips the abandoned :ident"
+            (is (every? #(not (contains? % :ident)) (:result_metadata card))))
+          (testing ":dataset_query is still normalized to current MBQL"
+            (is (=? {:lib/type :mbql/query} (:dataset_query card))))
+          (testing "and the row still reports the current schema version"
+            (is (= @#'card/current-schema-version (:card_schema card))))))
+      (testing "the stored row is untouched by any of this"
+        (is (= 23 (stored-card-schema card-id)))))))

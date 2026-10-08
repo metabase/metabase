@@ -30,9 +30,9 @@
   "spec for testing."
   {:model        :root
    :compare-cols [:name]
-   :nested-specs {:foo  {:model        :foo
+   :nested-specs [[:foo {:model        :foo
                          :compare-cols [:name]
-                         :fk-column    :root_id}}})
+                         :fk-column    :root_id}]]})
 
 (deftest basic-create-test
   (testing "Creating a new record with no existing data"
@@ -141,11 +141,11 @@
   {:model :root
    :compare-cols [:name]
    :extra-cols   [:unrelated]
-   :nested-specs {:bars {:model :bar
-                         :multi-row? true
-                         :fk-column :root_id
-                         :extra-cols [:unrelated]
-                         :compare-cols [:name]}}})
+   :nested-specs [[:bars {:model :bar
+                          :multi-row? true
+                          :fk-column :root_id
+                          :extra-cols [:unrelated]
+                          :compare-cols [:name]}]]})
 
 (deftest multi-row-create-test
   (testing "Creating root with nested multi-row models"
@@ -224,12 +224,12 @@
                 :id-col :id
                 :compare-cols [:name]
                 :extra-cols [:unrelated]
-                :nested-specs {:bars {:model :bar
-                                      :id-col :id
-                                      :multi-row? true
-                                      :fk-column :foo_id
-                                      :compare-cols [:name]
-                                      :extra-cols [:unrelated]}}}
+                :nested-specs [[:bars {:model :bar
+                                       :id-col :id
+                                       :multi-row? true
+                                       :fk-column :foo_id
+                                       :compare-cols [:name]
+                                       :extra-cols [:unrelated]}]]}
           existing-data {:id 1
                          :name "Test"
                          :unrelated "abc"
@@ -265,20 +265,20 @@
   {:model :foo
    :id-col :uuid
    :compare-cols [:name]
-   :nested-specs {:bars {:model :bar
+   :nested-specs [[:bars {:model :bar
+                          :compare-cols [:name]
+                          :multi-row? true
+                          :fk-column :foo_id
+                          :nested-specs [[:quxes {:model :bar_qux
+                                                  :compare-cols [:name]
+                                                  :multi-row? true
+                                                  :fk-column :bar_id}]]}]
+                  [:qux {:model :qux
                          :compare-cols [:name]
-                         :multi-row? true
                          :fk-column :foo_id
-                         :nested-specs {:quxes {:model :bar_qux
-                                                :compare-cols [:name]
-                                                :multi-row? true
-                                                :fk-column :bar_id}}}
-                  :qux {:model :qux
-                        :compare-cols [:name]
-                        :fk-column :foo_id
-                        :nested-specs {:bar {:model :qux_bar
-                                             :compare-cols [:name]
-                                             :fk-column :qux_id}}}}})
+                         :nested-specs [[:bar {:model :qux_bar
+                                               :compare-cols [:name]
+                                               :fk-column :qux_id}]]}]]})
 
 (deftest complex-nested-model-test
   (testing "Complex nested model with multiple levels"
@@ -345,14 +345,14 @@
   "A spec with nested multi-row models"
   {:model :foo
    :compare-cols [:name]
-   :nested-specs {:bars {:model        :bar
-                         :compare-cols [:name]
-                         :multi-row?   true
-                         :fk-column    :foo_id
-                         :nested-specs {:quxes {:model        :bar_qux
-                                                :compare-cols [:name]
-                                                :multi-row?   true
-                                                :fk-column    :bar_id}}}}})
+   :nested-specs [[:bars {:model        :bar
+                          :compare-cols [:name]
+                          :multi-row?   true
+                          :fk-column    :foo_id
+                          :nested-specs [[:quxes {:model        :bar_qux
+                                                  :compare-cols [:name]
+                                                  :multi-row?   true
+                                                  :fk-column    :bar_id}]]}]]})
 
 (deftest nested-sequential-test
   (testing "adding 2 layers of nested sequential updates"
@@ -407,9 +407,9 @@
   "A spec with ref-in-parent references"
   {:model :parent
    :compare-cols [:name]
-   :nested-specs {:child {:model :child
-                          :compare-cols [:name]
-                          :ref-in-parent :child_id}}})
+   :nested-specs [[:child {:model :child
+                           :compare-cols [:name]
+                           :ref-in-parent :child_id}]]})
 
 (deftest ref-in-parent-create-test
   (testing "Creating parent with referenced child (ref-in-parent)"
@@ -487,19 +487,19 @@
   "A spec with multiple ref-in-parent references"
   {:model :order
    :compare-cols [:number]
-   :nested-specs {:customer {:model :customer
-                             :compare-cols [:name]
-                             :ref-in-parent :customer_id}
-                  :items {:model        :item
-                          :multi-row?   true
-                          :fk-column    :order_id
-                          :compare-cols [:product_name :quantity]}
-                  :payment {:model         :payment
-                            :compare-cols  [:amount]
-                            :ref-in-parent :payment_id
-                            :nested-specs  {:processor {:model         :payment_processor
-                                                        :compare-cols  [:name]
-                                                        :ref-in-parent :processor_id}}}}})
+   :nested-specs [[:customer {:model :customer
+                              :compare-cols [:name]
+                              :ref-in-parent :customer_id}]
+                  [:items {:model        :item
+                           :multi-row?   true
+                           :fk-column    :order_id
+                           :compare-cols [:product_name :quantity]}]
+                  [:payment {:model         :payment
+                             :compare-cols  [:amount]
+                             :ref-in-parent :payment_id
+                             :nested-specs  [[:processor {:model         :payment_processor
+                                                          :compare-cols  [:name]
+                                                          :ref-in-parent :processor_id}]]}]]})
 
 (deftest complex-ref-in-parent-test
   (testing "Complex flow with multiple ref-in-parent relationships"
@@ -532,13 +532,13 @@
   "A spec with ref-in-parent inside a multi-row spec"
   {:model :project
    :compare-cols [:name]
-   :nested-specs {:tasks {:model :task
-                          :multi-row? true
-                          :fk-column :project_id
-                          :compare-cols [:description]
-                          :nested-specs {:assignee {:model :user
-                                                    :compare-cols [:name]
-                                                    :ref-in-parent :assignee_id}}}}})
+   :nested-specs [[:tasks {:model :task
+                           :multi-row? true
+                           :fk-column :project_id
+                           :compare-cols [:description]
+                           :nested-specs [[:assignee {:model :user
+                                                      :compare-cols [:name]
+                                                      :ref-in-parent :assignee_id}]]}]]})
 
 (deftest multi-row-with-ref-create-test
   (testing "Creating a project with tasks that have assignee references"

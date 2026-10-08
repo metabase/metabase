@@ -14,17 +14,14 @@ import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
-import { Stack } from "metabase/ui";
-import type { SmartScalarComparisonWidgetProps } from "metabase/visualizations/types";
+import CS from "metabase/css/core/index.css";
+import { Button, Stack } from "metabase/ui";
+import type { SmartScalarComparisonWidgetProps } from "metabase/viz-core";
 import type { SmartScalarComparison } from "metabase-types/api";
 
 import { getDefaultComparison } from "../utils";
 
 import { ComparisonPicker } from "./ComparisonPicker";
-import {
-  AddComparisonButton,
-  ComparisonList,
-} from "./SmartScalarSettingsWidgets.styled";
 
 export function SmartScalarComparisonWidget({
   value,
@@ -95,7 +92,7 @@ export function SmartScalarComparisonWidget({
           disabled={!canSortComparisons}
           strategy={verticalListSortingStrategy}
         >
-          <ComparisonList data-testid="comparison-list">
+          <Stack component="ul" gap="sm" data-testid="comparison-list">
             {value.map((comparison, index) => {
               const isLast = index === value.length - 1;
               return (
@@ -117,13 +114,16 @@ export function SmartScalarComparisonWidget({
                 </Sortable>
               );
             })}
-          </ComparisonList>
+          </Stack>
         </SortableContext>
       </DndContext>
-      <AddComparisonButton
+      <Button
+        className={CS.alignSelfStart}
+        variant="transparent"
+        size="compact-md"
         disabled={!canAddComparison}
         onClick={handleAddComparison}
-      >{t`Add comparison`}</AddComparisonButton>
+      >{t`Add comparison`}</Button>
     </Stack>
   );
 }

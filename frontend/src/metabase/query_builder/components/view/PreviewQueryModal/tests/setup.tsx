@@ -2,12 +2,12 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,

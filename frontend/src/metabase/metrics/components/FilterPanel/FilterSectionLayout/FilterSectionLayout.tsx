@@ -16,8 +16,8 @@ export function FilterSectionLayout({
 }: FilterSectionLayoutProps) {
   return (
     <Group
-      p="md"
-      bdrs="md"
+      p="lg"
+      bdrs="sm"
       bg="background_page-secondary"
       justify="space-between"
       wrap="nowrap"

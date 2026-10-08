@@ -17,11 +17,11 @@ export function MeasureItem({ measure, href }: MeasureItemProps) {
       to={href}
       aria-label={measure.name}
       role="listitem"
-      px="md"
+      px="lg"
       py="0.75rem"
       withBorder
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Flex align="center" gap="sm">
           <Icon name="ruler" c="core-brand" />
           <Ellipsified lines={1} tooltip={measure.name}>

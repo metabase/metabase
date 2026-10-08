@@ -1,16 +1,14 @@
 import { c, t } from "ttag";
 
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
+  ChartSettingsError,
+  type VisualizationDefinition,
+  type VisualizationSettingsDefinitions,
+  columnSettings,
+  fieldSetting,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
@@ -28,14 +26,16 @@ import {
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...fieldSetting("scalar.field", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Primary number`,
+    get title() {
+      return t`Primary number`;
+    },
     fieldFilter: isSuitableScalarColumn,
   }),
   "scalar.comparisons": {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Comparisons`,
+    get title() {
+      return t`Comparisons`;
+    },
     widget: "smartScalarComparison",
     getValue: (series, vizSettings) => getComparisons(series, vizSettings),
     isValid: (series, vizSettings) => validateComparisons(series, vizSettings),
@@ -55,19 +55,30 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   },
   "scalar.switch_positive_negative": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Switch positive / negative colors?`,
+    get title() {
+      return t`Switch positive / negative colors?`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
   },
   "scalar.compact_primary_number": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Compact number`,
+    get title() {
+      return t`Compact number`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
+  },
+  "scalar.show_comparison_value": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Show comparison value`;
+    },
+    widget: "toggle",
+    inline: true,
+    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.show_comparison_value"],
   },
   ...columnSettings({
     getSection: () => t`Display`,
@@ -105,6 +116,8 @@ export const SMART_SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,
+  noHeader: true,
+  noLoadingHeader: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),

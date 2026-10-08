@@ -3,6 +3,6 @@
 }
 
 .databaseSelector {
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
   cursor: pointer;
 }

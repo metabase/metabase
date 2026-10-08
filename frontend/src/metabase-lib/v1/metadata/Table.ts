@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import { singularize } from "metabase/utils/formatting";
 import type { Measure, NormalizedTable, Segment } from "metabase-types/api";
@@ -32,10 +30,10 @@ interface Table extends Omit<
  */
 class Table {
   private readonly _plainObject: NormalizedTable;
+  private _fieldsLookup?: Record<string, Field>;
 
   constructor(table: NormalizedTable) {
     this._plainObject = table;
-    this.fieldsLookup = _.memoize(this.fieldsLookup);
     Object.assign(this, table);
   }
 
@@ -86,10 +84,17 @@ class Table {
   }
 
   // FIELDS
-  fieldsLookup() {
-    return Object.fromEntries(
+  fieldsLookup(): Record<string, Field> {
+    const cached = this._fieldsLookup;
+    if (cached != null) {
+      return cached;
+    }
+
+    const lookup: Record<string, Field> = Object.fromEntries(
       this.getFields().map((field) => [field.id, field]),
     );
+    this._fieldsLookup = lookup;
+    return lookup;
   }
 
   // @deprecated: use fieldsLookup

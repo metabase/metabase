@@ -348,6 +348,25 @@
                (is (= (some-saml-attributes "rasta")
                       (saml-login-attributes "rasta@metabase.com")))))))))))
 
+(deftest login-records-session-index-test
+  (testing "the SessionIndex from the IdP's assertion is stored on the session it creates"
+    ;; Single logout sends this back so the IdP knows which session to end (#77837).
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [req-options (saml-post-request-options (saml-test-response)
+                                                        default-redirect-uri)
+                 response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+             (is (successful-login? response))
+             ;; `rasta` may already own sessions from other fixtures, so look up the one this
+             ;; login just created via its session cookie.
+             (let [session-key (get-in response [:cookies request/metabase-session-cookie :value])]
+               (is (= "_8vKjURdHz4jghbYbj48khvBkLaEeyEqc"
+                      (t2/select-one-fn :saml_session_index :model/Session
+                                        :key_hashed (session/hash-session-key session-key)))
+                   "the SessionIndex in test_resources/saml-test-response.xml")))))))))
+
 (deftest validate-signatures-test
   ;; they were edited by hand I think, so the signatures are now incorrect (?)
   (testing "The sample responses should normally fail because the <Assertion> signatures don't match"
@@ -775,13 +794,15 @@
                                                        default-redirect-uri)]
             (client/client-real-response :post 401 "/auth/sso" req-options)))))))
 
-(deftest logout-should-delete-session-test-slo-enabled
-  (testing "Successful SAML SLO logouts should delete the user's session, when saml-slo-enabled."
+(deftest logout-should-end-session-slo-enabled-test
+  (testing "Successful SAML SLO logouts should end the user's session, when saml-slo-enabled."
     (with-other-sso-types-disabled!
       (let [session-key (session/generate-session-key)
             session-key-hashed (session/hash-session-key session-key)]
         (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                       :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
+                       :model/Session {session-id :id} {:user_id    (:id user)
+                                                        :id         (session/generate-session-id)
+                                                        :key_hashed session-key-hashed}]
           (with-saml-default-setup!
             (mt/with-temporary-setting-values [saml-slo-enabled true
                                                saml-identity-provider-issuer "http://localhost:9090/realms/master"
@@ -795,11 +816,12 @@
                     response    (client/client-real-response :post 302 "/auth/sso/handle_slo" req-options)]
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
-                (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))
-                    "After a successful log-out, the session is deleted")))))))))
+                (is (=? {:end_reason "sso-logout", :ended_by_user_id (:id user), :ended_at some?, :key_hashed nil}
+                        (t2/select-one :model/Session :id session-id))
+                    "After a successful log-out, the session is ended and its key destroyed")))))))))
 
-(deftest logout-should-delete-session-test-slo-disabled
-  (testing "Successful SAML SLO logouts should not delete the user's session, when not saml-slo-enabled."
+(deftest logout-should-end-session-slo-disabled-test
+  (testing "Successful SAML SLO logouts should not end the user's session, when not saml-slo-enabled."
     (with-other-sso-types-disabled!
       (mt/with-temporary-setting-values [saml-slo-enabled false]
         (let [session-key (session/generate-session-key)
@@ -817,20 +839,24 @@
                 (is (str/blank? (get-in response [:cookies request/metabase-session-cookie :value]))
                     "After a successful log-out, you don't have a session")
                 (is (t2/exists? :model/Session :key_hashed session-key-hashed)
-                    "After a successful log-out, the session is deleted")))))))))
+                    "Without SLO the handler leaves the session live")))))))))
 
-(deftest logout-should-delete-session-when-idp-slo-conf-missing-test
-  (testing "Missing SAML SLO config logouts should still delete the user's session."
+(deftest logout-should-end-session-when-idp-slo-conf-missing-test
+  (testing "Missing SAML SLO config logouts should still end the user's session."
     (with-other-sso-types-disabled!
       (mt/with-temporary-setting-values [saml-slo-enabled false]
         (let [session-key (session/generate-session-key)
               session-key-hashed (session/hash-session-key session-key)]
           (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                         :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
+                         :model/Session {session-id :id} {:user_id    (:id user)
+                                                          :id         (session/generate-session-id)
+                                                          :key_hashed session-key-hashed}]
             (is (t2/exists? :model/Session :key_hashed session-key-hashed))
             (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-key)]
               (client/client :post "/auth/sso/logout" req-options)
-              (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))))))))))
+              (is (=? {:end_reason "sso-logout", :ended_by_user_id (:id user), :ended_at some?, :key_hashed nil}
+                      (t2/select-one :model/Session :id session-id))
+                  "the session is ended, attributed to the user, and its key destroyed"))))))))
 
 (deftest saml-embedding-sdk-integration-returns-idp-url-tests
   (testing "should return IdP URL and method info when embedding SDK header is present"

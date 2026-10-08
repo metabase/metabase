@@ -34,7 +34,7 @@ describe(
           expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
-        cy.findByLabelText("Model actions").should("be.checked");
+        cy.findByLabelText("Data actions").should("be.checked");
       });
     });
   },
@@ -88,9 +88,8 @@ describe("admin > database > add", () => {
     cy.intercept("GET", "/api/database/:id").as("getDatabase");
 
     cy.visit("/admin/databases/create");
-    // should display a setup help card
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Need help connecting?");
+    // should display a setup help link
+    cy.findByRole("link", { name: "Need help connecting?" }).should("be.exist");
 
     cy.findByLabelText("Database type").click();
   });
@@ -428,7 +427,10 @@ describe("database page > side panel", () => {
     cy.visit("/admin/databases/create");
   });
 
-  it("should show side panel with help content when 'Help is here' is clicked", () => {
+  it("should show side panel with help content and update it when the engine is changed", () => {
+    cy.log(
+      "should show side panel with help content when 'Help is here' is clicked",
+    );
     cy.findByRole("button", { name: /Help is here/ }).click();
     cy.findByTestId("database-help-side-panel").within(() => {
       cy.findByText("Add PostgreSQL").should("be.visible");
@@ -440,9 +442,10 @@ describe("database page > side panel", () => {
         "be.visible",
       );
     });
-  });
+    cy.findByRole("button", { name: /Close panel/ }).click();
+    cy.findByTestId("database-help-side-panel").should("not.exist");
 
-  it("should update the side panel content when the engine is changed", () => {
+    cy.log("should update the side panel content when the engine is changed");
     const enginesMap = [
       { name: "Amazon Athena", file: "athena" },
       { name: "BigQuery", file: "bigquery" },

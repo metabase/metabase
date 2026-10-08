@@ -11,13 +11,17 @@ import { type ReactNode, forwardRef } from "react";
 export type CheckboxCardProps = Omit<MantineCheckboxCardProps, "children"> & {
   label?: ReactNode;
   description?: ReactNode;
+  withIndicator?: boolean;
 };
 
 export const CheckboxCard = forwardRef<HTMLButtonElement, CheckboxCardProps>(
-  function CheckboxCard({ label, description, disabled, ...props }, ref) {
+  function CheckboxCard(
+    { label, description, disabled, withIndicator = true, ...props },
+    ref,
+  ) {
     return (
       <MantineCheckboxCard disabled={disabled} {...props} ref={ref}>
-        <MantineCheckboxIndicator disabled={disabled} />
+        {withIndicator && <MantineCheckboxIndicator disabled={disabled} />}
         <Stack component="span" gap={rem(2)} miw={0}>
           {label && (
             <Text

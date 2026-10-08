@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useEnableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
 
 type Props = {
@@ -30,7 +30,7 @@ export function EnableAdvancedModal({ onClose }: Props) {
       message={t`This will remove all AI feature access from the "All Users" group, so users won't have access to AI features unless they're added to a group that has access.`}
       confirmButtonText={t`Switch`}
       confirmButtonProps={{
-        color: "core-brand",
+        color: "brand",
         variant: "filled",
         loading,
       }}

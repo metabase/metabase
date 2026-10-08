@@ -1,4 +1,4 @@
-(ns test.dev.n-plus-one-detection-test
+(ns dev.n-plus-one-detection-test
   (:require  [clojure.test :refer [deftest testing is]]
              [dev]
              [methodical.core :as methodical]
@@ -11,6 +11,7 @@
   (let [v (:one (t2/query-one {:select [[1 :one]]}))]
     (assoc row k v)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cached?* nil)
 
 ;; A simple hydration function that simulates caching. The first time it's called, it hits the database, but it

@@ -45,7 +45,7 @@ The password for the username that you use to connect to the database.
 
 ### Databases
 
-Include all of the database you want to be able to query in Metabase. Separate databases with the space character, e.g., `db1 db2 db3`.
+Include all of the databases you want to be able to query in Metabase. Separate databases with the space character, e.g., `db1 db2 db3`.
 
 ### Scan all databases
 
@@ -87,7 +87,7 @@ clickhouse_setting_connection_timeout=1000&clickhouse_setting_socket_timeout=300
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 

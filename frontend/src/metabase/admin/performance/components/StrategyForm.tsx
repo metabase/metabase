@@ -28,7 +28,6 @@ import {
   Flex,
   Group,
   Icon,
-  Loader,
   Select,
   Stack,
   Text,
@@ -217,7 +216,7 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         {layout === "modal" && (
-          <Box pt="md">
+          <Box pt="lg">
             <StrategySelectorHeading headingId={headingId} />
           </Box>
         )}
@@ -229,18 +228,18 @@ const StrategyFormBody = ({
           })}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" c="text-secondary">
+            <Box lh="1rem" pt="lg" c="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" c="inherit" />
                 )}
-                <Text fw="bold" py="md">
+                <Text fw="bold" py="lg">
                   {targetName}
                 </Text>
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" gap="xl">
+          <Stack maw="35rem" gap="xxl">
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -288,8 +287,8 @@ const FormButtonsGroup = ({
 }) => {
   return (
     <Group
-      py="md"
-      gap="md"
+      py="lg"
+      gap="lg"
       justify={layout === "sidebar" ? "flex-end" : undefined}
       px={layout === "sidebar" ? 0 : "2.5rem"}
       pb={layout === "sidebar" ? 0 : undefined}
@@ -343,8 +342,8 @@ const FormButtons = ({
       <Group
         justify={canInvalidate ? "space-between" : "flex-end"}
         wrap="nowrap"
-        mt="xl"
-        gap="md"
+        mt="xxl"
+        gap="lg"
       >
         {canInvalidate && (
           <PLUGIN_CACHING.InvalidateNowButton
@@ -353,10 +352,9 @@ const FormButtons = ({
             targetName={targetName}
           />
         )}
-        <Group gap="md" wrap="nowrap">
+        <Group gap="lg" wrap="nowrap">
           <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
           <FormSubmitButton
-            h="2.5rem"
             label={buttonLabels.save}
             variant="filled"
             data-testid="strategy-form-submit-button"
@@ -408,7 +406,12 @@ const ScheduleStrategyFormFields = ({
 }) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
-  const initialSchedule = cronToBuilderValue(scheduleInCronFormat);
+  // Schedule takes `value` as a useMemo dependency, so this has to keep its
+  // identity between renders for the same cron string.
+  const initialSchedule = useMemo(
+    () => cronToBuilderValue(scheduleInCronFormat),
+    [scheduleInCronFormat],
+  );
   const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
@@ -435,7 +438,7 @@ const ScheduleStrategyFormFields = ({
       {/* Not a StrategyFormField: its <label> would redirect title/subtitle
           clicks to the first Select inside Schedule. */}
       <Stack gap="sm">
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text fw="bold" fz="md" lh="1.25rem">
             {t`Cache invalidation schedule`}
           </Text>
@@ -487,15 +490,12 @@ const SaveAndDiscardButtons = ({
         </Button>
       )}
       <FormSubmitButton
-        miw={layout === "sidebar" ? undefined : "10rem"}
-        h="2.5rem"
         label={buttonLabels.save}
         successLabel={
-          <Group gap="xs">
+          <Group gap="xxs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />
@@ -508,7 +508,7 @@ export const StrategySelectorHeading = ({
 }: {
   headingId: string;
 }) => (
-  <Stack gap="xs">
+  <Stack gap="xxs">
     <Text lh="1.25rem" fw="bold" fz="md" id={headingId}>
       {t`Cache invalidation policy`}
     </Text>
@@ -579,7 +579,7 @@ const StrategySelector = ({
             return option.label;
           }
           return (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Text fw="bold">{getLabelString(strategy.label, model)}</Text>
               {strategy.description && (
                 <Text size="sm" c="text-secondary">
@@ -775,7 +775,7 @@ const StrategyFormField = ({
   return (
     <label>
       <Stack gap="sm">
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text fw="bold" fz="md" lh="1.25rem">
             {title}
           </Text>

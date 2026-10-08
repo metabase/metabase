@@ -1,4 +1,3 @@
-import { MetricSchema } from "metabase/schema";
 import type {
   AddMetricDimensionsRequest,
   Dataset,
@@ -32,7 +31,6 @@ import {
   provideMetricTags,
 } from "./tags/utils";
 import { getMetricDatasetCacheKey } from "./utils/get-metric-dataset-cache-key";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 /**
  * Curation edits change the dimensions embedded in the metric card itself,
@@ -54,10 +52,6 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric",
       }),
       providesTags: (response) => provideMetricListTags(response?.data ?? []),
-      onQueryStarted: hydrateMetadataStore<GetMetricListResponse>(
-        [MetricSchema],
-        (response) => response.data,
-      ),
     }),
     getMetric: builder.query<Metric, MetricId>({
       query: (id) => ({
@@ -65,7 +59,6 @@ export const metricApi = Api.injectEndpoints({
         url: `/api/metric/${id}`,
       }),
       providesTags: (metric) => (metric ? provideMetricTags(metric) : []),
-      onQueryStarted: hydrateMetadataStore(MetricSchema),
     }),
     getMetricDimensionValues: builder.query<
       GetMetricDimensionValuesResponse,

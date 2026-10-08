@@ -24,8 +24,8 @@ export function MeasureEditor({
   readOnly = false,
 }: MeasureEditorProps) {
   return (
-    <Card withBorder p="xl">
-      <Stack flex={1} gap="xl" p={0} className={S.scrollable}>
+    <Card withBorder p="xxl">
+      <Stack flex={1} gap="xxl" p={0} className={S.scrollable}>
         {query && (
           <MeasureAggregationPicker
             onChange={onQueryChange}

@@ -1,15 +1,10 @@
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import type { MetabotMessage } from "metabase/metabot/state/types";
 
-import {
-  type FetchedChatMessage,
-  normalizeFetchedChatMessages,
-} from "./normalize-fetched-chat-messages";
-
-export type ParentedChatMessage = FetchedChatMessage & {
+export type ParentedMessage = MetabotMessage & {
   parent_message_id: string | null;
 };
 
-type BranchIndex = Map<string | null, ParentedChatMessage[]>;
+type BranchIndex = Map<string | null, ParentedMessage[]>;
 
 type SelectedReplyByParentId = Record<string, string>;
 
@@ -21,12 +16,12 @@ type ResponseBranch = {
   replyIds: string[];
 };
 
-type ActiveResponse = {
-  messages: MetabotChatMessage[];
+export type ActiveResponse = {
+  message: MetabotMessage;
   branch: ResponseBranch | null;
 };
 
-function indexChildrenByParent(messages: ParentedChatMessage[]): BranchIndex {
+function indexChildrenByParent(messages: ParentedMessage[]): BranchIndex {
   const index: BranchIndex = new Map();
   for (const message of messages) {
     const siblings = index.get(message.parent_message_id);
@@ -42,8 +37,8 @@ function indexChildrenByParent(messages: ParentedChatMessage[]): BranchIndex {
 function activePath(
   index: BranchIndex,
   selectedReplyByParentId: SelectedReplyByParentId,
-): ParentedChatMessage[] {
-  const path: ParentedChatMessage[] = [];
+): ParentedMessage[] {
+  const path: ParentedMessage[] = [];
   let parentId: string | null = null;
 
   while (true) {
@@ -55,7 +50,7 @@ function activePath(
     const selectedId: string | undefined =
       selectedReplyByParentId[parentId ?? ROOT_KEY];
     // Siblings arrive oldest first; default to the newest.
-    const node: ParentedChatMessage =
+    const node: ParentedMessage =
       siblings.find(({ id }) => id === selectedId) ??
       siblings[siblings.length - 1];
     path.push(node);
@@ -64,46 +59,29 @@ function activePath(
 }
 
 export function activeResponses(
-  messages: ParentedChatMessage[],
+  messages: ParentedMessage[],
   selectedReplyByParentId: SelectedReplyByParentId,
-  { isSlack }: { isSlack: boolean },
 ): ActiveResponse[] {
   const index = indexChildrenByParent(messages);
   const path = activePath(index, selectedReplyByParentId);
-  return groupIntoResponses(path).map((response) => ({
-    messages: normalizeFetchedChatMessages(response, { isSlack }),
-    branch: branchAt(index, response),
+  return path.map((message) => ({
+    message,
+    branch: branchAt(index, message),
   }));
-}
-
-function groupIntoResponses(
-  path: ParentedChatMessage[],
-): ParentedChatMessage[][] {
-  const responses: ParentedChatMessage[][] = [];
-  for (const node of path) {
-    const current = responses.at(-1);
-    if (current?.[0].role === "agent" && node.role === "agent") {
-      current.push(node);
-    } else {
-      responses.push([node]);
-    }
-  }
-  return responses;
 }
 
 function branchAt(
   index: BranchIndex,
-  response: ParentedChatMessage[],
+  message: ParentedMessage,
 ): ResponseBranch | null {
-  const head = response[0];
-  const siblings = index.get(head.parent_message_id) ?? [];
+  const siblings = index.get(message.parent_message_id) ?? [];
   if (siblings.length < 2) {
     return null;
   }
 
   return {
-    parentId: head.parent_message_id ?? ROOT_KEY,
-    currentIndex: siblings.findIndex(({ id }) => id === head.id),
+    parentId: message.parent_message_id ?? ROOT_KEY,
+    currentIndex: siblings.findIndex(({ id }) => id === message.id),
     replyIds: siblings.map(({ id }) => id),
   };
 }

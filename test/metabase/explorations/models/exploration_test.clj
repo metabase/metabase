@@ -13,7 +13,10 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- venues-count-query
   "A `:metric` card's `:dataset_query`: count over the venues table, built with Lib."

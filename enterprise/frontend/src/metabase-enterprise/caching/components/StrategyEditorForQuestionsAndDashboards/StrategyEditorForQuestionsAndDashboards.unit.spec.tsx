@@ -4,6 +4,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupTokenStatusEndpoint } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   mockGetBoundingClientRect,
@@ -12,7 +13,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type {
   CacheConfig,
@@ -183,10 +183,14 @@ describe("StrategyEditorForQuestionsAndDashboards", () => {
 
     await userEvent.clear(searchInput);
     await userEvent.type(searchInput, "Bananas");
-    // Even-numbered items live in "Collection Bananas"
-    expect(await screen.findByText("Item 2")).toBeInTheDocument();
+    // Even-numbered items live in "Collection Bananas". Wait for both conditions
+    // together: "Item 2" alone also shows while the cleared (empty) query is
+    // briefly committed, and "Item 1" alone is also absent before it commits.
+    await waitFor(() => {
+      expect(screen.getByText("Item 2")).toBeInTheDocument();
+      expect(screen.queryByText("Item 1")).not.toBeInTheDocument();
+    });
     expect(screen.getByText("Item 4")).toBeInTheDocument();
-    expect(screen.queryByText("Item 1")).not.toBeInTheDocument();
   });
 
   it("filters by caching policy and type", async () => {

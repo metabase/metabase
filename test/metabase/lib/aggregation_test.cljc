@@ -228,9 +228,13 @@
                     [:+ {:lib/uuid (str (random-uuid))} field 1]
                     [:- {:lib/uuid (str (random-uuid))} field 1]
                     [:* {:lib/uuid (str (random-uuid))} field 1]])
-            :let [clause [tag
-                          {:lib/uuid (str (random-uuid))}
-                          arg]]]
+            :let [clause (cond-> [tag
+                                  {:lib/uuid (str (random-uuid))}
+                                  arg]
+                           (= tag :percentile) (conj 0.5)
+                           (= tag :sum-where)  (conj [:> {:lib/uuid (str (random-uuid))}
+                                                      [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :price)]
+                                                      1]))]]
       (testing (str \newline (pr-str clause))
         (is (= :type/Number
                (lib.schema.expression/type-of clause)))

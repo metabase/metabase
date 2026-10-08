@@ -10,7 +10,9 @@ import {
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -18,19 +20,18 @@ import {
   within,
 } from "__support__/ui";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Card,
   Collection,
   Database,
+  ListDatabasesResponse,
   Settings,
+  Table,
   WritebackAction,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -124,6 +125,11 @@ const TEST_DATABASE_WITH_ACTIONS_READONLY = createMockDatabase({
   native_permissions: "none",
 });
 
+const TEST_DATABASE_WITH_ACTIONS_LIST_ITEM = createMockDatabase({
+  ...TEST_DATABASE_WITH_ACTIONS,
+  tables: [],
+});
+
 function createStructuredModelCard(card?: Partial<Card>) {
   return _createStructuredModelCard({
     can_write: true,
@@ -171,6 +177,7 @@ type SetupOpts = {
   collections?: Collection[];
   usedBy?: Card[];
   settings?: Partial<Settings>;
+  deferDatabaseList?: boolean;
 };
 
 async function setup({
@@ -180,6 +187,7 @@ async function setup({
   collections = [],
   usedBy = [],
   settings = {},
+  deferDatabaseList = false,
 }: SetupOpts) {
   const storeInitialState = createMockState({
     settings: createMockSettingsState(settings),
@@ -196,7 +204,24 @@ async function setup({
     checkNotNull(metadata.question(q.id)),
   );
 
-  setupDatabasesEndpoints(databases);
+  const databaseList = defer<ListDatabasesResponse>();
+  const mainTable = defer<Table>();
+  if (deferDatabaseList) {
+    fetchMock.get("path:/api/database", () => databaseList.promise, {
+      name: "deferred-database-list",
+    });
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}`, () => mainTable.promise, {
+      name: "deferred-main-table",
+    });
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}/fks`, []);
+  } else {
+    setupDatabasesEndpoints(databases);
+  }
+  if (databases.length === 0) {
+    // The page reads the model's source table to decide whether to load its
+    // foreign keys. With no data permissions the server refuses it.
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}`, 403);
+  }
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
@@ -239,7 +264,15 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { model, router, baseUrl, metadata, usedByQuestions };
+  return {
+    model,
+    router,
+    baseUrl,
+    metadata,
+    usedByQuestions,
+    databaseList,
+    mainTable,
+  };
 }
 
 async function setupActions({
@@ -574,6 +607,45 @@ describe("ModelActions", () => {
 
   describe("structured model", () => {
     const modelCard = createStructuredModelCard();
+
+    it("shows the actions menu when database metadata becomes available after mount", async () => {
+      const { databaseList, mainTable } = await setupActions({
+        model: modelCard,
+        actions: [],
+        deferDatabaseList: true,
+      });
+
+      const databaseResponse = {
+        data: [TEST_DATABASE_WITH_ACTIONS_LIST_ITEM],
+        total: 1,
+      };
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("deferred-database-list")).toBe(
+          true,
+        );
+        expect(fetchMock.callHistory.called("deferred-main-table")).toBe(true);
+      });
+
+      await act(async () => {
+        databaseList.resolve(databaseResponse);
+      });
+
+      try {
+        expect(
+          await screen.findByRole("button", { name: "Actions" }),
+        ).toBeInTheDocument();
+      } finally {
+        await act(async () => {
+          mainTable.resolve(
+            createMockTable({
+              ...TEST_TABLE,
+              fields: [],
+            }),
+          );
+        });
+      }
+    });
 
     it("allows to create implicit actions", async () => {
       const action = createMockQueryAction({ model_id: modelCard.id });

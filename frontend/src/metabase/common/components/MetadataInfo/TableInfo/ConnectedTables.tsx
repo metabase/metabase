@@ -1,30 +1,34 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
+import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type Table from "metabase-lib/v1/metadata/Table";
+import type { NormalizedTable } from "metabase-types/api";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
+import { TableLabel } from "../TableLabel/TableLabel";
 
-import {
-  InteractiveTableLabel,
-  LabelButton,
-  LabelLink,
-} from "./ConnectedTables.styled";
+import S from "./ConnectedTables.module.css";
+
+export type ConnectedTable = Pick<
+  NormalizedTable,
+  "id" | "db_id" | "display_name"
+>;
 
 type Props = {
-  table: Table;
-  onConnectedTableClick?: (table: Table) => void;
+  tables: ConnectedTable[];
+  onConnectedTableClick?: (table: ConnectedTable) => void;
 };
 
-export function ConnectedTables({ table, onConnectedTableClick }: Props) {
-  const fkTables = table.connectedTables();
-
-  return fkTables.length ? (
+export function ConnectedTables({ tables, onConnectedTableClick }: Props) {
+  return tables.length ? (
     <Container>
       <LabelContainer color="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
-      {fkTables.slice(0, 8).map((fkTable) => {
+      {tables.slice(0, 8).map((fkTable) => {
         return onConnectedTableClick ? (
           <ConnectedTableButton
             key={fkTable.id}
@@ -43,20 +47,39 @@ function ConnectedTableButton({
   table,
   onClick,
 }: {
-  table: Table;
-  onClick: (table: Table) => void;
+  table: ConnectedTable;
+  onClick: (table: ConnectedTable) => void;
 }) {
   return (
-    <LabelButton key={table.id} onClick={() => onClick(table)}>
-      <InteractiveTableLabel table={table} />
-    </LabelButton>
+    <Box
+      component="button"
+      key={table.id}
+      className={S.connectedTable}
+      ta="left"
+      onClick={() => onClick(table)}
+    >
+      <TableLabel className={S.label} table={table} color="text-disabled" />
+    </Box>
   );
 }
 
-function ConnectedTableLink({ table }: { table: Table }) {
+function ConnectedTableLink({ table }: { table: ConnectedTable }) {
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const url = useMemo(() => {
+    const question = buildQuestion({
+      dataset_query: {
+        database: table.db_id,
+        type: "query",
+        query: { "source-table": table.id },
+      },
+    }).setDefaultDisplay();
+
+    return Urls.question(question);
+  }, [buildQuestion, table.db_id, table.id]);
+
   return (
-    <LabelLink to={Urls.question(table.newQuestion())}>
-      <InteractiveTableLabel table={table} />
-    </LabelLink>
+    <Link className={S.connectedTable} to={url}>
+      <TableLabel className={S.label} table={table} color="text-disabled" />
+    </Link>
   );
 }

@@ -23,13 +23,12 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
-   [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.sql SQLException)))
 
@@ -45,12 +44,6 @@
     (transforms-base.u/python-transform? transform) (premium-features/python-transforms-enabled?)
     :else false))
 
-(defn enabled-source-types-for-user
-  "Returns set of enabled source types for WHERE clause filtering."
-  []
-  (when (api/is-data-analyst?)
-    (transforms.gating/enabled-source-types)))
-
 (defn- source-query-permissions-ok?
   "Whether the current user may run a query transform's source `query`, per the query processor's own permission
   check. The query is preprocessed first so references that only appear after expansion (cards, snippets) are
@@ -63,10 +56,10 @@
     (qp.setup/with-qp-setup [query query]
       (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
       true)
-    (catch clojure.lang.ExceptionInfo e
+    (catch Exception e
       ;; Only a permission refusal makes the source unreadable. A source that fails to preprocess for any
-      ;; other reason (a missing required parameter, a malformed query) cannot run at all, and rejecting it
-      ;; is left to validation and execution, which report the specific problem.
+      ;; other reason (a missing required parameter, a malformed query, an inactive table) cannot run at all, and
+      ;; rejecting it is left to validation and execution, which report the specific problem.
       (let [data (ex-data e)]
         (not (or (:permissions-error? data)
                  (= 403 (:status-code data))))))))
@@ -81,7 +74,9 @@
    (let [resolve* (fn [model id]
                     (if models-cache
                       (get-in models-cache [model id])
-                      (t2/select-one model id)))
+                      (case model
+                        :model/Database (transforms.db/database id)
+                        :model/Table    (transforms.db/table id))))
          source   (:source transform)]
      (case (keyword (:type source))
        :query
@@ -123,9 +118,9 @@
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)
-                       (u/index-by :id (t2/select :model/Database :id [:in db-ids])))
+                       (u/index-by :id (transforms.db/databases db-ids)))
      :model/Table    (when (seq table-ids)
-                       (u/index-by :id (t2/select :model/Table :id [:in table-ids])))}))
+                       (u/index-by :id (transforms.db/tables table-ids)))}))
 
 (defn add-source-readable
   "Add :source_readable field to a transform or collection of transforms.
