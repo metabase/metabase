@@ -614,7 +614,7 @@
              (some? model-type)
              (not= :model/CollectionBookmark model-type)
              (not (contains? #{:question :dashboard-question :metric :action} (keyword model-type)))
-             (contains? (set (perms/data-app-collection-ids)) collection-id))
+             (perms/data-app-collection? collection-id))
     (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
   (check-library-content model-type collection-id))
 
@@ -1859,7 +1859,7 @@
     (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
     ;; an export writes a data app's collection under another as a file every pull refuses
-    (when (contains? (set (perms/data-app-collection-ids)) (:id collection))
+    (when (perms/data-app-collection? (:id collection))
       (throw (ex-info "You cannot move a data app's collection." {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
@@ -2088,7 +2088,7 @@
     ;; official one into a file every pull refuses
     (api/check
      (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
-               (contains? (set (perms/data-app-collection-ids)) (:id collection-before-updates))))
+               (perms/data-app-collection? (:id collection-before-updates))))
      [400 "You cannot move a data app's collection to the trash or make it official."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed

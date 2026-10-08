@@ -3770,6 +3770,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            permissions
@@ -3786,7 +3787,6 @@
                     :model/DataPermissions
                     :model/Database
                     :model/Field
-                    :model/NativeQuerySnippet
                     :model/Permissions
                     :model/PermissionsGroup
                     :model/QueryAction

@@ -147,7 +147,8 @@
         copy-id   (fn [kind source] (copy-entity-id kind collection-entity-id (:entity_id source)))
         copy-ids  (into {} (map (juxt :id (partial copy-id "metric"))) metrics)
         extract   (fn [model-name instance]
-                    (assoc (serdes/extract-one model-name {} instance) :collection_id collection-entity-id))
+                    (cond-> (serdes/extract-one model-name {} instance)
+                      (not= "Collection" model-name) (assoc :collection_id collection-entity-id)))
         entities  (serdes/with-cache
                     (binding [resolve/*export-resolver* (copy-overriding-resolver resolve/*export-resolver* copy-ids)]
                       (doall

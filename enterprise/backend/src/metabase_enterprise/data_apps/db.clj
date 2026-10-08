@@ -65,6 +65,16 @@
   [slug :- :string]
   (t2/exists? :model/DataApp :name slug))
 
+(mu/defn data-app-entity-id-named
+  "The `:entity_id` of the DataApp named `slug`, or nil."
+  [slug :- :string]
+  (t2/select-one-fn :entity_id :model/DataApp :name slug))
+
+(mu/defn resource-collection?
+  "Whether the Collection with `collection-id` is the resource collection of a DataApp."
+  [collection-id :- pos-int?]
+  (t2/exists? :model/DataApp :resource_collection_id collection-id))
+
 (mu/defn insert-data-app!
   "Insert the DataApp `row`."
   [row :- ::data-apps.schema/data-app.update]
@@ -162,11 +172,6 @@
   [field-id]
   (some? (t2/select-one-pk :model/Field :id field-id :active true
                            {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
-
-(defn snippet-content
-  "The SQL of the snippet named `snippet-name`, if there is one."
-  [snippet-name]
-  (t2/select-one-fn :content :model/NativeQuerySnippet :name snippet-name))
 
 (defn collections-by-entity-ids
   "The `:id`, `:entity_id` and `:namespace` of the collections with `entity-ids`."

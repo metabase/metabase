@@ -673,7 +673,7 @@
   (let [card    (api/write-check :model/Card id)
         ;; the database deletes the card's actions through the foreign key, with no events of their own
         actions (queries-rest.db/actions-for-model id)]
-    (queries/check-data-app-card-deletable card)
+    (queries/check-allowed-to-delete-card! card)
     (queries-rest.db/delete-card! id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*})
     (doseq [action actions]

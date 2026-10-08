@@ -42,7 +42,7 @@
         (mt/with-test-user :crowberto
           (mt/with-temp [:model/Card {card-id :id} {:collection_id resource_collection_id}]
             ;; a data app's collection can no longer be trashed, so trash it as an instance from before that rule did
-            (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{})]
+            (mt/with-dynamic-fn-redefs [perms/data-app-collection? (constantly false)]
               (collection/archive-or-unarchive-collection!
                (t2/select-one :model/Collection :id resource_collection_id)
                {:archived true}))

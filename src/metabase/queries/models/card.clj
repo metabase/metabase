@@ -996,7 +996,7 @@
   the card into the app's files, and every pull refuses a file that says otherwise."
   [{:keys [collection_id] :as card}]
   (when (and (some? collection_id)
-             (contains? (set (perms/data-app-collection-ids)) collection_id))
+             (perms/data-app-collection? collection_id))
     ;; a new card without a type is a question, the column's default
     (when (or (not (contains? #{:question :metric} (keyword (or (:type card) :question))))
               (:archived card)
@@ -1018,11 +1018,11 @@
                              (str/join ", " (sort outside)))
                         {:status-code 400}))))))
 
-(defn- data-app-card-reader
+(defn data-app-card-reader
   "The ID of a card in the data app's collection `collection-id` that reads the card with `card-id`, if one does."
   [collection-id card-id]
   (when (and (some? collection-id)
-             (contains? (set (perms/data-app-collection-ids)) collection-id))
+             (perms/data-app-collection? collection-id))
     (some (fn [other]
             (when (some #(= {:model "Card" :id card-id} (select-keys (last %) [:model :id]))
                         (serdes/serialization-dependencies "Card" other))
@@ -1030,20 +1030,11 @@
           (queries.db/other-cards-in-collection collection-id card-id))))
 
 (defn- check-data-app-card-stays
-  "Throws when the card with `id` leaves the data app's collection `from` while another card there reads it: the
-  export would write the reader into a file every pull refuses."
+  "Throws when the card with `id` leaves the data app's collection `from` while another card there reads it."
   [id from]
+  ;; the next export would write the reader into a file every pull refuses
   (when-let [reader (data-app-card-reader from id)]
-    (throw (ex-info (str "Card " reader " in the data app's collection reads this card, so it can't leave the collection")
-                    {:status-code 400}))))
-
-(defn check-data-app-card-deletable
-  "Throws when `card` is in a data app's collection and another card there reads it: the export would write the
-  reader into a file every pull refuses. For the endpoint that deletes a card, not the delete hook: deleting the
-  collection deletes its cards together, readers and read."
-  [{:keys [id collection_id]}]
-  (when-let [reader (data-app-card-reader collection_id id)]
-    (throw (ex-info (str "Card " reader " in the data app's collection reads this card, so it can't be deleted")
+    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t leave the collection." reader)
                     {:status-code 400}))))
 
 (t2/define-before-insert :model/Card

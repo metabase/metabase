@@ -162,18 +162,13 @@
         (check-implicit-actions-supported action))
       (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
         (check-collection-content <>))
-      ;; an export leaves out an archived action, and the next pull would then delete it from every instance
-      (when (and (changed? :archived)
-                 (:archived <>)
-                 (some? (:collection_id <>))
-                 (contains? (set (perms/data-app-collection-ids)) (:collection_id <>)))
-        (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
-      ;; an export writes the link into the action's file, which every pull then refuses
-      (when (and (changed? :public_uuid)
-                 (:public_uuid <>)
-                 (some? (:collection_id <>))
-                 (contains? (set (perms/data-app-collection-ids)) (:collection_id <>)))
-        (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400}))))))
+      (let [in-data-app? (and (some? (:collection_id <>)) (perms/data-app-collection? (:collection_id <>)))]
+        ;; an export leaves out an archived action, and the next pull would then delete it from every instance
+        (when (and in-data-app? (changed? :archived) (:archived <>))
+          (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
+        ;; an export writes the link into the action's file, which every pull then refuses
+        (when (and in-data-app? (changed? :public_uuid) (:public_uuid <>))
+          (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400})))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -264,25 +259,22 @@
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
-;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
 (defn- query-card-ids
-  "The IDs of the Cards the native `query` reads through card template tags, in either form of the query, whose
-  template tags are a map by name or, as an action's query stores them, a sequence."
+  "The IDs of the Cards the native `query` reads through card template tags."
   [query]
-  (let [tags (or (get-in query [:native :template-tags])
-                 (some :template-tags (:stages query)))]
-    (into #{}
-          (comp (filter #(= :card (keyword (:type %))))
-                (keep :card-id))
-          (if (map? tags) (vals tags) tags))))
+  (into #{}
+        (keep (fn [path]
+                (let [{:keys [model id]} (last path)]
+                  (when (= "Card" model) id))))
+        (serdes/mbql-deps true query)))
 
 (defn- check-data-app-action-query
-  "Throws unless `query`, of an action in the Collection with `collection-id`, reads only the app's own cards when that
-  is a data app's collection: the next export writes the action into the app's files, and every pull refuses a file
-  that reads a card outside."
+  "Throws when `query`, of an action in the Collection with `collection-id`, reads a card outside that collection
+  while the collection is a data app's."
   [collection-id query]
+  ;; the next export writes the action into the app's files, and a pull refuses one that reads a card outside
   (when (and (some? collection-id)
-             (contains? (set (perms/data-app-collection-ids)) collection-id))
+             (perms/data-app-collection? collection-id))
     (let [card-ids (query-card-ids query)
           outside  (when (seq card-ids)
                      (actions.db/card-ids-outside-collection card-ids collection-id))]
@@ -291,6 +283,7 @@
                              (str/join ", " (sort outside)))
                         {:status-code 400}))))))
 
+;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
 (mu/defn- insert*! :- ::actions.schema/id
   [action-data :- ::actions.schema/action.for-insert]
   (check-data-app-action-query (:collection_id action-data) (:dataset_query action-data))

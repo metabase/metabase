@@ -213,9 +213,8 @@
                          path (if (= kind :table) "table" "field") (pr-str ref))))))
 
 (defn- inactive-field-warnings
-  "A field that exists but is inactive is one that sync no longer finds, and the app's query would run against a
-  column that is gone. One column isn't the app, so the file loads and the pull logs the field, rather than refusing
-  the repository until the file changes, as it does for a table."
+  "A warning for each inactive field `file` references: one sync no longer finds, which the app's query would run
+  against. One column isn't the app, so the file loads with the field logged, unlike an inactive table."
   [{:keys [path] :as file}]
   (for [[kind [db-name schema table-name & field-names :as ref]] (sort-by second (portable-refs (:entity file)))
         :when (= kind :field)
@@ -361,6 +360,17 @@
         {:keys [path]} carried-by]
     (problem path (tru "{0} has the slug {1}, which another data app also has." path slug))))
 
+(defn- taken-slug-problems
+  "An app made on the instance keeps its slug, and a load would refuse the repository's app only after its collection
+  and cards had loaded."
+  [manifests]
+  (for [{:keys [path entity]} manifests
+        :let  [slug     (:slug entity)
+               taken-by (when (string? slug) (data-apps.db/data-app-entity-id-named slug))]
+        :when (and taken-by (not= taken-by (:entity_id entity)))]
+    (problem path (tru "{0} has the slug {1}, which a data app made on this instance already has. Delete that app, or give the app in the repository another slug."
+                       path slug))))
+
 (defn- child-collection-problems
   "A data app's collection holds no collections, and a load would refuse one only after it had started."
   [manifests files]
@@ -371,12 +381,12 @@
 
 (defn- other-content-problems
   "A data app's collection holds cards and actions only, and a load would refuse anything else only after it had
-  started. A collection's own file is not its content, whatever `collection_id` it carries."
+  started."
   [manifests files]
   (let [app-collections (into #{} (keep (comp :collection :entity)) manifests)]
     (for [{:keys [path entity]} files
           :when (and (contains? app-collections (:collection_id entity))
-                     (not (contains? #{"Card" "Action" "Collection"} (model-of entity))))]
+                     (not (contains? #{"Card" "Action"} (model-of entity))))]
       (problem path (tru "{0} is in a data app''s collection, which holds only questions, metrics and query actions." path)))))
 
 (defn- defined-dependencies
@@ -415,6 +425,7 @@
     (concat
      (shared-entity-id-problems manifests)
      (shared-slug-problems manifests)
+     (taken-slug-problems manifests)
      (shared-collection-problems manifests)
      (shared-resource-problems manifests files)
      (child-collection-problems manifests files)

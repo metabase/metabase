@@ -337,7 +337,7 @@ src/
 ├── index.tsx          (template — the factory; don't edit)
 ├── App.tsx            (routing + composition only)
 ├── theme.ts
-├── metabase.data.ts   (generated schema — see the semantic-layer skill)
+├── metabase.data.ts   (generated schema — use skill discovery for the data-app semantic layer)
 ├── pages/             (one file per screen)
 │   ├── Overview.tsx
 │   └── CustomerDetail.tsx
@@ -359,7 +359,7 @@ Vite bundles everything reachable from `src/index.tsx` into a single `dist/index
 const [active, setActive] = useState(TABS[0].id); // default = leftmost tab
 ```
 
-If the tabs are instead backed by URL routes (multiple pages), the same rule applies via the router — see the `metabase-data-app-routing` skill for making the base path `/` resolve to the default tab. Either way, verify by loading the app fresh: the leftmost tab's content is visible immediately and reads as selected.
+If the tabs are instead backed by URL routes (multiple pages), the same rule applies via the router — use skill discovery for data-app routing to make the base path `/` resolve to the default tab. Either way, verify by loading the app fresh: the leftmost tab's content is visible immediately and reads as selected.
 
 **The build output is one self-contained `.js` file — nothing else.** The backend serves a single bundle, so there are no sidecar files: CSS is inlined into the JS, and every imported asset (images, fonts, SVGs-as-URLs) is base64-inlined as a data URI. So `import logo from "./logo.png"` / `import iconUrl from "./icon.svg"` give you a ready-to-use data-URI string, and SVGs can also be imported as React components with the **`?react`** suffix (built-in `svgr`): `import Icon from "./icon.svg?react"`. Everything gets baked into `dist/index.js` — just keep large binaries out, since inlining inflates the bundle. (If your editor doesn't recognize a `?react` import, add `declare module "*.svg?react";` to a `.d.ts` in `src/`.)
 

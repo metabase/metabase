@@ -224,3 +224,9 @@
   :feature :none
   []
   (data-apps.db/resource-collection-ids))
+
+(defenterprise data-app-collection?
+  "Whether the Collection with `collection-id` is a data app's resource collection."
+  :feature :none
+  [collection-id]
+  (data-apps.db/resource-collection? collection-id))

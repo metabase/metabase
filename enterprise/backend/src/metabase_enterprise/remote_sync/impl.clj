@@ -579,6 +579,15 @@
       (remote-sync.db/update-rso! (:id existing) {:status status :status_changed_at timestamp})
       (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
+(defn- record-data-app-tables!
+  "Record the tables each data app's resources read, after a load or an export, logging a failure: the load's
+  transaction has committed and the export's commit is pushed by then, so a failure must not undo their record."
+  []
+  (try
+    (data-apps/record-table-dependencies!)
+    (catch Exception e
+      (log/warn e "Could not record the tables of the data apps"))))
+
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
@@ -609,6 +618,7 @@
                         :finalize! (fn []
                                      (restore-dirty-objects! dirty-objects sync-timestamp)
                                      (finalize!)))
+        (record-data-app-tables!)
         (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
                    (count dirty-objects))
@@ -648,10 +658,7 @@
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
-            finalize!             (fn []
-                                    ;; The resources that landed decide the tables each app reads.
-                                    (data-apps/record-table-dependencies!)
-                                    (remote-sync.task/set-version! task-id snapshot-version))
+            finalize!             (fn [] (remote-sync.task/set-version! task-id snapshot-version))
             report                (import-progress-reporter task-id)
             path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
             ;; First-import conflicts only block the first import; deletion conflicts block every import (an
@@ -711,7 +718,8 @@
 
                 :else
                 (let [_             (log/info "Remote sync full import: forced")
-                      imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
+                      imported-data (u/prog1 (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)
+                                      (record-data-app-tables!))]
                   (log/info "Successfully reloaded entities from git repository")
                   {:status :success
                    :version snapshot-version
@@ -749,7 +757,8 @@
                                     first-import? "first import"
                                     :else         "changes not incrementally loadable")
                     _             (log/infof "Remote sync full import: %s" reason)
-                    imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
+                    imported-data (u/prog1 (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)
+                                    (record-data-app-tables!))]
                 (log/info "Successfully reloaded entities from git repository")
                 {:status :success
                  :version snapshot-version
@@ -845,9 +854,9 @@
                               (apply report (+ export-progress-serialize (* fraction (- 1.0 export-progress-serialize))) opts))
                             sync-timestamp
                             :finalize! (fn []
-                                         (data-apps/record-table-dependencies!)
                                          (remote-sync.db/mark-all-rsos-synced! sync-timestamp)
                                          (remote-sync.task/set-version! task-id version)))
+            (record-data-app-tables!)
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
                        pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
             {:status :success :version version :merge-summary summary
@@ -1184,15 +1193,6 @@
   (let [by-id (u/index-by :id synced)]
     (doseq [id-chunk (partition-all app-db-batch-size ids)]
       (remote-sync.db/mark-rsos-synced! id-chunk (select-keys by-id id-chunk) sync-timestamp))))
-
-(defn- record-data-app-tables!
-  "Record the tables each data app's resources read: editing a resource and exporting is how an app changes here, and
-  the tables it reads with it. The commit is pushed by now, so a failure here must not undo the record of it."
-  []
-  (try
-    (data-apps/record-table-dependencies!)
-    (catch Exception e
-      (log/warn e "Could not record the tables of the data apps"))))
 
 (defn- full-export!
   "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.

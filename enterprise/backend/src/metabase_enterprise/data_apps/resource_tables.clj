@@ -8,36 +8,40 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (defn- parseable-sql
-  "`sql` as a parser reads it: each optional clause kept as the SQL it holds, since a parser reads neither `[[` nor
-  `]]`, and a table named inside a clause is read like one outside; a card tag written as a plain name, since it
-  stands where a table does; a snippet tag as the SQL of its snippet, the snippets inside it included, so the tables
-  it names are read too; and any other template tag written back as it is."
-  ([sql]
-   (parseable-sql sql #{}))
-  ([sql expanded]
+  "`sql` as a parser reads it: optional clauses kept as the SQL they hold, a card tag as a plain name, a snippet tag
+  as its snippet's SQL with the snippets inside it, looked up through `query`'s metadata provider, and any other
+  template tag as it is."
+  ([query sql]
+   (parseable-sql query sql #{}))
+  ([query sql expanded]
    (letfn [(render [token]
              (cond
                (string? token)                                token
+               ;; a parser reads neither `[[` nor `]]`, and a table named inside a clause is read like one outside
                (= :metabase.lib.parse/optional (:type token)) (apply str (map render (:contents token)))
+               ;; a card tag stands where a table does
                (= \# (first (:name token)))                   "mb_card"
                (str/starts-with? (:name token) "snippet:")
                (let [snippet-name (str/trim (subs (:name token) (count "snippet:")))]
                  ;; a snippet that includes itself is read once
                  (if (contains? expanded snippet-name)
                    ""
-                   (parseable-sql (or (data-apps.db/snippet-content snippet-name) "") (conj expanded snippet-name))))
+                   (parseable-sql query
+                                  (or (:content (lib.metadata/native-query-snippet-by-name query snippet-name)) "")
+                                  (conj expanded snippet-name))))
                :else                                          (str "{{" (:name token) "}}")))]
      (apply str (map render (lib/parse {} sql))))))
 
 (defn- native-table-ids
   "The tables a native query names in its SQL, as its driver's parser reads them, and in its table template tags."
   [{database-id :database, :as query}]
-  (let [parseable (lib/with-native-query query (parseable-sql (lib/raw-native-query query)))]
+  (let [parseable (lib/with-native-query query (parseable-sql query (lib/raw-native-query query)))]
     (into (data-apps.db/table-ids-named database-id
                                         (driver/native-query-table-refs (driver.u/database->driver database-id) parseable))
           (map :table)

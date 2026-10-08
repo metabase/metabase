@@ -70,8 +70,8 @@ resource files in `data_apps/`.
 An author deletes an app by deleting its directory and its collection's files under
 `collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
 hook deletes the collection with what it holds. A commit that deletes the directory but keeps the
-collection's files is refused, naming them: the hook would delete from the instance a collection
-and cards that remain in the repository.
+collection's files still deletes the app and its collection; the next export removes the files,
+and until then a full pull loads them back as a collection no app owns.
 
 ## Serving
 

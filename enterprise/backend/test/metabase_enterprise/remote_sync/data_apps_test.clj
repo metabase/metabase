@@ -91,7 +91,7 @@
           (is (not (t2/exists? :model/Collection :id collection-id))))))))
 
 (deftest bundle-only-pull-updates-the-bundle-test
-  (testing "a pull that changes only an app's bundle file falls back to a full import, so the new bundle lands"
+  (testing "a pull that changes only an app's bundle file lands the new bundle"
     (with-data-apps-sync
       (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")
                                                        "v1" (app-tree sales-eid "sales" "BUNDLE-V2")}
@@ -262,7 +262,10 @@
             result    (import-at! src "v0" :force? true)]
         (is (= :error (:status result)))
         (is (str/includes? (:message result) card-file))
-        (is (not (t2/exists? :model/DataApp :name "shop")) "nothing loaded")))))
+        (testing "nothing loaded"
+          (is (not (t2/exists? :model/DataApp :name "shop")))
+          (is (not (t2/exists? :model/Collection :entity_id shop-collection-eid)))
+          (is (not (t2/exists? :model/Card :entity_id question-eid))))))))
 
 (deftest pull-refuses-to-take-over-a-card-elsewhere-test
   (testing "a file naming the entity ID of a card outside the app can't move it into the app's collection"
@@ -376,10 +379,14 @@
                                                      :visualization_settings {} :collection_id collection-id
                                                      :dataset_query q}))]
           (mt/user-http-request :crowberto :post 400 "dashboard" {:name "Saved here" :collection_id collection-id})
+          (is (not (t2/exists? :model/Dashboard :name "Saved here")))
           (is (= "A data app's collection can hold only questions, metrics, and query actions"
                  (mt/user-http-request :crowberto :post 400 "collection" {:name "Inside" :parent_id collection-id :namespace "data-apps"})))
+          (is (not (t2/exists? :model/Collection :name "Inside")))
           (card 400 "model")
-          (card 200 "question")
+          (is (not (t2/exists? :model/Card :collection_id collection-id :type :model)))
+          (is (=? {:collection_id collection-id :type :question}
+                  (t2/select-one :model/Card :id (:id (card 200 "question")))))
           (testing "a bookmark is not content"
             (mt/user-http-request :crowberto :post 200 (str "bookmark/collection/" collection-id)))
           (testing "with the library feature too, whose check runs in the same place"
@@ -389,7 +396,8 @@
             (is (= (collection/check-allowed-content :question collection-id)
                    (collection/check-allowed-content :dashboard-question collection-id))))
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}]
-            (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id) {:collection_id collection-id})))))))
+            (mt/user-http-request :crowberto :put 400 (str "dashboard/" dashboard-id) {:collection_id collection-id})
+            (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)))))))))
 
 (deftest a-card-in-an-apps-collection-stays-what-a-pull-accepts-test
   (testing "a card there can't become what the resource validator refuses, since the next export would write it"
@@ -411,7 +419,8 @@
                                                         :dataset_query     q
                                                         :public_uuid       (str (random-uuid))
                                                         :made_public_by_id (mt/user->id :crowberto)}]
-              (mt/user-http-request :crowberto :put 400 (str "card/" public-id) {:collection_id collection-id})))
+              (mt/user-http-request :crowberto :put 400 (str "card/" public-id) {:collection_id collection-id})
+              (is (nil? (t2/select-one-fn :collection_id :model/Card :id public-id)))))
           (testing "it can still be edited, and the export keeps its file"
             (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "still editable"})
             (is (= :success (:status (export! mock))))
@@ -441,6 +450,10 @@
           (testing "the card it reads can't be moved out"
             (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id nil})
             (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id card-id))))
+          (testing "nor as a dashboard question, which a card other cards read can't become"
+            (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}]
+              (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:dashboard_id dashboard-id})
+              (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
           (testing "or deleted"
             (mt/user-http-request :crowberto :delete 400 (str "card/" card-id))
             (is (t2/exists? :model/Card :id card-id)))
@@ -448,10 +461,13 @@
             (mt/with-temp [:model/Card {outside-id :id} {:name "Outside" :dataset_query venues-q}
                            :model/Card {mover-id :id}   {:name "Mover" :dataset_query (reads-card outside-id)}]
               (mt/user-http-request :crowberto :put 200 (str "card/" mover-id)
-                                    {:collection_id collection-id :dataset_query venues-q})))
+                                    {:collection_id collection-id :dataset_query venues-q})
+              (is (= collection-id (t2/select-one-fn :collection_id :model/Card :id mover-id)))))
           (testing "once the reader has left, the card can leave too"
             (mt/user-http-request :crowberto :put 200 (str "card/" reader-id) {:collection_id nil})
-            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:collection_id nil})))))))
+            (is (nil? (t2/select-one-fn :collection_id :model/Card :id reader-id)))
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:collection_id nil})
+            (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id)))))))))
 
 (deftest deleting-an-app-deletes-cards-that-read-each-other-test
   (testing "the refusal to delete a card another app card reads is the endpoint's: deleting the app deletes its
@@ -491,7 +507,9 @@
       (is (= :error (:status result)))
       (is (str/includes? (:message result) "data_apps/first/data_app.yaml"))
       (is (str/includes? (:message result) "data_apps/second/data_app.yaml"))
-      (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])) "nothing loaded"))))
+      (testing "nothing loaded"
+        (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])))
+        (is (not (t2/exists? :model/Collection :entity_id shared)))))))
 
 (deftest pull-refuses-two-apps-that-define-one-card-test
   (with-data-apps-sync
@@ -507,11 +525,16 @@
       (is (= :error (:status result)))
       (is (str/includes? (:message result) "collections/data_apps/data_app__first/"))
       (is (str/includes? (:message result) "collections/data_apps/data_app__second/"))
-      (is (not (t2/exists? :model/Card :entity_id question-eid)) "nothing loaded"))))
+      (testing "nothing loaded"
+        (is (not (t2/exists? :model/Card :entity_id question-eid)))
+        (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])))
+        (is (not (t2/exists? :model/Collection :entity_id [:in (map data-apps.tu/collection-entity-id ["first" "second"])])))))))
+
+;; a driver that can't name the tables of a native query: `driver/native-query-table-refs` has no method for it
+(driver/register! ::no-table-refs :abstract? true)
 
 (deftest pull-survives-a-query-whose-tables-cant-be-read-test
   (testing "a native query on a driver that can't name its tables doesn't fail the pull; the app records the rest"
-    (driver/register! ::no-table-refs)
     (with-data-apps-sync
       (mt/with-temp [:model/Database _ {:engine ::no-table-refs :name "no-table-refs"}]
         (let [resources (data-apps.tu/build-resources
@@ -731,7 +754,7 @@
 
 (deftest deleting-an-apps-directory-without-its-collection-files-still-deletes-the-app-test
   (testing "an author deletes an app's directory but leaves its collection's files: the pull doesn't fail, it deletes
-            the app, and with it its collection and what it held; the next export removes the files"
+            the app, and with it its collection and what it held"
     (with-data-apps-sync
       (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                     [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
@@ -776,7 +799,10 @@
                                                        :visualization_settings {} :collection_id collection-id
                                                        :dataset_query query}))]
             (save 400 collection-id (reading other-id))
-            (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:dataset_query (reading other-id)})
+            (is (not (t2/exists? :model/Card :name "Saved")))
+            (let [query-before (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+              (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:dataset_query (reading other-id)})
+              (is (= query-before (t2/select-one-fn :dataset_query :model/Card :id card-id))))
             (testing "one of the app's own cards is fine"
               (save 200 collection-id (reading own-id))
               (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dataset_query (reading own-id)}))
@@ -886,11 +912,26 @@
                  (testing "the source action still can be"
                    (mt/user-http-request :crowberto :post 200 (str "action/" action-id "/public_link"))))
                (mt/with-temp [:model/Card {outside-id :id} {:name "Outside"}]
-                 (mt/user-http-request :crowberto :put 400 (str "action/" copy-id) {:dataset_query (reads outside-id)}))
+                 (let [query-before (t2/select-one-fn :dataset_query :model/QueryAction :action_id copy-id)]
+                   (mt/user-http-request :crowberto :put 400 (str "action/" copy-id) {:dataset_query (reads outside-id)})
+                   (is (= query-before (t2/select-one-fn :dataset_query :model/QueryAction :action_id copy-id)))))
                (testing "it can read the app's own card"
-                 (mt/user-http-request :crowberto :put 200 (str "action/" copy-id) {:dataset_query (reads card-id)})))
+                 (mt/user-http-request :crowberto :put 200 (str "action/" copy-id) {:dataset_query (reads card-id)})
+                 (is (= #{card-id}
+                        (into #{} (keep :card-id)
+                              (filter map? (tree-seq coll? seq (t2/select-one-fn :dataset_query :model/QueryAction :action_id copy-id))))))))
              (is (= :success (:status (export! mock))))
              (is (= :success (:status (import-at! mock "main" :force? true)))))))))))
+
+(deftest a-pull-whose-table-record-fails-still-loads-test
+  (testing "the tables are recorded after the load's transaction, so a failure there is logged and the pull stands"
+    (with-data-apps-sync
+      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")]
+        (mt/with-dynamic-fn-redefs [data-apps/record-table-dependencies! (fn [] (throw (ex-info "the tables can't be recorded" {})))]
+          (let [result (import-at! src "v0" :force? true)]
+            (is (= :success (:status result)) (:message result))))
+        (is (t2/exists? :model/DataApp :name "shop"))
+        (is (= "v0" (remote-sync.task/last-version)))))))
 
 (deftest the-bulk-move-endpoint-moves-app-cards-through-the-model-test
   (testing "POST /api/card/collections runs the checks a PUT runs, and the export sees the move"
@@ -954,7 +995,7 @@
           (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
                                 {:dataset_query (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :checkins))))})
           (is (seq (remote-sync.object/dirty-rows)))
-          (with-redefs [data-apps/record-table-dependencies! (fn [] (throw (ex-info "the tables can't be recorded" {})))]
+          (mt/with-dynamic-fn-redefs [data-apps/record-table-dependencies! (fn [] (throw (ex-info "the tables can't be recorded" {})))]
             (let [result (export! mock)]
               (is (= :success (:status result)) (:message result))))
           (testing "the export is recorded: the rows are synced"

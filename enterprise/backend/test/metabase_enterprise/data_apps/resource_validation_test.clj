@@ -346,6 +346,14 @@
                                                        :entity_id (data-apps.tu/app-entity-id "shop")}))]
       (is (= 2 (count (filter #(str/includes? % "which another data app also has") (messages tree))))))))
 
+(deftest refuses-a-manifest-whose-slug-an-app-made-here-has-test
+  (testing "an app made on the instance keeps its slug, and a load would refuse the repository's app only after its
+            collection and cards had loaded"
+    (mt/with-temp [:model/DataApp _ {:name "shop" :display_name "Shop" :bundle_path "index.js"
+                                     :entity_id "madeHereAppEntity0001"}]
+      (is (some #(str/includes? % "a data app made on this instance already has")
+                (messages (shop (question-resources))))))))
+
 (deftest refuses-two-manifests-with-one-slug-test
   (testing "a load keeps the first app and refuses the second after it has started"
     (let [tree (merge (shop (question-resources))
@@ -379,7 +387,7 @@
   (testing "an inactive table is one that sync no longer finds, so the app's query would run against nothing"
     (let [resources (question-resources)]
       (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
-        (is (some #(str/includes? % "which does not exist on this instance") (messages (shop resources))))))))
+        (is (some #(str/includes? % "references table [") (messages (shop resources))))))))
 
 (deftest warns-of-a-field-that-is-inactive-test
   (testing "an inactive field is one that sync no longer finds: one column isn't the app, so the file loads and the
