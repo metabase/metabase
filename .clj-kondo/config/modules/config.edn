@@ -112,6 +112,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            users
@@ -141,6 +142,7 @@
            collections
            events
            lib.schema
+           models
            permissions
            public-sharing
            util}
@@ -182,6 +184,7 @@
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
+           metabase.analytics.sdk
            metabase.analytics.settings}
    :uses #{analytics.interface
            analytics.internal-stats
@@ -296,16 +299,18 @@
   {:team "UX West"
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
-           metabase.api-keys.schema}
+           metabase.api-keys.schema
+           metabase.api-keys.usage}
    :uses #{api
            app-db
            events
            lib.schema
            models
            permissions
+           premium-features
            users
            util}
-   :model-exports #{:model/ApiKey}
+   :model-exports #{:model/ApiKey :model/ApiKeyUsageLog}
    :model-imports #{:model/User}}
 
   api-routes
@@ -433,6 +438,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Document
+                    :model/Exploration
                     :model/Table}}
 
   auth-provider
@@ -792,6 +798,7 @@
            settings
            staleness
            sync
+           timeline
            util
            util.config}
    :model-exports #{:model/Dashboard
@@ -1029,6 +1036,7 @@
            analytics.interface
            api
            app-db
+           audit-app.view-log
            collections
            comments
            documents
@@ -1369,16 +1377,16 @@
            server
            session
            settings
+           sso.auth-identity
            system
            task
-           transforms
            users
            util
            util.config
            warehouse-schema-overlay
-           warehouses
            warehouses.schema}
-   :model-imports #{:model/Card
+   :model-imports #{:model/AuthIdentity
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
@@ -1390,8 +1398,6 @@
                     :model/Pulse
                     :model/Segment
                     :model/Table
-                    :model/Transform
-                    :model/TransformTag
                     :model/User}}
 
   mcp.oauth-server
@@ -2045,7 +2051,9 @@
                     :model/Card
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/Document}}
+                    :model/Document
+                    :model/Timeline
+                    :model/TimelineEvent}}
 
   pulse
   {:team "Gadget"
@@ -2156,6 +2164,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Timeline
                     :model/User}}
 
   queries.rest
@@ -2617,6 +2626,7 @@
            channel
            lib.schema
            request
+           session
            settings
            util}
    :model-exports #{:model/LoginHistory}}
@@ -2861,6 +2871,7 @@
            metabase.testing-api.init}
    :uses #{analytics
            api
+           api-keys
            app-db
            lib
            lib.be
@@ -2905,8 +2916,7 @@
 
   timeline
   {:team "UX West"
-   :api  #{metabase.timeline.api
-           metabase.timeline.core}
+   :api  #{metabase.timeline.api metabase.timeline.core metabase.timeline.schema}
    :uses #{analytics
            api
            api-scope
@@ -3363,6 +3373,7 @@
            parameters.schema
            permissions
            premium-features
+           queries
            query-processor
            remote-sync
            search
@@ -3542,6 +3553,19 @@
    :uses #{api
            premium-features
            util}}
+
+  enterprise/api-keys
+  {:team "UX West"
+   :api  #{metabase-enterprise.api-keys.init}
+   :uses #{analytics
+           api-keys
+           metabot
+           premium-features
+           request
+           startup
+           task
+           util}
+   :model-imports #{:model/ApiKeyUsageLog}}
 
   enterprise/api-routes
   {:team "UX West"
@@ -3748,6 +3772,7 @@
            models
            permissions
            premium-features
+           remote-sync
            request
            settings
            util
@@ -3927,7 +3952,12 @@
            premium-features
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Card :model/Collection :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline}}
 
   enterprise/mcp
   {:team    "Metabot"
@@ -4353,6 +4383,18 @@
            util}
    :model-imports :bypass}
 
+  enterprise/session-management
+  {:team "UX West"
+   :api  #{metabase-enterprise.session-management.api}
+   :uses #{api
+           events
+           lib.schema
+           request
+           session
+           users
+           util}
+   :model-imports #{:model/User}}
+
   enterprise/sso
   {:team "UX West"
    :module-exports #{enterprise/sso.auth-identity
@@ -4374,7 +4416,7 @@
            task
            util
            enterprise/sso.scim}
-   :model-imports #{:model/PermissionsGroup :model/Session}}
+   :model-imports #{:model/PermissionsGroup}}
 
   enterprise/sso.auth-identity
   {:team "UX West"
@@ -4428,6 +4470,7 @@
            lib.schema
            models
            request
+           session
            settings
            sso.auth-identity
            system

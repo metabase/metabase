@@ -8,6 +8,15 @@
   }
 }
 
+.CopyIcon {
+  visibility: hidden;
+}
+
+.CopyButton:hover .CopyIcon,
+.CopyButton:focus-visible .CopyIcon {
+  visibility: visible;
+}
+
 .InfoIcon {
   color: var(--mb-color-text-disabled);
 

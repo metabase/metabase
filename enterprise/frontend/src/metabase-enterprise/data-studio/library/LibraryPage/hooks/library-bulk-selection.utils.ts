@@ -13,9 +13,20 @@ import type {
   DatabaseId,
 } from "metabase-types/api";
 
-export type LibrarySection = "data" | "metrics" | "snippets";
+export type LibrarySection =
+  | "data"
+  | "metrics"
+  | "dashboards"
+  | "snippets"
+  | "actions";
 
-export type SelectableModel = "table" | "metric" | "snippet" | "collection";
+export type SelectableModel =
+  | "table"
+  | "metric"
+  | "dashboard"
+  | "snippet"
+  | "action"
+  | "collection";
 
 export type SelectedItem = {
   key: string;
@@ -34,10 +45,14 @@ const isCollectionRow = (
 const isLeafRow = (
   item: TreeItem,
 ): item is TreeItem & {
-  model: "table" | "metric" | "snippet";
+  model: "table" | "metric" | "dashboard" | "snippet" | "action";
   data: CollectionItem;
 } =>
-  item.model === "table" || item.model === "metric" || item.model === "snippet";
+  item.model === "table" ||
+  item.model === "metric" ||
+  item.model === "dashboard" ||
+  item.model === "snippet" ||
+  item.model === "action";
 
 const keyOf = (item: TreeItem): string => item.id;
 
@@ -52,19 +67,31 @@ export function getItemSection(item: TreeItem): LibrarySection | null {
   if (item.model === "metric") {
     return "metrics";
   }
+  if (item.model === "dashboard") {
+    return "dashboards";
+  }
   if (item.model === "snippet") {
     return "snippets";
+  }
+  if (item.model === "action") {
+    return "actions";
   }
   if (isCollectionRow(item)) {
     const { data } = item;
     if (data.namespace === "snippets") {
       return "snippets";
     }
+    if (data.namespace === "data-actions") {
+      return "actions";
+    }
     if (data.type === "library-metrics") {
       return "metrics";
     }
     if (data.type === "library-data") {
       return "data";
+    }
+    if (data.type === "library-dashboards") {
+      return "dashboards";
     }
   }
   return null;
