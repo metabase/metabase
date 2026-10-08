@@ -32,10 +32,11 @@ export const JoinHeaderCell = ({
 
   return (
     <ActionIcon
-      variant={severity === "warning" ? "warning" : "subtle"}
+      variant="subtle"
       color={match(severity)
         .returnType<ActionIconColor | undefined>()
         .with("error", () => "negative")
+        .with("warning", () => "warning")
         .with("info", () => "brand")
         .otherwise(() => undefined)}
       size="lg"

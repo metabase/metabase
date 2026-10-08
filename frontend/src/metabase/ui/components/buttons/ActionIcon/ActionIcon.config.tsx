@@ -16,6 +16,7 @@ const ACTION_ICON_COLORS = [
   "brand",
   "negative",
   "positive",
+  "warning",
 ] as const satisfies readonly ActionIconColor[];
 
 type ActionIconVariant = (typeof ACTION_ICON_VARIANTS)[number];
@@ -27,6 +28,7 @@ const CELLS = [
   "subtle-brand",
   "subtle-negative",
   "subtle-positive",
+  "subtle-warning",
 ] as const satisfies readonly `${ActionIconVariant}-${ActionIconColor}`[];
 
 const NEUTRAL_CELLS = [
