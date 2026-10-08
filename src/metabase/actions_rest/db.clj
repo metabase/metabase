@@ -22,7 +22,9 @@
                                             (if model-id
                                               [:= :model_id model-id]
                                               [:or
-                                               (collection/visible-collection-filter-clause)
+                                               (collection/visible-collection-filter-clause
+                                                :collection_id
+                                                {:include-archived-items (if archived :all :exclude)})
                                                [:and [:= :model_id nil] [:= :collection_id nil]]])]}))
 
 (mu/defn public-actions

@@ -114,16 +114,21 @@ export function buildActiveActionTree(
 export function buildArchivedActionTree(
   archivedCollections: Collection[],
   archivedActions: WritebackAction[],
+  activeCollections: Collection[],
 ): TreeItem[] {
   const collectionIds = new Set(
     archivedCollections.map((collection) => collection.id),
   );
+  const dataActionCollectionIds = new Set([
+    ...collectionIds,
+    ...activeCollections.map((collection) => collection.id),
+  ]);
   const topLevelCollections = archivedCollections.filter(
     (collection) =>
       collection.parent_id == null || !collectionIds.has(collection.parent_id),
   );
-  const dataActions = archivedActions.filter(
-    (action) => action.model_id == null,
+  const dataActions = archivedActions.filter((action) =>
+    isDataAction(action, dataActionCollectionIds),
   );
 
   return [

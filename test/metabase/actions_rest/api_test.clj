@@ -565,7 +565,13 @@
           (is (contains? (listed-ids) (:id active)))
           (is (not (contains? (listed-ids) (:id archived))))
           (is (contains? (listed-ids :archived true) (:id archived)))
-          (is (not (contains? (listed-ids :archived true) (:id active)))))))))
+          (is (not (contains? (listed-ids :archived true) (:id active))))
+          (testing "actions in an archived data actions folder are listed as archived"
+            (mt/with-temp [:model/Collection {folder-id :id} {:namespace "data-actions"}]
+              (let [in-folder (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action folder-id))]
+                (mt/user-http-request :crowberto :put 200 (str "collection/" folder-id) {:archived true})
+                (is (contains? (listed-ids :archived true) (:id in-folder)))
+                (is (not (contains? (listed-ids) (:id in-folder))))))))))))
 
 (deftest list-actions-by-type-test
   (testing "GET /api/action?type= returns only actions of that type, alone or combined with model-id"

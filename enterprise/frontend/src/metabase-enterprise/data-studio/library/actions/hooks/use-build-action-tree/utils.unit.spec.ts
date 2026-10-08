@@ -64,14 +64,16 @@ describe("buildActiveActionTree", () => {
 });
 
 describe("buildArchivedActionTree", () => {
-  it("should list archived folders and the archived actions outside of them", () => {
+  it("should list archived folders and the archived data actions outside of them", () => {
     const archivedFolder = { ...FOLDER, archived: true };
     const tree = buildArchivedActionTree(
       [archivedFolder],
       [
         createMockQueryAction({ id: 5, collection_id: 10, archived: true }),
         createMockQueryAction({ id: 6, collection_id: null, archived: true }),
+        createMockQueryAction({ id: 7, collection_id: 99, archived: true }),
       ],
+      [],
     );
 
     expect(tree.map((node) => node.id)).toEqual(["collection:10", "action:6"]);

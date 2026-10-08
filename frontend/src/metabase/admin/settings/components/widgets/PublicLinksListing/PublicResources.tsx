@@ -8,6 +8,7 @@ import {
   useListPublicCardsQuery,
   useListPublicDashboardsQuery,
 } from "metabase/api";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import type {
@@ -65,11 +66,15 @@ export const PublicLinksActionListing = () => {
   return (
     <PublicLinksListing<GetPublicAction>
       revoke={revoke}
-      getUrl={(action) =>
-        action.model_id != null
-          ? Urls.action({ id: action.model_id }, action.id)
-          : Urls.dataStudioAction(action.id)
-      }
+      getUrl={(action) => {
+        if (action.model_id != null) {
+          return Urls.action({ id: action.model_id }, action.id);
+        }
+        if (!PLUGIN_LIBRARY.isEnabled && action.public_uuid != null) {
+          return Urls.publicAction(siteUrl, action.public_uuid);
+        }
+        return Urls.dataStudioAction(action.id);
+      }}
       getPublicUrl={({ public_uuid }) => {
         if (public_uuid) {
           return Urls.publicAction(siteUrl, public_uuid);

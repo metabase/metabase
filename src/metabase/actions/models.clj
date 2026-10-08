@@ -220,7 +220,9 @@
     model-id
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
 
-    (sandboxed-current-user?)
+    (and (sandboxed-current-user?)
+         (or (nil? collection-id)
+             (= collection/data-actions-ns (collection-namespace collection-id))))
     #{"___no-sandboxed-data-actions-access"}
 
     (and (= read-or-write :write)

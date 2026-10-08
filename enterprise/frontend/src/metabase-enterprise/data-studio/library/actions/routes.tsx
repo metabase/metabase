@@ -1,7 +1,5 @@
 import { Route } from "metabase/router";
 
-import { ActionsEnabledOnSomeDatabase } from "./route-guards";
-
 /**
  * The action pages, in one chunk, so moving between an action's tabs costs no fetch.
  */
@@ -37,7 +35,7 @@ const actionSettingsPage = () =>
 
 export function getDataStudioActionRoutes() {
   return (
-    <Route element={<ActionsEnabledOnSomeDatabase />}>
+    <>
       <Route path="actions/new" lazy={newActionPage} />
       <Route path="actions/archived" lazy={archivedActionsPage} />
       <Route path="actions/:actionId" lazy={actionQueryPage} />
@@ -46,6 +44,6 @@ export function getDataStudioActionRoutes() {
       <Route path="actions/:actionId/fields/:fieldId" lazy={actionFieldsPage} />
       <Route path="actions/:actionId/run" lazy={actionRunPage} />
       <Route path="actions/:actionId/settings" lazy={actionSettingsPage} />
-    </Route>
+    </>
   );
 }

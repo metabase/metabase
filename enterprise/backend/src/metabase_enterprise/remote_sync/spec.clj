@@ -632,7 +632,7 @@
   [import-namespace-collections import-ns-collection-entity-ids]
   (let [ns-configs [{:ns-name "transforms"   :setting-kw :remote-sync-transforms :category "Transforms"}
                     {:ns-name "snippets"     :setting-kw :library-synced         :category "Snippets"}
-                    {:ns-name "data-actions" :setting-kw :library-synced         :category "DataActions"}]]
+                    {:ns-name "data-actions" :setting-kw :library-synced         :category "Snippets"}]]
     (into []
           (for [{:keys [ns-name setting-kw category]} ns-configs
                 :when (contains? import-namespace-collections ns-name)
@@ -837,20 +837,23 @@
   (when-let [conditions (get-in spec [:eligibility :library-synced-conditions])]
     (object-matches-conditions? conditions object)))
 
-(defn- library-synced-object-eligible?
-  "Whether Library content `object` is synced: the Library is, and `object` is in the data actions root or namespace."
-  [{collection-id :collection_id}]
-  (and (rs-settings/library-is-remote-synced?)
-       (or (nil? collection-id)
-           (= collections/data-actions-ns
-              (some-> (remote-sync.db/collection-namespace collection-id) keyword)))))
+(defn library-content?
+  "Whether `object` matches the spec's `:library-synced-conditions` and is in the data actions root or namespace,
+  which makes it Library content."
+  [spec {collection-id :collection_id :as object}]
+  (boolean
+   (and (library-synced-object? spec object)
+        (or (nil? collection-id)
+            (= collections/data-actions-ns
+               (some-> (remote-sync.db/collection-namespace collection-id) keyword))))))
 
 (defmethod check-eligibility-by-type :collection
   [{:keys [eligibility] :as spec} object]
   (let [collection-type (:collection eligibility)
         collection-id   (:collection_id object)]
     (if (library-synced-object? spec object)
-      (library-synced-object-eligible? object)
+      (and (rs-settings/library-is-remote-synced?)
+           (library-content? spec object))
       (case collection-type
         :remote-synced
         (collections/remote-synced-collection? collection-id)

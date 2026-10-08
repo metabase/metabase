@@ -2,8 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
-import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -72,7 +70,6 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
     [databases],
   );
   const draft = useActionDraft({ initialDatasetQuery });
-  const defaultCollectionId = useGetDefaultCollectionId();
   const [name, setName] = useState("");
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -135,7 +132,7 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
         <CreateActionModal
           definition={draft.definition}
           defaultName={name}
-          defaultCollectionId={canonicalCollectionId(defaultCollectionId)}
+          defaultCollectionId={null}
           onCreate={handleCreate}
           onClose={closeModal}
         />

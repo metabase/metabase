@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 
-import { useListActionsQuery, useListCollectionsQuery } from "metabase/api";
+import {
+  skipToken,
+  useListActionsQuery,
+  useListCollectionsQuery,
+} from "metabase/api";
 import type { TreeItem } from "metabase/data-studio/common/types";
 
 import { buildActiveActionTree, buildArchivedActionTree } from "./utils";
@@ -28,10 +32,24 @@ export function useBuildActionTree({
     isLoading: isLoadingCollections,
     error: collectionsError,
   } = useListCollectionsQuery({ namespace: "data-actions", archived });
+  const {
+    data: activeCollections,
+    isLoading: isLoadingActiveCollections,
+    error: activeCollectionsError,
+  } = useListCollectionsQuery(
+    archived ? { namespace: "data-actions", archived: false } : skipToken,
+  );
 
   return useMemo(() => {
-    const error = actionsError ?? collectionsError;
-    if (isLoadingActions || isLoadingCollections || !actions || !collections) {
+    const error = actionsError ?? collectionsError ?? activeCollectionsError;
+    const isLoading =
+      isLoadingActions ||
+      isLoadingCollections ||
+      isLoadingActiveCollections ||
+      !actions ||
+      !collections ||
+      (archived && !activeCollections);
+    if (isLoading) {
       return { isLoading: true, tree: [], error };
     }
 
@@ -39,17 +57,20 @@ export function useBuildActionTree({
       isLoading: false,
       error,
       tree: archived
-        ? buildArchivedActionTree(collections, actions)
+        ? buildArchivedActionTree(collections, actions, activeCollections ?? [])
         : buildActiveActionTree(collections, actions, canCreateActions),
     };
   }, [
     actions,
     actionsError,
+    activeCollections,
+    activeCollectionsError,
     archived,
     canCreateActions,
     collections,
     collectionsError,
     isLoadingActions,
+    isLoadingActiveCollections,
     isLoadingCollections,
   ]);
 }
