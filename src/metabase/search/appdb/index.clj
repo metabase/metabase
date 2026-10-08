@@ -143,8 +143,6 @@
   ;; Postgres keeps DDL inside the transaction, where it does no harm.
   ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
   ;; adding support does not quietly bring the rollback failure back.
-  ;; The depth behind in-transaction? is thread-local and conveyed by future, so a reindex started from
-  ;; inside a transaction defers a sweep it need not have. That costs a sweep, never data.
   (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
 
 (defn delete-obsolete-tables!
