@@ -35,6 +35,13 @@ describe("scenarios > data apps > group access (EMB-2415)", () => {
     H.commitToRepo("Add data apps for testing group accesses");
     H.configureGitAndPullChanges("read-write");
 
+    cy.request("GET", `/api/apps/${APP_NAME}`).its("body").should("include", {
+      name: APP_NAME,
+      display_name: APP_DISPLAY_NAME,
+      enabled: true,
+      draft: false,
+    });
+
     cy.request("GET", `/api/permissions/group/${COLLECTION_GROUP_ID}`)
       .its("body.name")
       .as("groupName");
