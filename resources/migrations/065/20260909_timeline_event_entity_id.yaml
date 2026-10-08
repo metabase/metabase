@@ -3,6 +3,9 @@
 ## nullable, backfill it, then add NOT NULL and UNIQUE. All three dialect variants of the backfill live in one
 ## changeset so every database executes (and records) it — a changeset whose only change is dbms-filtered away
 ## never reaches the changelog, which breaks consolidation.
+##
+## On MariaDB before 10.10, timeline_event.timestamp has an implicit ON UPDATE, so the backfill would reset every
+## event's date. The changeset before the backfill drops it (as v48.00-010 did); the backfill keeps its checksum.
 
 databaseChangeLog:
   - changeSet:
@@ -25,18 +28,29 @@ databaseChangeLog:
             columnName: entity_id
 
   - changeSet:
+      id: v65.2026-10-08T20:00:00
+      author: havenchyk
+      comment: Remove ON UPDATE from timeline_event.timestamp on mysql, mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: ALTER TABLE `timeline_event` MODIFY `timestamp` timestamp(6) NOT NULL DEFAULT current_timestamp(6) COMMENT 'When the event happened';
+      rollback: []
+
+  - changeSet:
       id: v65.zvhbd7
       author: havenchyk
       comment: Backfill entity IDs for existing timeline events
-      validCheckSum: 9:065ef0d3adb4f80c891c994e56a82df1
       changes:
         - sql:
             dbms: postgresql
             sql: UPDATE timeline_event SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
         - sql:
             dbms: mysql,mariadb
-            # MariaDB auto-updates `timestamp` (the table's first TIMESTAMP column) unless it is assigned explicitly
-            sql: UPDATE timeline_event SET entity_id = substr(replace(uuid(), '-', ''), 1, 21), `timestamp` = `timestamp` WHERE entity_id IS NULL;
+            sql: UPDATE timeline_event SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
         - sql:
             dbms: h2
             sql: UPDATE timeline_event SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
