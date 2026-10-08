@@ -701,6 +701,114 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 });
 
+describe("scenarios > embedding > dashboard locked numeric parameters (metabase#25031)", () => {
+  const dashboardFilter = {
+    name: "Equal to",
+    slug: "equal_to",
+    id: "c269ebe1",
+    type: "number/=",
+    sectionId: "number",
+  };
+
+  const dashboardDetails = {
+    name: "25031",
+    parameters: [dashboardFilter],
+    enable_embedding: true,
+    embedding_params: {
+      [dashboardFilter.slug]: "locked",
+    },
+  };
+
+  function getQuestionDetails(defaultValue = undefined) {
+    return {
+      name: "20845",
+      native: {
+        "template-tags": {
+          qty_locked: {
+            id: "6bd8d7be-bd5b-382c-cfa2-683461891663",
+            name: "qty_locked",
+            "display-name": "Qty locked",
+            type: "number",
+            required: defaultValue ? true : false,
+            default: defaultValue,
+          },
+        },
+        query:
+          "select count(*) from orders where true [[AND quantity={{qty_locked}}]]",
+      },
+    };
+  }
+
+  function createDashboard(defaultValue, alias) {
+    H.createNativeQuestionAndDashboard({
+      questionDetails: getQuestionDetails(defaultValue),
+      dashboardDetails,
+    }).then(({ body: { id, dashboard_id, card_id } }) => {
+      cy.wrap(dashboard_id).as(alias);
+
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            card_id,
+            id,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 10,
+            parameter_mappings: [
+              {
+                parameter_id: dashboardFilter.id,
+                card_id,
+                target: ["variable", ["template-tag", "qty_locked"]],
+              },
+            ],
+          },
+        ],
+      });
+    });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("locked parameter should work with numeric values, with and without a required filter with a default value", () => {
+    createDashboard(undefined, "dashboardId");
+    createDashboard("10", "requiredDashboardId");
+
+    [
+      { alias: "@dashboardId", label: "without a default value" },
+      { alias: "@requiredDashboardId", label: "with a required default value" },
+    ].forEach(({ alias, label }) => {
+      cy.get(alias).then((dashboardId) => {
+        // This issue is not possible to reproduce using UI from this point on.
+        // We have to manually send the payload in order to make sure it works for both strings and integers.
+        ["string", "integer"].forEach((type) => {
+          cy.log(
+            `Make sure it works with ${type.toUpperCase()} in the payload ${label}`,
+          );
+
+          const payload = {
+            resource: { dashboard: dashboardId },
+            params: {
+              [dashboardFilter.slug]: type === "string" ? "15" : 15, // IMPORTANT: integer
+            },
+          };
+
+          H.visitEmbeddedPage(payload);
+
+          // wait for the results to load
+          cy.contains(dashboardDetails.name);
+          cy.get(".CardVisualization")
+            .should("contain", "COUNT(*)")
+            .and("contain", "5");
+        });
+      });
+    });
+  });
+});
+
 describe("scenarios > embedding > dashboard appearance", () => {
   const originalBaseUrl = Cypress.config("baseUrl");
 

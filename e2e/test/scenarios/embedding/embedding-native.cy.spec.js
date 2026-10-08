@@ -408,6 +408,71 @@ describe("scenarios > embedding > native questions", () => {
       );
     });
   });
+
+  describe("locked numeric parameters (metabase#20845)", () => {
+    function getQuestionDetails(defaultValue = undefined) {
+      return {
+        name: "20845",
+        native: {
+          "template-tags": {
+            qty_locked: {
+              id: "6bd8d7be-bd5b-382c-cfa2-683461891663",
+              name: "qty_locked",
+              "display-name": "Qty locked",
+              type: "number",
+              required: defaultValue ? true : false,
+              default: defaultValue,
+            },
+          },
+          query:
+            "select count(*) from orders where true [[AND quantity={{qty_locked}}]]",
+        },
+        enable_embedding: true,
+        embedding_params: {
+          qty_locked: "locked",
+        },
+      };
+    }
+
+    it("locked parameter should work with numeric values, with and without a required filter with a default value", () => {
+      H.createNativeQuestion(getQuestionDetails(), {
+        wrapId: true,
+        idAlias: "questionId",
+      });
+      H.createNativeQuestion(getQuestionDetails("10"), {
+        wrapId: true,
+        idAlias: "requiredQuestionId",
+      });
+
+      [
+        { alias: "@questionId", label: "without a default value" },
+        {
+          alias: "@requiredQuestionId",
+          label: "with a required default value",
+        },
+      ].forEach(({ alias, label }) => {
+        cy.get(alias).then((questionId) => {
+          // This issue is not possible to reproduce using UI from this point on.
+          // We have to manually send the payload in order to make sure it works for both strings and integers.
+          ["string", "integer"].forEach((type) => {
+            cy.log(
+              `Make sure it works with ${type.toUpperCase()} in the payload ${label}`,
+            );
+
+            H.visitEmbeddedPage({
+              resource: { question: questionId },
+              params: {
+                qty_locked: type === "string" ? "15" : 15, // IMPORTANT: integer
+              },
+            });
+
+            H.tableInteractiveHeader("COUNT(*)");
+            cy.findByRole("gridcell").should("contain", "5");
+          });
+        });
+      });
+    });
+  });
 });
 
 describe("scenarios > embedding > native questions with default parameters", () => {
