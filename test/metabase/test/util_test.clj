@@ -142,7 +142,7 @@
 (deftest with-dynamic-fn-redefs-nested-binding-test
   (defn z []
     (mt/with-dynamic-fn-redefs [mock-me-outer
-                                (let [orig (mt/dynamic-value mock-me-outer)]
+                                (let [orig (mt/original-fn #'mock-me-outer)]
                                   (fn []
                                     (mt/with-dynamic-fn-redefs [mock-me-inner (constantly :mock/redefined)]
                                       (orig))))]
