@@ -88,6 +88,23 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
+(defn backfill-data-app-tracking!
+  "Insert a 'create' ledger row for every published DataApp that has none, returning the number of rows inserted."
+  []
+  (let [data-app-spec (spec/spec-for-model-key :model/DataApp)
+        tracked       (remote-sync.db/tracked-model-ids "DataApp")
+        timestamp     (t/offset-date-time)
+        rows          (for [app (remote-sync.db/instances-where :model/DataApp (:conditions data-app-spec))
+                            :when (not (contains? tracked (:id app)))]
+                        (merge {:model_type        "DataApp"
+                                :model_id          (:id app)
+                                :status            "create"
+                                :status_changed_at timestamp}
+                               (spec/build-sync-object-fields data-app-spec app)))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
 (defn disable-library-tracking!
   "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
   []
@@ -176,11 +193,14 @@
     (let [model-type (:model-type model-spec)
           existing   (remote-sync.db/lock-rso model-type model-id)]
       (cond
+        (and (not existing)
+             (contains? #{"removed" "delete"} status))
+        nil
+
         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
         ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
         (and (not existing)
-             (not (contains? #{"removed" "delete"} status))
              (not (still-eligible? model-spec model-id)))
         nil
 

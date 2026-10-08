@@ -619,7 +619,7 @@
 
 (deftest export-errors-in-read-only-mode-test
   (testing "POST /api/ee/remote-sync/export errors when in read-only sync mode"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
         (let [mock-source (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -1519,6 +1519,7 @@
   (testing "GHY-4650: a public link change on a read-only instance does not mark the synced item dirty, since it cannot be pushed"
     (test-helpers/with-clean-object
       (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-url       "https://github.com/test/repo.git"
                                          remote-sync-type      :read-only]
         (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
                        :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}
@@ -1866,7 +1867,7 @@
                                        {:remote-sync-type :read-only
                                         :collections {synced-coll-id false}}))))
         (testing "rejects collection changes when remote-sync-type is already read-only (default)"
-          (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
             (is (= "Cannot change synced collections when remote-sync-type is read-only."
                    (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:collections {coll-id true}})))))))))
