@@ -127,21 +127,25 @@ function CartesianChartInner(props: VisualizationProps) {
   );
   const hasLegend = !hideLegend && legendItems.length > 0;
 
-  const handleInit = useCallback((chart: EChartsType) => {
-    chartRef.current = chart;
-    setChartInstance(chart);
+  const handleInit = useCallback(
+    (chart: EChartsType) => {
+      chartRef.current = chart;
+      setChartInstance(chart);
 
-    // HACK: clip paths cause glitches in Safari on multiseries line charts on dashboards (metabase#51383)
-    if (isWebkit()) {
-      chartRef.current.on("finished", () => {
-        const svg = containerRef.current?.querySelector("svg");
-        if (svg) {
-          const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
-          clipPaths.forEach((cp) => cp.setAttribute("id", ""));
-        }
-      });
-    }
-  }, []);
+      // HACK: clip paths cause glitches in Safari on multiseries line charts on dashboards (metabase#51383)
+      // Waterfall renders a custom series that relies on clipping, so skip this hack in that case (metabase#82032)
+      if (isWebkit() && card.display !== "waterfall") {
+        chartRef.current.on("finished", () => {
+          const svg = containerRef.current?.querySelector("svg");
+          if (svg) {
+            const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
+            clipPaths.forEach((cp) => cp.setAttribute("id", ""));
+          }
+        });
+      }
+    },
+    [card.display],
+  );
 
   const handleToggleSeriesVisibility = useCallback(
     (event: MouseEvent, seriesIndex: number) => {
