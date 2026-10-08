@@ -4,6 +4,8 @@ This document refines the approach in **"Metabot tool layer: technical design"**
 
 The error model held up in implementation. The tool definition did not. The problems were almost all in one area: tools that do one thing per item. This document replaces `deftool` with a record and two protocols, and gives batched tools a model that the original design did not have.
 
+Tools are converted one at a time. A tool written against the old shape satisfies the new protocol through an adapter, so a profile can hold both kinds and nothing has to change on a single day. Section 5 describes this.
+
 ---
 
 ## 1. What this refines
@@ -17,6 +19,7 @@ The error model held up in implementation. The tool definition did not. The prob
 | `:output` is a string | `:output` is a renderable | MCP renders prose at the boundary. A renderable lets one tool concept serve either consumer later. A string is a renderable, so tool code does not change. |
 | Declaration keys are flat | Neutral core, namespaced extras | Same reason. A consumer reads its own namespace. |
 | `::handler-result` | `::result`, used for a whole call and for one item | One shape, not two. |
+| All tools convert in one change | A tool converts on its own | A var carrying old-shape metadata satisfies `Tool` by protocol extension. There is no flag day and no legacy path in the runtime. |
 
 Everything else in the original design is unchanged.
 
@@ -229,9 +232,67 @@ A consumer with a different error vocabulary passes its own per-item function:
 
 ---
 
-## 5. Benefits and costs
+## 5. Converted and unconverted tools together
 
-### 5.1 Where things move
+A tool used to be an `mu/defn` var with `:tool-name`, `:schema` and friends in its metadata. It took one argument, returned a loose result, and signalled errors with `:agent-error?` or `:terminal-error?`.
+
+`metabase.metabot.tools.legacy` extends `Tool` to `clojure.lang.Var`:
+
+```clojure
+(extend-protocol tools/Tool
+  clojure.lang.Var
+  (declaration [this] ...from the var's metadata...)
+  (handle [this args _ctx] ...call it, adapt what comes back...))
+```
+
+A profile then lists both kinds, and `tools/call` calls both:
+
+```clojure
+(tools/entries [#'tools/search-tool          ; not converted yet
+                read-resource-tool])         ; converted
+```
+
+Nothing in the runtime knows the difference. There is no second code path to keep working, and no tool is blocked on another tool's conversion.
+
+### 5.1 What the adapter maps
+
+| Old shape | New shape |
+|---|---|
+| `:tool-name` metadata | `:name` |
+| docstring, with the `Inputs:` / `Return:` preamble `mu/defn` adds | `:description`, stripped |
+| `:schema`, an `[:=> [:cat args] out]` | `:args` |
+| `:capabilities`, `:title-fn`, `:prompt`, `:system-instructions` | `:metabot/...` |
+| a returned string, keyword or number | `{:output "..."}` |
+| `:structured_output` | `:structured-output` |
+| `:instructions` | appended to `:output` |
+| `:status-code` on a result | dropped |
+| a thrown `:agent-error?` | one declared recoverable error carrying the message |
+| a thrown or returned `:terminal-error?` | `unrecoverable!`, with the text as `:user-message` |
+| anything else thrown | passes through, so it is unrecoverable |
+
+The `:agent-error?` flag is the author saying the sentence was written for a model. That is the same judgement `with-pipeline-errors` makes, so the message is authored text and may be relayed. One declaration covers all of them: an unconverted tool has not said which error it raised.
+
+### 5.2 What the adapter does not fix
+
+Behaviour is preserved, not improved. An unconverted tool that catches its own error and returns the message as `:output` still looks like a success:
+
+```clojure
+{:output "Failed to read the card."}
+```
+
+Nothing in the adapter can tell that string from a real result. Converting the tool is what fixes it. The same applies to blanket `catch` blocks: they keep forwarding exception messages to the model until the tool is converted.
+
+Unconverted tools do get the new checks, because those come from the declaration: argument validation, the scope check, and the result shape.
+
+### 5.3 When the adapter goes away
+
+`metabase.metabot.tools.legacy` and `metabase.metabot.tools.recoverable.legacy` are deleted when the last tool is converted. The description strip moves out of the adapters at the same time, because a converted tool's description needs none.
+
+---
+
+## 6. Benefits and costs
+
+### 6.1 Where things move
 
 | Concern | Today | Proposed |
 |---|---|---|
@@ -248,7 +309,7 @@ A consumer with a different error vocabulary passes its own per-item function:
 | Scope check | wrapper function in `tools.clj` | the runtime, from the declaration |
 | Agent state | dynamic var | `ctx` |
 
-### 5.2 Benefits
+### 6.2 Benefits
 
 | Benefit | Evidence |
 |---|---|
@@ -261,22 +322,24 @@ A consumer with a different error vocabulary passes its own per-item function:
 | A test double is a value | `reify Tool` with two methods |
 | One text function for both audiences | a failed item reads like a failed call |
 | MCP can use a tool later | neutral core, namespaced extras, renderable output |
+| No flag day | an unconverted var satisfies `Tool`; a profile holds both kinds |
 
-### 5.3 Costs
+### 6.3 Costs
 
 | Cost | Detail |
 |---|---|
-| Migration size | ~40 tools change shape. The macro was a mechanical swap; this is not. |
+| Conversion effort | ~40 tools change shape, one at a time. The macro was a mechanical swap; this is not. |
+| An adapter exists for a while | Two namespaces and one declared error live until the last tool is converted. |
 | Profiles change | `#'tools/search-tool` becomes an instance. |
 | `declaration` repeats | A literal map per tool. More characters, by choice. |
 | No docstring for the model | `clojure.repl/doc` on a tool gives the record type. |
 | Protocols have no defaults | Each `BatchedTool` writes `(around-batch [_ _ _ run] (run))` and `(compose [_ es _] (concatenated es))`. |
 | Two schemas per batched tool | Share the item schema through a var so they cannot drift. |
 | Composers own multi-line text | An entry's `:output` is multi-line when its failure keeps a recovery step. |
-| Item limit messages get worse | See section 7. |
+| Item limit messages get worse | See section 8. |
 | Argument repair code is duplicated | The runtime and `self.core` both hold it until tools are converted. |
 
-### 5.4 How the modeling changes
+### 6.4 How the modeling changes
 
 **The agent's request item is the only unit of partial failure.** A tool that fans out internally — `search` runs several queries and merges them — is a single-item tool. What it does inside the call is its own business. It returns a result or it throws. There is no partial failure to model.
 
@@ -286,11 +349,11 @@ A consumer with a different error vocabulary passes its own per-item function:
 
 ---
 
-## 6. Tool classes
+## 7. Tool classes
 
 Five classes. Each example is real code with internals stubbed.
 
-### 6.1 Mutation tool
+### 7.1 Mutation tool
 
 One action. Three failures, three audiences.
 
@@ -335,7 +398,7 @@ no SQL permission -> "This call failed and the user was shown the error (...). D
                      {:class :unrecoverable :user-message "You don't have permission ..."}
 ```
 
-### 6.2 Single-item tool
+### 7.2 Single-item tool
 
 One call, one result. The result has one row or many. The cardinality does not matter.
 
@@ -358,7 +421,7 @@ The whole tool is one converter. `with-entity` turns a 403 or a 404 into a decla
 
 `search` is also this class. It runs several queries and merges them into one list. That is internal.
 
-### 6.3 Single-item tool with variants
+### 7.3 Single-item tool with variants
 
 One record. Four instances.
 
@@ -395,7 +458,7 @@ One record. Four instances.
 
 The same pattern fits `create_sql_query`, whose two variants are one flag apart. It fits `construct_notebook_query` less well: its two variants have different schemas and different bodies.
 
-### 6.4 Batched tool, ordinary composition
+### 7.4 Batched tool, ordinary composition
 
 The single form is a complete tool. The batched form adds four short functions.
 
@@ -427,7 +490,7 @@ The last two lines are the complete answer to Clojure's missing protocol default
 
 The item schema is in a var. Both declarations use it, so they cannot drift.
 
-### 6.5 Batched tool, custom composition
+### 7.5 Batched tool, custom composition
 
 `read_resource` needs its own composer for one reason. It emits a single title part built from the items that loaded. That key is not per-item.
 
@@ -482,7 +545,7 @@ The failure is inside the element for its own URI. This is what the tool does to
 
 The batched `:args` is a list of strings, not a list of maps. The tool composes the schema, so the wire format does not change.
 
-### 6.6 Batched tool with heterogeneous items
+### 7.6 Batched tool with heterogeneous items
 
 Here the single schema goes in whole. This is why `batched-declaration` receives it.
 
@@ -512,7 +575,7 @@ This replaces `list_available_fields`' three parallel id lists with one addressa
 
 Its output is one document grouped by kind. There are no per-item positions, so its failures go in a block.
 
-### 6.7 What a composer sees
+### 7.7 What a composer sees
 
 Every entry has the same shape:
 
@@ -528,15 +591,15 @@ A composer that joins outputs asks nothing. A composer that separates them asks 
 
 ---
 
-## 7. Open questions
+## 8. Open questions
 
-### 7.1 A call where every item failed
+### 8.1 A call where every item failed
 
 Today the call succeeds. Its whole output is failure text. No `:error` is set.
 
 Arguably the call should fail. But with which error? There is no code for "five items were five different kinds of missing". A single code loses the attribution the agent needs to retry.
 
-### 7.2 Item limits lose their teaching
+### 8.2 Item limits lose their teaching
 
 `read_resource` says this today:
 
