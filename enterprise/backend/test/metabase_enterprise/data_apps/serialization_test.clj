@@ -328,16 +328,25 @@
                                       {:queries []
                                        :actions [(dissoc (action-item 1) missing)]})))))))
 
-(deftest refuses-a-collection-that-does-not-exist-test
+(deftest serializes-into-a-collection-absent-from-the-instance-test
   (data-apps.tu/do-with-sources!
    (fn [{:keys [action-id]}]
-     (is (=? {:queries [{:error "Collection noSuchCollectionEnt01 does not exist on this instance."}
-                        {:path string?}]
-              :actions [{:error "Collection noSuchCollectionEnt01 does not exist on this instance."}]}
+     (let [response (serialize! :crowberto 200
+                                {:queries [(query-item "Gone" (venues-definition) :collection_id "noSuchCollectionEnt01")]
+                                 :actions [{:action_id action-id :collection_id "noSuchCollectionEnt01"}]})]
+       (is (=? {:queries [{:file "gone.yaml"}] :actions [{:file string?}]} response))
+       (doseq [file (concat (:queries response) (:actions response))]
+         (is (= "noSuchCollectionEnt01" (:collection_id (file-entity file)))))))))
+
+(deftest names-files-after-their-entities-and-deduplicates-them-test
+  (data-apps.tu/do-with-sources!
+   (fn [{:keys [metric-id]}]
+     (is (=? {:queries [{:file "orders.yaml"} {:file "orders_2.yaml"} {:file "venue_count.yaml"}]
+              :metrics [{:file string?}]}
              (serialize! :crowberto 200
-                         {:queries [(query-item "Gone" (venues-definition) :collection_id "noSuchCollectionEnt01")
-                                    (query-item "Here" (venues-definition))]
-                          :actions [{:action_id action-id :collection_id "noSuchCollectionEnt01"}]}))))))
+                         {:queries [(query-item "Orders" (venues-definition))
+                                    (query-item "Orders" (venues-definition))
+                                    (query-item "Venue count" (metric-count-definition metric-id))]}))))))
 
 (deftest serializes-a-query-with-every-reference-portable-test
   (let [response (serialize! :crowberto 200
@@ -383,7 +392,7 @@
   (testing "an app's resources are written into its repository, which only an admin works with"
     (let [body {:queries [(query-item "Venues" (venues-definition))]}]
       (is (= "You don't have permissions to do that." (serialize! :rasta 403 body)))
-      (is (=? {:queries [{:path string? :yaml string?}]} (serialize! :crowberto 200 body))))))
+      (is (=? {:queries [{:file string? :yaml string?}]} (serialize! :crowberto 200 body))))))
 
 (deftest lists-the-metrics-a-query-aggregates-test
   (data-apps.tu/do-with-sources!
@@ -427,7 +436,7 @@
   (let [response (serialize! :crowberto 200
                              {:queries [(query-item "Venues" (venues-definition))
                                         (query-item "Broken" (venues-definition :fields [(venues-column "NOT_A_COLUMN")]))]})]
-    (is (=? [{:path string? :yaml string?} {:error "No column found"}]
+    (is (=? [{:file string? :yaml string?} {:error "No column found"}]
             (:queries response)))
     (is (=? {:dataset_query {:stages [{:source-table (table-path "VENUES")}]}}
             (file-entity (first (:queries response)))))))
@@ -476,7 +485,7 @@
            (testing "an action that does not exist"
              (is (=? {:error #".*does not exist.*"} (nth (:actions response) 1))))
            (testing "a metric that reads a card; the query that aggregates it is still built"
-             (is (=? {:queries [{:path string?}]
+             (is (=? {:queries [{:file string?}]
                       :metrics [{:error (re-pattern (str ".*reads card " model-id ".*"))}]}
                      response)))))))))
 
@@ -532,8 +541,8 @@
                                                  :dataset_query (lib/aggregate venues (lib/count))}]
         (mt/with-temp-vals-in-db :model/Table categories {:active false}
           (is (=? {:queries [{:error (str "Table " categories " does not exist.")}
-                             {:path string?}]
-                   :metrics [{:path string?}]}
+                             {:file string?}]
+                   :metrics [{:file string?}]}
                   (serialize! :crowberto 200
                               {:queries [(query-item "BarCount" (metric-count-definition bars-id))
                                          (query-item "VenueCount" (metric-count-definition count-id))]}))))))))
@@ -545,7 +554,7 @@
       (mt/with-column-remappings [venues.category_id categories.name]
         (mt/with-temp-vals-in-db :model/Table categories {:active false}
           (is (=? {:queries [{:error (str "Table " categories " does not exist.")}
-                             {:path string?}]}
+                             {:file string?}]}
                   (serialize! :crowberto 200
                               {:queries [(query-item "VenueCategoryIds"
                                                      (venues-definition :fields [{:type "column" :name "CATEGORY_ID"}]))
@@ -557,7 +566,7 @@
             built query is checked: an invalid one must not serialize and then fail when it runs"
     (binding [mu.fn/*enforce* false]
       (is (=? {:queries [{:error "The definition does not build a valid query."}
-                         {:path string?}]}
+                         {:file string?}]}
               (serialize-directly!
                {:queries [(query-item "Half" {:stages [{:source {:type :table :id (mt/id :venues)} :limit 1.5}]})
                           (query-item "Whole" {:stages [{:source {:type :table :id (mt/id :venues)} :limit 2}]})]}))))))
@@ -576,7 +585,7 @@
              (serialize! :crowberto 200
                          {:queries [(query-item "VenueCount" (metric-count-definition metric-id))]
                           :actions [action-id]})]
-         (is (=? {:actions [{:path string?}] :metrics [{:path string?}]} response))
+         (is (=? {:actions [{:file string?}] :metrics [{:file string?}]} response))
          (doseq [file (concat actions metrics)]
            (is (not-any? (partial contains? (file-entity file))
                          [:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type]))))))))
@@ -592,8 +601,8 @@
                                                                             (if (:broken settings)
                                                                               (throw (ex-info "the metric is broken" {}))
                                                                               (export-settings settings)))]
-           (is (=? {:queries [{:path string?}]
-                    :actions [{:path string?}]
+           (is (=? {:queries [{:file string?}]
+                    :actions [{:file string?}]
                     :metrics [{:error (str "Could not serialize Metric " metric-id ": the metric is broken")}]}
                    (serialize-directly!
                     {:queries [(query-item "VenueCount" (metric-count-definition metric-id))]
@@ -697,7 +706,7 @@
          (mt/with-dynamic-fn-redefs [apps.serialization/extract-by-entity-id (fn [model-name ids]
                                                                                (swap! calls conj model-name)
                                                                                (extract model-name ids))]
-           (is (=? {:actions [{:path string?} {:error string?}] :metrics [{:path string?}]}
+           (is (=? {:actions [{:file string?} {:error string?}] :metrics [{:file string?}]}
                    (serialize-directly!
                     {:queries [(query-item "VenueCount" (metric-count-definition metric-id))]
                      :actions [action-id model-action-id]}))))
@@ -706,12 +715,12 @@
 (deftest serializes-the-saved-question-an-author-writes-test
   (testing "a query comes back as the saved question that holds it: named as given, in the given collection, with the
             given entity ID, created by the caller, and nothing unset"
-    (let [{:keys [path yaml] :as file} (-> (serialize! :crowberto 200
+    (let [{:keys [file yaml] :as item} (-> (serialize! :crowberto 200
                                                        {:queries [(query-item "Venues list" (venues-definition :limit 5)
                                                                               :entity_id "savedQuestionEntity01")]})
                                            :queries first)
-          entity                       (file-entity file)]
-      (is (re-matches #"collections/.*/venues_list\.yaml" path))
+          entity                       (file-entity item)]
+      (is (= "venues_list.yaml" file))
       (is (string? yaml))
       (is (=? {:serdes/meta            [{:model "Card"}]
                :entity_id              "savedQuestionEntity01"

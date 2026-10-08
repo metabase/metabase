@@ -49,20 +49,22 @@ rewritten to the copies.
 
 ## `write-resources`
 
-`embedding-sdk-react data-apps write-resources [file]` (`serialize.ts`) sends the evaluated definitions (all
-of them, or those in `file`, relative to the app directory) to `POST /api/apps/serialize`, with the
-instance and API key from `.env.local`, and writes the files it answers with: the saved question
-Metabase builds for each `defineQuery` definition, the copy of each `defineAction`'s action, and the copies of
-the metrics the queries aggregate. Each file lands at the `path` Metabase gives it, under the repository's
-`collections/data_apps/`, with the YAML text exactly as a remote-sync export writes it; a path anywhere else is
-refused. The command prints a `Wrote <path>` line per file. The endpoint answers only a superuser, so the API
-key must be one in the Administrators group, and the collection `data_app.yaml` names must exist on that
-instance, since a file's path follows it. The saved question is named after the export, in that collection,
-with the definition's `savedQuestionEntityId`, and holds the query Metabase builds with the same
-`createTestQuery` code the dev preview runs. An action that belongs to a model, or an item that can't be
-built or copied, comes back with an `error`: the rest are still written, then the command fails listing what it
-wrote and every error. It refuses to run before `data_app.yaml` names the app's collection, and before every
-definition carries its entity ID.
+`embedding-sdk-react data-apps write-resources` (`serialize.ts`) sends the evaluated definitions to
+`POST /api/apps/serialize`, with the instance and API key from `.env.local`, and regenerates the app's
+collection folder from the files it answers with: the saved question Metabase builds for each
+`defineQuery` definition, the copy of each `defineAction`'s action, and the copies of the metrics the
+queries aggregate. Each answer is a file name and the YAML text exactly as a remote-sync export writes it;
+the command writes it into the folder beside the collection's file (`<collection>/`). It first deletes every
+card and action file whose `collection_id` is the app's collection, wherever it sits under
+`collections/data_apps/`, so a copy no definition needs any more disappears, and a file name that would
+leave the folder is refused. It prints a `Wrote <path>` line per file. The collection's own file must exist
+already; the instance needs neither the collection nor a pull before the command runs. The endpoint
+answers only a superuser, so the API key must be one in the Administrators group. The saved question is
+named after the export, in the app's collection, with the definition's `savedQuestionEntityId`, and holds
+the query Metabase builds with the same `createTestQuery` code the dev preview runs. An action that belongs
+to a model, or an item that can't be built or copied, comes back with an `error`: then the command writes
+and deletes nothing and fails listing every error. It refuses to run before `data_app.yaml` names the
+app's collection, and before every definition carries its entity ID.
 
 ## `check-resources`
 
@@ -89,7 +91,7 @@ Nothing checks that a saved question's query matches its definition.
 evaluates it, and takes every exported object as a definition: `defineQuery` and `defineAction`
 return their argument as is, and the two directories hold nothing else. A definition a second file
 re-exports keeps its identity through the single bundle, so it counts once, for the first file that
-exports it; `write-resources <file>` reads that file's exports alone, so a barrel doesn't claim them.
+exports it.
 Anything that isn't a definition is rejected by the serialization endpoint's schema, not here.
 
 Discovery refuses what makes a definition unusable on its own or against the others: an action that

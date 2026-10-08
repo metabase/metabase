@@ -91,25 +91,23 @@ describe(
 
         const copy = H.newEntityId();
 
-        H.createDataAppsNamespaceCollection().then((collection) =>
-          H.serializeDataAppActions(
-            [{ sourceActionId: source.id, entityId: copy }],
-            collection,
-          ).then(([file]) => {
-            expect(file.path).to.contain(copy);
+        H.serializeDataAppActions(
+          [{ sourceActionId: source.id, entityId: copy }],
+          COLLECTION,
+        ).then(([file]) => {
+          expect(file.file).to.eq("add_team.yaml");
 
-            const entity = yaml.load(file.yaml);
-            expect(entity).to.deep.include({
-              entity_id: copy,
-              collection_id: collection,
-              type: "query",
-            });
-            expect(entity).not.to.have.property("model_id");
-            expect(entity)
-              .to.have.nested.property("visualization_settings.fields.score")
-              .that.deep.include({ hidden: true, defaultValue: 0 });
-          }),
-        );
+          const entity = yaml.load(file.yaml);
+          expect(entity).to.deep.include({
+            entity_id: copy,
+            collection_id: COLLECTION,
+            type: "query",
+          });
+          expect(entity).not.to.have.property("model_id");
+          expect(entity)
+            .to.have.nested.property("visualization_settings.fields.score")
+            .that.deep.include({ hidden: true, defaultValue: 0 });
+        });
       });
     });
 

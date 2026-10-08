@@ -142,10 +142,10 @@
    [:collection_id ms/NanoIdString]])
 
 (mr/def ::file
-  "A serialization file, at its path relative to the repository root, or the error that stops it."
+  "A serialization file in the folder of the app's collection, or the error that stops it."
   [:or
    [:map {:closed true}
-    [:path :string]
+    [:file :string]
     [:yaml :string]]
    [:map {:closed true}
     [:error :string]]])

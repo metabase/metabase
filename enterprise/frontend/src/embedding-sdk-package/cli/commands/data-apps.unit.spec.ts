@@ -16,7 +16,7 @@ import { addDataAppsCommands } from "./data-apps";
 const QUESTION = "questionEntityId00010";
 const ACTION_COPY = "actionCopyEntityId001";
 const QUESTION_PATH =
-  "collections/data_apps/appCollectionEntity01_shop/cards/questionEntityId00010_orders.yaml";
+  "collections/data_apps/data_app/orders_questionEntityId00010.yaml";
 
 async function run(...args: string[]) {
   const program = new Command();
@@ -45,7 +45,7 @@ describe("data app commands", () => {
   const printed = () =>
     stdout.mock.calls.map(([chunk]) => String(chunk)).join("");
 
-  it("writes the files of one file's definitions, relative to the app root", async () => {
+  it("regenerates the collection's files for the definitions in the app root", async () => {
     const appRoot = appWithQuery();
     writeAction(
       appRoot,
@@ -58,27 +58,35 @@ describe("data app commands", () => {
     const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          queries: [{ path: QUESTION_PATH, yaml: "name: Orders\n" }],
-          actions: [],
+          queries: [
+            {
+              file: "orders_questionEntityId00010.yaml",
+              yaml: "name: Orders\n",
+            },
+          ],
+          actions: [{ file: "create.yaml", yaml: "name: Create\n" }],
           metrics: [],
         }),
       ),
     );
 
-    await run(
-      "write-resources",
-      "queries/orders.query.ts",
-      "--app-root",
-      appRoot,
-    );
+    await run("write-resources", "--app-root", appRoot);
 
     expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body)).actions).toEqual(
-      [],
+      [
+        {
+          action_id: 51,
+          entity_id: ACTION_COPY,
+          collection_id: "appCollectionEntity01",
+        },
+      ],
     );
     expect(fs.readFileSync(path.join(appRoot, QUESTION_PATH), "utf8")).toBe(
       "name: Orders\n",
     );
-    expect(printed()).toBe(`Wrote ${QUESTION_PATH}\n`);
+    expect(printed()).toBe(
+      `Wrote ${QUESTION_PATH}\nWrote collections/data_apps/data_app/create.yaml\n`,
+    );
   });
 
   it("confirms resources that back every definition", async () => {

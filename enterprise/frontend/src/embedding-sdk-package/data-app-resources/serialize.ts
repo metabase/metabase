@@ -11,10 +11,10 @@ import {
 } from "./discover";
 import { getMetabaseCredentials } from "./env";
 import { isObject } from "./guards";
-import { COLLECTIONS_DIR, repoRootOf } from "./resources";
+import { COLLECTIONS_DIR, readResources, repoRootOf } from "./resources";
 import type { DiscoveredAction, DiscoveredQuery } from "./types";
 
-type SerializedFile = { path: string; yaml: string } | { error: string };
+type SerializedFile = { file: string; yaml: string } | { error: string };
 
 interface SerializedResources {
   queries: SerializedFile[];
@@ -24,7 +24,7 @@ interface SerializedResources {
 
 const isSerializedFile = (value: unknown): value is SerializedFile =>
   isObject(value) &&
-  ((typeof value.path === "string" && typeof value.yaml === "string") ||
+  ((typeof value.file === "string" && typeof value.yaml === "string") ||
     typeof value.error === "string");
 
 const isSerializedFiles = (value: unknown): value is SerializedFile[] =>
@@ -95,43 +95,50 @@ function missingEntityIds(
   ];
 }
 
-function writeFile(repoRoot: string, file: { path: string; yaml: string }) {
-  const target = path.resolve(repoRoot, file.path);
+function collectionDirectory(appRoot: string, collection: string) {
+  const { repoRoot, collectionPath, files } = readResources(
+    appRoot,
+    collection,
+  );
 
-  if (!target.startsWith(path.join(repoRoot, COLLECTIONS_DIR) + path.sep)) {
+  if (collectionPath === undefined) {
     throw new Error(
-      `The serialization holds a file outside ${COLLECTIONS_DIR}/: ${file.path}`,
+      `No file under ${COLLECTIONS_DIR}/ holds the collection ${collection} that data_app.yaml names. Write it first: the files are written next to it.`,
     );
   }
 
-  fs.mkdirSync(path.dirname(target), { recursive: true });
+  return {
+    directory: path.join(repoRoot, collectionPath.replace(/\.yaml$/, "")),
+    existing: files.map((file) => path.join(repoRoot, file.path)),
+  };
+}
+
+function writeFile(directory: string, file: { file: string; yaml: string }) {
+  const target = path.join(directory, file.file);
+
+  if (path.dirname(target) !== directory) {
+    throw new Error(
+      `The serialization holds a file outside the collection: ${file.file}`,
+    );
+  }
+
   fs.writeFileSync(target, file.yaml);
 
-  return file.path;
+  return target;
 }
 
 /**
- * Writes the files of the app's collection for the definitions in `file`
- * (relative to the app root) or every definition: the saved question Metabase
+ * Regenerates the files of the app's collection: the saved question Metabase
  * builds for each `defineQuery` definition, the copy of each `defineAction`'s
- * action, and the copies of the metrics the queries aggregate, each at the path
- * a remote-sync export writes it under the repository's
- * `collections/data_apps/`. Returns what it wrote; throws, after writing the
- * rest, when Metabase couldn't serialize an item.
+ * action, and the copies of the metrics the queries aggregate, written next to
+ * the collection's file in place of the cards and actions it held. Writes
+ * nothing when Metabase couldn't serialize an item, and throws listing why.
  * One request to the Metabase instance and API key in `.env.local`.
  */
-export async function writeResources(appDirectory: string, file?: string) {
+export async function writeResources(appDirectory: string) {
   const appRoot = path.resolve(appDirectory);
-  const filePath = file === undefined ? undefined : path.resolve(appRoot, file);
-  const queries = await discoverQueries(appRoot, { filePath });
-  const actions = await discoverActions(appRoot, { filePath });
-
-  if (filePath !== undefined && queries.length + actions.length === 0) {
-    throw new Error(
-      `${path.relative(appRoot, filePath)} has no defineQuery or defineAction definitions.`,
-    );
-  }
-
+  const queries = await discoverQueries(appRoot);
+  const actions = await discoverActions(appRoot);
   const collection = readManifest(appRoot)?.manifest.collection;
 
   if (collection === undefined) {
@@ -140,6 +147,7 @@ export async function writeResources(appDirectory: string, file?: string) {
     );
   }
 
+  const { directory, existing } = collectionDirectory(appRoot, collection);
   const missing = missingEntityIds(appRoot, queries, actions);
 
   if (missing.length > 0) {
@@ -172,7 +180,6 @@ export async function writeResources(appDirectory: string, file?: string) {
     );
   }
 
-  const repoRoot = repoRootOf(appRoot);
   const labelled = [
     ...serialized.queries.map((result, index) => ({
       label: getRelativeDefinitionLocation(appRoot, queries[index]),
@@ -185,24 +192,21 @@ export async function writeResources(appDirectory: string, file?: string) {
     ...serialized.metrics.map((result) => ({ label: "A metric", result })),
   ];
 
-  const written: string[] = [];
-  const errors: string[] = [];
-
-  for (const { label, result } of labelled) {
-    if ("error" in result) {
-      errors.push(`${label}: ${result.error}`);
-    } else {
-      written.push(writeFile(repoRoot, result));
-    }
-  }
+  const errors = labelled.flatMap(({ label, result }) =>
+    "error" in result ? [`${label}: ${result.error}`] : [],
+  );
 
   if (errors.length > 0) {
-    throw new Error(
-      [...written.map((writtenPath) => `Wrote ${writtenPath}`), ...errors].join(
-        "\n",
-      ),
-    );
+    throw new Error(errors.join("\n"));
   }
 
-  return written.map((writtenPath) => `Wrote ${writtenPath}`).join("\n");
+  existing.forEach((filePath) => fs.rmSync(filePath));
+  fs.mkdirSync(directory, { recursive: true });
+
+  return labelled
+    .flatMap(({ result }) =>
+      "error" in result ? [] : [writeFile(directory, result)],
+    )
+    .map((target) => `Wrote ${path.relative(repoRootOf(appRoot), target)}`)
+    .join("\n");
 }

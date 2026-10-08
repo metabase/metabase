@@ -9,22 +9,23 @@ import {
   setupResourceTests,
   writeAction,
   writeQuery,
+  writeResource,
 } from "./setup";
 
 const QUESTION = "questionEntityId00010";
 const ACTION_COPY = "actionCopyEntityId001";
 
-const QUESTION_PATH =
-  "collections/data_apps/appCollectionEntity01_shop/cards/questionEntityId00010_orders.yaml";
-const ACTION_PATH =
-  "collections/data_apps/appCollectionEntity01_shop/actions/actionCopyEntityId001_create.yaml";
-const METRIC_PATH =
-  "collections/data_apps/appCollectionEntity01_shop/cards/metricCopyEntityId0001_revenue.yaml";
+const COLLECTION_DIR = "collections/data_apps/data_app";
+const QUESTION_PATH = `${COLLECTION_DIR}/orders_${QUESTION}.yaml`;
+const ACTION_PATH = `${COLLECTION_DIR}/create_${ACTION_COPY}.yaml`;
+const METRIC_PATH = `${COLLECTION_DIR}/revenue_metricCopyEntityId0001.yaml`;
 
 const SERIALIZED = {
-  queries: [{ path: QUESTION_PATH, yaml: "name: Orders\n" }],
-  actions: [{ path: ACTION_PATH, yaml: "name: Create\n" }],
-  metrics: [{ path: METRIC_PATH, yaml: "name: Revenue\n" }],
+  queries: [{ file: `orders_${QUESTION}.yaml`, yaml: "name: Orders\n" }],
+  actions: [{ file: `create_${ACTION_COPY}.yaml`, yaml: "name: Create\n" }],
+  metrics: [
+    { file: "revenue_metricCopyEntityId0001.yaml", yaml: "name: Revenue\n" },
+  ],
 };
 
 function appWithDefinitions() {
@@ -168,69 +169,82 @@ describe("serializing what resources are written from", () => {
     );
   });
 
-  it("sends only the definitions in the given file", async () => {
+  it("replaces the cards and actions the collection held", async () => {
     const appRoot = appWithDefinitions();
-    const fetchSpy = mockSerialization(
-      new Response(JSON.stringify({ ...SERIALIZED, actions: [] })),
-    );
-
-    await writeResources(appRoot, "queries/orders.query.ts");
-
-    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({
-      queries: [expect.objectContaining({ name: "Orders" })],
-      actions: [],
+    const stale = writeResource(appRoot, "other_place/stale.yaml", {
+      name: "Stale",
+      type: "question",
+      entity_id: "staleEntityId0000001",
+      "serdes/meta": [{ model: "Card", id: "staleEntityId0000001" }],
     });
+    mockSerialization(new Response(JSON.stringify(SERIALIZED)));
+
+    await writeResources(appRoot);
+
+    expect(fs.existsSync(stale)).toBe(false);
+    expect(
+      fs.existsSync(path.join(appRoot, "collections/data_apps/data_app.yaml")),
+    ).toBe(true);
   });
 
-  it("refuses a file outside collections/data_apps/ and writes nothing", async () => {
+  it("writes nothing and throws every per-item error", async () => {
     const appRoot = appWithDefinitions();
-    mockSerialization(
-      new Response(
-        JSON.stringify({
-          queries: [{ path: "../escaped.yaml", yaml: "name: Orders\n" }],
-          actions: [],
-          metrics: [],
-        }),
-      ),
-    );
-    fs.rmSync(path.join(appRoot, "actions/orders.action.ts"));
-
-    await expect(writeResources(appRoot)).rejects.toThrow(
-      "The serialization holds a file outside collections/data_apps/: ../escaped.yaml",
-    );
-    expect(fs.existsSync(path.join(appRoot, "..", "escaped.yaml"))).toBe(false);
-  });
-
-  it("writes the other files, then throws every per-item error", async () => {
-    const appRoot = appWithDefinitions();
+    const stale = writeResource(appRoot, "stale.yaml", {
+      name: "Stale",
+      type: "question",
+      entity_id: "staleEntityId0000001",
+      "serdes/meta": [{ model: "Card", id: "staleEntityId0000001" }],
+    });
     mockSerialization(
       new Response(
         JSON.stringify({
           queries: [{ error: "Unknown database" }],
-          actions: [{ path: ACTION_PATH, yaml: "name: Create\n" }],
-          metrics: [{ path: METRIC_PATH, yaml: "name: Revenue\n" }],
+          actions: [{ file: `create_${ACTION_COPY}.yaml`, yaml: "x: 1\n" }],
+          metrics: [{ error: "Unknown metric" }],
         }),
       ),
     );
 
     await expect(writeResources(appRoot)).rejects.toThrow(
       [
-        `Wrote ${ACTION_PATH}`,
-        `Wrote ${METRIC_PATH}`,
         "queries/orders.query.ts:Orders: Unknown database",
+        "A metric: Unknown metric",
       ].join("\n"),
     );
-    expect(fs.existsSync(path.join(appRoot, ACTION_PATH))).toBe(true);
-    expect(fs.existsSync(path.join(appRoot, METRIC_PATH))).toBe(true);
-    expect(fs.existsSync(path.join(appRoot, QUESTION_PATH))).toBe(false);
+    expect(fs.existsSync(stale)).toBe(true);
+    expect(fs.existsSync(path.join(appRoot, ACTION_PATH))).toBe(false);
   });
 
-  it("fails for a file with no definitions", async () => {
+  it("refuses a returned file that would leave the collection's folder", async () => {
     const appRoot = appWithDefinitions();
-
-    await expect(writeResources(appRoot, "src/App.tsx")).rejects.toThrow(
-      "src/App.tsx has no defineQuery or defineAction definitions.",
+    mockSerialization(
+      new Response(
+        JSON.stringify({
+          ...SERIALIZED,
+          queries: [{ file: "../escaped.yaml", yaml: "name: Orders\n" }],
+        }),
+      ),
     );
+
+    await expect(writeResources(appRoot)).rejects.toThrow(
+      "The serialization holds a file outside the collection: ../escaped.yaml",
+    );
+    expect(
+      fs.existsSync(path.join(appRoot, "collections/data_apps/escaped.yaml")),
+    ).toBe(false);
+  });
+
+  it("refuses to write before the collection has a file", async () => {
+    const appRoot = appWithDefinitions();
+    fs.rmSync(path.join(appRoot, "collections"), { recursive: true });
+    const fetchSpy = mockSerialization(
+      new Response(JSON.stringify(SERIALIZED)),
+    );
+
+    await expect(writeResources(appRoot)).rejects.toThrow(
+      `No file under collections/data_apps/ holds the collection ${COLLECTION}`,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("fails without the Metabase instance and API key", async () => {

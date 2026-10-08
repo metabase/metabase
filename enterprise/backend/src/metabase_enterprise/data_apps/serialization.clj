@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-apps.serialization
   "The files of a data app's collection: the saved question each `defineQuery` definition builds, and the copies of the
-  actions the app runs and of the metrics its queries aggregate, each at the path and with the YAML a remote-sync export
-  writes.
+  actions the app runs and of the metrics its queries aggregate, each named and written as a remote-sync export writes
+  it in the collection's folder.
 
   The endpoint is for superusers, who write an app's repository, so nothing here is checked against the caller.
   Opening it to anyone else needs that put back: every source, and every table a query reads at any depth. What a
@@ -37,11 +37,11 @@
   (throw (ex-info message {::refusal true})))
 
 (defn- with-item-error
-  "Calls `serialize`, or answers the `:error` that stopped it, so one item that can't be serialized doesn't fail the
+  "Calls `thunk`, or answers the `:error` that stopped it, so one item that can't be serialized doesn't fail the
   rest. Anything other than a refusal is logged, so a bug in the serialization leaves a trace on the server."
-  [item serialize]
+  [item thunk]
   (try
-    (serialize)
+    (thunk)
     (catch Exception e
       (when-not (::refusal (ex-data e))
         (log/warn e "Could not serialize a data app resource" item))
@@ -100,12 +100,6 @@
     (fail (if-let [cause (extraction-error model-name (:id source))]
             (tru "Could not serialize {0}: {1}" label cause)
             (tru "Could not serialize {0}." label)))))
-
-(defn- check-collection
-  "Throws unless the collection with `collection-id` is among `collection-ids`, since a file's path follows it."
-  [collection-ids collection-id]
-  (when-not (contains? collection-ids collection-id)
-    (fail (tru "Collection {0} does not exist on this instance." collection-id))))
 
 (mu/defn- build-query :- ::lib.schema/query
   "The query Lib builds from `query-definition`, once its source table and every table it reads at any depth exist."
@@ -198,23 +192,19 @@
                        [:queries [:sequential ::data-apps.schema/file]]
                        [:actions [:sequential ::data-apps.schema/file]]
                        [:metrics [:sequential ::data-apps.schema/file]]]
-  "The files of a data app's resources: the saved question of each of `queries`, the copy of each of `actions`, and the
-  copies of the metrics the queries aggregate. Each item comes back on its own, with its file or the error that
-  stops it."
+  "The files of a data app's collection: the saved question of each of `queries`, the copy of each of `actions`, and
+  the copies of the metrics the queries aggregate, each named as serialization names it in the collection's folder.
+  Each item comes back on its own, with its file or the error that stops it."
   [{:keys [queries actions]} :- [:map {:closed true}
                                  [:queries {:optional true} [:maybe [:sequential ::data-apps.schema/query]]]
                                  [:actions {:optional true} [:maybe [:sequential ::data-apps.schema/action]]]]]
   (serdes/with-cache
-    (let [ctx            (serdes/storage-base-context)
-          collection-ids (set (keys (:collections ctx)))
+    (let [unique-name    (lib/non-truncating-unique-name-generator)
           ->file         (fn [entity]
-                           {:path (serialization/entity-file-path ctx entity)
+                           {:file (str (unique-name (:entity_id entity) (serialization/slugify-name (:name entity))) ".yaml")
                             :yaml (serialization/entity-yaml entity)})
-          built          (mapv (fn [{:keys [query collection_id] :as item}]
-                                 (merge item (with-item-error item
-                                               (fn []
-                                                 (check-collection collection-ids collection_id)
-                                                 {:built (build-query query)}))))
+          built          (mapv (fn [{:keys [query] :as item}]
+                                 (merge item (with-item-error item #(hash-map :built (build-query query)))))
                                queries)
           copies         (metric-copies built)
           actions-by-id  (into {} (map (juxt :id identity))
@@ -240,7 +230,6 @@
                               (when (:model_id action)
                                 (fail (tru "{0} belongs to a model. A data app runs query actions that belong to no model."
                                            label)))
-                              (check-collection collection-ids collection_id)
                               (check-copyable label "Action" action (serialized (:entity_id action)))
                               (->file (as-copy (serialized (:entity_id action)) entity_id collection_id))))))
                       actions)

@@ -62,57 +62,44 @@ describe("Embedding SDK: data-app resources (queries)", () => {
   });
 
   describe("the CLI", () => {
-    it("writes the saved question Metabase builds from a definition, at the path a remote-sync export writes it", () => {
+    it("writes the saved question Metabase builds from a definition into the collection's folder", () => {
       const question = H.newEntityId();
-      H.createDataAppsNamespaceCollection().then((collectionEntityId) => {
-        cy.writeFile(
-          MANIFEST_FILE(),
-          `${H.DATA_APP_HOST_APP_MANIFEST}collection: ${collectionEntityId}\n`,
-        );
-        H.declareDataAppQueries(APP_ROOT(), [
-          {
-            name: "Orders",
-            tableId: ORDERS_ID,
-            savedQuestionEntityId: question,
-          },
-        ]);
+      H.declareDataAppQueries(APP_ROOT(), [
+        { name: "Orders", tableId: ORDERS_ID, savedQuestionEntityId: question },
+      ]);
+      H.writeDataAppResources(APP_ROOT(), { collection: collection() });
 
-        H.dataAppCliEnv().then((env) =>
-          H.runDataAppCli("write-resources", env).then(
-            ({ exitCode, stdout }) => {
-              expect(exitCode, stdout).to.eq(0);
-              const [, written] = stdout.match(/^Wrote (.+)$/m) ?? [];
-              expect(written).to.contain("collections/data_apps/");
-              expect(written).to.contain(question);
-              expect(stdout.trim().split("\n")).to.have.length(1);
+      H.dataAppCliEnv().then((env) =>
+        H.runDataAppCli("write-resources", env).then(({ exitCode, stdout }) => {
+          expect(exitCode, stdout).to.eq(0);
+          const [, written] = stdout.match(/^Wrote (.+)$/m) ?? [];
+          expect(written).to.match(
+            /^collections\/data_apps\/data_app__[^\/]+\/orders\.yaml$/,
+          );
+          expect(stdout.trim().split("\n")).to.have.length(1);
 
-              cy.readFile(`${APP_ROOT()}/${written}`).then((text) => {
-                const saved = yaml.load(text);
-                expect(saved).to.deep.include({
-                  entity_id: question,
-                  collection_id: collectionEntityId,
-                  name: "Orders",
-                  type: "question",
-                  display: "table",
-                  dataset_query: {
-                    "lib/type": "mbql/query",
-                    database: "Sample Database",
-                    stages: [
-                      {
-                        "lib/type": "mbql.stage/mbql",
-                        "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-                      },
-                    ],
+          cy.readFile(`${APP_ROOT()}/${written}`).then((text) => {
+            expect(yaml.load(text)).to.deep.include({
+              entity_id: question,
+              collection_id: COLLECTION,
+              name: "Orders",
+              type: "question",
+              display: "table",
+              dataset_query: {
+                "lib/type": "mbql/query",
+                database: "Sample Database",
+                stages: [
+                  {
+                    "lib/type": "mbql.stage/mbql",
+                    "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
                   },
-                  "serdes/meta": [
-                    { model: "Card", id: question, label: "orders" },
-                  ],
-                });
-              });
-            },
-          ),
-        );
-      });
+                ],
+              },
+              "serdes/meta": [{ model: "Card", id: question, label: "orders" }],
+            });
+          });
+        }),
+      );
     });
 
     it("checks that the resources back every definition, listing every problem", () => {

@@ -393,31 +393,15 @@ const resourceCard = ({
 });
 
 /**
- * A collection of the `data-apps` namespace on the instance, which
- * `POST /api/apps/serialize` needs to exist to lay a file out in it. Yields its
- * entity ID.
- */
-export function createDataAppsNamespaceCollection(
-  name = "Data App: Serialized",
-) {
-  return cy
-    .request<Collection>("POST", "/api/collection", {
-      name,
-      namespace: "data-apps",
-    })
-    .then(({ body }) => cy.wrap(String(body.entity_id), { log: false }));
-}
-
-/**
  * What `POST /api/apps/serialize` answers for the actions `copies` name: the
- * file of each copy, by position, in a collection of the instance.
+ * file of each copy, by position, for the app collection `collection`.
  */
 export function serializeDataAppActions(
   copies: Array<{ sourceActionId: number; entityId: string }>,
   collection: string,
 ) {
   return cy
-    .request<{ actions: Array<{ path: string; yaml: string }> }>(
+    .request<{ actions: Array<{ file: string; yaml: string }> }>(
       "POST",
       "/api/apps/serialize",
       {
@@ -434,25 +418,20 @@ export function serializeDataAppActions(
 /**
  * The copies of the actions `copies` name, as an author writes them into the
  * app's collection: what Metabase serializes for each source action, with the
- * copy's entity ID, moved into the app's `collection`.
+ * copy's entity ID, in the app's `collection`.
  */
 export function serializeDataAppActionCopies(
   copies: Array<{ sourceActionId: number; entityId: string }>,
   collection: string,
 ) {
-  return createDataAppsNamespaceCollection().then((serializedIn) =>
-    serializeDataAppActions(copies, serializedIn).then((files) =>
-      cy.wrap(
-        files.map(({ yaml: text }): ResourceEntity => {
-          const entity = yaml.load(text);
+  return serializeDataAppActions(copies, collection).then((files) =>
+    cy.wrap(
+      files.map(({ yaml: text }): ResourceEntity => {
+        const entity = yaml.load(text);
 
-          return {
-            ...(isObject(entity) ? entity : {}),
-            collection_id: collection,
-          };
-        }),
-        { log: false },
-      ),
+        return isObject(entity) ? entity : {};
+      }),
+      { log: false },
     ),
   );
 }

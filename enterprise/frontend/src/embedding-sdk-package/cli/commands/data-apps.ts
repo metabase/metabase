@@ -20,15 +20,10 @@ export function addDataAppsCommands(program: Command) {
   addAppCommand(
     dataAppsCommand,
     "write-resources",
-    "write the files of the data app's collection, serialized by Metabase, under collections/data_apps/",
-  )
-    .argument(
-      "[file]",
-      "only the definitions in this file, relative to the app directory",
-    )
-    .action(async (file: string | undefined, { appRoot }: AppRootOptions) => {
-      process.stdout.write(`${await writeResources(appRoot, file)}\n`);
-    });
+    "regenerate the files of the data app's collection, serialized by Metabase, next to the collection's file",
+  ).action(async ({ appRoot }: AppRootOptions) => {
+    process.stdout.write(`${await writeResources(appRoot)}\n`);
+  });
 
   addAppCommand(
     dataAppsCommand,

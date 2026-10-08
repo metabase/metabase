@@ -89,7 +89,7 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
-- `POST /api/apps/serialize` — the files of an app's collection, each at its path and with the YAML a
+- `POST /api/apps/serialize` — the files of an app's collection, each a file name and the YAML a
   remote-sync export writes: a saved question per `defineQuery` definition, a copy of each action, and a
   copy of each metric the queries aggregate (`serialization.clj`). An action must belong to no model
   (superuser).
