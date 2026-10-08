@@ -4,7 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
-   [metabase.permissions.core :as perms]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,7 +30,7 @@
                        {:select [:group_id]
                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
                         :where  [:= :user_id user-id]}]
-                      (perms/usage-controls-visible-groups-clause :group_id advanced?)]}))
+                      (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn permission-exists?
   "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
@@ -58,7 +58,7 @@
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
   (t2/delete! :model/MetabotPermissions
-              {:where [:not (perms/usage-controls-visible-groups-clause :group_id advanced?)]}))
+              {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn group-limits
   "Every MetabotGroupLimit, in group order."

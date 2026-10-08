@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.schema :as mcp.schema]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -67,12 +68,12 @@
   [advanced? :- :boolean]
   (if advanced?
     [(u/the-id (perms/data-analyst-group))]
-    (perms/usage-controls-simple-mode-group-ids)))
+    (usage-controls/simple-mode-group-ids)))
 
 (mu/defn visible-group-ids :- [:set ms/PositiveInt]
   "The IDs of the groups the mode selected by `advanced?` shows."
   [advanced? :- :boolean]
-  (t2/select-pks-set :model/PermissionsGroup {:where (perms/usage-controls-visible-groups-clause :id advanced?)}))
+  (t2/select-pks-set :model/PermissionsGroup {:where (usage-controls/visible-groups-clause :id advanced?)}))
 
 (mu/defn group-permissions-for-user
   "The McpGroupPermission rows of the groups of the User with `user-id`."
@@ -117,10 +118,10 @@
   "The McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
   (t2/select :model/McpGroupPermission
-             {:where [:not (perms/usage-controls-visible-groups-clause :group_id advanced?)]}))
+             {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
   (t2/delete! :model/McpGroupPermission
-              {:where [:not (perms/usage-controls-visible-groups-clause :group_id advanced?)]}))
+              {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))

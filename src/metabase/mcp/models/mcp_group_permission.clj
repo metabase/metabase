@@ -6,6 +6,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -44,16 +45,13 @@
   and All tenant users have rows only in simple mode, every group but them and Administrators only in group-level
   mode."
   [group-id]
-  (let [defaults #{(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))}
-        admin-id (u/the-id (perms/admin-group))
-        simple   (vec (conj defaults admin-id))]
-    (cond
-      (= admin-id group-id) nil
-      (defaults group-id)   (api/check-400 (not (mcp.db/group-permission-exists? [:not-in simple]))
-                                           (tru "All Users can''t have an MCP policy while groups have their own"))
-      :else                 (api/check-400 (not (mcp.db/group-permission-exists? [:in (vec defaults)]))
-                                           (tru "Group {0} can''t have an MCP policy while All Users has one"
-                                                (str group-id))))))
+  (when-not (= (u/the-id (perms/admin-group)) group-id)
+    (let [advanced? (not-any? #{group-id} (usage-controls/simple-mode-group-ids))]
+      (api/check-400 (not (mcp.db/group-permission-exists?
+                           [:not (usage-controls/visible-groups-clause :group_id advanced?)]))
+                     (if advanced?
+                       (tru "Group {0} can''t have an MCP policy while All Users has one" (str group-id))
+                       (tru "All Users can''t have an MCP policy while groups have their own"))))))
 
 (t2/define-before-insert :model/McpGroupPermission
   [{:keys [group_id tool_access] :as row}]

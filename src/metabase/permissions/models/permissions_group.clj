@@ -85,23 +85,6 @@
   "Fetch the `Data Analysts` permissions group"
   (magic-group data-analyst-magic-group-type))
 
-;;; -------------------------------------------- AI Usage Controls Modes ---------------------------------------------
-
-(defn usage-controls-simple-mode-group-ids
-  "The IDs of the groups an AI usage controls page governs in simple mode and hides in group-level mode: All Users and
-  All tenant users."
-  []
-  [(u/the-id (all-users)) (u/the-id (all-external-users))])
-
-(defn usage-controls-visible-groups-clause
-  "A HoneySQL condition matching, on `column`, the groups an AI usage controls page shows in the mode selected by
-  `advanced?`: Administrators and the simple-mode groups in simple mode, every group but the simple-mode groups in
-  group-level mode."
-  [column advanced?]
-  (if advanced?
-    [:not-in column (usage-controls-simple-mode-group-ids)]
-    [:in column (conj (usage-controls-simple-mode-group-ids) (u/the-id (admin)))]))
-
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (defn exists-with-name?

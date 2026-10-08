@@ -262,10 +262,9 @@
               [:handlers :channel [:recipients :recipients-detail]]))
 
 (defn group-permission-exists?
-  "Whether some McpGroupPermission matches `group-id-condition`, a Toucan 2 condition on `group_id` such as
-  `[:in ids]`."
-  [group-id-condition]
-  (t2/exists? :model/McpGroupPermission :group_id group-id-condition))
+  "Whether some McpGroupPermission matches `where`, a HoneySQL condition such as `[:in :group_id ids]`."
+  [where]
+  (t2/exists? :model/McpGroupPermission {:where where}))
 
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
