@@ -285,7 +285,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .contains("Orders by Created At: Week")
       .click();
 
-    H.echartsContainer().contains("April 2028");
+    H.echartsContainer().contains("May 2028");
     // drill into a recent week
     H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
 
