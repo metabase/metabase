@@ -139,6 +139,11 @@
   []
   (t2/select-one-fn :detected_at :model/ContentDiagnosticsFinding {:order-by [[:detected_at :desc]]}))
 
+(mu/defn any-findings?
+  "Whether any finding exists, invalidated ones included."
+  []
+  (t2/exists? :model/ContentDiagnosticsFinding))
+
 (defn- delete-batch-query
   "Honey SQL deleting up to `batch-size` findings invalidated before `cutoff` on `db-type`. MySQL rejects
   a subquery reading the table being deleted from (error 1093), so it gets `DELETE ... LIMIT` instead.
@@ -476,3 +481,10 @@
                         [:in :status ["succeeded" "failed" "timeout"]]
                         [:>= :start_time cutoff]]
              :group-by [:transform_id]}))
+
+;;; ------------------------------------------------ Task history ---------------------------------------------
+
+(mu/defn task-history-details
+  "The `task_details` of every `task_history` row for `task-name`."
+  [task-name :- :string]
+  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task task-name))

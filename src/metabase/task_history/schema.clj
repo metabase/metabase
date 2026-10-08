@@ -59,7 +59,8 @@
 (mr/def ::task-details.content-diagnostics-scan
   [:map {:closed true}
    [:scan-id        {:optional true} :string]
-   [:skipped-reason {:optional true} :string]])
+   [:skipped-reason {:optional true} :string]
+   [:run-method     {:optional true} [:enum :cron :upgrade-backfill]]])
 
 (mr/def ::task-details.remote-sync-auto-import
   [:map {:closed true}
