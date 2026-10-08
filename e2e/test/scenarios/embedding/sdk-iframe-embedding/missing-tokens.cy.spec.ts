@@ -3,7 +3,7 @@ const { H } = cy;
 describe("scenarios > embedding > sdk iframe embedding > without token features", () => {
   beforeEach(() => {
     H.prepareSdkIframeEmbedTest({
-      withToken: "starter",
+      withToken: false,
 
       // JWT requires a valid license to use, so we expect customers to use API keys when testing.
       enabledAuthMethods: ["api-key"],
