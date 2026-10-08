@@ -995,40 +995,18 @@ describe("should not redirect users to other pages when linking an entity (metab
   const TEST_QUESTION_NAME = "Question#35037";
 
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/search?q=*").as("search");
+    H.enableTracking();
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
   });
 
-  it("should not redirect users to recent item", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-
-    cy.url().then((url) => {
-      cy.wrap(url).as("originUrl");
-    });
-
-    cy.icon("link").click();
-    H.popover().findByText("Link").click();
-    cy.wait("@recentViews");
-
-    cy.findByTestId("recents-list-container").within(() => {
-      cy.findByText(TEST_DASHBOARD_NAME).click();
-    });
-
-    cy.url().then((currentURL) => {
-      cy.get("@originUrl").should("eq", currentURL);
-    });
-
-    cy.findByTestId("recents-list-container").should("not.exist");
-
-    cy.findByTestId("entity-edit-display-link")
-      .findByText(TEST_DASHBOARD_NAME)
-      .should("exist");
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
-  it("should not redirect users to search item", () => {
+  it("should add link cards without redirecting users to recent or search items", () => {
     H.createNativeQuestion({
       name: TEST_QUESTION_NAME,
       native: { query: "SELECT 1" },
@@ -1036,10 +1014,26 @@ describe("should not redirect users to other pages when linking an entity (metab
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
-    cy.url().then((url) => {
-      cy.wrap(url).as("originUrl");
+    cy.location("pathname").then((originPath) => {
+      cy.wrap(originPath).as("originPath");
     });
 
+    cy.log("link a recent item");
+    cy.findByLabelText("Add a link or iframe").click();
+    H.popover().findByText("Link").click();
+    cy.wait("@recentViews");
+
+    cy.findByTestId("recents-list-container").within(() => {
+      cy.findByText(TEST_DASHBOARD_NAME).click();
+    });
+
+    cy.findAllByTestId("entity-edit-display-link")
+      .should("have.length", 1)
+      .and("contain", TEST_DASHBOARD_NAME);
+    cy.findByTestId("recents-list-container").should("not.exist");
+    assertOriginPath();
+
+    cy.log("link a search item");
     cy.icon("link").click();
     H.popover().findByText("Link").click();
     cy.findByTestId("custom-edit-text-link")
@@ -1049,16 +1043,29 @@ describe("should not redirect users to other pages when linking an entity (metab
       cy.findByText(TEST_QUESTION_NAME).click();
     });
 
-    cy.url().then((currentURL) => {
-      cy.get("@originUrl").should("eq", currentURL);
-    });
-
+    cy.findAllByTestId("entity-edit-display-link")
+      .should("have.length", 2)
+      .and("contain", TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").should("not.exist");
+    assertOriginPath();
 
-    cy.findByTestId("entity-edit-display-link")
-      .findByText(TEST_QUESTION_NAME)
-      .should("exist");
+    // A blocked in-app navigation opens a leave confirmation modal, which
+    // prevents the save
+    H.saveDashboard();
+    cy.findAllByTestId("entity-view-display-link")
+      .should("have.length", 2)
+      .and("contain", TEST_DASHBOARD_NAME)
+      .and("contain", TEST_QUESTION_NAME);
+    assertOriginPath();
+
+    H.expectUnstructuredSnowplowEvent({ event: "new_link_card_created" }, 2);
   });
+
+  function assertOriginPath() {
+    cy.get("@originPath").then((originPath) => {
+      cy.location("pathname").should("eq", originPath);
+    });
+  }
 });
 
 describe("issue 42165", () => {
@@ -1159,16 +1166,13 @@ describe("issue 47170", () => {
       },
     );
 
+    // Keep the first dashboard loading so that navigating away cancels its fetch
     cy.intercept(
-      {
-        method: "GET",
-        url: "/api/dashboard/*",
-        middleware: true,
-      },
+      { method: "GET", pathname: `/api/dashboard/${ORDERS_DASHBOARD_ID}` },
       (req) => {
-        req.continue(
-          (res) => new Promise((resolve) => setTimeout(resolve, 1000)),
-        );
+        req.on("response", (res) => {
+          res.setDelay(10_000);
+        });
       },
     );
   });
@@ -1177,18 +1181,29 @@ describe("issue 47170", () => {
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
     H.appBar().button("Toggle sidebar").click();
+    H.navigationSidebar().findByText("Dashboard A").should("be.visible");
+    H.main().findByTestId("dashboard-header-skeleton").should("be.visible");
     H.navigationSidebar().findByText("Dashboard A").click();
 
     H.main().within(() => {
-      cy.findByText("Something’s gone wrong").should("not.exist");
       cy.findByText("Dashboard A").should("be.visible");
+      cy.findByText("Something’s gone wrong").should("not.exist");
     });
+  });
+});
+
+describe("issue 51524", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
   });
 
   it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
+    cy.intercept("PUT", "/api/setting/color-scheme").as("saveColorScheme");
     cy.visit("/account/profile");
     cy.findByDisplayValue("Use system default").click();
     H.popover().findByText("Dark").click();
+    cy.wait("@saveColorScheme");
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
     H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
@@ -1395,6 +1410,7 @@ describe("issue 44937", () => {
       cy.findByText("Our analytics").click();
       cy.findByText("Orders").click();
     });
+    H.getDashboardCards().should("have.length", 1);
 
     H.createNewTab();
 
@@ -1504,14 +1520,14 @@ describe("issue 62170", () => {
         },
       },
     }).then(({ body: { dashboard_id } }) => {
-      cy.visit(`/dashboard/${dashboard_id}#refresh=${REFRESH_PERIOD}`);
-
       cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
         "dashboardLoad",
       );
       cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
         "cardDataRefresh",
       );
+
+      cy.visit(`/dashboard/${dashboard_id}#refresh=${REFRESH_PERIOD}`);
     });
 
     // Wait for initial dashboard load
@@ -1522,8 +1538,6 @@ describe("issue 62170", () => {
     H.getDashboardCard().within(() => {
       cy.findByText("Orders Count").should("be.visible");
     });
-
-    cy.wait(REFRESH_PERIOD * 1000);
 
     // Verify card data was refreshed
     cy.wait("@cardDataRefresh");
