@@ -828,6 +828,12 @@
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   (prometheus/counter :metabase-metabot/sql-reference-checks
+                       {:description (str "Reference checks of Metabot SQL with template tags, by outcome: `ran`, "
+                                          "`skipped` (table tags, a dialect without field checks, or the query couldn't be "
+                                          "compiled), or `failed` "
+                                          "(the check threw).")
+                        :labels [:status]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
                      {:description "Batch count per queue by status, across all queue backends."

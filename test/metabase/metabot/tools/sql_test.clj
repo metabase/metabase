@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -58,6 +59,66 @@
     (agent-sql/create-sql-query-code-edit-tool (merge {:sql_query "SELECT 1"
                                                        :title     "Results"}
                                                       args))))
+
+(defn- venues-model []
+  (let [mp (mt/metadata-provider)]
+    {:type          :model
+     :database_id   (mt/id)
+     :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}))
+
+(deftest create-sql-query-reference-warnings-test
+  (testing "create_sql_query checks templated SQL and passes reference warnings on to the LLM"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [warned? #(str/includes? % "- Column `customer_name` was not found")]
+            (doseq [[tool-name run] [["create_sql_query" #(agent-sql/create-sql-query-tool (assoc % :title "Results"))]
+                                     ["create_sql_query (code editor)" create-sql-query-in-code-editor]]]
+              (testing tool-name
+                (testing "creates the query, warns, and doesn't end the turn so the model can act on the warning"
+                  (is (=? {:structured-output {:query-id string?}
+                           :output            warned?
+                           :instructions      warned?
+                           :non-terminal?     true}
+                          (run {:database_id (mt/id)
+                                :sql_query   (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")}))))
+                (testing "a query without warnings ends the turn as before"
+                  (let [result (run {:database_id (mt/id)
+                                     :sql_query   (str "SELECT v.name FROM {{#" card-id "}} AS v")})]
+                    (is (some? (:structured-output result)))
+                    (is (not (contains? result :non-terminal?)))))
+                (testing "a reference to a card that doesn't exist is returned to the LLM as a failure"
+                  (let [result (run {:database_id (mt/id)
+                                     :sql_query   (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")})]
+                    (is (str/includes? (:output result) (str "Card " Integer/MAX_VALUE " does not exist")))
+                    (is (nil? (:structured-output result)))))))))))))
+
+(deftest create-sql-query-repeated-reference-warnings-test
+  (testing "resubmitting SQL that gets the same reference warnings in a turn accepts it, so the turn can end"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (binding [shared/*memory-atom* (atom {})]
+            (let [run #(agent-sql/create-sql-query-tool
+                        {:database_id (mt/id)
+                         :title       "Results"
+                         :sql_query   (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")})]
+              (is (=? {:non-terminal? true} (run)))
+              (let [result (run)]
+                (is (str/includes? (:output result) "- Column `customer_name` was not found"))
+                (is (some? (:structured-output result)))
+                (is (not (contains? result :non-terminal?)))))))))))
+
+(deftest create-sql-query-missing-card-without-field-checks-test
+  (testing "a reference to a missing card fails even for a dialect whose fields aren't checked"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (agent-sql/create-sql-query-tool
+                      {:database_id (mt/id)
+                       :title       "Results"
+                       :sql_query   (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")})]
+          (is (str/includes? (:output result) (str "Card " Integer/MAX_VALUE " does not exist")))
+          (is (nil? (:structured-output result))))))))
 
 (deftest create-sql-query-code-edit-agent-error-output-test
   (testing "create_sql_query in the code editor returns agent errors as output instead of throwing"
@@ -182,6 +243,29 @@
               (is (string? output))
               (is (str/starts-with? instructions "The SQL query has a syntax error"))
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
+
+(deftest edit-and-replace-sql-query-reference-warnings-test
+  (testing "edit_sql_query and replace_sql_query check templated SQL and pass reference warnings on to the LLM"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [query-id "test-reference-warnings-q"
+                good-sql (str "SELECT v.name FROM {{#" card-id "}} AS v")
+                stored   (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) good-sql))
+                run      (fn [tool args]
+                           (binding [shared/*memory-atom* (atom {:state {:queries {query-id stored}}})]
+                             (tool (merge {:query_id query-id :checklist "- [x] checked" :title "Results"} args))))
+                warned?  #(str/includes? % "- Column `customer_name` was not found")]
+            (doseq [[tool-name tool args] [["edit_sql_query" agent-sql/edit-sql-query-tool
+                                            {:edits [{:old_string "v.name" :new_string "v.customer_name"}]}]
+                                           ["replace_sql_query" agent-sql/replace-sql-query-tool
+                                            {:new_query (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")}]]]
+              (testing tool-name
+                (is (=? {:structured-output {:query-id query-id}
+                         :output            warned?
+                         :instructions      warned?
+                         :non-terminal?     true}
+                        (run tool args)))))))))))
 
 (deftest edit-sql-query-viz-part-test
   (testing "edit_sql_query emits a generated_entity card unless an open code-editor buffer wins"

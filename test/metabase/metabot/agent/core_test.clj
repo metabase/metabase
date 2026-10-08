@@ -108,6 +108,10 @@
     (testing "a FAILED terminal-tool call does not end the turn (model can self-correct)"
       (is (not (#'agent/terminal-tool-call? terminal failure)))
       (is (#'agent/should-continue? 0 20 terminal failure)))
+    (testing "a successful terminal-tool call marked :non-terminal? does not end the turn"
+      (let [warned (assoc-in success [1 :result :non-terminal?] true)]
+        (is (not (#'agent/terminal-tool-call? terminal warned)))
+        (is (#'agent/should-continue? 0 20 terminal warned))))
     (testing "a non-terminal tool (read_resource) does not end the turn"
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
