@@ -197,6 +197,10 @@
               (.unlock lock))))
         (.call command))
       (catch Exception e
+        ;; lockInterruptibly clears the interrupt flag of the thread when it throws. Set the flag again, so that the
+        ;; caller sees the interrupt after the throw.
+        (when (instance? InterruptedException (root-cause e))
+          (.interrupt (Thread/currentThread)))
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command true))))))
 
