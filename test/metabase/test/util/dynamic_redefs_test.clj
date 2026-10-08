@@ -142,7 +142,7 @@
 (defn- nested-redef-target [] ::real)
 
 ;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
-(deftest with-dynamic-fn-redefs-inside-with-redefs-test
+(deftest ^:synchronized with-dynamic-fn-redefs-inside-with-redefs-test
   (testing "A stub that `with-redefs` puts over a proxied var is not kept as the var's original"
     (mt/with-dynamic-fn-redefs [nested-redef-target (constantly ::dynamic)]
       (is (= ::dynamic (nested-redef-target))))
@@ -164,7 +164,7 @@
 
 ;; Not ^:parallel: patching a source, or `with-redefs` on it, replaces the re-export's root for every thread.
 
-(deftest with-dynamic-fn-redefs-reexport-after-source-patched-test
+(deftest ^:synchronized with-dynamic-fn-redefs-reexport-after-source-patched-test
   (testing "A redef of a potemkin re-export holds after its source var is patched"
     (let [src (reexport-source)]
       (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
@@ -175,7 +175,7 @@
         (is (= ::reexport (premium-features/is-hosted?)))
         (is (not= ::reexport (@src)))))))
 
-(deftest with-dynamic-fn-redefs-reexport-after-source-with-redefs-test
+(deftest ^:synchronized with-dynamic-fn-redefs-reexport-after-source-with-redefs-test
   (testing "A redef of a potemkin re-export holds after `with-redefs` on its source var"
     (reexport-source)
     (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
@@ -195,7 +195,7 @@
 (p/import-fn chain-middle chain-end)
 
 ;; Not ^:parallel: patching `chain-source` replaces the roots of both re-exports for every thread.
-(deftest with-dynamic-fn-redefs-transitive-reexport-test
+(deftest ^:synchronized with-dynamic-fn-redefs-transitive-reexport-test
   (testing "A redef of a re-export of a re-export holds after the var at the start of the chain is patched"
     (mt/with-dynamic-fn-redefs [chain-end (constantly ::end)]
       (is (= ::end (chain-end))))
@@ -369,8 +369,11 @@
 
 (deftest ^:parallel reexport-follows-its-source-test
   (testing "a re-export with no replacement of its own calls what its source calls"
-    (mt/with-dynamic-fn-redefs [source-1 (constantly :source)]
-      (is (= [:source :source] [(source-1) (reexport-1)]))))
+    (let [replacement (constantly :source)]
+      (mt/with-dynamic-fn-redefs [source-1 replacement]
+        (is (= [:source :source] [(source-1) (reexport-1)]))
+        (testing "and `dynamic-value` of the re-export is the source's replacement"
+          (is (identical? replacement (mt/dynamic-value #'reexport-1)))))))
   (testing "a replacement for the re-export only reaches calls through the re-export"
     (mt/with-dynamic-fn-redefs [reexport-1 (constantly :reexport)]
       (is (= [:original :reexport] [(source-1) (reexport-1)]))))
