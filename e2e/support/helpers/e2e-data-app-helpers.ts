@@ -11,9 +11,9 @@ import type {
   CollectionPermissionsGraph,
   DataApp,
   Group,
+  GroupInfo,
   RemoteSyncTask,
   WritebackAction,
-  GroupInfo,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -77,6 +77,33 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   const slug = appName;
   const displayName = options.displayName ?? appName;
   const allowedHosts = options.allowedHosts ?? [];
+
+  // the entrypoint checks for app access before serving its HTML
+  // we need to have a real app in the database - mocking the endpoint isn't enough
+  cy.request({
+    url: `/api/apps/${slug}`,
+    failOnStatusCode: false,
+  }).then(({ status }) => {
+    if (status === 200) {
+      return;
+    }
+
+    expect(status).to.equal(404);
+
+    cy.log("register the data app");
+    cy.request("POST", "/api/apps", {
+      name: slug,
+      display_name: displayName,
+      bundle_path: "dist/index.js",
+      allowed_hosts: allowedHosts,
+      bundle: "",
+    });
+
+    cy.log("assign the data app to all users group");
+    cy.request("POST", `/api/apps/${slug}/groups`, {
+      group_ids: [USER_GROUPS.ALL_USERS_GROUP],
+    });
+  });
 
   // Prelude runs in the sandbox realm before the bundle's factory, so the app
   // can read the injected config as a global (see MockDataAppOptions.testEnv).
