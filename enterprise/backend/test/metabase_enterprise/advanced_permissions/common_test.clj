@@ -4,7 +4,6 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
-   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -185,43 +184,6 @@
             (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
 
-(deftest new-view-data-permission-levels-block-data-app-groups-test
-  (testing "data-app groups block newly-synced tables/databases even with no `:blocked` row (full manifest)"
-    (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
-      (mt/with-temp [:model/PermissionsGroup {app-group-id :id} {:is_data_app_group true}
-                     :model/PermissionsGroup {ctl-group-id :id} {}                        ; a normal, non-data-app group
-                     :model/DataApp          _                  {:name "perm-test-app" :display_name "Perm Test"
-                                                                 :bundle_path "app/dist/index.js"
-                                                                 :permission_group_id app-group-id}
-                     :model/Database         {db-id :id}      {}
-                     :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC"}
-                     :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC"}]
-        ;; effective (coalesced) view-data — the control group inherits the DB-level value with no
-        ;; table row of its own, so a raw-row check would see nil.
-        (let [effective (fn [group-id table-id]
-                          (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id))]
-          (testing "a late table is blocked for the data-app group but not for a normal group"
-            ;; a "full manifest" for both groups: all existing tables :unrestricted, so no `:blocked` row exists
-            (doseq [group-id [app-group-id ctl-group-id]]
-              (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
-              (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted))
-            (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
-              (is (= :blocked (effective app-group-id table-id-3))
-                  "the late table is blocked for the data-app group")
-              (is (= :unrestricted (effective ctl-group-id table-id-3))
-                  "the same late table is NOT blocked for a normal group — the rule is scoped to app groups")
-              (is (= :unrestricted (effective app-group-id table-id-1))
-                  "the app's declared tables stay unrestricted")
-              ;; the going-granular apply keeps a clean per-table shape, so the permissions graph the
-              ;; admin panel loads still builds (M1's db-level+table-override mix used to 500 it).
-              (is (map? (data-perms.graph/api-graph))
-                  "the whole permissions graph still builds")))
-          (testing "a newly-added database is blocked only for the data-app group"
-            (let [levels (advanced-permissions.common/new-database-view-data-permission-levels
-                          [app-group-id ctl-group-id])]
-              (is (= :blocked (levels app-group-id)) "blocked for the data-app group")
-              (is (not= :blocked (levels ctl-group-id)) "not blocked for a normal group"))))))))
-
 (deftest new-table-view-data-permission-levels-without-premium-features-test
   (testing "A newly-synced table fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"
     ;; This is the incident path: a table is discovered during sync while the sandboxes /
@@ -245,6 +207,65 @@
                     "No DB-level perm is written")
                 (is (= :blocked (perm-value new-table-id))
                     "New table blocks the sandboxed group instead of leaking :unrestricted")))))))))
+
+(deftest uploaded-table-without-premium-features-test
+  (testing "An *uploaded* table fails CLOSED to :blocked for a sandboxed group even without premium features"
+    ;; The upload override (UXW-3217) prefers the schema's unanimous :unrestricted over the DB-wide
+    ;; override, so the sandbox guard is the only thing standing between a sandboxed group and the
+    ;; uploaded table. That guard must not consult the token: an EE instance whose token has lapsed
+    ;; still has sandboxes configured, and silently ignoring them is the UXW-4927 leak by another path.
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}        {}
+                   :model/Database         {db-id :id}           {}
+                   :model/Table            {granted-table :id}   {:db_id db-id :schema "PUBLIC"}
+                   :model/Table            {sandboxed-table :id} {:db_id db-id :schema "OTHER"}
+                   :model/Sandbox          _                     {:group_id group-id :table_id sandboxed-table}]
+      ;; Unanimous :unrestricted for every existing table in the upload target schema, so that the
+      ;; schema-consistency rule *would* hand the new table over if the sandbox guard didn't fire.
+      (data-perms/set-table-permission! group-id granted-table :perms/view-data :unrestricted)
+      (doseq [features [#{} #{:advanced-permissions} #{:sandboxes} #{:advanced-permissions :sandboxes}]]
+        (testing (format "premium features = %s" (pr-str features))
+          (mt/with-premium-features features
+            (is (= #{group-id}
+                   (advanced-permissions.common/new-table-sandboxed-groups db-id [group-id]))
+                "The sandbox guard does not consult the token")
+            (mt/with-temp [:model/Table {new-table-id :id} {:db_id       db-id
+                                                            :schema      "PUBLIC"
+                                                            :data_source :upload}]
+              (is (= :blocked
+                     (t2/select-one-fn :perm_value :model/DataPermissions
+                                       :db_id db-id :group_id group-id
+                                       :table_id new-table-id :perm_type :perms/view-data))
+                  "Uploaded table blocks the sandboxed group instead of inheriting the schema's :unrestricted"))))))))
+
+(deftest new-table-in-granted-schema-test
+  ;; Grant the "public" schema, block the "blocked" schema -- exactly the upload setup. The group
+  ;; therefore has a :blocked table in the DB, so the EE DB-wide override returns :blocked for any
+  ;; brand-new table (verified below). Uses the *real* enterprise functions, no redefs.
+  (mt/with-additional-premium-features #{:advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/Database         {db-id :id}      {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "public"}
+                   :model/Table            {table-id-2 :id} {:db_id db-id :schema "blocked"}]
+      (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :blocked)
+      (is (= {group-id :blocked}
+             (advanced-permissions.common/new-table-view-data-permission-levels db-id [group-id]))
+          "precondition: the DB-wide override would block a new table for this group")
+      (testing "Sync (default): a synced table in the granted schema fails safe to :blocked"
+        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "public"}]
+          (is (= :blocked
+                 (t2/select-one-fn :perm_value :model/DataPermissions
+                                   :db_id db-id :group_id group-id
+                                   :table_id table-id-3 :perm_type :perms/view-data)))))
+      (testing "Upload (`:data_source :upload`): an uploaded table in the granted schema inherits :unrestricted (UXW-3217)"
+        (mt/with-temp [:model/Table {table-id-3 :id} {:db_id       db-id
+                                                      :schema      "public"
+                                                      :data_source :upload}]
+          (is (= :unrestricted
+                 (t2/select-one-fn :perm_value :model/DataPermissions
+                                   :db_id db-id :group_id group-id
+                                   :table_id table-id-3 :perm_type :perms/view-data))
+              "new table in the granted schema must inherit :unrestricted, not :blocked"))))))
 
 (deftest new-group-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
@@ -1044,6 +1065,51 @@
               (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
                                                            :create-queries :query-builder-and-native}}
                 (is (some? (upload-csv!)))))))))))
+
+(deftest upload-csv-keeps-permissions-on-granted-schema-test
+  (testing "Upload to fully `:unrestricted` schema doesn't get `:blocked`, so uploads keep working (UXW-3217)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
+      (mt/with-additional-premium-features #{:advanced-permissions}
+        ;; An empty, *dynamic* dataset: the upload physically creates a table, which drivers like Snowflake refuse
+        ;; to do in a shared static dataset (see `metabase.test.data.snowflake/create-table!`).
+        (mt/dataset (mt/dataset-definition "advanced_permissions" [])
+          (let [db-id        (mt/id)
+                schema-name  (sql.tx/session-schema driver/*driver*)
+                all-users-id (u/the-id (perms-group/all-users))]
+            (mt/with-restored-data-perms-for-group! all-users-id
+              ;; Grant the whole DB, then carve out a :blocked table in a *different* schema. This is the corrupting
+              ;; condition in UXW-3217: the group now has a blocked view-data row *anywhere* in the DB, so any new
+              ;; table would be forced to `:blocked`, except for the special handling of uploads being tested here.
+              (data-perms/set-database-permission! all-users-id db-id :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! all-users-id db-id :perms/create-queries :query-builder)
+              (mt/with-temp [:model/Table {granted-table :id} {:db_id  db-id
+                                                               :schema schema-name
+                                                               :active true}
+                             :model/Table {blocked-table :id} {:db_id  db-id
+                                                               :schema "uxw3217_other_schema"
+                                                               :active true}]
+                ;; Set both rows explicitly rather than relying on the going-granular expansion to cover the upload
+                ;; target schema: the dataset is empty, so there is no other table there to make it unanimous.
+                (data-perms/set-table-permission! all-users-id granted-table :perms/view-data :unrestricted)
+                (data-perms/set-table-permission! all-users-id blocked-table :perms/view-data :blocked)
+                (is (= {all-users-id :blocked}
+                       (advanced-permissions.common/new-table-view-data-permission-levels db-id [all-users-id]))
+                    "precondition: the DB-wide override would block a new table for All Users")
+                (upload-test/do-with-uploaded-example-csv!
+                 {:grant-permission? false
+                  :schema-name       schema-name
+                  :table-prefix      "uxw3217_"}
+                 (fn [model]
+                   (let [uploaded-table  (t2/select-one [:model/Table :id :schema] :id (:table_id model))
+                         uploaded-schema (:schema uploaded-table)]
+                     (is (= :unrestricted
+                            (data-perms/table-permission-for-groups #{all-users-id} :perms/view-data
+                                                                    db-id (:id uploaded-table)))
+                         "uploaded table in the granted schema must stay :unrestricted")
+                     (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
+                       (is (= :unrestricted
+                              (data-perms/full-schema-permission-for-user
+                               (mt/user->id :rasta) :perms/view-data db-id uploaded-schema)))))))))))))))
 
 (deftest update-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

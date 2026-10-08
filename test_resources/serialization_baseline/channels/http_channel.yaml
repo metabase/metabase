@@ -5,5 +5,4 @@ details:
 name: HTTP Channel
 type: channel/http
 serdes/meta:
-- id: HTTP Channel
-  model: Channel
+- model: Channel

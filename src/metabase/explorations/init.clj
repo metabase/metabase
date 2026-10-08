@@ -12,7 +12,8 @@
    [metabase.explorations.models.exploration-thread-timeline]
    [metabase.explorations.queues]
    [metabase.explorations.settings]
-   [metabase.explorations.task.collect-orphaned-results]))
+   [metabase.explorations.task.collect-orphaned-results]
+   [metabase.explorations.view-log]))
 
 ;; Install the content-visibility gate into the documents module's read/write path, so the
 ;; Summary doc's content is hidden from collaborators whose lens differs from the creator's.

@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { Group, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
@@ -18,7 +16,7 @@ const Bullet = () => (
 );
 
 export const DataAppSummary = ({ app }: Props) => {
-  const isOpenable = app.enabled && !app.draft && !app.outdated;
+  const isOpenable = app.enabled && !app.outdated;
 
   return (
     <Group align="center" flex="1" wrap="nowrap" miw={0}>
@@ -61,16 +59,6 @@ export const DataAppSummary = ({ app }: Props) => {
           >
             {Urls.dataApp(app.name)}
           </Text>
-
-          {app.draft && (
-            <>
-              <Bullet />
-
-              <Text size="sm" c="text-tertiary" lh="1.4">
-                {t`Draft`}
-              </Text>
-            </>
-          )}
 
           {app.allowed_hosts.length > 0 && (
             <>

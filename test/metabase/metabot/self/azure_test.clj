@@ -135,8 +135,8 @@
                :system   [{:type "text" :text "be brief" :cache_control {:type "ephemeral"}}]
                :messages [{:role "user" :content [{:type "text" :text "hi"}]}]}
               body)))
-    (testing "a deployment name matches no model, so max_tokens falls back rather than being omitted"
-      (is (= 64000 (:max_tokens body))))))
+    (testing "a deployment gets the default max_tokens rather than none"
+      (is (= 32000 (:max_tokens body))))))
 
 (deftest openai-family-dispatches-to-responses-api-test
   (let [req  (captured-raw-request! {:model       "openai/gpt-5-deployment"
@@ -215,6 +215,8 @@
 
 (deftest ^:parallel reasoning-model?-test
   (are [model expected] (= expected (azure/reasoning-model? model))
+    "anthropic/claude-opus-5-5"   true
+    "anthropic/claude-sonnet-5-5" true
     "anthropic/claude-opus-5"     true
     "anthropic/claude-opus-4-8"   true
     ;; dotted display-name spelling parses the same — deployment names are admin free text
@@ -246,6 +248,14 @@
                                                :fast? true
                                                :input [{:role :user :content "hi"}]})))]
       (is (not (contains? body :speed))))))
+
+(deftest ^:parallel context-window-tokens-test
+  (testing "the longest model id that prefixes the deployment name decides"
+    (are [model tokens] (= tokens (azure/context-window-tokens model))
+      "anthropic/claude-fable-5-1"      1000000
+      "openai/gpt-5.4"                  922000
+      "openai/gpt-5.4-mini-2026-03-17"  272000
+      "anthropic/my-deployment"         nil)))
 
 (deftest unsupported-family-throws-test
   (is (thrown-with-msg?

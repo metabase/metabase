@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { QA_POSTGRES_PORT, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -8,6 +8,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import type {
   Collection,
+  Database,
   RemoteSyncDependencyErrorResponse,
 } from "metabase-types/api";
 
@@ -31,6 +32,8 @@ const MONTHLY_DEPENDENT_NAME = "Monthly Summary";
 const SNIPPET_NAME = "active_users";
 const SNIPPET_QUESTION_NAME = "Snippet Dependent Question";
 const PERSONAL_QUESTION_NAME = "Personal Source Question";
+const STUB_DATABASE_NAME = "Stub Postgres";
+const STUB_QUESTION_NAME = "Stub Database Question";
 
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
@@ -1287,6 +1290,64 @@ describe("Remote Sync", () => {
             .should("eq", 403);
         });
       });
+    });
+  });
+
+  describe("stub databases", { tags: ["@external"] }, () => {
+    beforeEach(() => {
+      setup();
+    });
+
+    it("imports a card on a missing database as a stub that runs once connected", () => {
+      H.copySyncedStubDatabaseFixture();
+      H.commitToRepo();
+      H.configureGitAndPullChanges("read-write");
+
+      cy.log("the missing database is created as a stub");
+      cy.visit("/admin/databases");
+      cy.findByRole("link", { name: STUB_DATABASE_NAME })
+        .closest("tr")
+        .findByText("Stubbed")
+        .should("be.visible");
+      cy.findByRole("link", { name: STUB_DATABASE_NAME }).click();
+      cy.findByTestId("database-connection-info-section")
+        .findByText(
+          "This database has placeholder connection details. Replace that with actual connection details to make this connection Active.",
+        )
+        .should("be.visible");
+
+      cy.log("connect the stub database");
+      cy.intercept("PUT", "/api/database/*").as("updateDatabase");
+      cy.button("Edit connection details").click();
+      cy.findByTestId("database-form").within(() => {
+        cy.findByLabelText(/Host/).type("localhost");
+        cy.findByLabelText(/Port/).type(String(QA_POSTGRES_PORT));
+        cy.findByLabelText(/Database name/).type("sample");
+        cy.findByLabelText(/Username/).type("metabase");
+        cy.findByLabelText(/Password/).type("metasample123");
+      });
+      cy.button("Save changes").click();
+      cy.wait("@updateDatabase");
+
+      cy.request<{ data: Database[] }>("GET", "/api/database").then(
+        ({ body }) => {
+          const database = body.data.find(
+            ({ name }) => name === STUB_DATABASE_NAME,
+          );
+          expect(database?.is_stub).to.equal(false);
+          H.waitForSyncToFinish({
+            dbId: database?.id,
+            tableName: "products",
+            tableAlias: "productsTable",
+          });
+        },
+      );
+
+      cy.log("the imported card now runs against the connected database");
+      cy.visit("/collection/root");
+      H.goToSyncedCollection("Stub Database Collection");
+      H.collectionTable().findByText(STUB_QUESTION_NAME).click();
+      H.tableInteractive().findByText("Rustic Paper Wallet").should("exist");
     });
   });
 });

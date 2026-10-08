@@ -61,17 +61,20 @@
   xAI's dialect matches what [[chat-completions/request-body]] emits, except:
 
   - The output cap is sent as `max_completion_tokens`, since xAI deprecates `max_tokens`. It caps visible output
-    only, not reasoning or tool calls, so a small cap cannot cut off a forced tool call.
+    only, not reasoning or tool calls, so a small cap cannot cut off a forced tool call. A caller that names no
+    `:max-tokens` gets [[core/chat-max-output-tokens]], since xAI's own default is 128,000 visible tokens
+    (https://docs.x.ai/developers/rest-api-reference/inference/chat-completions).
   - The structured path, and a caller opting out of reasoning, get the model's `:lowest-effort` from
     [[supported-models]], which turns reasoning off on Grok 4.3 and lowers it to `low` on Grok 4.7. Chat keeps each
     model's default. Models off the allow-list get no effort at all, since some of them (Grok 4.20) reject the
     parameter.
   - A `:prompt-cache-key`, the conversation id, is forwarded as `prompt_cache_key`, which routes a conversation's
     requests to the same server so its prompt cache hits."
-  [{:keys [model prompt-cache-key reasoning? schema] :as opts
+  [{:keys [model max-tokens prompt-cache-key reasoning? schema] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   (let [lowest-effort (get-in supported-models [model :lowest-effort])]
-    (-> (chat-completions/request-body (assoc opts :model model))
+    (-> (chat-completions/request-body
+         (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens)))
         (set/rename-keys {:max_tokens :max_completion_tokens})
         (cond-> (and lowest-effort (or (some? schema) (not reasoning?)))
           (assoc :reasoning_effort lowest-effort)

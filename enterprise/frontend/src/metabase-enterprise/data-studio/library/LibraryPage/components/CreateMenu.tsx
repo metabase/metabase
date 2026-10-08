@@ -13,6 +13,8 @@ import { setOpenModalWithProps } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { useActionDatabases } from "metabase-enterprise/data-studio/library/actions/hooks/use-action-databases";
+import { canCreateActions } from "metabase-enterprise/data-studio/library/actions/utils";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
@@ -23,11 +25,17 @@ export const CreateMenu = ({
   canWriteToMetricCollection,
   dataCollectionId,
   canWriteToDataCollection,
+  dashboardCollectionId,
+  canWriteToDashboardCollection,
+  onNewDashboardClick,
 }: {
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
   dataCollectionId?: CollectionId;
   canWriteToDataCollection?: boolean;
+  dashboardCollectionId?: CollectionId;
+  canWriteToDashboardCollection?: boolean;
+  onNewDashboardClick: () => void;
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -39,6 +47,8 @@ export const CreateMenu = ({
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const { databases: actionDatabases } = useActionDatabases();
+  const canCreateDataActions = canCreateActions(actionDatabases);
 
   if (remoteSyncReadOnly) {
     return null;
@@ -47,17 +57,22 @@ export const CreateMenu = ({
   const canCreateMetric =
     hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
-  const canCreateCollection =
+  const canCreateDashboard =
+    dashboardCollectionId && canWriteToDashboardCollection;
+
+  const canCreateLibraryCollection =
     (dataCollectionId && canWriteToDataCollection) ||
     (metricCollectionId && canWriteToMetricCollection) ||
-    (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled);
+    canCreateDashboard;
+
+  const canCreateCollection =
+    canCreateLibraryCollection ||
+    (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled) ||
+    canCreateDataActions;
 
   const collectionNamespaces: CollectionNamespace[] = [];
 
-  if (
-    (dataCollectionId && canWriteToDataCollection) ||
-    (metricCollectionId && canWriteToMetricCollection)
-  ) {
+  if (canCreateLibraryCollection) {
     collectionNamespaces.push(null);
   }
 
@@ -65,9 +80,14 @@ export const CreateMenu = ({
     collectionNamespaces.push("snippets");
   }
 
+  if (canCreateDataActions) {
+    collectionNamespaces.push("data-actions");
+  }
+
   const initialCollectionId =
     (dataCollectionId && canWriteToDataCollection && dataCollectionId) ||
     (metricCollectionId && canWriteToMetricCollection && metricCollectionId) ||
+    (canCreateDashboard && dashboardCollectionId) ||
     null;
 
   const menuItems = [
@@ -91,6 +111,15 @@ export const CreateMenu = ({
         {t`Metric`}
       </Menu.Item>
     ),
+    canCreateDashboard && (
+      <Menu.Item
+        key="dashboard"
+        leftSection={<FixedSizeIcon name="dashboard" />}
+        onClick={onNewDashboardClick}
+      >
+        {t`Dashboard`}
+      </Menu.Item>
+    ),
     hasNativeWrite && (
       <Menu.Item
         key="snippet"
@@ -100,6 +129,16 @@ export const CreateMenu = ({
         aria-label={t`Create new snippet`}
       >
         {t`Snippet`}
+      </Menu.Item>
+    ),
+    canCreateDataActions && (
+      <Menu.Item
+        key="data-action"
+        component={ForwardRefLink}
+        to={Urls.newDataStudioAction()}
+        leftSection={<FixedSizeIcon name="bolt" />}
+      >
+        {t`Action`}
       </Menu.Item>
     ),
     canCreateCollection && (

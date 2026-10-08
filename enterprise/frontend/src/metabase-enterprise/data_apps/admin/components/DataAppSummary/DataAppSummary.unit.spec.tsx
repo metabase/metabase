@@ -31,23 +31,6 @@ describe("DataAppSummary", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders a draft's name as plain text (it has no bundle to open)", () => {
-    renderWithProviders(
-      <DataAppSummary
-        app={createMockDataApp({
-          display_name: "Sales",
-          enabled: true,
-          draft: true,
-        })}
-      />,
-    );
-
-    expect(screen.getByText("Sales")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Sales" }),
-    ).not.toBeInTheDocument();
-  });
-
   it("renders an outdated app's name as plain text (it refuses to open)", () => {
     renderWithProviders(
       <DataAppSummary
@@ -90,22 +73,6 @@ describe("DataAppSummary", () => {
       expect(
         screen.queryByText("Pipeline health by region"),
       ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("draft badge", () => {
-    it("labels a draft", () => {
-      renderWithProviders(
-        <DataAppSummary app={createMockDataApp({ draft: true })} />,
-      );
-
-      expect(screen.getByText("Draft")).toBeInTheDocument();
-    });
-
-    it("doesn't label an app that isn't a draft", () => {
-      renderWithProviders(<DataAppSummary app={createMockDataApp()} />);
-
-      expect(screen.queryByText("Draft")).not.toBeInTheDocument();
     });
   });
 });

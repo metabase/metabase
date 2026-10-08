@@ -13,6 +13,7 @@
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
+   [metabase.mcp.v2.skills :as skills]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -561,6 +562,21 @@
   (-> (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
       (get-in [:headers "Mcp-Session-Id"])))
 
+(deftest ui-tools-hidden-from-client-switched-off-test
+  (testing "EMB-2406: a client the admin switched off under \"Show inline charts\" is not offered the UI tools"
+    (let [handshake (fn []
+                      (-> (mcp-request (jsonrpc-request "initialize"
+                                                        (assoc mcp-app-ui-capabilities
+                                                               :clientInfo {:name "ChatGPT"})))
+                          (get-in [:headers "Mcp-Session-Id"])))
+          tool-names (fn [session-id]
+                       (->> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                            :body :result :tools (map :name) set))]
+      (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients []]
+        (is (not (contains? (tool-names (handshake)) "visualize_query"))))
+      (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients ["chatgpt"]]
+        (is (contains? (tool-names (handshake)) "visualize_query"))))))
+
 (deftest tools-list-descriptions-fit-client-truncation-test
   (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping
             whatever guidance comes after. Every description `tools/list` sends, MCP Apps tools included and the
@@ -575,6 +591,51 @@
         (testing tool-name
           (is (<= (count description) 2048)
               (str "the description is " (count description) " characters")))))))
+
+(deftest no-transforms-on-the-surface-test
+  (testing "GHY-4746: MCP is for consuming content, so MCP v2 has no transforms — no tool, input-schema enum value,
+            or learn topic is one, and no text the server sends names them: the initialize instructions, tools/list,
+            resources/list, the text resources, learn(), and every learn topic and reference"
+    (let [init       (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+          session-id (get-in init [:headers "Mcp-Session-Id"])
+          request!   (fn [method params]
+                       (-> (mcp-request (jsonrpc-request method params) {"mcp-session-id" session-id})
+                           (get-in [:body :result])))
+          learn!     (fn [arguments] (request! "tools/call" {:name "learn" :arguments arguments}))
+          tools      (:tools (request! "tools/list" {}))
+          resources  (:resources (request! "resources/list" {}))]
+      (testing "no tool is named for transforms"
+        (is (empty? (filter #(re-find #"(?i)transform" %) (map :name tools)))))
+      (testing "no input-schema enum offers a transform value"
+        (doseq [{tool-name :name :keys [inputSchema]} tools]
+          (testing tool-name
+            (is (empty? (for [node  (tree-seq coll? seq inputSchema)
+                              :when (map? node)
+                              value (:enum node)
+                              :when (re-find #"(?i)^transforms?$" (str value))]
+                          value))))))
+      (testing "no learn topic is transforms"
+        (is (empty? (filter #(re-find #"(?i)transform" %) (skills/topics)))))
+      (testing "no text names transforms"
+        (doseq [[label payload]
+                (concat [["initialize instructions" (get-in init [:body :result :instructions])]
+                         ["tools/list" tools]
+                         ["resources/list" resources]
+                         ["learn()" (learn! {})]]
+                        ;; The ui:// resources are frontend bundles, where `transform` is CSS.
+                        (for [{:keys [uri]} resources
+                              :when (not (str/starts-with? uri "ui://"))]
+                          [(str "resources/read " uri) (request! "resources/read" {:uri uri})])
+                        (for [topic (skills/topics)]
+                          [(str "learn(" topic ")") (learn! {:topic topic})])
+                        (for [topic     (skills/topics)
+                              reference (skills/reference-names topic)]
+                          [(str "learn(" topic ", " reference ")") (learn! {:topic topic :reference reference})]))]
+          (testing label
+            (is (some? payload) "sanity: the request returned a result")
+            (is (not (:isError payload)) "sanity: the request succeeded")
+            (is (empty? (re-seq #"(?i).{0,40}\btransforms?\b.{0,40}"
+                                (if (string? payload) payload (json/encode payload)))))))))))
 
 (deftest refresh-ui-credential-test
   (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
@@ -1367,29 +1428,22 @@
        "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\""))
 
 (deftest native-source-scope-denial-is-a-403-insufficient-scope-challenge-test
-  (testing "GHY-4543: question_write and transform_write check agent:sql:run inside the handler, once the source
-            resolves to native SQL. Over HTTP that must be the same 403 `insufficient_scope` challenge the registry
-            gate sends, or a client records no step-up scope and the user can never grant it."
+  (testing "GHY-4543: question_write checks agent:sql:run inside the handler, once the source resolves to native
+            SQL. Over HTTP that must be the same 403 `insufficient_scope` challenge the registry gate sends, or a
+            client records no step-up scope and the user can never grant it."
     (do-with-bearer-token!
      content-write-scopes
      (fn [headers]
-       (let [post!  (bearer-session-post! headers)
-             native {:database (mt/id) :type "native" :native {:query "SELECT 1"}}]
-         (doseq [[tool-name arguments]
-                 [["question_write"  {:method "create" :name "Native probe"
-                                      :native {:database_id (mt/id) :sql "SELECT 1"}}]
-                  ["transform_write" {:method     "create" :name "Native probe"
-                                      :definition {:type "query" :query native}
-                                      :target     {:name "mcp_native_probe" :schema "PUBLIC"}}]]]
-           (testing tool-name
-             (let [response (post! 403 (jsonrpc-request "tools/call" {:name tool-name :arguments arguments}))]
-               (is (= 403 (:status response)))
-               (is (= (sql-step-up-challenge tool-name) (get-in response [:headers "WWW-Authenticate"])))
-               (is (= -32600 (get-in response [:body :error :code])))
-               (is (re-find #"agent:sql:run" (get-in response [:body :error :message]))))))
+       (let [post!     (bearer-session-post! headers)
+             arguments {:method "create" :name "Native probe"
+                        :native {:database_id (mt/id) :sql "SELECT 1"}}
+             response  (post! 403 (jsonrpc-request "tools/call" {:name "question_write" :arguments arguments}))]
+         (is (= 403 (:status response)))
+         (is (= (sql-step-up-challenge "question_write") (get-in response [:headers "WWW-Authenticate"])))
+         (is (= -32600 (get-in response [:body :error :code])))
+         (is (re-find #"agent:sql:run" (get-in response [:body :error :message])))
          (testing "and nothing was written"
-           (is (zero? (t2/count :model/Card :name "Native probe")))
-           (is (zero? (t2/count :model/Transform :name "Native probe")))))))))
+           (is (zero? (t2/count :model/Card :name "Native probe")))))))))
 
 (defn- mcp-app-session-id!
   "Handshake over bearer `headers` as a client that can render MCP Apps, returning the session id."
@@ -1403,7 +1457,7 @@
 (deftest drill-handle-cannot-save-native-sql-without-the-sql-scope-test
   (testing "GHY-4543: `/api/embed-mcp/drills` stores whatever query the iframe hands it, charged the UI credential's
             single agent:query:run, and a handle resolves by user, so holding a drill handle is not proof the SQL
-            gates were spent. Saving one through question_write or transform_write is still charged agent:sql:run."
+            gates were spent. Saving one through question_write is still charged agent:sql:run."
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (do-with-bearer-token!
        content-write-scopes
@@ -1424,36 +1478,28 @@
                                                                "mcp-session-id"         session-id}}}
                                   {:encodedQuery (u/encode-base64 (json/encode query))})
                                  (get-in [:body :handle])))
-               call!       (fn [expected-status tool-name handle]
+               call!       (fn [expected-status handle]
                              (in-session expected-status
                                          (jsonrpc-request
                                           "tools/call"
-                                          {:name      tool-name
-                                           :arguments (cond-> {:method       "create"
-                                                               :name         "Drill probe"
-                                                               :query_handle handle}
-                                                        (= tool-name "transform_write")
-                                                        (assoc :target {:name   "mcp_drill_probe"
-                                                                        :schema "PUBLIC"}))})))]
+                                          {:name      "question_write"
+                                           :arguments {:method       "create"
+                                                       :name         "Drill probe"
+                                                       :query_handle handle}})))]
            (is (string? credential) "the iframe must get a credential, or the drill store is unreachable")
            (testing "a handle carrying an MBQL 5 native stage is refused with the step-up challenge"
              (let [handle (drill! {:lib/type "mbql/query"
                                    :database (mt/id)
                                    :stages   [{:lib/type "mbql.stage/native" :native "SELECT 1"}]})]
                (is (string? handle))
-               (doseq [tool-name ["question_write" "transform_write"]]
-                 (testing tool-name
-                   (let [response (call! 403 tool-name handle)]
-                     (is (= (sql-step-up-challenge tool-name) (get-in response [:headers "WWW-Authenticate"])))
-                     (is (= -32600 (get-in response [:body :error :code]))))))))
+               (let [response (call! 403 handle)]
+                 (is (= (sql-step-up-challenge "question_write") (get-in response [:headers "WWW-Authenticate"])))
+                 (is (= -32600 (get-in response [:body :error :code]))))))
            (testing "the legacy shape never reaches those gates: the save path decodes serialized MBQL 5 only, so a
                      legacy `{type: native}` payload is refused as an invalid query, with no challenge"
-             (let [handle (drill! {:type "native" :database (mt/id) :native {:query "SELECT 1"}})]
-               (doseq [tool-name ["question_write" "transform_write"]]
-                 (testing tool-name
-                   (let [response (call! 200 tool-name handle)]
-                     (is (nil? (get-in response [:headers "WWW-Authenticate"])))
-                     (is (true? (get-in response [:body :result :isError]))))))))
+             (let [handle   (drill! {:type "native" :database (mt/id) :native {:query "SELECT 1"}})
+                   response (call! 200 handle)]
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (true? (get-in response [:body :result :isError])))))
            (testing "and nothing was written either way"
-             (is (zero? (t2/count :model/Card :name "Drill probe")))
-             (is (zero? (t2/count :model/Transform :name "Drill probe"))))))))))
+             (is (zero? (t2/count :model/Card :name "Drill probe"))))))))))

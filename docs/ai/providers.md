@@ -28,6 +28,7 @@ Supported models:
 | Model             | Model ID                     | Context window (tokens) |
 | ----------------- | ---------------------------- | ----------------------- |
 | Claude Fable 5    | `claude-fable-5`             | 1,000,000               |
+| Claude Fable 5.1  | `claude-fable-5-1`           | 1,000,000               |
 | Claude Haiku 4.5  | `claude-haiku-4-5-20251001`  | 200,000                 |
 | Claude Opus 4.1   | `claude-opus-4-1-20250805`   | 200,000                 |
 | Claude Opus 4.5   | `claude-opus-4-5-20251101`   | 200,000                 |
@@ -35,9 +36,11 @@ Supported models:
 | Claude Opus 4.7   | `claude-opus-4-7`            | 1,000,000               |
 | Claude Opus 4.8   | `claude-opus-4-8`            | 1,000,000               |
 | Claude Opus 5     | `claude-opus-5`              | 1,000,000               |
+| Claude Opus 5.5   | `claude-opus-5-5`            | 1,000,000               |
 | Claude Sonnet 4.5 | `claude-sonnet-4-5-20250929` | 200,000                 |
 | Claude Sonnet 4.6 | `claude-sonnet-4-6`          | 1,000,000               |
 | Claude Sonnet 5   | `claude-sonnet-5`            | 1,000,000               |
+| Claude Sonnet 5.5 | `claude-sonnet-5-5`          | 1,000,000               |
 
 Credentials:
 
@@ -80,6 +83,7 @@ Supported models:
 | Model                  | Model ID                          | Context window (tokens) |
 | ---------------------- | --------------------------------- | ----------------------- |
 | Claude Fable 5         | `anthropic/claude-fable-5`        | 1,000,000               |
+| Claude Fable 5.1       | `anthropic/claude-fable-5.1`      | 1,000,000               |
 | Claude Haiku 4.5       | `anthropic/claude-haiku-4.5`      | 200,000                 |
 | Claude Opus 4.1        | `anthropic/claude-opus-4.1`       | 200,000                 |
 | Claude Opus 4.5        | `anthropic/claude-opus-4.5`       | 200,000                 |
@@ -211,11 +215,14 @@ Supported models:
 | Model             | Model ID                              |
 | ----------------- | ------------------------------------- |
 | Claude Fable 5    | `anthropic/claude-fable-5`            |
+| Claude Fable 5.1  | `anthropic/claude-fable-5-1`          |
 | Claude Haiku 4.5  | `anthropic/claude-haiku-4-5@20251001` |
 | Claude Opus 4.6   | `anthropic/claude-opus-4-6`           |
 | Claude Opus 5     | `anthropic/claude-opus-5`             |
+| Claude Opus 5.5   | `anthropic/claude-opus-5-5`           |
 | Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6`         |
 | Claude Sonnet 5   | `anthropic/claude-sonnet-5`           |
+| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5`         |
 | Gemini 3.5 Flash  | `google/gemini-3.5-flash`             |
 | Gemini 3.6 Flash  | `google/gemini-3.6-flash`             |
 | Gemini 3.7 Flash  | `google/gemini-3.7-flash`             |
@@ -224,9 +231,9 @@ Credentials:
 
 - **Project ID**. The Google Cloud project to use. Optional if the service account key provides it. [Where do I find this?](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects) You can also set it with the environment variable `MB_LLM_GOOGLE_PROJECT_ID`.
 - **Location**. Optional. Defaults to global. You can also set it with the environment variable `MB_LLM_GOOGLE_LOCATION`.
-- **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `Service account key`, `OAuth token`. Defaults to `Service account key`.
-- **Service account key file**. Only when **Authentication method** is **Service account key**. Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
-- **OAuth access token**. Only when **Authentication method** is **OAuth token**. A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
+- **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `service-account-key`, `oauth-token`. Defaults to `service-account-key`.
+- **Service account key file**. Only when **Authentication method** is **Service account key** (`service-account-key`). Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
+- **OAuth access token**. Only when **Authentication method** is **OAuth token** (`oauth-token`). A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
 - **Model Garden endpoint ID**. Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.
 - **API base URL** (advanced). Derived from the location when left at the global host. Defaults to `https://aiplatform.googleapis.com`. You can also set it with the environment variable `MB_LLM_GOOGLE_API_BASE_URL`.
 
@@ -256,7 +263,7 @@ Credentials:
 
 - **API key** (required). [Where do I find this?](https://ai.azure.com) You can also set it with the environment variable `MB_LLM_AZURE_API_KEY`.
 - **API base URL** (required). You can also set it with the environment variable `MB_LLM_AZURE_API_BASE_URL`.
-- **Model provider** (required). Whether your deployment serves an Anthropic or an OpenAI model. One of: `OpenAI`, `Anthropic`. Defaults to `OpenAI`. You can also set it with the environment variable `MB_LLM_AZURE_MODEL_FAMILY`.
+- **Model provider** (required). Whether your deployment serves an Anthropic or an OpenAI model. One of: `openai`, `anthropic`. Defaults to `openai`. You can also set it with the environment variable `MB_LLM_AZURE_MODEL_FAMILY`.
 - **Deployment name** (required). The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve. You can also set it with the environment variable `MB_LLM_AZURE_DEPLOYMENT_NAME`.
 
 ## Amazon Bedrock
@@ -267,19 +274,22 @@ Credentials:
 
 Supported models:
 
-| Model                | Model ID                     | Context window (tokens) |
-| -------------------- | ---------------------------- | ----------------------- |
-| Claude Fable 5       | `anthropic.claude-fable-5`   | 1,000,000               |
-| Claude Haiku 4.5     | `anthropic.claude-haiku-4-5` | 200,000                 |
-| Claude Opus 4.7      | `anthropic.claude-opus-4-7`  | 1,000,000               |
-| Claude Opus 4.8      | `anthropic.claude-opus-4-8`  | 1,000,000               |
-| Claude Opus 5        | `anthropic.claude-opus-5`    | 1,000,000               |
-| Claude Sonnet 5      | `anthropic.claude-sonnet-5`  | 1,000,000               |
-| GPT-5.4              | `openai.gpt-5.4`             | 272,000                 |
-| GPT-5.4 (2026-03-05) | `openai.gpt-5.4-2026-03-05`  | 272,000                 |
-| GPT-5.5              | `openai.gpt-5.5`             | 272,000                 |
-| GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`  | 272,000                 |
-| GPT-6 Astra          | `openai.gpt-6-astra`         | 922,000                 |
+| Model                | Model ID                      | Context window (tokens) |
+| -------------------- | ----------------------------- | ----------------------- |
+| Claude Fable 5       | `anthropic.claude-fable-5`    | 1,000,000               |
+| Claude Fable 5.1     | `anthropic.claude-fable-5-1`  | 1,000,000               |
+| Claude Haiku 4.5     | `anthropic.claude-haiku-4-5`  | 200,000                 |
+| Claude Opus 4.7      | `anthropic.claude-opus-4-7`   | 1,000,000               |
+| Claude Opus 4.8      | `anthropic.claude-opus-4-8`   | 1,000,000               |
+| Claude Opus 5        | `anthropic.claude-opus-5`     | 1,000,000               |
+| Claude Opus 5.5      | `anthropic.claude-opus-5-5`   | 1,000,000               |
+| Claude Sonnet 5      | `anthropic.claude-sonnet-5`   | 1,000,000               |
+| Claude Sonnet 5.5    | `anthropic.claude-sonnet-5-5` | 1,000,000               |
+| GPT-5.4              | `openai.gpt-5.4`              | 272,000                 |
+| GPT-5.4 (2026-03-05) | `openai.gpt-5.4-2026-03-05`   | 272,000                 |
+| GPT-5.5              | `openai.gpt-5.5`              | 272,000                 |
+| GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`   | 272,000                 |
+| GPT-6 Astra          | `openai.gpt-6-astra`          | 922,000                 |
 
 Credentials:
 
@@ -352,12 +362,29 @@ If you configure the Bedrock connection with environment variables, it has no mo
 
 Supported models:
 
-Metabase lists whichever models your vLLM server is serving, so what you can pick depends on how you started it.
+Metabase lists whichever models your vLLM server has available, so what you can pick depends on how you set it up.
 
 Credentials:
 
 - **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. Metabase must be able to reach it: self-hosted, a server on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
 - **API key**. Only needed if you started your server with --api-key. You can also set it with the environment variable `MB_LLM_VLLM_API_KEY`.
+
+## Ollama
+
+- Provider key: `ollama`
+
+Supported models:
+
+Metabase lists whichever models your Ollama server has available, so what you can pick depends on how you set it up.
+
+Credentials:
+
+- **API base URL** (required). Your Ollama server's address, ending in /v1, or https://ollama.com/v1 for Ollama Cloud. To reach a server on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
+- **API key**. Required for Ollama Cloud. Leave blank if your server doesn't require one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
+
+### Context window
+
+Ollama can load a model with a smaller context window than the model supports. Metabot needs at least 16,384 tokens, and Metabase checks the window when you connect. See Ollama's documentation on [context length](https://docs.ollama.com/context-length).
 
 ## Metabase AI service
 
