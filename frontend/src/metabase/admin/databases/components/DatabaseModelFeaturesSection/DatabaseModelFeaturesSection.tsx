@@ -11,7 +11,7 @@ import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
 
 import { DatabaseInfoSection } from "../DatabaseInfoSection";
 
-import { ModelActionsSection } from "./ModelActionsSection";
+import { DataActionsSection } from "./DataActionsSection";
 import { ModelCachingControl } from "./ModelCachingControl";
 
 export const DatabaseModelFeaturesSection = ({
@@ -28,7 +28,7 @@ export const DatabaseModelFeaturesSection = ({
   const isEditingDatabase = !!database.id;
 
   const contentVisibility = {
-    showModelActions: isEditingDatabase && hasFeature(database, "actions"),
+    showDataActions: isEditingDatabase && hasFeature(database, "actions"),
     showModelCachingSection:
       isModelPersistenceEnabled && hasFeature(database, "persist-models"),
   };
@@ -36,7 +36,7 @@ export const DatabaseModelFeaturesSection = ({
     (x) => x === false,
   );
 
-  const handleToggleModelActionsEnabled = useCallback(
+  const handleToggleDataActionsEnabled = useCallback(
     (nextValue: boolean) =>
       updateDatabase({
         id: database.id,
@@ -56,10 +56,10 @@ export const DatabaseModelFeaturesSection = ({
       data-testid="database-model-features-section"
     >
       <Flex direction="column" gap="lg">
-        {contentVisibility.showModelActions && (
-          <ModelActionsSection
-            hasModelActionsEnabled={hasActionsEnabled(database)}
-            onToggleModelActionsEnabled={handleToggleModelActionsEnabled}
+        {contentVisibility.showDataActions && (
+          <DataActionsSection
+            hasDataActionsEnabled={hasActionsEnabled(database)}
+            onToggleDataActionsEnabled={handleToggleDataActionsEnabled}
             disabled={hasDbRoutingEnabled(database)}
           />
         )}
