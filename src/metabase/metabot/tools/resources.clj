@@ -789,11 +789,17 @@
     "measure" "segment" "transform" "dashboard" "document"})
 
 (def ^:private id-lookup-hints
-  "Per-entity-type remedy for a non-numeric id segment. Databases and collections are reached by
-   browsing, not by search, so a caller working from a name has no search result to copy a `uri`
-   from. Point it at the navigation URI that lists ids instead."
+  "Per-entity-type remedy for a non-numeric id segment, keyed by type segment. Databases and
+   collections are reached by browsing, not by search, so a caller working from a name has no search
+   result to copy a `uri` from. Point it at the navigation URI that lists ids instead. Measures and
+   segments aren't searchable; they are listed on their parent table. Every `metabase://` URI named
+   here must resolve (see `id-lookup-hints-uris-resolve-test`)."
   {"database"   "read metabase://databases and use the numeric `id` of the database"
-   "collection" "read metabase://collections and use the numeric `id` of the collection"})
+   "collection" (str "read metabase://collections?tree=true and use the numeric `id` of the collection "
+                     "(the root collection has no id: metabase://collections lists its children)")
+   "measure"    "read the parent table (metabase://table/{id}) and use the numeric `id` of the measure"
+   "segment"    "read the parent table (metabase://table/{id}) and use the numeric `id` of the segment"
+   "transform"  "copy the `uri` attribute from a transform search result, or use its numeric `id` attribute"})
 
 (def ^:private default-id-lookup-hint
   "Remedy for entity types with no navigation URI: they are reachable via search."
@@ -805,15 +811,18 @@
    one otherwise fails downstream as a bare 404, which the LLM misreads as a permissions problem or
    a missing entity. Throw a directive error naming the next call instead, so it self-corrects in
    one step."
-  [uri [type-seg id-seg]]
+  [uri [type-seg id-seg & rst]]
   (when (and (numeric-id-uri-types type-seg)
              (some? id-seg)
              (nil? (parse-long id-seg)))
     (throw (ex-info
             (str "Invalid id `" id-seg "` in URI: the `" type-seg "` segment takes a numeric id, "
-                 "not a name or an entity id. To find it, "
+                 (if (re-matches #"\d+" id-seg)
+                   "and this one is out of range. "
+                   "not a name or an entity id. ")
+                 "To find it, "
                  (get id-lookup-hints type-seg default-id-lookup-hint)
-                 ", then request e.g. metabase://" type-seg "/42.")
+                 ", then request e.g. metabase://" (str/join "/" (list* type-seg "42" rst)) ".")
             {:agent-error? true
              :status-code  400
              :uri          uri

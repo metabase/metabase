@@ -259,10 +259,28 @@
   (testing "the directive error text reaches read_resource output"
     (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields"]})]
       (is (str/includes? output "the `model` segment takes a numeric id")))
-    (testing "and is distinguishable from a missing resource"
+    (testing "and carries the per-type remedy"
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://database/redshift"]})]
-        (is (str/includes? output "read metabase://databases"))
-        (is (not (str/includes? output "**Error:** Not found."))))))
+        (is (str/includes? output "read metabase://databases")))))
+  (testing "collection names point at the full tree, and root at the root listing"
+    (let [msg (ex-message (try (#'read-resource/dispatch "metabase://collection/root/items")
+                               (catch Exception e e)))]
+      (is (str/includes? msg "metabase://collections?tree=true"))
+      (is (str/includes? msg "the root collection has no id"))))
+  (testing "measures and segments point at the parent table, not search"
+    (doseq [t ["measure" "segment"]]
+      (let [msg (ex-message (try (#'read-resource/dispatch (str "metabase://" t "/revenue"))
+                                 (catch Exception e e)))]
+        (is (str/includes? msg "read the parent table"))
+        (is (not (str/includes? msg "search result"))))))
+  (testing "the example keeps the drill-down path"
+    (is (thrown-with-msg? Exception #"e\.g\. metabase://database/42/schemas/core/tables\."
+                          (#'read-resource/dispatch "metabase://database/redshift/schemas/core/tables"))))
+  (testing "an all-digit id that overflows a long is called out of range, not a name"
+    (let [msg (ex-message (try (#'read-resource/dispatch "metabase://question/99999999999999999999")
+                               (catch Exception e e)))]
+      (is (str/includes? msg "out of range"))
+      (is (not (str/includes? msg "not a name")))))
   (testing "non-id segments are unaffected — schema names and field ids may be non-numeric"
     (is (= ["database" "1" "schemas" "PUBLIC" "tables"]
            (:segments (#'read-resource/parse-uri "metabase://database/1/schemas/PUBLIC/tables"))))
@@ -273,6 +291,16 @@
                "metabase://chart/abc-123" ["chart" "abc-123"])))
     (is (nil? (#'read-resource/check-numeric-id-segment!
                "metabase://query/abc-123" ["query" "abc-123"])))))
+
+(deftest id-lookup-hints-uris-resolve-test
+  (testing "every navigation URI named in an id-lookup hint resolves"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [uri (->> (vals @#'read-resource/id-lookup-hints)
+                       (mapcat #(re-seq #"metabase://[^\s)]+" %))
+                       (remove #(str/includes? % "{"))
+                       distinct)]
+        (testing uri
+          (is (map? (#'read-resource/dispatch uri))))))))
 
 (comment
   (mt/with-current-user (mt/user->id :crowberto)
