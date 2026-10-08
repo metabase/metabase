@@ -206,6 +206,10 @@
     ;; copy of the source's root, which potemkin no longer keeps up to date, so the re-export has to start calling
     ;; through the source. A stub or a proxy is left alone.
     ;;
+    ;; A stub that is the source's own function looks exactly like such a copy and is treated as one. That is the
+    ;; wrong answer for the stub, and the test `with-redefs-of-reexport-to-its-source's-function-test` says why it
+    ;; was chosen.
+    ;;
     ;; Both vars are watched because one `with-redefs` can restore them in either order: the re-export's root may
     ;; only match the source's once the source has its own back.
     ;;
