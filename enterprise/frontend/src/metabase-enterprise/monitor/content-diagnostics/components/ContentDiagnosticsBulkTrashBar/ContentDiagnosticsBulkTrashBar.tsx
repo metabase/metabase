@@ -2,11 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { msgid, ngettext, t } from "ttag";
 
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
-import { ToastCard } from "metabase/common/components/BulkActionBar/BulkActionBar.styled";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, Text } from "metabase/ui";
+import { Box, Card, Flex, Text } from "metabase/ui";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
 import type { ContentDiagnosticsTab } from "../types";
@@ -151,20 +150,28 @@ export function ContentDiagnosticsBulkTrashBar({
           }}
           data-testid="content-diagnostics-bulk-actions"
         >
-          <ToastCard data-testid="toast-card">
-            <Text c="tooltip-text">
-              {ngettext(
-                msgid`${count} item selected`,
-                `${count} items selected`,
-                count,
-              )}
-            </Text>
-            <Flex gap="sm" align="center">
-              <BulkActionButton danger onClick={open}>
-                {trashCopy.actionLabel}
-              </BulkActionButton>
+          <Card
+            bg="tooltip-background"
+            c="tooltip-text"
+            py="md"
+            px="lg"
+            data-testid="toast-card"
+          >
+            <Flex align="center" justify="space-between" gap="2.5rem">
+              <Text c="tooltip-text">
+                {ngettext(
+                  msgid`${count} item selected`,
+                  `${count} items selected`,
+                  count,
+                )}
+              </Text>
+              <Flex gap="sm" align="center">
+                <BulkActionButton danger onClick={open}>
+                  {trashCopy.actionLabel}
+                </BulkActionButton>
+              </Flex>
             </Flex>
-          </ToastCard>
+          </Card>
         </Box>
       )}
       <ConfirmModal
