@@ -127,6 +127,14 @@
         (testing "repeat lookups inside with-cache are served from the memoized resolver"
           (is (= 1 (call-count))))))))
 
+(deftest cached-import-fk-keyed-does-not-memoize-a-missing-row-test
+  (testing "A cached lookup that finds no row is not memoized, so a later lookup finds the row that was created since"
+    (let [email "cached-import-missing-user@example.com"]
+      (serdes/with-cache
+        (is (nil? (serdes/*import-fk-keyed* email :model/User :email)))
+        (mt/with-temp [:model/User {id :id} {:email email}]
+          (is (= id (serdes/*import-fk-keyed* email :model/User :email))))))))
+
 (deftest import-field-fk-reuses-existing-parent-test
   (testing "uses an existing parent field rather than creating a duplicate"
     (mt/with-model-cleanup [:model/Field]

@@ -83,6 +83,14 @@
                                (map #(+ 0.05 (* (/ % total) 0.65)) (range 1 (inc total)))
                                @writes)))
         (is (= 0.7 (last @writes)) "the last entity lands on hi exactly")))
+    (testing "an entity ingested more than once (a circular dependency) never moves the fraction above hi"
+      (let [reports (atom [])
+            wrapped (ingestable/wrap-progress-ingestable (fn [f] (swap! reports conj f)) [0.05 0.7] base-ingestable)]
+        (doseq [path (concat paths (take 2 paths))]
+          (serialization/ingest-one wrapped path))
+        (is (= (+ total 2) (count @reports)) "one report per ingestion")
+        (is (every? #(<= % 0.7) @reports))
+        (is (= 0.7 (last @reports)))))
     (testing "a failing report is logged and the entity is still ingested"
       (let [wrapped (ingestable/wrap-progress-ingestable (fn [_] (throw (RuntimeException. "db down"))) [0.0 1.0] base-ingestable)]
         (is (some? (serialization/ingest-one wrapped (first paths))))))

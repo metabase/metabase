@@ -696,6 +696,19 @@
       (report 0.6)
       (is (= [0.5 0.6] @writes)))))
 
+(deftest make-progress-reporter-forced-report-always-writes-test
+  (testing "a forced report below the last written fraction still writes, so it still checks for a cancel, and it
+           writes the highest fraction so far"
+    (let [writes (atom [])
+          report (rst/make-progress-reporter 1 {:throttle-ms 0
+                                                :now-fn      (constantly 0)
+                                                :write-fn    (fn [f] (swap! writes conj f))})]
+      (report 0.8)
+      (report 0.7 {:force? true})
+      (report 0.6)   ; not forced and lower -> dropped
+      (report 0.9 {:force? true})
+      (is (= [0.8 0.8 0.9] @writes)))))
+
 (deftest make-progress-reporter-clamps-test
   (testing "fractions are clamped into [0.0, 1.0]"
     (let [writes (atom [])
