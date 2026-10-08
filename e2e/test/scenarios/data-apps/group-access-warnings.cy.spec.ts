@@ -6,7 +6,7 @@ import type { GroupInfo } from "metabase-types/api";
 const { H } = cy;
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const APP_NAME = "group-access-warnings-test";
+const APP_NAME = "good";
 
 const GROUP_NAME = "Finches";
 const GROUP_MATCHER = new RegExp(GROUP_NAME);
@@ -19,9 +19,16 @@ describe("scenarios > data apps > group access warnings (EMB-2416)", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    cy.request("POST", `/api/apps/${APP_NAME}/draft`);
-    cy.request("PUT", `/api/apps/${APP_NAME}/table-dependencies`, {
-      table_ids: [ORDERS_ID],
+    H.pullExampleDataApps({
+      goodAppCards: [
+        H.dataAppRepresentations.card({
+          entityId: "warningsOrdersCard0000",
+          name: "Orders",
+          type: "question",
+          collection: "goodAppCollection0000",
+          table: ["Sample Database", "PUBLIC", "ORDERS"],
+        }),
+      ],
     });
 
     cy.request<GroupInfo>("POST", "/api/permissions/group", {
