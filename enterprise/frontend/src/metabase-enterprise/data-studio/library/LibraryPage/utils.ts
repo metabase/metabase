@@ -47,5 +47,8 @@ export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
   if (treeItem.model === "table") {
     return Urls.dataStudioTable(entityId);
   }
+  if (treeItem.model === "dashboard") {
+    return Urls.dashboard({ id: entityId, name: treeItem.name });
+  }
   return null;
 };

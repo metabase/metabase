@@ -144,7 +144,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     H.filterWidget().contains("Arnold Adams");
   });
 
-  it("should support being required", () => {
+  it("should support being required, use the list value picker for single- and multi-value category filters (metabase#49323), and reset when all values are unselected (metabase#25533)", () => {
     H.setFilter("Text or Category", "Is");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Source");
 
@@ -195,9 +195,9 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
     H.filterWidget().findByText("Organic").should("be.visible");
     assertOrganicOnly();
-  });
 
-  it("should use the list value picker for single- and multi-value category filters (metabase#49323) and reset when all values are unselected (metabase#25533)", () => {
+    cy.log("add the Title and Source filters");
+    H.editDashboard();
     H.setFilter("Text or Category", "Is", "Single title");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
     H.sidebar().findByText("A single value").click();
@@ -245,7 +245,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
         listTestId: "list-field",
         widgetText: "2 selections",
       },
-    ].forEach(({ name, listTestId, widgetText }, index) => {
+    ].forEach(({ name, listTestId, widgetText }) => {
       cy.log(name);
       H.filterWidget({ name }).click();
       H.popover().within(() => {
@@ -256,8 +256,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
         cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
         cy.button("Add filter").click();
       });
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      H.filterWidget().eq(index).findByText(widgetText).should("be.visible");
+      H.filterWidget({ name }).findByText(widgetText).should("be.visible");
     });
   });
 });

@@ -3649,3 +3649,41 @@
         (migrate!)
         (is (= #{implicit-id} (t2/select-pks-set :action)))
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
+
+(deftest add-library-dashboards-section-test
+  (testing "v65.2026-10-06T16:00:00 through v65.2026-10-06T16:00:02: an existing Library gets a Dashboards section with its permissions"
+    (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
+      (let [library-id    (insert-legacy-library-collection! {:name      "Library"
+                                                              :slug      "library"
+                                                              :type      "library"
+                                                              :entity_id "librarylibrarylibrary"})
+            read-group    (t2/insert-returning-pk! :permissions_group {:name (mt/random-name) :entity_id (u/generate-nano-id)})
+            write-group   (t2/insert-returning-pk! :permissions_group {:name (mt/random-name) :entity_id (u/generate-nano-id)})
+            analyst-group (t2/select-one-pk :permissions_group :magic_group_type "data-analyst")
+            library-perms (fn [group-id object perm-value]
+                            {:group_id      group-id
+                             :object        object
+                             :perm_type     "perms/collection-access"
+                             :perm_value    perm-value
+                             :collection_id library-id})]
+        (t2/insert! :permissions [(library-perms read-group (format "/collection/%d/read/" library-id) "read")
+                                  (library-perms write-group (format "/collection/%d/" library-id) "read-and-write")
+                                  (library-perms analyst-group (format "/collection/%d/read/" library-id) "read")])
+        (migrate!)
+        (let [{dashboards-id :id :as dashboards} (t2/select-one :collection :entity_id "librarylibrarydashbrd")]
+          (is (=? {:name     "Dashboards"
+                   :type     "library-dashboards"
+                   :location (str "/" library-id "/")}
+                  dashboards))
+          (is (= #{[read-group (format "/collection/%d/read/" dashboards-id) "read"]
+                   [write-group (format "/collection/%d/" dashboards-id) "read-and-write"]
+                   [analyst-group (format "/collection/%d/" dashboards-id) "read-and-write"]}
+                 (into #{}
+                       (map (juxt :group_id :object :perm_value))
+                       (t2/select :permissions :collection_id dashboards-id)))))))))
+
+(deftest add-library-dashboards-section-without-library-test
+  (testing "v65.2026-10-06T16:00:00: no Dashboards section is created without a Library"
+    (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
+      (migrate!)
+      (is (not (t2/exists? :collection :entity_id "librarylibrarydashbrd"))))))

@@ -651,15 +651,18 @@
         tools  [(metabot.tu/get-time-tool)]
         body   #(claude/claude-request-body (merge {:input [{:role :user :content "hi"}]} %))]
     (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names"
-      (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"]]
+      (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"
+                     "claude-fable-5" "claude-mythos-5"]]
         (testing model
           (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
                   (body {:model model :schema schema :max-tokens 512})))
           (is (=? {:tool_choice {:type "any"}}
                   (body {:model model :tools tools :tool_choice "required"}))))))
-    (testing "Opus and Sonnet from 5.5 reject a forced tool choice, so they get auto and keep thinking"
+    (testing "Opus/Sonnet >=5.5 and Fable/Mythos >=5.1 get auto tool choice and keep thinking"
       (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"
-                     "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"]]
+                     "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"
+                     "claude-fable-5-1" "anthropic.claude-fable-5-1" "claude-fable-5-1-prod" "claude-fable-5.1-prod"
+                     "claude-mythos-5-1"]]
         (testing model
           (is (=? {:tool_choice {:type "auto"}
                    :tools       [{:name "structured_output"}]
@@ -684,6 +687,7 @@
                                     (merge {:input [{:role :user :content "hi"}]} %)))]
       (are [opts tokens] (= tokens (max-tokens opts))
         {:model "claude-opus-4-8"}                             128000
+        {:model "claude-fable-5-1"}                            128000
         {:model "claude-haiku-4-5-20251001"}                    64000
         {:model "claude-opus-4-8" :max-tokens 32000}            32000
         ;; Bedrock ids reach us vendor-prefixed
@@ -875,7 +879,9 @@
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
                    "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
                    "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-5-5" "claude-sonnet-6"
-                   "claude-fable-5"]]
+                   "claude-fable-5" "claude-fable-5-1" "claude-mythos-5-1"
+                   ;; an Azure deployment name without a version
+                   "claude-fable-prod"]]
       (is (false? (#'claude/model-supports-temperature? model))
           model))))
 

@@ -17,6 +17,14 @@
   :export?    false
   :doc        false)
 
+(defsetting metabot-chat-turn-async-timeout-ms
+  (deferred-tru "Maximum duration of a Metabot chat turn in milliseconds.")
+  :type       :positive-integer
+  :visibility :internal
+  :default    1800000
+  :encryption :no
+  :export?    false)
+
 (defsetting metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for regular usage.")
   :type       :boolean

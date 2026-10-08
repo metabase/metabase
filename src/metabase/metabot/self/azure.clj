@@ -76,7 +76,8 @@
   "Input context windows for the models Azure sells, keyed by model id.
   GPT values are max input tokens (Microsoft's listed windows are input + output totals):
   https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"
-  {"claude-fable-5"    1000000
+  {"claude-fable-5-1"  1000000
+   "claude-fable-5"    1000000
    "claude-opus-5-5"   1000000
    "claude-opus-5"     1000000
    "claude-opus-4-8"   1000000

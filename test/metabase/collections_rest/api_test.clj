@@ -635,15 +635,11 @@
                                                                        :entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
-           (testing "System library children (Data, Metrics) have is_library_root true"
-             (doseq [item (filter :is_library_root lib-items)]
-               (is (contains? #{collection/library-data-collection-type
-                                collection/library-metrics-collection-type}
-                              (:type item)))))
-           (testing "Data and Metrics collections both marked as is_library_root"
+           (testing "Data, Metrics, and Dashboards collections are all marked as is_library_root"
              (let [roots (filter :is_library_root lib-items)]
                (is (= #{collection/library-data-collection-type
-                        collection/library-metrics-collection-type}
+                        collection/library-metrics-collection-type
+                        collection/library-dashboards-collection-type}
                       (set (map :type roots))))))
            (testing "User-created subcollections inside Data do NOT have is_library_root"
              (let [data-items (:data (mt/user-http-request :crowberto :get 200
@@ -1890,14 +1886,11 @@
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
     (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
       (mt/with-test-user :crowberto
-        (let [queries     (atom [])
-              real-query  mdb/query
-              this-thread (Thread/currentThread)]
-          ;; `with-redefs` is global, so only record what this thread asks for.
-          (with-redefs [mdb/query (fn [query & args]
-                                    (when (identical? this-thread (Thread/currentThread))
-                                      (swap! queries conj query))
-                                    (apply real-query query args))]
+        (let [queries    (atom [])
+              real-query (mt/original-fn #'mdb/query)]
+          (mt/with-dynamic-fn-redefs [mdb/query (fn [query & args]
+                                                  (swap! queries conj query)
+                                                  (apply real-query query args))]
             (request/with-limit-and-offset 0 0
               (is (pos? (:total (collections.children/collection-children
                                  (assoc collection/root-collection :namespace "snippets")

@@ -225,12 +225,12 @@
   ;; `transform-metered-as` is `defenterprise`; the OSS impl returns nil for everything,
   ;; which makes `transform-locked?` short-circuit to false regardless of `:locked-meters`.
   ;; Mock the routing so the test exercises the lock-check branch under any classpath.
-  (with-redefs [premium-features/transform-metered-as (fn [source-type]
-                                                        (case (keyword source-type)
-                                                          :native "transform-basic"
-                                                          :mbql   "transform-basic"
-                                                          :python "transform-advanced"
-                                                          nil))]
+  (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (fn [source-type]
+                                                                      (case (keyword source-type)
+                                                                        :native "transform-basic"
+                                                                        :mbql   "transform-basic"
+                                                                        :python "transform-advanced"
+                                                                        nil))]
     (testing "scheduled run-transform! is skipped (with warn log) when the meter is locked"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
@@ -266,7 +266,7 @@
               (is (true? @run-called?)))))))
     (testing "non-metered transform (transform-metered-as → nil) is never blocked by lock state"
       ;; Override the outer mock with one that returns nil for every source-type.
-      (with-redefs [premium-features/transform-metered-as (constantly nil)]
+      (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (constantly nil)]
         (mt/with-premium-features #{:hosting :transforms-basic}
           (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
                                                             :transform-advanced-runs true}]

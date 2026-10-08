@@ -28,6 +28,7 @@ Supported models:
 | Model             | Model ID                     | Context window (tokens) |
 | ----------------- | ---------------------------- | ----------------------- |
 | Claude Fable 5    | `claude-fable-5`             | 1,000,000               |
+| Claude Fable 5.1  | `claude-fable-5-1`           | 1,000,000               |
 | Claude Haiku 4.5  | `claude-haiku-4-5-20251001`  | 200,000                 |
 | Claude Opus 4.1   | `claude-opus-4-1-20250805`   | 200,000                 |
 | Claude Opus 4.5   | `claude-opus-4-5-20251101`   | 200,000                 |
@@ -82,6 +83,7 @@ Supported models:
 | Model                  | Model ID                          | Context window (tokens) |
 | ---------------------- | --------------------------------- | ----------------------- |
 | Claude Fable 5         | `anthropic/claude-fable-5`        | 1,000,000               |
+| Claude Fable 5.1       | `anthropic/claude-fable-5.1`      | 1,000,000               |
 | Claude Haiku 4.5       | `anthropic/claude-haiku-4.5`      | 200,000                 |
 | Claude Opus 4.1        | `anthropic/claude-opus-4.1`       | 200,000                 |
 | Claude Opus 4.5        | `anthropic/claude-opus-4.5`       | 200,000                 |
@@ -213,6 +215,7 @@ Supported models:
 | Model             | Model ID                              |
 | ----------------- | ------------------------------------- |
 | Claude Fable 5    | `anthropic/claude-fable-5`            |
+| Claude Fable 5.1  | `anthropic/claude-fable-5-1`          |
 | Claude Haiku 4.5  | `anthropic/claude-haiku-4-5@20251001` |
 | Claude Opus 4.6   | `anthropic/claude-opus-4-6`           |
 | Claude Opus 5     | `anthropic/claude-opus-5`             |
@@ -274,6 +277,7 @@ Supported models:
 | Model                | Model ID                      | Context window (tokens) |
 | -------------------- | ----------------------------- | ----------------------- |
 | Claude Fable 5       | `anthropic.claude-fable-5`    | 1,000,000               |
+| Claude Fable 5.1     | `anthropic.claude-fable-5-1`  | 1,000,000               |
 | Claude Haiku 4.5     | `anthropic.claude-haiku-4-5`  | 200,000                 |
 | Claude Opus 4.7      | `anthropic.claude-opus-4-7`   | 1,000,000               |
 | Claude Opus 4.8      | `anthropic.claude-opus-4-8`   | 1,000,000               |
