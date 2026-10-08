@@ -29,6 +29,7 @@ const SECTION_ITEM_MODELS: Record<LibrarySectionType, CollectionItemModel[]> = {
   metrics: ["metric", "collection"],
   dashboards: ["dashboard", "collection"],
   snippets: ["snippet", "collection"],
+  actions: ["action", "collection"],
 };
 
 export function useLibraryCollectionTree(

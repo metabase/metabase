@@ -530,7 +530,7 @@
              (cond-> (forced/opts-for plan opts)
                (nil? temperature) (assoc :temperature adapter/default-temperature))
              (when reasoning? {:reasoning-part->message reasoning-message})))
-           :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
+           :max_tokens (cond-> (or max-tokens core/chat-max-output-tokens)
                          (some? plan)
                          (max adapter/forced-tool-call-token-floor)
 

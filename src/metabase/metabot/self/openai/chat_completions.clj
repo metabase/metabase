@@ -298,7 +298,9 @@
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
                 error-text    (when (or (some? error)
-                                        (= "error" (core/stop-reason->finish-reason stop-reasons finish-reason)))
+                                        ;; OpenRouter repeats the finish reason on its usage chunk; only the first may raise the error.
+                                        (and (nil? @stop-reason)
+                                             (= "error" (core/stop-reason->finish-reason stop-reasons finish-reason))))
                                 (or (:message error)
                                     (some-> error pr-str)
                                     (tru "The model provider failed to complete the response")))

@@ -46,6 +46,15 @@ export function canAccessAiAuditing(state: State) {
   return getUserIsAdmin(state);
 }
 
+// Admin-only, unlike the rest of Monitoring tools: the page loads `GET /api/api-key`, which is
+// superuser-only, so a non-admin with just the monitoring application permission would hit a 403.
+export function canAccessApiKeyUsage(state: State) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}
+
 export function canAccessMonitor(state: State) {
   return (
     canAccessMonitorDiagnostics(state) ||

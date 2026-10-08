@@ -86,7 +86,7 @@ Whether AI features are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
 - Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
-Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
+Number of days to retain rows in the ai_usage_log, metabot_conversation, metabot_message, agent_api_call_log, and api_key_usage_log tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
 Sets the maximum number of days Metabase preserves rows for the following application database tables:
 
@@ -94,6 +94,7 @@ Sets the maximum number of days Metabase preserves rows for the following applic
 - `metabot_conversation`
 - `metabot_message`
 - `agent_api_call_log`
+- `api_key_usage_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.
@@ -1521,14 +1522,6 @@ Backed by the google connection in the admin AI settings provider list: reads an
 A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.
 
 Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
-
-### `MB_LLM_MAX_TOKENS`
-
-- Type: integer
-- Default: `4096`
-- [Configuration file name](./config-file.md): `llm-max-tokens`
-
-Maximum tokens for LLM responses.
 
 ### `MB_LLM_METABOT_PROVIDER`
 

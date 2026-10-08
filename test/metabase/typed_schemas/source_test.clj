@@ -111,7 +111,7 @@
 
 (deftest actions-test
   (mt/with-temp [:model/Database   {other-db-id :id} {}
-                 :model/Collection {hidden-coll-id :id} {:name "Hidden actions"}
+                 :model/Collection {hidden-coll-id :id} {:name "Hidden actions" :namespace "data-actions"}
                  :model/Card       {model-id :id} {:type          :model
                                                    :dataset_query (lib/query (mt/metadata-provider)
                                                                              (lib.metadata/table (mt/metadata-provider)

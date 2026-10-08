@@ -102,7 +102,7 @@
 (deftest ^:parallel request-body-applies-default-max-tokens-test
   (testing "an explicit max_tokens is always sent — without one a looping small model consumes the
            whole context window in a single call"
-    (is (= (llm.settings/llm-max-tokens)
+    (is (= self.core/chat-max-output-tokens
            (:max_tokens (ollama/ollama-request-body {:model "good-model"
                                                      :input [{:role :user :content "hi"}]}))))))
 

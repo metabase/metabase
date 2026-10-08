@@ -229,7 +229,7 @@ function LibraryMoveModal({
     [movingCollectionIds],
   );
 
-  if (section === "snippets") {
+  if (section === "snippets" || section === "actions") {
     return (
       <CollectionPickerModal
         title={t`Move to…`}
@@ -238,7 +238,7 @@ function LibraryMoveModal({
           onMove(destination.id === "root" ? null : destination.id)
         }
         onClose={onClose}
-        namespaces={["snippets"]}
+        namespaces={[section === "snippets" ? "snippets" : "data-actions"]}
         isDisabledItem={isDisabledItem}
         options={{
           hasPersonalCollections: false,
