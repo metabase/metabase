@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
+   [metabase.data-apps.core :as data-apps]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -145,7 +146,7 @@
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
 (defn data-app
-  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps-preview` feature is
+  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
    data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
@@ -155,4 +156,10 @@
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
-    :else                                      (data-app-shell request respond raise)))
+    :else (if-let [error (try
+                           (data-apps/check-data-app-access! request)
+                           nil
+                           (catch Throwable e
+                             e))]
+            (raise error)
+            (data-app-shell request respond raise))))

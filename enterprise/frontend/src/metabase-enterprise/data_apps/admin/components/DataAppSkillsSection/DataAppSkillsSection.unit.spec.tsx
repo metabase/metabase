@@ -31,6 +31,7 @@ const DATA_APP_SKILLS = [
   "metabase-data-app-routing",
   "metabase-data-app-actions",
   "metabase-data-app-semantic-layer",
+  "metabase-data-app-migrate",
 ];
 
 describe("DataAppSkillsSection", () => {
@@ -56,6 +57,14 @@ describe("DataAppSkillsSection", () => {
       expect(await copyCommand()).toContain(`--skill ${skill}`);
     },
   );
+
+  it("also installs the skill for writing Metabase YAML, in the same copied command", async () => {
+    setup("v0.64.0");
+
+    expect(await copyCommand()).toContain(
+      " && \\\nnpx skills add metabase/agent-skills/skills --skill metabase-representation-format",
+    );
+  });
 
   // Release builds pin to their `release-x.<major>.x` branch; local, snapshot,
   // and unknown builds fall back to `master`.

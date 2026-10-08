@@ -2,16 +2,16 @@
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.table :as schema.table]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +19,21 @@
   "Returns the metric aggregation result column inferred by Lib."
   [card]
   (schema.common/aggregation-result-column (:database_id card) (:dataset_query card)))
+
+(defn- metric-filters
+  "Returns the display names of the filters `card`'s query applies. The schema exposes a metric only as an
+  aggregation, so they are the only hint that it counts a subset of the rows."
+  [card]
+  (when-let [query-definition (not-empty (:dataset_query card))]
+    (try
+      (let [query (lib/query (lib-be/application-database-metadata-provider (:database_id card))
+                             query-definition)]
+        (not-empty (vec (for [stage-number  (range (lib/stage-count query))
+                              filter-clause (lib/filters query stage-number)]
+                          (lib/display-name query stage-number filter-clause)))))
+      (catch Exception e
+        (log/warnf e "Could not describe the filters of metric %s" (:id card))
+        nil))))
 
 (defn- metric-details-error-message
   [card error-message]
@@ -148,34 +163,28 @@
   (let [{:keys [dimensions dimension_mappings]} (typed-schemas.db/card-dimensions id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
-(defn- readable-table-source-rows
-  "Returns readable table rows for table-backed metric dimensions."
+(defn- table-source-rows
+  "Returns table rows for table-backed metric dimensions."
   [table-ids]
   (when (seq table-ids)
-    (perms/prime-table-perms-cache {:table-ids (set table-ids)})
-    (->> (typed-schemas.db/table-names table-ids)
-         (filter mi/can-read?))))
+    (typed-schemas.db/table-names table-ids)))
 
 (defn- table-key-disambiguators
   "Returns table display keys used to disambiguate compacted metric dimensions."
-  ([table-ids]
-   (table-key-disambiguators table-ids (readable-table-source-rows table-ids)))
-  ([_dimension-table-ids table-rows]
-   (when (seq table-rows)
-     (->> table-rows
-          (map (fn [{:keys [id name display_name]}]
-                 [id (common/pascal-case (common/generated-key (or display_name name) id))]))
-          (into {})))))
+  [table-rows]
+  (when (seq table-rows)
+    (->> table-rows
+         (map (fn [{:keys [id name display_name]}]
+                [id (common/pascal-case (common/generated-key (or display_name name) id))]))
+         (into {}))))
 
 (defn- table-source-names
   "Returns table names emitted as metric dimension source names."
-  ([table-ids]
-   (table-source-names table-ids (readable-table-source-rows table-ids)))
-  ([_dimension-table-ids table-rows]
-   (when (seq table-rows)
-     (->> table-rows
-          (map (juxt :id :name))
-          (into {})))))
+  [table-rows]
+  (when (seq table-rows)
+    (->> table-rows
+         (map (juxt :id :name))
+         (into {}))))
 
 (defn- source-table-schema
   "Returns the metric source table identity from portable table metadata."
@@ -235,9 +244,9 @@
   [metric-id details source-card-id-value]
   (let [dimension-table-id-pairs (metric-dimensions-with-table-ids details source-card-id-value)
         table-ids                (->> dimension-table-id-pairs (keep second) (filter integer?) distinct)
-        table-rows               (readable-table-source-rows table-ids)
-        table-key-by-id          (table-key-disambiguators table-ids table-rows)
-        table-source-name-by-id  (table-source-names table-ids table-rows)
+        table-rows               (table-source-rows table-ids)
+        table-key-by-id          (table-key-disambiguators table-rows)
+        table-source-name-by-id  (table-source-names table-rows)
         dimension-schemas        (mapv (fn [[dimension table-id]]
                                          (dimension-schema dimension
                                                            metric-id
@@ -267,6 +276,7 @@
      :sourceCardId source-card-id-value
      :entityId portable_entity_id
      :description description
+     :filters (metric-filters card)
      :verified (when verified true)
      :sourceTable (source-table-schema base_table_portable_fk)
      :mappedTableIds (not-empty mapped-table-ids)
@@ -288,10 +298,10 @@
   [database-ids collection-ids]
   (for [metric (remove source-card-id
                        (schema.common/select-schema-cards :metric database-ids collection-ids))
-        ;; Sync only supports metrics that resolve entirely from tables, and the CLI aborts
-        ;; `sync-resources` on one that does not. `source-card-id` sees only stage 0, so a
-        ;; table-sourced metric joining a saved question reached the CLI and failed there;
-        ;; check the whole query for saved-card dependencies to match what sync accepts.
+        ;; A data app can copy only metrics that resolve entirely from tables: a copy reading a
+        ;; saved question references a card outside the app's resources, which the pull refuses.
+        ;; `source-card-id` sees only stage 0, so a table-sourced metric joining a saved question
+        ;; would get through; check the whole query for saved-card dependencies instead.
         :when (not (references-saved-card? metric))
         :let [details (metric-details metric)]
         :when details]

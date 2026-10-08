@@ -1,7 +1,7 @@
 ## Linting and Formatting
 
-- **Lint:** `bun run lint-eslint-pure`
-  - Run ESLint on the codebase
+- **Lint:** `bun run lint-oxlint`
+  - Run oxlint on the codebase
 - **Format:** `bun run format`
   - Format code with oxfmt (`oxfmt --write`); use `bun run lint-format-pure` to check without writing
 - **Type Check:** `bun run type-check-pure`
@@ -11,7 +11,7 @@
 
 ### JavaScript/TypeScript Tests
 
-- **Test a specific file:** `bun run test-unit-keep-cljs path/to/file.unit.spec.js`
+- **Test a specific file:** `bun run test-unit-keep-cljs --testPathPatterns=path/to/file.unit.spec.ts`
 - **Test by pattern:** `bun run test-unit-keep-cljs -t "pattern"`
   - Runs tests matching the given pattern
 

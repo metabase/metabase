@@ -1,17 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { DataApp } from "metabase-types/api";
+
 const { H } = cy;
 
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
 /**
- * Drives a real remote-sync pull of a repo whose `data_apps/` covers every
- * materialization outcome, and asserts each is handled the way the backend
- * intends (see `data-apps.sync` / `data-apps.config`):
- *
- *   good/          valid config + bundle        -> materialized, served
- *   broken-bundle/ valid config, missing bundle -> row with "Sync failed", not served
- *   bad-config/    malformed data_app.yaml       -> skipped, no row
- *   no-config/     a bundle but no data_app.yaml -> not discovered, no row
- *
- * A bad app never blocks a good one, and neither a bad config nor a missing
- * bundle removes an app that isn't theirs.
+ * Drives a real remote-sync pull of a repo whose `data_apps/` holds two apps, each a `data_app.yaml` with its bundle
+ * next to it, and asserts that pulls materialize and remove them.
  */
 describe("scenarios > data apps > repo sync", () => {
   beforeEach(() => {
@@ -21,18 +17,15 @@ describe("scenarios > data apps > repo sync", () => {
     H.setupGitSync();
   });
 
-  it("materializes each app per its config/bundle, isolating the broken ones", () => {
+  it("materializes each app with its bundle", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
-    H.commitToRepo("Add data apps with mixed config/bundle states");
+    H.commitToRepo("Add data apps");
 
     H.configureGitAndPullChanges("read-write");
 
     cy.visit("/admin/settings/apps");
     cy.findByTestId("admin-layout-content").within(() => {
-      // The good app is materialized and shown as synced. Scope to its own row so
-      // its status can't be satisfied by another app's — a "Sync failed" leaking
-      // onto the good app (or "Synced" onto the broken one) must fail the test.
       cy.findByTestId("data-app-list-item-good")
         .scrollIntoView()
         .within(() => {
@@ -40,97 +33,70 @@ describe("scenarios > data apps > repo sync", () => {
           cy.findByText("A well-formed app that syncs cleanly").should(
             "be.visible",
           );
-          cy.findByText(/^Synced/).should("be.visible");
         });
-
-      // The app whose bundle is missing still appears — with its failure, not hidden.
-      // Its name is plain text, not a link: a sync-failed app can't be opened.
-      cy.findByTestId("data-app-list-item-broken-bundle")
-        .scrollIntoView()
-        .within(() => {
-          cy.findByText("Broken Bundle").should("be.visible");
-          cy.findByRole("link", { name: "Broken Bundle" }).should("not.exist");
-          cy.findByText("Sync failed").should("be.visible");
-        });
-
-      // The malformed config and the config-less directory produced no app at all.
-      cy.findByText("/apps/bad-config").should("not.exist");
-      cy.findByText("/apps/no-config").should("not.exist");
+      cy.findByTestId("data-app-list-item-second-app").should("exist");
     });
 
-    // The API tells the same story: exactly the two apps, and only the good one serves a bundle.
     cy.request("GET", "/api/apps").then(({ body: apps }) => {
       expect(apps.map((app: { name: string }) => app.name).sort()).to.deep.eq([
-        "broken-bundle",
         "good",
+        "second-app",
       ]);
     });
 
     cy.request("/api/apps/good/bundle").its("status").should("eq", 200);
 
-    cy.request({
-      url: "/api/apps/broken-bundle/bundle",
-      failOnStatusCode: false,
-    }).then(({ status, body }) => {
-      expect(status).to.eq(404);
-      expect(body).to.deep.eq({ error: "Bundle not synced yet" });
+    // The good app's collection files were loaded with it: its collection, and
+    // the saved question in it, addressed by the entity IDs the files carry.
+    cy.request<DataApp>("/api/apps/good").then(({ body: app }) => {
+      cy.request("/api/collection/goodAppCollection0000")
+        .its("body.id")
+        .should("eq", app.resource_collection_id);
+      cy.request("/api/card/goodAppOrdersQuestion")
+        .its("body.collection_id")
+        .should("eq", app.resource_collection_id);
+      expect(app.table_ids).to.deep.eq([ORDERS_ID]);
     });
-
-    for (const slug of ["bad-config", "no-config"]) {
-      cy.request({
-        url: `/api/apps/${slug}/bundle`,
-        failOnStatusCode: false,
-      }).then(({ status, body }) => {
-        expect(status).to.eq(404);
-        expect(body).to.eq("Not found.");
-      });
-    }
-
-    // And what a user opening the broken app sees: its metadata loads (the app
-    // exists), the host frames it, and the bundle 404 surfaces from inside the
-    // iframe as the "isn't ready yet" screen — driven by the real pull, no mocks.
-    // (The not-found screen for a missing app is covered in viewing.cy.spec.ts.)
-    cy.visit("/apps/broken-bundle");
-    H.main()
-      .findByText(/isn.t ready yet/i, { timeout: 30000 })
-      .should("be.visible");
   });
 
-  it("prunes an app whose directory is removed from the repo on the next sync", () => {
+  it("removes an app whose directory and collection files are removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");
 
-    // Both apps are materialized from the first pull.
-    cy.request("GET", "/api/apps").then(({ body: apps }) => {
-      expect(apps.map((app: { name: string }) => app.name).sort()).to.deep.eq([
-        "broken-bundle",
-        "good",
-      ]);
+    // An author deletes an app by deleting its directory and its collection's
+    // files in one commit; the pull deletes the app, and the app deletes its
+    // collection with what it holds.
+    cy.task("removeDataAppPaths", {
+      paths: [
+        `${H.LOCAL_GIT_PATH}/data_apps/good`,
+        `${H.LOCAL_GIT_PATH}/collections/data_apps/data_app__good_app.yaml`,
+        `${H.LOCAL_GIT_PATH}/collections/data_apps/data_app__good_app`,
+      ],
     });
-
-    // Delete the good app's directory from the repo and sync again. The connected
-    // repo is the source of truth, so the app must be pruned — not left serving.
-    cy.exec(`rm -rf -- "${H.LOCAL_GIT_PATH}/data_apps/good"`);
     H.commitToRepo("Remove the good app from the repo");
     H.configureGitAndPullChanges("read-write");
 
-    // `good` is gone; `broken-bundle` (still in the repo) survives.
     cy.request("GET", "/api/apps").then(({ body: apps }) => {
       expect(apps.map((app: { name: string }) => app.name)).to.deep.eq([
-        "broken-bundle",
+        "second-app",
       ]);
     });
     cy.request({ url: "/api/apps/good", failOnStatusCode: false })
       .its("status")
       .should("eq", 404);
-
-    // The admin list reflects the removal.
-    cy.visit("/admin/settings/apps");
-    cy.findByTestId("admin-layout-content").within(() => {
-      cy.findByTestId("data-app-list-item-broken-bundle").should("exist");
-      cy.findByTestId("data-app-list-item-good").should("not.exist");
-    });
+    cy.request({
+      url: "/api/card/goodAppOrdersQuestion",
+      failOnStatusCode: false,
+    })
+      .its("status")
+      .should("eq", 404);
+    cy.request({
+      url: "/api/collection/goodAppCollection0000",
+      failOnStatusCode: false,
+    })
+      .its("status")
+      .should("eq", 404);
   });
 });

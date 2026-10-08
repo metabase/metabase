@@ -9,6 +9,7 @@
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.native-query-snippets.schema]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -90,8 +91,20 @@
   (u/prog1 (t2.realize/realize snippet)
     (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
+(defenterprise pre-update-check-sandbox-constraints-for-snippet
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_ _])
+
+(defenterprise pre-delete-check-sandbox-constraints-for-snippet
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_])
+
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  ;; additional checks (Enterprise Edition only)
+  (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
@@ -107,6 +120,8 @@
 
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
+  ;; additional checks (Enterprise Edition only)
+  (pre-delete-check-sandbox-constraints-for-snippet snippet)
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
@@ -168,16 +183,35 @@
    filter-column
    filter-ids))
 
+(defn- import-template-tags
+  "The imported `template-tags` of a snippet, and the renames of the card tags whose `#<id>-slug` name embeds the
+  exporting instance's card id."
+  [template-tags]
+  (when-let [tags (some->> template-tags
+                           serdes/import-mbql
+                           (lib/normalize :metabase.lib.schema.template-tag/template-tag-map))]
+    {:tags    tags
+     :renames (into {}
+                    (keep (fn [[tag-name tag]]
+                            (some->> (serdes/card-template-tag-rename tag) (vector tag-name))))
+                    tags)}))
+
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name]
+  {:copy      [:archived :description :entity_id :name]
    :skip      []
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               ;; Normalize on import so template-tag name keys come back as strings (YAML ingest keywordizes
-               ;; them).
-               :template_tags {:export identity
-                               :import #(lib/normalize :metabase.lib.schema.template-tag/template-tag-map %)}}
+               :content       {:export identity
+                               :import-with-context
+                               (fn [current _ content]
+                                 (let [{:keys [renames]} (import-template-tags (:template_tags current))]
+                                   (cond-> content
+                                     (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames))))}
+               :template_tags {:export serdes/export-mbql
+                               :import (fn [template-tags]
+                                         (let [{:keys [tags renames]} (import-template-tags template-tags)]
+                                           (some-> tags (lib/rename-template-tags renames))))}}
    :defaults {:archived false}})
 
 (defmethod serdes/required "NativeQuerySnippet"
@@ -186,15 +220,28 @@
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
-  [{:keys [collection_id]}]
-  (when collection_id
-    [[{:model "Collection" :id collection_id}]]))
+  [{:keys [collection_id template_tags]}]
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (serdes/mbql-deps false template_tags))))
 
 (defmethod serdes/serialization-dependencies "NativeQuerySnippet"
-  [_model-name {:keys [collection_id]}]
-  ;; A snippet only references its containing Collection, which a selective export may legitimately omit.
-  (when collection_id
-    #{[{:model "Collection" :id collection_id}]}))
+  [_model-name {:keys [collection_id template_tags]}]
+  ;; A snippet's containing Collection may legitimately be omitted by a selective export.
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (serdes/mbql-deps true template_tags))))
+
+(defmethod serdes/descendants "NativeQuerySnippet" [_model-name id _opts]
+  (into {}
+        (for [path                   (serdes/mbql-deps true (:template_tags (native-query-snippets.db/snippet id)))
+              :let                   [{:keys [model] ref-id :id} (last path)]
+              :when                  (#{"Card" "NativeQuerySnippet"} model)]
+          [[model ref-id] {"NativeQuerySnippet" id}])))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   (serdes/storage-default-collection-path snippet ctx "snippets"))

@@ -199,6 +199,13 @@
    ["done" [:map [:type [:= "done"]]]]
    ["aborted" [:map [:type [:= "aborted"]]]]
    ["in_progress" [:map [:type [:= "in_progress"]]]]
+   ["incomplete"
+    [:map
+     [:type         [:= "incomplete"]]
+     ;; why the model stopped before finishing; the client turns it into its own copy
+     [:finishReason [:enum "length" "content-filter" "tool-calls"]]
+     ;; the turn stopped at `length` because the context window was full
+     [:contextWindowFull {:optional true} :boolean]]]
    ["errored"
     [:map
      [:type  [:= "errored"]]
@@ -356,7 +363,9 @@
    [:data_version           {:optional true} [:maybe :int]]
    [:state                  {:optional true} [:maybe ::metabot-message.state]]
    [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
-   [:context_tokens         {:optional true} [:maybe :int]]])
+   [:context_tokens         {:optional true} [:maybe :int]]
+   [:finish_reason          {:optional true} [:maybe :string]]
+   [:context_window_full    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."

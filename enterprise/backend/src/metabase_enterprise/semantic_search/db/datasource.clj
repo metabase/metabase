@@ -15,6 +15,7 @@
    (java.nio.charset StandardCharsets)
    (java.sql Connection SQLException)
    (java.util.concurrent Executor)
+   (javax.sql DataSource)
    (org.postgresql PGProperty)))
 
 (set! *warn-on-reflection* true)
@@ -93,7 +94,11 @@
   (into #{} (map #(.getName ^PGProperty %)) (PGProperty/values)))
 
 (defn- url-decode ^String [^String s]
-  (URLDecoder/decode s StandardCharsets/UTF_8))
+  (try
+    (URLDecoder/decode s StandardCharsets/UTF_8)
+    (catch IllegalArgumentException _
+      ;; the decoder's own message quotes part of the value, which may be a password
+      (throw (ex-info "Malformed %-escape in MB_PGVECTOR_DB_URL" {})))))
 
 (defn- split-query
   "Split a JDBC URL into [base pairs], where pairs is a seq of raw [key value] strings.
@@ -107,17 +112,63 @@
                 :let  [[k v] (str/split pair #"=" 2)]]
             [k (or v "")])]))
 
+(defn- split-userinfo
+  "Split `user:password@` out of a JDBC URL's host part, returning [url credentials].
+  The credentials are a map of the decoded :user and :password, empty when the URL has none."
+  [^String base]
+  ;; The host part runs from `//` to the next `/`.
+  ;; Split it at its last `@`, not the first as libpq does, so an unencoded `@` in the password can't leave
+  ;; part of it on the URL.
+  ;; Any scheme matches, so a misspelt one, which DriverManager quotes, can't carry the credentials either.
+  (if-let [[_ scheme userinfo more] (re-matches #"([^/]*//)([^/]*)@(.*)" base)]
+    ;; decode %-escapes only, as libpq does: a `+` here is a literal plus, not a space as in a query string
+    (let [decode          #(url-decode (str/replace % "+" "%2B"))
+          [user password] (str/split userinfo #":" 2)
+          credentials     (cond-> {:user (decode user)}
+                            password (assoc :password (decode password)))]
+      [(str scheme more) credentials])
+    [base {}]))
+
+(defn- check-no-stray-at!
+  "Throw if an `@` is left in `url` or `pairs` once the credentials are off, without quoting either."
+  [^String url pairs]
+  ;; An `@` left on `url` means a password with an unencoded `/`, or an `@` that pgjdbc requires encoded anyway.
+  ;; An unencoded `?` in a password ends the host part early, before the `/` pgjdbc requires after a host, and
+  ;; moves the `@` into `pairs`.
+  ;; Any other `@` in `pairs` is a plain value that pgjdbc accepts, such as Azure's `user=name@server`.
+  ;; Refuse a stray `@` before an error or the URL can quote the part of the password it may hold.
+  (when (or (str/includes? url "@")
+            (and (re-matches #"[^/]*//[^/]+" url)
+                 (some (fn [[k v]] (str/includes? (str k v) "@")) pairs)))
+    (throw (ex-info (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
+                         "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
+                    {}))))
+
 (defn- parse-db-url
-  "Parse a pgvector JDBC URL into {:jdbc-url ... :pool-props ...}, or throw if it carries an unrecognized
-  parameter."
+  "Parse a pgvector JDBC URL into {:jdbc-url ... :credentials ... :pool-props ...}, or throw if it is
+  malformed or carries an unrecognized parameter.
+  Credentials come off the URL whether they're written as params or before the host."
   [^String url]
-  (let [[base pairs]           (split-query url)
-        default-pool           (merge fixed-pool-props
-                                      (update-vals tunable-pool-props first))
-        {:keys [pool conn]}
+  (let [[base pairs]                (split-query url)
+        [base-url host-credentials] (split-userinfo base)
+        _                           (check-no-stray-at! base-url pairs)
+        default-pool                (merge fixed-pool-props
+                                           (update-vals tunable-pool-props first))
+        {:keys [pool conn credentials]}
         (reduce
          (fn [acc [k raw-v]]
            (cond
+             ;; also set before the host: Postgres clients disagree on which wins, so refuse to pick one
+             (contains? host-credentials (keyword k))
+             (throw (ex-info (format "The pgvector URL sets %s both before the host and as a parameter" k)
+                             {:param k}))
+
+             ;; credentials: passed to pgjdbc as connection properties, off the URL, because the URL gets
+             ;; printed -- pgjdbc logs it at DEBUG on every connection, and DriverManager quotes it in its
+             ;; "No suitable driver" error
+             (contains? #{"user" "password" "sslpassword"} k)
+             (assoc-in acc [:credentials (keyword k)] (url-decode raw-v))
+
              ;; a c3p0 knob: coerce and apply to the pool (pgjdbc can't read these off the URL)
              (contains? tunable-pool-props k)
              (let [parse  (second (tunable-pool-props k))
@@ -137,13 +188,14 @@
                                           "(%s) or a Postgres connection property.")
                                      k (str/join ", " (sort (keys tunable-pool-props))))
                              {:param k}))))
-         {:pool default-pool, :conn []}
+         {:pool default-pool, :conn [], :credentials host-credentials}
          pairs)]
-    {:jdbc-url   (cond-> base (seq conn) (str "?" (str/join "&" conn)))
-     :pool-props pool}))
+    {:jdbc-url    (cond-> base-url (seq conn) (str "?" (str/join "&" conn)))
+     :credentials credentials
+     :pool-props  pool}))
 
 (defn- parsed-db-config
-  "Parse [[db-url]] into {:jdbc-url ... :pool-props ...}, or throw if it is unset."
+  "Parse [[db-url]] into {:jdbc-url ... :credentials ... :pool-props ...}, or throw if it is unset."
   []
   (if db-url
     (parse-db-url db-url)
@@ -165,16 +217,29 @@
   (delay (.addShutdownHook (Runtime/getRuntime)
                            (Thread. ^Runnable shutdown-db! "semantic-search-pool-shutdown"))))
 
+(defn- redacted-data-source
+  "Wrap `ds` so it prints without its JDBC URL, which can carry the database credentials.
+  c3p0 prints the data source it pools in its own string form, and that reaches the logs through exception
+  messages such as \"... has been closed() -- you can no longer use it\"."
+  ^DataSource [^DataSource ds]
+  (reify DataSource
+    (getConnection [_] (.getConnection ds))
+    (getConnection [_ user password] (.getConnection ds user password))
+    (getLoginTimeout [_] (.getLoginTimeout ds))
+    (setLoginTimeout [_ seconds] (.setLoginTimeout ds seconds))
+    Object
+    (toString [_] "pgvector JDBC data source (URL redacted)")))
+
 (defn init-db!
   "Initialize c3p0 connection pool for semantic search database.
    Requires MB_PGVECTOR_DB_URL environment variable."
   []
   (locking data-source
     (or @data-source
-        (let [{:keys [jdbc-url pool-props]} (parsed-db-config)
-              unpooled-ds (jdbc/get-datasource {:jdbcUrl jdbc-url})
+        (let [{:keys [jdbc-url credentials pool-props]} (parsed-db-config)
+              unpooled-ds (redacted-data-source (jdbc/get-datasource (assoc credentials :jdbcUrl jdbc-url)))
               pooled-ds   (DataSources/pooledDataSource
-                           ^javax.sql.DataSource unpooled-ds
+                           unpooled-ds
                            (connection-pool/map->properties pool-props))]
           (log/info "Initializing semantic search connection pool with properties:" pool-props)
           (force shutdown-hook)
@@ -222,7 +287,7 @@
   Always a one-shot connection: a pooled one carries the pool's timeouts, and waiting on a saturated pool
   would read as an unreachable store."
   []
-  (jdbc/execute-one! (jdbc/get-datasource {:jdbcUrl (probe-jdbc-url)})
+  (jdbc/execute-one! (jdbc/get-datasource (assoc (:credentials (parsed-db-config)) :jdbcUrl (probe-jdbc-url)))
                      ["SELECT 1 AS test"]
                      {:timeout probe-query-timeout-seconds}))
 

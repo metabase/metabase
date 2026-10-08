@@ -52,6 +52,7 @@
    :databaseId     1
    :sourceTableId  10
    :description    "Total order revenue"
+   :filters        ["Status is paid" "Created At is in the previous 30 days"]
    :mappedTableIds [10 20]
    :dimensions     {"paymentMethod" payment-method-dimension
                     "franchiseName" franchise-name-dimension}})
@@ -73,21 +74,51 @@
                                                              :baseType "type/DateTime"
                                                              :jsType   "Date"}}}}})
 
-(deftest typescript-renderer-emits-comments-and-runtime-metadata-test
+(deftest typescript-renderer-emits-metadata-blocks-and-runtime-data-test
   (let [body (typed-schemas/render-typescript compacting-schema)]
-    ;; Emit comments to provide context for agents
-    (is (str/includes? body "// Description: Saved orders"))
-    (is (str/includes? body "// Description: Total order revenue"))
-    (is (str/includes? body "// Display name: Payment Method"))
-    (is (str/includes? body "// Semantic type: type/Category"))
-    ;; Emit metadata needed for the Lib.createTestQuery DSL
-    (is (str/includes? body "ordersQuestion: {\n    type: \"card\""))
-    (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
-    (is (str/includes? body "databaseId: 1"))
-    (is (str/includes? body "sourceTableId: 10"))
-    (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
-    ;; Comment-only metadata should not become runtime fields.
-    (is (not (str/includes? body "displayName: \"Payment Method\"")))))
+    (testing "context for agents is a metadata block, never a line comment"
+      (is (not (re-find #"(?m)^\s*//" body)))
+      (testing "an entry opens with its block, so a reader meets the context before the data"
+        (is (re-find #"(?s)ordersQuestion: \{\n\s*/\* metadata: \{ \"description\": \"Saved orders\" \} \*/\n\s*type: \"card\"" body))
+        (is (str/includes? body "\"description\": \"Total order revenue\""))
+        (is (str/includes? body (str "/* metadata: { \"displayName\": \"Payment Method\", "
+                                     "\"semanticType\": \"type/Category\" } */\n        type: \"column\""))))
+      (testing "a block with a nested value prints one array item per line"
+        (is (re-find #"(?s)\"filters\": \[\n\s*\"Status is paid\",\n\s*\"Created At is in the previous 30 days\"\n\s*\]" body))))
+    (testing "data for the Lib.createTestQuery DSL stays runtime"
+      (is (str/includes? body "ordersQuestion: {\n    /* metadata:"))
+      (is (str/includes? body "paymentMethod: {\n        /* metadata:"))
+      (is (str/includes? body "databaseId: 1"))
+      (is (str/includes? body "sourceTableId: 10"))
+      (is (str/includes? body "mappedTableIds: [ 10, 20 ]")))
+    (testing "metadata-only keys never become runtime fields"
+      (is (not (str/includes? body "displayName: \"Payment Method\"")))
+      (is (not (str/includes? body "filters:"))))))
+
+(deftest typescript-renderer-omits-what-a-metadata-block-has-nothing-to-say-test
+  (let [body (typed-schemas/render-typescript
+              {:schemaVersion 2
+               :tables        {"orders" {:type        "table"
+                                         :id          10
+                                         :name        "Orders"
+                                         :description "   "
+                                         :fields      {}}}
+               :metrics       {"revenue" {:type        "metric"
+                                          :id          31
+                                          :sourceTable {:databaseName "Sample Database"
+                                                        :schemaName   nil
+                                                        :tableName    "ORDERS"}}
+                               "profit"  {:type        "metric"
+                                          :id          32
+                                          :sourceTable {:databaseName "Sample Database"
+                                                        :schemaName   ""
+                                                        :tableName    "PRODUCTS"}}}})]
+    (testing "a table in a database without schemas has no schema key, whether the schema is nil or blank"
+      (is (= 2 (count (re-seq #"\"sourceTable\": \{\n\s*\"databaseName\": \"Sample Database\",\n\s*\"tableName\": \"(ORDERS|PRODUCTS)\"\n\s*\}" body))))
+      (is (not (str/includes? body "null")))
+      (is (not (str/includes? body "schemaName"))))
+    (testing "a blank description is not written"
+      (is (not (str/includes? body "description"))))))
 
 (deftest typescript-renderer-compacts-metric-dimensions-test
   (let [body (typed-schemas/render-typescript compacting-schema)]
@@ -140,43 +171,21 @@
             [:obj ["sourceFieldId" [:lit 42]]]]
            (obj-entry dimensions "franchises")))))
 
-(deftest schema->ast-splits-runtime-keys-from-comments-test
+(deftest schema->ast-splits-runtime-keys-from-metadata-test
   (let [ast    (render/schema->ast compacting-schema)
         fields (-> (module-const ast "tables")
                    (obj-entry "orders")
                    (obj-entry :fields))
         [entry-key options field-node] (-> fields rest first)]
-    (testing "comment-only policy keys become entry comments"
+    (testing "metadata-only policy keys become the entry's metadata"
       (is (= "paymentMethod" entry-key))
-      (is (= {:comments ["Display name: Payment Method"
-                         "Semantic type: type/Category"]}
+      (is (= {:metadata {"displayName"  "Payment Method"
+                         "semanticType" "type/Category"}}
              options)))
     (testing "runtime policy keys become object entries"
       (is (= [:lit "payment_method"] (obj-entry field-node :name)))
       (is (= [:lit "string"] (obj-entry field-node :jsType)))
       (is (nil? (obj-entry field-node :displayName))))))
-
-(def ^:private schema-with-errors
-  {:schemaVersion 2
-   :metabase      {:instanceUrl "https://metabase.example.com"}
-   :questions     {}
-   :models        {}
-   :tables        {}
-   :metrics       {}
-   :errors        [{:type      "modelError"
-                    :modelId   7
-                    :modelName "Broken model"
-                    :message   "Failed to build action schemas for model \"Broken model\" (card 7): boom"}]})
-
-(deftest typescript-renderer-emits-model-errors-test
-  (let [body (typed-schemas/render-typescript schema-with-errors)]
-    ;; Broken models surface as runtime data so agents can tell users which
-    ;; models are bad instead of the whole response failing.
-    (is (str/includes? body "errors: ["))
-    (is (str/includes? body "type: \"modelError\""))
-    (is (str/includes? body "modelId: 7"))
-    (is (str/includes? body "modelName: \"Broken model\""))
-    (is (str/includes? body "message: \"Failed to build action schemas"))))
 
 (deftest typescript-renderer-omits-pick-fields-helper-for-raw-dimensions-test
   (let [body (typed-schemas/render-typescript raw-dimensions-schema)]

@@ -13,6 +13,7 @@ import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type {
+  Card,
   DatasetQuery,
   TestColumnSpec,
   TestExpressionSpec,
@@ -20,6 +21,7 @@ import type {
   TestStageSpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
 import { validateDynamicQuery, validateQueryInput } from "./validation";
@@ -39,17 +41,18 @@ export const resolveDatasetQuery: ResolveDatasetQuery =
       );
     }
 
-    const sourceInput = toSourceInput(input);
+    const { sourceInput, publishedCard } = await toSourceInput(store, input);
 
     validateQueryInput(sourceInput);
     validateDynamicQuery(dynamicQuery);
 
-    await loadSourceMetadata(store, sourceInput);
+    await loadSourceMetadata(store, sourceInput, publishedCard);
 
     return resolveQueryFromLoadedMetadata(
       sourceInput,
       dynamicQuery,
       store.getState(),
+      publishedCard,
     );
   };
 
@@ -61,30 +64,65 @@ type SdkState = ReturnType<SdkStore["getState"]>;
  * to run the query, through the collection it lives in. Its static clauses are
  * already baked into the card, so only the source and the dynamic stage remain.
  */
-function toSourceInput(input: QueryInput): QueryInput {
+async function toSourceInput(
+  store: SdkStore,
+  input: QueryInput,
+): Promise<{ sourceInput: QueryInput; publishedCard?: Card }> {
   // Only a data app runs published cards. In the dev preview they do not exist
   // yet, and outside a data app they never do, so the table is what runs.
   if (!isTableInput(input) || isDataAppDev() || !isDataApp()) {
-    return input;
+    return { sourceInput: input };
   }
 
-  if (
-    input.savedQuestionSourceId === null ||
-    input.savedQuestionSourceId === undefined
-  ) {
+  const entityId = input.savedQuestionEntityId;
+
+  if (entityId === undefined) {
     // An app's viewers can only read the published cards, so a table source 403s.
     throw new Error(
-      "This query has not been synchronized. Define it with `defineQuery(...)` in `queries/`, run `npm run sync-resources`, and rebuild.",
+      "This query has no saved question. Write it to the app's collection under `collections/data_apps/`, set its `savedQuestionEntityId` in `defineQuery(...)` in `queries/`, run `npm run check-resources`, commit, and rebuild.",
     );
   }
 
-  return { source: { type: "card", id: input.savedQuestionSourceId } };
+  const publishedCard = await fetchPublishedCard(store, entityId);
+
+  return {
+    sourceInput: { source: { type: "card", id: publishedCard.id } },
+    publishedCard,
+  };
+}
+
+/**
+ * The published card is addressed by the entity ID its resource file gives it,
+ * which Metabase only knows once the repository is imported. Query metadata and
+ * the query itself address cards by numeric ID.
+ */
+async function fetchPublishedCard(
+  store: SdkStore,
+  entityId: string,
+): Promise<Card> {
+  try {
+    return await runRtkEndpoint(
+      { id: entityId },
+      store.dispatch,
+      cardApi.endpoints.getCard,
+      { forceRefetch: false },
+    );
+  } catch (error) {
+    if (isObject(error) && error.status === 404) {
+      throw new Error(
+        "This app's saved questions have not been imported. Pull the connected repository again, or check the app's sync status.",
+      );
+    }
+
+    throw error;
+  }
 }
 
 function resolveQueryFromLoadedMetadata(
   input: QueryInput,
   dynamicQuery: DynamicQueryInput | undefined,
   state: SdkState,
+  publishedCard: Card | undefined,
 ) {
   if (!isQueryInput(input)) {
     throw new Error(
@@ -92,7 +130,8 @@ function resolveQueryFromLoadedMetadata(
     );
   }
 
-  const databaseId = getSourceDatabaseId(input, state);
+  const databaseId =
+    publishedCard?.dataset_query?.database ?? getSourceDatabaseId(input, state);
   const provider = selectMetadataProviderUnfiltered(state, databaseId);
   const sourceStage = toStageSpec(input);
 
@@ -148,15 +187,14 @@ function toResultColumnStageSpec({
   };
 }
 
-// A card stage exposes the saved question's result columns, so they are looked
-// up by name. Keys that scope a column to a table narrow that lookup and stop
-// it matching, so drop them from generated table fields used as result columns.
+// A card stage exposes the saved question's result columns, which are no
+// longer joined, so the join and foreign key keys are dropped; the field ID or
+// the name still finds the column.
 function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   const {
-    tableId: _tableId,
-    sourceName: _sourceName,
+    joinAlias: _joinAlias,
     sourceFieldId: _sourceFieldId,
-    displayName: _displayName,
+    sourceFieldJoinAlias: _sourceFieldJoinAlias,
     ...resultColumn
   } = spec;
 
@@ -177,7 +215,16 @@ function toResultColumnExpressionSpec(
   return spec;
 }
 
-async function loadSourceMetadata(store: SdkStore, input: QueryInput) {
+async function loadSourceMetadata(
+  store: SdkStore,
+  input: QueryInput,
+  publishedCard: Card | undefined,
+) {
+  if (publishedCard) {
+    await loadCardQueryMetadata(store, publishedCard.id);
+    return;
+  }
+
   if (input.source.type === "card") {
     await loadCardMetadata(store, input.source.id);
     return;
@@ -194,10 +241,17 @@ async function loadCardMetadata(store: SdkStore, id: number) {
     runRtkEndpoint({ id }, store.dispatch, cardApi.endpoints.getCard, {
       forceRefetch: false,
     }),
-    runRtkEndpoint(id, store.dispatch, cardApi.endpoints.getCardQueryMetadata, {
-      forceRefetch: false,
-    }),
+    loadCardQueryMetadata(store, id),
   ]);
+}
+
+function loadCardQueryMetadata(store: SdkStore, id: number) {
+  return runRtkEndpoint(
+    id,
+    store.dispatch,
+    cardApi.endpoints.getCardQueryMetadata,
+    { forceRefetch: false },
+  );
 }
 
 function getSourceDatabaseId(input: QueryInput, state: SdkState) {

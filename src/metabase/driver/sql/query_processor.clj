@@ -51,6 +51,7 @@
 
 ;; TODO (Cam 2026-08-11) "Inner query" is MBQL 4 terminology, since we're using MBQL 5 now, rename this to `stage` and
 ;; rename all the `inner-query` function args & local variables to `stage` as well
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
@@ -1860,6 +1861,7 @@
     (select-keys (driver-api/field (driver-api/metadata-provider) field-id)
                  [:effective-type])))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. It carries the
   compiled LHS's full HoneySQL type-info (see [[metabase.util.honey-sql-2/type-info]]) merged with `:base-type` and
@@ -2202,6 +2204,18 @@
        (remove (partial = :source-query)))
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
+(defmulti apply-cte-hoist?
+  "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
+  `WITH` binding that every branch references by alias, rather than inlining it once per branch. On
+  by default; drivers whose planner doesn't support the resulting shape override to false."
+  {:added "0.64.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod apply-cte-hoist? :sql
+  [_driver]
+  true)
+
 (defmulti preprocess
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
@@ -2213,9 +2227,14 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod preprocess :sql
-  [_driver mbql5-query]
+  [driver mbql5-query]
+  ;; Nest a pivot stage's joins into a prior stage only for drivers that opt into the UA CTE hoist —
+  ;; the nesting exists so [[metabase.driver.sql.pivot/compile-union-all-pivot]] can lift the shared
+  ;; subquery into a `WITH` binding. Drivers that don't hoist would just carry an unnecessary
+  ;; subquery layer on their GS / multi-query paths.
   (-> mbql5-query
       driver-api/nest-breakouts-in-stages-with-window-aggregation
+      (cond-> (apply-cte-hoist? driver) driver-api/nest-pivot-joins)
       driver-api/nest-expressions
       driver-api/add-alias-info
       :stages))

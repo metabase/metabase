@@ -138,7 +138,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
@@ -150,7 +150,7 @@ jobs:
         run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Build Storybook
-        run: bun run build-storybook
+        run: bun run build-storybook:test
         env:
           STORYBOOK_STORIES_FILTER: ${{ needs.detect-changed-stories.outputs.story_files }}
 

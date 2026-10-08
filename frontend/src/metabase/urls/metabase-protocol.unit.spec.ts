@@ -23,9 +23,17 @@ describe("parseMetabaseProtocolLink", () => {
       id: 111,
       model: "model",
     });
-    expect(parseMetabaseProtocolLink("metabase://metric/222")).toEqual({
-      id: 222,
+    expect(parseMetabaseProtocolLink("metabase://metric/5")).toEqual({
+      id: 5,
       model: "metric",
+    });
+    expect(parseMetabaseProtocolLink("metabase://measure/6")).toEqual({
+      id: 6,
+      model: "measure",
+    });
+    expect(parseMetabaseProtocolLink("metabase://segment/7")).toEqual({
+      id: 7,
+      model: "segment",
     });
   });
 

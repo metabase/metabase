@@ -103,13 +103,23 @@
       (is (= #{"seeded-q"}
              (get-in (memory/initialize [] persisted) [:state :client-ids]))))))
 
-(deftest ^:parallel add-client-ids-test
-  (testing "ids accumulate across turns and are written to the persisted delta, so a query a tool
-            stored still audits its refusals once it has left the viewing context"
-    (let [memory (-> (memory/initialize [] {:client-ids #{"from-an-earlier-turn"}})
-                     (memory/add-client-ids #{"seeded-now"}))]
-      (is (= #{"from-an-earlier-turn" "seeded-now"} (get-in memory [:state :client-ids])))
-      (is (= #{"from-an-earlier-turn" "seeded-now"} (get-in memory [:turn-state :client-ids]))))))
+(deftest ^:parallel client-ids-persist-once-stored-test
+  (let [query   {:database 1}
+        earlier (memory/initialize [] {:client-ids #{"from-an-earlier-turn"}})
+        memory  (memory/add-client-ids earlier #{"from-an-earlier-turn" "stored-now" "only-viewed"})]
+    (testing "tools see this turn's ids along with the ones earlier turns persisted"
+      (binding [shared/*memory-atom* (atom (memory/add-client-ids earlier #{"stored-now" "only-viewed"}))]
+        (is (= #{"from-an-earlier-turn" "stored-now" "only-viewed"} (shared/current-client-ids)))))
+    (testing "a turn that stores nothing persists no ids"
+      (is (nil? (memory/turn-state memory))))
+    (testing "storing a query or chart under an id persists it with earlier turns' ids"
+      (doseq [store [#(memory/set-query % "stored-now" query)
+                     #(memory/set-chart % "stored-now" {:chart_id "stored-now"})]]
+        (is (= #{"from-an-earlier-turn" "stored-now"}
+               (:client-ids (memory/turn-state (store memory)))))))
+    (testing "storing under an id an earlier turn persisted leaves the client ids unwritten"
+      (is (= {:queries {"from-an-earlier-turn" query}}
+             (memory/turn-state (memory/set-query memory "from-an-earlier-turn" query)))))))
 
 (deftest ^:parallel set-link-registry-test
   (testing "an empty or unchanged registry is not written into the turn delta"

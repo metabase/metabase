@@ -2460,12 +2460,14 @@
   code. It does not need to be wrapped or included here. Just merge these extra keyword conversions into that code and
   remove this."
   [n unit offset-n offset-unit options]
-  (u.time/format-relative-date-range
-   n
-   (keyword unit)
-   offset-n
-   (some-> offset-unit keyword)
-   (js->clj options :keywordize-keys true)))
+  (let [{:keys [start-of-week] :as options} (js->clj options :keywordize-keys true)]
+    (u.time/format-relative-date-range
+     {:start-of-week (keyword (or start-of-week :sunday))}
+     n
+     (keyword unit)
+     offset-n
+     (some-> offset-unit keyword)
+     (dissoc options :start-of-week))))
 
 (defn ^:export find-matching-column
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.

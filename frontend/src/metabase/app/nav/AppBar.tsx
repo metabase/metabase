@@ -10,7 +10,7 @@ import {
   getIsNewButtonVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { getUser } from "metabase/current-user";
 import { getIsSidebarOpen } from "metabase/documents/selectors";

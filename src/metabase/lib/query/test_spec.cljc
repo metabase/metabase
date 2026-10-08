@@ -12,10 +12,12 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -43,28 +45,42 @@
     :card  (lib.metadata/card metadata-providerable spec-id)))
 
 (mu/defn- matches-column? :- :boolean
-  [query                                   :- ::lib.schema/query
-   _stage-number                           :- :int
-   {:keys [name table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-order-by-spec
-   column                     :- ::lib.schema.metadata/column]
-  (cond-> (= name (:name column))
-    (some? table-id) (and (= table-id (:table-id column)))
-    (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
-    (some? source-field-id) (and (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
-    (some? display-name) (and (= display-name (:display-name column)))))
+  [{:keys [name field-id join-alias source-field-id source-field-join-alias]}
+   :- ::lib.schema.test-spec/test-order-by-spec
+   column :- ::lib.schema.metadata/column]
+  (and (if field-id
+         (= field-id (:id column))
+         (= name ((some-fn :lib/deduplicated-name :name) column)))
+       (= join-alias (lib.join.util/current-join-alias column))
+       (= source-field-id (:fk-field-id column))
+       (= source-field-join-alias (:fk-join-alias column))))
+
+(mu/defn- matches-bucketing? :- :boolean
+  [{:keys [unit binning]} :- ::lib.schema.test-spec/test-order-by-spec
+   column                 :- ::lib.schema.metadata/column]
+  (let [{:keys [strategy] :as column-binning} (lib.binning/binning column)]
+    (and (= unit (lib.temporal-bucket/raw-temporal-bucket column))
+         (= (:strategy binning) strategy)
+         (or (nil? binning)
+             (= strategy :default)
+             (== (strategy binning) (strategy column-binning))))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
-  [query             :- ::lib.schema/query
-   stage-number      :- :int
+  "Finds the column a spec names. A column already bucketed more than one way, like a breakout by month and by year,
+  is told apart by the spec's `:unit` or `:binning`."
+  [_query            :- ::lib.schema/query
+   _stage-number     :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
    column-spec       :- ::lib.schema.test-spec/test-order-by-spec]
-  (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
+  (let [matching (filterv (partial matches-column? column-spec) available-columns)
+        columns  (if (and (> (count matching) 1)
+                          ((some-fn :unit :binning) column-spec))
+                   (filterv (partial matches-bucketing? column-spec) matching)
+                   matching)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (first columns)
-      (if (:index column-spec)
-        (get columns (:index column-spec))
-        (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec}))))))
+      (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
 
 (mu/defn- append-fields :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -101,48 +117,40 @@
        (lib.temporal-bucket/with-temporal-bucket column)))
 
 (mu/defn- matches-binning? :- :boolean
-  [strategy       :- ::lib.schema.binning/strategy
-   value          :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width ::lib.schema.test-spec/test-auto-bin-spec]
-   {:keys [mbql]} :- ::lib.schema.binning/binning-option]
-  (or
-   (and
-    (= :default (:strategy mbql))
-    (= value :auto))
-   (and
-    (= strategy (:strategy mbql))
-    (== value (strategy mbql)))))
+  [{:keys [strategy] :as binning} :- ::lib.schema.test-spec/test-binning-spec
+   {:keys [mbql]}                 :- ::lib.schema.binning/binning-option]
+  (and (= strategy (:strategy mbql))
+       (or (= strategy :default)
+           (== (strategy binning) (strategy mbql)))))
 
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
-        matches (filterv (partial matches-binning? strategy value) binning-strategies)]
+        matches (filterv (partial matches-binning? binning) binning-strategies)]
     (case (count matches)
-      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies strategy value}))
+      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :binning binning}))
       1 (first matches)
-      (throw (ex-info "Multiple binning strategies found" {:matches matches strategy value})))))
+      (throw (ex-info "Multiple binning strategies found" {:matches matches :binning binning})))))
 
 (mu/defn- add-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   strategy     :- ::lib.schema.binning/strategy
-   value        :- [:or ::lib.schema.binning/num-bins ::lib.schema.binning/bin-width]
+   binning      :- ::lib.schema.test-spec/test-binning-spec
    column       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
-  (->> (find-binning-strategy query stage-number strategy value column)
+  (->> (find-binning-strategy query stage-number binning column)
        (lib.binning/with-binning column)))
 
 (mu/defn- apply-binning :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
-  [query                         :- ::lib.schema/query
-   stage-number                  :- :int
-   {:keys [unit bins bin-width]} :- [:or ::lib.schema.test-spec/test-order-by-spec ::lib.schema.test-spec/test-join-source-spec]
-   column                       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [unit binning]} :- [:or ::lib.schema.test-spec/test-order-by-spec ::lib.schema.test-spec/test-join-source-spec]
+   column                 :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (cond->> column
-    unit      (add-temporal-bucket query stage-number unit)
-    bins      (add-binning query stage-number :num-bins bins)
-    bin-width (add-binning query stage-number :bin-width bin-width)))
+    unit    (add-temporal-bucket query stage-number unit)
+    binning (add-binning query stage-number binning)))
 
 (mu/defn- append-breakout :- ::lib.schema/query
   [query               :- ::lib.schema/query
@@ -248,13 +256,14 @@
 (mu/defn- append-join :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   {:keys [source strategy conditions]} :- ::lib.schema.test-spec/test-join-spec]
+   {:keys [source strategy conditions], join-alias :alias} :- ::lib.schema.test-spec/test-join-spec]
   (let [join-target (find-source query source)
         join-strategy (find-join-strategy query stage-number strategy)
         join-conditions (if conditions
                           (mapv (partial join-condition-spec->join-condition query stage-number join-target) conditions)
                           (lib.join/suggested-join-conditions query stage-number join-target))
-        join-clause (lib.join/join-clause join-target join-conditions join-strategy)]
+        join-clause (cond-> (lib.join/join-clause join-target join-conditions join-strategy)
+                      join-alias (lib.join/with-join-alias join-alias))]
     (lib.join/join query stage-number join-clause)))
 
 (mu/defn- append-joins :- ::lib.schema/query
@@ -305,9 +314,12 @@
     (if-let [aggregation (saved-aggregation query aggregation-spec)]
       (lib.aggregation/aggregate query stage-number aggregation)
       (throw (ex-info "No saved aggregation found" {:aggregation-spec aggregation-spec})))
-    (->> (lib.aggregation/aggregable-columns query stage-number)
-         (expression-spec->expression-clause query stage-number aggregation-spec)
-         (lib.aggregation/aggregate query stage-number))))
+    (let [clause (->> (lib.aggregation/aggregable-columns query stage-number)
+                      (expression-spec->expression-clause query stage-number aggregation-spec))]
+      (lib.aggregation/aggregate query stage-number
+                                 (cond-> clause
+                                   ;; Only the name a later stage refers to; the display name stays derived.
+                                   (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec)))))))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query

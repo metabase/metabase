@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.channel.settings :as channel.settings]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
@@ -9,7 +10,9 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.notification.models :as models.notification]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -95,6 +98,8 @@
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
+    (is (contains? tools "load_skill")
+        "the model chart tool's query skills make load_skill available")
     (testing "both SQL tools need the SQL capability, like the tools they delegate to"
       (is (not (contains? tools "document_construct_sql_chart")))
       (is (contains? sql-tools "document_construct_sql_chart")))
@@ -171,8 +176,8 @@
                  (get-in result [:data-parts 0 :data :description]))))))))
 
 (defn- construct-tool-output-for-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
-  the `:output` the LLM would see."
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`.
+  Returns the `:output` the LLM would see when the tool handles `e`; otherwise `e` propagates."
   [e]
   (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
     (:output (binding [shared/*profile-id* :nlq]
@@ -188,10 +193,10 @@
     (is (= "You don't have permissions to do that."
            (construct-tool-output-for-thrown
             (ex-info "You don't have permissions to do that." {:status-code 403})))))
-  (testing "anything else without `:agent-error?` still gets the generic wrapper"
-    (is (= "Failed to construct notebook query: something went sideways"
-           (construct-tool-output-for-thrown
-            (ex-info "something went sideways" {:status-code 400}))))))
+  (testing "an unexpected error propagates to the agent loop"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"something went sideways"
+                          (construct-tool-output-for-thrown
+                           (ex-info "something went sideways" {}))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"
@@ -276,3 +281,27 @@
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params))))))
+
+(deftest slackbot-schedules-keep-their-day-test
+  (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                              channel.settings/slack-cached-channels-and-usernames
+                              (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
+    (mt/with-model-cleanup [:model/Notification :model/Pulse]
+      (mt/with-temp [:model/Card      {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {}]
+        (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (doseq [schedule [{:frequency "weekly" :day_of_week "monday" :hour 9}
+                              {:frequency "monthly" :day_of_month "first-monday" :hour 9}]]
+              (agent-tools/create-alert-tool {:card_id card-id :send_condition "has_result" :schedule schedule})
+              (agent-tools/slackbot-create-dashboard-subscription-tool {:dashboard_id dash-id :schedule schedule}))))
+        (testing "alerts"
+          (is (= #{"0 0 9 ? * 2 *" "0 0 9 ? * 2#1 *"}
+                 (->> (models.notification/notifications-for-card card-id)
+                      (mapcat :subscriptions)
+                      (into #{} (map :cron_schedule))))))
+        (testing "dashboard subscriptions"
+          (is (= #{[:weekly "mon" nil] [:monthly "mon" :first]}
+                 (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
+                      (mapcat :channels)
+                      (into #{} (map (juxt :schedule_type :schedule_day :schedule_frame)))))))))))

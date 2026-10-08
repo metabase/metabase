@@ -17,8 +17,8 @@ import {
   diagnoseAndCompile,
   format,
   getClauseDefinition,
+  tokenAtPos,
 } from "metabase/querying/expressions";
-import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -367,8 +367,12 @@ function useExpression({
   );
 
   const handleBlur = useCallback(() => {
+    // `source` is stale until formatting settles; updating now would overwrite the formatted result
+    if (isFormatting) {
+      return;
+    }
     handleUpdate(source, true);
-  }, [handleUpdate, source]);
+  }, [handleUpdate, source, isFormatting]);
 
   const handleFormatExpression = useCallback(() => {
     formatExpression({ initial: false });

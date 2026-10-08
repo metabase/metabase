@@ -101,7 +101,6 @@
     :model/ParameterCard
     :model/Action
     :model/ImplicitAction
-    :model/HTTPAction
     :model/QueryAction
     :model/DashboardTab
     :model/ModelIndex
@@ -203,6 +202,7 @@
       (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-h2-database-details*
   "Whether [[copy-data!]] (and thus [[metabase.cmd.load-from-h2/load-from-h2!]]) should copy connection details for H2
   Databases from the source application database. Normally disabled for security reasons. This is only here so we can
@@ -408,7 +408,6 @@
   #{:model/Setting
     :model/Session
     :model/ImplicitAction
-    :model/HTTPAction
     :model/FieldUserSettings
     :model/TableUserSettings
     :model/QueryAction

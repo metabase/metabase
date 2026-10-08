@@ -510,3 +510,9 @@
        m))
    m
    deprecated-lib-key-renames))
+
+(mr/def ::time-config
+  "The time settings a query is evaluated under. `metabase.lib.date-time/config` builds it from a metadata provider."
+  [:map
+   {:closed true}
+   [:start-of-week [:enum :monday :tuesday :wednesday :thursday :friday :saturday :sunday]]])

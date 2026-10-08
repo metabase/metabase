@@ -2,7 +2,7 @@
   "Converts semantic schema values into the TypeScript AST.
 
   This is the pure policy stage of the typed-schema pipeline: it decides which
-  schema keys become runtime data, which become `//` context comments, and how
+  schema keys become runtime data, which become `/* metadata */` blocks, and how
   metric dimensions compact into `pickFields(...)` calls. The output is the
   tagged-vector AST described in [[metabase.typed-schemas.javascript]];
   [[schema->ast]] produces it, and the public
@@ -21,29 +21,29 @@
 
 ;; The rendered schema serves two audiences:
 ;; - `:runtime` keys are executable data consumed by the Lib.createTestQuery DSL.
-;; - `:comment` keys are emitted as nearby JavaScript comments for coding agents
-;;   and humans, preserving useful context without making the runtime object
-;;   larger or more ambiguous than the DSL needs.
+;; - `:metadata` keys are emitted as a `/* metadata: {...} */` block inside the
+;;   entity for coding agents and humans, preserving useful context without
+;;   making the runtime object larger or more ambiguous than the DSL needs.
 (def ^:private schema-render-policy
-  {:question         {:runtime [:type :id :name :display :columns :parameters]
-                      :comment [:entityId :description :verified]}
-   :table            {:runtime [:type :id :name :fields :segments :measures]
-                      :comment [:entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:type :name :sourceName :jsType :fieldId :tableId
-                                :baseType :effectiveType :defaultTemporalBucket]
-                      :comment [:displayName :description :semanticType :unit]}
-   :segment          {:runtime [:type :id :tableId :name]
-                      :comment [:entityId :description]}
-   :measure          {:runtime [:type :id :tableId :name :columns]
-                      :comment [:entityId :description]}
-   :metric           {:runtime [:type :id :name :databaseId :sourceTableId :sourceCardId
-                                :mappedTableIds :columns :dimensions]
-                      :comment [:entityId :description :verified :sourceTable]}
-   :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
-                                :name :jsType :baseType :effectiveType :defaultTemporalBucket]
-                      :comment [:displayName :description :semanticType :unit]}
-   :column           {:runtime [:type :name :jsType]
-                      :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
+  {:question         {:runtime  [:type :id :name :display :columns :parameters]
+                      :metadata [:entityId :description :verified]}
+   :table            {:runtime  [:type :id :name :fields :segments :measures]
+                      :metadata [:entityId :description :databaseName :schemaName :tableName]}
+   :field            {:runtime  [:type :name :sourceName :jsType :fieldId :tableId
+                                 :baseType :effectiveType :defaultTemporalBucket]
+                      :metadata [:displayName :description :semanticType :unit]}
+   :segment          {:runtime  [:type :id :tableId :name]
+                      :metadata [:entityId :description]}
+   :measure          {:runtime  [:type :id :tableId :name :columns]
+                      :metadata [:entityId :description]}
+   :metric           {:runtime  [:type :id :name :databaseId :sourceTableId :sourceCardId
+                                 :mappedTableIds :columns :dimensions]
+                      :metadata [:entityId :description :filters :verified :sourceTable]}
+   :metric-dimension {:runtime  [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
+                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
+                      :metadata [:displayName :description :semanticType :unit]}
+   :column           {:runtime  [:type :name :jsType]
+                      :metadata [:displayName :description :baseType :effectiveType :semanticType :unit]}})
 
 ;; Nested entity kinds by parent kind and entry key. Map values hold keyed
 ;; entity maps; sequential values hold entity vectors. Metric `:dimensions` are
@@ -55,71 +55,47 @@
    :measure  {:columns :column}
    :metric   {:columns :column}})
 
-(def ^:private comment-labels
-  {:baseType      "Base type"
-   :databaseName  "Database"
-   :description   "Description"
-   :displayName   "Display name"
-   :effectiveType "Effective type"
-   :entityId      "Entity ID"
-   :schemaName    "Schema"
-   :semanticType  "Semantic type"
-   :sourceTable   "Source table"
-   :tableName     "Table"
-   :unit          "Unit"
-   :verified      "Verified"})
-
 (defn- policy-runtime-keys
   "Returns the keys that should be emitted as runtime data for a schema node."
   [kind value]
   (filter #(contains? value %)
           (get-in schema-render-policy [kind :runtime])))
 
-(defn- redundant-table-name-comment?
-  "Returns true when a table-name comment would duplicate the object key."
+(defn- redundant-table-name?
+  "Returns true when a table's name would duplicate its object key."
   [entry-key table-name]
   (and (some? entry-key)
        (some? table-name)
        (= (name entry-key) (str table-name))))
 
-(defn- policy-comment-keys
-  "Returns the keys that should be rendered as context comments for a schema node."
-  [kind value entry-key]
-  (->> (get-in schema-render-policy [kind :comment])
-       (remove #(and (= kind :table)
-                     (= % :tableName)
-                     (redundant-table-name-comment? entry-key (get value %))))
-       (filter #(contains? value %))))
-
-(defn- comment-value
-  "Formats a schema value for a single-line JavaScript comment."
+(defn- metadata-value
+  "Returns `value` as written in a metadata block, or nil when there is nothing to write: a nil or blank value says
+  nothing, so a map loses such keys at any depth (a table without a schema has no `schemaName`)."
   [value]
   (cond
-    (nil? value) nil
-    (map? value) (->> [(:databaseName value) (:schemaName value) (:tableName value)]
-                      (keep identity)
-                      (str/join "."))
-    :else (str value)))
+    (string? value) (when-not (str/blank? value) value)
+    (map? value)    (not-empty (into {} (keep (fn [[k v]] (when-some [v (metadata-value v)] [k v]))) value))
+    (coll? value)   (not-empty (into [] (keep metadata-value) value))
+    :else           value))
 
-(defn- entity-comments
-  "Returns comment strings for context-only schema fields of an entity.
-
-  Fields listed under `:comment` in [[schema-render-policy]] are useful context
-  for humans and coding agents, but are intentionally omitted from runtime
-  objects consumed by the Lib.createTestQuery DSL."
+(defn- entity-metadata
+  "Returns the metadata-only keys of an entity, in policy order, or nil when it has none."
   [kind value entry-key]
-  (seq (for [comment-key (policy-comment-keys kind value entry-key)
-             :let [comment-text (comment-value (get value comment-key))]
-             :when (not (str/blank? comment-text))]
-         (str (get comment-labels comment-key (name comment-key))
-              ": "
-              (str/replace comment-text #"\R+" " ")))))
+  (not-empty
+   (apply array-map
+          (mapcat (fn [metadata-key]
+                    (when-some [metadata (metadata-value (get value metadata-key))]
+                      (when-not (and (= kind :table)
+                                     (= metadata-key :tableName)
+                                     (redundant-table-name? entry-key metadata))
+                        [(name metadata-key) metadata])))
+                  (get-in schema-render-policy [kind :metadata])))))
 
 (defn- generic->node
   "Converts a schema value without render policy into an AST expression.
 
   Values outside the policy table (action namespaces, parameter maps, instance
-  metadata) emit every key and no comments."
+  metadata) emit every key and no metadata block."
   [value]
   (cond
     (javascript/expression? value) value
@@ -135,8 +111,8 @@
   [entities kind]
   (into [:obj]
         (for [[entry-key entity] entities]
-          (if-let [comments (entity-comments kind entity entry-key)]
-            [entry-key {:comments comments} (entity->node entity kind)]
+          (if-let [metadata (entity-metadata kind entity entry-key)]
+            [entry-key {:metadata metadata} (entity->node entity kind)]
             [entry-key (entity->node entity kind)]))))
 
 (defn- entities->arr
@@ -144,8 +120,8 @@
   [entities kind]
   (into [:arr]
         (for [entity entities]
-          (if-let [comments (entity-comments kind entity nil)]
-            [:item {:comments comments} (entity->node entity kind)]
+          (if-let [metadata (entity-metadata kind entity nil)]
+            [:item {:metadata metadata} (entity->node entity kind)]
             (entity->node entity kind)))))
 
 (defn- dimensions->obj
@@ -349,14 +325,14 @@
          (vals (:metrics schema)))))
 
 (def ^:private top-level-keys
-  [:questions :models :tables :metrics])
+  [:questions :actions :tables :metrics])
 
 (defn- section->node
   "Converts one top-level schema section into an object expression."
   [section-key section]
   (case section-key
     :questions (keyed-entities->obj section :question)
-    :models    (generic->node section)
+    :actions   (generic->node section)
     :tables    (keyed-entities->obj section :table)
     :metrics   (keyed-entities->obj section :metric)))
 

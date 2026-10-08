@@ -20,7 +20,13 @@ const DATA_APP_SKILLS = [
   "metabase-data-app-routing",
   "metabase-data-app-actions",
   "metabase-data-app-semantic-layer",
+  "metabase-data-app-migrate",
 ];
+
+// Writes the YAML an app's resources are committed as. It lives in another
+// repository, which has no release branches to pin to.
+const REPRESENTATION_SKILL_COMMAND =
+  "npx skills add metabase/agent-skills/skills --skill metabase-representation-format";
 
 export const DataAppSkillsSection = () => {
   // Pin the data-app skills (and the template bundled inside `metabase-data-app-setup`)
@@ -38,9 +44,10 @@ export const DataAppSkillsSection = () => {
   // Joined with shell line-continuations (` \` + newline) so each `--skill` is on
   // its own line for readability, while the copied text is still one runnable
   // command when pasted.
-  const installSkillCommand = [skillCommandBase, ...skillSelectors].join(
-    " \\\n",
-  );
+  const installSkillCommand = [
+    [skillCommandBase, ...skillSelectors].join(" \\\n"),
+    REPRESENTATION_SKILL_COMMAND,
+  ].join(" && \\\n");
 
   return (
     <Stack gap="sm">

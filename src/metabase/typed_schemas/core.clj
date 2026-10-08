@@ -1,8 +1,8 @@
 (ns metabase.typed-schemas.core
-  "Typed schemas: TypeScript modules that describe questions, models (with
-  executable actions), tables and metrics to coding agents. Runtime objects
-  feed the Lib.createTestQuery DSL; `//` comments carry context for humans and
-  agents.
+  "Typed schemas: TypeScript modules that describe questions, actions, tables
+  and metrics to coding agents. Runtime objects
+  feed the Lib.createTestQuery DSL; each entry's `/* metadata: {...} */` block
+  carries context for humans and agents.
 
   The public surface is deliberately small — the schema value and its
   rendering, mirroring the module's data/print split:
@@ -10,9 +10,11 @@
     (-> options build-semantic-schema render-typescript) ; options -> TS string
 
   These public functions are compositions of the internal pipeline stages;
-  their definitions below show the whole pipeline. Fetching filters by what
-  the current user can read, so callers outside a request must bind a
-  current-user context first.
+  their definitions below show the whole pipeline. The schema is for
+  superusers, so fetching no longer filters by what the caller can read. The
+  table and metric details lookups still read-check the current user, so a
+  non-admin calling [[build-semantic-schema]] gets a 403, and callers outside
+  a request must bind a current-user context first.
 
   Keep the separation when extending this module:
 
@@ -22,7 +24,7 @@
   - Everything downstream of fetched items stays pure. Timestamps, site URL,
     and any other environment values enter through the `info` argument, not by
     calling out from assembly or rendering code.
-  - Which keys render as runtime data vs comments is policy in
+  - Which keys render as runtime data vs metadata is policy in
     `metabase.typed-schemas.render`; TypeScript syntax lives only in the
     `metabase.typed-schemas.javascript` printer.
   - REST query-parameter strings are decoded once, in

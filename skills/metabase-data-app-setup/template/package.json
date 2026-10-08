@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5174",
-    "build": "npm run sync-resources && vite build",
-    "sync-resources": "embedding-sdk-react data-apps sync-resources",
+    "build": "vite build",
+    "print-resources": "embedding-sdk-react data-apps print-resources",
+    "check-resources": "embedding-sdk-react data-apps check-resources && representations validate-schema --folder ../..",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,6 +16,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@metabase/representations": "^1.5.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.0.2",

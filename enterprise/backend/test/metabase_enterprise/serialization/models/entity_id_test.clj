@@ -41,8 +41,8 @@
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
+    :model/ApiKeyUsageLog
     :model/AuthIdentity
-    :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/ApplicationPermissionsRevision
@@ -54,7 +54,7 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
-    :model/DataApp
+    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter

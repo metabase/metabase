@@ -51,7 +51,6 @@ import {
   closeSnippetModal,
   deselectTimelineEvents,
   followForeignKey,
-  hideTimelineEvents,
   initializeQB,
   insertSnippet,
   loadObjectDetailFKReferences,
@@ -63,6 +62,7 @@ import {
   onUpdateVisualizationSettings,
   openDataReferenceAtQuestion,
   openSnippetModalWithSelectedText,
+  openTimelinesFromChart,
   popDataReferenceStack,
   pushDataReferenceStack,
   queryCompleted,
@@ -87,8 +87,6 @@ import {
   setSnippetCollectionId,
   setTemplateTag,
   setTemplateTagConfig,
-  showTimelineEvents,
-  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -111,12 +109,10 @@ import {
   onCloseQuestionSettings,
   onCloseSidebars,
   onCloseSummary,
-  onCloseTimelines,
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
   onOpenQuestionSettings,
-  onOpenTimelines,
   setParameterValue,
 } from "../store/actions";
 import { getIsObjectDetail } from "../store/mode-selectors";
@@ -125,7 +121,6 @@ import {
   getDataReferenceStack,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
-  getFilteredTimelines,
   getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
@@ -153,10 +148,8 @@ import {
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,
   getTableForeignKeyReferences,
-  getTimeseriesXDomain,
+  getTimelineEventsVisibility,
   getUiControls,
-  getVisibleTimelineEventIds,
-  getVisibleTimelineEvents,
   getVisualizationSettings,
   getZoomedObjectRowIndex,
   isResultsMetadataDirty,
@@ -184,11 +177,8 @@ const mapStateToProps = (state: State) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
 
-    timelines: getFilteredTimelines(state),
-    timelineEvents: getVisibleTimelineEvents(state),
+    timelineEventsVisibility: getTimelineEventsVisibility(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
-    visibleTimelineEventIds: getVisibleTimelineEventIds(state),
-    xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
@@ -247,13 +237,12 @@ const mapDispatchToProps = {
   onCloseQuestionSettings,
   onCloseSidebars,
   onCloseSummary,
-  onCloseTimelines,
   editSummary,
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
   onOpenQuestionSettings,
-  onOpenTimelines,
+  onOpenTimelines: openTimelinesFromChart,
   setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
@@ -264,7 +253,6 @@ const mapDispatchToProps = {
   closeSnippetModal,
   deselectTimelineEvents,
   followForeignKey,
-  hideTimelineEvents,
   initializeQB,
   insertSnippet,
   loadObjectDetailFKReferences,
@@ -300,8 +288,6 @@ const mapDispatchToProps = {
   setSnippetCollectionId,
   setTemplateTag,
   setTemplateTagConfig,
-  showTimelineEvents,
-  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -323,16 +309,13 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
-  useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
-  const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
-    useListTimelinesQuery({
-      include: "events",
-    });
-  const { data: bookmarks = [], isSuccess: areBookmarksLoaded } =
-    useListBookmarksQuery();
+  const { data: bookmarks = [] } = useListBookmarksQuery();
   const [createBookmarkMutation] = useCreateBookmarkMutation();
   const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
+
+  useFavicon({ favicon: props.pageFavicon ?? null });
+  useListTimelinesQuery({ include: "events" });
 
   const {
     question,
@@ -343,7 +326,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setUIControls,
     runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
-    showTimelinesForCollection,
     card,
     isAdmin,
     isLoadingComplete,
@@ -400,19 +382,14 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
-  const hasQuestion = question != null;
-  const collectionId = question?.collectionId();
 
   const openModal = useCallback(
-    (
-      modal: QueryBuilderUIControls["modal"],
-      modalContext: QueryBuilderUIControls["modalContext"],
-    ) => setUIControls({ modal, modalContext }),
+    (modal: QueryBuilderUIControls["modal"]) => setUIControls({ modal }),
     [setUIControls],
   );
 
   const closeModal = useCallback(
-    () => setUIControls({ modal: null, modalContext: null }),
+    () => setUIControls({ modal: null }),
     [setUIControls],
   );
 
@@ -467,25 +444,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB();
     clearTimeout(timeout.current);
   });
-
-  useEffect(() => {
-    // Gate on the timelines actually being loaded (not just bookmarks), and
-    // re-run when they arrive: showTimelinesForCollection reads the fetched
-    // timelines from the store at dispatch time, so running it before the
-    // `/api/timeline` request resolves dispatches an empty set and the chart
-    // never receives its events. This restores the pre-#73674 `allLoaded`
-    // guarantee that was lost when the Timelines.loadList HOC was removed.
-    if (areBookmarksLoaded && areTimelinesLoaded && hasQuestion) {
-      showTimelinesForCollection(collectionId);
-    }
-  }, [
-    areBookmarksLoaded,
-    areTimelinesLoaded,
-    hasQuestion,
-    collectionId,
-    showTimelinesForCollection,
-    fetchedTimelines,
-  ]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;

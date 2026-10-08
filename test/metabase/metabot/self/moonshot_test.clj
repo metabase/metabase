@@ -123,7 +123,8 @@
         2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512
               :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
         4096 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 4096}
-        nil  {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
+        ;; uncapped by the caller, so the default cap applies — already above the floor
+        32000 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
         512  {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512}
         512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
         512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :max-tokens 512
@@ -327,6 +328,7 @@
       (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
         (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post

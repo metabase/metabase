@@ -3,6 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-introspection]
@@ -16,6 +17,8 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :refer [dot-qualified quote-identifier with-quoting]]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
@@ -186,10 +189,13 @@
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (boolean (-> db clickhouse-version/dbms-version :cloud)))
+  (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
+    (boolean (or cloud single-node))))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
+  ;; run the shared connection-property denylist before opening any connection, on both paths below
+  (driver/validate-db-details! driver details)
   (if driver-api/is-test?
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,
@@ -252,6 +258,20 @@
     :metabase.upload/datetime                 "Nullable(DateTime64(3))"
     :metabase.upload/offset-datetime          nil))
 
+;; ClickHouse changes a column's type with MODIFY COLUMN; the default ALTER COLUMN is a syntax error.
+(defmethod sql-jdbc.sync/alter-table-columns-sql :clickhouse
+  [driver table-name column-definitions & _opts]
+  (with-quoting driver
+    (first (sql/format {:alter-table   (dot-qualified table-name)
+                        :modify-column (map (fn [[column-name type-and-constraints]]
+                                              (into [(quote-identifier column-name)]
+                                                    (if (string? type-and-constraints)
+                                                      [[:raw type-and-constraints]]
+                                                      type-and-constraints)))
+                                            column-definitions)}
+                       :quoted  true
+                       :dialect (sql.qp/quote-style driver)))))
+
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for ClickHouse that dispatches on type."
   {:arglists '([type])}
@@ -276,9 +296,10 @@
 
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
-  ;; FIXME: This is a lie because you're really limited by a filesystems' limits, because Clickhouse uses
-  ;; filenames as table/column names. But its an approximation
-  206)
+  ;; ClickHouse stores table metadata as files, so the real limit is on the combined length of the database and table
+  ;; names: on recent versions `max table name length = 213 - (length of the database name)`, so the old value of 206
+  ;; only held for a 7-character database such as `default`. 128 leaves room for database names up to 85 characters.
+  128)
 
 (defn- escape-ident
   ;; Backslash-escape rather than double the backtick: ClickHouse identifiers follow string-literal escaping, where

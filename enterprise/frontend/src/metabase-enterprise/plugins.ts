@@ -4,10 +4,8 @@ import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
 import "./shared";
-
 // PLUGINS THAT DON'T USE hasPremiumFeature (imported immediately):
 import "./license";
-
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeAdvancedPermissions } from "./advanced_permissions";
 import { initializePlugin as initializeAiControls } from "./ai-controls";
@@ -34,7 +32,9 @@ import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
+import { initializePlugin as initializeMonitorApiKeyUsage } from "./monitor/api-key-usage";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
+import { initializePlugin as initializeMonitorSessionManagement } from "./monitor/session-management";
 import { initializePlugin as initializeTools } from "./monitor/tools";
 import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
@@ -89,7 +89,9 @@ export function initializePlugins() {
   initializeMetabot();
   initializeModelPersistence();
   initializeModeration();
+  initializeMonitorApiKeyUsage();
   initializeMonitorDependencyDiagnostics();
+  initializeMonitorSessionManagement();
   initializeMultiFactorAuth();
   initializeRemoteSync();
   initializeReplacement();

@@ -13,6 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^String *bigquery-timezone-id*
   "BigQuery stores all of it's timestamps in UTC. That timezone can be changed via a SQL function invocation in a
   native query, but that change in timezone is not conveyed through the BigQuery API. In most situations
@@ -54,6 +55,31 @@
   explicitly."
   [{:keys [project-id billing-project-id] :as details}]
   (or project-id billing-project-id (database-details->credential-project-id details)))
+
+(defmulti base-type->bigquery-type
+  "Return the BigQuery SQL type name for a Metabase `:type/*` base-type as a plain string. Throws
+  `IllegalArgumentException` when the type has no BigQuery analogue."
+  {:arglists '([base-type])
+   :changelog-test/ignore true}
+  identity)
+
+;; We can't recover the parameterized types for ARRAY / DICTIONARY — flatten to JSON.
+(defmethod base-type->bigquery-type :type/Array          [_] "JSON")
+(defmethod base-type->bigquery-type :type/Dictionary     [_] "JSON")
+
+(defmethod base-type->bigquery-type :type/Boolean        [_] "BOOL")
+(defmethod base-type->bigquery-type :type/Integer        [_] "INT")
+(defmethod base-type->bigquery-type :type/Number         [_] "INT")
+(defmethod base-type->bigquery-type :type/Float          [_] "FLOAT64")
+(defmethod base-type->bigquery-type :type/Decimal        [_] "BIGDECIMAL")
+(defmethod base-type->bigquery-type :type/Text           [_] "STRING")
+(defmethod base-type->bigquery-type :type/TextLike       [_] "STRING")
+(defmethod base-type->bigquery-type :type/Date           [_] "DATE")
+(defmethod base-type->bigquery-type :type/DateTime       [_] "DATETIME")
+(defmethod base-type->bigquery-type :type/DateTimeWithTZ [_] "TIMESTAMP")
+(defmethod base-type->bigquery-type :type/Time           [_] "TIME")
+(defmethod base-type->bigquery-type :type/JSON           [_] "JSON")
+(defmethod base-type->bigquery-type :type/SerializedJSON [_] "JSON")
 
 (mu/defn populate-project-id-from-credentials!
   "Update the given `database` details blob to include the credentials' project-id as a separate entry (under a

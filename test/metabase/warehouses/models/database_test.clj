@@ -119,6 +119,17 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest delete-database-deletes-query-actions-test
+  (testing "deleting a Database deletes the query Actions that run against it, including the ones without a model"
+    (mt/with-temp [:model/Database    {db-id :id}     {}
+                   :model/Action      {action-id :id} {:type :query :name "No model" :model_id nil}
+                   :model/QueryAction _               {:action_id     action-id
+                                                       :dataset_query {:database db-id
+                                                                       :type     :native
+                                                                       :native   {:query "select 1"}}}]
+      (t2/delete! :model/Database :id db-id)
+      (is (not (t2/exists? :model/Action :id action-id))))))
+
 (deftest health-check-candidates-test
   (testing "startup health checks pick one representative database per engine: the lowest id, skipping
             audit/sample/destination databases"
@@ -126,6 +137,7 @@
                    :model/Database {dest :id}   {:engine :mysql :router_database_id router}
                    :model/Database {sample :id} {:engine :mysql :is_sample true}
                    :model/Database {audit :id}  {:engine :mysql :is_audit true}
+                   :model/Database {stub :id}   {:engine :mysql :is_stub true}
                    :model/Database {_mysql :id} {:engine :mysql}
                    :model/Database {pg2 :id}    {:engine :postgres}
                    :model/Database {pg3 :id}    {:engine :postgres}]
@@ -145,7 +157,9 @@
         (testing "sample databases can't claim an engine's slot"
           (is (not (contains? candidate-ids sample))))
         (testing "audit databases are never candidates"
-          (is (not (contains? candidate-ids audit))))))))
+          (is (not (contains? candidate-ids audit))))
+        (testing "stub databases can't claim an engine's slot"
+          (is (not (contains? candidate-ids stub))))))))
 
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
@@ -190,8 +204,9 @@
             (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception")))
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms -1]
-              (database/health-check-database! (mt/db))
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 1]
+              (with-redefs [driver/can-connect? (fn [& _args] (Thread/sleep 500) true)]
+                (database/health-check-database! (mt/db)))
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
               (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))
@@ -405,6 +420,7 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *secret-can-connect?* (constantly true))
 
 (defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))
@@ -803,34 +819,17 @@
              #"private or internal network address"
              (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
 
-(deftest audit-db-is-not-subject-to-the-network-policy-test
-  ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no
-  ;; `:details` and is reached over the app-db connection. Under the policy its empty details read as `localhost` --
-  ;; every `:sql-jdbc` client substitutes that -- so validating it refuses the instance's own app db.
-  ;;
-  ;; This has to hold on update as well as insert, because
-  ;; [[metabase-enterprise.audit-app.audit/adjust-audit-db-to-source!]] flips `:engine` to "postgres" on every boot
-  ;; that installs analytics, and an `:engine` change is what makes `before-update` validate every details map. A
-  ;; refusal there is thrown during init, so Metabase fails to start rather than failing a request.
+(deftest empty-details-are-not-subject-to-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
-    (testing "the audit db can be created"
-      (mt/with-temp [:model/Database db {:is_audit true, :engine :h2, :details {}}]
-        (testing "and its engine can be flipped the way installing analytics flips it"
-          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))))
-    (testing "an ordinary database with the same empty details is still refused"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"private or internal network address"
-           (t2/insert! :model/Database {:name "not the audit db", :engine :postgres, :details {}}))))
-    (testing "`is_audit` is not itself a way past the policy -- serdes import can set it, so the exemption is
-             narrowed to the detail-less shape the analytics installer actually writes"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"private or internal network address"
-           (t2/insert! :model/Database {:name       "audit-flavored smuggling"
-                                        :is_audit   true
-                                        :engine     (u/qualified-name ::host-details-driver)
-                                        :details    {:host "127.0.0.1"}}))))))
+    (testing "a database with empty details can be created"
+      (mt/with-temp [:model/Database db {:engine :h2, :details {}}]
+        (testing "and its engine changed, the way installing analytics flips the audit db's"
+          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))
+        (testing "but giving it an internal address is refused"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"private or internal network address"
+               (t2/update! :model/Database (:id db) {:details {:host "127.0.0.1"}}))))))))
 
 (deftest attached-dwh-relaxes-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
@@ -870,13 +869,11 @@
              (t2/select-one-fn :engine :model/Database :id db-id))))))
 
 (deftest ^:parallel serdes-extract-is-stub-test
-  (testing "serdes/extract-one preserves :is_stub true and elides it when false"
+  (testing "serdes/extract-one never exports :is_stub"
     (mt/with-temp [:model/Database stub     {:engine :h2 :name "stub" :is_stub true}
                    :model/Database non-stub {:engine :h2 :name "non-stub"}]
-      (testing "stub DB carries :is_stub true into the extracted map"
-        (is (true? (:is_stub (serdes/extract-one "Database" nil stub)))))
-      (testing "non-stub DB elides :is_stub from the extracted map (matches default)"
-        (is (not (contains? (serdes/extract-one "Database" nil non-stub) :is_stub)))))))
+      (is (not (contains? (serdes/extract-one "Database" nil stub) :is_stub)))
+      (is (not (contains? (serdes/extract-one "Database" nil non-stub) :is_stub))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"

@@ -8,7 +8,7 @@ import { useSelector } from "metabase/redux";
 import { getIsDndAvailable } from "metabase/selectors/app";
 import type { CollectionItem } from "metabase-types/api";
 
-import { TBody } from "../BaseItemsTable.styled";
+import { TBody } from "../TableElements";
 
 export const BaseItemsTableBody = ({
   items,

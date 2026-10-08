@@ -192,6 +192,10 @@
   "Should we enable configuring session timeouts?"
   :session-timeout-config)
 
+(define-premium-feature ^{:added "0.65.0"} enable-session-management?
+  "Should we enable listing and revoking users' sessions?"
+  :session-management)
+
 (define-premium-feature can-disable-password-login?
   "Can we disable login by password?"
   :disable-password-login)
@@ -294,9 +298,9 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
-(define-premium-feature ^{:added "0.65.0"} enable-data-apps?
+(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
   "Should we allow users to publish and run data apps?"
-  :data-apps-preview)
+  :data-apps)
 
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
@@ -429,6 +433,7 @@
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
+   :session-management             (enable-session-management?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)
    :sso_google                     (enable-sso-google?)
