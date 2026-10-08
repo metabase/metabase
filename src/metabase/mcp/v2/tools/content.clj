@@ -38,7 +38,6 @@
    [metabase.models.interface :as mi]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
-   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -442,57 +441,6 @@
                  (redaction/hydrate-and-redact-notification notification)))))
           (common/throw-not-found :subscription id-or-eid)))))
 
-;;; --------------------------------------------------- transform --------------------------------------------------
-
-(defn- fetch-transform
-  [id-or-eid]
-  (let [transform (v2.resolve/resolve-and-read-with :model/Transform id-or-eid
-                                                    (fn [id] (transforms/get-transform id)))]
-    (-> (select-keys transform [:id :name :description :source_type :collection_id :entity_id
-                                :source_database_id :target_db_id :run_trigger :creator_id
-                                :owner_user_id :owner_email :tag_ids :created_at :updated_at])
-        (assoc :target   (:target transform)
-               :last_run (some-> (:last_run transform)
-                                 (select-keys [:id :status :start_time :end_time :message])
-                                 u/remove-nils)
-               ;; The target table is hydrated without its own permission check (the transform
-               ;; read-check verifies source tables only), so gate it here.
-               :table    (when-let [table (:table transform)]
-                           (when (mi/can-read? table)
-                             (select-keys table [:id :name :schema :db_id])))
-               ::transform transform))))
-
-(defn- transform-definition
-  "The transform's source: query sources have their query normalized and serialized to the
-   numeric-id MBQL 5 shape; other source types (e.g. python) pass through as stored."
-  [row]
-  (let [source (get-in row [::transform :source])]
-    (if-let [query (:query source)]
-      (let [mp         (some-> (:database query) lib-be/application-database-metadata-provider)
-            serialized (some-> (card-query mp query) lib/prepare-for-serialization)]
-        (when serialized
-          (assoc (dissoc source :query) :query serialized)))
-      source)))
-
-(def ^:private transform-concise-keys
-  [:id :name :description :source_type :target :collection_id :last_run])
-
-(def ^:private transform-detailed-keys
-  (into transform-concise-keys
-        [:entity_id :source_database_id :target_db_id :run_trigger :creator_id :owner_user_id
-         :owner_email :tag_ids :table :created_at :updated_at]))
-
-(def ^:private transform-sample
-  (-> (zipmap transform-detailed-keys (repeat "x"))
-      (assoc :target {:type "x" :schema "x" :name "x"}
-             :last_run {:id 1 :status "x" :start_time "x" :end_time "x" :message "x"}
-             :table {:id 1 :name "x" :schema "x" :db_id 1}
-             :tag_ids [1])))
-
-(projections/register-key-projection! :transform transform-concise-keys
-                                      :detailed-keys transform-detailed-keys
-                                      :sample transform-sample)
-
 ;;; ------------------------------------------------ type dispatch -------------------------------------------------
 
 ;;; Include-section builders — each a `(row -> fragment-map-or-nil)`, co-located into `type->spec`
@@ -568,9 +516,7 @@
    "collection"   {:fetch fetch-collection}
    "snippet"      {:fetch fetch-snippet}
    "alert"        {:fetch #(fetch-notification "alert" (message/raw "Alerts") :notification/card %)}
-   "subscription" {:fetch fetch-subscription}
-   "transform"    {:fetch fetch-transform
-                   :includes {"definition" (definition-include transform-definition)}}})
+   "subscription" {:fetch fetch-subscription}})
 
 (def ^:private content-types
   (vec (sort (keys type->spec))))
@@ -665,7 +611,7 @@
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim), and materialized parameters (the same tags viewed as parameters); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids) in the shape execute_query and question_write accept; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
+  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim), and materialized parameters (the same tags viewed as parameters); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins). include adds sections on demand — definition returns the stored query (numeric ids) in the shape execute_query and question_write accept; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
   {:name         "get_content"
    :scope        metabot.scope/agent-content-read
    :annotations  {:readOnlyHint true :idempotentHint true}

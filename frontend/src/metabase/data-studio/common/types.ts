@@ -6,7 +6,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
-export type LibrarySectionType = "data" | "metrics" | "snippets";
+export type LibrarySectionType = "data" | "metrics" | "dashboards" | "snippets";
 
 export type EmptyStateData = {
   model: "empty-state";

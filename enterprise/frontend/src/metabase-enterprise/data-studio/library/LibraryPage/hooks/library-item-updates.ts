@@ -17,6 +17,7 @@ export function selectedItemToMovable(item: SelectedItem): MovableItem {
   return match<SelectedItem, MovableItem>(item)
     .with({ model: "table" }, () => ({ model: "table", id }))
     .with({ model: "metric" }, () => ({ model: "metric", id }))
+    .with({ model: "dashboard" }, () => ({ model: "dashboard", id }))
     .with({ model: "snippet" }, () => ({ model: "snippet", id }))
     .with({ model: "collection", section: "snippets" }, () => ({
       model: "snippet-collection",
@@ -31,6 +32,11 @@ export function selectedItemToArchivable(item: SelectedItem): ArchivableItem {
   return match<SelectedItem, ArchivableItem>(item)
     .with({ model: "metric" }, () => ({
       model: "metric",
+      id,
+      can_write: canWrite,
+    }))
+    .with({ model: "dashboard" }, () => ({
+      model: "dashboard",
       id,
       can_write: canWrite,
     }))

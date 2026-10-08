@@ -137,7 +137,7 @@ Allowed iframe hosts. Includes a list of popular hosts by default; set to ' ' to
 - [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
 - [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
 
-Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics.
+Enable logging of embed path, query parameters, user attribute values, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics.
 
 ### `MB_ANON_TRACKING_ENABLED`
 

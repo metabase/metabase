@@ -2142,9 +2142,15 @@
                                                            :native   {:query (str "SELECT * FROM no_such_table -- "
                                                                                   error-leak-sql-canary)}}}]
             (let [dashcard (add-card-to-dashboard! card dash)]
-              (is (nil? (:public_uuid card)))
-              (assert-generic-query-error
-               (client/client-full-response :get (pivot-dashcard-url dash card dashcard))))))))))
+              ;; Both pivot flows fail with the same H2 "table not found" root cause, but H2 embeds the
+              ;; compiled SQL in its error message and the compiled SQL has different Metabase-added
+              ;; comments per path. The parity signature compares message text, so it flags this as a
+              ;; divergence even though the user-visible outcome is identical. Disable parity for this
+              ;; test rather than loosen the signature across the board.
+              (api.pivots/without-pivot-parity-check
+               (is (nil? (:public_uuid card)))
+               (assert-generic-query-error
+                (client/client-full-response :get (pivot-dashcard-url dash card dashcard)))))))))))
 
 (deftest public-card-query-exception-outside-qp-does-not-leak-test
   (testing "GET /api/public/card/:uuid/query"

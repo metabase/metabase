@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -162,6 +163,65 @@
   (or (not-empty (:reasoning m))
       (not-empty (:reasoning_content m))))
 
+(defn- conj-tool-call-delta
+  "Fold one `delta.tool_calls` entry into `state`, the tool calls a response has streamed so far:
+  `:calls`, a vector of `{:id :name :args}` in arrival order, `:args` holding the argument fragments;
+  `:by-key`, the position of the call each `index` and each `id` last addressed; and
+  `:previous`, the position the previous entry addressed.
+
+  An entry joins the call its `index` addresses, falling back to its `id`, then to the previous entry's
+  call. A blank `id` counts as no `id`. It opens a new call when nothing is addressed yet, or when it
+  carries an `id` that differs from the addressed call's — a server reusing one `index` for several
+  calls. A call adopts the first `id` and `name` any of its entries carry. The `index` outranks the `id`, so
+  two calls that have the same `id` at different indexes stay two calls, and [[with-ids]] rejects them."
+  [{:keys [calls by-key previous] :as _state} {:keys [index id function] :as _tool-call}]
+  (let [id       (when-not (str/blank? id) id)
+        pos      (cond
+                   (some? index) (get by-key index)
+                   id            (get by-key id)
+                   :else         previous)
+        existing (some->> pos (nth calls))
+        new?     (or (nil? existing)
+                     (and id (:id existing) (not= id (:id existing))))
+        pos      (if new? (count calls) pos)
+        base     (if new? {:args []} existing)
+        call     (cond-> base
+                   (and id (nil? (:id base)))          (assoc :id id)
+                   (and (not-empty (:name function))
+                        (nil? (:name base)))           (assoc :name (:name function))
+                   (not-empty (:arguments function))   (update :args conj (:arguments function)))]
+    {:calls    (assoc calls pos call)
+     :by-key   (cond-> by-key
+                 (some? index) (assoc index pos)
+                 id            (assoc id pos))
+     :previous pos}))
+
+(defn- with-ids
+  "Give each call in `calls` that has no `id` a minted one. Downstream, chunks and tool results join by
+  `toolCallId`, so the server must send a different `id` for each call. If two calls have the same `id`, this
+  throws: no known server does this, so we do not guess how to separate them."
+  [calls]
+  (doseq [[id same-id-calls] (group-by :id (filter :id calls))
+          :when (> (count same-id-calls) 1)]
+    (throw (ex-info (format "Model stream sent the tool call id %s for %d different calls"
+                            (pr-str id) (count same-id-calls))
+                    {:id         id
+                     :tool-names (mapv :name same-id-calls)})))
+  (mapv #(update % :id (fn [id] (or id (core/mkid)))) calls))
+
+(defn- tool-call-chunks
+  "The AI SDK chunks for one assembled tool call: its start, one delta that holds all its arguments, and
+  its availability. The call is emitted whole, so one delta is sufficient. A call that never received a
+  `name` cannot be run and yields no chunks."
+  [{:keys [id name args]}]
+  (if (str/blank? name)
+    (do (log/warnf "Dropping a streamed tool call that carried no function name (id %s)" (pr-str id))
+        [])
+    (let [arguments (str/join args)]
+      (cond-> [{:type :tool-input-start :toolCallId id :toolName name}]
+        (not-empty arguments) (conj {:type :tool-input-delta :toolCallId id :inputTextDelta arguments})
+        true                  (conj {:type :tool-input-available :toolCallId id :toolName name})))))
+
 (defn chat-completions->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
@@ -182,12 +242,12 @@
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
 
-  A delta's `tool_calls` is an array and every entry is translated, in order: a
-  server may put a whole turn's worth of calls in one delta rather than streaming
-  them one per delta. Identity comes from the tool-call `id` where there is one,
-  and from the open block otherwise, so an entry naming a different `id` closes
-  the previous block and opens a new one, while an entry with no `id` — or with
-  the open one repeated but no `:name` — carries more arguments for it.
+  Tool calls are assembled per call — keyed by `index`, falling back to `id` (see
+  [[conj-tool-call-delta]]) — and emitted once the response finishes, each call's
+  chunks contiguous and in arrival order. That tolerates servers that send a call's
+  `id` late, repeat it on every chunk, put several calls in one delta, or interleave
+  the deltas of parallel calls; the cost is that no tool call is emitted before the
+  response's `finish_reason` (or the end of the stream).
 
   Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]. A reason the table maps to
   \"error\" (Mistral's `error`, Z.AI's `network_error`) fails the response the same way an error object does.
@@ -203,53 +263,35 @@
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons {:keys [forward-reasoning?]}]
    (fn [rf]
-     (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
-           current-id   (volatile! nil) ;; active chunk id (text-id, reasoning-id, or tool call_id)
+     (let [current-type (volatile! nil) ;; :text | :reasoning | nil
            message-id   (volatile! nil)
            model-name   (volatile! nil)
-           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
+           ;; carried across start/delta/end, same as openai.clj; :id is the open block's id
+           payload      (volatile! {})
            stop-reason  (volatile! nil)
-           clear!       (fn []
-                          (vreset! current-type nil)
-                          (vreset! current-id nil)
-                          (vreset! payload {}))
+           no-calls     {:calls [] :by-key {} :previous nil}
+           tool-calls   (volatile! no-calls)
+           ;; Close the open text or reasoning block, if there is one
            close!       (fn [result]
-                          (u/prog1 (rf result (merge {:type (case @current-type
-                                                              :text          :text-end
-                                                              :reasoning     :reasoning-end
-                                                              :function_call :tool-input-available)}
-                                                     @payload))
-                            (clear!)))
-           ;; One entry from a delta's `tool_calls`. `@current-type` is `:function_call` or nil on
-           ;; entry — the outer clause closes any text or reasoning block first — and the nil case has
-           ;; to be excluded explicitly: `close!`'s `case` has no default and would throw on it.
-           emit-tool-call!
-           (fn [result {:keys [id] {tool-name :name :keys [arguments]} :function}]
-             (cond-> result
-               (and id
-                    (= :function_call @current-type)
-                    (not= id @current-id))     (close!)
-               (and id tool-name)              (-> (u/prog1
-                                                     (vreset! current-type :function_call)
-                                                     (vreset! current-id id)
-                                                     (vreset! payload {:toolCallId id
-                                                                       :toolName   tool-name}))
-                                                   (rf (merge {:type :tool-input-start} @payload)))
-               ;; `not-empty`, not `str/blank?`: the fragments are joined verbatim, so dropping a
-               ;; whitespace-only one deletes those characters from the JSON string. Inside a string
-               ;; they are content, not formatting — indentation in streamed SQL, and syntax in
-               ;; streamed Python.
-               ;; arguments with no open call to belong to — a new `id` without a `:name`, or no call
-               ;; started yet — are dropped: a delta without a `toolCallId` has no block to join
-               (and (not-empty arguments)
-                    (:toolCallId @payload))    (rf {:type           :tool-input-delta
-                                                    :toolCallId     (:toolCallId @payload)
-                                                    :inputTextDelta arguments})))]
+                          (if-let [block-type @current-type]
+                            (u/prog1 (rf result (merge {:type (case block-type
+                                                                :text      :text-end
+                                                                :reasoning :reasoning-end)}
+                                                       @payload))
+                              (vreset! current-type nil)
+                              (vreset! payload {}))
+                            result))
+           ;; Close the open block, then emit the assembled tool calls. A `reduced` result stops the
+           ;; emission and stays wrapped, so the consumer's early termination reaches the caller.
+           finish!      (fn [result]
+                          (u/prog1 (u/reduce-preserving-reduced
+                                    rf
+                                    (close! result)
+                                    (mapcat tool-call-chunks (with-ids (:calls @tool-calls))))
+                            (vreset! tool-calls no-calls)))]
        (fn
          ([result]
-          (cond-> result
-            @current-type (close!)
-            true          (rf)))
+          (rf (unreduced (finish! result))))
 
          ([result {:keys [id model choices usage error] :as _chunk}]
           (let [choice        (first choices)
@@ -260,21 +302,17 @@
                                 (or (:message error)
                                     (some-> error pr-str)
                                     (tru "The model provider failed to complete the response")))
-                tool-calls    (:tool_calls delta)
+                call-deltas   (:tool_calls delta)
                 reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
                 ;; Empty-string content (common between tool calls) is ignored
-                ;; to avoid spurious text blocks that would close open tools.
+                ;; to avoid spurious text blocks.
                 chunk-type    (cond
                                 (not-empty (:content delta))  :text
-                                ;; tool_calls outrank reasoning: a delta carrying both would
-                                ;; otherwise classify as :reasoning, and the tool call's opening
-                                ;; chunk — the only one carrying its id and name — would be
-                                ;; lost, breaking the tool loop. Ranked this way, such a delta
-                                ;; loses its reasoning fragment instead: display text,
-                                ;; recoverable. No probed provider combines the two in one
-                                ;; delta today.
-                                (seq tool-calls)              :function_call
+                                ;; tool_calls outrank reasoning, so a delta carrying both loses its
+                                ;; reasoning fragment: display text, recoverable. No probed provider
+                                ;; combines the two in one delta today.
+                                (seq call-deltas)             :function_call
                                 (and forward-reasoning?
                                      (delta-reasoning delta)) :reasoning
                                 :else                         nil)]
@@ -284,9 +322,7 @@
                                                                    (u/prog1
                                                                      (vreset! message-id id)
                                                                      (vreset! model-name model)))
-              ;; Close the previous block when the kind of content changes. A change of tool
-              ;; *within* a run of tool calls is `emit-tool-call!`'s to notice, since only it
-              ;; sees each call's id.
+              ;; Close the open text or reasoning block when the content type changes
               (and @current-type
                    chunk-type
                    (not= chunk-type @current-type))            (close!)
@@ -295,25 +331,23 @@
                    (not= @current-type :text))                 (-> (u/prog1
                                                                      (let [tid (core/mkid)]
                                                                        (vreset! current-type :text)
-                                                                       (vreset! current-id tid)
                                                                        (vreset! payload {:id tid})))
                                                                    (rf (merge {:type :text-start} @payload)))
               ;; Text delta
               (and (= chunk-type :text)
                    (some? (:content delta)))                   (rf {:type  :text-delta
-                                                                    :id    @current-id
+                                                                    :id    (:id @payload)
                                                                     :delta (:content delta)})
               ;; Start a new reasoning block
               (and (= chunk-type :reasoning)
                    (not= @current-type :reasoning))            (-> (u/prog1
                                                                      (let [rid (core/mkid)]
                                                                        (vreset! current-type :reasoning)
-                                                                       (vreset! current-id rid)
                                                                        (vreset! payload {:id rid})))
                                                                    (rf (merge {:type :reasoning-start} @payload)))
               ;; Reasoning delta
               (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
-                                                                    :id    @current-id
+                                                                    :id    (:id @payload)
                                                                     :delta (delta-reasoning delta)})
               ;; A delta may carry ready-namespaced provider metadata for the
               ;; open reasoning block, ridden out on its end chunk the way
@@ -327,20 +361,17 @@
                    (= @current-type :reasoning))               (u/prog1
                                                                  (vswap! payload assoc
                                                                          :providerMetadata reasoning-md))
-              ;; Tool calls — every entry in the delta, in order. A delta can carry text and calls together: Ollama
-              ;; puts both in one delta when its parser flushes them at the same time. The text comes first, so its
-              ;; block is closed here before the calls start.
-              (seq tool-calls)                                 (as-> r
-                                                                     (cond-> r (= :text @current-type) (close!))
-                                                                 (u/reduce-preserving-reduced emit-tool-call! r tool-calls))
-              ;; Closing a tool call runs it, so drop one that an error cuts off
-              (and error-text
-                   (= @current-type :function_call))           (u/prog1 (clear!))
-              ;; Finish reason — close whatever is open
+              ;; Every tool_calls entry joins its call, whatever the delta's content type
+              (seq call-deltas)                                (u/prog1
+                                                                 (vswap! tool-calls
+                                                                         #(reduce conj-tool-call-delta % call-deltas)))
+              ;; Emitting a tool call runs it, so drop the calls an error cuts off
+              error-text                                       (u/prog1
+                                                                 (vreset! tool-calls no-calls))
+              ;; Finish reason — close whatever is open, then emit the assembled tool calls
               (some? finish-reason)                            (-> (u/prog1
                                                                      (vreset! stop-reason finish-reason))
-                                                                   (cond->
-                                                                    @current-type (close!)))
+                                                                   (finish!))
               ;; Usage (often on a separate final chunk with empty choices)
               (some? usage)                                    (rf (cond-> {:type  :usage
                                                                             :usage (usage->aisdk-usage usage)
@@ -350,7 +381,7 @@
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
                                                                             :raw-finish-reason @stop-reason)))
               ;; An error in the stream, e.g. a failure partway through generation
-              error-text                                       (-> (cond-> @current-type (close!))
+              error-text                                       (-> (close!)
                                                                    (rf {:type :error :errorText error-text}))))))))))
 
 ;;; Request body

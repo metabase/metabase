@@ -118,7 +118,7 @@
    1. Accumulates queries/charts from tool-output parts (via :structured-output)
    2. Buffers markdown links to handle links split across text chunks
    3. Resolves metabase:// URLs to proper Metabase paths
-   4. Flushes any remaining buffered content at stream end
+   4. Flushes buffered content where the text ends: before the next part other than text or usage, and at stream end
 
    Parameters:
    - initial-queries: Initial map of query-id to query data
@@ -131,15 +131,18 @@
                                (or initial-charts {})
                                link-registry-atom))
           queries (volatile! (or initial-queries {}))
-          charts  (volatile! (or initial-charts {}))]
+          charts  (volatile! (or initial-charts {}))
+          text-id (volatile! nil)
+          flush!  (fn [result]
+                    (let [flushed (flush-state @state)]
+                      (if (seq flushed)
+                        (do (vswap! state assoc :buffer "")
+                            (rf result {:type :text :id @text-id :text flushed}))
+                        result)))]
       (fn
         ([] (rf))
         ([result]
-         ;; Flush any remaining buffered content
-         (let [flushed (flush-state @state)]
-           (if (seq flushed)
-             (rf (rf result {:type :text :text flushed}))
-             (rf result))))
+         (rf (unreduced (flush! result))))
         ([result part]
          ;; Accumulate state from tool outputs
          (when (= (:type part) :tool-output)
@@ -153,10 +156,18 @@
            ;; Update state with new context
            (vswap! state with-context @queries @charts))
          ;; Process text parts through link buffer
-         (if (= (:type part) :text)
+         (case (:type part)
+           :text
            (let [[new-state processed-text] (step @state (:text part))]
              (vreset! state new-state)
+             (vreset! text-id (:id part))
              (if (seq processed-text)
                (rf result (assoc part :text processed-text))
                result))
-           (rf result part)))))))
+           ;; Some servers send usage with every chunk, so a usage part doesn't end the text
+           :usage
+           (rf result part)
+           (let [result (flush! result)]
+             (if (reduced? result)
+               result
+               (rf result part)))))))))

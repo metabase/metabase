@@ -212,9 +212,7 @@
                "openai/gpt-4o"                              false
                "bedrock/anthropic.claude-opus-4-8"          true
                "bedrock/anthropic.claude-haiku-4-5"         false
-               ;; requests reasoning (encrypted replay), but the mantle never
-               ;; streams summaries, so nothing renders — see bedrock/reasoning-model?
-               "bedrock/openai.gpt-5.5"                     false
+               "bedrock/openai.gpt-5.5"                     true
                "azure/anthropic/claude-opus-5"              true
                "azure/anthropic/claude-haiku-4-5"           false
                "azure/openai/gpt-5.4"                       true

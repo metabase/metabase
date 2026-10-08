@@ -1,0 +1,137 @@
+import { useCallback } from "react";
+import { msgid, ngettext, t } from "ttag";
+
+import { getErrorMessage } from "metabase/api/utils";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+import { useRevokeSessionsMutation } from "metabase-enterprise/api";
+import type { RevokeSessionsRequest, Session } from "metabase-types/api";
+
+import { getSessionUserName } from "../utils";
+
+type RevokeConfirmation = {
+  title: string;
+  message: string;
+  request: RevokeSessionsRequest;
+};
+
+type UseSessionRevocationOptions = {
+  onRevoked: (request: RevokeSessionsRequest) => void;
+};
+
+export function useSessionRevocation({
+  onRevoked,
+}: UseSessionRevocationOptions) {
+  const dispatch = useDispatch();
+  const [revokeSessions, { isLoading: isRevoking }] =
+    useRevokeSessionsMutation();
+  const { modalContent: confirmModal, show: showConfirm } = useConfirmation();
+
+  const revoke = useCallback(
+    async (request: RevokeSessionsRequest) => {
+      try {
+        const { revoked, remaining } = await revokeSessions(request).unwrap();
+        dispatch(
+          addUndo({
+            message: ngettext(
+              msgid`Revoked ${revoked} session`,
+              `Revoked ${revoked} sessions`,
+              revoked,
+            ),
+          }),
+        );
+        if (remaining > 0) {
+          dispatch(
+            addUndo({
+              icon: "warning",
+              message: ngettext(
+                msgid`${remaining} new session started while revoking`,
+                `${remaining} new sessions started while revoking`,
+                remaining,
+              ),
+            }),
+          );
+        }
+        onRevoked(request);
+      } catch (error) {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            message: getErrorMessage(error, t`Could not revoke sessions.`),
+          }),
+        );
+      }
+    },
+    [dispatch, onRevoked, revokeSessions],
+  );
+
+  const confirmRevoke = useCallback(
+    ({ title, message, request }: RevokeConfirmation) => {
+      showConfirm({
+        title,
+        message,
+        confirmButtonText: t`Revoke`,
+        onConfirm: () => revoke(request),
+      });
+    },
+    [revoke, showConfirm],
+  );
+
+  const revokeSelected = useCallback(
+    (sessions: Session[]) => {
+      const count = sessions.length;
+      confirmRevoke({
+        title: ngettext(
+          msgid`Revoke ${count} session?`,
+          `Revoke ${count} sessions?`,
+          count,
+        ),
+        message: t`Anyone using them will be signed out and need to sign in again.`,
+        request: { ids: sessions.map((session) => session.id) },
+      });
+    },
+    [confirmRevoke],
+  );
+
+  const revokeSession = useCallback(
+    (session: Session) => {
+      const name = getSessionUserName(session.user);
+      confirmRevoke({
+        title: t`Revoke this session?`,
+        message: t`${name} will be signed out of this session and need to sign in again.`,
+        request: { ids: [session.id] },
+      });
+    },
+    [confirmRevoke],
+  );
+
+  const revokeUserSessions = useCallback(
+    (session: Session) => {
+      const name = getSessionUserName(session.user);
+      confirmRevoke({
+        title: t`Revoke all sessions for ${name}?`,
+        message: t`${name} will be signed out everywhere.`,
+        request: { "user-id": session.user.id },
+      });
+    },
+    [confirmRevoke],
+  );
+
+  const revokeAll = useCallback(() => {
+    confirmRevoke({
+      title: t`Revoke all sessions?`,
+      message: t`Everyone will be signed out and need to sign in again, except you in this session.`,
+      request: {},
+    });
+  }, [confirmRevoke]);
+
+  return {
+    isRevoking,
+    confirmModal,
+    revokeSelected,
+    revokeSession,
+    revokeUserSessions,
+    revokeAll,
+  };
+}
