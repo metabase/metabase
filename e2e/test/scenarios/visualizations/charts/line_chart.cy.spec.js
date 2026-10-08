@@ -49,15 +49,15 @@ describe("scenarios > visualizations > line chart", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Right").click();
-    H.echartsContainer()
-      .findByText("Count")
-      .then((label) => {
-        const { x: xRight, y: yRight } = H.getXYTransform(label);
-        cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
+    cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
+      H.echartsContainer()
+        .findByText("Count")
+        .should(($label) => {
+          const { x: xRight, y: yRight } = H.getXYTransform($label);
           expect(yRight).to.be.eq(yLeft);
           expect(xRight).to.be.greaterThan(xLeft);
         });
-      });
+    });
   });
 
   it("should display line settings only for line/area charts", () => {
@@ -721,7 +721,11 @@ describe("scenarios > visualizations > line chart", () => {
         display: "line",
       });
 
-      cy.get("g.axis.yr").should("not.exist");
+      H.echartsContainer().within(() => {
+        cy.findByText(/^Created At/).should("be.visible");
+        cy.findByText("Average of Total").should("not.exist");
+        cy.findByText("Min of Total").should("not.exist");
+      });
     });
 
     it("should split the y-axis when columns are of different semantic_type", () => {
@@ -1306,6 +1310,12 @@ describe("scenarios > visualizations > line chart", () => {
         .trigger("mousedown", 180, 200)
         .trigger("mousemove", 180, 200)
         .trigger("mouseup", 400, 200);
+
+      cy.wait("@dataset");
+      cy.findByTestId("qb-filters-panel").should(
+        "contain",
+        "Created At: Month is",
+      );
 
       H.chartPathWithFillColor("#EF8C8C").should("be.visible");
       H.cartesianChartCircleWithColor("#A989C5");

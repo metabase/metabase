@@ -13,13 +13,13 @@ describe("scenarios > visualizations > waterfall", () => {
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
     H.chartPathWithFillColor("#88BF4D").should("be.visible"); // A bar
     H.chartPathWithFillColor("#303D46").should("be.visible"); // Total bar
-    H.echartsContainer().get("text").contains("Total");
+    H.echartsContainer().find("text").contains("Total");
 
     if (xLabel) {
-      H.echartsContainer().get("text").contains(xLabel);
+      H.echartsContainer().find("text").contains(xLabel);
     }
     if (yLabel) {
-      H.echartsContainer().get("text").contains(yLabel);
+      H.echartsContainer().find("text").contains(yLabel);
     }
   }
 
@@ -57,6 +57,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     H.sidebar().findAllByDisplayValue("Linear").first().click();
     H.popover().findByText("Ordinal").click();
+    H.sidebar().findByDisplayValue("Ordinal").should("exist");
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -122,7 +123,8 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    H.echartsContainer().get("text").contains("Total").should("not.exist");
+    H.chartPathWithFillColor("#303D46").should("exist");
+    H.echartsContainer().find("text").contains("Total").should("not.exist");
   });
 
   describe("multi-series (metabase#15152)", () => {
@@ -228,10 +230,13 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Count").click();
 
-    H.echartsContainer().should("exist"); // Chart renders after adding a metric
+    H.echartsContainer().findByText("Total").should("exist");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Add another/).should("not.exist");
+    H.sidebar().within(() => {
+      cy.findByDisplayValue("Created At: Year").should("exist");
+      cy.findByText("Add series breakout").should("not.exist");
+      cy.findByText(/Add another/).should("not.exist");
+    });
   });
 
   it("should work for unaggregated data (metabase#15465)", () => {
@@ -486,24 +491,24 @@ describe("scenarios > visualizations > waterfall", () => {
         cy.findByRole("switch").click({ force: true });
       });
 
-      H.echartsContainer().get("text").contains("Total").should("not.exist");
+      H.echartsContainer().find("text").contains("Total").should("not.exist");
 
       cy.get('[data-field-title="Show total"]').within(() => {
         cy.findByRole("switch").click({ force: true });
       });
-      H.echartsContainer().get("text").contains("Total").should("exist");
+      H.echartsContainer().find("text").contains("Total").should("exist");
     });
 
     it("should allow toggling of value labels", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      H.echartsContainer().get("text").contains("(4.56)").should("not.exist");
+      H.echartsContainer().find("text").contains("(4.56)").should("not.exist");
 
       cy.get('[data-field-title="Show values on data points"]')
         .findByRole("switch")
         .click({ force: true });
-      H.echartsContainer().get("text").contains("(4.56)").should("be.visible");
+      H.echartsContainer().find("text").contains("(4.56)").should("be.visible");
     });
   });
 });
@@ -526,5 +531,5 @@ const switchToWaterfallDisplay = () => {
 
 function getWaterfallDataLabels() {
   // paint-order='stroke' targets the waterfall labels only
-  return H.echartsContainer().get("text[paint-order='stroke']");
+  return H.echartsContainer().find("text[paint-order='stroke']");
 }

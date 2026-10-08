@@ -431,7 +431,11 @@ describe("scenarios > visualizations > bar chart", () => {
         display: "bar",
       });
 
-      cy.get("g.axis.yr").should("not.exist");
+      H.echartsContainer().within(() => {
+        cy.findByText("Created At: Month").should("be.visible");
+        cy.findByText("Average of Total").should("not.exist");
+        cy.findByText("Min of Total").should("not.exist");
+      });
     });
 
     it("should split the y-axis on native queries with two numeric columns", () => {
@@ -816,7 +820,7 @@ describe("scenarios > visualizations > bar chart", () => {
           .should("contain", "6")
           .and("contain", "13")
           .and("contain", "19");
-        cy.get(".axis.yr").should("not.exist");
+        H.echartsContainer().findAllByText("Count").should("have.length", 1);
       });
   });
 
@@ -866,7 +870,7 @@ describe("scenarios > visualizations > bar chart", () => {
         // since the first metric is scaled to be half of the second metric
         // the first bar should be half the size of the first bar
         // within a given tolerance
-        expect(heightMetricOne - heightMetricTwo / 2).to.be.lessThan(0.1);
+        expect(heightMetricOne).to.be.closeTo(heightMetricTwo / 2, 0.5);
       });
     });
 
@@ -1135,14 +1139,14 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.wait("@dataset");
     H.echartsContainer().should("be.visible");
 
-    // Get all x-axis labels
-    H.echartsContainer().within(() => {
-      // ECharts renders axis labels as text elements in SVG
-      // We should see labels for all 12 months
-      cy.get('svg text[text-anchor="middle"]')
-        .should("have.length.at.least", 12)
-        .should("be.visible");
-    });
+    H.echartsContainer()
+      .find("text")
+      .filter((_index, element) =>
+        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/.test(
+          element.textContent,
+        ),
+      )
+      .should("have.length", 12);
   });
 
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
