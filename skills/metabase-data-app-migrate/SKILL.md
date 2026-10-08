@@ -31,7 +31,8 @@ Every step below follows from these. Never break them.
    or build. Do not run them earlier and do not "fix" their failures earlier.
 4. **Nothing generated is edited by hand.** `dist/` is written by
    `npm run build` and `src/metabase.data.ts` by the typed-schema export, never
-   by you.
+   by you. The entity IDs a definition names (`savedQuestionEntityId`,
+   `copiedActionEntityId`) change only where an upgrade guide says so.
 
 ## Step 0 - Locate the app and read its state
 
