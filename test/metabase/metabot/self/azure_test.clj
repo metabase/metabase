@@ -436,3 +436,9 @@
   (testing "a wrong-surface base URL produces the canonical 404 message plus the provider's detail"
     (is (= "Azure API endpoint or deployment was not found — check the base URL and deployment name — Resource not found"
            (list-models-error-message! 404 "{\"error\":{\"message\":\"Resource not found\"}}")))))
+
+(deftest context-window-tokens-retired-claude-test
+  (testing "a retired Claude deployment has no known context window"
+    (is (nil? (azure/context-window-tokens "anthropic/claude-opus-4-1"))))
+  (testing "a current Claude deployment keeps its context window"
+    (is (= 200000 (azure/context-window-tokens "anthropic/claude-opus-4-5")))))
