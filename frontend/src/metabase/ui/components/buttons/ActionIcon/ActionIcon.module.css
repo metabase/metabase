@@ -36,17 +36,6 @@
     color: var(--mb-color-icon-disabled);
     pointer-events: all;
   }
-
-  &[data-variant="warning"] {
-    color: var(--mb-color-feedback-warning);
-    background-color: transparent;
-
-    &:hover,
-    &:active,
-    &[data-is-active="true"] {
-      background-color: var(--mb-color-background_surface-warning);
-    }
-  }
 }
 
 .root[data-variant="default"] {

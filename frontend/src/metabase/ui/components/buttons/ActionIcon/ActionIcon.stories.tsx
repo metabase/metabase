@@ -20,19 +20,11 @@ const args = {
 
 const argTypes = {
   variant: {
-    options: [
-      "default",
-      "light",
-      "subtle",
-      "filled",
-      "outline",
-      "transparent",
-      "warning",
-    ],
+    options: ["default", "light", "subtle", "filled", "outline", "transparent"],
     control: { type: "select" },
   },
   color: {
-    options: [undefined, "brand", "negative", "positive"],
+    options: [undefined, "brand", "negative", "positive", "warning"],
     control: { type: "inline-radio" },
   },
   size: {
@@ -78,11 +70,17 @@ const MATRIX_STATES = [
 const MATRIX_COLORS = {
   neutral: undefined,
   brand: "brand",
+  negative: "negative",
+  positive: "positive",
+  warning: "warning",
 } as const;
 
 const COLOR_TITLES: Record<MatrixColor, string> = {
   neutral: "Neutral",
   brand: "Brand",
+  negative: "Negative",
+  positive: "Positive",
+  warning: "Warning",
 };
 
 const STATE_LABELS: Record<MatrixState, string> = {
@@ -297,7 +295,7 @@ export const VariantSubtle = {
     <VariantMatrix
       title="ActionIcon · subtle"
       variant="subtle"
-      colors={["neutral", "brand"]}
+      colors={["neutral", "brand", "negative", "positive", "warning"]}
       group
     />
   ),
