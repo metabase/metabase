@@ -114,7 +114,7 @@ describe("serializing what resources are written from", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("http://metabase.test/api/apps/serialize");
+    expect(url).toBe("http://metabase.test/api/apps/generate/resources");
     expect(init?.headers).toEqual({
       "Content-Type": "application/json",
       "X-API-Key": "mb_test_key",

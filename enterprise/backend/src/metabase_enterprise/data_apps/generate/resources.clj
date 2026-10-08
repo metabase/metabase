@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-apps.serialization
+(ns metabase-enterprise.data-apps.generate.resources
   "The files of a data app's collection: the saved question each `defineQuery` definition builds, and the copies of the
   actions the app runs and of the metrics its queries aggregate, each named and written as a remote-sync export writes
   it in the collection's folder.
@@ -188,10 +188,10 @@
                        copies)]
     (walk/postwalk #(get copy-ids % %) entity)))
 
-(mu/defn serialize :- [:map {:closed true}
-                       [:queries [:sequential ::data-apps.schema/file]]
-                       [:actions [:sequential ::data-apps.schema/file]]
-                       [:metrics [:sequential ::data-apps.schema/file]]]
+(mu/defn generate :- [:map {:closed true}
+                      [:queries [:sequential ::data-apps.schema/file]]
+                      [:actions [:sequential ::data-apps.schema/file]]
+                      [:metrics [:sequential ::data-apps.schema/file]]]
   "The files of a data app's collection: the saved question of each of `queries`, the copy of each of `actions`, and
   the copies of the metrics the queries aggregate, each named as serialization names it in the collection's folder.
   Each item comes back on its own, with its file or the error that stops it."

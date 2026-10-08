@@ -1,14 +1,13 @@
-(ns metabase.typed-schemas.schema.action
-  "Typed schema generation for actions that belong to no model."
+(ns metabase-enterprise.data-apps.generate.schemas.action
+  "The schema of the query actions that belong to no model."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.generate.schemas.common :as schemas.common]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.permissions.core :as perms]
-   [metabase.typed-schemas.common :as common]
-   [metabase.typed-schemas.db :as typed-schemas.db]
-   [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -68,7 +67,7 @@
         hidden?   (hidden-parameter-ids action)]
     (m/assoc-some
      {:kind       "action"
-      :key        (common/generated-key name id)
+      :key        (schemas.common/generated-key name id)
       :id         id
       :name       name
       :type       "query"
@@ -79,13 +78,13 @@
      :entityId entity_id)))
 
 (defn action-schemas
-  "Returns schema entries for the query actions without a model among `database-ids` (nil for unscoped),
-  leaving out the copies data apps own."
-  [database-ids]
-  (let [ids             (typed-schemas.db/model-less-query-action-ids database-ids (set (perms/data-app-collection-ids)))
+  "Returns schema entries for the query actions without a model, leaving out the copies data apps own and those a
+  routing destination backs."
+  []
+  (let [ids             (data-apps.db/model-less-query-action-ids (set (perms/data-app-collection-ids)))
         details-by-id   (when (seq ids) (u/index-by :id (actions/select-actions-for-ids nil ids)))
         details         (keep details-by-id ids)
-        destination-ids (schema.common/destination-db-ids (into #{} (keep :database_id) details))]
+        destination-ids (data-apps.db/destination-database-ids (into #{} (keep :database_id) details))]
     (into []
           (comp (remove #(contains? destination-ids (:database_id %)))
                 (map action-schema))

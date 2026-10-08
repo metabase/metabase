@@ -1,8 +1,14 @@
-(ns metabase.typed-schemas.common
-  "Shared helpers for typed-schema generation."
+(ns metabase-enterprise.data-apps.generate.schemas.common
+  "Shared helpers for generating a data app's schema."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.audit-app.core :as audit]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.metabot.core :as metabot]
+   [metabase.premium-features.core :as premium-features]
    [metabase.types.core]
    [metabase.util :as u]))
 
@@ -117,3 +123,37 @@
                           (dissoc :keyDisambiguator)
                           (assoc :key key))])
                entities ks))))
+
+(defn without-unavailable-cards
+  "`cards` without any backed by a routing destination database, and, while the audit feature is off, without the
+  audit database's and the audit collection's: the card details lookup refuses one in the audit collection, and one
+  on the audit database would be listed without its table."
+  [cards]
+  (let [destination-ids (data-apps.db/destination-database-ids (into #{} (keep :database_id) cards))
+        audit-off?      (not (premium-features/enable-audit-app?))]
+    (cond->> cards
+      (seq destination-ids) (remove #(contains? destination-ids (:database_id %)))
+      audit-off?            (remove #(or (= audit/audit-db-id (:database_id %))
+                                         (some-> (:collection_id %) audit/is-collection-id-audit?))))))
+
+(defn aggregation-result-column-with-metadata-provider
+  "Returns an aggregation result column using an existing metadata provider."
+  [metadata-provider query-definition]
+  (try
+    (let [query              (lib/query metadata-provider query-definition)
+          aggregation-column (m/find-first #(= (:lib/source %) :source/aggregations)
+                                           (lib/returned-columns query))]
+      (when aggregation-column
+        (metabot/->result-column query aggregation-column)))
+    (catch Exception _
+      nil)))
+
+(defn aggregation-result-column
+  "Returns the first aggregation result column for a saved query definition, for metrics and measures."
+  [database-id query-definition]
+  (try
+    (aggregation-result-column-with-metadata-provider
+     (lib-be/application-database-metadata-provider database-id)
+     query-definition)
+    (catch Exception _
+      nil)))

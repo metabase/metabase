@@ -13,7 +13,7 @@
 
 (def ^:private reserved-slugs
   "Slugs that collide with literal `/api/apps/*` sub-routes, so an app with one would be unreachable."
-  #{"repo-status" "sandbox-host" "serialize"})
+  #{"generate" "repo-status" "sandbox-host"})
 
 (defn- decoders
   "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."
@@ -149,3 +149,17 @@
     [:yaml :string]]
    [:map {:closed true}
     [:error :string]]])
+
+(mr/def ::app-request
+  "What a new data app's files are generated from."
+  [:map {:closed true}
+   [:name ::display-name]
+   [:slug {:optional true} [:maybe ::slug]]
+   [:description {:optional true} ::description]])
+
+(mr/def ::app-files
+  "A new data app's files, each at its path from the repository root."
+  [:map {:closed true}
+   [:files [:sequential [:map {:closed true}
+                         [:path :string]
+                         [:yaml :string]]]]])

@@ -55,8 +55,8 @@ Rules:
 - This directory sits beside `package.json`, not under `src/`. The CLI scans
   only `queries/` and `actions/`, so a definition anywhere else never gets a
   copy, and the authored action is refused for the app's viewers in production.
-- Actions exist only when the generated schema includes actions
-  (`include-actions=true`). The app runs a copy of each action, written by
+- The generated schema lists every query action that belongs to no model.
+  The app runs a copy of each action, written by
   `npm run write-resources`; it never creates actions.
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.

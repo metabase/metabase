@@ -53,7 +53,7 @@ async function requestSerialization(
   body: { queries: unknown[]; actions: unknown[] },
 ): Promise<SerializedResources> {
   const { metabaseUrl, apiKey } = getMetabaseCredentials(appRoot);
-  const response = await fetch(`${metabaseUrl}/api/apps/serialize`, {
+  const response = await fetch(`${metabaseUrl}/api/apps/generate/resources`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
     body: JSON.stringify(body),

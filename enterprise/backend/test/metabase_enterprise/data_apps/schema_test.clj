@@ -76,7 +76,7 @@
   (testing "a slug is used verbatim"
     (is (= "inventory-2" (normalize ::data-apps.schema/slug "inventory-2"))))
   (testing "a slug that can't appear in a URL as-is, or collides with an API sub-route, is rejected"
-    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "sales\n" "repo-status" "sandbox-host"
+    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "sales\n" "repo-status" "sandbox-host" "generate"
                  (apply str (repeat 101 "a"))]]
       (is (not (valid? ::data-apps.schema/slug bad)) (str "should reject: " (pr-str bad))))))
 

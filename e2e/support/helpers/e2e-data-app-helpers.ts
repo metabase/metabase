@@ -393,7 +393,7 @@ const resourceCard = ({
 });
 
 /**
- * What `POST /api/apps/serialize` answers for the actions `copies` name: the
+ * What `POST /api/apps/generate/resources` answers for the actions `copies` name: the
  * file of each copy, by position, for the app collection `collection`.
  */
 export function serializeDataAppActions(
@@ -403,7 +403,7 @@ export function serializeDataAppActions(
   return cy
     .request<{ actions: Array<{ file: string; yaml: string }> }>(
       "POST",
-      "/api/apps/serialize",
+      "/api/apps/generate/resources",
       {
         actions: copies.map(({ sourceActionId, entityId }) => ({
           action_id: sourceActionId,

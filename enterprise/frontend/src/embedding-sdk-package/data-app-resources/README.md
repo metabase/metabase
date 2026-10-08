@@ -50,7 +50,7 @@ rewritten to the copies.
 ## `write-resources`
 
 `embedding-sdk-react data-apps write-resources` (`serialize.ts`) sends the evaluated definitions to
-`POST /api/apps/serialize`, with the instance and API key from `.env.local`, and regenerates the app's
+`POST /api/apps/generate/resources`, with the instance and API key from `.env.local`, and regenerates the app's
 collection folder from the files it answers with: the saved question Metabase builds for each
 `defineQuery` definition, the copy of each `defineAction`'s action, and the copies of the metrics the
 queries aggregate. Each answer is a file name and the YAML text exactly as a remote-sync export writes it;

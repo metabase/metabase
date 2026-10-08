@@ -3,6 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -327,3 +329,86 @@
              :where [:and
                      [:in :pgm.group_id group-ids]
                      [:= :u.is_active true]]}))
+
+(mu/defn metric-cards-in-collections
+  "The non-archived metric Cards in `collection-ids`, in name then id order."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select :model/Card {:where    [:and
+                                       [:= :type "metric"]
+                                       [:= :archived false]
+                                       [:in :collection_id collection-ids]]
+                            :order-by [[:name :asc] [:id :asc]]})
+    []))
+
+(mu/defn field-ids-and-table-ids
+  "The id and Table id of the Fields with `field-ids`."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+
+(mu/defn card-dimensions
+  "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Card with `card-id`,
+  or nil."
+  [card-id :- ::lib.schema.id/card]
+  (queries/card-query-info card-id))
+
+(mu/defn table-names
+  "The id, database id, name, and display name of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn model-less-query-action-ids
+  "The ids of the unarchived query Actions without a model outside `excluded-collection-ids`, in name then id
+  order."
+  [excluded-collection-ids :- [:set ::lib.schema.id/collection]]
+  (t2/select-pks-vec :model/Action
+                     {:where    [:and
+                                 [:= :model_id nil]
+                                 [:= :type "query"]
+                                 [:= :archived false]
+                                 (when (seq excluded-collection-ids)
+                                   [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])]
+                      :order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn field-table-id
+  "The Table id of the Field with `field-id`, or nil."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+
+(mu/defn active-tables
+  "The active Tables with `table-ids`, in name then id order."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select :model/Table
+               {:from     [(warehouse-schema-overlay/table-query)]
+                :where    [:and [:= :active true] [:in :id table-ids]]
+                :order-by [[:name :asc] [:id :asc]]})
+    []))
+
+(mu/defn published-tables-in-collections
+  "The active, published Tables in `collection-ids`, in name then id order."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select :model/Table
+               {:from     [(warehouse-schema-overlay/table-query)]
+                :where    [:and
+                           [:= :active true]
+                           [:= :is_published true]
+                           [:in :collection_id collection-ids]]
+                :order-by [[:name :asc] [:id :asc]]})
+    []))
+
+(mu/defn measure-definition
+  "The definition of the Measure with `measure-id`, or nil."
+  [measure-id :- ::lib.schema.id/measure]
+  (t2/select-one-fn :definition :model/Measure :id measure-id))
+
+(mu/defn measure-definitions
+  "The id and definition of the Measures with `measure-ids`."
+  [measure-ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))
+
+(mu/defn collections-with-entity-ids
+  "The Collections with `entity-ids`."
+  [entity-ids :- [:set :string]]
+  (t2/select :model/Collection :entity_id [:in entity-ids]))
