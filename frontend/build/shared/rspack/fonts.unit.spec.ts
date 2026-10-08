@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { buildFontFaces } from "./fonts";
+import { SUBSET_OPTIONS, buildFontFaces, subsetFace } from "./fonts";
 
 const FONTS_DIR = path.join(__dirname, "../../../fonts");
 const DEFAULT_FAMILY = "Lato";
@@ -103,5 +103,23 @@ describe("buildFontFaces", () => {
   it("reports every font it read, so the build can watch them", () => {
     expect(read).toHaveLength(faces.length);
     expect(read.every((file) => fs.existsSync(file))).toBe(true);
+  });
+});
+
+describe("subsetting", () => {
+  // The subsetter drops the `.notdef` outline unless asked, and `.notdef` is
+  // the box a browser draws for a character no font in the stack can render.
+  // Dropping it turns a missing glyph into blank space, so the text loses it
+  // with nothing to show for it. Keeping it costs a few hundred bytes a face.
+  it("keeps the box a browser draws for a character no font has", async () => {
+    const source = fs.readFileSync(
+      path.join(FONTS_DIR, DEFAULT_FAMILY, "lato-v16-latin-regular.woff2"),
+    );
+    const kept = await subsetFace(source, "abc");
+    const dropped = await subsetFace(source, "abc", {
+      ...SUBSET_OPTIONS,
+      notdefOutline: false,
+    });
+    expect(kept.length).toBeGreaterThan(dropped.length);
   });
 });
