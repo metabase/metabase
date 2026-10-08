@@ -225,7 +225,10 @@ export function ApiKeyUsageSectionLayout() {
   );
 
   const pageContent = (
-    <RouteContent error={error} isInitialLoading={isInitialLoading}>
+    <RouteContent
+      error={error ?? usageAudit.error ?? groupMembersAudit.error}
+      isInitialLoading={isInitialLoading}
+    >
       {showEmpty ? (
         <ApiKeyUsageEmptyState />
       ) : (
