@@ -221,7 +221,7 @@ describe("scenarios > data apps > sandbox isolation", () => {
         statusCode: 307,
         headers: { ...cors, Location: `${instanceUrl}/api/session/properties` },
       });
-    });
+    }).as("allowedHostRedirect");
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -237,5 +237,6 @@ describe("scenarios > data apps > sandbox isolation", () => {
     });
 
     runProbes(["allowed-host-redirect"]);
+    cy.wait("@allowedHostRedirect");
   });
 });
