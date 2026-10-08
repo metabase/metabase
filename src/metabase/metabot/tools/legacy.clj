@@ -7,18 +7,20 @@
   `:data-parts`, `:resources`. Errors came back as a success-shaped `{:output \"…\"}` or escaped as
   an `ex-info` with `:agent-error?` or `:terminal-error?` in its ex-data.
 
-  Extending `Tool` to `clojure.lang.Var` turns all of that into the new contract at the boundary. The
-  consequence is that no converted and unconverted tool ever meet: a profile lists both, `tools/call`
-  calls both, the runtime knows neither. Tools are converted one at a time and nothing has to happen
-  on a single day.
+  [[adapt]] wraps such a var in a [[LegacyTool]], which implements `Tool`. A profile's tool list goes
+  through `adapt` once, so converted and unconverted tools arrive at `tools.core/entries` as the same
+  kind of thing: `tools/call` calls both, and the runtime knows neither. Tools are converted one at a
+  time and nothing has to happen on a single day.
+
+  A wrapper rather than `extend-protocol` on `clojure.lang.Var`, which was the first thing tried.
+  Extending the protocol to `Var` makes *every* var satisfy `Tool` — `clojure.core/map` included — so
+  `satisfies? Tool` stops meaning anything and a var passed in by mistake fails somewhere inside
+  `declaration` rather than where it was registered. `adapt` refuses it by name, at the call site.
 
   Behaviour is preserved rather than improved. An unconverted tool that returns a success-shaped
   failure still looks like a success, because nothing here can tell `{:output \"Failed to read the
   card\"}` from `{:output \"<card>…</card>\"}`. That is the thing conversion fixes, one tool at a
   time.
-
-  Require this namespace wherever unconverted tools are registered. Without it a legacy var does not
-  satisfy the protocol, and `tools.core/entries` fails loudly rather than silently skipping it.
 
   This namespace is deleted when the last tool is converted."
   (:require
@@ -114,16 +116,13 @@
       :else
       (throw e))))
 
-;;; ------------------------------------------------ The extension -------------------------------------------------
+;;; ------------------------------------------------ The wrapper ---------------------------------------------------
 
-(extend-protocol tools/Tool
-  clojure.lang.Var
-  (declaration [this]
+(defrecord LegacyTool [tool-var]
+  tools/Tool
+  (declaration [_]
     (let [{:keys [tool-name doc schema scope capabilities title-fn prompt system-instructions decode]}
-          (meta this)]
-      (when-not tool-name
-        (throw (ex-info (str this " is not a tool: its var carries no :tool-name")
-                        {:var this})))
+          (meta tool-var)]
       (cond-> {:name        tool-name
                :description (description doc)
                :args        (args-schema schema)}
@@ -136,8 +135,8 @@
         system-instructions (assoc :metabot/system-instructions system-instructions)
         decode              (assoc :metabot/decode decode))))
 
-  (handle [this args _ctx]
-    (let [{:keys [tool-name decode]} (meta this)
+  (handle [_ args _ctx]
+    (let [{:keys [tool-name decode]} (meta tool-var)
           ;; `:decode` ran before the schema check in the old runtime. No tool uses it, and it is not
           ;; part of the new contract, but honouring it here keeps the adaptation faithful.
           args                       (cond-> args decode decode)]
@@ -145,6 +144,36 @@
         ;; One argument, and no ctx: the old signature. The runtime has already bound
         ;; `shared/*memory-atom*`, `*metabot-id*` and `*profile-id*` from `ctx`, which is how an
         ;; unconverted tool still reaches its state.
-        (adapt-result tool-name (this args))
+        (adapt-result tool-name (tool-var args))
         (catch Throwable e
           (adapt-throw tool-name e))))))
+
+(defn adapt
+  "`tool` as something implementing `tools.core/Tool`.
+
+  A tool that already implements the protocol is returned unchanged. A var carrying old-shape
+  metadata is wrapped. Anything else is refused here, where it was registered, rather than failing
+  later inside a protocol method.
+
+  Put a profile's whole tool list through this. Each conversion then removes nothing from the call
+  site — the list is uniform either way — and this call disappears when the last tool converts."
+  [tool]
+  (cond
+    (var? tool)
+    (if (legacy-tool? tool)
+      (->LegacyTool tool)
+      (throw (ex-info (str tool " is not a tool: its var carries no :tool-name metadata")
+                      {:var tool})))
+
+    (satisfies? tools/Tool tool)
+    tool
+
+    :else
+    (throw (ex-info (str (pr-str tool) " is not a tool: it implements neither "
+                         "metabase.metabot.tools.core/Tool nor the old var shape")
+                    {:tool tool}))))
+
+(defn adapt-all
+  "Every tool in `tools` through [[adapt]], in order. What a profile's tool list goes through."
+  [tools]
+  (mapv adapt tools))

@@ -4,7 +4,7 @@ This document refines the approach in **"Metabot tool layer: technical design"**
 
 The error model held up in implementation. The tool definition did not. The problems were almost all in one area: tools that do one thing per item. This document replaces `deftool` with a record and two protocols, and gives batched tools a model that the original design did not have.
 
-Tools are converted one at a time. A tool written against the old shape satisfies the new protocol through an adapter, so a profile can hold both kinds and nothing has to change on a single day. Section 5 describes this.
+Tools are converted one at a time. A tool written against the old shape is wrapped in an adapter that implements the new protocol, so a profile can hold both kinds and nothing has to change on a single day. Section 5 describes this.
 
 ---
 
@@ -19,7 +19,7 @@ Tools are converted one at a time. A tool written against the old shape satisfie
 | `:output` is a string | `:output` is a renderable | MCP renders prose at the boundary. A renderable lets one tool concept serve either consumer later. A string is a renderable, so tool code does not change. |
 | Declaration keys are flat | Neutral core, namespaced extras | Same reason. A consumer reads its own namespace. |
 | `::handler-result` | `::result`, used for a whole call and for one item | One shape, not two. |
-| All tools convert in one change | A tool converts on its own | A var carrying old-shape metadata satisfies `Tool` by protocol extension. There is no flag day and no legacy path in the runtime. |
+| All tools convert in one change | A tool converts on its own | A var carrying old-shape metadata is wrapped in a record implementing `Tool`. There is no flag day and no legacy path in the runtime. |
 
 Everything else in the original design is unchanged.
 
@@ -236,25 +236,42 @@ A consumer with a different error vocabulary passes its own per-item function:
 
 A tool used to be an `mu/defn` var with `:tool-name`, `:schema` and friends in its metadata. It took one argument, returned a loose result, and signalled errors with `:agent-error?` or `:terminal-error?`.
 
-`metabase.metabot.tools.legacy` extends `Tool` to `clojure.lang.Var`:
+`metabase.metabot.tools.legacy` wraps such a var in a record that implements `Tool`:
 
 ```clojure
-(extend-protocol tools/Tool
-  clojure.lang.Var
-  (declaration [this] ...from the var's metadata...)
-  (handle [this args _ctx] ...call it, adapt what comes back...))
+(defrecord LegacyTool [tool-var]
+  tools/Tool
+  (declaration [_] ...from the var's metadata...)
+  (handle [_ args _ctx] ...call it, adapt what comes back...))
 ```
 
-A profile then lists both kinds, and `tools/call` calls both:
+A profile's tool list goes through `adapt-all` once. Converted and unconverted tools then arrive at `tools/entries` as the same kind of thing:
 
 ```clojure
-(tools/entries [#'tools/search-tool          ; not converted yet
-                read-resource-tool])         ; converted
+(tools/entries
+ (tools.legacy/adapt-all [#'tools/search-tool     ; not converted yet
+                          read-resource-tool]))   ; converted
 ```
+
+`adapt` returns a tool that already implements `Tool` unchanged, so the list can be mixed and each conversion changes only that tool's entry.
 
 Nothing in the runtime knows the difference. There is no second code path to keep working, and no tool is blocked on another tool's conversion.
 
-### 5.1 What the adapter maps
+### 5.1 Why a wrapper and not `extend-protocol`
+
+Extending `Tool` to `clojure.lang.Var` is shorter and does not need `adapt-all` at all. It is wrong for two reasons.
+
+Every var in the codebase would satisfy `Tool`. `(satisfies? Tool #'clojure.core/map)` returns true, so the predicate stops meaning anything — for us and for any other consumer that asks.
+
+And a var passed in by mistake fails late. The only place that could notice is `declaration`, which runs well after registration. `adapt` refuses it by name, where it was registered:
+
+```
+#'clojure.core/map is not a tool: its var carries no :tool-name metadata
+```
+
+The same check answers the other direction: `legacy-tool?` says whether a var carries old-shape metadata, without wrapping it.
+
+### 5.2 What the adapter maps
 
 | Old shape | New shape |
 |---|---|
@@ -272,7 +289,7 @@ Nothing in the runtime knows the difference. There is no second code path to kee
 
 The `:agent-error?` flag is the author saying the sentence was written for a model. That is the same judgement `with-pipeline-errors` makes, so the message is authored text and may be relayed. One declaration covers all of them: an unconverted tool has not said which error it raised.
 
-### 5.2 What the adapter does not fix
+### 5.3 What the adapter does not fix
 
 Behaviour is preserved, not improved. An unconverted tool that catches its own error and returns the message as `:output` still looks like a success:
 
@@ -284,9 +301,9 @@ Nothing in the adapter can tell that string from a real result. Converting the t
 
 Unconverted tools do get the new checks, because those come from the declaration: argument validation, the scope check, and the result shape.
 
-### 5.3 When the adapter goes away
+### 5.4 When the adapter goes away
 
-`metabase.metabot.tools.legacy` and `metabase.metabot.tools.recoverable.legacy` are deleted when the last tool is converted. The description strip moves out of the adapters at the same time, because a converted tool's description needs none.
+`metabase.metabot.tools.legacy` and `metabase.metabot.tools.recoverable.legacy` are deleted when the last tool is converted. The `adapt-all` call goes with them. The description strip moves out of the adapters at the same time, because a converted tool's description needs none.
 
 ---
 
@@ -322,7 +339,7 @@ Unconverted tools do get the new checks, because those come from the declaration
 | A test double is a value | `reify Tool` with two methods |
 | One text function for both audiences | a failed item reads like a failed call |
 | MCP can use a tool later | neutral core, namespaced extras, renderable output |
-| No flag day | an unconverted var satisfies `Tool`; a profile holds both kinds |
+| No flag day | an unconverted var is wrapped; a profile holds both kinds |
 
 ### 6.3 Costs
 
