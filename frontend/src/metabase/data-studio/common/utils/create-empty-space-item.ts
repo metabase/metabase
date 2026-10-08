@@ -36,7 +36,7 @@ const getEmptyStateConfig = (
       actionLabel: t`New snippet`,
     },
     actions: {
-      description: t`Queries that change data, for data apps to run`,
+      description: t`Queries that change data`,
       actionLabel: t`New data action`,
     },
   };
