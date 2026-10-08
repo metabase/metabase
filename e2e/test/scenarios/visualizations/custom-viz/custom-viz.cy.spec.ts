@@ -238,9 +238,6 @@ describe("admin > custom visualizations", () => {
 
       cy.log("Upload a valid bundle");
       H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
-      cy.findByRole("button", { name: "Add visualization" }).should(
-        "be.enabled",
-      );
 
       H.interceptPluginCreate();
       cy.findByRole("button", { name: "Add visualization" }).click();
@@ -577,6 +574,16 @@ describe("admin > custom visualizations", () => {
         .findByRole("button", { name: "Rename question from plugin" })
         .click();
       H.main().findByText("Threshold: 7").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            7,
+          );
+        });
+      });
 
       cy.findByTestId("chartsettings-sidebar")
         .findByPlaceholderText("Set threshold")
@@ -600,6 +607,10 @@ describe("admin > custom visualizations", () => {
       H.main()
         .findByTestId("demo-viz-formatted-value")
         .should("contain", "foo");
+      cy.realPress("Escape");
+      cy.findByTestId("chart-settings-widget-popover-content").should(
+        "not.exist",
+      );
 
       H.saveSavedQuestion();
 
@@ -2461,13 +2472,23 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        // The bundle loads after the card query, so the marker is in the
-        // host DOM before the plugin walker runs.
+        // DOMContentLoaded fires before the plugin bundle loads, so the marker
+        // is in the host DOM before the walker runs. The host keeps mutating
+        // the real DOM while the plugin observer is active. If the plugin held
+        // a real reference to document.body, these mutations would fire its
+        // observer.
         win.document.addEventListener("DOMContentLoaded", () => {
           const marker = win.document.createElement("span");
           marker.id = "treewalker-host-marker";
           marker.textContent = HOST_MARKER_TEXT;
           win.document.body.appendChild(marker);
+
+          const probe = win.document.createElement("div");
+          win.document.body.appendChild(probe);
+          win.setInterval(() => {
+            probe.toggleAttribute("data-mutation-probe");
+            win.document.body.toggleAttribute("data-mutation-probe-attr");
+          }, 100);
         });
       },
     });
@@ -2489,19 +2510,8 @@ describe("sandbox", () => {
       27,
     );
 
-    // Mutate the real host DOM. If the plugin held a real reference to
-    // document.body, these would fire its observer. The membrane swapped
-    // body for a detached decoy, so observation is wired to a node that
-    // never sees host changes.
-    cy.document().then((doc) => {
-      const probe = doc.createElement("div");
-      probe.setAttribute("data-mutation-probe", "true");
-      doc.body.appendChild(probe);
-      doc.body.setAttribute("data-mutation-probe-attr", "true");
-      probe.remove();
-      doc.body.removeAttribute("data-mutation-probe-attr");
-    });
-
+    // The membrane swapped body for a detached decoy, so observation is
+    // wired to a node that never sees host changes.
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin observed own mutations:",
