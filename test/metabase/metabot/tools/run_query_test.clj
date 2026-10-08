@@ -135,8 +135,8 @@
              (data-lines (output (for [n ["A" "B" "C" "D" "E"]] {:display_name n})
                                  [[1.23456789E7 5.0E-4 1.0E10 1E+3M 1.5]])))))
     (testing "a number too long to write out keeps its exponent"
-      (is (= ["| A | B |" "| --- | --- |" "| 1.0E-300 | 1E+400 |"]
-             (data-lines (output [{:display_name "A"} {:display_name "B"}] [[1.0E-300 1E+400M]])))))
+      (is (= ["| A | B | C |" "| --- | --- | --- |" "| 1.0E-300 | 1E+400 | -1E-199 |"]
+             (data-lines (output (for [n ["A" "B" "C"]] {:display_name n}) [[1.0E-300 1E+400M -1E-199M]])))))
     (testing "a backslash cannot unescape a pipe, and Unicode line breaks collapse"
       (is (= ["| A |" "| --- |" "| x\\\\\\|y a b |"]
              (data-lines (output [{:display_name "A"}] [["x\\|y a\u2028b"]])))))

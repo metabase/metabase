@@ -155,8 +155,9 @@
 (defn- plain-decimal-text
   "`n` written out in full, or nil when that would not fit in a cell."
   [^BigDecimal n]
-  ;; The digits plus the zeros the scale adds bound the length, so a number too long to show is never written out.
-  (when (<= (+ (.precision n) (abs (.scale n))) max-cell-chars)
+  ;; The digits, the zeros the scale adds, and a sign, leading zero and decimal point bound the length, so a number
+  ;; too long to show is never written out.
+  (when (<= (+ (.precision n) (abs (.scale n)) 3) max-cell-chars)
     (.toPlainString n)))
 
 (defn- number-text
