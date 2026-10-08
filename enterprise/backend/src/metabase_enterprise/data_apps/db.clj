@@ -163,6 +163,25 @@
              :object [:in paths]
              :group_id [:not= group-id]))
 
+(defn table
+  "The active Table with `table-id`, or nil. The typed schema lists only active tables."
+  [table-id]
+  (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+
+(defn destination-database-ids
+  "The IDs among `database-ids` of the databases that are routing destinations."
+  [database-ids]
+  (if (seq database-ids)
+    (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil])
+    #{}))
+
+(defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
 (defn table-details
   "Table names and database details for `table-ids`."
   [table-ids]
