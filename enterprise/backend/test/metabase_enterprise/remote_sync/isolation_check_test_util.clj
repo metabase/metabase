@@ -1,8 +1,9 @@
 (ns metabase-enterprise.remote-sync.isolation-check-test-util
   "On-demand check that the test namespaces of the remote-sync module leave the app DB as they found it. It runs the
   tests of each namespace with that namespace's fixtures, and compares these rows before and after the namespace: the
-  stored `remote-sync%` setting rows, the RemoteSyncObject rows, the RemoteSyncTask ids, and the ids of the content
-  models of `rs.test/imported-content-models` (personal collections excluded).
+  stored `remote-sync%` setting rows (reported by key only: the values can carry secrets), the RemoteSyncObject rows,
+  the RemoteSyncTask ids, and the ids of the content models of `rs.test/imported-content-models` (personal
+  collections excluded).
 
   Run it from a REPL; it runs every test of the module:
 
@@ -90,46 +91,42 @@
 
 (defn- difference
   "The difference of two [[app-db-state]]s, as a `:leaks` entry of [[check-module!]] without `:namespace`; a part
-  with no difference is absent."
+  with no difference is absent. `:settings` names the changed keys only: the rows can carry secrets."
   [before after]
-  (let [setting-keys (into (set (keys (:settings before))) (keys (:settings after)))
-        settings     (into (sorted-map)
-                           (for [k     setting-keys
-                                 :let  [b (get-in before [:settings k])
-                                        a (get-in after [:settings k])]
-                                 :when (not= b a)]
-                             [k {:before b :after a}]))
-        ledger       (set-difference (:ledger before) (:ledger after))
-        tasks        (set-difference (:tasks before) (:tasks after))
-        content      (into {}
-                           (keep (fn [model]
-                                   (when-let [d (set-difference (get-in before [:content model])
-                                                                (get-in after [:content model]))]
-                                     [model d])))
-                           rs.test/imported-content-models)]
+  (let [settings (into (sorted-set)
+                       (filter (fn [k]
+                                 (not= (get-in before [:settings k]) (get-in after [:settings k]))))
+                       (into (set (keys (:settings before))) (keys (:settings after))))
+        ledger    (set-difference (:ledger before) (:ledger after))
+        tasks     (set-difference (:tasks before) (:tasks after))
+        content   (into {}
+                        (keep (fn [model]
+                                (when-let [d (set-difference (get-in before [:content model])
+                                                             (get-in after [:content model]))]
+                                  [model d])))
+                        rs.test/imported-content-models)]
     (cond-> {}
-      (seq settings) (assoc :settings settings)
+      (seq settings) (assoc :settings (vec settings))
       ledger         (assoc :ledger ledger)
       tasks          (assoc :tasks tasks)
       (seq content)  (assoc :content content))))
 
 (defn check-module!
   "Run the tests of each namespace in `namespaces` (default: [[module-test-namespaces]] without the test of this
-  check) with its fixtures, one
-  namespace at a time, and compare the app DB rows before and after each namespace. Requires each namespace that is
-  not loaded. Returns
+  check) with its fixtures, one namespace at a time, and compare the app DB rows before and after each namespace.
+  Requires each namespace that is not loaded. Returns
 
     {:namespaces <number of namespaces run>
      :counts     {:pass n :fail n :error n}  ; the assertions of all namespaces
      :leaks      [{:namespace ns-sym :settings ... :ledger ... :tasks ... :content ...} ...]
      :errors     [{:namespace ns-sym :exception e} ...]}
 
-  with one `:leaks` entry for each namespace that left a difference, in run order. `:settings` maps each changed
-  `remote-sync%` setting key to `{:before row :after row}` (nil for no row); `:ledger` has the `:added` and `:removed`
-  RemoteSyncObject rows; `:tasks` has the `:added` and `:removed` RemoteSyncTask ids; `:content` maps each changed
-  content model to its `:added` and `:removed` ids. An exception out of a namespace's run (for example from a fixture)
-  adds an `:errors` entry, and the check compares the rows of that namespace and goes on. A namespace runs from the
-  state that the namespaces before it left, so an earlier leak can hide a later one."
+  with one `:leaks` entry for each namespace that left a difference, in run order. `:settings` lists each changed
+  `remote-sync%` setting key, and holds no values, because the rows can carry secrets; `:ledger` has the `:added`
+  and `:removed` RemoteSyncObject rows; `:tasks` has the `:added` and `:removed` RemoteSyncTask ids; `:content`
+  maps each changed content model to its `:added` and `:removed` ids. An exception out of a namespace's run (for
+  example from a fixture) adds an `:errors` entry, and the check compares the rows of that namespace and goes on.
+  A namespace runs from the state that the namespaces before it left, so an earlier leak can hide a later one."
   ([]
    (check-module! (remove #{this-test-ns} (module-test-namespaces))))
   ([namespaces]

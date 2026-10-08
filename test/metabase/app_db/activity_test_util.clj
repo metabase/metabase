@@ -1,17 +1,12 @@
 (ns metabase.app-db.activity-test-util
-  "Counts app-DB activity at the JDBC level, for cost tests. [[count-keys]] defines what it counts. Counts every
-  library (toucan, raw JDBC, the query processor) and every thread that uses the root `*application-db*`.
+  "Counts app-DB activity at the JDBC level, for cost tests: the [[count-keys]] of every library (toucan2, raw JDBC,
+  the query processor) and every thread that uses the root `*application-db*`. Not counted: a `DataSource` or
+  `ApplicationDB` obtained before the count; connections obtained before the count; statements from
+  `ResultSet.getStatement` and connections from `DatabaseMetaData.getConnection` or `Connection.unwrap`; Quartz's
+  own data source. Work that any thread does after the count returns is not reported.
 
-  Not counted: work on a connection that a thread got before the count (so [[count-db-activity!]] throws when the
-  calling thread holds one, as in the body of a default `mt/with-temp`); work on the statement that
-  `ResultSet.getStatement` returns, or on the connection that `DatabaseMetaData.getConnection` or `Connection.unwrap`
-  returns; and Quartz's separate data source.
-
-  The count is JVM-wide, so anything else that uses the app DB at the same time is counted too, and the totals include
-  background work (scheduler, heartbeats, async search indexing) that happens to run during the block. Two ways to
-  cope:
-  - compare two sizes of the same scenario, so that fixed and background costs cancel;
-  - assert exactly on `:by-thread`, the counts keyed by the id of the thread that made each call."
+  The count is JVM-wide: its totals include background app-DB work that runs during the count (the scheduler,
+  heartbeats, async search indexing). Compare two sizes of one scenario, or assert on `:by-thread`."
   (:require
    [mb.hawk.parallel]
    [metabase.app-db.connection :as mdb.connection]
@@ -55,9 +50,9 @@
   (swap! counts update-in [(.threadId (Thread/currentThread)) k] (fnil inc 0)))
 
 (defn- invoke
-  "Invoke `method` on `target`, rethrowing the real exception rather than the reflection wrapper, so callers that
-  classify SQL errors (e.g. transient-error retries) see what they would without the proxy."
+  "Invoke `method` on `target`, rethrowing the cause of an `InvocationTargetException`."
   [target ^Method method args]
+  ;; so callers that classify SQL errors (for example transient-error retries) see what they would without the proxy
   (try
     (.invoke method target ^objects args)
     (catch InvocationTargetException e
@@ -137,10 +132,12 @@
   If the calling thread has bound `*application-db*` (for example inside `mt/with-empty-h2-app-db!`), that bound
   value is counted too, for the calling thread and for threads that convey its bindings. Then the totals can add two
   different databases (the bound one and the root one); assert exactly on `:by-thread`. A binding that `thunk`
-  itself makes is not counted. A conveyed thread that runs after this returns still uses the counting copy, and its
-  activity is not reported."
+  itself makes is not counted. A thread whose work runs after this returns, conveyed or not, is not reported."
   [thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "count-db-activity!")
+  ;; hawk's `assert-test-is-not-parallel` only reports an error and the test would go on; the count replaces the
+  ;; JVM-wide root app DB, so stop the test here
+  (when mb.hawk.parallel/*parallel?*
+    (throw (ex-info "count-db-activity! is not allowed inside a parallel test." {})))
   (when (instance? Connection t2.conn/*current-connectable*)
     (throw (ex-info (str "The calling thread already holds an app-DB connection (for example inside a default "
                          "mt/with-temp), and the counter cannot see work on it. Start the count outside the "

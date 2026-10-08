@@ -546,6 +546,6 @@
 
 (deftest remote-sync-object-has-no-before-update-test
   (testing "RemoteSyncObject has no before-update hook, so a bulk ledger update is one UPDATE"
-    ;; with a before-update hook, toucan2 selects the matching rows and sends one UPDATE per distinct change (for
-    ;; example in `mark-all-rsos-synced!`)
+    ;; a before-update hook makes toucan2 select the matching rows first, and send one UPDATE per row when the hook
+    ;; gives rows different changes (for example in `mark-all-rsos-synced!`)
     (is (not (isa? :model/RemoteSyncObject ::t2.before-update/before-update)))))

@@ -27,9 +27,6 @@
   [counts]
   (get-in counts [:by-thread (.threadId (Thread/currentThread))] (zipmap activity/count-keys (repeat 0))))
 
-;; do-transaction sets a savepoint in every scope, the top-level one included; a failed transaction rolls back to it,
-;; then rolls back the connection.
-
 (deftest plain-transaction-test
   (testing "one transaction, one statement: BEGIN + SAVEPOINT + statement + COMMIT on one connection"
     (let [counts (activity/with-db-activity!

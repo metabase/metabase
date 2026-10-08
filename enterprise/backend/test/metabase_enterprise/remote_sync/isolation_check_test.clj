@@ -39,9 +39,7 @@
         (is (=? {:namespaces 1
                  :counts     {:pass 1 :fail 0 :error 0}
                  :leaks      [{:namespace run-time-ns
-                               :settings  {"remote-sync-auto-import" {:before nil
-                                                                      :after  {:key   "remote-sync-auto-import"
-                                                                               :value "true"}}}}]}
+                               :settings  ["remote-sync-auto-import"]}]}
                 result))
         (testing "and no ledger difference"
           (is (not (contains? (first (:leaks result)) :ledger))))))
@@ -98,7 +96,7 @@
         (is (=? {:namespaces 2
                  :errors     [{:namespace run-time-ns}]
                  :leaks      [{:namespace other-run-time-ns
-                               :settings  {"remote-sync-auto-import" {:before nil}}}]}
+                               :settings  ["remote-sync-auto-import"]}]}
                 result))
         (is (= "The fixture fails"
                (ex-message (:exception (first (:errors result))))))))

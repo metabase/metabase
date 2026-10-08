@@ -1,9 +1,11 @@
 (ns metabase-enterprise.remote-sync.fixture-guard-test
-  "Every test namespace of the remote-sync module that uses the app DB has the shared fixture as its first `:each`
-  fixture, no `:once` fixture that stores a remote-sync setting, and no `^:parallel` test."
+  "These tests delete remote-sync content from the app DB that they run on; do not run them against an app DB that
+  serves an instance. Each remote-sync module test namespace not in [[exemptions]] has the shared fixture as its
+  first `:each` fixture, no `:once` fixture that stores a `remote-sync%` setting row, and no `^:parallel` test."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [mb.hawk.parallel]
    [metabase-enterprise.remote-sync.isolation-check-test-util :as isolation-check]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.settings.core :as setting]
@@ -37,18 +39,19 @@
   (-> (find-ns ns-sym) meta :clojure.test/each-fixtures first meta ::rs.test/shared-fixture true?))
 
 (defn- parallel-vars
-  "The vars of `ns-sym` with `:parallel` metadata."
+  "The vars of `ns-sym` that hawk runs in parallel: each var whose own metadata says `:parallel`, and, when the
+  var says neither `:parallel` nor `:synchronized`, each var of a `^:parallel` namespace."
   [ns-sym]
   (sort (for [[_ v] (ns-interns ns-sym)
-              :when (:parallel (meta v))]
+              :when (mb.hawk.parallel/parallel? v)]
           (symbol v))))
 
 (defn- once-fixtures-store-remote-sync-setting!
   "Whether the `:once` fixtures of `ns-sym` store a `remote-sync%` setting row while they run, from an app DB with no
   such row. Puts back the stored rows afterwards."
   [ns-sym]
-  ;; a test sees the default of a setting that a `:once` fixture binds, because the shared fixture removes the stored
-  ;; `remote-sync-transforms` row before each test; the binding's row outlives the namespace
+  ;; the row that a `:once` binding of a remote-sync setting stores outlives the namespace, and a stored row makes
+  ;; the shared fixture refuse every later test
   (let [once   (join-fixtures (-> (find-ns ns-sym) meta :clojure.test/once-fixtures))
         stored (volatile! nil)]
     (rs.test/clean-remote-sync-settings
@@ -78,13 +81,17 @@
 
 (defn- make-namespace!
   "Create the namespace [[run-time-ns]] with the `:once` fixtures `once-fixtures`, the `:each` fixtures `each-fixtures`,
-  and one test var, with `:parallel` metadata when `parallel?`."
-  [{:keys [once-fixtures each-fixtures parallel?]}]
+  and one test var, with `:parallel` metadata on the var when `parallel?`, `:synchronized` when `synchronized?`, and
+  `:parallel` on the namespace when `ns-parallel?`. Stores the fixture functions, as `use-fixtures` does."
+  [{:keys [once-fixtures each-fixtures parallel? ns-parallel? synchronized?]}]
   (let [the-ns (create-ns run-time-ns)]
-    (intern the-ns (with-meta 'the-test (cond-> {:test (fn [])} parallel? (assoc :parallel true))) (fn []))
-    (alter-meta! the-ns assoc
-                 :clojure.test/once-fixtures (vec once-fixtures)
-                 :clojure.test/each-fixtures (vec each-fixtures))
+    (intern the-ns (with-meta 'the-test (cond-> {:test (fn [])}
+                                          parallel? (assoc :parallel true)
+                                          synchronized? (assoc :synchronized true))) (fn []))
+    (apply alter-meta! the-ns merge
+           {:clojure.test/once-fixtures (mapv #(if (var? %) (deref %) %) once-fixtures)
+            :clojure.test/each-fixtures (mapv #(if (var? %) (deref %) %) each-fixtures)}
+           (when ns-parallel? {:parallel true}))
     run-time-ns))
 
 (defn- other-fixture [f] (f))
@@ -115,5 +122,15 @@
       (remove-ns run-time-ns)
       (is (= [(symbol (str run-time-ns) "the-test")]
              (parallel-vars (make-namespace! {:each-fixtures [rs.test/clean-remote-sync-state] :parallel? true})))))
+    (testing "a namespace whose own metadata is ^:parallel fails"
+      (remove-ns run-time-ns)
+      (is (= [(symbol (str run-time-ns) "the-test")]
+             (parallel-vars (make-namespace! {:each-fixtures [rs.test/clean-remote-sync-state] :ns-parallel? true})))))
+    (testing "a ^:synchronized test of a ^:parallel namespace does not fail"
+      (remove-ns run-time-ns)
+      (is (= []
+             (parallel-vars (make-namespace! {:each-fixtures [rs.test/clean-remote-sync-state]
+                                              :ns-parallel? true
+                                              :synchronized? true})))))
     (finally
       (remove-ns run-time-ns))))

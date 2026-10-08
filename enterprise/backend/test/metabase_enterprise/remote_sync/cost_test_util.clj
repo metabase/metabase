@@ -1,5 +1,5 @@
 (ns metabase-enterprise.remote-sync.cost-test-util
-  "Helpers for remote-sync cost tests: counts, not clocks.
+  "Helpers for remote-sync cost tests that assert on counts.
 
   A cost test measures a scenario with [[measure!]], usually at two sizes, and asserts on the per-entity
   difference ([[per-entity]]), which cancels the fixed per-pull overhead. This assumes that the cost is linear in
@@ -54,8 +54,9 @@
   - `:metadata-inferences` Card `result_metadata` inferences (QP preprocessing) on the calling thread and on the
                            threads that receive its bindings (`future`, `bound-fn`, `in-virtual-thread*`); not on a
                            raw `Thread`.
-  - `:rows-rewritten`      cards and dashboards that the thunk inserted or updated: rows with an `updated_at` later
-                           than the latest one before the thunk."
+  - `:rows-rewritten`      Card and Dashboard rows, from any writer, whose `updated_at` is later than the latest
+                           value before the thunk. The models' timestamp hook sets `updated_at`, so a table-level
+                           update or a change only to `last_viewed_at` is not counted."
   [thunk]
   (let [inferences (atom 0)
         before     (max-updated-at)]
@@ -84,9 +85,13 @@
 (defn do-with-content!
   "Create a remote-synced collection with `cards` MBQL cards (3 field refs each) and `dashboards` dashboards of
   `dashcards` dashboard cards each, then call `f` with the files that an export would write. Sets
-  `remote-sync-type` to `:read-write` and `remote-sync-transforms` to false for the duration, and deletes the
-  content that it created afterwards."
+  `remote-sync-type` to `:read-write` and `remote-sync-transforms` to false for the duration: the two setting rows
+  that the bindings store stay, and `rs.test/clean-remote-sync-state` around the test deletes them. Deletes every
+  new Card, Dashboard, DashboardCard and Collection row afterwards, from any writer. Throws when `:dashcards` is
+  positive and `:cards` is 0 (a dashcard needs a card to show)."
   [{:keys [cards dashboards dashcards] :or {dashboards 0 dashcards 0}} f]
+  (when (and (pos? dashcards) (zero? cards))
+    (throw (ex-info "do-with-content! needs a card for each dashboard card" {:cards cards :dashcards dashcards})))
   (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
     (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Collection]
       (let [mp       (mt/metadata-provider)
@@ -120,8 +125,8 @@
 ;;; ------------------------------------------------ scenarios ------------------------------------------------
 
 (defn forced-reload-of-unchanged!
-  "Load the content `shape` (the options of [[do-with-content!]]) once, then [[measure!]] a forced pull of the same
-  content. Asserts that the first load succeeds. Runs with the search index disabled."
+  "Load the content `shape` (the options of [[do-with-content!]]), import it once, and return the [[measure!]]
+  result of a second forced import. Asserts that the first import succeeds; runs with the search index disabled."
   [shape]
   (search.tu/with-index-disabled
     (do-with-content! shape
