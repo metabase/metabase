@@ -704,23 +704,24 @@
   (reset! clock t)
   (count (:lookups (chat-with-catalog! credentials models-response))))
 
-(deftest vllm-raw-keeps-a-known-window-longer-than-an-unknown-one-test
-  (let [clock       (atom 0)
-        known-ttl   @#'vllm/known-window-ttl-ms
-        unknown-ttl @#'vllm/unknown-window-ttl-ms]
+(deftest vllm-raw-keeps-an-answered-lookup-longer-than-a-failed-one-test
+  (let [clock        (atom 0)
+        answered-ttl @#'vllm/answered-lookup-ttl-ms
+        failed-ttl   @#'vllm/failed-lookup-ttl-ms]
     (mt/with-dynamic-fn-redefs [vllm/now-ms (fn [] @clock)]
-      (testing "a known window is reused until the long TTL runs out"
+      (testing "an answer is reused until the long TTL runs out, with or without a window"
+        (doseq [response [(catalog {:id "vllm-test" :max_model_len 131072})
+                          (catalog {:id "vllm-test"})]]
+          (let [creds (fresh-credentials)]
+            (is (= [1 0 1] [(lookups-at! clock 0 creds response)
+                            (lookups-at! clock (inc failed-ttl) creds response)
+                            (lookups-at! clock answered-ttl creds response)])))))
+      (testing "a failed lookup is tried again after the short TTL"
         (let [creds    (fresh-credentials)
-              response (catalog {:id "vllm-test" :max_model_len 131072})]
+              response (fn [_] (throw (SocketTimeoutException. "Read timed out")))]
           (is (= [1 0 1] [(lookups-at! clock 0 creds response)
-                          (lookups-at! clock (inc unknown-ttl) creds response)
-                          (lookups-at! clock known-ttl creds response)]))))
-      (testing "an unknown window is looked up again after the short TTL"
-        (let [creds    (fresh-credentials)
-              response (catalog {:id "vllm-test"})]
-          (is (= [1 0 1] [(lookups-at! clock 0 creds response)
-                          (lookups-at! clock (dec unknown-ttl) creds response)
-                          (lookups-at! clock unknown-ttl creds response)])))))))
+                          (lookups-at! clock (dec failed-ttl) creds response)
+                          (lookups-at! clock failed-ttl creds response)])))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models

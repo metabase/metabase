@@ -192,21 +192,22 @@
   tools: role markers, a tool-use preamble, the generation prompt."
   1024)
 
-(def ^:private known-window-ttl-ms
-  "How long [[served-max-model-len]] reuses a context window the server reported.
+(def ^:private answered-lookup-ttl-ms
+  "How long [[served-max-model-len]] reuses the answer of a `/v1/models` lookup that succeeded, with or
+  without a window for the model.
 
   Five minutes, because a vLLM server is seldom restarted after its initial setup. The cost: after a
   restart with a smaller `--max-model-len`, a cap sized for the old window can get a 400 from vLLM for up
-  to five minutes after the lookup that cached it."
+  to five minutes after the lookup that cached it. A server that lists no window (Ollama, LM Studio) does
+  not start to list one, so it is asked again only at this interval too."
   (* 5 60 1000))
 
-(def ^:private unknown-window-ttl-ms
-  "How long [[served-max-model-len]] reuses a nil answer: no entry for the model, no window, or a failed
-  lookup.
+(def ^:private failed-lookup-ttl-ms
+  "How long [[served-max-model-len]] reuses the nil window of a `/v1/models` lookup that failed: a
+  timeout, a refused connection, or an HTTP error status.
 
-  Shorter than [[known-window-ttl-ms]], so a server that comes up, or starts to report a window, is used
-  soon. A `/v1/models` that is down still costs at most one [[window-lookup-timeout-ms]] lookup in this
-  period."
+  Shorter than [[answered-lookup-ttl-ms]], so a server that comes up is used soon. A `/v1/models` that is
+  down still costs at most one [[window-lookup-timeout-ms]] lookup in this period."
   30000)
 
 (def ^:private window-lookup-timeout-ms
@@ -425,7 +426,7 @@
 
 (defonce ^:private window-cache
   ;; [base-url model] -> {:window n-or-nil, :expires-at epoch-ms}. Each entry carries its own expiry, because a
-  ;; known and an unknown window live for different times (see [[window-entry]]). The keys are the servers
+  ;; answered and a failed lookup live for different times (see [[lookup-entry]]). The keys are the servers
   ;; and models the connections name, so the map stays small without eviction.
   (atom {}))
 
@@ -435,11 +436,10 @@
   (System/currentTimeMillis))
 
 (defn- window-entry
-  "A [[window-cache]] entry for `window`, which expires after [[known-window-ttl-ms]] when the window is
-  known and after [[unknown-window-ttl-ms]] when it is nil."
-  [window]
+  "A [[window-cache]] entry for `window` that expires `ttl-ms` from now."
+  [window ttl-ms]
   {:window     window
-   :expires-at (+ (now-ms) (if window known-window-ttl-ms unknown-window-ttl-ms))})
+   :expires-at (+ (now-ms) ttl-ms)})
 
 (defn- live-entry
   "The [[window-cache]] entry for `k`, or nil when there is none or it has expired."
@@ -453,35 +453,44 @@
 
   vLLM's `/v1/models` entries carry `max_model_len`
   (https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/serve/engine/protocol.py, `ModelCard`).
-  Nil when the catalog lists no entry with the model's id or no window for it (Ollama, LM Studio, TGI),
-  and when the request fails: an unknown window only means no default cap, and the chat request that
-  follows reports a real failure in its own words."
+  Nil when the catalog lists no entry with the model's id or no window for it (Ollama, LM Studio, TGI).
+  Throws when the request fails."
+  [credentials model]
+  (let [res   (adapter/request! provider
+                                {:credentials credentials :method :get :path "/models" :as :json}
+                                {:socket-timeout     window-lookup-timeout-ms
+                                 :connection-timeout window-lookup-timeout-ms})
+        entry (u/seek #(= model (:id %)) (get-in res [:body :data]))]
+    (when (pos-int? (:max_model_len entry))
+      (:max_model_len entry))))
+
+(defn- lookup-entry
+  "Look up the window of `model` on the server at `credentials`, as a [[window-cache]] entry.
+
+  An answer, with or without a window, lives for [[answered-lookup-ttl-ms]]. A failed lookup gives a nil
+  window that lives for [[failed-lookup-ttl-ms]]: an unknown window only means no default cap, and the
+  chat request that follows reports a real failure in its own words."
   [credentials model]
   (try
-    (let [res   (adapter/request! provider
-                                  {:credentials credentials :method :get :path "/models" :as :json}
-                                  {:socket-timeout     window-lookup-timeout-ms
-                                   :connection-timeout window-lookup-timeout-ms})
-          entry (u/seek #(= model (:id %)) (get-in res [:body :data]))]
-      (when (pos-int? (:max_model_len entry))
-        (:max_model_len entry)))
+    (window-entry (fetch-max-model-len credentials model) answered-lookup-ttl-ms)
     (catch Exception e
       (log/debugf e "Could not read the context window of %s from the vLLM server" model)
-      nil)))
+      (window-entry nil failed-lookup-ttl-ms))))
 
 (defn- served-max-model-len
   "The context window the vLLM server serves the request's model with, or nil when it is unknown.
 
   Read from the server rather than stored on the connection, so a restart with a different
-  `--max-model-len` is followed within [[known-window-ttl-ms]]. Answers are cached per base URL and model,
-  nil ones too, so a server that reports no window costs one lookup per [[unknown-window-ttl-ms]], not one
-  per request. Two requests that miss at the same time both look up; the later answer wins."
+  `--max-model-len` is followed within [[answered-lookup-ttl-ms]]. Lookups are cached per base URL and
+  model, nil windows and failures too, so a server costs one lookup per [[answered-lookup-ttl-ms]], or per
+  [[failed-lookup-ttl-ms]] while its lookup fails, not one per request. Two requests that miss at the same
+  time both look up; the later answer wins."
   [{:keys [model credentials ai-proxy?]}]
   (let [base-url (:base-url credentials)
         k        [base-url model]]
     (when-not (or ai-proxy? (str/blank? base-url))
       (:window (or (live-entry k)
-                   (let [entry (window-entry (fetch-max-model-len credentials model))]
+                   (let [entry (lookup-entry credentials model)]
                      (swap! window-cache assoc k entry)
                      entry))))))
 
