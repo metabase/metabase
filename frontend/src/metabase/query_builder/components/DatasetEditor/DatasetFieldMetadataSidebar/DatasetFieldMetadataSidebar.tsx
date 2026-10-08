@@ -306,9 +306,6 @@ function DatasetFieldMetadataSidebarInner({
                         maxWidth: "90%",
                       },
                     },
-                    input: {
-                      fontWeight: "bold",
-                    },
                   }}
                 />
                 <FormTextarea

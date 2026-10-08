@@ -62,6 +62,7 @@ export const NameDescriptionInput = ({
           input: S.nameInput,
           root: S.name,
           section: S.section,
+          wrapper: S.nameWrapper,
         }}
         fw="bold"
         leftSection={

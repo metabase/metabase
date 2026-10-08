@@ -80,7 +80,7 @@ export function ListViewColumnsSidebar({
       <Stack gap="lg">
         <TextInput
           placeholder={t`Find a column...`}
-          leftSection={<Icon name="search" size={14} c="text-disabled" />}
+          leftSection={<Icon name="search" c="text-disabled" />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />

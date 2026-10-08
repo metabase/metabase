@@ -61,7 +61,6 @@ export function CronExpressionInput({
       <TextInput
         placeholder="For example 5   0   *   Aug   ?"
         size="md"
-        fw={600}
         error={error}
         errorProps={{ fz: ".875rem", lh: "1.3rem" }}
         type="text"

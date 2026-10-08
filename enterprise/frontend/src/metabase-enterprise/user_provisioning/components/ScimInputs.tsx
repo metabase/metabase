@@ -10,7 +10,6 @@ export const getTextInputStyles = (params: {
 }) => ({
   label: {
     fontSize: "0.875rem",
-    marginBottom: ".5rem",
   },
   input: {
     color: match(params)

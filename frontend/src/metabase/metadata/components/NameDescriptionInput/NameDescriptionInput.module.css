@@ -29,3 +29,30 @@
   border-end-start-radius: var(--mantine-radius-sm);
   border-end-end-radius: var(--mantine-radius-sm);
 }
+
+.name .nameWrapper {
+  --input-height-lg: rem(50px);
+}
+
+.name .nameInput,
+.description .descriptionInput {
+  --input-border-color: var(--mb-color-border-neutral);
+  --input-ring: 0 0 0 0 transparent;
+
+  border-width: 1px;
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.name .nameInput {
+  font-size: var(--mantine-font-size-lg);
+}
+
+.name .nameInput:hover,
+.name .nameInput:focus-within,
+.description .descriptionInput:hover,
+.description .descriptionInput:focus-within {
+  --input-border-color: var(--mb-color-core-brand);
+  --input-ring: 0 0 0 0 transparent;
+
+  background-color: var(--mb-color-background_page-primary);
+}

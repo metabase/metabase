@@ -1,7 +1,5 @@
 import { type MantineThemeOverride, Textarea } from "@mantine/core";
 
-import TextInputStyles from "../TextInput/TextInput.module.css";
-
 export const textareaOverrides: MantineThemeOverride["components"] = {
   Textarea: Textarea.extend({
     defaultProps: {
@@ -10,9 +8,6 @@ export const textareaOverrides: MantineThemeOverride["components"] = {
       minRows: 2,
       maxRows: 6,
       inputWrapperOrder: ["label", "description", "input", "error"],
-    },
-    classNames: {
-      error: TextInputStyles.error,
     },
     styles: {
       input: { lineHeight: "normal" },

@@ -8,6 +8,7 @@ export type TableActionInputNumberProps = TableActionInputSharedProps & {
   allowDecimal?: boolean;
   hideControls?: boolean;
   classNames?: {
+    root?: string;
     wrapper?: string;
     numberInputElement?: string;
   };
@@ -65,6 +66,7 @@ export const TableActionInputNumber = ({
       onValueChange={handleChangeValue}
       onBlur={handleBlur}
       classNames={{
+        root: classNames?.root,
         wrapper: classNames?.wrapper,
         input: classNames?.numberInputElement,
       }}

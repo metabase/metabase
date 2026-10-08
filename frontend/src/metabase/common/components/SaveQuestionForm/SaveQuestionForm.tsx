@@ -14,7 +14,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Radio, Stack, rem } from "metabase/ui";
+import { Button, Radio, Stack } from "metabase/ui";
 
 import type { OmniPickerItem } from "../Pickers";
 
@@ -25,7 +25,6 @@ const labelStyles = {
   fontWeight: 900,
   fontSize: "0.77rem",
   color: "var(--mb-color-text-secondary)",
-  marginBottom: rem("7px"),
 };
 
 export const SaveQuestionForm = ({
@@ -68,14 +67,7 @@ export const SaveQuestionForm = ({
         <FormRadioGroup
           name="saveType"
           label={title}
-          styles={{
-            label: {
-              fontWeight: 900,
-              fontSize: "0.77rem",
-              color: "var(--mb-color-text-secondary)",
-              marginBottom: rem("7px"),
-            },
-          }}
+          styles={{ label: labelStyles }}
         >
           <Stack gap="sm" mb="lg">
             <Radio
@@ -137,12 +129,7 @@ export const SaveQuestionForm = ({
               label={c("'this' refers to the question that's being saved")
                 .t`Which tab should this go on?`}
               dashboardId={values.dashboard_id}
-              styles={{
-                label: {
-                  ...labelStyles,
-                  marginBottom: rem("3px"),
-                },
-              }}
+              styles={{ label: labelStyles }}
             />
           </div>
         </Stack>

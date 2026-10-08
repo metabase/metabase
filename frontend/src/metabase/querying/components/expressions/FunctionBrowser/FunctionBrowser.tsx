@@ -74,7 +74,6 @@ export function FunctionBrowser({
       data-testid="expression-editor-function-browser"
     >
       <Input
-        size="sm"
         mb="sm"
         mx="lg"
         placeholder={getSearchPlaceholder(expressionMode)}

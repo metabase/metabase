@@ -115,7 +115,6 @@ export const NewDashboardDialog = () => {
                 label={t`Give it a name`}
                 placeholder={t`My new dashboard`}
                 mb="1rem"
-                labelProps={{ my: "0.5rem" }}
                 data-autofocus
               />
               <FormFooter>

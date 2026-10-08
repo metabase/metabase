@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { Ref } from "react";
 import { forwardRef } from "react";
 
@@ -7,8 +6,6 @@ import { TextInput } from "metabase/ui";
 
 import type { CopyTextFieldClassNames } from "../CopyTextField/copy-text-field-props";
 import { getCopyTextFieldProps } from "../CopyTextField/copy-text-field-props";
-
-import S from "./CopyTextInput.module.css";
 
 export type CopyTextInputProps = Omit<TextInputProps, "classNames"> & {
   value: string;
@@ -30,10 +27,7 @@ export const CopyTextInput = forwardRef(function CopyTextInput(
         onClick,
         onCopied,
       })}
-      classNames={{
-        ...classNames,
-        input: cx(S.input, classNames?.input),
-      }}
+      classNames={classNames}
     />
   );
 });

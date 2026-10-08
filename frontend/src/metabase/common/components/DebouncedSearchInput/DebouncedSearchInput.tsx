@@ -53,7 +53,7 @@ export const DebouncedSearchInput = ({
       value={query}
       radius="sm"
       onChange={(event) => setQuery(event.currentTarget.value)}
-      leftSection={<Icon c="text-secondary" name="search" size={16} />}
+      leftSection={<Icon c="text-secondary" name="search" />}
       rightSectionPointerEvents="all"
       rightSection={renderRightSection()}
       {...textInputProps}
