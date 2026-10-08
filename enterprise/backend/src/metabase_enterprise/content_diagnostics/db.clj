@@ -111,6 +111,13 @@
                  :set    {:invalidated_at (mi/now)}
                  :where  where}))
 
+(mu/defn active-finding-ids
+  "The ids among `ids` of the still-active findings that also match `where`."
+  [ids   :- [:sequential ms/PositiveInt]
+   where :- vector?]
+  (t2/select-pks-set :model/ContentDiagnosticsFinding
+                     {:where [:and [:in :id ids] [:= :invalidated_at nil] where]}))
+
 (mu/defn findings-page
   "One page of findings matching `where`, sorted by `order-by`; `limit`/`offset` may be nil for no
   restriction."

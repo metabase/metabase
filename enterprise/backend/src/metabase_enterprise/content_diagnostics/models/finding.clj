@@ -63,3 +63,16 @@
         (into [:or] (common/entity-collection-clauses
                      archived-types
                      (fn [_etype coll-col] [:in coll-col collection-ids])))]))))
+
+(defn invalidate-by-ids!
+  "Soft-invalidate the still-active findings among `ids` that match `where`, in one transaction; returns
+  the set of ids found active. Two racing calls can both report an id; the `invalidated_at` NULL guard
+  still stamps it once."
+  [ids where]
+  (t2/with-transaction [_conn]
+    (let [eligible (set (cd.db/active-finding-ids ids where))]
+      (when (seq eligible)
+        (cd.db/invalidate-findings-where! [:and
+                                           [:in :id (vec eligible)]
+                                           [:= :invalidated_at nil]]))
+      eligible)))

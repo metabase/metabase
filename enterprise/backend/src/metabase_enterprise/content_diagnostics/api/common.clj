@@ -28,6 +28,17 @@
   [entity-types]
   (into entity-types queries.schema/card-types))
 
+(defn latest-findings-clause
+  "Keep only the latest finding per entity and finding type, invalidated or not. A scan inserts before it
+  supersedes, so an older row can stay active behind a newer one."
+  []
+  ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
+  ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
+  ;; partial scan hasn't re-written yet still shows its last finding.
+  [:in :id ^:allow-subquery {:select   [[[:max :id] :id]]
+                             :from     [(t2/table-name :model/ContentDiagnosticsFinding)]
+                             :group-by [:entity_type :entity_id :finding_type]}])
+
 (defn valid-clause
   "Result set for one **or many** `finding-types` (an umbrella endpoint spans several): the latest
   finding per entity, excluding entities whose latest row is invalidated (an older valid row does not
@@ -36,12 +47,7 @@
   [:and
    [:= :invalidated_at nil]
    [:in :finding_type (u/one-or-many finding-types)]
-   ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
-   ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
-   ;; partial scan hasn't re-written yet still shows its last finding.
-   [:in :id ^:allow-subquery {:select   [[[:max :id] :id]]
-                              :from     [(t2/table-name :model/ContentDiagnosticsFinding)]
-                              :group-by [:entity_type :entity_id :finding_type]}]])
+   (latest-findings-clause)])
 
 ;;; ------------------------------ per-caller read-time filters (shared) --------------------------------
 ;;; Resolved live at read time against each entity's *current* collection (not scan-time
