@@ -36,13 +36,11 @@ function setup({ canQuery }: { canQuery: boolean }) {
     tables: [viewTable],
     fields: viewTable.fields ?? [],
   });
-  fetchMock.get(
-    {
-      url: `path:/api/database/${AUDIT_DB_ID}/schema/public`,
-      query: { "can-query": "true" },
-    },
-    canQuery ? [viewTable] : [],
-  );
+  fetchMock.get({
+    url: `path:/api/database/${AUDIT_DB_ID}/schema/public`,
+    query: { "can-query": "true" },
+    response: canQuery ? [viewTable] : [],
+  });
 
   renderWithProviders(<NewQuestionButton viewName={VIEW_NAME} />);
 }
