@@ -242,7 +242,7 @@ describe("CreateMenu", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the data action option with native write on an actions-enabled database", async () => {
+  it("renders the action option with native write on an actions-enabled database", async () => {
     setup({
       user: fullPermissionsUser,
       databases: [
@@ -256,11 +256,11 @@ describe("CreateMenu", () => {
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
 
     expect(
-      await screen.findByRole("menuitem", { name: /Data action/ }),
+      await screen.findByRole("menuitem", { name: /Action/ }),
     ).toBeInTheDocument();
   });
 
-  it("does not render the data action option without an actions-enabled database", async () => {
+  it("does not render the action option without an actions-enabled database", async () => {
     setup({
       user: fullPermissionsUser,
       databases: [
@@ -275,7 +275,7 @@ describe("CreateMenu", () => {
 
     expect(await screen.findByText("Snippet")).toBeInTheDocument();
     expect(
-      screen.queryByRole("menuitem", { name: /Data action/ }),
+      screen.queryByRole("menuitem", { name: /Action/ }),
     ).not.toBeInTheDocument();
   });
 });

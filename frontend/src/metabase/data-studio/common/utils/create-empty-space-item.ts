@@ -37,7 +37,7 @@ const getEmptyStateConfig = (
     },
     actions: {
       description: t`Queries that change data`,
-      actionLabel: t`New data action`,
+      actionLabel: t`New action`,
     },
   };
 

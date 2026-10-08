@@ -138,7 +138,7 @@ export const CreateMenu = ({
         to={Urls.newDataStudioAction()}
         leftSection={<FixedSizeIcon name="bolt" />}
       >
-        {t`Data action`}
+        {t`Action`}
       </Menu.Item>
     ),
     canCreateCollection && (
