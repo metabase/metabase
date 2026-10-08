@@ -208,150 +208,95 @@
 (defn- transforms-state
   "The stored `remote-sync-transforms` value and the Transforms ledger rows."
   []
+  ;; `select-fn-vec` gives nil for no row
   {:stored (t2/select-one-fn :value :model/Setting :key "remote-sync-transforms")
-   :ledger (transforms-ledger-rows)})
+   :ledger (vec (transforms-ledger-rows))})
 
-(deftest clean-remote-sync-state-removes-stored-transforms-setting-test
-  (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
-                "ledger row when the settings cache restores it inside the test")
+(deftest clean-remote-sync-state-removes-the-transforms-setting-and-ledger-rows-test
+  (testing (str "the remote-sync-transforms value that the test sets, and the Transforms ledger row that its "
+                ":on-change hook writes, do not outlive clean-remote-sync-state")
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (th/clean-remote-sync-state
+          (fn []
+            (remote-sync.settings/remote-sync-transforms! true)
+            (is (seq (transforms-ledger-rows)))))
+         (is (= {:stored nil :ledger []} (transforms-state)))
+         (is (false? (remote-sync.settings/remote-sync-transforms))
+             "the settings cache agrees with the deleted row"))))))
+
+(deftest clean-remote-sync-state-deletes-every-remote-sync-setting-row-test
+  (testing (str "no remote-sync setting row outlives clean-remote-sync-state, also when the test binds settings "
+                "that had no row, and changes or adds rows with no binding")
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (th/clean-remote-sync-state
+          (fn []
+            ;; through the model, so that the rows stay readable under an encryption key
+            (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                        {:key "remote-sync-url" :value "https://example.com/a.git"}])
+            (setting/restore-cache!)
+            (is (seq (remote-sync-setting-rows)))
+            (mt/with-temporary-setting-values [remote-sync-type                :read-only
+                                               remote-sync-auto-import         true
+                                               remote-sync-git-timeout-seconds 5]
+              (is (= [:read-only true 5]
+                     [(remote-sync.settings/remote-sync-type)
+                      (remote-sync.settings/remote-sync-auto-import)
+                      (remote-sync.settings/remote-sync-git-timeout-seconds)])))
+            ;; change a row and add one, with no binding to undo them
+            (remote-sync.settings/remote-sync-type! :read-only)
+            (t2/insert! :model/Setting {:key "remote-sync-branch" :value "main"})))
+         (is (= [] (remote-sync-setting-rows))))))))
+
+(deftest clean-remote-sync-settings-throws-and-names-the-keys-when-a-delete-fails-test
+  (testing (str "when the delete of one remote-sync setting row fails, the other rows are deleted and the fixture "
+                "throws an exception that names the failed key")
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                     {:key "remote-sync-url" :value "https://example.com/a.git"}])
+         (setting/restore-cache!)
+         (let [delete! (mt/original-fn #'th/delete-remote-sync-setting-row!)
+               error   (try
+                         (mt/with-dynamic-fn-redefs [th/delete-remote-sync-setting-row!
+                                                     (fn [k]
+                                                       (if (= "remote-sync-url" k)
+                                                         (throw (ex-info "delete failed" {}))
+                                                         (delete! k)))]
+                           (th/clean-remote-sync-settings (fn [])))
+                         nil
+                         (catch clojure.lang.ExceptionInfo e
+                           e))]
+           (is (=? {:keys ["remote-sync-url"]} (ex-data error)))
+           (is (re-find #"remote-sync-url" (str (ex-message error))))
+           (is (= "delete failed" (ex-message (ex-cause error))))
+           (testing "the other row is deleted, and the row whose delete failed stays"
+             (is (= #{"remote-sync-url"} (set (map first (remote-sync-setting-rows))))))))))))
+
+(deftest settings-cleanup-deletes-each-row-with-one-statement-outside-a-transaction-test
+  (testing "the settings cleanup deletes each remote-sync row with one statement and opens no transaction"
     (do-with-remote-sync-state-restored!
      (fn []
-       (#'th/remove-transforms-setting!)
-       ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
-       (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
-       (th/clean-remote-sync-state
-        (fn []
-          (setting/restore-cache!)
-          (is (empty? (transforms-ledger-rows)))))))))
-
-(deftest clean-remote-sync-state-keeps-transforms-setting-and-ledger-in-step-test
-  (testing "after clean-remote-sync-state, the remote-sync-transforms value and the Transforms ledger row agree when both
-            existed before it"
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
-       (fn []
-         ;; so that the setter changes the value and its :on-change hook writes the Transforms ledger row
-         (#'th/remove-transforms-setting!)
-         (remote-sync.settings/remote-sync-transforms! true)
-         (let [before (transforms-state)]
-           (th/clean-remote-sync-state (fn []))
-           (is (= before (transforms-state)))
-           (is (= (remote-sync.settings/remote-sync-transforms)
-                  (contains? (set (transforms-ledger-rows)) ["Transforms" "create"])))))))))
-
-(deftest clean-remote-sync-state-keeps-existing-transforms-ledger-row-test
-  (testing "a Transforms ledger row that existed before clean-remote-sync-state outlives it, because clean-object
-            restores it after clean-remote-sync-settings deletes it"
-    ;; The status "synced" shows that the row is the old row: the :on-change hook writes only "create" and "delete".
-    ;; In the reverse fixture order, clean-remote-sync-settings deletes the row after clean-object restored it.
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
-       (fn []
-         ;; so that the setter changes the value and its :on-change hook writes the Transforms ledger row
-         (#'th/remove-transforms-setting!)
-         (remote-sync.settings/remote-sync-transforms! true)
-         (t2/update! :model/RemoteSyncObject
-                     {:model_type "Collection" :model_id remote-sync.settings/transforms-root-id}
-                     {:status "synced"})
-         (th/clean-remote-sync-state (fn []))
-         (is (= {:stored "true" :ledger [["Transforms" "synced"]]}
-                (transforms-state))))))))
-
-(deftest clean-remote-sync-state-restores-every-remote-sync-setting-row-test
-  (testing "the raw remote-sync setting rows after clean-remote-sync-state equal the rows before it, also when the test
-            binds settings that had no row, and changes or deletes rows with no binding"
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
-       (fn []
-         (t2/delete! :setting :key [:in ["remote-sync-type" "remote-sync-branch" "remote-sync-auto-import"
-                                         "remote-sync-git-timeout-seconds"]])
-         (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
-                               ;; a row that only a version before the `value_with_aad` column wrote
-                               {:key "remote-sync-branch" :value "legacy" :value_with_aad nil}])
-         (setting/restore-cache!)
-         (let [before (remote-sync-setting-rows)]
-           (th/clean-remote-sync-state
-            (fn []
-              (mt/with-temporary-setting-values [remote-sync-type                :read-only
-                                                 remote-sync-auto-import         true
-                                                 remote-sync-git-timeout-seconds 5]
-                (is (= [:read-only true 5]
-                       [(remote-sync.settings/remote-sync-type)
-                        (remote-sync.settings/remote-sync-auto-import)
-                        (remote-sync.settings/remote-sync-git-timeout-seconds)])))
-              ;; change and delete rows that existed before the test, with no binding to undo them
-              (remote-sync.settings/remote-sync-type! :read-only)
-              (t2/delete! :setting :key "remote-sync-branch")))
-           (is (= before (remote-sync-setting-rows)))))))))
-
-(deftest clean-remote-sync-state-writes-back-the-other-setting-rows-when-the-write-of-one-fails-test
-  (testing "when the write-back of one remote-sync setting row fails, the other rows are written back and the fixture
-            throws an exception that names the failed key"
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (do-with-remote-sync-state-restored!
-       (fn []
-         (t2/delete! :setting :key [:in ["remote-sync-type" "remote-sync-branch" "remote-sync-transforms"]])
-         (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
-                               {:key "remote-sync-branch" :value "legacy" :value_with_aad nil}])
-         (setting/restore-cache!)
-         (let [write! (mt/original-fn #'th/write-remote-sync-setting-row!)
-               error  (try
-                        (mt/with-dynamic-fn-redefs [th/write-remote-sync-setting-row!
-                                                    (fn [k & args]
-                                                      (if (= "remote-sync-branch" k)
-                                                        (throw (ex-info "write failed" {}))
-                                                        (apply write! k args)))]
-                          (th/clean-remote-sync-state
-                           (fn []
-                             (t2/update! :setting :key "remote-sync-type" {:value "read-only" :value_with_aad "read-only"})
-                             (t2/delete! :setting :key "remote-sync-branch"))))
-                        nil
-                        (catch clojure.lang.ExceptionInfo e
-                          e))]
-           (is (=? {:keys ["remote-sync-branch"]} (ex-data error)))
-           (is (re-find #"remote-sync-branch" (str (ex-message error))))
-           (is (= "write failed" (ex-message (ex-cause error))))
-           (testing "the update of the other key is written back, and the deleted row is not"
-             (is (= [["remote-sync-type" "read-write" "read-write"]]
-                    (filter (comp #{"remote-sync-type" "remote-sync-branch"} first) (remote-sync-setting-rows)))))))))))
-
-(deftest write-back-writes-only-changed-keys-each-with-one-statement-outside-a-transaction-test
-  (testing "the write-back writes each changed key with one statement, opens no transaction, and leaves unchanged keys"
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (t2/delete! :setting :key [:like "remote-sync%"])
-       (let [saved   [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
-                      {:key "remote-sync-url" :value "https://example.com/a.git" :value_with_aad "https://example.com/a.git"}
-                      {:key "remote-sync-auto-import" :value "true" :value_with_aad "true"}]
-             written (atom [])
-             write!  (mt/original-fn #'th/write-remote-sync-setting-row!)]
-         (t2/insert! :setting saved)
-         ;; a changed key, a deleted key, a new key, and an unchanged key (remote-sync-auto-import)
-         (t2/update! :setting :key "remote-sync-type" {:value "read-only" :value_with_aad "read-only"})
-         (t2/delete! :setting :key "remote-sync-url")
-         (t2/insert! :setting {:key "remote-sync-branch" :value "main" :value_with_aad "main"})
-         (mt/with-dynamic-fn-redefs [th/write-remote-sync-setting-row!
-                                     (fn [k & args]
-                                       (let [counts (activity/count-db-activity! #(apply write! k args))]
-                                         (swap! written conj [k (select-keys (this-thread counts)
+       (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                   {:key "remote-sync-url" :value "https://example.com/a.git"}
+                                   {:key "remote-sync-auto-import" :value "true"}])
+       (let [deleted (atom [])
+             delete! (mt/original-fn #'th/delete-remote-sync-setting-row!)]
+         (mt/with-dynamic-fn-redefs [th/delete-remote-sync-setting-row!
+                                     (fn [k]
+                                       (let [counts (activity/count-db-activity! #(delete! k))]
+                                         (swap! deleted conj [k (select-keys (this-thread counts)
                                                                              [:statements :transactions])])))]
-           (#'th/write-remote-sync-setting-rows! saved))
-         (is (= [["remote-sync-branch" {:statements 1 :transactions 0}]
+           (#'th/delete-remote-sync-setting-rows!))
+         (is (= [["remote-sync-auto-import" {:statements 1 :transactions 0}]
                  ["remote-sync-type" {:statements 1 :transactions 0}]
                  ["remote-sync-url" {:statements 1 :transactions 0}]]
-                (sort-by first @written)))
-         (is (= (sort (map (juxt :key :value :value_with_aad) saved))
-                (remote-sync-setting-rows))))))))
-
-(deftest stored-transforms-setting-test-keeps-existing-transforms-state-test
-  (testing "clean-remote-sync-state-removes-stored-transforms-setting-test leaves the remote-sync-transforms value and
-            the Transforms ledger row that existed before it"
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (remote-sync.settings/remote-sync-transforms! true)
-       (let [before (transforms-state)]
-         (test-vars [#'clean-remote-sync-state-removes-stored-transforms-setting-test])
-         (is (= before (transforms-state))))))))
+                (sort-by first @deleted)))
+         (is (= [] (remote-sync-setting-rows))))))))
 
 (defn- sql-state-and-message
   "The SQLState and message of the innermost cause of `e`, or nil when `e` is nil."
@@ -370,8 +315,7 @@
     (:mysql :mariadb) (:id (t2/query-one ["SELECT CONNECTION_ID() AS id"]))))
 
 (defn- session-blocks-another?
-  "Whether another app DB session waits for a lock. On H2 and Postgres, the lock must be one that the session `id`
-  holds; on MySQL and MariaDB, the session `id` must have an open transaction."
+  "Whether another app DB session waits for a lock that the session `id` holds."
   [id]
   (case (mdb/db-type)
     :h2
@@ -380,18 +324,28 @@
     :postgres
     (pos? (:n (t2/query-one ["SELECT count(*) AS n FROM pg_stat_activity WHERE ? = ANY (pg_blocking_pids(pid))" id])))
 
-    (:mysql :mariadb)
-    (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.innodb_trx w "
+    :mysql
+    ;; `data_lock_waits` names the waiting and the blocking transaction, so the wait must be for a lock that the
+    ;; session `id` holds, not for one that any other session on the server holds
+    (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM performance_schema.data_lock_waits w "
                                   "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
-                                  "WHERE w.trx_state = 'LOCK WAIT' AND w.trx_mysql_thread_id <> ?")
-                             id id])))))
+                                  "WHERE w.BLOCKING_ENGINE_TRANSACTION_ID = b.trx_id")
+                             id])))
+
+    :mariadb
+    ;; MariaDB has no `performance_schema`; `INNODB_LOCK_WAITS` names the blocking transaction
+    (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.INNODB_LOCK_WAITS w "
+                                  "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
+                                  "WHERE w.blocking_trx_id = b.trx_id")
+                             id])))))
 
 (defn- cleanup-against-a-two-row-writer!
-  "Run the cleanup fixture `fixture` around a body that runs `write-two!`, which writes two rows and returns their ids
-  `[a b]`. While the cleanup runs, a transaction on another thread runs `(lock-first! x)`, waits until the cleanup
-  waits for it, then runs `(lock-second! y)`; `[x y]` is `[a b]` for `order` `:a-first` and `[b a]` for `:b-first`.
-  After the writer ends, calls `(after! [x y])`. Returns `{:proceed :cleanup :writer :after}`, where `:after` is the
-  value of `after!`."
+  "Run `fixture` around a body that calls `write-two!` (it writes two rows and returns their ids `[a b]`) and then,
+  in a transaction on another thread, `(lock-first! x)`; the body returns once that lock is held. The writer runs
+  `(lock-second! y)` when the cleanup blocks on its lock, when the cleanup ends, or after 10 s. `[x y]` is `[a b]`
+  for `order` `:a-first` and `[b a]` for `:b-first`. Returns `{:proceed :cleanup :writer :after}`: `:proceed` is
+  `::cleanup-blocked` or `::cleanup-done`; `:cleanup` and `:writer` are `[sql-state message]` of an exception, or
+  nil and `:committed`; `:after` is `(after! [x y])`."
   [fixture write-two! lock-first! lock-second! after! order]
   (let [writer-id (promise)
         proceed   (promise)
@@ -501,84 +455,58 @@
                      (delete-rows-left! :remote_sync_task)
                      order))))))))))
 
-(defn- setting-values
-  "The stored `value` of each remote-sync setting row, by key."
-  []
-  (into {} (map (juxt first second)) (remote-sync-setting-rows)))
-
 (defn- set-setting-value!
   "Set the stored `value` and `value_with_aad` of the setting row `k` to `v`, with one statement."
   [k v]
   (t2/query-one {:update :setting :set {:value v :value_with_aad v} :where [:= :key k]}))
 
-(deftest clean-remote-sync-settings-write-back-of-two-changed-rows-does-not-deadlock-test
-  (testing (str "the write-back of two changed remote-sync rows completes while another transaction updates the same "
+(deftest clean-remote-sync-settings-delete-of-two-rows-does-not-deadlock-test
+  (testing (str "the delete of two remote-sync setting rows completes while another transaction updates the same "
                 "two rows, in each order")
     (doseq [order [:a-first :b-first]]
       (testing (str "order " order)
         (do-with-remote-sync-state-restored!
          (fn []
-           (t2/delete! :setting :key [:like "remote-sync%"])
-           (t2/insert! :setting [{:key "remote-sync-type" :value "read-write" :value_with_aad "read-write"}
-                                 {:key            "remote-sync-url"
-                                  :value          "https://example.com/a.git"
-                                  :value_with_aad "https://example.com/a.git"}])
+           ;; through the model, so that the rows stay readable under an encryption key
+           (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                       {:key "remote-sync-url" :value "https://example.com/a.git"}])
            (setting/restore-cache!)
-           (let [saved (setting-values)]
-             (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after true}
-                    (cleanup-against-a-two-row-writer!
-                     th/clean-remote-sync-settings
-                     (fn []
-                       ;; the test changes both rows, so the write-back must write both keys. Both writer orders run,
-                       ;; so one of them is opposite to the order in which a statement over both rows locks them.
-                       (set-setting-value! "remote-sync-type" "t")
-                       (set-setting-value! "remote-sync-url" "t")
-                       ["remote-sync-type" "remote-sync-url"])
-                     #(set-setting-value! % "w")
-                     #(set-setting-value! % "w")
-                     ;; the write-back waited for the writer's lock on the first row of the writer, so it wrote the
-                     ;; saved value after the writer
-                     (fn [[x _]] (= (get saved x) (get (setting-values) x)))
-                     order))))))))))
+           (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after true}
+                  (cleanup-against-a-two-row-writer!
+                   th/clean-remote-sync-settings
+                   ;; the cleanup deletes both keys. Both writer orders run, so one of them is opposite to the
+                   ;; order in which a statement over both rows locks them.
+                   (fn [] ["remote-sync-type" "remote-sync-url"])
+                   #(set-setting-value! % "w")
+                   #(set-setting-value! % "w")
+                   (fn [ids] (not (some #(t2/exists? :setting :key %) ids)))
+                   order)))))))))
 
 (defn- raw-rows
   "Every row of `table`, every column as stored, sorted by id."
   [table]
   (->> (t2/select table) (map #(into {} %)) (sort-by :id) vec))
 
-(deftest clean-object-and-clean-task-table-restore-the-rows-from-before-test
-  (testing (str "clean-object and clean-task-table put back every column of the rows that existed before the test, "
-                "and remove the rows that the test added")
-    (let [ts   (t/offset-date-time 2024 5 6 7 8 9 123456000 (t/zone-offset 0))
-          user (mt/user->id :rasta)]
-      (doseq [[fixture table rows change!]
+(deftest clean-object-and-clean-task-table-delete-every-row-test
+  (testing (str "clean-object and clean-task-table empty their table before the test, and no row that the test "
+                "added outlives them")
+    (let [user (mt/user->id :rasta)]
+      (doseq [[fixture table row test-row]
               [[th/clean-task-table :remote_sync_task
-                [{:id 900001 :sync_task_type "import" :progress 0.25 :cancelled true :started_at ts :ended_at ts
-                  :last_progress_report_at ts :initiated_by user :error_message "failed" :version "abc123"
-                  :conflicts "[\"a\"]" :outcome "{\"x\":1}" :last_heartbeat_at ts}
-                 {:id 900002 :sync_task_type "export" :progress 0.5 :cancelled false :started_at ts
-                  :initiated_by user}]
-                (fn []
-                  (t2/query-one {:update :remote_sync_task :set {:progress 0.9} :where [:= :id 900001]})
-                  (t2/query-one {:delete-from :remote_sync_task :where [:= :id 900002]})
-                  (t2/insert! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by user}))]
+                {:sync_task_type "import" :initiated_by user}
+                {:sync_task_type "export" :initiated_by user}]
                [th/clean-object :remote_sync_object
-                [{:id 900001 :model_type "Card" :model_id 7 :status "synced" :status_changed_at ts :model_name "C"
-                  :model_collection_id 3 :model_display "table" :model_table_id 4 :model_table_name "T"
-                  :file_path "collections/x/cards/c.yaml" :content_hash (apply str (repeat 64 "a"))}]
-                (fn []
-                  (t2/query-one {:update :remote_sync_object :set {:status "update"} :where [:= :id 900001]})
-                  (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id 8 :model_name "D"
-                                                       :status "create" :status_changed_at ts}))]]]
+                {:model_type "Card" :model_id 7 :model_name "Old" :status "synced"
+                 :status_changed_at (t/offset-date-time)}
+                {:model_type "Card" :model_id 8 :model_name "New" :status "create"
+                 :status_changed_at (t/offset-date-time)}]]]
         (testing table
-          ;; the outer fixture run empties the table for the test and puts back its rows after it
-          (fixture
-           (fn []
-             (doseq [row rows]
-               (t2/query-one {:insert-into table :values [row]}))
-             (let [before (raw-rows table)]
-               (fixture change!)
-               (is (= before (raw-rows table)))))))))))
+          ;; a row from before the fixture: the before-test delete of the fixture removes it
+          (t2/insert! table row)
+          (fixture (fn []
+                     (is (empty? (raw-rows table)) "the fixture empties the table for the test")
+                     (t2/insert! table test-row)))
+          (is (empty? (raw-rows table))))))))
 
 (deftest clean-remote-sync-state-does-not-reindex-when-the-test-writes-no-content-test
   (testing "clean-remote-sync-state around a test that writes no content does not reindex search"
@@ -623,12 +551,12 @@
         (reset! logged? before)))))
 
 (deftest clean-remote-sync-state-warns-once-when-a-started-scheduler-can-write-test
-  (testing (str "clean-remote-sync-state logs one warning per JVM that names what it deletes and writes back, when a "
-                "started scheduler can run jobs that write the app DB during the test")
+  (testing (str "clean-remote-sync-state logs one warning per JVM that names what it deletes and that it restores "
+                "nothing, when a started scheduler can run jobs that write the app DB during the test")
     (do-with-remote-sync-state-restored!
      (fn []
        (is (=? [{:level   :warn
-                 :message #"(?s).*scheduler.*Dashboard, Card, Action, Document, DataApp, Collection.*remote-sync%.*"}]
+                 :message #"(?s).*scheduler.*RemoteSyncObject.*remote-sync%.*Dashboard, Card, Action, Document, DataApp, Collection.*restores nothing.*"}]
                (shared-fixture-warnings
                 (fn []
                   (mt/with-temp-scheduler!
@@ -656,8 +584,8 @@
                       (th/clean-remote-sync-state (fn []))))))))))))
 
 (defn- run-vars-quietly
-  "Run the test vars `vs` with their namespace's `:each` fixtures. Returns their counts as `{:pass n :fail n :error n}`;
-  their failures are not reported to the calling test."
+  "Run the test vars `vs` with their namespace's fixtures. Returns their counts as `{:pass n :fail n :error n}`;
+  their failures do not reach the calling test's report."
   [vs]
   (let [results (atom {:pass 0 :fail 0 :error 0})]
     (binding [*test-out*        (java.io.StringWriter.)
@@ -668,36 +596,20 @@
       (test-vars vs))
     @results))
 
-(deftest clean-remote-sync-state-transforms-tests-pass-when-transforms-is-already-stored-test
-  (testing (str "the tests that keep the Transforms ledger row and the remote-sync-transforms value in step pass when "
-                "the app DB already stores remote-sync-transforms as true")
-    (do-with-remote-sync-state-restored!
-     (fn []
-       (#'th/remove-transforms-setting!)
-       ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
-       (t2/insert! :setting {:key "remote-sync-transforms" :value "true" :value_with_aad "true"})
-       (setting/restore-cache!)
-       (#'th/delete-transforms-ledger-rows!)
-       (is (= {:fail 0 :error 0}
-              (select-keys (run-vars-quietly [#'clean-remote-sync-state-keeps-existing-transforms-ledger-row-test
-                                              #'clean-remote-sync-state-keeps-transforms-setting-and-ledger-in-step-test])
-                           [:fail :error])))))))
+;;; ------------------------------------------------ the shared fixture deletes rows from before the test ------------------------------------------------
 
-;;; ------------------------------------------------ the shared fixture refuses a used app DB ------------------------------------------------
-
-(defn- do-with-dirty-row!
-  "Run `(thunk)` with one row in the app DB that no test of this JVM made, of the table that `kind` names, and no
-  such row afterwards."
+(defn- do-with-row-from-before!
+  "Run `(thunk)` with one row of the table that `kind` names in the app DB, and no row of it afterwards."
   [kind thunk]
   (case kind
     :ledger
-    (mt/with-temp [:model/RemoteSyncObject {id :id}
-                   {:model_type "Card" :model_id 7 :model_name "Dirty" :status "synced"
+    (mt/with-temp [:model/RemoteSyncObject {_ :id}
+                   {:model_type "Card" :model_id 7 :model_name "Left over" :status "synced"
                     :status_changed_at (t/offset-date-time)}]
       (thunk))
 
     :task
-    (mt/with-temp [:model/RemoteSyncTask {id :id}
+    (mt/with-temp [:model/RemoteSyncTask {_ :id}
                    {:sync_task_type "import" :initiated_by (mt/user->id :rasta)}]
       (thunk))
 
@@ -712,55 +624,57 @@
 
     :transform
     (mt/with-premium-features #{:transforms :transforms-python}
-      (mt/with-temp [:model/Transform {id :id}
-                     {:name        "Dirty"
+      (mt/with-temp [:model/Transform {_ :id}
+                     {:name        "Left over"
                       :source      {:type "query" :query (mt/native-query {:query "SELECT 1"})}
-                      :target      {:type "table" :schema "PUBLIC" :name "dirty_row"}}]
+                      :target      {:type "table" :schema "PUBLIC" :name "left_over"}}]
         (thunk)))
 
     :tag
-    (mt/with-temp [:model/TransformTag {id :id} {:name "Dirty"}]
+    (mt/with-temp [:model/TransformTag {_ :id} {:name "Left over"}]
       (thunk))
 
     :python-library
-    (mt/with-temp [:model/PythonLibrary {id :id} {:path "dirty_row.py" :source ""}]
+    (mt/with-temp [:model/PythonLibrary {_ :id} {:path "left_over.py" :source ""}]
       (thunk))
 
     :namespace-collection
-    (mt/with-temp [:model/Collection {id :id} {:name "Dirty transforms" :location "/" :namespace "transforms"}]
-      (thunk))
-
-    :card
-    (mt/with-temp [:model/Card {id :id} (merge (mt/with-temp-defaults :model/Card) {:name "Dirty"})]
-      (thunk))
-
-    :collection
-    (mt/with-temp [:model/Collection {id :id} {:name "Dirty" :location "/"}]
+    (mt/with-temp [:model/Collection {_ :id} {:name "Left over transforms" :location "/" :namespace "transforms"}]
       (thunk))))
 
-(deftest clean-remote-sync-state-refuses-to-run-on-a-used-app-db-test
-  (testing (str "clean-remote-sync-state refuses to run, and does not run the test body, when the app DB holds a "
-                "row from before the test in a table that it cleans")
-    (doseq [kind [:ledger :task :setting :transform :tag :python-library :namespace-collection :card :collection]]
-      (testing kind
-        (let [ran?  (atom false)
-              error (do-with-dirty-row!
-                     kind
-                     #(try
-                        (th/clean-remote-sync-state (fn [] (reset! ran? true)))
-                        nil
-                        (catch clojure.lang.ExceptionInfo e e)))]
-          (is (some? error) "the fixture refuses to run")
-          (is (str/includes? (or (some-> error ex-message) "") "fresh test database")
-              "the message tells the user to use a fresh test database")
-          (is (false? @ran?) "the test body does not run"))))))
+(defn- dirty-row-exists?
+  "Whether the row that [[do-with-row-from-before!]] made for `kind` is in the app DB."
+  [kind]
+  (case kind
+    :ledger              (pos? (t2/count :model/RemoteSyncObject :model_name "Left over"))
+    :task                (pos? (t2/count :model/RemoteSyncTask :sync_task_type "import"))
+    :setting             (t2/exists? :setting :key "remote-sync-branch")
+    :transform           (pos? (t2/count :model/Transform :name "Left over"))
+    :tag                 (t2/exists? :model/TransformTag :name "Left over")
+    :python-library      (t2/exists? :model/PythonLibrary :path "left_over.py")
+    :namespace-collection (t2/exists? :model/Collection :name "Left over transforms")))
 
-(deftest clean-remote-sync-state-runs-when-the-app-db-holds-only-builtin-rows-test
-  (testing (str "the Trash collection, the built-in TransformTags and the built-in common.py PythonLibrary, which "
-                "migrations and test setup make, do not stop the fixture")
-    (let [ran? (atom false)]
-      (th/clean-remote-sync-state (fn [] (reset! ran? true)))
-      (is (true? @ran?)))))
+(deftest clean-remote-sync-state-deletes-the-remote-sync-rows-from-before-the-test-test
+  (testing (str "a row that existed before the test does not outlive clean-remote-sync-state, in each table that "
+                "the fixture cleans")
+    (doseq [kind [:ledger :task :setting :transform :tag :python-library :namespace-collection]]
+      (testing kind
+        (do-with-row-from-before!
+         kind
+         (fn []
+           (is (dirty-row-exists? kind))
+           (th/clean-remote-sync-state (fn []))
+           (is (not (dirty-row-exists? kind)))))))))
+
+(deftest clean-remote-sync-state-keeps-the-content-rows-from-before-the-test-test
+  (testing (str "the content cleanup deletes only rows above the id that it saved at the start, so content that "
+                "existed before the test stays")
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Left over" :location "/"}]
+      (mt/with-temp [:model/Card {card-id :id} (merge (mt/with-temp-defaults :model/Card)
+                                                      {:name "Left over" :collection_id coll-id})]
+        (th/clean-remote-sync-state (fn []))
+        (is (t2/exists? :model/Collection :id coll-id))
+        (is (t2/exists? :model/Card :id card-id))))))
 
 (deftest clean-object-names-the-table-when-its-delete-after-the-test-fails-test
   (testing "clean-object throws an exception that names the table when its delete after the test fails"
@@ -776,7 +690,7 @@
                       (th/clean-object (fn [])))
                     nil
                     (catch clojure.lang.ExceptionInfo e e))]
-      (is (= "remote_sync_object" (:table (ex-data error))))
+      (is (= :remote_sync_object (:table (ex-data error))))
       (is (str/includes? (ex-message error) "remote_sync_object")))))
 
 (defn- do-with-an-unrelated-lock-wait!
@@ -840,14 +754,14 @@ the transactions, and deletes the scratch rows, before it returns."
          (is (false? (#'session-blocks-another? id))))))))
 
 (deftest clean-remote-sync-state-setting-row-tests-pass-with-an-encryption-key-test
-  (testing (str "clean-remote-sync-state-restores-every-remote-sync-setting-row-test passes on an app DB whose settings "
-                "are encrypted under MB_ENCRYPTION_SECRET_KEY")
+  (testing (str "clean-remote-sync-state-deletes-every-remote-sync-setting-row-test passes on an app DB whose "
+                "settings are encrypted under MB_ENCRYPTION_SECRET_KEY")
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
       (encryption-test/with-secret-key "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ="
         (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
         (is (= {:fail 0 :error 0}
-               (select-keys (run-vars-quietly [#'clean-remote-sync-state-restores-every-remote-sync-setting-row-test])
+               (select-keys (run-vars-quietly [#'clean-remote-sync-state-deletes-every-remote-sync-setting-row-test])
                             [:fail :error])))))))
 
 (deftest clean-imported-content-throws-without-running-the-test-in-a-parallel-test-test
