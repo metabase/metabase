@@ -457,7 +457,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       },
     });
 
-    H.tableInteractive().findByText("Searsboro").click();
+    H.tableInteractive()
+      .findByText("Searsboro")
+      .click({ scrollBehavior: false });
     H.popover().should("be.visible");
     cy.realPress("Escape");
     H.popover().should("not.exist");
