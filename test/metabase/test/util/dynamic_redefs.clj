@@ -198,17 +198,22 @@
   ;; source it has to lock first.
   (.put sources reexport source)
   (remove-watch source reexport)
-  (locking reexport
-    ;; A `with-redefs` of the re-export puts back, when it exits, the root it found when it started. If that root is
-    ;; a copy of the source's, the re-export has to start calling through the source: potemkin no longer updates it.
-    ;; The watch runs holding the re-export's monitor, so it must not take the source's: see `install-proxy!`.
-    (add-watch reexport ::follow-source
-               (fn [_ _ _ root]
-                 (when (copy-of-source? root source)
-                   (follow-source! reexport source))))
-    ;; A re-export under a stub keeps the stub, and the watch picks it up when the stub goes.
-    (when (copy-of-source? (.getRawRoot reexport) source)
-      (follow-source! reexport source))))
+  (let [follow-if-copy (fn [& _]
+                         (locking reexport
+                           (when (copy-of-source? (.getRawRoot reexport) source)
+                             (follow-source! reexport source))))]
+    ;; A `with-redefs` puts back, when it exits, the root it found when it started. For the re-export that can be a
+    ;; copy of the source's root, which potemkin no longer keeps up to date, so the re-export has to start calling
+    ;; through the source. A stub or a proxy is left alone.
+    ;;
+    ;; Both vars are watched because one `with-redefs` can restore them in either order: the re-export's root may
+    ;; only match the source's once the source has its own back.
+    ;;
+    ;; The re-export's watch runs holding the re-export's monitor, so it must not take the source's: see
+    ;; `install-proxy!`. The source's watch takes them in the allowed order.
+    (add-watch reexport ::follow-source follow-if-copy)
+    (add-watch source [::followed-by reexport] follow-if-copy)
+    (follow-if-copy)))
 
 (defn- adopt-reexports!
   "Take over the re-exports of `a-var` from potemkin. Call this before giving `a-var` a new root."
