@@ -1,10 +1,6 @@
 import cx from "classnames";
 
-import {
-  type ModalComponent,
-  type ModalRouteOptions,
-  createModalRouteComponent,
-} from "metabase/common/components/ModalRoute";
+import { lazyModalComponent } from "metabase/common/components/ModalRoute";
 import CS from "metabase/css/core/index.css";
 import type { RouteObject } from "metabase/router";
 import { NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
@@ -92,15 +88,6 @@ const deleteEventModal = () =>
     /* webpackChunkName: "timelines" */ "./containers/DeleteEventModal"
   ).then(({ default: DeleteEventModal }) => DeleteEventModal);
 
-function lazyComponent(
-  loadModal: () => Promise<ModalComponent>,
-  options: ModalRouteOptions = {},
-) {
-  return async () => ({
-    Component: createModalRouteComponent(await loadModal(), options),
-  });
-}
-
 export function getCollectionTimelineRoutes(): RouteObject[] {
   return [
     {
@@ -108,69 +95,69 @@ export function getCollectionTimelineRoutes(): RouteObject[] {
       children: [
         {
           index: true,
-          lazy: lazyComponent(timelineIndexModal, listOptions),
+          lazy: lazyModalComponent(timelineIndexModal, listOptions),
         },
         {
           path: "new",
-          lazy: lazyComponent(newTimelineModal, options),
+          lazy: lazyModalComponent(newTimelineModal, options),
         },
         {
           path: "new/events/new",
-          lazy: lazyComponent(newEventWithTimelineModal, options),
+          lazy: lazyModalComponent(newEventWithTimelineModal, options),
         },
         {
           path: "archive",
-          lazy: lazyComponent(timelineListArchiveModal, listOptions),
+          lazy: lazyModalComponent(timelineListArchiveModal, listOptions),
         },
         {
           path: ":timelineId",
           children: [
             {
               index: true,
-              lazy: lazyComponent(timelineDetailsModal, {
+              lazy: lazyModalComponent(timelineDetailsModal, {
                 ...listOptions,
                 closeTo: "../..",
               }),
             },
             {
               path: "edit",
-              lazy: lazyComponent(editTimelineModal, options),
+              lazy: lazyModalComponent(editTimelineModal, options),
             },
             {
               path: "move",
-              lazy: lazyComponent(moveTimelineModal, {
+              lazy: lazyModalComponent(moveTimelineModal, {
                 ...options,
                 noWrap: true,
               }),
             },
             {
               path: "archive",
-              lazy: lazyComponent(timelineArchiveModal, listOptions),
+              lazy: lazyModalComponent(timelineArchiveModal, listOptions),
             },
             {
               path: "delete",
               // Opened from `timelines/archive`
-              lazy: lazyComponent(deleteTimelineModal, {
+              lazy: lazyModalComponent(deleteTimelineModal, {
                 ...options,
                 closeTo: "../../archive",
               }),
             },
             {
               path: "events/new",
-              lazy: lazyComponent(newEventModal, options),
+              lazy: lazyModalComponent(newEventModal, options),
             },
             {
               path: "events/:timelineEventId/edit",
-              lazy: lazyComponent(editEventModal, options),
+              lazy: lazyModalComponent(editEventModal, options),
             },
             {
               path: "events/:timelineEventId/move",
-              lazy: lazyComponent(moveEventModal, options),
+              lazy: lazyModalComponent(moveEventModal, options),
             },
             {
               path: "events/:timelineEventId/delete",
               // Opened from `:timelineId/archive`
-              lazy: lazyComponent(deleteEventModal, {
+              lazy: lazyModalComponent(deleteEventModal, {
                 ...options,
                 closeTo: "../archive",
               }),
