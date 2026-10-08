@@ -940,3 +940,37 @@
             (is (= "original" (desc b)))
             (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Card" :file_path (path-of t-all "Card N")))
                 "N has no row")))))))
+
+;;; --------------------------------------- the lock timeout of the reconcile ---------------------------------------
+
+(defn- lock-timeout
+  "The lock timeout of the session of the bound connection, as the app DB reports it."
+  []
+  (case (mdb/db-type)
+    :postgres (:lock_timeout (t2/query-one ["SHOW lock_timeout"]))
+    :mysql    (:timeout (t2/query-one ["SELECT @@session.innodb_lock_wait_timeout AS timeout"]))
+    :h2       (:lock_timeout (t2/query-one ["SELECT LOCK_TIMEOUT() AS lock_timeout"]))))
+
+(deftest reconcile-transaction-sets-the-lock-timeout-back-test
+  (testing "The reconcile transaction runs with a short lock timeout. After it returns or throws, the session has its
+            lock timeout of before, also when the reconcile runs inside an outer transaction."
+    (let [in-reconcile-transaction #'save-rule/in-reconcile-transaction]
+      (t2/with-connection [_conn]
+        (let [before (lock-timeout)]
+          (doseq [outer? [false true]
+                  throw? [false true]]
+            (testing (str (if outer? "in an outer transaction" "at the top level") ", "
+                          (if throw? "after a throw" "after a value"))
+              (let [run   (fn []
+                            (try
+                              (in-reconcile-transaction (fn []
+                                                          (when throw?
+                                                            (throw (ex-info "The reconcile fails" {})))
+                                                          :value))
+                              (catch Exception _ :thrown)))
+                    after (if outer?
+                            (t2/with-transaction [_conn]
+                              (run)
+                              (lock-timeout))
+                            (do (run) (lock-timeout)))]
+                (is (= before after))))))))))

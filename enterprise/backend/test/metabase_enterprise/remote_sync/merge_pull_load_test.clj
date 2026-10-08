@@ -4,6 +4,7 @@
 
   Not ^:parallel: uses the shared remote-sync fixtures."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
@@ -20,14 +21,23 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.task.send]
+   [metabase.notification.task.send-trigger :as notification.send-trigger]
+   [metabase.pulse.task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as send-pulses-trigger]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
+   [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util Properties)
+   (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -1113,3 +1123,218 @@
           (is (= version0 (remote-sync.task/last-version)) "the version does not move")
           (is (t2/exists? :model/Collection :id beta) "Beta stays")
           (is (t2/exists? :model/Card :id b) "B stays"))))))
+
+;;; --------------------------------- scheduled content under a remote-deleted collection ---------------------------------
+
+(defn- do-with-jdbc-store-scheduler!
+  "Call `(f)` with a Quartz scheduler on the JDBC job store of the app DB bound on this thread, in standby, as
+  production has before the scheduler starts. Its jobs are those of dashboard subscriptions and of notifications. Quartz
+  reads and writes the job store over connections of its own pool. The scheduler has a name of its own, so its rows in
+  the job store are its own; this clears them and shuts it down after."
+  [f]
+  (#'task.impl/set-jdbc-backend-properties!)
+  (let [props     (doto (Properties.)
+                    (.load (io/input-stream (io/resource "quartz.properties"))))
+        _         (doseq [[k v] (System/getProperties)
+                          :when (str/starts-with? (str k) "org.quartz.")]
+                    (.setProperty props (str k) (str v)))
+        _         (doto props
+                    (.setProperty "org.quartz.scheduler.instanceName" "remote-sync-merge-pull-test")
+                    (.setProperty "org.quartz.threadPool.threadCount" "1"))
+        scheduler (.getScheduler (StdSchedulerFactory. props))]
+    (try
+      (binding [task.impl/*quartz-scheduler* (atom scheduler)]
+        (task/init! :metabase.pulse.task.send-pulses/SendPulses)
+        (task/init! :metabase.notification.task.send/SendNotifications)
+        (f))
+      (finally
+        (.clear scheduler)
+        (.shutdown scheduler)))))
+
+(defn- pulse-trigger-keys
+  "The keys of the SendPulse triggers of the pulse `pulse-id`."
+  [pulse-id]
+  (into #{}
+        (comp (map :key)
+              (filter #(str/starts-with? % (str "metabase.task.send-pulse.trigger." pulse-id "."))))
+        (:triggers (task/job-info send-pulses-trigger/send-pulse-job-key))))
+
+(defn- subscription-trigger-keys
+  "The keys of the SendNotification triggers of the notification subscription `subscription-id`."
+  [subscription-id]
+  (into #{}
+        (comp (filter #(= subscription-id (get-in % [:data "subscription-id"])))
+              (map :key))
+        (:triggers (task/job-info notification.send-trigger/send-notification-job-key))))
+
+(defn- pull-on-another-thread!
+  "Run `(pull!)` on another thread with the bindings of this thread, and wait for its value. On H2, when no value comes
+  in 10 s, the reconcile is stuck in exclusive mode: this thread then turns exclusive mode off on the connection of the
+  reconcile, so that the pull and the app DB go on, at most 5 times. Returns `{:value :stuck?}`."
+  [pull!]
+  (let [exclusive (atom nil)
+        real      (mt/original-fn #'remote-sync.db/set-h2-exclusive!)]
+    (mt/with-dynamic-fn-redefs [remote-sync.db/set-h2-exclusive! (fn [on?]
+                                                                   (when on?
+                                                                     (reset! exclusive
+                                                                             (t2/with-connection [^java.sql.Connection conn]
+                                                                               conn)))
+                                                                   (real on?))]
+      (let [pull (future (pull!))]
+        (loop [unstuck 0]
+          (let [value (deref pull 10000 ::no-value)]
+            (cond
+              (not= ::no-value value)
+              {:value value :stuck? (pos? unstuck)}
+
+              (< unstuck 5)
+              (do
+                (when-let [^java.sql.Connection conn @exclusive]
+                  (with-open [stmt (.createStatement conn)]
+                    (.execute stmt "SET EXCLUSIVE 0")))
+                (recur (inc unstuck)))
+
+              :else
+              {:value nil :stuck? true})))))))
+
+(defn- do-with-scheduled-content-in-beta!
+  "Collections Alpha (with card A) and Beta (with card B and dashboard D) are synced as the version v0. With
+  `:dashboard-subscription`, D has a daily email subscription; with `:alert`, B has an alert with a daily schedule. The
+  scheduler is on the JDBC job store (see [[do-with-jdbc-store-scheduler!]]). Calls `(f {:b :d :beta :t0 :pulse
+  :notification :subscription})`; `:pulse` is nil without a dashboard subscription, and `:notification` and
+  `:subscription` are nil without an alert."
+  [kind f]
+  (do-with-jdbc-store-scheduler!
+   (fn []
+     (with-sync-settings
+       (mt/with-temp [:model/Collection {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                      :model/Card       _           {:name "Card A" :collection_id alpha}
+                      :model/Collection {beta :id}  {:name "Beta" :is_remote_synced true :location "/"}
+                      :model/Card       {b :id}     {:name "Card B" :collection_id beta}
+                      :model/Dashboard  {d :id}     {:name "Dash D" :collection_id beta}]
+         (mt/with-model-cleanup [:model/Pulse :model/Notification]
+           (let [t0    (export-tree!)
+                 _     (pull-base! t0)
+                 pulse (when (= :dashboard-subscription kind)
+                         (let [p (t2/insert-returning-pk! :model/Pulse {:name          "Subscription of D"
+                                                                        :dashboard_id  d
+                                                                        :collection_id beta
+                                                                        :creator_id    (mt/user->id :rasta)})]
+                           (t2/insert! :model/PulseChannel {:pulse_id      p
+                                                            :channel_type  :email
+                                                            :details       {:emails ["user@example.com"]}
+                                                            :schedule_type :daily
+                                                            :schedule_hour 10
+                                                            :enabled       true})
+                           p))
+                 [notification subscription]
+                 (when (= :alert kind)
+                   (let [nc (t2/insert-returning-pk! :model/NotificationCard {:card_id        b
+                                                                              :send_condition :has_result})
+                         n  (t2/insert-returning-pk! :model/Notification {:payload_type :notification/card
+                                                                          :payload_id   nc
+                                                                          :active       true
+                                                                          :creator_id   (mt/user->id :rasta)})
+                         s  (t2/insert-returning-pk! :model/NotificationSubscription
+                                                     {:notification_id n
+                                                      :type            :notification-subscription/cron
+                                                      :cron_schedule   "0 0 10 * * ? *"})]
+                     [n s]))]
+             (f {:b b :d d :beta beta :t0 t0 :pulse pulse :notification notification :subscription subscription}))))))))
+
+(deftest remote-delete-of-a-collection-with-scheduled-content-test
+  (testing "The remote deletes collection Beta, which holds card B and dashboard D. B has an alert, or D has a dashboard
+            subscription, with a trigger in the JDBC job store of the scheduler. The pull does not get stuck, deletes
+            Beta and its content, and removes the trigger."
+    (doseq [kind [:dashboard-subscription :alert]]
+      (testing kind
+        (do-with-scheduled-content-in-beta!
+         kind
+         (fn [{:keys [b d beta t0 pulse notification subscription]}]
+           (if pulse
+             (is (seq (pulse-trigger-keys pulse)) "the subscription has a trigger before the pull")
+             (is (seq (subscription-trigger-keys subscription)) "the alert has a trigger before the pull"))
+           (let [{:keys [value stuck?]} (pull-on-another-thread! #(:result (merge-pull! t0 (without-beta t0))))]
+             (is (not stuck?) "the pull does not get stuck")
+             (is (= :success (:status value)) (pr-str value))
+             (is (= [false false false] (map #(t2/exists? %1 :id %2) [:model/Collection :model/Card :model/Dashboard] [beta b d]))
+                 "Beta, B and D go")
+             (if pulse
+               (testing "the dashboard subscription"
+                 (is (not (t2/exists? :model/Pulse :id pulse)))
+                 (is (empty? (pulse-trigger-keys pulse)) "its trigger goes"))
+               (testing "the alert"
+                 (is (not (t2/exists? :model/Notification :id notification)))
+                 (is (empty? (subscription-trigger-keys subscription)) "its trigger goes"))))))))))
+
+(deftest pull-that-stops-after-the-delete-keeps-the-triggers-test
+  (testing "The remote deletes collection Beta, which holds card B and dashboard D. B has an alert, or D has a dashboard
+            subscription. Each run of the reconcile finds a busy row after its delete, so the pull stops. Beta, its
+            content and the trigger stay."
+    (doseq [kind [:dashboard-subscription :alert]]
+      (testing kind
+        (do-with-scheduled-content-in-beta!
+         kind
+         (fn [{:keys [b d beta t0 pulse notification subscription]}]
+           (let [real (mt/original-fn #'impl/delete-with-closure!)
+                 {:keys [value stuck?]}
+                 (mt/with-dynamic-fn-redefs [impl/delete-with-closure!
+                                             (fn [& args]
+                                               (apply real args)
+                                               (throw (ex-info "A row is busy" {:error ::save-rule/busy})))]
+                   (pull-on-another-thread! #(:result (merge-pull! t0 (without-beta t0)))))]
+             (is (not stuck?) "the pull does not get stuck")
+             (is (= :conflict (:status value)) (pr-str value))
+             (is (= [true true true] (map #(t2/exists? %1 :id %2) [:model/Collection :model/Card :model/Dashboard] [beta b d]))
+                 "Beta, B and D stay")
+             (if pulse
+               (testing "the dashboard subscription"
+                 (is (t2/exists? :model/Pulse :id pulse))
+                 (is (seq (pulse-trigger-keys pulse)) "its trigger stays"))
+               (testing "the alert"
+                 (is (t2/exists? :model/Notification :id notification))
+                 (is (seq (subscription-trigger-keys subscription)) "its trigger stays"))))))))))
+
+(deftest dashboard-card-of-a-deleted-card-held-during-the-reconcile-delete-test
+  (testing "The remote deletes collection Beta, which holds cards C and C2. Dashboard D in Alpha shows C. At the delete
+            of the reconcile, the user updates the dashboard card of C, and then C2, in one transaction. Neither side
+            gets a deadlock error, and no write is lost: C2 keeps the edit of the user exactly when the pull stops."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection    {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Collection    {beta :id}  {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Card          {c :id}     {:name "Card C" :collection_id beta}
+                     :model/Card          {c2 :id}    {:name "Card C2" :collection_id beta}
+                     :model/Dashboard     {d :id}     {:name "Dash D" :collection_id alpha}
+                     :model/DashboardCard {dc :id}    {:dashboard_id d :card_id c}]
+        (mt/with-model-cleanup [:model/Card :model/Collection :model/Dashboard]
+          (let [t0      (export-tree!)
+                _       (pull-base! t0)
+                user    (atom nil)
+                dc-held (promise)
+                real    (mt/original-fn #'impl/delete-with-closure!)
+                {:keys [result]}
+                (mt/with-dynamic-fn-redefs [impl/delete-with-closure!
+                                            (fn [& args]
+                                              (when (nil? @user)
+                                                (reset! user (on-thread
+                                                              #(t2/with-transaction [_conn]
+                                                                 (t2/query {:update :report_dashboardcard
+                                                                            :set    {:size_x 7}
+                                                                            :where  [:= :id dc]})
+                                                                 (deliver dc-held true)
+                                                                 (t2/query {:update :report_card
+                                                                            :set    {:description "user edit"}
+                                                                            :where  [:= :id c2]})
+                                                                 :committed)))
+                                                (deref dc-held 5000 nil)
+                                                (Thread/sleep 200))
+                                              (apply real args))]
+                  (merge-pull! t0 (without-beta t0)))
+                user    (some-> @user (deref 60000 {:error "timed out"}))]
+            (is (some? user) "the user thread ran")
+            (is (not (deadlock? (:message result))) (pr-str result))
+            (is (not (deadlock? (:error user))) (pr-str user))
+            (is (contains? #{:success :conflict} (:status result)) (pr-str result))
+            (is (= (= :conflict (:status result))
+                   (= "user edit" (t2/select-one-fn :description :model/Card :id c2)))
+                "C2 keeps the edit exactly when the pull stops")))))))

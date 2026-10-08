@@ -4160,3 +4160,52 @@
           (is (some? item))
           (is (= (mt/user->id :rasta)
                  (-> item :last-edit-info :id))))))))
+
+(defn- with-collection-row-held
+  "Call `(f)` while another thread holds the row of the Collection `collection-id` locked for update in an open
+  transaction, as a merge pull that deletes the Collection does. Returns the value of `(f)`."
+  [collection-id f]
+  (let [held    (promise)
+        release (promise)
+        holder  (future
+                  (t2/with-transaction [_conn]
+                    (t2/query {:select [:id] :from [:collection] :where [:= :id collection-id] :for :update})
+                    (deliver held true)
+                    (deref release 30000 nil)))]
+    (is (deref held 30000 false) "the other thread holds the row")
+    (try
+      (f)
+      (finally
+        (deliver release true)
+        (deref holder 30000 nil)))))
+
+(deftest create-or-move-under-a-collection-in-use-test
+  (testing "Another transaction holds the row of collection Beta. A POST of a collection under Beta, and a PUT that
+            renames collection X and moves it under Beta, give 409 with the gate message. They write nothing: no new
+            collection exists, and X keeps its name and its location. After the other transaction ends, both succeed."
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Collection {beta :id} {:name "Beta" :location "/"}
+                     :model/Collection {x :id}    {:name "X" :location "/"}]
+        (mt/with-model-cleanup [:model/Collection]
+          (let [message       "The parent collection is being changed. Try again."
+                [create move] (with-collection-row-held
+                                beta
+                                (fn []
+                                  [(mt/user-http-request :crowberto :post 409 "collection"
+                                                         {:name "G" :parent_id beta})
+                                   (mt/user-http-request :crowberto :put 409 (str "collection/" x)
+                                                         {:name "X renamed" :parent_id beta})]))]
+            (testing "the response body"
+              (is (= {:errors {:location message}} (select-keys create [:errors])))
+              (is (= {:errors {:location message}} (select-keys move [:errors]))))
+            (testing "no partial write"
+              (is (not (t2/exists? :model/Collection :name "G")) "no collection G exists")
+              (is (= {:name "X" :location "/"} (t2/select-one [:model/Collection :name :location] :id x))
+                  "X keeps its name and its location"))
+            (testing "a retry succeeds"
+              (is (= (str "/" beta "/")
+                     (:location (mt/user-http-request :crowberto :post 200 "collection" {:name "G" :parent_id beta}))))
+              (is (= {:name "X renamed" :location (str "/" beta "/")}
+                     (select-keys (mt/user-http-request :crowberto :put 200 (str "collection/" x)
+                                                        {:name "X renamed" :parent_id beta})
+                                  [:name :location]))))))))))
