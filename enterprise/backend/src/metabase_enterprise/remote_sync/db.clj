@@ -58,6 +58,13 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn instances-where
+  "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
+  or nil for every instance)."
+  [model-key  :- :keyword
+   conditions :- Conditions]
+  (apply t2/select model-key (mapcat identity conditions)))
+
 (mu/defn entity-id-where :- [:maybe :string]
   "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
   [model-key :- :keyword

@@ -4,6 +4,12 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.65.0
+
+- `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
+  `409 Conflict` instead of `403 Forbidden`. The message, "A table with that name already exists.", is unchanged.
+  `403` remains the answer when the user lacks permission.
+
 ## Metabase 0.64.0
 
 - `POST /api/slack/bug-report` now requires bug reporting to be enabled (`MB_BUG_REPORTING_ENABLED`).
