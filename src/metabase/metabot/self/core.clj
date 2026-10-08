@@ -351,8 +351,7 @@
   input (a call to a tool with no arguments) parses to nil. Anything else comes back as a sentinel map that
   [[unparsed-arguments]] describes and [[reject-unparsed-arguments!]] turns into an error for the model:
   `{::raw-arguments raw}` for malformed JSON, and `{::non-object-arguments decoded}` for valid JSON that isn't an
-  object, e.g. `[\"orders\"]`. The keys are namespaced so they can't collide with an argument name the model
-  sends."
+  object, e.g. `[\"orders\"]`. The keys are namespaced so they don't clash with a tool's argument names."
   [chunks]
   (let [raw (->> (map :inputTextDelta chunks)
                  (str/join ""))]
