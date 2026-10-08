@@ -51,7 +51,7 @@
       :where [:and [:= :u.id (:user-id scope)] [:= :u.tenant_id nil]]}]))
 
 (mu/defn non-blob-data-apps
-  "DataApps in the read scope without bundles, ordered by display name. Optionally restrict to enabled, error-free apps."
+  "DataApps in the read scope without bundles, ordered by display name. Optionally restrict to enabled apps."
   [scope :- [:or [:= :all] [:map {:closed true} [:user-id ms/PositiveInt]]]
    available? :- [:maybe :boolean]]
   (t2/select non-blob-model

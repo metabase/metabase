@@ -34,22 +34,18 @@
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                  :model/DataApp disabled {:name "disabled" :display_name "Disabled" :bundle_path "disabled.js"
                                           :enabled false}
-                 :model/DataApp draft {:name "draft" :display_name "Draft" :bundle_path "draft.js"
-                                       :draft true}
                  :model/DataApp _ {:name "hidden" :display_name "Hidden" :bundle_path "hidden.js"}
                  :model/PermissionsGroup finches {}
                  :model/PermissionsGroup owls {}]
     (group-access/add-groups! app [(:id finches) (:id owls)])
     (group-access/add-groups! disabled [(:id finches)])
-    (group-access/add-groups! draft [(:id finches)])
     (perms/add-user-to-group! (mt/user->id :rasta) (:id finches))
     (perms/add-user-to-group! (mt/user->id :rasta) (:id owls))
     (let [list-apps (api.macros/find-route-fn 'metabase-enterprise.data-apps.api :get "/")]
       (mt/with-current-user (mt/user->id :rasta)
         (list-apps {} {})
         (doseq [[query expected] [[{} [{:name "birds" :display_name "Birds"}
-                                       {:name "disabled" :display_name "Disabled"}
-                                       {:name "draft" :display_name "Draft"}]]
+                                       {:name "disabled" :display_name "Disabled"}]]
                                   [{:available true} [{:name "birds" :display_name "Birds"}]]]]
           (t2/with-call-count [call-count]
             (is (= expected (list-apps {} query)))

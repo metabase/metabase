@@ -39,7 +39,6 @@ describe("scenarios > data apps > group access (EMB-2415)", () => {
       name: APP_NAME,
       display_name: APP_DISPLAY_NAME,
       enabled: true,
-      draft: false,
     });
 
     cy.request("GET", `/api/permissions/group/${COLLECTION_GROUP_ID}`)

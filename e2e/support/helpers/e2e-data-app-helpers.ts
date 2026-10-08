@@ -614,10 +614,9 @@ export function pullExampleDataApps({
   configureGitAndPullChanges("read-write");
 }
 
-/** A data app whose resources loaded: it has its collection and its permission group. */
+/** A data app whose resources loaded into its collection. */
 export type SyncedDataApp = DataApp & {
   resource_collection_id: number;
-  permission_group_id: number;
 };
 
 /** The host app's checked-in `data_app.yaml`, as serialization reads it. */
@@ -635,8 +634,7 @@ serdes/meta:
 `;
 
 const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
-  typeof app.resource_collection_id === "number" &&
-  typeof app.permission_group_id === "number";
+  typeof app.resource_collection_id === "number";
 
 /**
  * Writes the app's manifest into the sync repository as `data_apps/<slug>`, makes

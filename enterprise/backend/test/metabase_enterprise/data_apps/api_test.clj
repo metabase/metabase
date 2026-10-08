@@ -121,7 +121,6 @@
     (mt/user-http-request :crowberto :post 402 "apps/serialize-resources"
                           {:collection "goodAppCollection0000" :queries [] :actions []})))
 
-
 (deftest assigned-group-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
@@ -336,11 +335,6 @@
 (deftest delete-endpoint-404s-for-a-missing-app-test
   (mt/with-premium-features #{:data-apps}
     (mt/user-http-request :crowberto :delete 404 "apps/missing")))
-
-(deftest data-app-write-endpoints-require-feature-token-test
-  (mt/with-premium-features #{}
-    (mt/user-http-request :crowberto :put 402 "apps/demo/table-dependencies" {:table_ids []})
-    (mt/user-http-request :crowberto :post 402 "apps/demo/draft")))
 
 (deftest delete-endpoint-preserves-assigned-groups-test
   (mt/with-premium-features #{:data-apps}
