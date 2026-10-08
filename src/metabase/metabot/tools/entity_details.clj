@@ -51,9 +51,8 @@
         model-key   (case definition-key
                       :aggregation :model/Measure
                       :filters     :model/Segment)
-        ;; Lib-metadata maps reject snake_case lookups (snake-hating-map). Try kebab first;
-        ;; fall back to a direct t2 lookup since the lib metadata view doesn't include
-        ;; `:entity-id` for measures/segments (verified via REPL — only cards include it).
+        ;; Lib-metadata contains kebab keys. Try kebab first; fall back to a direct t2 lookup since the lib metadata
+        ;; view doesn't include `:entity-id` for measures/segments (verified via REPL — only cards include it).
         entity-id   (or (:entity-id metadata)
                         (entity-id-for-measure-or-segment model-key (:id metadata)))]
     (-> (select-keys metadata [:id :name :display-name :description])

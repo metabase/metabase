@@ -48,9 +48,9 @@
   (get-clickhouse-version db))
 
 (defn dbms-version
-  "Returns dbms version from a db that may be a snake-hating-map"
+  "Returns dbms version from a db."
   [db]
-  ((some-fn :dbms-version :dbms_version) db))
+  (:dbms-version db))
 
 (defn is-at-least?
   "Is ClickHouse version at least `major.minor` (e.g., 24.4)?"
