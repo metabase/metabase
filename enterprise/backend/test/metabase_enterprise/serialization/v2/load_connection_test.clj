@@ -14,6 +14,8 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.app-db.activity-test-util :as activity]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
    [metabase.search.test-util :as search.tu]
@@ -22,7 +24,7 @@
    [next.jdbc :as jdbc]
    [toucan2.core :as t2])
   (:import
-   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (com.mchange.v2.c3p0 DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
    (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
@@ -233,6 +235,116 @@
             (is (= ledger-v0 (ledger)))
             (is (= "v0" (remote-sync.task/last-version)))))))))
 
+(def ^:private missing-card-eid
+  "The entity ID of a card that is neither in the files nor in the app DB."
+  "loadconnectionmissing")
+
+(defn- dependency-files
+  "A remote-synced collection, card 0, and card 1 based on card 0, as a map of path to YAML. With `missing-source?`,
+  card 0 is based on the card [[missing-card-eid]]."
+  [& {:keys [missing-source?]}]
+  {(str coll-dir "/load_connection.yaml")
+   (rs.test/generate-collection-yaml coll-eid "Load connection" :is-remote-synced true)
+
+   (str coll-dir "/card_000.yaml")
+   (cond-> (rs.test/generate-card-yaml (card-eid 0) "Card 0" coll-eid)
+     missing-source? (str/replace "source_card_id: null" (str "source_card_id: " missing-card-eid)))
+
+   (str coll-dir "/card_001.yaml")
+   (str/replace (rs.test/generate-card-yaml (card-eid 1) "Card 1" coll-eid)
+                "source_card_id: null" (str "source_card_id: " (card-eid 0)))})
+
+(defn- dependent-first
+  "`ingestable` with its entities listed in this order: the collection, card 1, card 0, then any other."
+  [ingestable]
+  (let [rank {coll-eid 0 (card-eid 1) 1 (card-eid 0) 2}]
+    (reify serialization/Ingestable
+      (ingest-list [_] (sort-by #(rank (:id (last %)) 3) (serialization/ingest-list ingestable)))
+      (ingest-one [_ path] (serialization/ingest-one ingestable path))
+      (ingest-errors [_] (serialization/ingest-errors ingestable)))))
+
+(defn- not-found-error
+  "The message of the load error `e` and the entity ID of the entity whose dependency was not found."
+  [e]
+  (when e
+    [(ex-message e) (-> e ex-data :referrer :id)]))
+
+(deftest dependency-with-a-missing-dependency-fails-the-load-test
+  (testing "Card 0 is in the files and in the app DB, and its file names a source card that does not exist. Card 1 is
+            based on card 0 and comes before it in load order."
+    (doseq [continue-on-error [false true]]
+      (testing (format "continue-on-error %s" continue-on-error)
+        (try
+          (serdes/with-cache
+            (serialization/load-metabase! (ingestable (dependency-files)) :reindex? false))
+          (let [result   (try
+                           (serdes/with-cache
+                             (serialization/load-metabase! (dependent-first (ingestable (dependency-files :missing-source? true)))
+                                                           :reindex? false
+                                                           :continue-on-error continue-on-error))
+                           (catch Exception e
+                             {:thrown e}))
+                expected [(format "Card '%s' was not found" missing-card-eid) (card-eid 0)]]
+            (if continue-on-error
+              (testing "the load records the error of card 0"
+                (is (= [expected] (map not-found-error (:errors result)))))
+              (testing "the load stops at card 0 with the error of its missing source card"
+                (is (= expected (not-found-error (:thrown result)))))))
+          (finally
+            (delete-content!)))))))
+
+(deftest dependency-with-a-missing-dependency-fails-the-pull-test
+  (testing "A forced remote-sync pull in which card 0 names a source card that does not exist, and card 1, based on card
+            0, comes before card 0 in load order, fails and leaves card 0 and the last version as they were"
+    (search.tu/with-index-disabled
+      (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
+        (try
+          (let [src   (rs.test/versioned-source :trees {"v0" (dependency-files)
+                                                        "v1" (dependency-files :missing-source? true)}
+                                                :current "v0")
+                load! (mt/original-fn #'serialization/load-metabase!)]
+            (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "baseline pull")
+            (is (= :error (:status (mt/with-dynamic-fn-redefs [serialization/load-metabase!
+                                                               (fn [ingestable & opts]
+                                                                 (apply load! (dependent-first ingestable) opts))]
+                                     (rs.test/import-at! src "v1" :force? true)))))
+            (is (t2/exists? :model/Card :entity_id (card-eid 0)) "card 0 is not deleted")
+            (is (= "v0" (remote-sync.task/last-version))))
+          (finally
+            (delete-content!)))))))
+
+(defn- break-connection-on-load-of!
+  "Runs `thunk`. When the load of the entity with entity ID `entity-id` starts to write, it first closes the physical
+  app-DB connection that it writes on, as when the server ends the connection."
+  [entity-id thunk]
+  (let [load-one! serdes/load-one!]
+    ;; `with-redefs`: `serdes/load-one!` is a multimethod
+    (with-redefs [serdes/load-one! (fn [ingested local]
+                                     (when (= entity-id (:entity_id ingested))
+                                       (t2/with-connection [^Connection conn]
+                                         (.close ^Connection (.unwrap conn Connection))))
+                                     (load-one! ingested local))]
+      (thunk))))
+
+(deftest broken-connection-fails-only-its-entity-test
+  (testing "The app-DB connection breaks during the load of one card, continue-on-error true: the load records the
+            error of that card and loads every other card"
+    (let [bad (nth (card-load-order (files)) (quot n-cards 2))]
+      (try
+        (let [result (break-connection-on-load-of!
+                      (card-eid bad)
+                      #(try
+                         (serdes/with-cache
+                           (serialization/load-metabase! (ingestable (files)) :reindex? false :continue-on-error true))
+                         (catch Exception e
+                           {:thrown e})))]
+          (is (nil? (some-> (:thrown result) ex-message)))
+          (is (= [(card-eid bad)] (map failed-card-eid (:errors result))))
+          (is (= (disj (into #{} (map card-eid) (range n-cards)) (card-eid bad))
+                 (loaded-cards))))
+        (finally
+          (delete-content!))))))
+
 ;;; ----------------------------------- the held connection (rule L6) -----------------------------------
 
 (defn- busy-connections
@@ -325,6 +437,38 @@
                 (is (= before after)))
               (finally
                 (delete-content!)))))))))
+
+(defn- with-unreturned-connection-timeout
+  "Runs `thunk` with the app DB bound to a new pool of the app DB's connections, with the app DB's pool properties
+  except that the pool destroys a connection that is checked out for longer than `seconds`."
+  [seconds thunk]
+  (let [unpooled (.getNestedDataSource ^WrapperConnectionPoolDataSource
+                  (.getConnectionPoolDataSource ^PoolBackedDataSource (mdb/data-source)))
+        pool     (mdb.connection-pool-setup/connection-pool-data-source
+                  (mdb/db-type) unpooled {"unreturnedConnectionTimeout" seconds})]
+    (try
+      (binding [mdb.connection/*application-db* (mdb.connection/application-db (mdb/db-type) pool)]
+        (thunk))
+      (finally
+        (DataSources/destroy pool)))))
+
+(deftest load-outlasts-the-unreturned-connection-timeout-test
+  (testing "A load that takes longer than the pool's unreturned-connection timeout, but no entity of which keeps a
+            connection that long, loads every card"
+    (try
+      (let [result (with-unreturned-connection-timeout
+                     1
+                     #(try
+                        (serdes/with-cache
+                          (serialization/load-metabase! (on-read (ingestable (files)) (fn [_ _] (Thread/sleep 250)))
+                                                        :reindex? false))
+                        :loaded
+                        (catch Exception e
+                          (ex-message e))))]
+        (is (= :loaded result))
+        (is (= (into #{} (map card-eid) (range n-cards)) (loaded-cards))))
+      (finally
+        (delete-content!)))))
 
 (def ^:private dash-eid-prefix "loadconnectiondash")
 
