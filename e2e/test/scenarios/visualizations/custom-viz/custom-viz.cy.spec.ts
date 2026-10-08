@@ -62,7 +62,7 @@ function buildDocumentWithCustomVizCard(cardId: CardId): DocumentContent {
 
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
-    H.restore("postgres-writable");
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -483,9 +483,11 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+    });
 
-      // Default-view (table) Count-of-Orders card — demo-viz requires
-      // exactly one row with one numeric column.
+    // Default-view (table) Count-of-Orders card — demo-viz requires
+    // exactly one row with one numeric column.
+    function createCountQuestion() {
       H.createQuestion(
         {
           name: "Custom Viz Question Test",
@@ -497,7 +499,7 @@ describe("admin > custom visualizations", () => {
         },
         { wrapId: true, idAlias: "questionId" },
       );
-    });
+    }
 
     function switchToDemoViz() {
       cy.findByTestId("viz-type-button").click();
@@ -508,6 +510,7 @@ describe("admin > custom visualizations", () => {
     }
 
     it("renders the selected custom viz and persists its settings, pinned and across reloads", () => {
+      createCountQuestion();
       H.resetSnowplow();
       H.enableTracking();
       H.visitQuestion("@questionId");
@@ -767,6 +770,7 @@ describe("admin > custom visualizations", () => {
           body: "boom",
         }).as("failedBundle");
 
+        createCountQuestion();
         H.visitQuestion("@questionId");
         cy.findByTestId("viz-type-button").click();
         cy.wait([
@@ -873,6 +877,7 @@ describe("admin > custom visualizations", () => {
     });
 
     it("calls onClick when the viz fires a click", () => {
+      createCountQuestion();
       H.visitQuestion("@questionId");
       switchToDemoViz();
 
@@ -1515,8 +1520,6 @@ describe("admin > custom visualizations", () => {
     let devServerPid: number | null = null;
 
     beforeEach(() => {
-      H.restore("postgres-writable");
-      cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
@@ -1675,7 +1678,7 @@ describe("admin > custom visualizations", () => {
 
 describe("sandbox", () => {
   beforeEach(() => {
-    H.restore("postgres-writable");
+    H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.updateSetting("csp-img-enabled", true);
