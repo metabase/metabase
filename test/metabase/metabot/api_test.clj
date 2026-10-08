@@ -1607,7 +1607,7 @@
                                :state           {}})))))
 
 (deftest agent-streaming-provider-error-carries-its-code-test
-  (testing "a provider that turned the request down reaches the client with its own message and an error code, so
+  (testing "a provider that turned the request down reaches an admin with its own message and an error code, so
             the alert can show the reason and offer the retry that lands on the fallback"
     (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                        metabot.settings/llm-metabot-provider test-provider]
@@ -1620,13 +1620,19 @@
                                                         {:api-error true :status 400})))
                                       conversation-title/submit! (constantly nil)]
             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+              (let [response (mt/user-http-request :crowberto :post 202 "metabot/agent-streaming"
                                                    (agent-request (str (random-uuid)) "hello"))]
                 (is (str/includes? response "credit balance too low")
-                    "the provider's message reaches the client verbatim")
+                    "the provider's message reaches the admin verbatim")
                 (is (str/includes? response "\"errorCode\":\"provider_error\"")
                     "the finish metadata names the error class")
-                (is (str/includes? response "\"finishReason\":\"error\""))))))))))
+                (is (str/includes? response "\"finishReason\":\"error\"")))
+              (testing "everyone else gets the same code with a generic message"
+                (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     (agent-request (str (random-uuid)) "hello"))]
+                  (is (not (str/includes? response "credit balance too low")))
+                  (is (str/includes? response "The AI provider could not complete the request."))
+                  (is (str/includes? response "\"errorCode\":\"provider_error\"")))))))))))
 
 (deftest agent-streaming-streamed-provider-error-carries-its-code-test
   (testing "a provider that fails by streaming an error event — rather than by rejecting the request — reaches the
@@ -1642,7 +1648,7 @@
                                          [{:type :error :errorText "Your account is not active, please check your billing details"}]))
                                       conversation-title/submit! (constantly nil)]
             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+              (let [response (mt/user-http-request :crowberto :post 202 "metabot/agent-streaming"
                                                    (agent-request (str (random-uuid)) "hello"))]
                 (is (str/includes? response "account is not active"))
                 (is (str/includes? response "\"errorCode\":\"provider_error\""))

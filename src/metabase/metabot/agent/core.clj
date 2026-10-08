@@ -25,6 +25,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -557,6 +558,17 @@
                 (cond-> {:message (.getMessage e), :type (str (type e)), :data data}
                   (:api-error data) (assoc :error-code "provider_error")))}))
 
+(defn- user-facing-error-part
+  [admin? part]
+  (if (or admin? (not= :error (:type part)))
+    part
+    (case (get-in part [:error :error-code])
+      "provider_error" (assoc-in part [:error :message]
+                                 (tru "The AI provider could not complete the request. Please try again."))
+      "prompt_blocked" (assoc-in part [:error :message]
+                                 (tru "The AI provider declined to answer this message. Try rephrasing it."))
+      part)))
+
 (defn- accumulate-usage-xf
   "Transducer that merges each `:usage` part into the cumulative usage atom
   (keyed by provider-and-model) and replaces the part's `:usage` with the running total.
@@ -775,89 +787,92 @@
                                  (scope/resolve-user-permissions api/*current-user-id*)))
         scopes             (if api/*is-superuser?*
                              api-scope/unrestricted
-                             (scope/user-metabot-perms->scopes perms))]
+                             (scope/user-metabot-perms->scopes perms))
+        admin?             api/*is-superuser?*]
     (check-metabot-access! profile-id perms)
-    (reify clojure.lang.IReduceInit
-      (reduce [_ rf init]
-        (with-span :info {:name       :metabot.agent/run-agent-loop
-                          :profile-id profile-id
-                          :msg-count  (count (:messages opts))}
-          (analytics/inc! :metabase-metabot/agent-requests labels)
-          (let [start-ms (u/start-timer)]
-            (binding [*debug-log*                              (when debug? (atom []))
-                      scope/*current-user-scope*               scopes
-                      scope/*current-user-metabot-permissions* perms
-                      scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
-                      scope/*current-loadable-skill-ids*       (atom #{})
-                      metabot.perms/*cache*                    (atom {})]
-              (try
-                ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
-                ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
-                ;; to the per-session JSONL file as they finish.
-                (ait/with-eval-session (:eval-session-id opts)
-                  (let [turn-result
-                        (ait/with-agent-turn {:ai/profile-id (name profile-id)
-                                              :ai/msg-count  (count (:messages opts))
-                                              ;; the user's latest question — trace-level input for evals
-                                              :ai/user-input (some->> (:messages opts)
-                                                                      (filter #(= "user" (some-> % :role name)))
-                                                                      last :content)
-                                              ;; full request — makes the trace a self-contained record
-                                              :ai/messages   (:messages opts)
-                                              :ai/context    (:context opts)
-                                              :ai/state      (:state opts)}
-                          (let [agent      (init-agent opts)
-                                usage-atom (atom {})
-                                {result        :result
-                                 iteration     :iteration
-                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
-                                                                    (iterate loop-step)
-                                                                    (drop-while #(= :continue (:status %)))
-                                                                    first)]
-                            (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
-                            ;; Materialized turn-level outputs for evals: token usage, why the loop
-                            ;; stopped, and the final agent state (link registry / generated entities).
-                            (when (ait/capture-active?)
-                              (ait/record! {:ai/finish-reason finish-reason
-                                            :ai/usage         @usage-atom
-                                            :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
-                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
-                            ;; the reducing fn — stepping it again would violate the transducer contract.
-                            ;; Append trailing parts only on a normal finish: the debug log, the
-                            ;; loop's finish reason, and the eval-session pointer that lets the
-                            ;; harness locate the per-session `<session-id>.jsonl` (it reads that
-                            ;; file, not the stream, so a skipped pointer on disconnect costs
-                            ;; nothing). Gate the pointer on a non-nil `*session-id*` too: the
-                            ;; in-process `capture-reducible`/`capturing` path is capture-active but
-                            ;; deliberately file-less (session id nil, read `:trace`), so emitting a
-                            ;; pointer there would name a `<nil>.jsonl` that never exists.
-                            (if (= :reduced finish-reason)
-                              result
-                              (-> result
-                                  (cond->
-                                   (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
-                                   (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
-                                  (rf {:type :finish :finish-reason finish-reason})))))]
-                    turn-result))
-                (catch Exception e
-                  (analytics/inc! :metabase-metabot/agent-errors labels)
-                  (let [{:keys [api-error status provider]} (ex-data e)
-                        msg (ex-message e)]
-                    (cond
-                      (and api-error status)
-                      (log/errorf "Agent loop API error: %s status=%s provider=%s"
-                                  msg status provider)
+    (eduction
+     (map #(user-facing-error-part admin? %))
+     (reify clojure.lang.IReduceInit
+       (reduce [_ rf init]
+         (with-span :info {:name       :metabot.agent/run-agent-loop
+                           :profile-id profile-id
+                           :msg-count  (count (:messages opts))}
+           (analytics/inc! :metabase-metabot/agent-requests labels)
+           (let [start-ms (u/start-timer)]
+             (binding [*debug-log*                              (when debug? (atom []))
+                       scope/*current-user-scope*               scopes
+                       scope/*current-user-metabot-permissions* perms
+                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
+                       scope/*current-loadable-skill-ids*       (atom #{})
+                       metabot.perms/*cache*                    (atom {})]
+               (try
+                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
+                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
+                 ;; to the per-session JSONL file as they finish.
+                 (ait/with-eval-session (:eval-session-id opts)
+                   (let [turn-result
+                         (ait/with-agent-turn {:ai/profile-id (name profile-id)
+                                               :ai/msg-count  (count (:messages opts))
+                                               ;; the user's latest question — trace-level input for evals
+                                               :ai/user-input (some->> (:messages opts)
+                                                                       (filter #(= "user" (some-> % :role name)))
+                                                                       last :content)
+                                               ;; full request — makes the trace a self-contained record
+                                               :ai/messages   (:messages opts)
+                                               :ai/context    (:context opts)
+                                               :ai/state      (:state opts)}
+                           (let [agent      (init-agent opts)
+                                 usage-atom (atom {})
+                                 {result        :result
+                                  iteration     :iteration
+                                  finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
+                                                                     (iterate loop-step)
+                                                                     (drop-while #(= :continue (:status %)))
+                                                                     first)]
+                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
+                             ;; Materialized turn-level outputs for evals: token usage, why the loop
+                             ;; stopped, and the final agent state (link registry / generated entities).
+                             (when (ait/capture-active?)
+                               (ait/record! {:ai/finish-reason finish-reason
+                                             :ai/usage         @usage-atom
+                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
+                             ;; A :reduced stop (client disconnect / cancellation) has already terminated
+                             ;; the reducing fn — stepping it again would violate the transducer contract.
+                             ;; Append trailing parts only on a normal finish: the debug log, the
+                             ;; loop's finish reason, and the eval-session pointer that lets the
+                             ;; harness locate the per-session `<session-id>.jsonl` (it reads that
+                             ;; file, not the stream, so a skipped pointer on disconnect costs
+                             ;; nothing). Gate the pointer on a non-nil `*session-id*` too: the
+                             ;; in-process `capture-reducible`/`capturing` path is capture-active but
+                             ;; deliberately file-less (session id nil, read `:trace`), so emitting a
+                             ;; pointer there would name a `<nil>.jsonl` that never exists.
+                             (if (= :reduced finish-reason)
+                               result
+                               (-> result
+                                   (cond->
+                                    (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                    (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
+                                   (rf {:type :finish :finish-reason finish-reason})))))]
+                     turn-result))
+                 (catch Exception e
+                   (analytics/inc! :metabase-metabot/agent-errors labels)
+                   (let [{:keys [api-error status provider]} (ex-data e)
+                         msg (ex-message e)]
+                     (cond
+                       (and api-error status)
+                       (log/errorf "Agent loop API error: %s status=%s provider=%s"
+                                   msg status provider)
 
-                      api-error
-                      (log/errorf "Agent loop API error: %s provider=%s" msg provider)
+                       api-error
+                       (log/errorf "Agent loop API error: %s provider=%s" msg provider)
 
-                      ;; ex-message can be nil/blank for exceptions thrown without a message
-                      ;; (e.g. (NullPointerException.)) — skip the colon when there's nothing to say.
-                      (str/blank? msg)
-                      (log/error "Agent loop error")
+                       ;; ex-message can be nil/blank for exceptions thrown without a message
+                       ;; (e.g. (NullPointerException.)) — skip the colon when there's nothing to say.
+                       (str/blank? msg)
+                       (log/error "Agent loop error")
 
-                      :else
-                      (log/errorf "Agent loop error: %s" msg)))
-                  (rf init (error-part e (get-in opts [:model-selection :model-ref]))))
-                (finally
-                  (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
+                       :else
+                       (log/errorf "Agent loop error: %s" msg)))
+                   (rf init (error-part e (get-in opts [:model-selection :model-ref]))))
+                 (finally
+                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms))))))))))))
