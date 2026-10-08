@@ -12,6 +12,7 @@ import { ActionIcon, Box, Icon, Modal, TextInput } from "metabase/ui";
 import resizeObserver from "metabase/utils/resize-observer";
 import type { RecentContexts } from "metabase-types/api";
 
+import { SEARCH_DEBOUNCE_MS } from "../constants";
 import { useLogRecentItem } from "../hooks";
 import type {
   EntityPickerOptions,
@@ -227,7 +228,7 @@ const SearchInput = ({
   const [localValue, setLocalValue] = useState(value);
   const debouncedOnChange = useDebouncedCallback((newValue: string) => {
     onChange(newValue);
-  }, 300);
+  }, SEARCH_DEBOUNCE_MS);
   return (
     <TextInput
       classNames={{ input: S.textInput }}
