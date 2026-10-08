@@ -157,6 +157,14 @@
      "gvenzl/oracle-free:latest"
      (str "gvenzl/oracle-xe:" resolved-version))])
 
+(defmethod docker-cmd :starburst
+  [_db container-name resolved-version port]
+  ["docker" "run" "-d"
+   "-p" (str "127.0.0.1:" port ":8080")
+   "-e" "CATALOG_MANAGEMENT=dynamic"
+   "--name" container-name
+   (str "trinodb/trino:" resolved-version)])
+
 ;; Client command stuff:
 
 (defmulti ^:private client-cmd
