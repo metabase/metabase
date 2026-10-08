@@ -404,7 +404,7 @@ export const getRoutes = (
           path="settings"
           element={createElement(createAdminRouteGuard("settings"))}
         >
-          {getSettingsRoutes(store, IsAdmin)}
+          {getSettingsRoutes(store)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" element={<IsAdmin />}>
@@ -462,10 +462,12 @@ export const getRoutes = (
         </Route>
 
         {PLUGIN_SECURITY_CENTER.isEnabled && (
-          <Route
-            path="security-center"
-            lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
-          />
+          <Route element={<IsAdmin />}>
+            <Route
+              path="security-center"
+              lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
+            />
+          </Route>
         )}
 
         <Route element={createElement(createAdminRouteGuard("help"))}>
