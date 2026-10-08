@@ -411,7 +411,8 @@ describe("CollectionItemsTable", () => {
       expect(getItemsCalls()).toHaveLength(2);
     });
 
-    const tableWasMounted = screen.queryByTestId("collection-table") != null;
+    const tableWasMounted =
+      (await screen.findByTestId("collection-table")) != null;
     const emptyStateWasVisible =
       screen.queryByTestId("collection-empty-state") != null;
     await act(async () => {
