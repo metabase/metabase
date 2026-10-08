@@ -79,7 +79,7 @@ export const Legend = ({
             key={item.key}
             item={item}
             index={itemIndex}
-            isMuted={hovered != null && itemIndex !== hovered.index}
+            isHighlighted={hovered != null && itemIndex === hovered.index}
             size={size}
             isReversed={isReversed}
             onHoverChange={onHoverChange}

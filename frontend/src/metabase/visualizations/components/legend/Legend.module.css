@@ -16,21 +16,20 @@
 }
 
 .itemLabel {
+  opacity: 0.35;
   transition: opacity 0.25s linear;
 }
 
-.hoverableLabel:hover {
-  color: var(--mb-color-core-brand);
+.itemLabel:hover,
+.itemLabel:focus-within,
+.highlightedLabel {
+  opacity: 1;
 }
 
 .itemTitle {
   overflow: hidden;
 }
 
-.clickableTitle {
+.clickableLabel {
   cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-core-brand);
-  }
 }

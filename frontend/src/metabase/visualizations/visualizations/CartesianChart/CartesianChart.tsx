@@ -172,7 +172,7 @@ function CartesianChartInner(props: VisualizationProps) {
     return null;
   }, [props.hovered, props.highlighted, rawSeries, chartModel]);
 
-  const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
+  const { onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
     containerRef,
     chartModel,
@@ -248,7 +248,6 @@ function CartesianChartInner(props: VisualizationProps) {
         isQueryBuilder={isQueryBuilder}
         fontFamily={renderingContext.fontFamily}
         measureText={renderingContext.measureText}
-        onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }

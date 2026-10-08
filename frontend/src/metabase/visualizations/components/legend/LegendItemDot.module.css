@@ -11,7 +11,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  border-radius: 50%;
+  border-radius: 32%;
   transition: all 0.2s;
 }
 
@@ -27,13 +27,6 @@
 
 .innerCircle.visible {
   background-color: var(--legend-dot-color);
-  border-color: var(--legend-dot-color);
-}
-
-.rootButton:hover .innerCircle {
-  transform: scale(0.8);
-}
-
-.rootButton:hover .outerCircle {
-  transform: scale(1.3);
+  border: 0;
+  box-shadow: inset 0 0 0 0.5px var(--mb-color-shadow-default);
 }

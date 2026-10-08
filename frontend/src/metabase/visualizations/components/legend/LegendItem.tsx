@@ -1,8 +1,9 @@
 import cx from "classnames";
 import { memo } from "react";
+import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Ellipsified, Flex, rem } from "metabase/ui";
+import { Box, Ellipsified, Flex, UnstyledButton, rem } from "metabase/ui";
 
 import S from "./Legend.module.css";
 import { LegendItemDot } from "./LegendItemDot";
@@ -19,7 +20,7 @@ interface LegendItemProps {
   item: LegendItemData;
   size?: LegendSize;
   index: number;
-  isMuted?: boolean;
+  isHighlighted?: boolean;
   isReversed?: boolean;
   onHoverChange?: (data?: { index: number; element: Element }) => void;
   onSelectSeries?: (
@@ -34,19 +35,24 @@ const LegendItemInner = ({
   item,
   size = "sm",
   index,
-  isMuted,
+  isHighlighted,
   isReversed,
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
 }: LegendItemProps) => {
   const { dotSize, dotGap, typography } = LEGEND_SIZES[size];
-
-  const handleDotClick = (event: React.MouseEvent) => {
-    onToggleSeriesVisibility?.(event, index);
-  };
+  const isVisible = item.visible ?? true;
+  const toggleLabel = isVisible ? t`Hide series` : t`Show series`;
+  const isInteractive =
+    onToggleSeriesVisibility !== undefined || onSelectSeries !== undefined;
 
   const handleItemClick = (event: React.MouseEvent) => {
+    if (onToggleSeriesVisibility) {
+      event.stopPropagation();
+      onToggleSeriesVisibility(event, index);
+      return;
+    }
     onSelectSeries?.(event, index, isReversed);
   };
 
@@ -60,32 +66,35 @@ const LegendItemInner = ({
 
   return (
     <Flex align="center" miw={0} data-testid="legend-item">
-      <Flex
+      <Flex<typeof UnstyledButton | "div">
+        component={isInteractive ? UnstyledButton : "div"}
         className={cx(S.itemLabel, {
-          [S.hoverableLabel]: onHoverChange != null,
+          [S.highlightedLabel]: isHighlighted,
+          [S.clickableLabel]: isInteractive,
         })}
         align="center"
+        miw={0}
         w="100%"
-        opacity={isMuted ? 0.4 : 1}
+        aria-label={onToggleSeriesVisibility ? toggleLabel : undefined}
+        aria-description={onToggleSeriesVisibility ? item.name : undefined}
+        aria-pressed={onToggleSeriesVisibility ? isVisible : undefined}
+        onClick={isInteractive ? handleItemClick : undefined}
         onMouseEnter={onHoverChange && handleItemMouseEnter}
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         <LegendItemDot
           color={item.color}
           size={rem(dotSize)}
-          isVisible={item.visible ?? true}
-          onClick={onToggleSeriesVisibility && handleDotClick}
+          isVisible={isVisible}
         />
         <Box
-          className={cx(DashboardS.fullscreenNormalText, S.itemTitle, {
-            [S.clickableTitle]: onSelectSeries != null,
-          })}
+          component="span"
+          className={cx(DashboardS.fullscreenNormalText, S.itemTitle)}
           c="text-primary"
           fz={typography}
           lh={typography}
           ml={dotGap}
           miw={0}
-          onClick={onSelectSeries && handleItemClick}
         >
           <Ellipsified>{item.name}</Ellipsified>
         </Box>
