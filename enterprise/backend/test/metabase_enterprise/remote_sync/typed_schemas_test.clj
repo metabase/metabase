@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.actions.core :as actions]
    [metabase.collections.test-utils :refer [with-library with-library-synced with-library-not-synced]]
    [metabase.lib.core :as lib]
@@ -38,10 +39,30 @@
                                                        :status_changed_at (t/offset-date-time)}
                                                       metadata)]
         (is (= (if qualifies? #{987654} #{})
-               (remote-sync/previously-synced-ids :model/Table #{987654})))
-        (is (= #{} (remote-sync/previously-synced-ids :model/Card #{987654})))
-        (is (= #{} (remote-sync/previously-synced-ids :model/Table #{987655}))))))
-  (is (= #{} (remote-sync/previously-synced-ids :model/Table #{}))))
+               (remote-sync/previously-synced-ids :model/Table #{987654}))))))
+  (testing "only the requested model type and ids qualify"
+    (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Table", :model_id 987654
+                                              :model_name "Widgets", :status "synced"
+                                              :status_changed_at (t/offset-date-time)}]
+      (is (= #{} (remote-sync/previously-synced-ids :model/Card #{987654})))
+      (is (= #{} (remote-sync/previously-synced-ids :model/Table #{987655}))))))
+
+(deftest previously-synced-ids-batching-test
+  (let [calls (atom [])
+        ids   (vec (range 1 1002))]
+    (mt/with-dynamic-fn-redefs [remote-sync.db/previously-synced-ids
+                                (fn [model-type batch]
+                                  (swap! calls conj [model-type batch])
+                                  (set (filter odd? batch)))]
+      (is (= (set (filter odd? ids))
+             (remote-sync/previously-synced-ids :model/Table ids)))
+      (is (= [["Table" (vec (range 1 501))]
+              ["Table" (vec (range 501 1001))]
+              ["Table" [1001]]]
+             @calls))
+      (reset! calls [])
+      (is (= #{} (remote-sync/previously-synced-ids :model/Table #{})))
+      (is (empty? @calls)))))
 
 (deftest curated-tables-test
   (with-library [{:keys [data]}]
@@ -144,17 +165,15 @@
                                                        :model_name "Action", :status "synced"
                                                        :status_changed_at (t/offset-date-time)}]
         (mt/with-test-user :crowberto
-          (testing "only previously synchronized actions are included, even outside the library"
-            (is (= [(:id action)]
-                   (map :id (source/actions source/app-db-source)))))
-          (testing "never-synchronized actions are filtered before details are built"
+          (testing "only previously synchronized actions outside the library are loaded and exported"
             (let [select-actions actions/select-actions-for-ids
                   selected-ids (atom [])]
               (mt/with-dynamic-fn-redefs [actions/select-actions-for-ids
                                           (fn [model-ids action-ids]
                                             (swap! selected-ids into action-ids)
                                             (select-actions model-ids action-ids))]
-                (source/actions source/app-db-source))
+                (is (= [(:id action)]
+                       (map :id (source/actions source/app-db-source)))))
               (is (= [(:id action)] @selected-ids))))
           (testing "pending action edits retain current definitions"
             (t2/update! :model/RemoteSyncObject (:id tracking)

@@ -30,9 +30,9 @@
   "Returns ids with last-known Git presence, including pending edits with stored representation metadata."
   :feature :none
   [model-key ids]
-  (if (seq ids)
-    (set (remote-sync.db/previously-synced-ids (name model-key) ids))
-    #{}))
+  (into #{}
+        (mapcat #(remote-sync.db/previously-synced-ids (name model-key) (vec %)))
+        (partition-all remote-sync.db/app-db-batch-size ids)))
 
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
