@@ -55,3 +55,36 @@
                                       data-apps.db/resource-collection)]
           (perms/revoke-collection-permissions! group-id collection)))))
   nil)
+
+(defn- group-has-table-access?
+  [{:keys [permissions]} group-id {table-id :id database-id :database_id}]
+  (some (fn [{permission-table-id :table_id value :perm_value}]
+          (and (or (nil? permission-table-id) (= permission-table-id table-id))
+               (= value :unrestricted)))
+        (get permissions [group-id database-id :perms/view-data])))
+
+(defn- group-table-access
+  [group-ids tables]
+  (let [table-ids    (mapv :id tables)
+        database-ids (into #{} (map :database_id) tables)]
+    (when (seq tables)
+      {:permissions (group-by (juxt :group_id :db_id :perm_type)
+                              (data-apps.db/permissions-for-warnings group-ids database-ids table-ids))})))
+
+(defn permission-warnings
+  "Missing table access for assigned groups, including access inherited from All Users."
+  [{app-id :id table-ids :table_ids}]
+  (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))]
+    (if (and (seq assigned-ids) (seq table-ids))
+      (let [tables       (data-apps.db/table-details table-ids)
+            all-users-id (:id (perms/all-users-group))
+            access       (group-table-access (conj (set assigned-ids) all-users-id) tables)]
+        (into []
+              (keep (fn [group-id]
+                      (let [missing (filterv #(not (or (group-has-table-access? access group-id %)
+                                                       (group-has-table-access? access all-users-id %)))
+                                             tables)]
+                        (when (seq missing)
+                          {:group_id group-id :missing_tables missing}))))
+              assigned-ids))
+      [])))
