@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.audit-app.impl :as audit.impl]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.typed-schemas.common :as typed-schemas.common]
@@ -91,9 +92,8 @@
   (let [cards [{:id 1 :database_id (mt/id)}
                {:id 2 :database_id audit/audit-db-id}
                {:id 3 :database_id (mt/id) :collection_id 7}]]
-    ;; with-redefs rather than the dynamic macro: a dynamic redef of a var re-exported through core can stop applying
-    ;; once another test in the JVM has redefined the var it points to
-    (with-redefs [audit/is-collection-id-audit? #(= % 7)]
+    ;; the var itself rather than its re-export through core, which only follows the root of this one
+    (mt/with-dynamic-fn-redefs [audit.impl/is-collection-id-audit? #(= % 7)]
       (testing "a card in the audit collection 403s on its details lookup and one on the audit database has no table
                 while the feature is off, so the schema leaves both out rather than fail an unscoped request"
         (mt/with-premium-features #{}
