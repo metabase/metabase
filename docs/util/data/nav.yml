@@ -280,6 +280,8 @@ categories:
                 url: "embedding/ai-chat"
           - name: "Filters and parameters"
             url: "embedding/parameters"
+          - name: "Parameters reference"
+            url: "embedding/parameters-reference"
           - name: "Config"
             url: "embedding/config"
           - name: "Config reference"
