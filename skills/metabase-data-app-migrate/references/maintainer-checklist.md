@@ -20,8 +20,7 @@ deletes the alias bumps the contract version and ships the upgrade.
 
 1. `enterprise/backend/src/metabase_enterprise/data_apps/config.clj`:
    `supported-app-version` to `N+1`. `initial-app-version` stays 1.
-2. `skills/metabase-data-app-setup/template/data_app.yaml`: `version: N+1`.
-   Update the template's source if the contract change touches it.
+2. Update `skills/metabase-data-app-setup/template/` if the contract change touches it.
 3. Every e2e fixture manifest that declares a version
    (`e2e/support/assets/data-apps/*/data_app.yaml`,
    `e2e/support/assets/example_synced_data_apps/data_apps/*/data_app.yaml`,

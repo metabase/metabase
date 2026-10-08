@@ -5,8 +5,7 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.lib.core :as lib]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,11 +36,6 @@
   (testing "anything but a positive whole number is rejected, not coerced"
     (doseq [bad [0 -1 1.5 "1" "one" [1]]]
       (is (not (valid? ::data-apps.schema/version bad)) (str "should reject: " (pr-str bad))))))
-
-(deftest template-manifest-declares-the-supported-version-test
-  (testing "the scaffolding template stamps the version this Metabase serves, so a new app is never born outdated"
-    (is (= data-app.config/supported-app-version
-           (:version (yaml/parse-string (slurp "skills/metabase-data-app-setup/template/data_app.yaml")))))))
 
 (deftest migration-upgrade-guides-cover-every-version-test
   (testing "the migrate skill ships one guide per upgrade up to the supported version, so an app at any older version has a path"
