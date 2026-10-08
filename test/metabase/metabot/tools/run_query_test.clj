@@ -108,11 +108,10 @@
   (testing "a SQL query is refused with a pointer to construct_notebook_query"
     (is (=? {:output #"run_query only runs notebook queries.*construct_notebook_query.*"}
             (run-tool! {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))
-  (testing "a user without data access gets a failure, not rows"
+  (testing "a user without data access gets the permission refusal, not rows or a quoted database error"
     (mt/with-no-data-perms-for-all-users!
-      (let [result (run-tool! {"q1" (venues-by-id)} {:query_id "q1"})]
-        (is (=? {:output #"Query failed\. .*"} result))
-        (is (nil? (:structured-output result))))))
+      (is (= {:output "You do not have permission to run this query."}
+             (run-tool! {"q1" (venues-by-id)} {:query_id "q1"})))))
   (testing "a hostile multi-line database error reaches the model as one quoted line"
     (mt/with-dynamic-fn-redefs [qp/process-query (constantly
                                                   {:status :failed
