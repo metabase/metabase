@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import { t } from "ttag";
 
 import type {
@@ -5,7 +6,7 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
-import { Button, Group, Stack, Tooltip } from "metabase/ui";
+import { Box, Chip, Group, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { useTimeConfig } from "../use-time-config";
@@ -35,8 +36,21 @@ export function CurrentDatePicker({
     onChange(getCurrentValue(unit));
   };
 
+  const handleKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
+    unit: DatePickerTruncationUnit,
+  ) => {
+    const isActivationKey =
+      event.key === "Enter" ||
+      (event.key === " " && event.currentTarget.checked);
+    if (isActivationKey) {
+      event.preventDefault();
+      handleClick(unit);
+    }
+  };
+
   return (
-    <Stack>
+    <Stack role="radiogroup" aria-label={t`Current`}>
       {unitGroups.map((group, groupIndex) => (
         <Group key={groupIndex}>
           {group.map((unit) => (
@@ -44,13 +58,22 @@ export function CurrentDatePicker({
               key={unit}
               label={t`Right now, this is ${getTooltipLabel(unit)}`}
             >
-              <Button
-                variant={unit === value?.unit ? "filled" : "default"}
-                aria-selected={unit === value?.unit}
-                onClick={() => handleClick(unit)}
-              >
-                {Lib.describeTemporalUnit(unit)}
-              </Button>
+              {/* Chip forwards refs and handlers to its hidden input, so the
+                  tooltip needs a visible element to attach to */}
+              <Box>
+                <Chip
+                  type="radio"
+                  variant="filled"
+                  icon={null}
+                  checked={unit === value?.unit}
+                  // onClick rather than onChange: re-selecting the current
+                  // unit must still submit, and radios don't fire change then
+                  onClick={() => handleClick(unit)}
+                  onKeyDown={(event) => handleKeyDown(event, unit)}
+                >
+                  {Lib.describeTemporalUnit(unit)}
+                </Chip>
+              </Box>
             </Tooltip>
           ))}
         </Group>
