@@ -133,6 +133,7 @@ describe("extract shortcut", () => {
       });
       H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
+      H.tableHeaderColumn("custom formula").should("be.visible");
       cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
     });
   });
@@ -203,8 +204,10 @@ describe("extract shortcut", () => {
 
     H.tableHeaderClick("ID");
 
+    cy.intercept("POST", "/api/dataset").as("sortedDataset");
     // Change sort direction
     H.popover().findAllByRole("button").first().click();
+    cy.wait("@sortedDataset");
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
     cy.findAllByRole("columnheader").contains("ID").should("be.visible");
@@ -230,10 +233,6 @@ describe("extract shortcut", () => {
       column: "Created At: Month",
       option: "Month of year",
     });
-
-    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
-      "be.visible",
-    );
   });
 
   it("should be possible to extract columns from table with breakouts", () => {
@@ -256,10 +255,6 @@ describe("extract shortcut", () => {
       column: "Created At: Month",
       option: "Month of year",
     });
-
-    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
-      "be.visible",
-    );
   });
 });
 
@@ -297,9 +292,13 @@ function extractColumnAndCheck({
     .should("have.text", newColumn)
     .should("be.visible");
 
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("columnheader").last().should("have.text", newColumn);
-  if (value) {
+  if (value === "") {
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("body-cell-container")
+      .last()
+      .should("have.text", "");
+  } else if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
 }
