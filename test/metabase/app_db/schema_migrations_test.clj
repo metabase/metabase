@@ -3688,8 +3688,8 @@
       (migrate!)
       (is (not (t2/exists? :collection :entity_id "librarylibrarydashbrd"))))))
 (deftest metabot-message-finish-reason-column-test
-  (testing "v65.2026-10-07T00:00:00: metabot_message gains a nullable finish_reason, and finished is left alone"
-    (impl/test-migrations ["v65.2026-10-07T00:00:00"] [migrate!]
+  (testing "v65.2026-10-08T00:00:00: metabot_message gains a nullable finish_reason, and finished is left alone"
+    (impl/test-migrations ["v65.2026-10-08T00:00:00"] [migrate!]
       (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Finish"
                                                                  :last_name     "Reason"
                                                                  :email         "finish-reason@test.com"
@@ -3734,8 +3734,8 @@
           (is (true? (:finished (message completed)))))))))
 
 (deftest metabot-message-context-window-full-column-test
-  (testing "v65.2026-10-07T00:00:01: metabot_message gains a nullable context_window_full"
-    (impl/test-migrations ["v65.2026-10-07T00:00:01"] [migrate!]
+  (testing "v65.2026-10-08T00:00:01: metabot_message gains a nullable context_window_full"
+    (impl/test-migrations ["v65.2026-10-08T00:00:01"] [migrate!]
       (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Context"
                                                                  :last_name     "Window"
                                                                  :email         "context-window-full@test.com"
