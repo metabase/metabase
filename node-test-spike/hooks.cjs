@@ -197,7 +197,7 @@ const mockStub = (file) => {
 
 const isProjectSource = (file) =>
   /\.(tsx?|jsx?)$/.test(file) && !file.includes("/node_modules/") && !file.includes("/target/cljs_dev/") && !file.startsWith(cacheDir) &&
-  (file.startsWith(abs("frontend/")) || file.startsWith(abs("enterprise/frontend/")) || file.startsWith(abs("e2e/support/")) || file.startsWith(abs("node-test-spike/")));
+  (file.startsWith(abs("frontend/")) || file.startsWith(abs("enterprise/frontend/")) || file.startsWith(abs("e2e/support/")) || file.startsWith(abs("bin/")) || file.startsWith(abs("node-test-spike/")));
 
 // jest's jsdom environment resolves packages with the conditions "require",
 // "default" and "browser". Node would use "node" and, for code it takes to be
@@ -476,7 +476,13 @@ const makeDescribe = (mode) => {
   return describe;
 };
 const it = makeTest("run");
-it.skip = makeTest("skip"); it.only = makeTest("run"); it.todo = (name) => makeTest("todo")(name); it.failing = makeTest("skip");
+it.skip = makeTest("skip"); it.only = makeTest("run"); it.todo = (name) => makeTest("todo")(name);
+// jest runs a failing test and passes it only when its body throws.
+it.failing = (name, fn, timeout) => it(name, async () => {
+  let threw = false;
+  try { await fn(); } catch { threw = true; }
+  if (!threw) throw new Error("Failing test passed even though it was supposed to fail. Remove `.failing` to remove error.");
+}, timeout);
 const describe = makeDescribe("run");
 describe.skip = makeDescribe("skip"); describe.only = makeDescribe("run");
 // A package can register hooks when it is first imported. React Testing

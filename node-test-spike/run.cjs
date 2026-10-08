@@ -22,6 +22,18 @@ const files = process.argv.slice(2)
   .sort((a, b) => Number(a.mocks) - Number(b.mocks))
   .map(({ file }) => file);
 
+// A file that cannot be loaded has no test to carry its failure, so the file
+// itself is recorded as the failing entry.
+const runFile = async (t, file) => {
+  try {
+    await globalThis.__nodeTestSpike.runFile(t, path.resolve(file));
+  } catch (error) {
+    if (process.env.NT_FAILURES) fs.appendFileSync(process.env.NT_FAILURES, `${file}\t(file)\t${String(error?.message ?? error).split("\n")[0].slice(0, 200)}\n`);
+    if (process.env.NT_FAILURE_DETAIL) fs.appendFileSync(process.env.NT_FAILURE_DETAIL, `\n===== ${file} > (file)\n${error?.stack ?? error}\n`);
+    throw error;
+  }
+};
+
 const finish = (code) => {
   // jsdom's animation frame timer and app intervals keep the event loop alive.
   // The delay lets the reporter print its summary.
@@ -48,7 +60,7 @@ const nextFromParent = () =>
     for (;;) {
       const file = await nextFromParent();
       if (!file) break;
-      await test(file, (t) => globalThis.__nodeTestSpike.runFile(t, path.resolve(file)));
+      await test(file, (t) => runFile(t, file));
       const { rss } = process.memoryUsage();
       if (process.env.NT_MEMLOG) fs.appendFileSync(process.env.NT_MEMLOG, `${process.pid}\t${megabytes(rss)}\t${file}\n`);
       // A timed-out test leaves work running that cannot be stopped, so the
@@ -67,7 +79,7 @@ const nextFromParent = () =>
     // names the file and carries on with the ones after it.
     if (process.env.NT_REMAINING) fs.writeFileSync(process.env.NT_REMAINING, files.slice(index + 1).join("\n") + "\n");
     if (process.env.NT_CURRENT) fs.writeFileSync(process.env.NT_CURRENT, file + "\n");
-    await test(file, (t) => globalThis.__nodeTestSpike.runFile(t, path.resolve(file)));
+    await test(file, (t) => runFile(t, file));
     const { rss, heapUsed } = process.memoryUsage();
     if (process.env.NT_MEMLOG) {
       fs.appendFileSync(process.env.NT_MEMLOG, `${process.pid}\t${megabytes(rss)}\t${megabytes(heapUsed)}\t${file}\n`);
