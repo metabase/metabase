@@ -82,20 +82,7 @@
                         :type     :query
                         :query    {:source-table (mt/id :venues), :limit 3}}
           {:keys [structured-output]} (run-tool! {"ctx" legacy-query} {:query_id "ctx"})]
-      (is (=? {:returned 3, :truncated? false} structured-output))))
-  (testing "a parameter on the query the user is viewing still filters its rows"
-    (let [parameters [{:type   :number/=
-                       :value  [3]
-                       :target [:dimension [:field (mt/id :venues :id) nil]]}]]
-      (doseq [[place query] {"on the query"       (assoc (venues-count) :parameters parameters)
-                             "on a nested source" {:database (mt/id)
-                                                   :type     :query
-                                                   :query    {:source-query {:source-table (mt/id :venues)
-                                                                             :parameters   parameters}
-                                                              :aggregation  [[:count]]}}}]
-        (testing place
-          (is (= ["| Count |" "| --- |" "| 1 |"]
-                 (data-lines (:output (run-tool! {"ctx" query} {:query_id "ctx"}))))))))))
+      (is (=? {:returned 3, :truncated? false} structured-output)))))
 
 (deftest run-query-records-a-metabot-run-test
   (let [info (atom nil)]

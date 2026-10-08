@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.walk :as lib.walk]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -132,20 +131,9 @@
 
 ;; TODO (Chris 2026-10-08) -- the query builder sends the open query without the filter values the user has set, so
 ;; a question with a filter widget, or one opened from a dashboard, runs here unfiltered and can show different rows
-;; from the ones on screen. Parameters are kept for clients that do put them on the query. Until the values are
-;; sent, `results_visible.selmer` warns the model that they are not applied; that sentence can go then. See BOT-2318.
-
-(defn- serialized-with-parameters
-  "`query` serialized, keeping the `:parameters` of the query and of each of its stages.
-   Serializing drops them as runtime-only, but the QP applies them as filters, so without them the query would read
-   more rows than the one the user is viewing."
-  [query]
-  (let [parameters-at (fn [path] (not-empty (:parameters (get-in query path))))]
-    (cond-> (lib.walk/walk-stages (lib/prepare-for-serialization query)
-                                  (fn [_query path stage]
-                                    (cond-> stage
-                                      (parameters-at path) (assoc :parameters (parameters-at path)))))
-      (parameters-at []) (assoc :parameters (parameters-at [])))))
+;; from the ones on screen. Serializing the query also drops any `:parameters` it holds, so applying the values is
+;; part of that work. Until then `results_visible.selmer` warns the model that they are not applied; that sentence
+;; can go then. See BOT-2318.
 
 (defn- runnable-query
   "The serialized MBQL 5 form of `query`, which state may hold as MBQL 4 (the user's viewing context) or MBQL 5.
@@ -170,7 +158,7 @@
         (throw (if (every? #(some-> % mi/can-read?) cards)
                  (metabot-sql-card-refusal)
                  (no-permission)))))
-    (serialized-with-parameters normalized)))
+    (lib/prepare-for-serialization normalized)))
 
 (defn- cell-text
   [value]
