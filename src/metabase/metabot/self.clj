@@ -429,29 +429,27 @@
   "A user-facing `{:message :error-code}` for a provider failure that the customer can fix on their side, or nil.
   Always nil on the managed provider, where these failures are Metabase's to fix. Only admins are told which
   provider failed and where to fix it."
-  ([e]
-   (byok-provider-error e (metabot.settings/llm-metabot-provider)))
-  ([e model-ref]
-   (let [{:keys [api-error provider] :as data} (ex-data e)]
-     (when-let [failure (and api-error
-                             provider
-                             (not (llm.provider/managed-model-ref? model-ref))
-                             (provider-failure data))]
-       (let [admin?        api/*is-superuser?*
-             provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
-         (case failure
-           :billing    {:error-code "ai_provider_billing"
-                        :message    (if admin?
-                                      (tru "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account." provider-name)
-                                      (tru "The AI provider rejected the request because of a billing issue. Please contact your administrator."))}
-           :rate-limit {:error-code "ai_provider_rate_limit"
-                        :message    (if admin?
-                                      (tru "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account." provider-name)
-                                      (tru "The AI provider is rate limiting requests right now. Please try again in a moment."))}
-           :auth       {:error-code "ai_provider_auth"
-                        :message    (if admin?
-                                      (tru "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings." provider-name)
-                                      (tru "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."))}))))))
+  [e model-ref]
+  (let [{:keys [api-error provider] :as data} (ex-data e)]
+    (when-let [failure (and api-error
+                            provider
+                            (not (llm.provider/managed-model-ref? model-ref))
+                            (provider-failure data))]
+      (let [admin?        api/*is-superuser?*
+            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
+        (case failure
+          :billing    {:error-code "ai_provider_billing"
+                       :message    (if admin?
+                                     (tru "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account." provider-name)
+                                     (tru "The AI provider rejected the request because of a billing issue. Please contact your administrator."))}
+          :rate-limit {:error-code "ai_provider_rate_limit"
+                       :message    (if admin?
+                                     (tru "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account." provider-name)
+                                     (tru "The AI provider is rate limiting requests right now. Please try again in a moment."))}
+          :auth       {:error-code "ai_provider_auth"
+                       :message    (if admin?
+                                     (tru "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings." provider-name)
+                                     (tru "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."))})))))
 
 (defn- missing-required-permission
   "Returns the metabot permission keyword that the current user is missing
