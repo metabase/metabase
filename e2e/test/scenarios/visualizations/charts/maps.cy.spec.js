@@ -223,48 +223,6 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 
-  it("should display pins when a breakout column sets a base-type (metabase#59984)", () => {
-    cy.intercept("/api/tiles/**").as("tiles");
-
-    H.visitQuestionAdhoc({
-      display: "map",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": PEOPLE_ID,
-          aggregation: ["count"],
-          breakout: [
-            [
-              "field",
-              PEOPLE.LONGITUDE,
-              {
-                "base-type": "type/Float",
-              },
-            ],
-            [
-              "field",
-              PEOPLE.LATITUDE,
-              {
-                "base-type": "type/Float",
-              },
-            ],
-          ],
-        },
-      },
-      visualization_settings: {
-        "map.type": "pin",
-        "map.latitude_column": "LATITUDE",
-        "map.longitude_column": "LONGITUDE",
-      },
-    });
-
-    // this should not create a 400 error
-    cy.wait("@tiles").then((xhr) => {
-      expect(xhr.response.statusCode).to.equal(200);
-    });
-  });
-
   it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
     H.visitQuestionAdhoc({
       display: "map",
@@ -346,7 +304,7 @@ describe("scenarios > visualizations > maps", () => {
     });
   });
 
-  it("should display pins type viz setting (metabase#40999)", () => {
+  it("should display pins when a breakout column sets a base-type and support the pin type viz setting (metabase#40999) (metabase#59984)", () => {
     cy.intercept("/api/tiles/**").as("tiles");
 
     H.visitQuestionAdhoc({
@@ -382,7 +340,8 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
-    cy.wait("@tiles");
+    // this should not create a 400 error (metabase#59984)
+    cy.wait("@tiles").its("response.statusCode").should("eq", 200);
 
     cy.findByTestId("viz-settings-button").click();
 
@@ -565,78 +524,71 @@ describe("scenarios > visualizations > maps", () => {
       );
     });
 
-    context("scenario 1: question with a filter", () => {
-      it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-1)", () => {
-        H.visitAlias("@questionUrl");
+    it("should handle data sets that contain only null values for longitude/latitude (metabase#18061)", () => {
+      cy.log("scenario 1: question with a filter (metabase#18061-1)");
+      H.visitAlias("@questionUrl");
 
-        cy.wait("@getCard");
-        cy.wait("@cardQuery");
+      cy.wait("@getCard");
+      cy.wait("@cardQuery");
 
-        cy.intercept("POST", "/api/dataset").as("dataset");
-        cy.window().then((w) => (w.beforeReload = true));
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.window().then((w) => (w.beforeReload = true));
 
-        H.queryBuilderHeader()
-          .findByTestId("filters-visibility-control")
-          .click();
-        cy.findByTestId("qb-filters-panel")
-          .findByText("ID is less than 3")
-          .click();
-        H.popover().within(() => {
-          cy.findByDisplayValue("3").type("{backspace}2");
-          cy.button("Update filter").click();
-        });
-        cy.wait("@dataset");
-
-        H.assertQueryBuilderRowCount(1);
-        H.queryBuilderMain()
-          .findByText("Something went wrong")
-          .should("not.exist");
-
-        cy.findByTestId("qb-filters-panel")
-          .findByText("ID is less than 2")
-          .should("be.visible");
-        cy.get("[data-element-id=pin-map]").should("be.visible");
-
-        cy.window().should("have.prop", "beforeReload", true);
+      H.queryBuilderHeader().findByTestId("filters-visibility-control").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("ID is less than 3")
+        .click();
+      H.popover().within(() => {
+        cy.findByDisplayValue("3").type("{backspace}2");
+        cy.button("Update filter").click();
       });
-    });
+      cy.wait("@dataset");
 
-    context("scenario 2: dashboard with a filter", () => {
-      it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-2)", () => {
-        H.visitAlias("@dashboardUrl");
+      H.assertQueryBuilderRowCount(1);
+      H.queryBuilderMain()
+        .findByText("Something went wrong")
+        .should("not.exist");
 
-        cy.wait("@dashCardQuery");
-        cy.window().then((w) => (w.beforeReload = true));
+      cy.findByTestId("qb-filters-panel")
+        .findByText("ID is less than 2")
+        .should("be.visible");
+      cy.get("[data-element-id=pin-map]").should("be.visible");
 
-        addFilter("Twitter");
+      cy.window().should("have.prop", "beforeReload", true);
 
-        cy.wait("@dashCardQuery");
-        cy.location("search").should("eq", "?category=Twitter");
+      cy.log("scenario 2: dashboard with a filter (metabase#18061-2)");
+      H.visitAlias("@dashboardUrl");
 
-        // The only matching row has null coordinates, so the dashcard shows no results.
-        H.getDashboardCard(0).findByTestId("no-results-image").should("exist");
-        H.getDashboardCard(0)
-          .findByText("Something went wrong")
-          .should("not.exist");
-        cy.window().should("have.prop", "beforeReload", true);
-      });
-    });
+      cy.wait("@dashCardQuery");
+      cy.window().then((w) => (w.beforeReload = true));
 
-    context("scenario 3: publicly shared dashboard with a filter", () => {
-      it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
-        H.visitAlias("@publicLink");
+      addFilter("Twitter");
 
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("18061D");
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("18061");
-        cy.get("[data-element-id=pin-map]");
+      cy.wait("@dashCardQuery");
+      cy.location("search").should("eq", "?category=Twitter");
 
-        addFilter("Twitter");
-        cy.location("search").should("eq", "?category=Twitter");
-        cy.findAllByTestId("no-results-image");
-        cy.get("[data-element-id=pin-map]").should("not.exist");
-      });
+      // The only matching row has null coordinates, so the dashcard shows no results.
+      H.getDashboardCard(0).findByTestId("no-results-image").should("exist");
+      H.getDashboardCard(0)
+        .findByText("Something went wrong")
+        .should("not.exist");
+      cy.window().should("have.prop", "beforeReload", true);
+
+      cy.log(
+        "scenario 3: publicly shared dashboard with a filter (metabase#18061-3)",
+      );
+      H.visitAlias("@publicLink");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("18061D");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("18061");
+      cy.get("[data-element-id=pin-map]");
+
+      addFilter("Twitter");
+      cy.location("search").should("eq", "?category=Twitter");
+      cy.findAllByTestId("no-results-image");
+      cy.get("[data-element-id=pin-map]").should("not.exist");
     });
   });
 

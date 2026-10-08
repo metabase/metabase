@@ -35,7 +35,7 @@ describe("scenarios > visualizations > boxplot", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should render boxplot and update chart on display settings changes", () => {
+  it("should render boxplot with tooltips and update chart on display and axis settings changes", () => {
     H.visitQuestionAdhoc(singleSeriesQuestion);
 
     // 5 Boxes: 2025-2029
@@ -44,6 +44,31 @@ describe("scenarios > visualizations > boxplot", () => {
     // By default: Tukey whiskers, outliers shown, mean shown
     H.BoxPlot.getPoints().should("have.length", 1); // Only one outlier
     H.BoxPlot.getMeanMarkers().should("have.length", 5);
+
+    // Hover over a box element from the left side to avoid mean marker overlap
+    H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
+    H.assertEChartsTooltip({
+      header: "2025",
+      rows: [
+        { name: "Upper whisker", value: "84" },
+        { name: "Q3 (75th percentile)", value: "59" },
+        { name: "Median", value: "35" },
+        { name: "Mean", value: "39.16" },
+        { name: "Q1 (25th percentile)", value: "15.5" },
+        { name: "Lower whisker", value: "1" },
+      ],
+    });
+
+    // Hover over the outlier point
+    H.BoxPlot.getPoints().first().trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "2029 (outlier)",
+      rows: [
+        { name: "Count", value: "189" },
+        { name: "Total: 50 bins", value: "70 – 75" },
+      ],
+      blurAfter: true,
+    });
 
     // Open settings and change whisker type to Min/Max
     H.openVizSettingsSidebar();
@@ -75,9 +100,33 @@ describe("scenarios > visualizations > boxplot", () => {
     // Toggle mean back on
     H.leftSidebar().findByText("Show mean").click();
     H.BoxPlot.getMeanMarkers().should("have.length", 5);
+
+    H.leftSidebar().findByText("Axes").click();
+
+    // Add y-axis label
+    H.leftSidebar().within(() => {
+      cy.findByDisplayValue("Count").clear().type("Count Label");
+    });
+    H.echartsContainer().findByText("Count Label").should("exist");
+
+    // Add x-axis label
+    H.leftSidebar().within(() => {
+      cy.findByDisplayValue("Created At: Year").clear().type("Year Label");
+    });
+    H.echartsContainer().findByText("Year Label").should("exist");
+
+    // Toggle auto y-axis range
+    // Before toggling auto y-axis range, the y-axis labels contains 600
+    H.echartsContainer().findByText("600");
+
+    H.leftSidebar().findByText("Auto y-axis range").click();
+    H.echartsContainer().within(() => {
+      cy.findByText("100"); // Y-axis label since default non-auto range is [0, 100]
+      cy.findByText("600").should("not.exist");
+    });
   });
 
-  it("should show and configure data labels", () => {
+  it("should show and configure data labels and the goal line", () => {
     H.visitQuestionAdhoc(singleSeriesQuestion);
 
     H.openVizSettingsSidebar();
@@ -105,70 +154,7 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findByText("Auto formatting").should("exist");
       cy.findByRole("button", { name: "Full" }).click();
     });
-  });
 
-  it("should display tooltips on hover", () => {
-    H.visitQuestionAdhoc(singleSeriesQuestion);
-
-    // Hover over a box element from the left side to avoid mean marker overlap
-    H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
-    H.assertEChartsTooltip({
-      header: "2025",
-      rows: [
-        { name: "Upper whisker", value: "84" },
-        { name: "Q3 (75th percentile)", value: "59" },
-        { name: "Median", value: "35" },
-        { name: "Mean", value: "39.16" },
-        { name: "Q1 (25th percentile)", value: "15.5" },
-        { name: "Lower whisker", value: "1" },
-      ],
-    });
-
-    // Hover over the outlier point
-    H.BoxPlot.getPoints().first().trigger("mousemove");
-    H.assertEChartsTooltip({
-      header: "2029 (outlier)",
-      rows: [
-        { name: "Count", value: "189" },
-        { name: "Total: 50 bins", value: "70 – 75" },
-      ],
-    });
-  });
-
-  it("should support axis customization", () => {
-    H.visitQuestionAdhoc(singleSeriesQuestion);
-
-    H.openVizSettingsSidebar();
-    H.leftSidebar().findByText("Axes").click();
-
-    // Add y-axis label
-    H.leftSidebar().within(() => {
-      cy.findByDisplayValue("Count").clear().type("Count Label");
-    });
-    H.echartsContainer().findByText("Count Label").should("exist");
-
-    // Add x-axis label
-    H.leftSidebar().within(() => {
-      cy.findByDisplayValue("Created At: Year").clear().type("Year Label");
-    });
-    H.echartsContainer().findByText("Year Label").should("exist");
-
-    // Toggle auto y-axis range
-    // Before toggling auto y-axis range, the y-axis labels contains 600
-    H.echartsContainer().findByText("600");
-
-    H.leftSidebar().findByText("Auto y-axis range").click();
-    H.echartsContainer().within(() => {
-      cy.findByText("100"); // Y-axis label since default non-auto range is [0, 100]
-      cy.findByText("600").should("not.exist");
-    });
-  });
-
-  it("should display goal line when configured", () => {
-    H.visitQuestionAdhoc(singleSeriesQuestion);
-
-    H.openVizSettingsSidebar();
-    H.leftSidebar().findByText("Display").click();
     H.leftSidebar().findByText("Goal line").click();
 
     H.leftSidebar().within(() => {

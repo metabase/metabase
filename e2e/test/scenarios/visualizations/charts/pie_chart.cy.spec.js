@@ -76,7 +76,7 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should render a pie chart (metabase#12506) (#35244)", () => {
+  it("should render a pie chart and mute legend items on hover (metabase#12506) (metabase#29224) (#35244)", () => {
     H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
@@ -100,24 +100,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
     });
 
-    cy.log("#35244");
-    cy.findByLabelText("Switch to data").click();
-    H.tableHeaderClick("Count");
-    H.popover().within(() => {
-      cy.findByRole("img", { name: /filter/ }).should("exist");
-      cy.findByRole("img", { name: /gear/ }).should("not.exist");
-      cy.findByRole("img", { name: /eye_crossed_out/ }).should("not.exist");
-    });
-  });
-
-  it("should mute items in legend when hovering (metabase#29224)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "pie",
-    });
-
-    // flakiness prevention
-    cy.findByTestId("chart-container").findByText("Total").should("be.visible");
+    cy.log("metabase#29224");
     cy.findByTestId("view-footer")
       .findByText("Showing 4 rows")
       .should("be.visible");
@@ -132,9 +115,18 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Gizmo", "false"],
       ["Widget", "false"],
     ].map((args) => checkLegendItemAriaCurrent(args[0], args[1]));
+
+    cy.log("#35244");
+    cy.findByLabelText("Switch to data").click();
+    H.tableHeaderClick("Count");
+    H.popover().within(() => {
+      cy.findByRole("img", { name: /filter/ }).should("exist");
+      cy.findByRole("img", { name: /gear/ }).should("not.exist");
+      cy.findByRole("img", { name: /eye_crossed_out/ }).should("not.exist");
+    });
   });
 
-  it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {
+  it("should not truncate legend titles when enabling percentages and should instantly toggle the total (metabase#48207)", () => {
     H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
@@ -156,18 +148,8 @@ describe("scenarios > visualizations > pie chart", () => {
         expect(element.offsetWidth).to.eq(element.scrollWidth);
       });
     });
-  });
-
-  it("should instantly toggle the total after changing the setting", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "pie",
-    });
-
-    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
-      cy.findByText("Display").click();
       cy.findByText("Show total").click();
     });
 
@@ -184,7 +166,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
   });
 
-  it("should add new slices to the chart if they appear in the query result", () => {
+  it("should add new slices to the chart and preserve a slice's settings if its row is removed then reappears in the query result", () => {
     H.visitQuestionAdhoc({
       dataset_query: getLimitedQuery(testQuery, 2),
       display: "pie",
@@ -193,15 +175,6 @@ describe("scenarios > visualizations > pie chart", () => {
     ensurePieChartRendered(["Gadget", "Doohickey"]);
 
     changeRowLimit(2, 4);
-
-    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
-  });
-
-  it("should preserve a slice's settings if its row is removed then reappears in the query result", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: getLimitedQuery(testQuery, 4),
-      display: "pie",
-    });
 
     ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
 
