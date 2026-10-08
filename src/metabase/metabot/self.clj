@@ -439,8 +439,6 @@
 
   On the managed provider only an outage gets one, since billing, rate limits and credentials there are Metabase's to
   fix. Only admins on their own key are told which provider failed and where to fix it."
-  ([e]
-   (provider-error e (metabot.settings/llm-metabot-provider)))
   ([e model-ref]
    (let [{:keys [api-error provider status body]} (ex-data e)]
      (when (and api-error provider)
