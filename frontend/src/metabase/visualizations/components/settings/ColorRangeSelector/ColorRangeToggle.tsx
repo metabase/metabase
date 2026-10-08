@@ -29,13 +29,7 @@ export const ColorRangeToggle = ({
       className={onColorRangeSelect ? CS.cursorPointer : CS.cursorDefault}
     />
     {showToggleButton && (
-      <ActionIcon
-        onClick={onToggleClick}
-        variant="outline"
-        color="border-neutral"
-        p="sm"
-        size="lg"
-      >
+      <ActionIcon onClick={onToggleClick} p="sm" size="lg">
         <Icon c="text-secondary" name="compare" />
       </ActionIcon>
     )}

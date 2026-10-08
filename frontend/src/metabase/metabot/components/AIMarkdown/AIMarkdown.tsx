@@ -65,6 +65,7 @@ const MarkdownCodeBlock = ({
             opened={copied || undefined}
           >
             <ActionIcon
+              variant="subtle"
               aria-label={t`Copy code`}
               className={S.copyCodeButton}
               data-testid="metabot-code-block-copy"

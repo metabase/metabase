@@ -57,6 +57,7 @@ const EmbeddingThemeActionMenu = ({
       {/* stopPropagation prevents triggering the card's onEdit when clicking the menu */}
       <Menu.Target>
         <ActionIcon
+          variant="subtle"
           aria-label={t`Duplicate and delete`}
           onClick={(e) => e.stopPropagation()}
         >

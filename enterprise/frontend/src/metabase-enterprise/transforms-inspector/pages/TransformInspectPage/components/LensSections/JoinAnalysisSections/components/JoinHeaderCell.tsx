@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
 import { trackTransformInspectAlertClicked } from "metabase/transforms/analytics";
-import { ActionIcon, Icon } from "metabase/ui";
+import { ActionIcon, type ActionIconColor, Icon } from "metabase/ui";
 import type {
   InspectorAlertTrigger,
   InspectorCard,
@@ -32,11 +32,12 @@ export const JoinHeaderCell = ({
 
   return (
     <ActionIcon
-      variant={match(severity)
-        .with("error", () => "error" as const)
-        .with("warning", () => "warning" as const)
-        .with("info", () => "info" as const)
-        .otherwise(() => "subtle" as const)}
+      variant={severity === "warning" ? "warning" : "subtle"}
+      color={match(severity)
+        .returnType<ActionIconColor | undefined>()
+        .with("error", () => "negative")
+        .with("info", () => "brand")
+        .otherwise(() => undefined)}
       size="lg"
       data-is-active={isExpanded}
       onClick={(e) => {

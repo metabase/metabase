@@ -7,19 +7,26 @@ import {
 import { color } from "metabase/ui/utils/colors";
 
 import ActionIconStyles from "./ActionIcon.module.css";
+import type { ActionIconColor } from "./types";
 
 const ACTION_ICON_VARIANTS = ["default", "light", "subtle"] as const;
 
-const ACTION_ICON_COLORS = ["neutral", "brand"] as const;
+const ACTION_ICON_COLORS = [
+  "neutral",
+  "brand",
+  "negative",
+  "positive",
+] as const satisfies readonly ActionIconColor[];
 
 type ActionIconVariant = (typeof ACTION_ICON_VARIANTS)[number];
-type ActionIconColor = (typeof ACTION_ICON_COLORS)[number];
 
 const CELLS = [
   "default-neutral",
   "light-neutral",
   "subtle-neutral",
   "subtle-brand",
+  "subtle-negative",
+  "subtle-positive",
 ] as const satisfies readonly `${ActionIconVariant}-${ActionIconColor}`[];
 
 const NEUTRAL_CELLS = [
@@ -81,7 +88,8 @@ const getRootVars = ({
 export const actionIconOverrides: MantineThemeOverride["components"] = {
   ActionIcon: ActionIcon.extend({
     defaultProps: {
-      variant: "subtle",
+      variant: "default",
+      size: "md",
       loaderProps: {
         color: "currentColor",
       },

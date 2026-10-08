@@ -22,6 +22,7 @@ export function GraphExternalLink({
   return (
     <Tooltip label={label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
       <ActionIcon
+        variant="subtle"
         component={ForwardRefLink}
         to={url}
         target={openLinksInNewTab ? "_blank" : undefined}

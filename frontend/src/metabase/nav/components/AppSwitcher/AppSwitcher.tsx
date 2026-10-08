@@ -174,8 +174,6 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
             <ActionIcon
               size="2rem"
               p="sm"
-              variant="outline"
-              bd="1px solid var(--mb-color-border-neutral)"
               aria-label={t`Settings`}
               bdrs="50%"
               className={className}

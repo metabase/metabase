@@ -170,7 +170,7 @@ export function DashboardTabs({
         )}
         {isEditing && (
           <ActionIcon
-            variant="viewHeader"
+            variant="subtle"
             onClick={createNewTab}
             aria-label={t`Create new tab`}
             className={S.createTabButton}

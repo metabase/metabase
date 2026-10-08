@@ -1,12 +1,15 @@
 import {
-  type ActionIconProps,
   ActionIcon as MantineActionIcon,
+  type ActionIconProps as MantineActionIconProps,
   createPolymorphicComponent,
 } from "@mantine/core";
 import { forwardRef } from "react";
 
-export type { ActionIconGroupProps, ActionIconProps } from "@mantine/core";
+import type { ActionIconProps } from "./types";
+
+export type { ActionIconGroupProps } from "@mantine/core";
 export { actionIconOverrides } from "./ActionIcon.config";
+export type { ActionIconColor, ActionIconProps } from "./types";
 
 type SizeVariantProps = Pick<ActionIconProps, "size" | "variant">;
 
@@ -14,16 +17,19 @@ const guardSubtleOnlyXs = ({
   size,
   variant,
 }: SizeVariantProps): SizeVariantProps =>
-  size === "xs" && variant !== undefined && variant !== "subtle"
+  size === "xs" && variant !== "subtle"
     ? { size: "sm", variant }
     : { size, variant };
 
 const ActionIconRoot = forwardRef<HTMLButtonElement, ActionIconProps>(
-  function ActionIconRoot({ size, variant, ...props }, ref) {
+  function ActionIconRoot({ size, variant, color, ...props }, ref) {
     return (
       <MantineActionIcon
         {...props}
         {...guardSubtleOnlyXs({ size, variant })}
+        // `color` is overloaded with Figma color names that ActionIcon.config.tsx
+        // resolves into button tokens, so it is not a Mantine color
+        color={color as MantineActionIconProps["color"]}
         ref={ref}
       />
     );

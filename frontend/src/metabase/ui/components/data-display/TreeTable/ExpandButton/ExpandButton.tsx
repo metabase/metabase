@@ -37,6 +37,7 @@ export const ExpandButton = memo(function ExpandButton({
 
   return (
     <ActionIcon
+      variant="subtle"
       aria-expanded={isExpanded}
       aria-label={isExpanded ? t`Collapse` : t`Expand`}
       className={cx(S.wrapper, S.button, className)}

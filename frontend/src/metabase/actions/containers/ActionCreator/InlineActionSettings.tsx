@@ -42,7 +42,7 @@ export const ActionSettingsTriggerButton = ({
 }) => (
   <Tooltip label={t`Action settings`}>
     <ActionIcon
-      variant="viewHeader"
+      variant="subtle"
       onClick={onClick}
       aria-label={t`Action settings`}
     >

@@ -69,7 +69,7 @@ function TransformMenu({
   return (
     <Menu>
       <Menu.Target>
-        <ActionIcon size="sm" onClick={handleIconClick}>
+        <ActionIcon variant="subtle" size="sm" onClick={handleIconClick}>
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>

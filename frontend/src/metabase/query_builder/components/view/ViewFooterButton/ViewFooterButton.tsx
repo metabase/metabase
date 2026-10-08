@@ -27,7 +27,7 @@ export const ViewFooterButton = forwardRef(function _ViewFooterButton(
   return (
     <Tooltip label={tooltipLabel} disabled={disableTooltip}>
       <Center ref={ref}>
-        <ActionIcon variant="viewFooter" {...actionIconProps}>
+        <ActionIcon variant="subtle" {...actionIconProps}>
           <Icon size={18} name={icon} />
         </ActionIcon>
       </Center>

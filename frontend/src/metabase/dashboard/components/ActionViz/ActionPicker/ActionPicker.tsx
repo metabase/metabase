@@ -128,6 +128,7 @@ function ModelActionPicker({
               >
                 <span>{action.name}</span>
                 <ActionIcon
+                  variant="subtle"
                   onClick={(event: MouseEvent<HTMLButtonElement>) => {
                     // we have a click listener on the parent
                     event.stopPropagation();

@@ -29,6 +29,7 @@ export const DataAppListItem = ({ app, canRemove = false }: Props) => (
       {app.has_user_permission_warnings && (
         <Tooltip label={t`Some users are missing data access.`}>
           <ActionIcon
+            variant="subtle"
             aria-label={t`Some users are missing data access.`}
             component={Link}
             to={`/admin/settings/apps/${app.name}/users`}

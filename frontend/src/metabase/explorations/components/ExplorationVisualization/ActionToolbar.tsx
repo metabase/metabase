@@ -356,6 +356,7 @@ export function ActionToolbar({
                 >
                   {selectedTimeline.name}
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Remove timeline`}
                     onClick={(e) => {
                       handleSelectTimelineId(null, "click");
@@ -467,8 +468,8 @@ export function ActionToolbar({
           <Menu.Target>
             <Tooltip label={t`More actions`} disabled={isMoreActionsOpen}>
               <ActionIcon
+                variant="subtle"
                 size="2rem"
-                variant="viewHeader"
                 aria-label={t`More actions`}
               >
                 <Icon name="ellipsis" size="1.125rem" />
@@ -522,6 +523,7 @@ function TriageNavButton({
   return (
     <Tooltip label={label} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
       <ActionIcon
+        variant="subtle"
         className={S.triageButton}
         aria-label={label}
         radius="xl"

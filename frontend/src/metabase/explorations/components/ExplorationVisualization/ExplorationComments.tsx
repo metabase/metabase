@@ -213,7 +213,7 @@ export function ExplorationComments({
         align="center"
       >
         <Title order={3}>{t`Comments`}</Title>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <Icon name="close" c="icon-primary" />
         </ActionIcon>
       </Group>

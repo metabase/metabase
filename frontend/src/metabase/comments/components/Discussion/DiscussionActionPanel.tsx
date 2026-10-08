@@ -72,6 +72,7 @@ export function DiscussionActionPanel({
             <Popover.Target>
               <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
                 <ActionIcon
+                  variant="subtle"
                   aria-label={t`Add reaction`}
                   size={ACTION_ICON_SIZE}
                   onClick={() => setEmojiPickerOpened((opened) => !opened)}
@@ -88,6 +89,7 @@ export function DiscussionActionPanel({
         {canResolve && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
+              variant="subtle"
               data-testid={
                 comment.is_resolved
                   ? "comment-action-panel-reopen"
@@ -114,6 +116,7 @@ export function DiscussionActionPanel({
             <Popover.Target>
               <Tooltip label={t`More actions`} disabled={popoverOpened}>
                 <ActionIcon
+                  variant="subtle"
                   data-testid="comment-action-panel-more-actions"
                   aria-label={t`More actions`}
                   size={ACTION_ICON_SIZE}

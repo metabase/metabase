@@ -11,7 +11,7 @@ import {
 import { ActionIcon, type ActionIconProps } from "./";
 
 const args = {
-  variant: "subtle",
+  variant: "default",
   color: undefined,
   size: "md",
   disabled: false,
@@ -27,16 +27,12 @@ const argTypes = {
       "filled",
       "outline",
       "transparent",
-      "viewHeader",
-      "viewFooter",
-      "info",
       "warning",
-      "error",
     ],
     control: { type: "select" },
   },
   color: {
-    options: [undefined, "brand"],
+    options: [undefined, "brand", "negative", "positive"],
     control: { type: "inline-radio" },
   },
   size: {
@@ -71,7 +67,13 @@ export const Default = {
 const MATRIX_SIZES = ["xs", "sm", "md", "lg"] as const;
 const NO_XS_SIZES = ["sm", "md", "lg"] as const;
 const GROUP_SIZES = ["md", "lg"] as const;
-const MATRIX_STATES = ["default", "hover", "active", "disabled"] as const;
+const MATRIX_STATES = [
+  "default",
+  "hover",
+  "active",
+  "disabled",
+  "loading",
+] as const;
 
 const MATRIX_COLORS = {
   neutral: undefined,
@@ -88,12 +90,25 @@ const STATE_LABELS: Record<MatrixState, string> = {
   hover: "hover",
   active: "pressed",
   disabled: "disabled",
+  loading: "loading",
 };
 
 type MatrixVariant = "default" | "light" | "subtle";
 type MatrixSize = (typeof MATRIX_SIZES)[number];
 type MatrixState = (typeof MATRIX_STATES)[number];
 type MatrixColor = keyof typeof MATRIX_COLORS;
+
+const matrixStateProps = (
+  state: MatrixState,
+): { disabled?: boolean; loading?: boolean } => {
+  if (state === "disabled") {
+    return { disabled: true };
+  }
+  if (state === "loading") {
+    return { loading: true };
+  }
+  return {};
+};
 
 const matrixCell = (variant: MatrixVariant, color: MatrixColor) =>
   color === "neutral" ? variant : `${variant}-${color}`;
@@ -146,9 +161,9 @@ const MatrixSection = ({
               variant={variant}
               color={MATRIX_COLORS[color]}
               size={size}
-              disabled={state === "disabled"}
               aria-label="action"
               data-spec-cell={`${matrixCell(variant, color)}/${size}/${state}`}
+              {...matrixStateProps(state)}
             >
               <Icon name="model" />
             </ActionIcon>
@@ -188,18 +203,18 @@ const GroupSection = ({ variant }: { variant: MatrixVariant }) => (
               <ActionIcon
                 variant={variant}
                 size={size}
-                disabled={state === "disabled"}
                 aria-label="action"
                 data-spec-cell={`${groupCell(variant)}/${size}/${state}`}
+                {...matrixStateProps(state)}
               >
                 <Icon name="model" />
               </ActionIcon>
               <ActionIcon
                 variant={variant}
                 size={size}
-                disabled={state === "disabled"}
                 aria-label="more"
                 data-group-state={state}
+                {...matrixStateProps(state)}
               >
                 <Icon name="model" />
               </ActionIcon>

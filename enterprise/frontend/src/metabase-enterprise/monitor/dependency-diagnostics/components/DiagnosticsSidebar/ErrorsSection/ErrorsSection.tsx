@@ -115,7 +115,7 @@ function ErrorListItem({ item }: ErrorListItemProps) {
           className={CS.hoverChild}
           value={item}
           target={
-            <ActionIcon aria-label={t`Copy`}>
+            <ActionIcon variant="subtle" aria-label={t`Copy`}>
               <FixedSizeIcon name="copy" />
             </ActionIcon>
           }

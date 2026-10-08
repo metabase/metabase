@@ -29,7 +29,7 @@ export function CollectionExportAnalytics() {
     >
       <span>
         <ActionIcon
-          variant="viewHeader"
+          variant="subtle"
           size="2rem"
           aria-label={t`Export analytics`}
           onClick={handleExport}
