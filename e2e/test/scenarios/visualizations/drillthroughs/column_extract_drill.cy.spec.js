@@ -21,7 +21,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
   });
 
   describe("date columns", () => {
-    describe("should add a new column after the selected column", () => {
+    describe("should add the new column as the last column", () => {
       it("saved question without viz settings", () => {
         H.visitQuestion(ORDERS_QUESTION_ID);
         extractColumnAndCheck({

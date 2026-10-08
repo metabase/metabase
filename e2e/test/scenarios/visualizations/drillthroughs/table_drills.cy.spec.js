@@ -366,7 +366,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         { visitQuestion: true },
       );
 
-      // FK cell drills
+      // Numeric cell drills
       cy.get("[data-testid=cell-data]").filter(":contains(1)").eq(1).click();
       H.popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");

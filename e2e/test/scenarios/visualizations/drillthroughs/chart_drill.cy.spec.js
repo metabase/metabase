@@ -286,7 +286,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
-  it("should drill through a with date filter (metabase#12496)", () => {
+  it("should drill through to a date range filter (metabase#12496)", () => {
     H.createQuestion(
       {
         name: "Orders by Created At: Week",

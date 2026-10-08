@@ -55,7 +55,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       });
     });
 
-    describe("from a dashcard multiscalar legend", () => {
+    describe("from a line chart with two breakouts", () => {
       const DASHBOARD_NAME = "Multiscalar Dash";
       const CARD_NAME = "Multiscalar Question";
 
