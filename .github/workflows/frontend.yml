@@ -47,6 +47,18 @@ jobs:
         run: bun run lint-oxlint
       - name: Verify lint configuration and behavior
         run: bun run test-oxlint
+
+  fe-lint-css:
+    needs: gate
+    if: >-
+      ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_all')
+      || contains(fromJSON(needs.gate.outputs.matched), 'e2e_all') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
       - name: Run CSS linter
         run: bun run lint-css
 
@@ -185,6 +197,7 @@ jobs:
     needs:
       - gate
       - fe-lint
+      - fe-lint-css
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
