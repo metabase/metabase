@@ -19,6 +19,55 @@ const derived = readRoutes(process.cwd());
 const key = ({ pattern, chunks }: { pattern: string; chunks: string[] }) =>
   `${pattern} -> ${[...chunks].sort().join("+")}`;
 
+/**
+ * A note names the construct the reader could not follow, not where it sits, so
+ * the arguments of a call and the file it lives in are dropped. A new route that
+ * uses an idiom already pinned below is skipped on purpose.
+ */
+const idiomOf = ({ why, what }: { why: string; what: string }) => {
+  const collapsed = what.replace(/\s+/g, " ").trim();
+  const call = collapsed.match(/^([\w.]+)\s*\(/);
+  return `${why}: ${call ? `${call[1]}(...)` : collapsed}`;
+};
+
+/**
+ * The constructs the reader cannot follow. Modal routes load no page of their
+ * own. The rest are routes a plugin supplies at runtime, which source cannot
+ * reach, so those subtrees get no hint.
+ */
+const UNRESOLVED_IDIOMS = [
+  "lazy from a plugin slot: PLUGIN_AUTH_PROVIDERS.settingsJWTForm",
+  "lazy from a plugin slot: PLUGIN_AUTH_PROVIDERS.settingsOIDCForm",
+  "lazy from a plugin slot: PLUGIN_AUTH_PROVIDERS.settingsSAMLForm",
+  "lazy from a plugin slot: PLUGIN_MULTI_FACTOR_AUTH.enrolledUsersPage",
+  "lazy from a plugin slot: PLUGIN_MULTI_FACTOR_AUTH.unenrolledUsersPage",
+  "lazy from a plugin slot: PLUGIN_SECURITY_CENTER.securityCenterPage",
+  "lazy from a plugin slot: PLUGIN_TENANTS.canAccessTenantSpecificRoute",
+  "lazy from a plugin slot: PLUGIN_TENANTS.tenantCollectionList",
+  "lazy from a plugin slot: PLUGIN_TENANTS.tenantUsersList",
+  "lazy from a plugin slot: PLUGIN_TENANTS.tenantUsersPersonalCollectionList",
+  "lazy from a plugin slot: PLUGIN_TRANSFORMS_PYTHON.pythonRunnerSettingsPage",
+  "lazy not understood: lazyModalComponent(...)",
+  "plugin call: PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes",
+  "plugin call: PLUGIN_ADMIN_USER_MENU_ROUTES.map",
+  "plugin call: PLUGIN_AI_CONTROLS.getAiControlsRoutes",
+  "plugin call: PLUGIN_APPLICATION_PERMISSIONS.getRoutes",
+  "plugin call: PLUGIN_AUDIT.getAiAuditingRoutes",
+  "plugin call: PLUGIN_DATA_APPS.getRoutes",
+  "plugin call: PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes",
+  "plugin call: PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes",
+  "plugin call: PLUGIN_LIBRARY.getDataStudioLibraryRoutes",
+  "plugin call: PLUGIN_MONITOR.getDependencyDiagnosticsRoutes",
+  "plugin call: PLUGIN_MONITOR.getSessionManagementRoutes",
+  "plugin call: PLUGIN_REPLACEMENT.getTransformToolsRoutes",
+  "plugin call: PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes",
+  "plugin call: PLUGIN_TABLE_EDITING.getRoutes",
+  "plugin call: PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes",
+  "plugin call: PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes",
+  "plugin call: PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes",
+  "unknown call: getDefaults",
+];
+
 describe("the route preload manifest", () => {
   /**
    * The build derives the manifest by reading source, because importing the app
@@ -54,6 +103,17 @@ describe("the route preload manifest", () => {
 
   it("leaves no page in a chunk nothing can name", () => {
     expect(executed.unnamed.map((route) => route.pattern)).toEqual([]);
+  });
+
+  /**
+   * A route the reader drops is invisible, and the only sign of one is the note
+   * it leaves. Pinning the set turns a new unreadable idiom into a failure here
+   * rather than a page that loads slowly in production.
+   */
+  it("follows every route idiom but the ones pinned here", () => {
+    const idioms = [...new Set(derived.notes.map(idiomOf))].sort();
+
+    expect(idioms).toEqual(UNRESOLVED_IDIOMS);
   });
 });
 
