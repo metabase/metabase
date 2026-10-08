@@ -134,15 +134,9 @@ function SuccessfulRequestWrapper({
 }: SubscriptionWrapperProps) {
   return (
     <Stack align="center">
-      <Icon
-        className={S.contentBox}
-        name="check"
-        size={30}
-        c="core-brand"
-        bg="background_surface-brand-subtle"
-        p="lg"
-        bdrs="100%"
-      />
+      <Center bg="background_surface-brand-subtle" p="lg" bdrs="100%">
+        <Icon name="check" size={30} c="core-brand" />
+      </Center>
       <Text fw={700} c="text-secondary" mb="0.75rem" ta="center">
         {text}
       </Text>
