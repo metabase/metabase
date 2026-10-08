@@ -240,8 +240,15 @@ describe("scenarios > visualizations > table", () => {
     assertUnchangedWidths();
   });
 
-  it("should allow to display any column as link with extrapolated url and text", () => {
+  it("should close the column popover on subsequent click and display any column as link with extrapolated url and text (metabase#16789)", () => {
     H.openPeopleTable({ limit: 2 });
+
+    H.tableHeaderColumn("City").click();
+    H.clickActionsPopover().should("be.visible");
+
+    H.tableHeaderColumn("City").click();
+    cy.wait(100); // Ensure popover is closed
+    H.clickActionsPopover({ skipVisibilityCheck: true }).should("not.exist");
 
     H.tableHeaderClick("City");
 
@@ -403,7 +410,7 @@ describe("scenarios > visualizations > table", () => {
     });
   });
 
-  it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
+  it("should show foreign key metadata, close the header popover with Escape, and show metadata in the summarize sidebar (metabase#19577, metabase#55673)", () => {
     H.openOrdersTable({ limit: 2 });
 
     cy.get("[data-testid=cell-data]")
@@ -414,10 +421,21 @@ describe("scenarios > visualizations > table", () => {
       cy.contains("Foreign Key");
       cy.contains("The product ID.");
     });
-  });
 
-  it("should show field metadata in a hovercard when hovering over a table column in the summarize sidebar", () => {
-    H.openOrdersTable({ limit: 2 });
+    cy.get("[data-testid=cell-data]")
+      .contains("Product ID")
+      .trigger("mouseout");
+
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
 
     H.summarize();
 
@@ -450,31 +468,6 @@ describe("scenarios > visualizations > table", () => {
     H.hovercard()
       .should("contain", "No special type")
       .and("contain", "No description");
-  });
-
-  it("should close the colum popover on subsequent click (metabase#16789)", () => {
-    H.openPeopleTable({ limit: 2 });
-
-    H.tableHeaderColumn("City").click();
-    H.clickActionsPopover().should("be.visible");
-
-    H.tableHeaderColumn("City").click();
-    cy.wait(100); // Ensure popover is closed
-    H.clickActionsPopover({ skipVisibilityCheck: true }).should("not.exist");
-  });
-
-  it("should be able to close a header popover using Escape (metabase#55673)", () => {
-    H.openOrdersTable();
-    H.tableHeaderClick("Product ID");
-    cy.findByTestId("click-actions-view").should("be.visible");
-
-    cy.focused().should(
-      "have.attr",
-      "data-testid",
-      "click-actions-sort-control-sort.ascending",
-    );
-    cy.realPress(["Escape"]);
-    cy.findByTestId("click-actions-view").should("not.exist");
   });
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
@@ -813,38 +806,67 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     cy.get(idCellSelector).should("contain", secondPageId);
   });
 
-  it("should display pinned rows correctly with pagination", () => {
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        display: "table",
-        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
-        visualization_settings: {
-          "table.freeze_rows": true,
-          "table.freeze_rows_count": 1,
-          "table.pagination": true,
+  it("should display pinned rows correctly with pagination and client-side sorting", () => {
+    const pinnedRowsSettings = {
+      "table.freeze_rows": true,
+      "table.freeze_rows_count": 1,
+    };
+
+    H.createDashboardWithQuestions({
+      questions: [
+        {
+          display: "table",
+          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+          visualization_settings: {
+            ...pinnedRowsSettings,
+            "table.pagination": true,
+          },
         },
-      },
-      cardDetails: {
-        size_x: 24,
-        size_y: 12,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+        {
+          display: "table",
+          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+          visualization_settings: pinnedRowsSettings,
+        },
+      ],
+      cards: [
+        { row: 0, col: 0, size_x: 12, size_y: 12 },
+        { row: 0, col: 12, size_x: 12, size_y: 12 },
+      ],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
     });
 
-    cy.findByTestId("pinned-center-quadrant")
-      .findByRole("row")
-      .find("[data-column-id=ID]")
-      .findByTestId("cell-data")
-      .should("have.text", "1");
+    const pinnedRowId = () =>
+      cy
+        .findByTestId("pinned-center-quadrant")
+        .findByRole("row")
+        .find("[data-column-id=ID]")
+        .findByTestId("cell-data");
 
-    cy.findByLabelText("Next page").click();
+    cy.log("pagination");
+    H.getDashboardCard(0).within(() => {
+      pinnedRowId().should("have.text", "1");
 
-    cy.findByTestId("pinned-center-quadrant")
-      .findByRole("row")
-      .find("[data-column-id=ID]")
-      .findByTestId("cell-data")
-      .should("have.text", "1");
+      cy.findByText(/Rows 1-\d+ of first 2,000/).should("exist");
+      cy.findByLabelText("Next page").click();
+      cy.findByText(/Rows \d+-\d+ of first 2,000/).should(
+        "not.contain.text",
+        "Rows 1-",
+      );
+
+      pinnedRowId().should("have.text", "1");
+    });
+
+    cy.log("client-side sorting");
+    H.getDashboardCard(1).within(() => {
+      pinnedRowId().should("have.text", "1");
+
+      H.tableHeaderClick("ID");
+      pinnedRowId().should("have.text", "2000");
+
+      H.tableHeaderClick("ID");
+      pinnedRowId().should("have.text", "1");
+    });
   });
 
   it("should support text wrapping setting", () => {
@@ -1026,77 +1048,6 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     });
   });
 
-  it("should support the row index setting", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-
-    H.getDashboardCard(0)
-      .realHover()
-      .within(() => {
-        cy.findByLabelText("Show visualization options").click();
-      });
-    H.modal().findByText("Display").click();
-    H.modal().findByText("Show row index").click();
-
-    cy.button("Done").click();
-
-    H.saveDashboard();
-
-    H.tableInteractiveBody()
-      .findAllByTestId("row-id-cell")
-      .eq(0)
-      .should("have.text", 1);
-
-    // Apply sorting to ensure row index does not change
-    H.tableHeaderClick("ID");
-
-    H.tableInteractiveBody()
-      .findAllByTestId("row-id-cell")
-      .eq(0)
-      .should("have.text", 1);
-  });
-
-  it("should sort pinned rows correctly with client-side sorting", () => {
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        display: "table",
-        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
-        visualization_settings: {
-          "table.freeze_rows": true,
-          "table.freeze_rows_count": 1,
-        },
-      },
-      cardDetails: {
-        size_x: 24,
-        size_y: 12,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
-    });
-
-    cy.findByTestId("pinned-center-quadrant")
-      .findByRole("row")
-      .find("[data-column-id=ID]")
-      .findByTestId("cell-data")
-      .should("have.text", "1");
-
-    H.tableHeaderClick("ID");
-
-    cy.findByTestId("pinned-center-quadrant")
-      .findByRole("row")
-      .find("[data-column-id=ID]")
-      .findByTestId("cell-data")
-      .should("have.text", "2000");
-
-    H.tableHeaderClick("ID");
-
-    cy.findByTestId("pinned-center-quadrant")
-      .findByRole("row")
-      .find("[data-column-id=ID]")
-      .findByTestId("cell-data")
-      .should("have.text", "1");
-  });
-
   it("should expand columns to the full width of the dashcard (metabase#57381)", () => {
     const sideColumnsWidth = 200;
     const expandedSideColumnsWidth = 2 * sideColumnsWidth;
@@ -1172,7 +1123,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     });
   });
 
-  it("should support resizing columns in dashcard viz settings", () => {
+  it("should support resizing columns and the row index setting in dashcard viz settings", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("header-cell")
       .filter(":contains(ID)")
@@ -1213,6 +1164,34 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         expect(newWidth).to.be.gte(originalWidth + resizeByWidth);
       });
     });
+
+    cy.log("row index setting");
+    H.editDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.findByLabelText("Show visualization options").click();
+      });
+    H.modal().findByText("Display").click();
+    H.modal().findByText("Show row index").click();
+
+    cy.button("Done").click();
+
+    H.saveDashboard();
+
+    H.tableInteractiveBody()
+      .findAllByTestId("row-id-cell")
+      .eq(0)
+      .should("have.text", 1);
+
+    // Apply sorting to ensure row index does not change
+    H.tableHeaderClick("ID");
+
+    H.tableInteractiveBody()
+      .findAllByTestId("row-id-cell")
+      .eq(0)
+      .should("have.text", 1);
   });
 });
 
@@ -1393,7 +1372,7 @@ describe("scenarios > visualizations > table > with tracking", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should track when freeze columns is enabled from viz settings", () => {
+  it("should track when freeze columns and freeze rows are enabled from viz settings", () => {
     H.openOrdersTable();
     H.openVizSettingsSidebar();
     H.sidebar().findByText("Display").click();
@@ -1409,12 +1388,6 @@ describe("scenarios > visualizations > table > with tracking", () => {
       },
       1,
     );
-  });
-
-  it("should track when freeze rows is enabled from viz settings", () => {
-    H.openOrdersTable();
-    H.openVizSettingsSidebar();
-    H.sidebar().findByText("Display").click();
 
     H.sidebar().findByText("Freeze rows").click();
 
