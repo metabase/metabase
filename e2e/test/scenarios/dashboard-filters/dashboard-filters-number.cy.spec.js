@@ -101,19 +101,20 @@ describe("scenarios > dashboard > filters > number", () => {
     H.setFilter("Number", "Between");
     H.selectDashboardFilter(H.getDashboardCard(), "Total");
 
-    // Removing the required filter can re-run the card. Re-alias so the waits below start at the save.
+    // Removing the required filter can re-run the card, and no wait takes that request.
+    // A new alias makes the waits below start at the save.
     cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashboardData",
+      "savedDashboardData",
     );
     H.saveDashboard();
-    cy.wait("@dashboardData");
+    cy.wait("@savedDashboardData");
 
     DASHBOARD_NUMBER_FILTERS.forEach(
       ({ operator, value, representativeResult, negativeAssertion }, index) => {
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
-        cy.wait("@dashboardData");
+        cy.wait("@savedDashboardData");
 
         cy.log(`Make sure ${operator} filter returns correct result`);
         cy.findByTestId("dashcard")
@@ -121,7 +122,7 @@ describe("scenarios > dashboard > filters > number", () => {
           .and("not.contain", negativeAssertion);
 
         H.clearFilterWidget(index);
-        cy.wait("@dashboardData");
+        cy.wait("@savedDashboardData");
       },
     );
 
