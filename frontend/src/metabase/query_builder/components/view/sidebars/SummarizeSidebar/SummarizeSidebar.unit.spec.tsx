@@ -17,6 +17,13 @@ import {
 
 import { SummarizeSidebar } from "./SummarizeSidebar";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 type SetupOpts = {
   query?: Lib.Query;
   withDefaultAggregation?: boolean;
