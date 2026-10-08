@@ -22,7 +22,7 @@ describe("scenarios > dashboard > text and headings", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should allow creation, editing, and saving of text boxes", () => {
+    it("should allow creation, editing, and saving of text boxes and headings", () => {
       // should be able to create new text box
       H.editDashboard();
       cy.findByLabelText("Add a heading or text box").click();
@@ -98,10 +98,76 @@ describe("scenarios > dashboard > text and headings", () => {
         cy.findByText("Cancel").click(); // dismiss modal
       });
 
+      // should be able to create new heading
+      cy.findByLabelText("Add a heading or text box").click();
+      H.popover().findByText("Heading").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "new_heading_card_created",
+      });
+
+      H.getDashboardCard(2).within(() => {
+        cy.get("input")
+          .should("have.focus")
+          .should("have.value", "")
+          .should(
+            "have.attr",
+            "placeholder",
+            "You can connect widgets to {{variables}} in heading cards.",
+          );
+      });
+
+      // should auto-preview on blur (de-focus)
+      cy.findByTestId("edit-bar")
+        .findByText("You're editing this dashboard.")
+        .click(); // un-focus heading
+      H.getDashboardCard(2).within(() => {
+        cy.get("h2")
+          .findByText(
+            "You can connect widgets to {{variables}} in heading cards.",
+          )
+          .should("be.visible");
+
+        // preview mode should have no input
+        cy.get("input").should("not.exist");
+      });
+
+      // should focus input editor on click
+      H.getDashboardCard(2)
+        .click()
+        .within(() => {
+          cy.get("input").should("have.focus");
+        });
+
+      // should be able to edit text while focused
+      cy.focused().type("Example Heading");
+
+      // should auto-preview typed text
+      cy.findByTestId("edit-bar")
+        .findByText("You're editing this dashboard.")
+        .click(); // un-focus heading
+      H.getDashboardCard(2)
+        .find("h2")
+        .findByText("Example Heading")
+        .should("be.visible");
+
+      // should have no visualization options or edit actions
+      H.getDashboardCard(2)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Add a filter").should("be.visible");
+          cy.findByLabelText("Show visualization options").should("not.exist");
+          cy.findByLabelText("Edit card").should("not.exist");
+        });
+
       // should allow saving and show up after refresh
       H.saveDashboard();
 
       H.getDashboardCard(1).contains("Text text text").should("be.visible");
+      H.getDashboardCard(2)
+        .find("h2")
+        .findByText("Example Heading")
+        .should("be.visible");
     });
 
     it("should let you add a parameter to a dashboard with a long text box (metabase#8333, metabase#11927)", () => {
@@ -129,89 +195,6 @@ describe("scenarios > dashboard > text and headings", () => {
         .should("have.css", "overflow-x", "hidden")
         .should("have.css", "overflow-y", "auto")
         .scrollTo("bottom");
-    });
-  });
-
-  describe("heading", () => {
-    beforeEach(() => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-    });
-
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
-    });
-
-    it("should allow creation, editing, and saving of heading component", () => {
-      // should be able to create new heading
-      H.editDashboard();
-      cy.findByLabelText("Add a heading or text box").click();
-      H.popover().findByText("Heading").click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "new_heading_card_created",
-      });
-
-      H.getDashboardCard(1).within(() => {
-        cy.get("input")
-          .should("have.focus")
-          .should("have.value", "")
-          .should(
-            "have.attr",
-            "placeholder",
-            "You can connect widgets to {{variables}} in heading cards.",
-          );
-      });
-
-      // should auto-preview on blur (de-focus)
-      cy.findByTestId("edit-bar")
-        .findByText("You're editing this dashboard.")
-        .click(); // un-focus heading
-      H.getDashboardCard(1).within(() => {
-        cy.get("h2")
-          .findByText(
-            "You can connect widgets to {{variables}} in heading cards.",
-          )
-          .should("be.visible");
-
-        // preview mode should have no input
-        cy.get("input").should("not.exist");
-      });
-
-      // should focus input editor on click
-      H.getDashboardCard(1)
-        .click()
-        .within(() => {
-          cy.get("input").should("have.focus");
-        });
-
-      // should be able to edit text while focused
-      cy.focused().type("Example Heading");
-
-      // should auto-preview typed text
-      cy.findByTestId("edit-bar")
-        .findByText("You're editing this dashboard.")
-        .click(); // un-focus heading
-      H.getDashboardCard(1)
-        .find("h2")
-        .findByText("Example Heading")
-        .should("be.visible");
-
-      // should have no visualization options or edit actions
-      H.getDashboardCard(1)
-        .realHover()
-        .within(() => {
-          cy.findByLabelText("Add a filter").should("be.visible");
-          cy.findByLabelText("Show visualization options").should("not.exist");
-          cy.findByLabelText("Edit card").should("not.exist");
-        });
-
-      // should allow saving and show up after refresh
-      H.saveDashboard();
-
-      H.getDashboardCard(1)
-        .find("h2")
-        .findByText("Example Heading")
-        .should("be.visible");
     });
   });
 });
@@ -276,7 +259,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.getDashboardCard(1).findByText("foo").should("exist");
   });
 
-  it("should translate parameter values into the instance language", () => {
+  it("should translate and localize parameter values into the instance language", () => {
     // Set user locale to English explicitly so that we can change the site locale separately, without the user
     // locale following it (by default, user locale matches site locale)
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
@@ -323,19 +306,8 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       cy.findByText("Pick up where you left off").should("be.visible");
       cy.findByText("[zz] Pick up where you left off").should("not.exist");
     });
-  });
-});
 
-describe("scenarios > dashboard > parameters in text and heading cards > date locale", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should localize date parameters in the instance locale", () => {
-    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
-    });
+    cy.log("date parameters use the instance locale");
     H.updateSetting("site-locale", "fr");
 
     // Create dashboard with a single date parameter, and a single question

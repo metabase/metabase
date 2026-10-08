@@ -1079,12 +1079,18 @@ describe("should not redirect users to other pages when linking an entity (metab
   const TEST_QUESTION_NAME = "Question#35037";
 
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
+    H.enableTracking();
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
   });
 
-  it("should not redirect users to recent or search items", () => {
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should add link cards without redirecting users to recent or search items", () => {
     H.createNativeQuestion({
       name: TEST_QUESTION_NAME,
       native: { query: "SELECT 1" },
@@ -1092,10 +1098,12 @@ describe("should not redirect users to other pages when linking an entity (metab
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
-    cy.location("pathname").as("originPath");
+    cy.location("pathname").then((originPath) => {
+      cy.wrap(originPath).as("originPath");
+    });
 
     cy.log("link a recent item");
-    cy.icon("link").click();
+    cy.findByLabelText("Add a link or iframe").click();
     H.popover().findByText("Link").click();
     cy.wait("@recentViews");
 
@@ -1133,6 +1141,8 @@ describe("should not redirect users to other pages when linking an entity (metab
       .and("contain", TEST_DASHBOARD_NAME)
       .and("contain", TEST_QUESTION_NAME);
     assertOriginPath();
+
+    H.expectUnstructuredSnowplowEvent({ event: "new_link_card_created" }, 2);
   });
 
   function assertOriginPath() {

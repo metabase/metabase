@@ -595,66 +595,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  describe("iframe cards", () => {
-    it("should respect allowed-iframe-hosts setting", () => {
-      const errorMessage = /can not be embedded in iframe cards/;
-
-      H.updateSetting(
-        "allowed-iframe-hosts",
-        ["youtube.com", "player.videos.com"].join("\n"),
-      );
-
-      H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
-      H.editDashboard();
-
-      // Test allowed domain with subdomains
-      H.addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
-      cy.button("Done").click();
-      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
-
-      H.editIFrameWhileEditing(
-        0,
-        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      );
-      cy.button("Done").click();
-      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
-
-      // Test allowed subdomain, but no other domains
-      H.editIFrameWhileEditing(0, "player.videos.com/video/123456789");
-      cy.button("Done").click();
-      validateIFrame("https://player.videos.com/video/123456789");
-
-      H.editIFrameWhileEditing(0, "videos.com/video/123456789");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-
-      H.editIFrameWhileEditing(0, "www.videos.com/video");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-
-      // Test forbidden domain and subdomains
-      H.editIFrameWhileEditing(0, "https://example.com");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-
-      H.editIFrameWhileEditing(0, "www.example.com");
-      cy.button("Done").click();
-      H.getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-    });
-  });
-
   it("should add a filter", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
@@ -1233,7 +1173,6 @@ describe("scenarios > dashboard", () => {
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
@@ -1244,7 +1183,7 @@ describe("scenarios > dashboard", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should be possible to add iframe cards from various iframe and URL inputs", () => {
+  it("should be possible to add iframe cards from various iframe and URL inputs and allowed hosts", () => {
     const testCases = [
       {
         input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -1296,6 +1235,7 @@ describe("scenarios > dashboard", () => {
       });
 
       H.saveDashboard();
+      H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
 
       // The saved dashcard order is not guaranteed, so compare sorted sources
       H.getDashboardCards()
@@ -1328,48 +1268,59 @@ describe("scenarios > dashboard", () => {
           }),
       );
     });
-  });
 
-  it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    const newTitle = "New title";
-    cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent({
-      event: "dashboard_saved",
-    });
-  });
+    cy.log("allowed-iframe-hosts setting");
+    const errorMessage = /can not be embedded in iframe cards/;
 
-  it("should allow users to add link cards to dashboards", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    cy.findByLabelText("Add a link or iframe").click();
-    H.popover().findByText("Link").click();
-
-    cy.wait("@recentViews");
-
-    cy.findByTestId("custom-edit-text-link")
-      .findByPlaceholderText("https://example.com")
-      .type("Orders");
-
-    H.popover().within(() => {
-      cy.findByText(/Loading/i).should("not.exist");
-      cy.findByText("Orders in a dashboard").click();
-    });
-
-    cy.findByTestId("entity-edit-display-link").findByText(
-      /orders in a dashboard/i,
+    H.updateSetting(
+      "allowed-iframe-hosts",
+      ["youtube.com", "player.videos.com"].join("\n"),
     );
 
-    H.saveDashboard();
+    H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
+    H.editDashboard();
 
-    cy.findByTestId("entity-view-display-link").findByText(
-      /orders in a dashboard/i,
-    );
+    // Test allowed domain with subdomains
+    H.addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
+    cy.button("Done").click();
+    validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "new_link_card_created",
+    H.editIFrameWhileEditing(0, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    cy.button("Done").click();
+    validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+    // Test allowed subdomain, but no other domains
+    H.editIFrameWhileEditing(0, "player.videos.com/video/123456789");
+    cy.button("Done").click();
+    validateIFrame("https://player.videos.com/video/123456789");
+
+    H.editIFrameWhileEditing(0, "videos.com/video/123456789");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
+
+    H.editIFrameWhileEditing(0, "www.videos.com/video");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
+
+    // Test forbidden domain and subdomains
+    H.editIFrameWhileEditing(0, "https://example.com");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
+
+    H.editIFrameWhileEditing(0, "www.example.com");
+    cy.button("Done").click();
+    H.getDashboardCard().within(() => {
+      cy.findByText(errorMessage).should("be.visible");
+      cy.get("iframe").should("not.exist");
     });
   });
 
