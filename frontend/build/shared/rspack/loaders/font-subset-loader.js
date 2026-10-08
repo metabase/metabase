@@ -5,43 +5,17 @@ const path = require("path");
 const {
   LATIN_UNICODE_RANGE,
   REST_UNICODE_RANGE,
+  SUBSET_OPTIONS,
   buildFontFaces,
   latinCharacters,
   restCharacters,
+  subsetFace,
 } = require("../fonts");
 
 // A face with nothing outside latin still subsets to a small valid font. Below
 // this it carries no real glyphs, and declaring it would add a request that
 // renders nothing.
 const MIN_USEFUL_CHUNK_BYTES = 3000;
-
-// A family's OpenType features reach well past what anything here asks for:
-// small caps, stylistic sets, swashes. Subsetting keeps every glyph those can
-// reach, which is half the glyphs in the richer families. These are the ones a
-// browser applies to latin text unasked, plus the numeric set `font-variant-
-// numeric` can request, so nothing renders differently for dropping the rest.
-const KEPT_FEATURES = [
-  "ccmp",
-  "liga",
-  "clig",
-  "calt",
-  "rlig",
-  "locl",
-  "kern",
-  "mark",
-  "mkmk",
-  "rvrn",
-  "lnum",
-  "onum",
-  "pnum",
-  "tnum",
-  "frac",
-  "afrc",
-  "ordn",
-  "zero",
-];
-
-const SUBSET_OPTIONS = { targetFormat: "woff2", keepFeatures: KEPT_FEATURES };
 
 // Chunks are cached under the hash of their source, so everything else that
 // decides their contents belongs in that hash too.
@@ -67,7 +41,6 @@ module.exports = function fontSubsetLoader() {
 
 async function rewrite(loader) {
   const { fontsDir, outputDir } = loader.getOptions();
-  const subsetFont = (await import("subset-font")).default;
   fs.mkdirSync(outputDir, { recursive: true });
   // Nothing here comes from the module's own resource, so everything it is
   // built from has to invalidate it explicitly.
@@ -99,7 +72,7 @@ async function rewrite(loader) {
       const chunkRel = path.join(dir, `${base}.${key}.${name}.woff2`);
       const chunkPath = path.join(outputDir, chunkRel);
       if (!fs.existsSync(chunkPath)) {
-        const subset = await subsetFont(buf, characters, SUBSET_OPTIONS);
+        const subset = await subsetFace(buf, characters);
         if (name === "rest" && subset.length < MIN_USEFUL_CHUNK_BYTES) {
           made.rest = undefined;
           continue;
