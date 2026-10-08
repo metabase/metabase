@@ -409,6 +409,7 @@
       (is (= [:stub :reexport] [(source-4) (reexport-4)])))
     (is (= [:original :reexport] [(source-4) (reexport-4)])))
   (testing "with no replacement of its own, the re-export sees a `with-redefs` of its source"
+    ;; The global root swap is the case under test.
     #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
     (with-redefs [source-4 (constantly :stub)]
       (is (= [:stub :stub] [(source-4) (reexport-4)])))
