@@ -43,6 +43,45 @@ const LATIN_RANGES = [
   [0xfffd, 0xfffd],
 ];
 
+// A family's OpenType features reach well past what anything here asks for:
+// small caps, stylistic sets, swashes. Subsetting keeps every glyph those can
+// reach, which is half the glyphs in the richer families. These are the ones a
+// browser applies to latin text unasked, plus the numeric set `font-variant-
+// numeric` can request, so nothing renders differently for dropping the rest.
+const KEPT_FEATURES = [
+  "ccmp",
+  "liga",
+  "clig",
+  "calt",
+  "rlig",
+  "locl",
+  "kern",
+  "mark",
+  "mkmk",
+  "rvrn",
+  "lnum",
+  "onum",
+  "pnum",
+  "tnum",
+  "frac",
+  "afrc",
+  "ordn",
+  "zero",
+];
+
+// The subsetter drops the `.notdef` outline by default. That is the box a
+// browser draws for a character no font in the stack can render, so without it
+// a missing glyph turns into blank space and the text silently loses it.
+const SUBSET_OPTIONS = {
+  targetFormat: "woff2",
+  keepFeatures: KEPT_FEATURES,
+  notdefOutline: true,
+};
+
+/** Cuts a face down to `characters`, the way the build does. */
+const subsetFace = async (buf, characters, options = SUBSET_OPTIONS) =>
+  (await import("subset-font")).default(buf, characters, options);
+
 const LAST_CODEPOINT = 0x10ffff;
 
 /** Everything the latin set leaves out, so the two together cover the plane. */
@@ -316,9 +355,11 @@ module.exports = {
   FONT_FACES_RULE,
   FONT_FACES_VIRTUAL_MODULE,
   LATIN_UNICODE_RANGE: unicodeRange(LATIN_RANGES),
+  SUBSET_OPTIONS,
   REST_UNICODE_RANGE: unicodeRange(REST_RANGES),
   latinCharacters: () => (latin ??= characters(LATIN_RANGES)),
   restCharacters: () => (rest ??= characters(REST_RANGES)),
   buildFontFaces,
+  subsetFace,
   fontAssetName,
 };
