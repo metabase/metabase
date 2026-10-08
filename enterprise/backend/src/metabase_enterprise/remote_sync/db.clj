@@ -475,11 +475,6 @@
   [namespace-name :- :string]
   (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
 
-(mu/defn collection-namespace :- [:maybe [:or :keyword :string]]
-  "The namespace of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
-
 (mu/defn collection-ids-in-namespace
   "The IDs of the Collections of `namespace-name`."
   [namespace-name :- :string]
