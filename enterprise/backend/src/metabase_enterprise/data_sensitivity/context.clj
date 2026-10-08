@@ -2,10 +2,12 @@
   "Builds the per-table packet the LLM data-sensitivity classifier consumes: app-DB metadata for every active field
   of a table plus, when `:include-values?` is true, cached FieldValues and a small warehouse row sample. The row
   sample is the only warehouse query; a failure there is recorded under `[:sample :error]` and the packet still
-  builds so a broken connection degrades to schema-only classification. Values are read only when the current user
+  builds so a broken connection degrades to schema-only classification. A cancel during the sample throws an
+  `InterruptedException` instead. Values are read only when the current user
   may see all rows of the table (see [[values-restriction]]); otherwise the packet is schema-only and
   `[:sample :error]` says why."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase.api.common :as api]
@@ -14,6 +16,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -156,25 +159,50 @@
     ([acc] acc)
     ([acc row] (conj acc row))))
 
+(defn interrupted?
+  "Whether an `InterruptedException` is `e` or in its cause chain. Throwing it clears the interrupt flag of the thread,
+  so this is the only trace of the interrupt that caught it."
+  [^Throwable e]
+  (boolean (some #(instance? InterruptedException %) (take-while some? (iterate ex-cause e)))))
+
+(defn- run-sample
+  "Run the row sample with a cancel channel of its own, which the query processor uses instead of a new one. Returns
+  `{:rows rows}` or `{:exception e}`. Throws an `InterruptedException`, with the interrupt flag set again, when the
+  sample was cancelled: the query processor put `::qp.pipeline/cancel` on the channel, an `InterruptedException` is in
+  the cause chain, or the query processor returned nil. The query processor catches an interrupt of the query, clears
+  the flag, and returns nil, so the channel is the reliable signal."
+  [database table fields {:keys [sample-rows truncation]}]
+  (let [canceled (a/promise-chan)
+        result   (try
+                   {:rows (binding [qp.pipeline/*canceled-chan* canceled]
+                            (driver/table-rows-sample (driver.u/database->driver database) table fields conj-rff
+                                                      {:limit sample-rows :truncation-size truncation}))}
+                   (catch Exception e
+                     {:exception e}))]
+    (when (or (= ::qp.pipeline/cancel (a/poll! canceled))
+              (some-> (:exception result) interrupted?)
+              (and (not (:exception result)) (nil? (:rows result))))
+      (.interrupt (Thread/currentThread))
+      (throw (InterruptedException. (format "Row sample for table %d interrupted" (:id table)))))
+    result))
+
 (defn- sample-values
   "Runs the row sample and transposes it into a map of field id -> up to `sample-values-cap` distinct values as
-  strings. Returns `{:values {...} :error nil}`, or `{:values nil :error message}` when the query fails."
-  [database table fields {:keys [sample-rows truncation sample-values-cap]}]
-  (try
-    (let [driver  (driver.u/database->driver database)
-          rows    (driver/table-rows-sample driver table fields conj-rff
-                                            {:limit sample-rows :truncation-size truncation})
-          columns (if (seq rows)
-                    (apply map vector rows)
-                    (repeat (count fields) []))]
-      {:values (into {} (map (fn [field column]
-                               [(:id field) (distinct-strings sample-values-cap truncation column)])
-                             fields
-                             columns))
-       :error  nil})
-    (catch Exception e
-      (log/warnf e "Failed to sample rows for table %d" (:id table))
-      {:values nil :error (ex-message e)})))
+  strings. Returns `{:values {...} :error nil}`, or `{:values nil :error message}` when the query fails. Throws an
+  `InterruptedException` when the sample was cancelled; see [[run-sample]]."
+  [database table fields {:keys [truncation sample-values-cap] :as opts}]
+  (let [{:keys [rows exception]} (run-sample database table fields opts)]
+    (if exception
+      (do (log/warnf exception "Failed to sample rows for table %d" (:id table))
+          {:values nil :error (ex-message exception)})
+      (let [columns (if (seq rows)
+                      (apply map vector rows)
+                      (repeat (count fields) []))]
+        {:values (into {} (map (fn [field column]
+                                 [(:id field) (distinct-strings sample-values-cap truncation column)])
+                               fields
+                               columns))
+         :error  nil}))))
 
 (defn- values-restriction
   "Why the current user may not send the values of `table` to the model, or nil when they may. A superuser may. Other

@@ -8,8 +8,8 @@
   of that new run. The model output can change between runs, even at temperature 0, so committed labels can differ
   from what the dry run showed.
 
-  The Metabot group permissions are bypassed for the call because the trigger is gated on database write access
-  instead; the instance gates (Metabot enabled, provider configured, usage limits) still apply and are reported by
+  The Metabot group permissions are bypassed for the call because only a superuser may trigger a run through the
+  API; the instance gates (Metabot enabled, provider configured, usage limits) still apply and are reported by
   [[unavailable-reason]]. Row samples and cached values are read as the current user and only when that user may see
   all rows of the table; see [[context/table-packet]]. Result keys are snake_case because the maps are API responses."
   (:require
@@ -26,12 +26,14 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
+   (clojure.lang Volatile)
    (java.util.concurrent CancellationException)))
 
 (set! *warn-on-reflection* true)
 
 (def required-permission
-  "The Metabot permission the structured call declares. Granted by the all-yes binding, so it only labels the call."
+  "The Metabot permission the structured call declares. Granted by the all-yes binding, so it only labels the call;
+  the API limits callers to superusers instead."
   :permission/metabot-other-tools)
 
 ;;; Schemas
@@ -235,7 +237,8 @@
 
 (defn- connection-error
   "The message of a failed connection test against `database`, or nil when it connects. Existing H2 and SQLite
-  databases may be tested, as sync does."
+  databases may be tested, as sync does. An interrupt during the test is not a connection error: it sets the interrupt
+  flag again and throws an `InterruptedException`."
   [{:keys [engine details]}]
   (binding [driver.settings/*allow-testing-h2-connections*     true
             driver.settings/*allow-testing-sqlite-connections* true]
@@ -243,6 +246,10 @@
       (driver.u/can-connect-with-details? engine details :throw-exceptions)
       nil
       (catch Throwable e
+        (when (or (context/interrupted? e) (.isInterrupted (Thread/currentThread)))
+          (.interrupt (Thread/currentThread))
+          (throw (doto (InterruptedException. "Data-sensitivity connection test interrupted")
+                   (.initCause e))))
         (or (ex-message e) (str (class e)))))))
 
 (defn- sample-connection-error
@@ -271,23 +278,27 @@
    [:packet    ::context/packet]
    [:submitted ::llm/submitted]])
 
-(defn- throw-if-interrupted!
-  "Throw an `InterruptedException` when the calling thread is interrupted. The interrupt flag stays set."
-  []
-  (when (.isInterrupted (Thread/currentThread))
+(defn- throw-if-stopped!
+  "Throw an `InterruptedException` when the run has stopped: `stopped` is set, or the calling thread is interrupted,
+  which sets `stopped`. The interrupt flag stays as it is. `stopped` is the run-level stop signal: code that catches
+  an interrupt can clear the flag, but not `stopped`."
+  [stopped]
+  (when (or @stopped (.isInterrupted (Thread/currentThread)))
+    (vreset! stopped true)
     (throw (InterruptedException. "Data-sensitivity classification interrupted"))))
 
 (mu/defn- submit-table :- ::submitted-table
   "Build the packet of `table` on the calling thread, as the current user with database routing off, and submit its chunk calls
   to the pool with all Metabot permissions granted. Returns without waiting; the result goes to [[finish-table]].
-  When the thread is interrupted during the packet build, throws and submits nothing."
+  When the run stops during the packet build, throws and submits nothing; see [[throw-if-stopped!]]."
   [database :- (ms/InstanceOf :model/Database)
    table    :- (ms/InstanceOf :model/Table)
-   opts     :- [:maybe ::table-options]]
+   opts     :- [:maybe ::table-options]
+   stopped  :- (ms/InstanceOfClass Volatile)]
   (let [packet (database-routing/with-database-routing-off
                  (context/table-packet database table (dissoc opts :model :chunk-size :commit?)))]
     (assert-unique-names! table (:fields packet))
-    (throw-if-interrupted!)
+    (throw-if-stopped! stopped)
     {:table     table
      :opts      opts
      :packet    packet
@@ -295,13 +306,18 @@
                  #(llm/submit-packet packet (select-keys opts [:model :chunk-size])))}))
 
 (mu/defn- finish-table :- ::table-result
-  "Wait for the chunk calls of a [[submit-table]] result, diff the proposal, and commit it when `:commit?`."
-  [{:keys [table opts packet submitted]} :- ::submitted-table]
+  "Wait for the chunk calls of a [[submit-table]] result, diff the proposal, and commit it when `:commit?` and the run
+  has not stopped."
+  [{:keys [table opts packet submitted]} :- ::submitted-table
+   stopped                                :- (ms/InstanceOfClass Volatile)]
   (let [classification (llm/collect-packet submitted)
-        fields         (cond->> (mapv (fn [field]
-                                        (diff-field field (get-in classification [:fields (:name field)])))
-                                      (:fields packet))
-                         (:commit? opts) (commit-fields! table))]
+        fields         (mapv (fn [field]
+                               (diff-field field (get-in classification [:fields (:name field)])))
+                             (:fields packet))
+        fields         (if (:commit? opts)
+                         (do (throw-if-stopped! stopped)
+                             (commit-fields! table fields))
+                         fields)]
     {:table_id     (:id table)
      :table_name   (:name table)
      :schema       (:schema table)
@@ -330,10 +346,11 @@
   [table :- (ms/InstanceOf :model/Table)
    & {:as opts} :- [:maybe ::table-options]]
   (let [database (db/database (:db_id table))
+        stopped  (volatile! false)
         error    (sample-connection-error database opts)
-        entry    (submit-table database table (cond-> opts error (assoc :include-values? false)))]
+        entry    (submit-table database table (cond-> opts error (assoc :include-values? false)) stopped)]
     (try
-      (cond-> (finish-table entry)
+      (cond-> (finish-table entry stopped)
         error (assoc :sample_error error))
       (finally
         (llm/cancel-packet (:submitted entry))))))
@@ -376,34 +393,37 @@
   (* 2 llm/pool-size))
 
 (defn- interrupt?
-  "Whether `e` comes from an interrupt rather than a failure of the table: the calling thread is interrupted, an
-  `InterruptedException` is in the cause chain (throwing it clears the flag), or a chunk was cancelled."
-  [^Throwable e]
-  (or (.isInterrupted (Thread/currentThread))
+  "Whether `e` comes from an interrupt rather than a failure of the table: the run has stopped, the calling thread is
+  interrupted, an `InterruptedException` is in the cause chain (throwing it clears the flag), or a chunk was
+  cancelled."
+  [^Throwable e stopped]
+  (or @stopped
+      (.isInterrupted (Thread/currentThread))
       (instance? CancellationException e)
-      (some #(instance? InterruptedException %) (take-while some? (iterate ex-cause e)))))
+      (context/interrupted? e)))
 
 (defn- table-error-or-rethrow
-  "The [[table-error]] entry for `e`, or, when `e` comes from an interrupt, set the interrupt flag again and rethrow
-  `e` so the run stops."
-  [table e traces-left]
-  (when (interrupt? e)
+  "The [[table-error]] entry for `e`, or, when `e` comes from an interrupt, set `stopped` and the interrupt flag again
+  and rethrow `e` so the run stops."
+  [table e stopped traces-left]
+  (when (interrupt? e stopped)
+    (vreset! stopped true)
     (.interrupt (Thread/currentThread))
     (throw e))
   (table-error table e traces-left))
 
-(defn- submit-entry [database table opts traces-left]
+(defn- submit-entry [database table opts stopped traces-left]
   (try
-    (submit-table database table opts)
+    (submit-table database table opts stopped)
     (catch Exception e
-      (table-error-or-rethrow table e traces-left))))
+      (table-error-or-rethrow table e stopped traces-left))))
 
-(defn- finish-entry [entry traces-left]
+(defn- finish-entry [entry stopped traces-left]
   (if (:submitted entry)
     (try
-      (finish-table entry)
+      (finish-table entry stopped)
       (catch Exception e
-        (u/prog1 (table-error-or-rethrow (:table entry) e traces-left)
+        (u/prog1 (table-error-or-rethrow (:table entry) e stopped traces-left)
           (llm/cancel-packet (:submitted entry)))))
     entry))
 
@@ -411,23 +431,26 @@
   "Classify `tables` in order. The chunks of each table are submitted as soon as its packet is built, without waiting,
   so the pool stays busy while the calling thread builds the next packets. Tables are collected, diffed, and committed
   in order, with at most [[max-tables-in-flight]] submitted and not collected. A table whose packet build or chunks
-  throw becomes an error entry, and its other chunks are cancelled. An interrupt stops the run: the interrupt flag is
-  checked before each table, and an exception that comes from an interrupt is rethrown with the flag set. When the run
+  throw becomes an error entry, and its other chunks are cancelled. An interrupt stops the run. The first interrupt the
+  run sees sets a run-level stop signal that later checks read, because code that catches an interrupt clears the
+  flag. The signal and the flag are checked before each table, before each submit, and before each commit, and an
+  exception that comes from an interrupt is rethrown with the flag set. When the run
   stops early, the chunks not yet collected are cancelled, newest first, so that no chunk that waits starts on a
   thread a cancelled chunk frees. Only the first [[max-logged-traces]] failures of the run log a stack trace, and a run
   with failures logs one summary line."
   [database tables opts]
   (let [queue       (volatile! clojure.lang.PersistentQueue/EMPTY)
         results     (volatile! [])
+        stopped     (volatile! false)
         traces-left (volatile! max-logged-traces)
         collect!    (fn []
-                      (let [result (finish-entry (peek @queue) traces-left)]
+                      (let [result (finish-entry (peek @queue) stopped traces-left)]
                         (vswap! queue pop)
                         (vswap! results conj result)))]
     (try
       (doseq [table tables]
-        (throw-if-interrupted!)
-        (vswap! queue conj (submit-entry database table opts traces-left))
+        (throw-if-stopped! stopped)
+        (vswap! queue conj (submit-entry database table opts stopped traces-left))
         (while (when-let [head (peek @queue)]
                  (or (not (:submitted head))
                      (> (count @queue) max-tables-in-flight)))
@@ -449,6 +472,7 @@
   `:sample_error` carries the connection error. A table whose classification throws is logged, becomes an error
   entry, and the run continues with the next table; `:failed` counts them. An interrupt of the calling thread, for
   example `future-cancel`, stops the run: it throws, cancels the chunks not yet collected, and commits no more tables.
+  This includes an interrupt during the connection test or a row sample, which those steps would otherwise catch.
   With `:commit?` each table commits on its own after its own chunks are collected; without it, a dry run that writes
   nothing. A commit after a dry run classifies again, so its labels can differ from what the dry run showed.
   Synchronous; intended for small and medium databases until an async job exists."

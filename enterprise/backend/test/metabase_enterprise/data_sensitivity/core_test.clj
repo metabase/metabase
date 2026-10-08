@@ -12,6 +12,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -619,24 +620,65 @@
               (is (= (set (map :name (take llm/pool-size tables))) (set @calls)))
               (is (every? #(= {(str (:name %) "_field") nil} (labels-by-name (:id %))) tables))))))))))
 
-(deftest database-run-interrupt-during-packet-build-test
-  (testing "an interrupt during a packet build that keeps the flag set stops the run before any chunk is submitted"
+(defn- do-cancelled-run!
+  "Start a commit run of `db` with values in a future, wait until `entered` counts down, `future-cancel` the run, and
+  wait for it to end. Returns what the run threw or returned."
+  [db ^CountDownLatch entered]
+  (let [outcome (promise)
+        run     (future
+                  (try
+                    (deliver outcome (core/classify-database! db :commit? true))
+                    (catch Throwable e
+                      (deliver outcome e))))]
+    (is (.await entered 10 TimeUnit/SECONDS))
+    (future-cancel run)
+    (deref outcome 10000 ::timed-out)))
+
+(deftest database-run-cancel-during-row-sample-test
+  (testing "future-cancel during a row sample stops the run: no later table is submitted or committed"
     (do-with-temp-tables
      3
-     (fn [db _tables]
-       (let [calls        (atom 0)
-             table-packet (dynamic-redefs/original-fn #'context/table-packet)
-             result       (do-with-llm!
-                           (fn [& args] (swap! calls inc) (apply (canned-llm (constantly {})) args))
-                           (fn []
-                             (mt/with-dynamic-fn-redefs [context/table-packet (fn [& args]
-                                                                                (.interrupt (Thread/currentThread))
-                                                                                (apply table-packet args))]
-                               (try
-                                 (core/classify-database! db :include-values? false)
-                                 (catch InterruptedException e
-                                   e)
-                                 (finally
-                                   (Thread/interrupted))))))]
-         (is (instance? InterruptedException result))
-         (is (= 0 @calls)))))))
+     (fn [db tables]
+       (let [calls    (atom [])
+             samples  (atom 0)
+             entered  (CountDownLatch. 1)
+             execute  (fn [_driver _query respond]
+                        (if (= 1 (swap! samples inc))
+                          (respond {:cols []} [])
+                          (do (.countDown entered)
+                              (.await (CountDownLatch. 1))
+                              (respond {:cols []} []))))
+             outcome  (do-with-llm!
+                       (fn [& [_model messages :as args]]
+                         (swap! calls conj (table-name-in-message messages))
+                         (apply (canned-llm (constantly {})) args))
+                       (fn []
+                         (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (constantly true)]
+                           (binding [qp.pipeline/*execute* execute]
+                             (do-cancelled-run! db entered)))))]
+         (is (instance? InterruptedException outcome))
+         (is (= 2 @samples) "the run stops before the sample of the third table")
+         (is (every? #{(:name (first tables))} @calls) "only the table sampled before the cancel was submitted")
+         (is (every? #(= {(str (:name %) "_field") nil} (labels-by-name (:id %))) tables)))))))
+
+(deftest database-run-cancel-during-connection-test
+  (testing "future-cancel during the connection pre-flight stops the run before any table is classified"
+    (do-with-temp-tables
+     3
+     (fn [db tables]
+       (let [calls   (atom 0)
+             entered (CountDownLatch. 1)
+             outcome (do-with-llm!
+                      (fn [& args] (swap! calls inc) (apply (canned-llm (constantly {})) args))
+                      (fn []
+                        (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details?
+                                                    (fn [& _]
+                                                      (try
+                                                        (.countDown entered)
+                                                        (.await (CountDownLatch. 1))
+                                                        (catch InterruptedException e
+                                                          (throw (ex-info "Failed to connect to Database" {} e)))))]
+                          (do-cancelled-run! db entered))))]
+         (is (instance? InterruptedException outcome))
+         (is (= 0 @calls))
+         (is (every? #(= {(str (:name %) "_field") nil} (labels-by-name (:id %))) tables)))))))

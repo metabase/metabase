@@ -32,7 +32,7 @@
     (mt/assert-has-premium-feature-error
      "Data sensitivity" (mt/user-http-request :crowberto :post 402 (database-url (mt/id))))))
 
-(deftest database-write-permission-required-test
+(deftest superuser-required-test
   (mt/with-premium-features #{:data-sensitivity}
     (core-test/do-with-llm!
      (core-test/canned-llm (constantly {}))
@@ -60,7 +60,7 @@
        (testing "a schema with no active tables is not found"
          (is (= "Not found."
                 (mt/user-http-request :crowberto :post 404 (database-url (mt/id)) {:schema "no_such_schema"}))))
-       (testing "a user without database write access is refused before the schema is looked up"
+       (testing "a non-superuser is refused before the schema is looked up"
          (is (= "You don't have permissions to do that."
                 (mt/user-http-request :rasta :post 403 (database-url (mt/id)) {:schema "no_such_schema"}))))
        (testing "a blank schema is rejected"
@@ -194,30 +194,28 @@
           (is (= schema (:schema response)))
           (is (= (map :id expected) (map :table_id (:tables response)))))))))
 
-(deftest commit-requires-superuser-test
+(deftest database-manager-requires-superuser-test
   (mt/with-premium-features #{:data-sensitivity :advanced-permissions}
     (mt/with-no-data-perms-for-all-users!
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/manage-database :yes)
-      (core-test/do-with-llm!
-       (core-test/canned-llm (constantly {}))
-       (fn []
-         (testing "a user with database write access can run a dry run, which writes nothing"
-           (let [before (field-rows [(mt/id :people)])]
-             (is (=? {:table_id (mt/id :people)}
-                     (mt/user-http-request :rasta :post 200 (dry-run (table-url (mt/id :people))))))
-             (is (=? {:database_id (mt/id)}
-                     (mt/user-http-request :rasta :post 200 (dry-run (database-url (mt/id))))))
-             (is (= before (field-rows [(mt/id :people)])))))
-         (testing "a run without dry_run commits, so it needs a superuser and the 403 says to pass dry_run=true"
-           (let [before  (field-rows [(mt/id :people)])
-                 message (str "Only admins can write data-sensitivity labels. "
-                              "Pass dry_run=true to preview the classification.")]
-             (is (= message (mt/user-http-request :rasta :post 403 (table-url (mt/id :people)))))
-             (is (= message (mt/user-http-request :rasta :post 403 (database-url (mt/id)))))
-             (is (= message (mt/user-http-request :rasta :post 403 (str (table-url (mt/id :people)) "?dry_run=false"))))
-             (is (= before (field-rows [(mt/id :people)]))))))))))
+      (let [calls (atom 0)]
+        (core-test/do-with-llm!
+         (fn [& args]
+           (swap! calls inc)
+           (apply (core-test/canned-llm (constantly {})) args))
+         (fn []
+           (testing "a non-superuser with manage-database access gets a 403 on a dry run and on a commit, and no LLM call is made"
+             (let [before (field-rows [(mt/id :people)])]
+               (doseq [url [(dry-run (table-url (mt/id :people)))
+                            (dry-run (database-url (mt/id)))
+                            (table-url (mt/id :people))
+                            (database-url (mt/id))]]
+                 (is (= "You don't have permissions to do that."
+                        (mt/user-http-request :rasta :post 403 url))))
+               (is (= before (field-rows [(mt/id :people)])))
+               (is (zero? @calls))))))))))
 
-(deftest dry-run-values-follow-user-permissions-test
+(deftest superuser-dry-run-sends-values-test
   (mt/with-premium-features #{:data-sensitivity :advanced-permissions}
     (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :people :password) :type :full :values ["cached-marker"]}]
       (testing "a superuser's dry run sends cached and sampled values to the model"
@@ -227,20 +225,7 @@
                         #(mt/user-http-request :crowberto :post 200 (dry-run (table-url (mt/id :people)))))]
           (is (nil? (:sample_error response)))
           (is (core-test/values-rendered? @messages))
-          (is (str/includes? (pr-str @messages) "cached-marker"))))
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/manage-database :yes)
-        (mt/with-perm-for-group-and-table! (perms/all-users-group) (mt/id :people) :perms/view-data :blocked
-          (testing "a database manager with blocked view-data on the table gets a metadata-only dry run"
-            (let [messages (atom [])
-                  response (core-test/do-with-llm!
-                            (core-test/recording-llm messages)
-                            #(mt/user-http-request :rasta :post 200 (dry-run (table-url (mt/id :people)))))]
-              (is (= "the current user cannot query this table" (:sample_error response)))
-              (is (pos? (count (:fields response))))
-              (is (seq @messages))
-              (is (not (core-test/values-rendered? @messages)))
-              (is (not (str/includes? (pr-str @messages) "cached-marker"))))))))))
+          (is (str/includes? (pr-str @messages) "cached-marker")))))))
 
 (deftest commit-test
   (mt/with-premium-features #{:data-sensitivity}

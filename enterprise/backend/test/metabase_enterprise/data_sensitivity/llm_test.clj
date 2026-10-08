@@ -238,17 +238,56 @@
           (is (= (sort (map #(llm/max-tokens (count (re-seq #"(?m)^- F\d+ \(" %))) contents))
                  (sort (map :max-tokens @calls)))))))))
 
-(deftest classify-packet-oversize-field-test
-  (let [big    (field "BIG" :description (apply str (repeat 300 "long description ")))
-        fields [(field "A") big (field "B")]
+(deftest render-text-cap-test
+  (let [f    (field "NOTES" :description (apply str (repeat 100000 "d")) :database_type (apply str (repeat 5000 "t"))
+                    :display_name (apply str (repeat 5000 "n")) :human_set #{:display_name})
+        line (llm/render-field-line f)]
+    (testing "description, display name, and database type are each cut to the text cap with an ellipsis"
+      (is (str/includes? line (str "; description: \"" (apply str (repeat (dec llm/text-cap) "d")) "…\"")))
+      (is (str/includes? line (str "; display name: \"" (apply str (repeat (dec llm/text-cap) "n")) "…\"")))
+      (is (str/includes? line (str ", " (apply str (repeat (dec llm/text-cap) "t")) "…;"))))
+    (testing "a text at the cap is rendered whole"
+      (is (str/includes? (llm/render-field-line (field "X" :description (apply str (repeat llm/text-cap "d"))))
+                         (str "\"" (apply str (repeat llm/text-cap "d")) "\"")))))
+  (testing "the table description is collapsed to single spaces and cut to the text cap"
+    (let [msg (llm/user-message (assoc-in (packet []) [:table :description] (str "two\n\n lines " (apply str (repeat 5000 "x"))))
+                                [])]
+      (is (str/includes? msg "description: two lines xxx"))
+      (is (str/includes? msg (str (subs (str "two lines " (apply str (repeat 5000 "x"))) 0 (dec llm/text-cap)) "…\n</table>"))))))
+
+(deftest classify-packet-long-table-description-test
+  (let [fields (for [i (range 300)] (field (str "F" i)))
+        pkt    (assoc-in (packet fields) [:table :description] (apply str (repeat 50000 "x")))
         calls  (atom [])]
+    (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
+      (let [result   (llm/classify-packet pkt :model "test/model")
+            contents (map #(:content (second (:messages %))) @calls)]
+        (testing "a 300-field table with a 50,000-character description takes 300/60 calls"
+          (is (<= (:requests result) 5)))
+        (testing "every user message is within the per-call budget"
+          (is (every? #(<= (count %) llm/default-char-budget) contents)))
+        (testing "every field is classified"
+          (is (= (set (map :name fields)) (set (keys (:fields result))))))))))
+
+(deftest classify-packet-long-field-description-test
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
+      (llm/classify-packet (packet [(field "BIG" :description (apply str (repeat 100000 "d")))]) :model "test/model")
+      (testing "a field with a 100,000-character description gives a user message within the per-call budget"
+        (is (= 1 (count @calls)))
+        (is (<= (count (:content (second (:messages (first @calls))))) llm/default-char-budget))))))
+
+(deftest classify-packet-oversize-field-test
+  (let [big-name (str "BIG" (apply str (repeat 3000 "x")))
+        fields   [(field "A") (field big-name) (field "B")]
+        calls    (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
       (let [result (llm/classify-packet (packet fields) :model "test/model" :char-budget 2000)]
         (testing "a field over the per-call budget alone is sent in a chunk of its own"
-          (is (= #{["A"] ["BIG"] ["B"]}
+          (is (= #{["A"] [big-name] ["B"]}
                  (set (map #(mapv second (re-seq #"(?m)^- (\S+) \(" (:content (second (:messages %))))) @calls)))))
         (testing "every field is still classified"
-          (is (= #{"A" "BIG" "B"} (set (keys (:fields result))))))))))
+          (is (= #{"A" big-name "B"} (set (keys (:fields result))))))))))
 
 (defn- latched-call
   "A `canned-call` stand-in that holds each call until `latch` has counted down to zero or 5 seconds pass, recording

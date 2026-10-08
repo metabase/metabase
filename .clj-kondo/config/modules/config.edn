@@ -3797,6 +3797,7 @@
            metabot
            models
            permissions
+           query-processor
            util
            util.config
            warehouse-schema-overlay

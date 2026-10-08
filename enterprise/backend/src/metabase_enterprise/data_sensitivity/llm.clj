@@ -128,6 +128,19 @@
     (when (seq parts)
       (str/join ", " parts))))
 
+(def text-cap
+  "Most characters of one free-text metadata value in the user message: the table description, a field description,
+  a display name, or a database type. Names are never capped, because the model's answer is joined to them."
+  1000)
+
+(defn- capped
+  "`s` with whitespace collapsed to single spaces, cut to [[text-cap]] characters with a trailing ellipsis."
+  [s]
+  (let [s (str/replace (str s) #"\s+" " ")]
+    (if (> (count s) text-cap)
+      (str (subs s 0 (dec text-cap)) "…")
+      s)))
+
 (defn- quoted [s]
   (str "\"" (-> (str s) (str/replace "\"" "'") (str/replace #"\s+" " ")) "\""))
 
@@ -157,10 +170,10 @@
            cached_values sample_values] :as field}]
   (let [values (budgeted-values (distinct (concat sample_values cached_values)))]
     (str "- " name
-         " (" (subs (str base_type) 1) (when database_type (str ", " database_type))
+         " (" (subs (str base_type) 1) (when database_type (str ", " (capped database_type)))
          (when semantic_type (str "; semantic: " (subs (str semantic_type) 1) (human-set-marker field :semantic_type)))
-         (when (contains? (:human_set field) :display_name) (str "; display name: " (quoted display_name) " [human-set]"))
-         (when-not (str/blank? description) (str "; description: " (quoted description) (human-set-marker field :description)))
+         (when (contains? (:human_set field) :display_name) (str "; display name: " (quoted (capped display_name)) " [human-set]"))
+         (when-not (str/blank? description) (str "; description: " (quoted (capped description)) (human-set-marker field :description)))
          (when fk_target (str "; fk -> " fk_target))
          (when-let [fp (fingerprint-fragment fingerprint)] (str "; " fp))
          (when (seq values) (str "; values: " (str/join ", " values)))
@@ -176,7 +189,7 @@
                           (when schema (str "\nschema: " schema))
                           (when engine (str "\nengine: " (clojure.core/name engine)))
                           (when entity_type (str "\nentity type: " (subs (str entity_type) 1)))
-                          (when-not (str/blank? description) (str "\ndescription: " description))))
+                          (when-not (str/blank? description) (str "\ndescription: " (capped description)))))
          "\n\nCOLUMNS (" (count fields) "):\n"
          (data-block "fields" (str/join "\n" (map render-field-line fields))))))
 
@@ -313,16 +326,19 @@
   60)
 
 (def default-char-budget
-  "Most characters of user message per LLM call, about 10k tokens. With [[value-budget]] at 2,000, a field line alone
-  is over this budget only when its description is very long."
+  "Most characters of user message per LLM call, about 10k tokens. With [[value-budget]] and [[text-cap]], the table
+  block plus a field line is over this budget only when the table or field names are very long."
   40000)
 
 (when-not config/is-prod?
-  (assert (< (* 10 value-budget) default-char-budget) "a field's values must be a small part of one call"))
+  (assert (< (* 10 value-budget) default-char-budget) "a field's values must be a small part of one call")
+  (assert (<= (* 4 (+ (* 4 text-cap) value-budget)) default-char-budget)
+          "the capped texts of the table block and one field line, plus its values, must fit in a quarter of one call"))
 
 (defn- chunk-fields
   "Split the fields of `packet` into chunks in order. A chunk ends at `chunk-size` fields, or when the next field line
-  would put the user message over `char-budget`. A field line over the budget alone gets a chunk of its own. The size
+  would put the user message over `char-budget`. A field line over the budget alone, possible only with a very long
+name, gets a chunk of its own. The size
   is an upper bound: the message with no fields, room for the digits of the field count, and each line plus a
   newline."
   [packet chunk-size char-budget]
