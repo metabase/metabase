@@ -158,7 +158,7 @@
   (testing "the same request gets run_query once the admin turns it on"
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (contains? (tools-registered-for-request! []) "run_query"))))))
+        (is (contains? (tools-registered-for-request! ["feature:query_execution"]) "run_query"))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
