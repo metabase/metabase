@@ -106,8 +106,8 @@ body:where(:global(.mb-wrapper)) {
   border-bottom: 2px solid var(--mb-color-border-neutral);
 }
 
-/* Full-bleed tab row on small screens */
-.dashboardTabs {
+/* Full-bleed tab row on small screens, with higher specificity than FullWidthContainer's padding */
+div.dashboardTabs {
   @media screen and (max-width: 40em) {
     padding-left: 0;
     padding-right: 0;
