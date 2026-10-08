@@ -46,7 +46,7 @@
         ;; existing permissions for the app collection for each groups
         permissions-by-group (group-by :group_id
                                        (data-apps.db/permissions-for-paths-excluding-group
-                                        [read-path write-path] (:id (perms/admin-group))))
+                                        ["/" read-path write-path] (:id (perms/admin-group))))
         read-only? (fn [group-id]
                      (= #{read-path} (set (map :object (get permissions-by-group group-id)))))]
     ;; revoke app collection access from unassigned groups
