@@ -44,8 +44,8 @@ Collections of the `data-apps` namespace are written under `collections/data_app
 
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
 `display_name`, `path` the `bundle_path`, and `collection` the entity ID of the app's resource
-collection, which the app depends on and so loads after. The bundle travels as a serdes *resource
-file*: the entity carries it in `:serdes/resources` on export, the storage writers put it next to
+collection, which the app depends on and so loads after. The bundle travels as a serdes _resource
+file_: the entity carries it in `:serdes/resources` on export, the storage writers put it next to
 the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path
 must stay inside the entity's directory.
 
@@ -115,6 +115,8 @@ Membership in any assigned group grants app access. Administrators can access ev
 unassigned apps from other users, and metadata, bundle, and HTML entry-point requests check the same assignment.
 Collection access alone does not grant app access.
 
+Every app owns a collection from insertion. If its collection is deleted separately, resource reconciliation recreates it.
+
 Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
 collection and assignments, but preserves the assigned groups.
@@ -132,7 +134,7 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | Namespace             | Responsibility                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------- |
 | `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
-| `core.clj`            | What other modules ask: resource file problems and table dependencies.                             |
+| `core.clj`            | Public access checks, resource file problems, and table dependencies.                             |
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
@@ -142,6 +144,9 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
 | `resource_validation.clj` | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
 | `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |
+| `access.clj` | App access through assigned groups. |
+| `group_access.clj` | Assignment management and collection grant reconciliation. |
+| `models/data_app_group_assignment.clj` | App-to-group assignments. |
 | `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |

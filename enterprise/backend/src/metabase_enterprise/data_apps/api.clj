@@ -311,7 +311,7 @@
       (data-app-response app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, and the collection and permission group it owns."
+  "Delete a data app, its bundle, its collection, and its group assignments."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (write-check-data-app slug)]
     (check-editable! app)
