@@ -153,6 +153,11 @@ describe("scenarios > visualizations > boxplot", () => {
     H.leftSidebar().within(() => {
       cy.findByText("Auto formatting").should("exist");
       cy.findByRole("button", { name: "Full" }).click();
+      cy.findByRole("button", { name: "Full" }).should(
+        "have.attr",
+        "data-variant",
+        "filled",
+      );
     });
 
     H.leftSidebar().findByText("Goal line").click();

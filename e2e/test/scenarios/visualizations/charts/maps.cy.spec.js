@@ -80,9 +80,9 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.button("Visualization").click();
 
-    cy.findByTestId("chart-type-settings").within(() => {
-      cy.findByText("Map").should("be.visible");
-    });
+    cy.findByTestId("display-options-sensible")
+      .findByTestId("Map-button")
+      .should("be.visible");
   });
 
   it("should wrap markers around the international date line correctly (metabase#5369)", () => {
@@ -299,9 +299,9 @@ describe("scenarios > visualizations > maps", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
-    cy.findByTestId("chart-type-settings").within(() => {
-      cy.findByTestId("Map-button").should("be.visible");
-    });
+    cy.findByTestId("display-options-sensible")
+      .findByTestId("Map-button")
+      .should("be.visible");
   });
 
   it("should display pins when a breakout column sets a base-type and support the pin type viz setting (metabase#40999) (metabase#59984)", () => {
