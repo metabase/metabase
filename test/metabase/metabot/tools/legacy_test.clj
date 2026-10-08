@@ -96,11 +96,13 @@
 ;;; ------------------------------------------------- Fixtures -----------------------------------------------------
 
 (def ^:private entries
-  "One profile holding both kinds. Nothing distinguishes them here."
-  (tools/entries [#'old-plain-tool #'old-rich-tool #'old-agent-error-tool
-                  #'old-terminal-error-tool #'old-terminal-result-tool #'old-crash-tool
-                  #'old-quiet-failure-tool
-                  new-widget-tool]))
+  "One profile holding both kinds. `adapt-all` is the only place that knows the difference, and it
+  leaves the converted tool untouched."
+  (tools/entries
+   (tools.legacy/adapt-all [#'old-plain-tool #'old-rich-tool #'old-agent-error-tool
+                            #'old-terminal-error-tool #'old-terminal-result-tool #'old-crash-tool
+                            #'old-quiet-failure-tool
+                            new-widget-tool])))
 
 (defn- invoke
   ([tool-name args] (invoke #{"search"} tool-name args))
@@ -121,27 +123,51 @@
   (testing "and one call path reaches both"
     (is (= {:output "plain 1"} (invoke "old_plain" {:n 1})))
     (is (= {:output "widget 2"} (invoke "new_widget" {:id 2}))))
-  (testing "a converted tool is not special-cased anywhere"
-    (is (every? #(satisfies? tools/Tool %) [#'old-plain-tool new-widget-tool]))
-    (is (not-any? tools/batched? [#'old-plain-tool new-widget-tool]))))
+  (testing "after adapting, both are the same kind of thing"
+    (is (every? #(satisfies? tools/Tool %)
+                (tools.legacy/adapt-all [#'old-plain-tool new-widget-tool])))
+    (is (not-any? tools/batched?
+                  (tools.legacy/adapt-all [#'old-plain-tool new-widget-tool])))))
 
-(deftest ^:parallel a-real-unconverted-tool-declares-itself-test
-  (testing "an untouched tool from the codebase satisfies the protocol"
-    (is (= {:name        "get_timeline_details"
-            :args        [:map {:closed true} [:timeline_id :int]]
-            :scope       "agent:timelines:read"}
-           (dissoc (tools/declaration #'tools.timelines/get-timeline-details-tool) :description)))
+(deftest ^:parallel a-real-unconverted-tool-adapts-test
+  (let [adapted (tools.legacy/adapt #'tools.timelines/get-timeline-details-tool)]
+    (testing "an untouched tool from the codebase needs no edit"
+      (is (= {:name  "get_timeline_details"
+              :args  [:map {:closed true} [:timeline_id :int]]
+              :scope "agent:timelines:read"}
+             (dissoc (tools/declaration adapted) :description))))
     (testing "with the mu/defn preamble stripped from its description"
-      (let [{:keys [description]} (tools/declaration #'tools.timelines/get-timeline-details-tool)]
+      (let [{:keys [description]} (tools/declaration adapted)]
         (is (str/starts-with? description "Get the full details of a timeline"))
         (is (not (str/includes? description "Inputs:")))
         (is (not (str/includes? description "Return:")))))))
 
-(deftest ^:parallel a-var-that-is-not-a-tool-fails-loudly-test
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a tool"
-                        (tools/declaration #'tools.legacy/legacy-tool?)))
-  (is (tools.legacy/legacy-tool? #'old-plain-tool))
-  (is (not (tools.legacy/legacy-tool? #'tools.legacy/legacy-tool?))))
+;;; -------------------------------------------- What is a tool ----------------------------------------------------
+
+(deftest ^:parallel a-var-is-not-a-tool-test
+  (testing "the protocol is not extended to clojure.lang.Var. Doing that would make every var in
+           the codebase satisfy `Tool`, so the predicate would mean nothing and a var passed in by
+           mistake would fail somewhere inside a protocol method instead of where it was registered."
+    (is (not (satisfies? tools/Tool #'clojure.core/map)))
+    (is (not (satisfies? tools/Tool #'old-plain-tool)))
+    (testing "a wrapped one does"
+      (is (satisfies? tools/Tool (tools.legacy/adapt #'old-plain-tool))))))
+
+(deftest ^:parallel adapt-refuses-what-is-not-a-tool-test
+  (testing "a var with no :tool-name is refused by name, at the call site"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"clojure.core/map is not a tool"
+                          (tools.legacy/adapt #'clojure.core/map))))
+  (testing "and so is anything that is neither a tool nor a var"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a tool"
+                          (tools.legacy/adapt 42)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a tool"
+                          (tools.legacy/adapt {:name "looks like a declaration"}))))
+  (testing "a converted tool passes through untouched, so adapt-all is safe on a mixed list"
+    (is (identical? new-widget-tool (tools.legacy/adapt new-widget-tool))))
+  (testing "legacy-tool? answers the same question without wrapping"
+    (is (tools.legacy/legacy-tool? #'old-plain-tool))
+    (is (not (tools.legacy/legacy-tool? #'clojure.core/map)))
+    (is (not (tools.legacy/legacy-tool? new-widget-tool)))))
 
 ;;; --------------------------------------------- Result adaptation ------------------------------------------------
 
