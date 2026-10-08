@@ -61,7 +61,9 @@ describe("snapshots", () => {
         );
       });
 
+      logPersonalCollectionSearchDiagnostics("before default snapshot");
       snapshot("default");
+      logPersonalCollectionSearchDiagnostics("after default snapshot");
 
       // we need to do this after the snapshot because hitting the API populates the audit log
       const instanceData = getDefaultInstanceData();
@@ -319,6 +321,40 @@ describe("snapshots", () => {
     );
   }
 });
+
+// TEMPORARY (GDGT-3326): print whether the admin's personal collection is in
+// the search index around the time the default snapshot is taken.
+function logPersonalCollectionSearchDiagnostics(label) {
+  cy.request("/api/user/current").then(({ body: user }) => {
+    const params = new URLSearchParams({
+      q: "tAbLes",
+      limit: "5",
+      context: "document",
+      expected_result_type: "collection",
+      expected_result_id: String(user.personal_collection_id),
+    });
+    [
+      "card",
+      "dataset",
+      "metric",
+      "dashboard",
+      "database",
+      "table",
+      "collection",
+      "document",
+    ].forEach((model) => params.append("models", model));
+
+    cy.request({
+      url: `/api/search/debug?${params}`,
+      failOnStatusCode: false,
+    }).then(({ status, body: debug }) => {
+      cy.task(
+        "log",
+        `[GDGT-3326] ${new Date().toISOString()} ${label}: personal_collection_id=${user.personal_collection_id} debug(${status})=${JSON.stringify(debug)}`,
+      );
+    });
+  });
+}
 
 function getDefaultInstanceData() {
   // This is something we need to do to ensure that the All tenant users group
