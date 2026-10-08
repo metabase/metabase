@@ -14,7 +14,7 @@
   {})
 
 (def ^:private max-proxy-depth
-  "If a single var's proxy is re-entered this many times on one thread, assume a capture bug.
+  "Re-entries of one var's proxy allowed on a thread, while a replacement is in scope, before assuming a capture bug.
    Generous enough to permit deliberate recursion, low enough to fail fast before SOE."
   128)
 
@@ -41,7 +41,8 @@
   (or (proxy-original a-var) @a-var))
 
 (defn- call-replacement
-  "Call the replacement `f` that is in scope for `a-var`, counting re-entries through the proxy on this thread."
+  "Call the replacement `f` that is in scope for `a-var`.
+   Throws an `AssertionError` once this thread has re-entered the proxy more than [[max-proxy-depth]] times."
   [a-var f args]
   (let [depth (get *proxy-depths* a-var 0)]
     (when (> depth max-proxy-depth)
@@ -56,13 +57,19 @@
     (binding [*proxy-depths* (assoc *proxy-depths* a-var (inc depth))]
       (apply f args))))
 
-(defn- var->proxy
-  "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call.
-   Uses unconditional throws (not `assert`) so the safety checks fire even when `*assert*` is false.
+(defmacro ^:private call-through
+  "Call the replacement in scope for `a-var` with `args`, or evaluate `direct-call` when there is none."
+  [a-var direct-call args]
+  `(let [f# (get *local-redefs* ~a-var ::none)]
+     (if (identical? f# ::none)
+       ~direct-call
+       (call-replacement ~a-var f# ~args))))
 
-   Accepts any `IFn` root value — keywords and collections work via their `IFn` impl
-   (`(:a {:a 1})` → `1`, `({:a 1} :a)` → `1`), so the proxy delegates to them correctly."
+(defn- var->proxy
+  "Build a proxy for `a-var` that calls the replacement in scope on the current thread, or `original` with none.
+   Throws when `original` is not an `IFn`, or is a multimethod."
   [a-var original]
+  ;; These are throws, not asserts, so they fire even when `*assert*` is false.
   (when-not (ifn? original)
     (throw (ex-info (str "Cannot proxy non-IFn values: " a-var) {:var a-var, :value original})))
   (when (instance? MultiFn original)
@@ -71,44 +78,20 @@
                          "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
                          "with a dedicated test dispatch value instead.")
                     {:var a-var})))
-  ;; The proxy outlives the redef that installed it, so most calls find nothing in scope for the var. That path calls
-  ;; the original with no `binding` and, for up to four arguments, no argument seq. The recursion check only runs
-  ;; while a replacement is in scope: without one, any recursion is the original's own.
+  ;; The proxy outlives the redef that installed it, so most calls find no replacement in scope and must stay cheap.
+  ;; The fixed arities avoid an argument seq for those calls, and only `call-replacement` makes a `binding`.
+  ;; The recursion check lives there too: without a replacement, any recursion is the original's own.
   ;;
   ;; Each proxy keeps its own original. Something else can put a different root over the proxy and a later patch
   ;; then treats that root as the original, so an original stored on the var would be wrong for this proxy.
   ^{::proxy-for a-var, ::original original}
   (fn
-    ([]
-     (let [f (get *local-redefs* a-var ::none)]
-       (if (identical? f ::none)
-         (original)
-         (call-replacement a-var f nil))))
-    ([a]
-     (let [f (get *local-redefs* a-var ::none)]
-       (if (identical? f ::none)
-         (original a)
-         (call-replacement a-var f (list a)))))
-    ([a b]
-     (let [f (get *local-redefs* a-var ::none)]
-       (if (identical? f ::none)
-         (original a b)
-         (call-replacement a-var f (list a b)))))
-    ([a b c]
-     (let [f (get *local-redefs* a-var ::none)]
-       (if (identical? f ::none)
-         (original a b c)
-         (call-replacement a-var f (list a b c)))))
-    ([a b c d]
-     (let [f (get *local-redefs* a-var ::none)]
-       (if (identical? f ::none)
-         (original a b c d)
-         (call-replacement a-var f (list a b c d)))))
-    ([a b c d & more]
-     (let [f (get *local-redefs* a-var ::none)]
-       (if (identical? f ::none)
-         (apply original a b c d more)
-         (call-replacement a-var f (list* a b c d more)))))))
+    ([]                (call-through a-var (original) nil))
+    ([a]               (call-through a-var (original a) (list a)))
+    ([a b]             (call-through a-var (original a b) (list a b)))
+    ([a b c]           (call-through a-var (original a b c) (list a b c)))
+    ([a b c d]         (call-through a-var (original a b c d) (list a b c d)))
+    ([a b c d & more]  (call-through a-var (apply original a b c d more) (list* a b c d more)))))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
@@ -128,9 +111,10 @@
   (update-keys (into {} (partition-all 2) binding) sym->var))
 
 (defmacro with-dynamic-fn-redefs
-  "A thread-safe version of with-redefs. It only supports functions, and adds a fair amount of overhead.
+  "A thread-safe version of with-redefs. It only supports functions.
    It works by replacing each original definition with a proxy the first time it is redefined.
    This proxy uses a dynamic mapping to check whether the function is currently redefined.
+   The proxy stays on the var afterwards, and costs little unless a replacement is in scope.
 
    Limitations:
    - `IFn`-valued vars only. Keywords and collections are fine (they're `IFn`); multimethods
