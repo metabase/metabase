@@ -20,7 +20,7 @@
 
 (def ^:private max-proxy-depth
   "Re-entries of one var's proxy allowed on a thread, while a replacement is in scope, before assuming a capture bug.
-   Generous enough to permit deliberate recursion, low enough to fail fast before SOE."
+   Generous enough to permit deliberate recursion, low enough to fail fast before the stack overflows."
   128)
 
 (defn- proxy-original
@@ -31,13 +31,13 @@
       original)))
 
 (defn dynamic-value
-  "Get the value of this var that is in scope. It is the unpatched version if there is no override."
-  [a-var]
-  (if (var? a-var)
-    (get *local-redefs* (.getRawRoot ^Var a-var) (proxy-original a-var))
-    ;; Callers also pass the proxy itself, usually as `(dynamic-value some-fn)` inside a replacement for `some-fn`.
-    ;; That has always meant the proxy's original, so the replacement can delegate without calling itself.
-    (second (.get proxies a-var))))
+  "What a var calls on this thread: its replacement if one is in scope, else its original.
+   Given a proxied function in place of a var, returns that function's original, which lets a replacement delegate.
+   Returns nil for a var or function that was never proxied."
+  [var-or-proxy]
+  (if (var? var-or-proxy)
+    (get *local-redefs* (.getRawRoot ^Var var-or-proxy) (proxy-original var-or-proxy))
+    (second (.get proxies var-or-proxy))))
 
 (defn original-fn
   "Return the original (unpatched) function for `a-var`.
@@ -49,17 +49,17 @@
   "The depths to bind for one more entry into `proxy` on this thread.
    Throws an `AssertionError` once the thread has re-entered the proxy more than [[max-proxy-depth]] times."
   [proxy]
-  (let [depth (get *proxy-depths* proxy 0)
-        a-var (first (.get proxies proxy))]
+  (let [depth (get *proxy-depths* proxy 0)]
     (when (> depth max-proxy-depth)
       ;; Throw an Error, not an Exception: a `(catch Exception ...)` in the code under test would swallow an Exception
       ;; and turn this diagnostic into silent, confusing behavior.
-      (throw (AssertionError.
-              (str "with-dynamic-fn-redefs: runaway recursion through proxy for " a-var " (depth " depth "). "
-                   "This usually means the replacement fn calls the redefined var directly "
-                   "(closing over the var resolves to the proxy, not the original). "
-                   "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
-                   "to capture the unpatched function."))))
+      (let [a-var (first (.get proxies proxy))]
+        (throw (AssertionError.
+                (str "with-dynamic-fn-redefs: runaway recursion through proxy for " a-var " (depth " depth "). "
+                     "This usually means the replacement fn calls the redefined var directly "
+                     "(closing over the var resolves to the proxy, not the original). "
+                     "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
+                     "to capture the unpatched function.")))))
     (assoc *proxy-depths* proxy (inc depth))))
 
 (defmacro ^:private in-scope
@@ -70,6 +70,13 @@
        ~call
        (binding [*proxy-depths* (deeper ~proxy)]
          ~call))))
+
+(defn- register-proxy
+  "Register what `proxy` was built for, so that [[proxy-original]] recognises it."
+  [proxy a-var original]
+  ;; Something else can put a different root over this proxy, and a later proxy is then built over that root.
+  ;; So each proxy records its own original, and replacements are bound to a proxy, not to the var.
+  (.put proxies proxy [a-var original]))
 
 (defn- var->proxy
   "Build a proxy for `a-var` that calls the replacement in scope on the current thread, or `original` with none.
@@ -87,21 +94,14 @@
   ;; The proxy outlives the redef that installed it, so most calls find no replacement in scope and must stay cheap.
   ;; The fixed arities avoid an argument seq for those calls, and only a replacement gets a `binding`.
   ;; The recursion check is skipped with it: without a replacement, any recursion is the original's own.
-  ;;
-  ;; Each proxy keeps its own original. Something else can put a different root over the proxy and a later patch
-  ;; then treats that root as the original, so an original stored on the var would be wrong for this proxy.
-  ;;
-  ;; Replacements are looked up by proxy, not by var, for the same reason: a replacement bound while an earlier proxy
-  ;; was the root must not reach through a proxy built later, over whatever replaced that root.
-  (let [proxy (fn proxy
-                ([]                (in-scope [f [proxy original]] (f)))
-                ([a]               (in-scope [f [proxy original]] (f a)))
-                ([a b]             (in-scope [f [proxy original]] (f a b)))
-                ([a b c]           (in-scope [f [proxy original]] (f a b c)))
-                ([a b c d]         (in-scope [f [proxy original]] (f a b c d)))
-                ([a b c d & more]  (in-scope [f [proxy original]] (apply f a b c d more))))]
-    (.put proxies proxy [a-var original])
-    proxy))
+  (doto (fn proxy
+          ([]                (in-scope [f [proxy original]] (f)))
+          ([a]               (in-scope [f [proxy original]] (f a)))
+          ([a b]             (in-scope [f [proxy original]] (f a b)))
+          ([a b c]           (in-scope [f [proxy original]] (f a b c)))
+          ([a b c d]         (in-scope [f [proxy original]] (f a b c d)))
+          ([a b c d & more]  (in-scope [f [proxy original]] (apply f a b c d more))))
+    (register-proxy a-var original)))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
@@ -130,21 +130,20 @@
   (update-keys (into {} (partition-all 2) binding) sym->var))
 
 (defmacro with-dynamic-fn-redefs
-  "A thread-safe version of with-redefs. It only supports functions.
+  "A thread-safe version of `with-redefs`. It only supports functions.
    It works by replacing each original definition with a proxy the first time it is redefined.
-   This proxy uses a dynamic mapping to check whether the function is currently redefined.
+   The proxy checks a thread-local mapping to see whether the function is currently redefined.
    The proxy stays on the var afterwards, and costs little unless a replacement is in scope.
 
    Limitations:
-   - `IFn`-valued vars only. Keywords and collections are fine (they're `IFn`); multimethods
-     and plain non-`IFn` value defs will throw.
-   - If the replacement calls the redefined var (to delegate to the original), capture it
-     via [[original-fn]] rather than `@#'the-var` or a bare symbol reference — the latter
-     resolve to the proxy itself once installed, causing runaway recursion.
+   - Only a var that holds an `IFn` can be redefined.
+     Keywords and collections count. A multimethod, or a value that is not an `IFn`, throws.
+   - A replacement that calls the redefined var recurses, because the var now resolves to the proxy.
+     To delegate to the original, capture it with [[original-fn]].
    - Only threads that inherit the calling thread's dynamic bindings see the replacement.
-     `future`, `core.async/go`, and `core.async/thread` convey bindings automatically; raw
-     `Thread`, quartz/cron workers, and unwrapped `ExecutorService` tasks do not. For those
-     keep `with-redefs` — the root swap is visible to every thread.
+     That covers `future`, `core.async/go` and `core.async/thread`.
+     A raw `Thread`, a Quartz worker and an unwrapped `ExecutorService` task do not inherit them.
+     Keep `with-redefs` for those: its root swap is visible to every thread.
    - Redefining a potemkin re-export only intercepts calls made through the re-export.
      Callers of the var it was imported from still see the original."
   [bindings & body]
