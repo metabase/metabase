@@ -27,6 +27,10 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         });
       });
       H.openReviewsTable({ limit: 3 });
+      H.tableInteractive().should("be.visible");
+      cy.findByTestId("development-watermark").should(
+        devMode ? "exist" : "not.exist",
+      );
 
       // FK cell drills
       cy.get(".test-Table-FK").findByText("1").first().click();

@@ -128,15 +128,19 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         .trigger("mousemove", 420, 200)
         .trigger("mouseup", 420, 200);
 
-      cy.wait("@dataset");
+      cy.wait("@dataset").its("response.body.error").should("not.exist");
 
-      // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
       if (granularity === "month") {
         cy.findByTestId("qb-filters-panel")
           .findByText(
             "Created At: Month is Sep 1, 2025, 12:00 AM – Feb 1, 2026, 12:00 AM",
           )
           .should("exist");
+      } else {
+        cy.findByTestId("qb-filters-panel")
+          .findByText(/^Created At: Month of year is between .+ and .+$/)
+          .should("exist");
+        cy.findByTestId("qb-filters-panel").should("not.contain", "Unknown");
       }
 
       H.cartesianChartCircle();
@@ -439,9 +443,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByTestId("more-charts-toggle").click();
         cy.icon("line").click();
       });
-      cy.findByText(
-        "Cannot read properties of undefined (reading 'name')",
-      ).should("not.exist");
+      cy.findByTestId("visualization-root")
+        .should("have.attr", "data-viz-ui-name", "Line")
+        .and("not.contain", "Something’s gone wrong")
+        .and("not.contain", "Cannot read properties of undefined");
     });
   });
 
@@ -704,9 +709,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     it("should result in a correct query result", () => {
-      cy.log("Assert that the URL is correct");
-      cy.url().should("include", "/question#");
-
       cy.log("Assert on the correct product category: Widget");
       cy.findByTestId("qb-filters-panel").findByText("Category is Widget");
 
@@ -714,6 +716,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         "have.text",
         "Showing 54 rows",
       );
+
+      cy.log("Assert that the drill result is an unsaved question");
+      cy.location("pathname").should("eq", "/question");
+      cy.location("hash").should("not.be.empty");
 
       cy.findByTestId("visualization-root")
         .should("contain", "Widget")
