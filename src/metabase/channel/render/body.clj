@@ -189,13 +189,14 @@
   "One entity's result under a QP result's `[:data :referenced_entities type-string id-string]`, as built by
   `metabase.query-processor.referenced-entities` for dynamic goals."
   [:map {:closed true}
-   [:status [:enum "completed" "failed"]]
-   [:error  {:optional true} [:maybe :string]]
-   [:data   {:optional true} [:maybe [:map {:closed true}
-                                      [:cols {:optional true}
-                                       [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
-                                      [:rows {:optional true}
-                                       [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
+   [:status     [:enum "completed" "failed"]]
+   [:error      {:optional true} [:maybe :string]]
+   [:error_type {:optional true} [:maybe [:enum "too-many-rows"]]]
+   [:data       {:optional true} [:maybe [:map {:closed true}
+                                          [:cols {:optional true}
+                                           [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+                                          [:rows {:optional true}
+                                           [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
 
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it: the query processor's result metadata plus the rows."

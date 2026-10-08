@@ -33,6 +33,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockField,
   createMockMeasure,
   createMockReferencedEntitiesResults,
@@ -305,6 +306,34 @@ describe("GoalValueInput", () => {
 
     expect(
       await screen.findByText("Couldn't load this value"),
+    ).toBeInTheDocument();
+  });
+
+  it("explains that a referenced question must return a single row", async () => {
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    renderWithProviders(
+      <GoalValueInput
+        aria-label="Min"
+        data={createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMockFailedReferencedEntitiesResults({
+            error:
+              "Referenced card 9 returned more rows than the requested maximum of 1.",
+            error_type: "too-many-rows",
+          }),
+        })}
+        datasetQuery={DATASET_QUERY}
+        id="goal-value"
+        placeholder="Min"
+        value={{ type: "card", id: 9, column: "total" }}
+        onChange={jest.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        "The question's result must be a single value or row.",
+      ),
     ).toBeInTheDocument();
   });
 

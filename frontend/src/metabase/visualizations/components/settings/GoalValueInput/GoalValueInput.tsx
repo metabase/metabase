@@ -431,6 +431,10 @@ export const GoalValueInput = ({
 function getGoalErrorMessage({ reason, message }: GoalRefError): string {
   return match(reason)
     .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with(
+      "too-many-rows",
+      () => t`The question's result must be a single value or row.`,
+    )
     .with("column-not-found", () => t`This column no longer exists`)
     .with("not-a-number", () => t`This value isn't a number`)
     .exhaustive();

@@ -96,6 +96,7 @@
           (is (= "completed" (:status response)))
           (is (= [[100]] (get-in response [:data :rows]))))
         (is (= "failed" (:status goal)))
+        (is (= "too-many-rows" (:error_type goal)))
         (is (re-find #"more rows than the requested maximum" (:error goal)))))))
 
 (deftest dataset-endpoint-error-handling-test
@@ -430,4 +431,5 @@
     (mt/with-temp [:model/Card {card-id :id} (assoc (metric-card true) :type :question)]
       (let [result (reference-card card-id ["sum"])]
         (is (= "failed" (:status result)))
+        (is (= "too-many-rows" (:error_type result)))
         (is (re-find #"more rows than the requested maximum" (:error result)))))))
