@@ -21,6 +21,8 @@
   (when (and (settings/remote-sync-enabled)
              (= :read-only (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
+    ;; A cancelled pull that saved must not write its branch after this run reads the branch.
+    (remote-sync.task/close-cancelled-task!)
     (let [branch (settings/remote-sync-branch)
           source (source/source-from-settings branch)
           snapshot (source.p/snapshot source)

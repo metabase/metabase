@@ -194,6 +194,35 @@
   :encryption :no
   :doc false)
 
+(defn- clears-the-url?
+  "True iff [[check-and-update-remote-settings!]] of `settings` clears the git sync settings."
+  [{:keys [remote-sync-url] :as settings}]
+  (and (contains? settings :remote-sync-url) (str/blank? remote-sync-url)))
+
+(defn- writes-new-url-or-branch?
+  "True iff [[check-and-update-remote-settings!]] of `settings` writes a URL or a branch other than the stored one."
+  [settings]
+  (let [clearing? (clears-the-url? settings)]
+    (boolean
+     (some (fn [k]
+             (and (or clearing? (contains? settings k))
+                  (not= :env (setting/get-raw-value-source k))
+                  ;; a blank URL clears the branch too
+                  (not= (when-not clearing? (not-empty (get settings k)))
+                        (not-empty (setting/get k)))))
+           [:remote-sync-url :remote-sync-branch]))))
+
+(defn- writes-new-transforms?
+  "True iff [[check-and-update-remote-settings!]] of `settings` writes a `remote-sync-transforms` value other than the
+  stored one."
+  [settings]
+  ;; a blank URL writes no transforms value
+  (and (not (clears-the-url? settings))
+       (contains? settings :remote-sync-transforms)
+       (not= :env (setting/get-raw-value-source :remote-sync-transforms))
+       (not= (boolean (:remote-sync-transforms settings))
+             (boolean (setting/get :remote-sync-transforms)))))
+
 (defn check-and-update-remote-settings!
   "Validates and updates git sync settings in the application database.
 
@@ -206,7 +235,10 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
-  (guards/ensure-no-active-task!)
+  (cond
+    (writes-new-url-or-branch? settings) (guards/ensure-no-active-or-pending-task!)
+    (writes-new-transforms? settings)    (guards/ensure-no-active-task-before-a-transforms-save!)
+    :else                                (guards/ensure-no-active-task!))
   (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
         updating-git-settings? (some git-related-keys (keys settings))
         env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))

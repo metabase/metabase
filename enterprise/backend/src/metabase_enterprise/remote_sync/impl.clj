@@ -369,6 +369,44 @@
                   (t2/with-connection [_conn (mdb/app-db)]
                     (remote-sync.task/update-progress! task-id fraction))))}))
 
+(defn- report-after-save!
+  "Forced `report` of `fraction` after the save committed. A cancel is logged and ignored: the pull saved, so it
+  runs its remaining steps and records success. Rethrows any other error."
+  [report fraction]
+  (try
+    (report fraction {:force? true})
+    (catch Exception e
+      (if (:cancelled? (ex-data e))
+        (log/info "Remote sync task cancelled after its save committed; finishing the pull")
+        (throw e)))))
+
+(defn- cancelled-after-save?
+  "True iff a cancel ([[remote-sync.task/cancel-sync-task!]]) ended `task` after its save: the row holds a version and
+  no conflicts, no later change closed it ([[remote-sync.task/close-cancelled-task!]]), and it is the most recent
+  task. Its worker may then still record its success and write its branch. It may also write the transforms setting,
+  unless an admin saved that setting after the cancel ([[remote-sync.task/mark-transforms-saved!]])."
+  [task]
+  (and (some? (:ended_at task))
+       (:cancelled task)
+       (contains? #{remote-sync.task/cancel-message remote-sync.task/transforms-saved-message} (:error_message task))
+       (some? (:version task))
+       (nil? (:conflicts task))
+       (= (:id task) (:id (remote-sync.db/most-recent-task)))))
+
+(defn- set-transforms-setting!
+  "Sets `remote-sync-transforms` to `enabled?` iff the RemoteSyncTask `task-id` has not ended, or is
+  [[cancelled-after-save?]] and no admin saved the transforms setting after the cancel. Reads the row under its lock
+  and writes in the same transaction, so a cancel, a stale supersede, or a close or a mark of the row either comes
+  first and stops the write, or waits for its commit."
+  [task-id enabled?]
+  (t2/with-transaction [_conn]
+    (let [task (remote-sync.db/lock-task task-id)]
+      (if (and task (or (nil? (:ended_at task))
+                        (and (cancelled-after-save? task)
+                             (= remote-sync.task/cancel-message (:error_message task)))))
+        (settings/remote-sync-transforms! enabled?)
+        (log/infof "Task %s ended; not setting remote-sync-transforms to %s" task-id enabled?)))))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -381,8 +419,14 @@
   bookkeeping) as the `:finalize!` thunk, which runs inside the same transaction as the object-table
   reconcile. That keeps the version pointer, RemoteSyncObject statuses, and the reconcile atomic: either
   they all commit or all roll back, so a crash can never leave the version advanced past stale local
-  state or drop captured dirty markers (see [[import-merged!]])."
-  [snapshot report sync-timestamp & {:keys [finalize!]}]
+  state or drop captured dirty markers (see [[import-merged!]]).
+
+  `:task-id` is the RemoteSyncTask that runs the load. The load writes the `remote-sync-transforms` setting only while
+  that task can still record its result (see [[set-transforms-setting!]]).
+
+  A cancel stops the load only before that transaction commits; after the commit it is ignored and the load runs
+  to the end."
+  [snapshot report sync-timestamp & {:keys [finalize! task-id]}]
   (report 0.05 {:force? true})
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
@@ -396,7 +440,7 @@
     (when (and has-transforms?
                (not (settings/remote-sync-transforms)))
       (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! true))
+      (set-transforms-setting! task-id true))
     ;; Reported before the transaction, not inside it: a write inside would hold the task row's lock until
     ;; commit, blocking the heartbeat for the whole reconcile and hashing phase.
     (report 0.75 {:force? true})
@@ -412,18 +456,18 @@
                                (source.ingestable/cached-file-paths base-ingestable))
         (track-user-settings! settings-table-ids sync-timestamp)
         (when finalize! (finalize!))))
-    (report 0.9 {:force? true})
+    (report-after-save! report 0.9)
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! false))
+      (set-transforms-setting! task-id false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try
       (search/reindex! :async? (not= :h2 (mdb/db-type)))
       (catch Exception e
         (log/warn e "Search reindex after import failed")))
-    (report 0.95 {:force? true})
+    (report-after-save! report 0.95)
     imported-data))
 
 ;;; ------------------------------------------- Incremental Import Fast-Path -------------------------------------------
@@ -496,7 +540,7 @@
   leaving everything else untouched. Runs `finalize!` inside the reconcile transaction, then logs success and
   returns [[import!]]'s `:success` result map carrying `snapshot-version`. The caller decides whether an
   incremental load is safe (see [[incremental-import-plan]] and [[import!]]); this assumes the plan is valid
-  and local state matches the diff base.
+  and local state matches the diff base. A cancel stops it only before the reconcile transaction commits.
 
   Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
@@ -535,14 +579,14 @@
         (remote-sync.db/delete-rsos-of-keys! sync-rows)
         (insert-with-metadata! sync-rows (when ingestable (source.ingestable/cached-file-paths ingestable))))
       (when finalize! (finalize!)))
-    (report 0.9 {:force? true})
+    (report-after-save! report 0.9)
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
     ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
     (doseq [[model-key ds] (group-by model-key-of deletes)]
       ;; the search index stores model_id as text
       (search/delete! model-key (mapv (comp str :model_id) ds)))
-    (report 0.95 {:force? true})
+    (report-after-save! report 0.95)
     (log/info "Successfully reloaded entities from git repository")
     {:status :success
      :version snapshot-version
@@ -593,6 +637,7 @@
       ;; finalize! run inside the load's transaction so a crash can't leave the dirty markers overwritten.
       (let [dirty-objects (capture-dirty-objects)]
         (load-snapshot! (source/specs->snapshot merged) report sync-timestamp
+                        :task-id task-id
                         :finalize! (fn []
                                      (restore-dirty-objects! dirty-objects sync-timestamp)
                                      (finalize!)))
@@ -692,7 +737,7 @@
 
                 :else
                 (let [_             (log/info "Remote sync full import: forced")
-                      imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
+                      imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize! :task-id task-id)]
                   (log/info "Successfully reloaded entities from git repository")
                   {:status :success
                    :version snapshot-version
@@ -730,7 +775,7 @@
                                     first-import? "first import"
                                     :else         "changes not incrementally loadable")
                     _             (log/infof "Remote sync full import: %s" reason)
-                    imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
+                    imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize! :task-id task-id)]
                 (log/info "Successfully reloaded entities from git repository")
                 {:status :success
                  :version snapshot-version
@@ -824,6 +869,7 @@
                             (fn [fraction & opts]
                               (apply report (+ export-progress-serialize (* fraction (- 1.0 export-progress-serialize))) opts))
                             sync-timestamp
+                            :task-id task-id
                             :finalize! (fn []
                                          (remote-sync.db/mark-all-rsos-synced! sync-timestamp)
                                          (remote-sync.task/set-version! task-id version)))
@@ -1452,8 +1498,17 @@
   warning and returns without writing anything. This prevents a still-running thread from clobbering
   the cancellation bookkeeping or stomping the branch setting via its captured value.
 
+  One exception: a success result for a row that a cancel ([[remote-sync.task/cancel-sync-task!]]) ended, that
+  holds a version and no conflicts, and that is still the most recent task. The task's save committed before the
+  cancel took effect, so the row records the success as above, with `cancelled` false and no error message. This
+  also holds for a row that [[remote-sync.task/mark-transforms-saved!]] marked. A row that a stale-task supersede
+  ended, a row that a newer task followed, or a row that [[remote-sync.task/close-cancelled-task!]] closed, is
+  skipped as above.
+
   The read and the subsequent write happen in a single transaction with `SELECT ... FOR UPDATE` so
-  a concurrent cancel cannot slip in between the terminated-check and the result-write."
+  a concurrent cancel cannot slip in between the terminated-check and the result-write.
+
+  Returns true iff it recorded `result` on the row."
   [result task-id & [branch]]
   (let [proceed?
         (t2/with-transaction [_conn]
@@ -1462,6 +1517,17 @@
               (nil? task)
               (do (log/warnf "Task %s missing during result handling; skipping" task-id)
                   false)
+
+              (and (= :success (:status result))
+                   (cancelled-after-save? task))
+              (do (log/infof "Task %s was cancelled after its save committed; recording the success" task-id)
+                  (when branch
+                    (settings/remote-sync-branch! branch))
+                  (remote-sync.db/end-task! task-id {:cancelled     false
+                                                     :error_message nil
+                                                     :progress      1.0
+                                                     :outcome       (:outcome result)})
+                  true)
 
               (some? (:ended_at task))
               (do (log/warnf "Task %s already terminated (ended_at=%s); skipping result handling to preserve state"
@@ -1482,7 +1548,8 @@
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
                 true))))]
     (when (and proceed? (= (:status result) :success))
-      (invalidate-remote-changes-cache!))))
+      (invalidate-remote-changes-cache!))
+    proceed?))
 
 (defn publish-sync-event!
   "Publishes an audit-log event for a completed remote-sync task. Call after the task result has been
@@ -1532,7 +1599,8 @@
 (defn run-task-body!
   "Run `sync-fn` (a fn of task-id returning a result map) for the already-created RemoteSyncTask `task-id` on the
   current thread, recording the outcome on the row. `branch` is written to the remote-sync-branch setting on
-  success when non-nil; `:on-success` receives [task-id result] after a successful result is recorded.
+  success when non-nil; `:on-success` receives [task-id result] after a successful result is recorded, and only
+  then.
 
   Guarantees, whatever `sync-fn` or the bookkeeping does: a heartbeat runs on the row for the duration, the task
   is registered in [[running-task-ids]] for the duration, and the row is ended on exit. Any `Throwable` from
@@ -1548,8 +1616,9 @@
                        (log/error t "Remote sync task failed")
                        {:status  :error
                         :message (source-error-message t)}))]
-        (handle-task-result! result task-id branch)
-        (when (and on-success (= :success (:status result)))
+        (when (and (handle-task-result! result task-id branch)
+                   on-success
+                   (= :success (:status result)))
           (try
             (on-success task-id result)
             (catch Exception e
@@ -1593,7 +1662,7 @@
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
-  (guards/ensure-no-active-task!)
+  (guards/ensure-no-active-or-pending-task!)
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
         has-dirty?             (remote-sync.object/dirty?)
@@ -1647,7 +1716,7 @@
 
   Returns a RemoteSyncTask."
   [branch force? message & {:keys [on-success merge?]}]
-  (guards/ensure-no-active-task!)
+  (guards/ensure-no-active-or-pending-task!)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400})))
@@ -1720,7 +1789,7 @@
    to the new name. Does not publish events or return a response map; the caller
    is responsible for those concerns."
   [name base-branch]
-  (guards/ensure-no-active-task!)
+  (guards/ensure-no-active-or-pending-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)
     (settings/remote-sync-branch! name)))
@@ -1729,7 +1798,7 @@
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
    async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
   [new-branch message & {:keys [on-success]}]
-  (guards/ensure-no-active-task!)
+  (guards/ensure-no-active-or-pending-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
     (async-export! new-branch false message :on-success on-success)))

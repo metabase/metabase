@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -55,6 +56,10 @@
                                        :progress 0}
                                       additional-fields)))
 
+(def cancel-message
+  "The error message of a task row that [[cancel-sync-task!]] ended."
+  "Task cancelled")
+
 (defn cancel-sync-task!
   "Marks a sync task as cancelled.
 
@@ -67,7 +72,46 @@
   [task-id]
   (remote-sync.db/end-task! task-id
                             {:cancelled true
-                             :error_message "Task cancelled"}))
+                             :error_message cancel-message}))
+
+(def transforms-saved-message
+  "The error message of a task row that [[mark-transforms-saved!]] marked."
+  "Task cancelled; an admin saved the transforms setting after the cancel")
+
+(def closed-message
+  "The error message of a task row that [[close-cancelled-task!]] closed."
+  "Task cancelled; a later remote-sync change replaced its result")
+
+(defn close-cancelled-task!
+  "If a cancel ([[cancel-sync-task!]]) ended the most recent task and the task holds a version, changes its error
+  message to [[closed-message]], so that a late success of its worker is not recorded and does not write the branch
+  or the transforms setting. Also closes a row that [[mark-transforms-saved!]] marked. Call before a change that such
+  a late success must not overwrite, such as a write or a read of the branch setting for a new task.
+  Returns the number of rows updated, or nil when no task exists."
+  []
+  (when-let [{task-id :id} (remote-sync.db/most-recent-task)]
+    (remote-sync.db/replace-cancelled-task-message! task-id [cancel-message transforms-saved-message] closed-message)))
+
+(defn mark-transforms-saved!
+  "If a cancel ([[cancel-sync-task!]]) ended the most recent task and the task holds a version, changes its error
+  message to [[transforms-saved-message]], so that its worker does not write the transforms setting. A late success
+  of the worker is still recorded and still writes the branch. Call before a write of the transforms setting that
+  does not change the branch.
+  Returns the number of rows updated, or nil when no task exists."
+  []
+  (when-let [{task-id :id} (remote-sync.db/most-recent-task)]
+    (remote-sync.db/replace-cancelled-task-message! task-id [cancel-message] transforms-saved-message)))
+
+(defn localized-error-message
+  "`message`, the stored error message of a task row, in the user locale. [[closed-message]] and
+  [[transforms-saved-message]] are stored in English and translated here; any other message is returned as stored."
+  [message]
+  ;; tru takes a literal, so each literal repeats its constant; a test with a translation keyed by the stored text
+  ;; fails when the two differ
+  (condp = message
+    closed-message           (tru "Task cancelled; a later remote-sync change replaced its result")
+    transforms-saved-message (tru "Task cancelled; an admin saved the transforms setting after the cancel")
+    message))
 
 (defn update-progress!
   "Updates the progress of a sync task.

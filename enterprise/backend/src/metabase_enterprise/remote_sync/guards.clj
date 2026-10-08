@@ -33,3 +33,20 @@
     (throw (ex-info "Remote sync task in progress"
                     {:status-code 400})))
   (rst/supersede-stale-tasks!))
+
+(defn ensure-no-active-or-pending-task!
+  "As [[ensure-no-active-task!]], then closes a cancelled most recent task with `close-cancelled-task!`, so that its
+   worker cannot record a late success or write the branch or the transforms setting after this call. Guard for an
+   operation that reads or writes the branch setting."
+  []
+  (ensure-no-active-task!)
+  (rst/close-cancelled-task!))
+
+(defn ensure-no-active-task-before-a-transforms-save!
+  "As [[ensure-no-active-task!]], then marks a cancelled most recent task with `mark-transforms-saved!`, so that its
+   worker cannot write the transforms setting after this call. Its late success is still recorded and still writes
+   the branch. Guard for an operation that writes the transforms setting and does not read or write the branch
+   setting."
+  []
+  (ensure-no-active-task!)
+  (rst/mark-transforms-saved!))

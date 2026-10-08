@@ -812,6 +812,18 @@
                  :where  [:and stale [:in :id ids]]}))
     ids))
 
+(mu/defn replace-cancelled-task-message! :- :int
+  "Set `new-message` as the error message of the RemoteSyncTask `task-id` iff it is cancelled with an error message in
+  `old-messages` and holds a version. Returns the number of rows updated."
+  [task-id      :- ms/PositiveInt
+   old-messages :- [:sequential {:min 1} :string]
+   new-message  :- :string]
+  (t2/update! :model/RemoteSyncTask {:id            task-id
+                                     :cancelled     true
+                                     :error_message [:in old-messages]
+                                     :version       [:not= nil]}
+              {:error_message new-message}))
+
 (mu/defn delete-tasks-started-before!
   "Delete the RemoteSyncTasks started before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
