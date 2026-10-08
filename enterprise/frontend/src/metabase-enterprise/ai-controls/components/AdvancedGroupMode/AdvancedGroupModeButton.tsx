@@ -11,12 +11,14 @@ import { EnableAdvancedModal } from "./EnableAdvancedModal";
 type Props = {
   message: string;
   loading: boolean;
+  disabled?: boolean;
   onConfirm: SwitchAdvancedMode;
 };
 
 export function AdvancedGroupModeButton({
   message,
   loading,
+  disabled,
   onConfirm,
 }: Props) {
   const [showEnableModal, { toggle: toggleShowEnableModal }] =
@@ -24,7 +26,12 @@ export function AdvancedGroupModeButton({
 
   return (
     <>
-      <Button className={S.button} onClick={toggleShowEnableModal} size="sm">
+      <Button
+        className={S.button}
+        disabled={disabled}
+        onClick={toggleShowEnableModal}
+        size="sm"
+      >
         {t`Switch to group-level permissions`}
       </Button>
       {showEnableModal && (

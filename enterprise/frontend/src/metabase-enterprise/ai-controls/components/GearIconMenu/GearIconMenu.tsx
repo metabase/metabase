@@ -9,10 +9,11 @@ import { DisableAdvancedModal } from "./DisableAdvancedModal";
 
 type Props = {
   loading: boolean;
+  disabled?: boolean;
   onConfirm: SwitchAdvancedMode;
 };
 
-export function GearIconMenu({ loading, onConfirm }: Props) {
+export function GearIconMenu({ loading, disabled, onConfirm }: Props) {
   const [showDisableModal, { toggle: toggleShowDisableModal }] =
     useDisclosure(false);
 
@@ -24,6 +25,7 @@ export function GearIconMenu({ loading, onConfirm }: Props) {
             aria-label={t`Settings`}
             bd="1px solid var(--mb-color-border-neutral)"
             c="text-primary"
+            disabled={disabled}
             size="lg"
             variant="outline"
           >

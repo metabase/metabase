@@ -528,12 +528,36 @@ describe("McpToolsAccessPage", () => {
       expect(getToolCheckbox("All Users", "run_query")).toBeDisabled(),
     );
     expect(getBucketCheckbox("All Users", "Raw SQL")).toBeDisabled();
+    expect(querySwitchModeButton()).toBeDisabled();
 
     finishSave(response);
 
     await waitFor(() => expect(querySaveButton()).not.toBeInTheDocument());
     expect(getToolCheckbox("All Users", "run_query")).toBeEnabled();
     expect(getBucketCheckbox("All Users", "Raw SQL")).toBeEnabled();
+    expect(querySwitchModeButton()).toBeEnabled();
+  });
+
+  it("disables the gear menu while a save is in flight", async () => {
+    const { response } = setup({ advanced: true });
+    await findGrid();
+    const { promise: savedResponse, resolve: finishSave } =
+      Promise.withResolvers<McpToolPermissionsResponse>();
+    fetchMock.modifyRoute("update-mcp-tool-permissions", {
+      response: savedResponse,
+    });
+
+    await userEvent.click(getToolCheckbox("Marketing", "search"));
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Settings" })).toBeDisabled(),
+    );
+
+    finishSave(response);
+
+    await waitFor(() => expect(querySaveButton()).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Settings" })).toBeEnabled();
   });
 
   it("reports a failed save and keeps the draft", async () => {

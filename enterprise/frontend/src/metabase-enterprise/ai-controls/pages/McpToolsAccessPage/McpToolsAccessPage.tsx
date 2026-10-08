@@ -73,6 +73,7 @@ export function McpToolsAccessPage() {
         {mcp.advanced && (
           <GearIconMenu
             loading={advancedMode.isDisabling}
+            disabled={mcp.isSaving}
             onConfirm={advancedMode.disable}
           />
         )}
@@ -116,6 +117,7 @@ export function McpToolsAccessPage() {
                   <AdvancedGroupModeButton
                     message={t`This will remove MCP tool access from the "All Users" group, so users won't have MCP tool access unless they're added to a group that has it.`}
                     loading={advancedMode.isEnabling}
+                    disabled={mcp.isSaving}
                     onConfirm={advancedMode.enable}
                   />
                 ) : undefined
