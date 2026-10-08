@@ -447,7 +447,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("should support keyboard navigation and opened row highlighting", () => {
+  it("should support keyboard navigation, row highlighting, sidebar toggling and viz settings", () => {
     H.visitQuestionAdhoc({
       display: "table",
       dataset_query: {
@@ -479,7 +479,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .findByRole("heading", { name: "Domenica Williamson" })
       .should("be.visible");
 
-    cy.log("does not offer drill-through on the record values (metabase#20560)");
+    cy.log(
+      "does not offer drill-through on the record values (metabase#20560)",
+    );
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findByTestId("object-detail")
       .findAllByText("Domenica Williamson")
@@ -504,21 +506,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail")
       .findByRole("heading", { name: "Hudson Borer" })
       .should("be.visible");
-  });
 
-  it("should support toggling the sidebar", () => {
-    H.visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": PEOPLE_ID },
-      },
-    });
+    cy.findByTestId("object-detail").findByText("Address").should("be.visible");
 
-    getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
-    H.openObjectDetail(0);
-
+    cy.log("toggles the sidebar from the detail shortcut");
     // realHover does not work behind the modal overlay, so we're working around it with realMouseMove
     getRow(0).then(($row) => {
       const rect = $row[0].getBoundingClientRect();
@@ -541,18 +532,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .should("be.visible");
       H.tooltip().should("be.visible").and("contain.text", "View details");
     });
-  });
 
-  it("should respect viz settings column order and visibility", () => {
-    H.visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": PEOPLE_ID },
-      },
-    });
-
+    cy.log("respects viz settings column order and visibility");
     H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Address-hide-button").click();
@@ -721,59 +702,74 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  describe("detail page links - questions", () => {
-    it("no primary keys (WRK-900)", () => {
-      cy.intercept("GET", `/api/table/${PEOPLE_ID}/fks`).as("peopleFks");
+  describe("detail page links", () => {
+    const PEOPLE_FIELDS = [
+      ["field", PEOPLE.ADDRESS],
+      ["field", PEOPLE.EMAIL],
+      ["field", PEOPLE.NAME],
+    ];
+    const NO_PK_QUERY = {
+      "source-table": PEOPLE_ID,
+      fields: PEOPLE_FIELDS,
+      limit: 5,
+    };
+    const ONE_PK_QUERY = {
+      "source-table": PEOPLE_ID,
+      fields: [["field", PEOPLE.ID], ...PEOPLE_FIELDS],
+      limit: 5,
+    };
+    const TWO_PKS_QUERY = {
+      ...ONE_PK_QUERY,
+      joins: [
+        {
+          "source-table": ORDERS_ID,
+          fields: [["field", ORDERS.ID]],
+          strategy: "left-join",
+          alias: "Orders",
+          condition: ["=", ["field", PEOPLE.ID], ["field", ORDERS.USER_ID]],
+        },
+      ],
+    };
+
+    function visitAdhocQuestion(query) {
       H.visitQuestionAdhoc({
         display: "table",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            limit: 5,
-          },
-        },
+        dataset_query: { type: "query", database: SAMPLE_DB_ID, query },
       });
+    }
 
-      H.openObjectDetail(0);
-      cy.wait("@peopleFks");
+    function assertNoDetailPageLinks() {
       cy.findByTestId("object-detail").within(() => {
         cy.findByLabelText("Close").should("be.visible");
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    }
 
+    beforeEach(() => {
+      H.grantClipboardPermissions();
+    });
+
+    it("questions", () => {
+      cy.log("no primary keys (WRK-900)");
+      cy.intercept("GET", `/api/table/${PEOPLE_ID}/fks`).as("peopleFks");
+      visitAdhocQuestion(NO_PK_QUERY);
+      H.openObjectDetail(0);
+      cy.wait("@peopleFks");
+      assertNoDetailPageLinks();
+      cy.findByTestId("object-detail").within(() => {
         cy.log("should not show relationships when there is no PK (WRK-900)");
         cy.findByText(/is connected to/).should("not.exist");
         cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
-    });
 
-    it("1 primary key", () => {
-      H.grantClipboardPermissions();
-      H.visitQuestionAdhoc({
-        display: "table",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ID],
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            limit: 5,
-          },
-        },
-      });
+      cy.log("2 primary keys");
+      visitAdhocQuestion(TWO_PKS_QUERY);
+      H.openObjectDetail(0);
+      assertNoDetailPageLinks();
 
+      cy.log("1 primary key");
+      visitAdhocQuestion(ONE_PK_QUERY);
       H.openObjectDetail(0);
       cy.findByTestId("object-detail").within(() => {
         const expectedUrl = `http://localhost:4000/table/${PEOPLE_ID}-people/detail/1`;
@@ -801,88 +797,28 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       );
     });
 
-    it("2 primary keys", () => {
-      H.visitQuestionAdhoc({
-        display: "table",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ID],
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ], //["field", ORDERS.ID],
-            joins: [
-              {
-                "source-table": ORDERS_ID,
-                fields: [["field", ORDERS.ID]],
-                strategy: "left-join",
-                alias: "Orders",
-                condition: [
-                  "=",
-                  ["field", PEOPLE.ID],
-                  ["field", ORDERS.USER_ID],
-                ],
-              },
-            ],
-            limit: 5,
-          },
-        },
-      });
-
-      H.openObjectDetail(0);
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByLabelText("Close").should("be.visible");
-        cy.findByLabelText("Copy link to this record").should("not.exist");
-        cy.findByLabelText("Open in full page").should("not.exist");
-      });
-    });
-  });
-
-  describe("detail page links - models", () => {
-    it("no primary keys (WRK-900)", () => {
+    it("models", () => {
+      cy.log("no primary keys (WRK-900)");
       H.createQuestion(
-        {
-          type: "model",
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            limit: 5,
-          },
-        },
+        { type: "model", query: NO_PK_QUERY },
         { visitQuestion: true },
       );
-
       H.openObjectDetail(0);
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByLabelText("Close").should("be.visible");
-        cy.findByLabelText("Copy link to this record").should("not.exist");
-        cy.findByLabelText("Open in full page").should("not.exist");
-      });
-    });
+      assertNoDetailPageLinks();
 
-    it("1 primary key", () => {
-      H.grantClipboardPermissions();
+      cy.log("2 primary keys");
+      H.createQuestion(
+        { type: "model", query: TWO_PKS_QUERY },
+        { visitQuestion: true },
+      );
+      H.openObjectDetail(0);
+      assertNoDetailPageLinks();
+
+      cy.log("1 primary key");
       H.createQuestion({
         type: "model",
         name: "model",
-        query: {
-          "source-table": PEOPLE_ID,
-          fields: [
-            ["field", PEOPLE.ID],
-            ["field", PEOPLE.ADDRESS],
-            ["field", PEOPLE.EMAIL],
-            ["field", PEOPLE.NAME],
-          ],
-          limit: 5,
-        },
+        query: ONE_PK_QUERY,
       }).then(({ body: card }) => {
         const slug = [card.id, card.name].join("-");
 
@@ -901,45 +837,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
             "be.visible",
           );
         });
-      });
-    });
-
-    it("2 primary keys", () => {
-      H.createQuestion(
-        {
-          type: "model",
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ID],
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            joins: [
-              {
-                "source-table": ORDERS_ID,
-                fields: [["field", ORDERS.ID]],
-                strategy: "left-join",
-                alias: "Orders",
-                condition: [
-                  "=",
-                  ["field", PEOPLE.ID],
-                  ["field", ORDERS.USER_ID],
-                ],
-              },
-            ],
-            limit: 5,
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      H.openObjectDetail(0);
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByLabelText("Close").should("be.visible");
-        cy.findByLabelText("Copy link to this record").should("not.exist");
-        cy.findByLabelText("Open in full page").should("not.exist");
       });
     });
   });
@@ -1008,20 +905,23 @@ function changeSorting(columnName, direction) {
 
 ["postgres", "mysql"].forEach((dialect) => {
   describe(
-    `Object Detail > composite keys (${dialect})`,
+    `Object Detail > composite and missing primary keys (${dialect})`,
     { tags: ["@external"] },
     () => {
-      const TEST_TABLE = "composite_pk_table";
-
       beforeEach(() => {
         H.restore(`${dialect}-writable`);
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
+        H.resetTestTable({ type: dialect, table: "composite_pk_table" });
+        H.resetTestTable({ type: dialect, table: "no_pk_table" });
         cy.signInAsAdmin();
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+        H.resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tables: ["composite_pk_table", "no_pk_table"],
+        });
       });
 
-      it("can show object detail modal for items with composite keys", () => {
-        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
+      it("can browse object details for items with composite keys and with no primary key", () => {
+        cy.log("composite keys");
+        H.getTableId({ name: "composite_pk_table" }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -1031,22 +931,24 @@ function changeSorting(columnName, direction) {
           cy.findByRole("heading", { name: "Duck" }).should("be.visible");
           cy.findByLabelText("Next row").click();
           cy.findByRole("heading", { name: "Horse" }).should("be.visible");
+          cy.findByLabelText("Close").click();
         });
-      });
+        cy.findByRole("dialog").should("not.exist");
 
-      it("cannot navigate past the end of the list of objects with the keyboard", () => {
+        cy.log(
+          "cannot navigate past the end of the list of objects with the keyboard",
+        );
         // this bug only manifests on tables without single integer primary keys
         // it is also reproducible on tables with string keys
-
-        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
-          cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
-        });
-
         H.openObjectDetail(5);
 
         cy.findByRole("dialog").within(() => {
           cy.findByRole("heading", { name: "Rabbit" }).should("be.visible");
-          cy.findByLabelText("Next row").should("have.attr", "disabled", "disabled");
+          cy.findByLabelText("Next row").should(
+            "have.attr",
+            "disabled",
+            "disabled",
+          );
         });
 
         cy.get("body").type("{uparrow}");
@@ -1064,25 +966,9 @@ function changeSorting(columnName, direction) {
           cy.findByRole("heading", { name: "Rabbit" }).should("be.visible");
           cy.findByText(/couldn't find that record/).should("not.exist");
         });
-      });
-    },
-  );
 
-  describe(
-    `Object Detail > no primary keys (${dialect})`,
-    { tags: ["@external"] },
-    () => {
-      const TEST_TABLE = "no_pk_table";
-
-      beforeEach(() => {
-        H.restore(`${dialect}-writable`);
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
-        cy.signInAsAdmin();
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
-      });
-
-      it("can show object detail modal for items with no primary key", () => {
-        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
+        cy.log("no primary keys");
+        H.getTableId({ name: "no_pk_table" }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
@@ -1104,12 +990,13 @@ describe("Object Detail > public", () => {
     cy.signInAsAdmin();
   });
 
-  it("can view a public object detail question", () => {
-    H.createQuestion({ ...TEST_QUESTION, display: "object" }).then(
-      ({ body: { id: questionId } }) => {
-        H.visitPublicQuestion(questionId);
-      },
-    );
+  it("can view an object detail question on a public dashboard and as a public question", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: { ...TEST_QUESTION, display: "object" },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      cy.wrap(card_id).as("questionId");
+      H.visitPublicDashboard(dashboard_id);
+    });
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("User ID").should("be.visible");
@@ -1120,13 +1007,11 @@ describe("Object Detail > public", () => {
     cy.findByTestId("pagination-footer").within(() => {
       cy.findByText("Item 1 of 3").should("be.visible");
     });
-  });
 
-  it("can view an object detail question on a public dashboard", () => {
-    H.createQuestionAndDashboard({
-      questionDetails: { ...TEST_QUESTION, display: "object" },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitPublicDashboard(dashboard_id);
+    cy.log("public question");
+    cy.signInAsAdmin();
+    cy.get("@questionId").then((questionId) => {
+      H.visitPublicQuestion(questionId);
     });
 
     cy.findByTestId("object-detail").within(() => {
