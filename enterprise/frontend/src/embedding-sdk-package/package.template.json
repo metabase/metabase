@@ -51,7 +51,6 @@
     "react-dom": ">=18 <=19"
   },
   "dependencies": {
-    "esbuild": "^0.28.1",
-    "typescript": "^6.0.3"
+    "esbuild": "^0.28.1"
   }
 }

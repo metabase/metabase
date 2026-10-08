@@ -3084,6 +3084,7 @@
   {:team "Embedding"
    :api #{metabase.typed-schemas.core}
    :uses #{actions
+           audit-app
            collections
            lib
            lib.be
@@ -3091,8 +3092,8 @@
            lib.types
            metabot
            metrics
-           models
            permissions
+           premium-features
            queries
            system
            util
@@ -3373,6 +3374,7 @@
            parameters.schema
            permissions
            premium-features
+           queries
            query-processor
            remote-sync
            search
@@ -3760,13 +3762,16 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
-   :uses #{api
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.core metabase-enterprise.data-apps.init}
+   :uses #{actions
+           api
            api-scope
            collections
+           driver
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            permissions
@@ -3775,13 +3780,17 @@
            request
            settings
            util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Card
+           warehouse-schema-overlay
+           enterprise/serialization}
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/DataPermissions
                     :model/Database
+                    :model/Field
                     :model/Permissions
                     :model/PermissionsGroup
+                    :model/QueryAction
                     :model/Table
                     :model/User}
    :model-exports #{:model/DataApp}}
@@ -4226,6 +4235,7 @@
            task.history
            util
            warehouse-schema-overlay
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}

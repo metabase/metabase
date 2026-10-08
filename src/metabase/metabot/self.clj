@@ -45,7 +45,7 @@
 
   This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
   available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
-  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
+  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm` and `ollama`, which serve whatever the
   operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
   [provider]
   (when-let [models (registry/optional provider :supported-models)]

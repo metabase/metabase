@@ -17,12 +17,28 @@
                             {:type :measure :id 1}
                             {:type :metric :id 1}]
              :breakouts    [{:type :column :name "DATE" :unit :month}
-                            {:type :column :name "PRICE" :bins 10}]
+                            {:type :column :name "PRICE" :binning {:strategy :num-bins :num-bins 10}}]
              :order-bys    [{:type :column :name "DATE" :unit :month :direction :asc}]
              :limit        10}]})
 
 (deftest ^:parallel supported-query-fields-test
   (is (nil? (mr/explain ::query-definition/query-definition query-definition))))
+
+(deftest ^:parallel named-aggregation-test
+  (testing "an aggregation named in its definition, which the SDK sends as `name`"
+    (is (nil? (mr/explain ::query-definition/query-definition
+                          (assoc-in query-definition [:stages 0 :aggregations]
+                                    [{:type :operator :operator :sum :name "revenue"
+                                      :args [{:type :column :name "PRICE"}]}]))))))
+
+(deftest ^:parallel only-an-aggregation-is-named-test
+  (testing "a name on a filter or a nested argument is refused rather than dropped"
+    (doseq [path [[:stages 0 :filters 0]
+                  [:stages 0 :aggregations 0 :args 0]]]
+      (testing (pr-str path)
+        (is (some? (mr/explain ::query-definition/query-definition
+                               (assoc-in query-definition path
+                                         {:type :operator :operator :count :name "n" :args []}))))))))
 
 (deftest ^:parallel unknown-query-fields-test
   (doseq [path [[] [:stages 0] [:stages 0 :source]
