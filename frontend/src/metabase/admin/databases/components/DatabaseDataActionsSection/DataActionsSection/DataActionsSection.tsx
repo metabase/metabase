@@ -47,8 +47,6 @@ export function DataActionsSection({
         {error ? <Error>{error}</Error> : null}
         <Description>
           {t`Allow data actions that use this database to be run. Actions are able to read, write, and possibly delete data.`}
-          <br />
-          {t`Note: Your database user will need write permissions, either through the main connection or through the write connection.`}
         </Description>
       </Box>
       {disabled && (
