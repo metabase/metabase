@@ -139,14 +139,18 @@
                    :model/MetabotMessage      _            {:conversation_id joined, :user_id rasta}
                    :model/MetabotMessage      _            {:conversation_id joined, :user_id lucky}
                    :model/MetabotConversation {thread :id} {:user_id rasta, :slack_thread_ts "1.2"}
-                   :model/MetabotMessage      _            {:conversation_id thread, :user_id rasta}]
+                   :model/MetabotMessage      _            {:conversation_id thread, :user_id rasta}
+                   :model/MetabotConversation {theirs :id} {:user_id lucky}
+                   :model/MetabotMessage      _            {:conversation_id theirs, :user_id rasta}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
         (testing "a conversation only the current user has written to returns rows"
           (is (=? {:structured-output {:returned 1}} (run-in own))))
         (testing "a conversation someone else has written to is refused"
           (is (=? refusal (run-in joined))))
         (testing "a Slack thread is refused before anyone else has written to it"
-          (is (=? refusal (run-in thread))))))))
+          (is (=? refusal (run-in thread))))
+        (testing "a conversation someone else started is refused when no message names them"
+          (is (=? refusal (run-in theirs))))))))
 
 (deftest result-output-bounds-test
   (let [output (fn [cols rows]
