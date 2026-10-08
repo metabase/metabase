@@ -97,7 +97,7 @@ describe("scenarios > data apps > sandbox & isolation", () => {
     it("serves the embed document with locked-down headers, renders the app in a sandboxed iframe, and keeps the app's CSS and JS globals inside it", () => {
       cy.request({
         url: `/embed/apps/${APP_NAME}`,
-        failOnStatusCode: false,
+        followRedirect: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
         const csp = String(res.headers["content-security-policy"] ?? "");
