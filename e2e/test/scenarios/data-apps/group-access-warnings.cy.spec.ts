@@ -22,7 +22,7 @@ describe("scenarios > data apps > group access warnings (EMB-2416)", () => {
     H.pullExampleDataApps({
       goodAppCards: [
         H.dataAppRepresentations.card({
-          entityId: "warningsOrdersCard0000",
+          entityId: "warningsOrdersCard000",
           name: "Orders",
           type: "question",
           collection: "goodAppCollection0000",
