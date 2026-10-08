@@ -20,12 +20,14 @@ export default function App() {
   const [reactMode, setReactMode] = useState<ReactMode | null>(null);
   const firedRef = useRef(false);
   const timerRef = useRef<number | undefined>(undefined);
+  const currentProbeRef = useRef<string | null>(null);
 
   useProbeCustomElement(setResult);
 
   // If a probe never reports, `no-probe-observed` fails the spec (the probe
   // never fired) rather than hanging.
   const arm = (id: string) => {
+    currentProbeRef.current = id;
     window.clearTimeout(timerRef.current);
     setProbeId(id);
     setResult("pending");
@@ -35,11 +37,19 @@ export default function App() {
     );
   };
 
-  const fire = (id: string, run: () => void) => {
+  const reportFor = (id: string) => (value: string) => {
+    if (currentProbeRef.current === id) {
+      setResult(value);
+    }
+  };
+
+  const fire = (id: string) => {
     arm(id);
 
     try {
-      run();
+      createProbes(env, reportFor(id))
+        .find((p) => p.id === id)
+        ?.run();
     } catch (err) {
       setResult(`isolated:${describeError(err)}`);
     }
@@ -59,7 +69,7 @@ export default function App() {
           <button
             key={probe.id}
             data-testid={`isolation-${probe.id}`}
-            onClick={() => fire(probe.id, probe.run)}
+            onClick={() => fire(probe.id)}
           >
             {probe.label}
           </button>
