@@ -26,7 +26,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("createCard");
   });
 
   it("should not show sub-total data after a switch to other viz type", () => {
@@ -950,8 +949,6 @@ WHERE NOT (
           enable_embedding: true,
         });
 
-        H.visitQuestion(card_id);
-
         cy.wrap(card_id).as("questionId");
         cy.wrap(dashboard_id).as("dashboardId");
       });
@@ -1300,8 +1297,6 @@ WHERE NOT (
     };
 
     const vizSettings = {
-      rows: ratingField,
-      columns: createdAtField,
       "pivot_table.column_split": {
         rows: ["RATING"],
         columns: ["CREATED_AT"],
@@ -1797,7 +1792,6 @@ WHERE NOT (
 
   it("renders a pivot table with only pivot columns (metabase#44500)", () => {
     const questionDetails = {
-      name: "25250",
       dataset_query: {
         type: "query",
         query: {
