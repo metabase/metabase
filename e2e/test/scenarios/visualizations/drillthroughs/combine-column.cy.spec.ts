@@ -15,7 +15,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > combine co
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should be possible to combine columns from the a table header", () => {
+  it("should be possible to combine columns from a table header and handle duplicate column names", () => {
     H.createQuestion(
       {
         query: {
@@ -85,23 +85,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills > combine co
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
     });
-  });
 
-  it("should handle duplicate column names", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": PEOPLE_ID,
-          fields: [
-            ["field", PEOPLE.ID, { "base-type": "type/Number" }],
-            ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
-          ],
-          limit: 3,
-        },
-      },
-      { visitQuestion: true },
-    );
-
+    cy.log("Duplicate column names");
     // first combine (email + ID)
     H.tableHeaderClick("Email");
     H.popover().findByText("Combine columns").click();

@@ -13,7 +13,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow brush date filter", () => {
+  it("should show chart drills and allow brush date filter on a line chart", () => {
     H.createQuestion(
       {
         name: "Brush Date Temporal Filter",
@@ -40,6 +40,35 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         .should("contain.text", "July 2025")
         .and("contain.text", "January 2026");
     });
+
+    cy.log("Chart drills");
+    H.cartesianChartCircle().eq(2).click();
+    H.popover().within(() => {
+      cy.findByText("See these Orders").should("be.visible");
+
+      cy.findByText("See this month by week").should("be.visible");
+
+      cy.findByText("Break out by…").should("be.visible");
+      cy.findByText("Automatic insights…").should("be.visible");
+
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+    });
+
+    cy.findByTestId("timeseries-chrome").within(() => {
+      cy.findByText("View").should("be.visible");
+      cy.findByText("All time").should("be.visible");
+      cy.findByText("by").should("be.visible");
+      cy.findByText("Month").should("be.visible");
+    });
+
+    cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
+    H.echartsTriggerBlur();
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
     cy.log("Zoom-in on the left side, which corresponds to July 2025");
@@ -114,9 +143,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it("should correctly drill through on a card with multiple series (metabase#11442)", () => {
+  it("should drill through combined cards with one or more added series (metabase#11442, metabase#13457)", () => {
     H.createQuestion({
-      name: "11442_Q1",
+      name: "Orders by year",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
@@ -125,7 +154,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
       H.createQuestion({
-        name: "11442_Q2",
+        name: "Products by year",
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
@@ -134,108 +163,70 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           ],
         },
         display: "line",
-      }).then(({ body: { id: Q2_ID } }) => {
-        H.createDashboard({ name: "11442D" }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add the first question to the dashboard");
-
-            H.addOrUpdateDashboardCard({
-              card_id: Q1_ID,
+      }).then(({ body: { id: PRODUCTS_Q_ID } }) => {
+        H.createQuestion({
+          name: "Order averages by year",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field", ORDERS.DISCOUNT, null]],
+              ["avg", ["field", ORDERS.QUANTITY, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          display: "line",
+        }).then(({ body: { id: AVERAGES_Q_ID } }) => {
+          H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+            H.updateDashboardCards({
               dashboard_id: DASHBOARD_ID,
-              card: {
-                size_x: 21,
-                size_y: 12,
-                // Add additional series combining it with the second question
-                series: [
-                  {
-                    id: Q2_ID,
-                    model: "card",
-                  },
-                ],
-              },
+              cards: [
+                {
+                  card_id: Q1_ID,
+                  col: 0,
+                  size_x: 12,
+                  size_y: 10,
+                  series: [{ id: PRODUCTS_Q_ID, model: "card" }],
+                },
+                {
+                  card_id: Q1_ID,
+                  col: 12,
+                  size_x: 12,
+                  size_y: 10,
+                  series: [{ id: AVERAGES_Q_ID, model: "card" }],
+                },
+              ],
             });
 
             H.visitDashboard(DASHBOARD_ID);
-
-            cy.log("The first series line");
-            H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
-
-            // Click anywhere else to close the first action panel
-            cy.findByText("11442D").click();
-
-            // Second line from the second question
-            cy.log("The second series line");
-            H.cartesianChartCircleWithColor("#98D9D9").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Products");
-          },
-        );
+          });
+        });
       });
     });
-  });
 
-  it("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
-    H.createQuestion({
-      name: "13457_Q1",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-      },
-      display: "line",
-    }).then(({ body: { id: Q1_ID } }) => {
-      H.createQuestion({
-        name: "13457_Q2",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            ["avg", ["field", ORDERS.DISCOUNT, null]],
-            ["avg", ["field", ORDERS.QUANTITY, null]],
-          ],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        display: "line",
-      }).then(({ body: { id: Q2_ID } }) => {
-        H.createDashboard({ name: "13457D" }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add the first question to the dashboard");
+    cy.log("metabase#11442: one added series");
+    assertSeriesDrills({
+      cardIndex: 0,
+      color: "#509EE3",
+      underlyingRecords: "See these Orders",
+    });
+    assertSeriesDrills({
+      cardIndex: 0,
+      color: "#98D9D9",
+      underlyingRecords: "See these Products",
+    });
 
-            H.addOrUpdateDashboardCard({
-              card_id: Q1_ID,
-              dashboard_id: DASHBOARD_ID,
-              card: {
-                size_x: 21,
-                size_y: 12,
-                // Add additional series combining it with the second question
-                series: [
-                  {
-                    id: Q2_ID,
-                    model: "card",
-                  },
-                ],
-              },
-            });
-
-            H.visitDashboard(DASHBOARD_ID);
-
-            cy.log("The first series line");
-            H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
-
-            // Click anywhere else to close the first action panel
-            cy.findByText("13457D").click();
-
-            // Second line from the second question
-            cy.log("The third series line");
-            H.cartesianChartCircleWithColor("#EF8C8C").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
-          },
-        );
-      });
+    cy.log("metabase#13457: the added card has more series than the first");
+    assertSeriesDrills({
+      cardIndex: 1,
+      color: "#509EE3",
+      underlyingRecords: "See these Orders",
+    });
+    assertSeriesDrills({
+      cardIndex: 1,
+      color: "#EF8C8C",
+      underlyingRecords: "See these Orders",
     });
   });
 
@@ -731,50 +722,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it("should display proper drills on chart click for line chart", () => {
-    H.createQuestion(
-      {
-        name: "Line chart drills",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              PRODUCTS.CREATED_AT,
-              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
-            ],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-          ],
-        },
-        display: "line",
-      },
-      { visitQuestion: true },
-    );
-
-    H.cartesianChartCircle().eq(2).click();
-    H.popover().within(() => {
-      cy.findByText("See these Orders").should("be.visible");
-
-      cy.findByText("See this month by week").should("be.visible");
-
-      cy.findByText("Break out by…").should("be.visible");
-      cy.findByText("Automatic insights…").should("be.visible");
-
-      cy.findByText(">").should("be.visible");
-      cy.findByText("<").should("be.visible");
-      cy.findByText("=").should("be.visible");
-      cy.findByText("≠").should("be.visible");
-    });
-
-    cy.findByTestId("timeseries-chrome").within(() => {
-      cy.findByText("View").should("be.visible");
-      cy.findByText("All time").should("be.visible");
-      cy.findByText("by").should("be.visible");
-      cy.findByText("Month").should("be.visible");
-    });
-  });
-
   it("should display proper drills on chart click for bar chart", () => {
     H.createQuestion(
       {
@@ -946,3 +893,17 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 });
+
+function assertSeriesDrills({ cardIndex, color, underlyingRecords }) {
+  H.getDashboardCard(cardIndex).within(() => {
+    H.cartesianChartCircleWithColor(color).eq(0).click();
+  });
+  H.popover().within(() => {
+    cy.findByText("See this year by quarter").should("be.visible");
+    cy.findByText(underlyingRecords).should("be.visible");
+  });
+  cy.realPress("Escape");
+  cy.get("[data-element-id=mantine-popover]")
+    .filter(":visible")
+    .should("not.exist");
+}

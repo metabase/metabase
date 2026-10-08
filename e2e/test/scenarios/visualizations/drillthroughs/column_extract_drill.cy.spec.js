@@ -78,25 +78,6 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       });
     });
 
-    it("should be able to modify the expression in the notebook editor", () => {
-      H.openOrdersTable({ limit: 1 });
-      extractColumnAndCheck({
-        column: "Created At",
-        option: "Year",
-        value: "2,028",
-        extraction: "Extract day, month…",
-      });
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Year").click();
-      H.enterCustomColumnDetails({
-        formula: "year([Created At]) + 2",
-        format: true,
-      });
-      H.popover().button("Update").should("not.be.disabled").click();
-      H.visualize();
-      cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
-    });
-
     it("should use current user locale for string expressions", () => {
       cy.request("GET", "/api/user/current").then(({ body: user }) => {
         cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
@@ -249,7 +230,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should create a snowplow event for the column extraction action", () => {
+  it("should create a snowplow event for the column extraction action and allow editing the expression in the notebook editor", () => {
     H.openOrdersTable({ limit: 1 });
 
     cy.wait(1);
@@ -266,5 +247,16 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       custom_expressions_used: ["get-year"],
       database_id: SAMPLE_DB_ID,
     });
+
+    cy.log("Modify the expression in the notebook editor");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Year").click();
+    H.enterCustomColumnDetails({
+      formula: "year([Created At]) + 2",
+      format: true,
+    });
+    H.popover().button("Update").should("not.be.disabled").click();
+    H.visualize();
+    cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
   });
 });

@@ -253,7 +253,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         .should("be.visible");
     }
 
-    it("should allow category pivot drills on single-stage queries (metabase#52236)", () => {
+    it("should allow category and timeseries pivot drills on single-stage queries (metabase#52236)", () => {
+      cy.log("Category pivot drill");
       pivotDrillTest({
         query: queryWithJoin,
         drillCellText: "4,939",
@@ -261,9 +262,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         filterText: "Products → Category is Gadget",
         resultText: "Barrows-Johns",
       });
-    });
 
-    it("should allow timeseries pivot drills on single-stage queries (metabase#52236)", () => {
+      cy.log("Timeseries pivot drill");
       pivotDrillTest({
         query: queryWithJoin,
         drillCellText: "3,976",
@@ -543,17 +543,18 @@ describe("Issue 58247", () => {
   const text =
     "Omnis pariatur autem adipisci eligendi. Eos aut accusantium dolorem et. Numquam vero debitis id provident odit doloremque enim.";
 
-  it("should properly preselect filter when clicking a string 'Contains...' filter (metabase#58247)", () => {
+  it("should properly preselect filter when clicking a string 'Contains...' or 'Does not contain...' filter (metabase#58247)", () => {
     H.tableInteractiveBody().findByText(text).click();
     H.popover().findByText("Contains…").click();
-
     H.popover().findByText("Contains").should("be.visible");
-  });
 
-  it("should properly preselect filter when clicking a string 'Does not contain...' filter (metabase#58247)", () => {
+    cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
+
     H.tableInteractiveBody().findByText(text).click();
     H.popover().findByText("Does not contain…").click();
-
     H.popover().findByText("Does not contain").should("be.visible");
   });
 });
