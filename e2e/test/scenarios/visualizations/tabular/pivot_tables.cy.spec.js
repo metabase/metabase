@@ -1109,6 +1109,9 @@ WHERE NOT (
       cy.findByText("333"); // Row totals for 2027
       cy.findByText("Grand totals");
     });
+    cy.findByTestId("pivot-table").within(() => {
+      ["A", "B", "C", "D", "E"].forEach((label) => cy.findByText(label));
+    });
   });
 
   it("should show stand-alone row values in grouping when rows are collapsed (metabase#15211)", () => {
