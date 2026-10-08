@@ -473,7 +473,7 @@
                              (cond-> {:type  :error
                                       :error (merge (when (map? (:error chunk)) (:error chunk))
                                                     {:message    (:errorText chunk)
-                                                     :error-code "provider_error"})}
+                                                     :error-code (or (:error-code chunk) "provider_error")})}
                                (:request-specific? chunk) (assoc :request-specific? true))
                              chunk)
     :text-start            {:type :text

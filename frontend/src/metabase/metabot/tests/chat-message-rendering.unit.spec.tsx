@@ -389,22 +389,23 @@ describe("AgentMessage", () => {
       expect(onRetry).toHaveBeenCalled();
     });
 
-    it.each(["metabase_ai_managed_locked", "ai_usage_limit_reached"])(
-      "offers no Retry for %s, which re-sending cannot fix",
-      (type) => {
-        setup(
-          {
-            status: { type: "errored", error: { type } },
-          },
-          { onRetry: jest.fn() },
-        );
+    it.each([
+      "metabase_ai_managed_locked",
+      "ai_usage_limit_reached",
+      "prompt_blocked",
+    ])("offers no Retry for %s, which re-sending cannot fix", (type) => {
+      setup(
+        {
+          status: { type: "errored", error: { type } },
+        },
+        { onRetry: jest.fn() },
+      );
 
-        const alert = screen.getByTestId("metabot-chat-message-turn-alert");
-        expect(
-          within(alert).queryByTestId("metabot-chat-message-retry"),
-        ).not.toBeInTheDocument();
-      },
-    );
+      const alert = screen.getByTestId("metabot-chat-message-turn-alert");
+      expect(
+        within(alert).queryByTestId("metabot-chat-message-retry"),
+      ).not.toBeInTheDocument();
+    });
 
     it("shows generic alert message when display message is missing", () => {
       setup({ status: { type: "errored", error: { type: "stream_error" } } });
