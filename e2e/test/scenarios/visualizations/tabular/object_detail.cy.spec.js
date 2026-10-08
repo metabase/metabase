@@ -139,7 +139,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
-    H.modal().findByRole("link", { name: "77 Orders" }).click();
+    cy.findByTestId("object-detail")
+      .findByRole("link", { name: "77 Orders" })
+      .click();
     cy.log("should close the modal when browsing relationships");
     cy.findByTestId("object-detail").should("not.exist");
 
