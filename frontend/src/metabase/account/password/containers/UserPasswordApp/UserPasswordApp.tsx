@@ -1,3 +1,4 @@
+import { useMountedState } from "react-use";
 import { t } from "ttag";
 
 import { getIsSsoUser } from "metabase/account/selectors";
@@ -7,7 +8,10 @@ import { getErrorStatus } from "metabase/api/client/errors";
 import { getErrorMessage } from "metabase/api/utils";
 import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useGetCurrentUserQuery } from "metabase/current-user";
+import {
+  refetchCurrentUser,
+  useGetCurrentUserQuery,
+} from "metabase/current-user";
 import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
@@ -19,7 +23,7 @@ import { SlackAccount } from "../../components/SlackAccount/SlackAccount";
 import { UserPasswordForm } from "../../components/UserPasswordForm";
 
 const UserPasswordApp = () => {
-  const { data, refetch, isFetching } = useGetCurrentUserQuery();
+  const { data, isFetching } = useGetCurrentUserQuery();
   const user = checkNotNull(data);
   const isSsoUser = useSelector(getIsSsoUser);
   const validatePassword = useValidatePassword();
@@ -28,6 +32,7 @@ const UserPasswordApp = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const mfaEnforcement = useSetting("mfa-enforcement");
+  const isMounted = useMountedState();
 
   const handleDisconnect = async () => {
     const result = await disconnectSlack(user.id);
@@ -43,7 +48,7 @@ const UserPasswordApp = () => {
       return;
     }
 
-    const currentUser = await refetch();
+    const currentUser = await dispatch(refetchCurrentUser());
     if (currentUser.error && getErrorStatus(currentUser.error) !== 401) {
       sendToast({
         icon: "warning",
@@ -58,6 +63,7 @@ const UserPasswordApp = () => {
       dispatch(Api.util.resetApiState());
       navigate("/auth/login");
     } else if (
+      isMounted() &&
       currentUser.data &&
       !hasAuthenticationSettings(currentUser.data, mfaEnforcement)
     ) {
