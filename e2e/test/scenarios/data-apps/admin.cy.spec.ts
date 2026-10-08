@@ -172,17 +172,13 @@ describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
     // settings page shows the upsell instead of the management UI.
   });
 
-  it("shows the data-apps upsell instead of the management UI", () => {
+  it("shows the data-apps upsell instead of the management UI, and marks the Data apps settings nav item with an upsell gem", () => {
     cy.visit("/admin/settings/apps");
 
     H.main().within(() => {
       cy.findByText("Build custom data apps").should("be.visible");
       cy.findByText("Try for free").should("be.visible");
     });
-  });
-
-  it("marks the Data apps settings nav item with an upsell gem", () => {
-    cy.visit("/admin/settings/apps");
 
     cy.findByRole("link", { name: /Data apps/ }).within(() => {
       cy.findByTestId("upsell-gem").should("be.visible");
