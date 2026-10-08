@@ -51,14 +51,15 @@
      :parts  [usage-part]}))
 
 (defn do-with-llm!
-  "Run `thunk` with `call-fn` standing in for the structured LLM call and every instance gate open."
+  "Run `thunk` as a superuser with `call-fn` standing in for the structured LLM call and every instance gate open."
   [call-fn thunk]
   (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace call-fn
                               metabot.settings/metabot-enabled?           (constantly true)
                               metabot.settings/llm-metabot-configured?    (constantly true)
                               metabot.settings/llm-mini-model             (constantly "test/mini")
                               usage/check-usage-limits!                   (constantly nil)]
-    (thunk)))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (thunk))))
 
 (defn- field-rows [table-id]
   (t2/select-fn-vec (juxt :id :data_sensitivity :semantic_type) :model/Field :table_id table-id
@@ -369,6 +370,35 @@
                     (:tables result)))
         (is (= 0 (:requests result)))))))
 
+(deftest classify-tables-failure-log-limit-test
+  (let [table  (people-table)
+        tables (repeat 10 table)]
+    (testing "a run where every table fails logs a trace for the first tables only, one line per table, and a summary"
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-sensitivity.core :warn]]
+        (let [results  (do-with-llm! (failing-llm #{(:name table)} (ex-info "boom" {:error-code "structured-output-invalid"}))
+                                     #(#'core/classify-tables (mt/db) tables {:include-values? false}))
+              failures (filter #(re-find #"failed for table" (:message %)) (messages))]
+          (is (= 10 (count results)))
+          (is (every? #(= {:error "boom" :error_code "structured-output-invalid"} (select-keys % [:error :error_code]))
+                      results))
+          (is (= 10 (count failures)))
+          (is (= 3 (count (filter :e failures))))
+          (is (every? #(re-find #": boom error_code=structured-output-invalid$" (:message %))
+                      (remove :e failures)))
+          (is (=? [{:e nil :message #".*failed for 10 of 10 tables of database \d+: error_codes=\{\"structured-output-invalid\" 10\}"}]
+                  (filter #(re-find #"tables of database" (:message %)) (messages)))))))
+    (testing "the trace limit is local to each run"
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-sensitivity.core :warn]]
+        (do-with-llm! (failing-llm #{(:name table)} (ex-info "boom" {}))
+                      #(dotimes [_ 2]
+                         (#'core/classify-tables (mt/db) (take 4 tables) {:include-values? false})))
+        (is (= 6 (count (filter :e (messages)))))))
+    (testing "a run with no failures logs no summary"
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-sensitivity.core :warn]]
+        (do-with-llm! (canned-llm (constantly {}))
+                      #(#'core/classify-tables (mt/db) [table] {:include-values? false}))
+        (is (= [] (messages)))))))
+
 (deftest concurrent-database-runs-test
   (testing "two concurrent database runs never have more LLM calls in flight than the pool size"
     (let [latch     (CountDownLatch. ^long llm/pool-size)
@@ -392,12 +422,37 @@
       (is (every? #(< (count (:tables %)) (:requests %)) results) "tables span more than one chunk")
       (is (= llm/pool-size @peak)))))
 
-(defn- values-rendered?
+(deftest database-run-fills-pool-test
+  (testing "a database run of single-chunk tables has pool-size LLM calls in flight"
+    (let [latch     (CountDownLatch. ^long llm/pool-size)
+          in-flight (atom 0)
+          peak      (atom 0)
+          llm       (fn [& args]
+                      (swap! peak max (swap! in-flight inc))
+                      (try
+                        (.countDown latch)
+                        (.await latch 5 TimeUnit/SECONDS)
+                        (Thread/sleep 5)
+                        (apply (canned-llm (constantly {})) args)
+                        (finally
+                          (swap! in-flight dec))))
+          tables    (active-tables nil)
+          result    (do-with-llm! llm #(core/classify-database! (mt/db) :include-values? false))]
+      (is (< llm/pool-size (count tables)))
+      (is (= (map :id tables) (map :table_id (:tables result))))
+      (is (= 0 (:failed result)))
+      (is (every? #(= 1 (:requests %)) (:tables result)) "every table is one chunk")
+      (is (zero? (.getCount latch)))
+      (is (= llm/pool-size @peak)))))
+
+(defn values-rendered?
   "Whether any recorded user message rendered sampled or cached values."
   [messages]
   (boolean (some #(str/includes? (:content (last %)) "; values: ") messages)))
 
-(defn- recording-llm [messages]
+(defn recording-llm
+  "A [[canned-llm]] that answers every field with no entry and records the messages of each call in `messages`."
+  [messages]
   (fn [& [_model msgs :as args]]
     (swap! messages conj msgs)
     (apply (canned-llm (constantly {})) args)))
@@ -517,3 +572,71 @@
         (is (= {"ds_b_field" nil} (labels-by-name (:id b))))
         (is (= {"ds_c_field" :PUBLIC} (labels-by-name (:id c))))
         (is (= 2 (get-in result [:counts :committed])) "committed is summed over the tables")))))
+
+(defn- table-name-in-message [messages]
+  (second (re-find #"(?m)^name: (\S+)$" (:content (last messages)))))
+
+(defn- do-with-temp-tables
+  "Run `(f db tables)` with a temp database of `n` active tables of one text field each, in name order."
+  [n f]
+  (mt/with-temp [:model/Database db {}]
+    (let [tables (mapv (fn [i]
+                         (let [table (t2/insert-returning-instance! :model/Table {:db_id  (:id db) :schema "S"
+                                                                                  :name   (format "ds_%02d" i)
+                                                                                  :active true})]
+                           (t2/insert! :model/Field {:table_id (:id table) :name (format "ds_%02d_field" i)
+                                                     :base_type :type/Text :database_type "TEXT"})
+                           table))
+                       (range n))]
+      (f db tables))))
+
+(deftest database-run-cancel-test
+  (testing "future-cancel stops a database run: no new LLM calls start and no table is committed"
+    (do-with-temp-tables
+     (* 3 llm/pool-size)
+     (fn [db tables]
+       (let [calls   (atom [])
+             started (CountDownLatch. ^long llm/pool-size)
+             done    (CountDownLatch. 1)
+             llm     (fn [& [_model messages :as args]]
+                       (swap! calls conj (table-name-in-message messages))
+                       (.countDown started)
+                       (Thread/sleep 10000)
+                       (apply (canned-llm (constantly {})) args))]
+         (do-with-llm!
+          llm
+          (fn []
+            (let [run (future
+                        (try
+                          (core/classify-database! db :include-values? false :commit? true)
+                          (finally
+                            (.countDown done))))]
+              (is (.await started 10 TimeUnit/SECONDS))
+              (future-cancel run)
+              (is (.await done 5 TimeUnit/SECONDS) "the run ends without waiting for the in-flight calls")
+              (Thread/sleep 200)
+              (is (= llm/pool-size (count @calls)) "only the calls in flight at the cancel started")
+              (is (= (set (map :name (take llm/pool-size tables))) (set @calls)))
+              (is (every? #(= {(str (:name %) "_field") nil} (labels-by-name (:id %))) tables))))))))))
+
+(deftest database-run-interrupt-during-packet-build-test
+  (testing "an interrupt during a packet build that keeps the flag set stops the run before any chunk is submitted"
+    (do-with-temp-tables
+     3
+     (fn [db _tables]
+       (let [calls        (atom 0)
+             table-packet (dynamic-redefs/original-fn #'context/table-packet)
+             result       (do-with-llm!
+                           (fn [& args] (swap! calls inc) (apply (canned-llm (constantly {})) args))
+                           (fn []
+                             (mt/with-dynamic-fn-redefs [context/table-packet (fn [& args]
+                                                                                (.interrupt (Thread/currentThread))
+                                                                                (apply table-packet args))]
+                               (try
+                                 (core/classify-database! db :include-values? false)
+                                 (catch InterruptedException e
+                                   e)
+                                 (finally
+                                   (Thread/interrupted))))))]
+         (is (instance? InterruptedException result))
+         (is (= 0 @calls)))))))

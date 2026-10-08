@@ -3,13 +3,20 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
+   [metabase-enterprise.sandbox.test-util :as met]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
-(defn- table-packet [table & {:as opts}]
-  (context/table-packet (t2/select-one :model/Database :id (:db_id table)) table opts))
+(defn- table-packet
+  "Build the packet as a superuser."
+  [table & {:as opts}]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (context/table-packet (t2/select-one :model/Database :id (:db_id table)) table opts)))
 
 (defn- people-table []
   (t2/select-one :model/Table :id (mt/id :people)))
@@ -201,3 +208,76 @@
           (is (= ["newer"] (:cached_values entry))))
         (testing "shadowed duplicate FieldValues rows are left in place"
           (is (= 2 (t2/count :model/FieldValues :field_id field-id :type :full))))))))
+
+(defn- current-user-packet!
+  "Build the packet of the people table as the current user, with a cached marker value on a temp field and a sampler
+  that answers with a sampled marker. Returns the packet and the number of sampler calls."
+  []
+  (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :people) :name "cached_f" :base_type :type/Text}
+                 :model/FieldValues _ {:field_id field-id :type :full :values ["cached-marker"]}]
+    (let [samples (atom 0)
+          packet  (with-redefs [driver/table-rows-sample (fn [_ _ fields _ _]
+                                                           (swap! samples inc)
+                                                           [(vec (repeat (count fields) "sampled-marker"))])]
+                    (context/table-packet (t2/select-one :model/Database :id (mt/id))
+                                          (t2/select-one :model/Table :id (mt/id :people))))]
+      {:packet packet :samples @samples})))
+
+(defn- values-sent? [packet]
+  (let [s (pr-str packet)]
+    (and (str/includes? s "cached-marker") (str/includes? s "sampled-marker"))))
+
+(defn- metadata-only? [{:keys [packet samples]}]
+  (and (zero? samples)
+       (zero? (get-in packet [:sample :rows]))
+       (pos? (count (:fields packet)))
+       (every? #(and (nil? (:cached_values %)) (nil? (:sample_values %))) (:fields packet))
+       (not (str/includes? (pr-str packet) "-marker"))))
+
+(deftest values-permissions-test
+  (testing "a superuser gets cached and sampled values"
+    (let [{:keys [packet samples]} (mt/with-current-user (mt/user->id :crowberto) (current-user-packet!))]
+      (is (= 1 samples))
+      (is (values-sent? packet))
+      (is (nil? (get-in packet [:sample :error])))))
+  (testing "a user who may query the whole table gets cached and sampled values"
+    (let [{:keys [packet]} (mt/with-current-user (mt/user->id :rasta) (current-user-packet!))]
+      (is (values-sent? packet))
+      (is (nil? (get-in packet [:sample :error])))))
+  (testing "a user with blocked view-data on the table gets no values and the reason"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-perm-for-group-and-table! (perms/all-users-group) (mt/id :people) :perms/view-data :blocked
+          (let [result (mt/with-current-user (mt/user->id :rasta) (current-user-packet!))]
+            (is (metadata-only? result))
+            (is (= "the current user cannot query this table" (get-in result [:packet :sample :error]))))))))
+  (testing "with no current user no values are read"
+    (let [result (current-user-packet!)]
+      (is (metadata-only? result))
+      (is (= "the current user cannot query this table" (get-in result [:packet :sample :error]))))))
+
+(deftest values-sandboxed-test
+  (testing "a user with a sandbox on the table gets no values and the reason"
+    (met/with-gtaps! {:gtaps {:people {}}}
+      (let [result (current-user-packet!)]
+        (is (metadata-only? result))
+        (is (= "a sandbox applies to this table for the current user" (get-in result [:packet :sample :error])))))))
+
+(deftest values-impersonated-test
+  (testing "a user with an enforced impersonation on the database gets no values and the reason"
+    (mt/with-premium-features #{:advanced-permissions}
+      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                     :attributes     {"impersonation_attr" "impersonation_role"}}
+        (let [result (current-user-packet!)]
+          (is (metadata-only? result))
+          (is (= "connection impersonation applies to this database for the current user"
+                 (get-in result [:packet :sample :error]))))))))
+
+(deftest values-routed-database-test
+  (mt/with-dynamic-fn-redefs [database-routing/db-routing-enabled? (constantly true)]
+    (testing "a non-superuser on a routed database gets no values and the reason"
+      (let [result (mt/with-current-user (mt/user->id :rasta) (current-user-packet!))]
+        (is (metadata-only? result))
+        (is (= "this database uses database routing" (get-in result [:packet :sample :error])))))
+    (testing "a superuser on a routed database gets values"
+      (is (values-sent? (:packet (mt/with-current-user (mt/user->id :crowberto) (current-user-packet!))))))))

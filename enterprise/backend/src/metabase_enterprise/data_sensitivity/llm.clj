@@ -8,6 +8,7 @@
   (:require
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
+   [com.climate.claypoole.impl :as cp.impl]
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -17,7 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.util.concurrent Callable ExecutionException ExecutorService Future)))
+   (java.util.concurrent ExecutorService Future)))
 
 (set! *warn-on-reflection* true)
 
@@ -133,12 +134,28 @@
 (defn- human-set-marker [{:keys [human_set]} k]
   (when (contains? human_set k) " [human-set]"))
 
+(def value-budget
+  "Most characters of rendered values on one field line, quotes and separators included. Values are added in order,
+  sample values first, until the next one would go over the budget."
+  2000)
+
+(defn- budgeted-values
+  "The first of `values`, quoted, whose joined length stays within [[value-budget]]."
+  [values]
+  (:kept (reduce (fn [{:keys [kept used] :as acc} q]
+                   (let [used (+ used (count q) (if (seq kept) 2 0))]
+                     (if (> used value-budget)
+                       (reduced acc)
+                       {:kept (conj kept q) :used used})))
+                 {:kept [] :used 0}
+                 (map quoted values))))
+
 (defn render-field-line
   "One line of the `<fields>` block. The current `data_sensitivity` is deliberately absent so the model's answer is
   independent of the deterministic classifier's."
   [{:keys [name base_type database_type semantic_type description display_name fk_target fingerprint
            cached_values sample_values] :as field}]
-  (let [values (distinct (concat sample_values cached_values))]
+  (let [values (budgeted-values (distinct (concat sample_values cached_values)))]
     (str "- " name
          " (" (subs (str base_type) 1) (when database_type (str ", " database_type))
          (when semantic_type (str "; semantic: " (subs (str semantic_type) 1) (human-set-marker field :semantic_type)))
@@ -146,7 +163,7 @@
          (when-not (str/blank? description) (str "; description: " (quoted description) (human-set-marker field :description)))
          (when fk_target (str "; fk -> " fk_target))
          (when-let [fp (fingerprint-fragment fingerprint)] (str "; " fp))
-         (when (seq values) (str "; values: " (str/join ", " (map quoted values))))
+         (when (seq values) (str "; values: " (str/join ", " values)))
          ")")))
 
 (defn user-message
@@ -295,29 +312,38 @@
   "Fields per LLM call. Wider tables are split into independent calls that each repeat the table block."
   60)
 
+(def default-char-budget
+  "Most characters of user message per LLM call, about 10k tokens. With [[value-budget]] at 2,000, a field line alone
+  is over this budget only when its description is very long."
+  40000)
+
+(when-not config/is-prod?
+  (assert (< (* 10 value-budget) default-char-budget) "a field's values must be a small part of one call"))
+
+(defn- chunk-fields
+  "Split the fields of `packet` into chunks in order. A chunk ends at `chunk-size` fields, or when the next field line
+  would put the user message over `char-budget`. A field line over the budget alone gets a chunk of its own. The size
+  is an upper bound: the message with no fields, room for the digits of the field count, and each line plus a
+  newline."
+  [packet chunk-size char-budget]
+  (let [overhead (+ (count (user-message packet [])) (dec (count (str chunk-size))))
+        close    (fn [{:keys [chunks chunk]}] (cond-> chunks (seq chunk) (conj chunk)))]
+    (close (reduce (fn [{:keys [chunk size] :as acc} field]
+                     (let [line (inc (count (render-field-line field)))]
+                       (if (and (seq chunk)
+                                (or (= chunk-size (count chunk))
+                                    (> (+ size line) char-budget)))
+                         {:chunks (close acc) :chunk [field] :size (+ overhead line)}
+                         (assoc acc :chunk (conj chunk field) :size (+ size line)))))
+                   {:chunks [] :chunk [] :size overhead}
+                   (:fields packet)))))
+
 (def pool-size
   "Threads in the chunk pool: the instance-wide limit on LLM calls in flight from this module."
   3)
 
 (defonce ^:private ^ExecutorService pool
   (cp/threadpool pool-size {:name "data-sensitivity-llm" :daemon true}))
-
-(defn- map-chunks
-  "Apply `f` to every chunk on [[pool]] and return the results in chunk order. Tasks run under the caller's dynamic
-  bindings: the Metabot permission binding and the current user. The first failure in chunk order is rethrown as `f`
-  threw it, and the other chunks are cancelled. Only chunk calls run on the pool; a task never submits to it, so the
-  pool cannot deadlock."
-  [chunks f]
-  (let [futures (mapv (fn [chunk] (.submit pool ^Callable (bound-fn* #(f chunk)))) chunks)]
-    (try
-      (mapv (fn [^Future fut]
-              (try
-                (.get fut)
-                (catch ExecutionException e
-                  (throw (.getCause e)))))
-            futures)
-      (finally
-        (run! #(.cancel ^Future % true) futures)))))
 
 (mr/def ::classification
   [:map
@@ -332,20 +358,45 @@
 (mr/def ::classify-options
   [:map {:closed true}
    [:model      {:optional true} [:maybe :string]]
-   [:chunk-size {:optional true} [:maybe pos-int?]]])
+   [:chunk-size  {:optional true} [:maybe pos-int?]]
+   [:char-budget {:optional true} [:maybe pos-int?]]])
 
-(mu/defn classify-packet :- ::classification
-  "Classify every field of `packet` in chunks of `chunk-size` on the shared pool, merging parsed entries by field
-  name. The first chunk failure fails the packet. `model` defaults to the mini model. A packet with no fields makes
-  no call."
+(mr/def ::submitted
+  "The chunk calls of one packet on [[pool]], from [[submit-packet]], for [[collect-packet]]."
+  [:map {:closed true}
+   [:model   :string]
+   [:futures [:sequential [:fn #(instance? Future %)]]]])
+
+(mu/defn submit-packet :- ::submitted
+  "Submit one call per chunk of `packet` to [[pool]] and return without waiting. A chunk holds at most `chunk-size`
+  fields and a user message within `char-budget` characters, see [[chunk-fields]]. `cp/future` runs each task under the
+  caller's dynamic bindings: the Metabot permission binding and the current user. `model` defaults to the mini model.
+  A packet with no fields submits nothing. Only chunk calls run on the pool; a task never submits to it, so the pool cannot
+  deadlock. A caller that stops before [[collect-packet]] returns must call [[cancel-packet]]."
   [packet :- ::context/packet
-   & {:keys [model chunk-size]} :- [:maybe ::classify-options]]
-  (let [model  (or model (metabot.settings/llm-mini-model))
-        chunks (vec (partition-all (or chunk-size default-chunk-size) (:fields packet)))
-        calls  (map-chunks chunks
-                           (fn [fields]
-                             (let [{:keys [result parts]} (call! model packet fields)]
-                               (assoc (parse-response fields result) :usage (usage-from-parts parts)))))]
+   & {:keys [model chunk-size char-budget]} :- [:maybe ::classify-options]]
+  (let [model (or model (metabot.settings/llm-mini-model))]
+    {:model   model
+     :futures (mapv (fn [fields]
+                      (cp/future pool
+                                 (let [{:keys [result parts]} (call! model packet fields)]
+                                   (assoc (parse-response fields result) :usage (usage-from-parts parts)))))
+                    (chunk-fields packet
+                                  (or chunk-size default-chunk-size)
+                                  (or char-budget default-char-budget)))}))
+
+(defn cancel-packet
+  "Cancel the chunk calls of a [[submit-packet]] result that have not finished, last chunk first. The pool runs chunks
+  in submit order, so every chunk that waits is cancelled before a running chunk is interrupted and frees a thread."
+  [{:keys [futures]}]
+  (run! #(.cancel ^Future % true) (reverse futures)))
+
+(mu/defn collect-packet :- ::classification
+  "Wait for the chunk calls of a [[submit-packet]] result in chunk order and merge the parsed entries by field name.
+  The first failure in chunk order is rethrown as the chunk threw it. Nothing is cancelled here: the caller cancels
+  the other chunks with [[cancel-packet]], in the order its run needs."
+  [{:keys [model futures]} :- ::submitted]
+  (let [calls (mapv cp.impl/deref-fixing-exceptions futures)]
     {:model    model
      :requests (count calls)
      :usage    (reduce (partial merge-with +)
@@ -355,3 +406,14 @@
      :counts   (reduce (partial merge-with +)
                        {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 0 :semantic-dropped 0}
                        (map :counts calls))}))
+
+(mu/defn classify-packet :- ::classification
+  "Classify every field of `packet` in chunks on the shared pool and wait for the result: a [[submit-packet]]
+  followed by a [[collect-packet]]. The first chunk failure fails the packet. A packet with no fields makes no call."
+  [packet :- ::context/packet
+   & {:as opts} :- [:maybe ::classify-options]]
+  (let [submitted (submit-packet packet opts)]
+    (try
+      (collect-packet submitted)
+      (finally
+        (cancel-packet submitted)))))

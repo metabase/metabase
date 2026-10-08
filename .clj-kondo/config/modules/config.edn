@@ -3795,7 +3795,8 @@
            driver
            lib.schema
            metabot
-           request
+           models
+           permissions
            util
            util.config
            warehouse-schema-overlay

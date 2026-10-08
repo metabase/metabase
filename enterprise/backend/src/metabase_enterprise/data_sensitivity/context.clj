@@ -2,12 +2,18 @@
   "Builds the per-table packet the LLM data-sensitivity classifier consumes: app-DB metadata for every active field
   of a table plus, when `:include-values?` is true, cached FieldValues and a small warehouse row sample. The row
   sample is the only warehouse query; a failure there is recorded under `[:sample :error]` and the packet still
-  builds so a broken connection degrades to schema-only classification."
+  builds so a broken connection degrades to schema-only classification. Values are read only when the current user
+  may see all rows of the table (see [[values-restriction]]); otherwise the packet is schema-only and
+  `[:sample :error]` says why."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-sensitivity.db :as db]
+   [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -170,6 +176,29 @@
       (log/warnf e "Failed to sample rows for table %d" (:id table))
       {:values nil :error (ex-message e)})))
 
+(defn- values-restriction
+  "Why the current user may not send the values of `table` to the model, or nil when they may. A superuser may. Other
+  users may only when they can query the table (the check of `GET /api/field/:id/values`), no sandbox applies to the
+  table, no connection impersonation applies to the database, and the database uses no database routing. A
+  sandbox, an impersonation role, or a routing destination shows only part of the data, and the labels apply to all
+  of it, so such tables are classified on metadata alone. Fails closed when no user is bound."
+  [database table]
+  (cond
+    api/*is-superuser?*
+    nil
+
+    (not (mi/can-query? table))
+    "the current user cannot query this table"
+
+    (some #(= (:id table) (:table_id %)) (perms/sandboxes-for-user))
+    "a sandbox applies to this table for the current user"
+
+    (perms/impersonation-enforced-for-db? database)
+    "connection impersonation applies to this database for the current user"
+
+    (database-routing/db-routing-enabled? database)
+    "this database uses database routing"))
+
 (defn- field-entry
   "The packet entry for `field`, with its non-nil user-settings values taking precedence over the Field row.
   `:human_set` names the columns a user has set."
@@ -201,14 +230,19 @@
 
 (mu/defn table-packet :- ::packet
   "Build the classification packet for `table` of `database`. Hidden and sensitive fields are included; retired and
-  inactive fields are not. The row sample runs through the query processor, so callers that act on behalf of a user
-  should wrap this in `request/as-admin` and `database-routing/with-database-routing-off`."
+  inactive fields are not. Values are read as the current user: when [[values-restriction]] gives a reason, no
+  values are read and `[:sample :error]` carries it. The row sample runs through the query processor with the
+  permissions of the current user. A superuser on a routed database samples the router database only inside
+  `database-routing/with-database-routing-off`."
   [database :- (ms/InstanceOf :model/Database)
    table    :- (ms/InstanceOf :model/Table)
    & {:as opts} :- [:maybe ::options]]
   (let [{:keys [include-values? sample-rows truncation cached-values-cap] :as opts}
         (with-defaults opts)
 
+        restriction     (when include-values?
+                          (values-restriction database table))
+        include-values? (and include-values? (nil? restriction))
         fields    (db/active-fields (:id table))
         field-ids (map :id fields)
         cached    (when include-values?
@@ -230,4 +264,4 @@
      :fields (mapv #(field-entry % ctx) fields)
      :sample {:rows       (if include-values? sample-rows 0)
               :truncation truncation
-              :error      sample-error}}))
+              :error      (or restriction sample-error)}}))

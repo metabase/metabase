@@ -1,14 +1,17 @@
 (ns metabase-enterprise.data-sensitivity.core
   "Public surface of the LLM data-sensitivity classifier. [[classify-table!]] builds the packet, calls the model, and
   diffs the proposal against the current `data_sensitivity` of every field; [[classify-database!]] runs it over the
-  active tables of a database, one table after another. A table that fails becomes an error entry and the run
-  continues. The result is a proposal the caller renders or evaluates. A dry run is the default and writes nothing.
-  A commit classifies again and writes the labels of that run; it does not apply an earlier dry run. The model output
-  can change between runs, even at temperature 0, so committed labels can differ from what a dry run showed.
+  active tables of a database, with the chunks of several tables on the shared pool at once. A table that fails
+  becomes an error entry and the run continues; an interrupt stops the run. The result is a proposal the caller
+  renders or evaluates. Without `:commit?` a run is a dry run and writes nothing; the API commits by default and
+  passes `dry_run=true` as a run without `:commit?`. A commit after a dry run classifies again and writes the labels
+  of that new run. The model output can change between runs, even at temperature 0, so committed labels can differ
+  from what the dry run showed.
 
   The Metabot group permissions are bypassed for the call because the trigger is gated on database write access
   instead; the instance gates (Metabot enabled, provider configured, usage limits) still apply and are reported by
-  [[unavailable-reason]]. Result keys are snake_case because the maps are API responses."
+  [[unavailable-reason]]. Row samples and cached values are read as the current user and only when that user may see
+  all rows of the table; see [[context/table-packet]]. Result keys are snake_case because the maps are API responses."
   (:require
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.db :as db]
@@ -17,12 +20,13 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.metabot.core :as metabot]
-   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (java.util.concurrent CancellationException)))
 
 (set! *warn-on-reflection* true)
 
@@ -260,16 +264,40 @@
     (throw (ex-info (format "Table %d has fields with duplicate names: %s" (:id table) (pr-str (sort dupes)))
                     {:table-id (:id table) :duplicate-names (vec (sort dupes))}))))
 
-(mu/defn- classify-table* :- ::table-result
+(mr/def ::submitted-table
+  [:map {:closed true}
+   [:table     (ms/InstanceOf :model/Table)]
+   [:opts      [:maybe ::table-options]]
+   [:packet    ::context/packet]
+   [:submitted ::llm/submitted]])
+
+(defn- throw-if-interrupted!
+  "Throw an `InterruptedException` when the calling thread is interrupted. The interrupt flag stays set."
+  []
+  (when (.isInterrupted (Thread/currentThread))
+    (throw (InterruptedException. "Data-sensitivity classification interrupted"))))
+
+(mu/defn- submit-table :- ::submitted-table
+  "Build the packet of `table` on the calling thread, as the current user with database routing off, and submit its chunk calls
+  to the pool with all Metabot permissions granted. Returns without waiting; the result goes to [[finish-table]].
+  When the thread is interrupted during the packet build, throws and submits nothing."
   [database :- (ms/InstanceOf :model/Database)
    table    :- (ms/InstanceOf :model/Table)
    opts     :- [:maybe ::table-options]]
-  (let [packet         (request/as-admin
-                         (database-routing/with-database-routing-off
-                           (context/table-packet database table (dissoc opts :model :chunk-size :commit?))))
-        _              (assert-unique-names! table (:fields packet))
-        classification (metabot/do-with-all-metabot-permissions
-                        #(llm/classify-packet packet (select-keys opts [:model :chunk-size])))
+  (let [packet (database-routing/with-database-routing-off
+                 (context/table-packet database table (dissoc opts :model :chunk-size :commit?)))]
+    (assert-unique-names! table (:fields packet))
+    (throw-if-interrupted!)
+    {:table     table
+     :opts      opts
+     :packet    packet
+     :submitted (metabot/do-with-all-metabot-permissions
+                 #(llm/submit-packet packet (select-keys opts [:model :chunk-size])))}))
+
+(mu/defn- finish-table :- ::table-result
+  "Wait for the chunk calls of a [[submit-table]] result, diff the proposal, and commit it when `:commit?`."
+  [{:keys [table opts packet submitted]} :- ::submitted-table]
+  (let [classification (llm/collect-packet submitted)
         fields         (cond->> (mapv (fn [field]
                                         (diff-field field (get-in classification [:fields (:name field)])))
                                       (:fields packet))
@@ -291,54 +319,145 @@
   [[context/table-packet]] plus `:model` and `:chunk-size` for [[llm/classify-packet]]. The chunks run on the shared
   pool of [[llm/classify-packet]] and the first chunk failure fails the table. When
   values are requested the database connection is tested first; if it fails, fields are classified on metadata
-  alone and `:sample_error` carries the connection error. The row sample runs as admin with database routing off;
-  the LLM call runs with all Metabot permissions granted.
+  alone and `:sample_error` carries the connection error. Values are read as the current user with database routing
+  off, and only when that user may see all rows of the table; otherwise the table is classified on metadata alone and
+  `:sample_error` says why. The LLM call runs with all Metabot permissions granted.
 
   A dry run unless `:commit?`: writes nothing. With `:commit?`, every `:new` or `:disagree` field of this run whose
   label no human set gets the proposed `data_sensitivity`, in one transaction, and is marked `:committed`. Semantic
-  types are never written. This run is a new model call, so its labels can differ from an earlier dry run."
+  types are never written. A commit after a dry run is a new model call, so its labels can differ from what the dry
+  run showed."
   [table :- (ms/InstanceOf :model/Table)
    & {:as opts} :- [:maybe ::table-options]]
   (let [database (db/database (:db_id table))
-        error    (sample-connection-error database opts)]
-    (cond-> (classify-table* database table (cond-> opts error (assoc :include-values? false)))
-      error (assoc :sample_error error))))
+        error    (sample-connection-error database opts)
+        entry    (submit-table database table (cond-> opts error (assoc :include-values? false)))]
+    (try
+      (cond-> (finish-table entry)
+        error (assoc :sample_error error))
+      (finally
+        (llm/cancel-packet (:submitted entry))))))
 
 (defn- error-code [e]
   (let [{:keys [error-code type]} (ex-data e)]
     (some-> (or error-code type) u/qualified-name)))
 
-(defn- table-error [table e]
-  (let [{:keys [api-error provider status]} (ex-data e)]
-    (if api-error
+(def ^:private max-logged-traces
+  "The most table failures of one database run that log a stack trace. Later failures log one line with no trace."
+  3)
+
+(defn- table-error
+  "The error entry for `table`. Log the failure. A failure that is not a provider rejection logs its stack trace while
+  the run-local `traces-left` is above zero, and decrements it."
+  [table e traces-left]
+  (let [{:keys [api-error provider status]} (ex-data e)
+        message (or (ex-message e) (str (class e)))
+        code    (error-code e)]
+    (cond
+      api-error
       (log/warnf "Data-sensitivity classification failed for table %d: %s provider=%s status=%s"
-                 (:id table) (ex-message e) provider status)
-      (log/warnf e "Data-sensitivity classification failed for table %d" (:id table))))
-  {:table_id   (:id table)
-   :table_name (:name table)
-   :schema     (:schema table)
-   :error      (or (ex-message e) (str (class e)))
-   :error_code (error-code e)})
+                 (:id table) message provider status)
+
+      (pos? @traces-left)
+      (do (vswap! traces-left dec)
+          (log/warnf e "Data-sensitivity classification failed for table %d" (:id table)))
+
+      :else
+      (log/warnf "Data-sensitivity classification failed for table %d: %s error_code=%s" (:id table) message code))
+    {:table_id   (:id table)
+     :table_name (:name table)
+     :schema     (:schema table)
+     :error      message
+     :error_code code}))
+
+(def ^:private max-tables-in-flight
+  "The most tables of a database run whose chunks are submitted and not yet collected. Twice the pool size keeps the
+  pool busy while the calling thread builds the next packets, and bounds the packets held in memory."
+  (* 2 llm/pool-size))
+
+(defn- interrupt?
+  "Whether `e` comes from an interrupt rather than a failure of the table: the calling thread is interrupted, an
+  `InterruptedException` is in the cause chain (throwing it clears the flag), or a chunk was cancelled."
+  [^Throwable e]
+  (or (.isInterrupted (Thread/currentThread))
+      (instance? CancellationException e)
+      (some #(instance? InterruptedException %) (take-while some? (iterate ex-cause e)))))
+
+(defn- table-error-or-rethrow
+  "The [[table-error]] entry for `e`, or, when `e` comes from an interrupt, set the interrupt flag again and rethrow
+  `e` so the run stops."
+  [table e traces-left]
+  (when (interrupt? e)
+    (.interrupt (Thread/currentThread))
+    (throw e))
+  (table-error table e traces-left))
+
+(defn- submit-entry [database table opts traces-left]
+  (try
+    (submit-table database table opts)
+    (catch Exception e
+      (table-error-or-rethrow table e traces-left))))
+
+(defn- finish-entry [entry traces-left]
+  (if (:submitted entry)
+    (try
+      (finish-table entry)
+      (catch Exception e
+        (u/prog1 (table-error-or-rethrow (:table entry) e traces-left)
+          (llm/cancel-packet (:submitted entry)))))
+    entry))
+
+(defn- classify-tables
+  "Classify `tables` in order. The chunks of each table are submitted as soon as its packet is built, without waiting,
+  so the pool stays busy while the calling thread builds the next packets. Tables are collected, diffed, and committed
+  in order, with at most [[max-tables-in-flight]] submitted and not collected. A table whose packet build or chunks
+  throw becomes an error entry, and its other chunks are cancelled. An interrupt stops the run: the interrupt flag is
+  checked before each table, and an exception that comes from an interrupt is rethrown with the flag set. When the run
+  stops early, the chunks not yet collected are cancelled, newest first, so that no chunk that waits starts on a
+  thread a cancelled chunk frees. Only the first [[max-logged-traces]] failures of the run log a stack trace, and a run
+  with failures logs one summary line."
+  [database tables opts]
+  (let [queue       (volatile! clojure.lang.PersistentQueue/EMPTY)
+        results     (volatile! [])
+        traces-left (volatile! max-logged-traces)
+        collect!    (fn []
+                      (let [result (finish-entry (peek @queue) traces-left)]
+                        (vswap! queue pop)
+                        (vswap! results conj result)))]
+    (try
+      (doseq [table tables]
+        (throw-if-interrupted!)
+        (vswap! queue conj (submit-entry database table opts traces-left))
+        (while (when-let [head (peek @queue)]
+                 (or (not (:submitted head))
+                     (> (count @queue) max-tables-in-flight)))
+          (collect!)))
+      (while (seq @queue)
+        (collect!))
+      (when-let [failed (seq (filter :error @results))]
+        (log/warnf "Data-sensitivity classification failed for %d of %d tables of database %d: error_codes=%s"
+                   (count failed) (count @results) (:id database) (frequencies (map :error_code failed))))
+      @results
+      (finally
+        (run! #(some-> (:submitted %) llm/cancel-packet) (reverse @queue))))))
 
 (mu/defn classify-database! :- ::database-result
-  "Run [[classify-table!]] over every active table of `database`, restricted to `:schema` when given, one table after
-  another on the calling thread. The database connection is tested once first; if it fails, every table is
-  classified on metadata alone and `:sample_error` carries the connection error. A table whose classification throws
-  is logged, becomes an error entry, and the run continues with the next table; `:failed` counts them. With
-  `:commit?` each table commits on its own as it finishes; without it, a dry run that writes nothing. A commit
-  classifies again, so its labels can differ from an earlier dry run. Synchronous; intended for small and medium databases until
-  an async job exists."
+  "Run [[classify-table!]] over every active table of `database`, restricted to `:schema` when given. Packets are built
+  on the calling thread, and the chunks of up to [[max-tables-in-flight]] tables wait on the shared pool at once, so
+  single-chunk tables also keep every pool thread busy. Tables are collected, diffed, and committed in order. The
+  database connection is tested once first; if it fails, every table is classified on metadata alone and
+  `:sample_error` carries the connection error. A table whose classification throws is logged, becomes an error
+  entry, and the run continues with the next table; `:failed` counts them. An interrupt of the calling thread, for
+  example `future-cancel`, stops the run: it throws, cancels the chunks not yet collected, and commits no more tables.
+  With `:commit?` each table commits on its own after its own chunks are collected; without it, a dry run that writes
+  nothing. A commit after a dry run classifies again, so its labels can differ from what the dry run showed.
+  Synchronous; intended for small and medium databases until an async job exists."
   [database :- (ms/InstanceOf :model/Database)
    & {:keys [schema] :as opts} :- [:maybe ::database-options]]
   (let [sample-error (sample-connection-error database opts)
         table-opts   (cond-> (dissoc opts :schema)
                        sample-error (assoc :include-values? false))
-        results      (mapv (fn [table]
-                             (try
-                               (classify-table* database table table-opts)
-                               (catch Exception e
-                                 (table-error table e))))
-                           (db/active-tables (:id database) schema))
+        results      (classify-tables database (db/active-tables (:id database) schema) table-opts)
         succeeded    (remove :error results)]
     {:database_id  (:id database)
      :schema       schema

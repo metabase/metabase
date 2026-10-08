@@ -1,9 +1,10 @@
 (ns metabase-enterprise.data-sensitivity.api
   "`/api/ee/data-sensitivity` routes. Both endpoints run the LLM data-sensitivity classifier and return the diff. A
-  dry run is the default and writes nothing. `?commit=true` requires a superuser, runs the classifier again, and
-  writes the labels of that new run, not those of an earlier dry run: the model output can change between runs, so
-  the written labels can differ from what a dry run showed. The caller needs write access to the database; the
-  Metabot instance gates (enabled, provider configured, usage limit) are reported as a 400 before any work starts."
+  run commits by default and requires a superuser. `?dry_run=true` previews the diff and writes nothing. A commit
+  after a dry run runs the classifier again and writes the labels of that new run: the model output can change
+  between runs, so the written labels can differ from what the dry run showed. The caller needs write access to the
+  database; the Metabot instance gates (enabled, provider configured, usage limit) are reported as a 400 before any
+  work starts."
   (:require
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.db :as db]
@@ -29,13 +30,15 @@
   (when-let [reason (core/unavailable-reason)]
     (throw (unavailable-ex reason))))
 
-(def ^:private CommitParams
+(def ^:private DryRunParams
   [:map {:closed true}
-   [:commit {:default false} [:maybe ms/BooleanValue]]])
+   [:dry_run {:default false} [:maybe ms/BooleanValue]]])
 
-(defn- check-commit! [commit]
-  (when commit
-    (api/check-superuser)))
+(defn- check-commit! [dry-run]
+  (when-not (or dry-run api/*is-superuser?*)
+    (throw (ex-info
+            (tru "Only admins can write data-sensitivity labels. Pass dry_run=true to preview the classification.")
+            {:status-code 403}))))
 
 (defn- classify
   "Run `thunk` and translate a failure of a single-table run. A provider rejection becomes a 502 carrying the
@@ -60,38 +63,38 @@
 
 (api.macros/defendpoint :post "/table/:id" :- ::core/table-result
   "Classify every active field of the active table with the LLM and diff the proposal against the current
-  `data_sensitivity` labels. A dry run is the default and writes nothing. With `commit`, classify again and write the
-  proposed label of every new or differing field that no human labeled; semantic types are never written. Commit
-  does not apply an earlier dry run: the model output can change between runs, so the written labels can differ from
-  what a dry run showed."
+  `data_sensitivity` labels. By default the run commits: it writes the proposed label of every new or differing field
+  that no human labeled, and requires a superuser; semantic types are never written. With `dry_run`, the run writes
+  nothing. A commit after a dry run classifies again: the model output can change between runs, so the written labels
+  can differ from what the dry run showed."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [commit]} :- CommitParams]
+   {:keys [dry_run]} :- DryRunParams]
   (let [table (api/check-404 (db/active-table id))]
     (api/write-check :model/Database (:db_id table))
-    (check-commit! commit)
+    (check-commit! dry_run)
     (check-available!)
-    (classify #(core/classify-table! table :commit? commit))))
+    (classify #(core/classify-table! table :commit? (not dry_run)))))
 
 (api.macros/defendpoint :post "/database/:id" :- ::core/database-result
   "Classify every active table of the database, or only those in `schema` when given, with the LLM and diff the
-  proposals against the current `data_sensitivity` labels. A dry run is the default and writes nothing. With
-  `commit`, classify again and write the proposed label of every new or differing field that no human labeled, table
-  by table; semantic types are never written. Commit does not apply an earlier dry run: the model output can change
-  between runs, so the written labels can differ from what a dry run showed. A table that fails is an error entry in
-  a 200 response and the run continues. A `schema` with no active tables is a 404. Synchronous: the whole scan runs
-  within the request, so classify a large database one schema at a time."
+  proposals against the current `data_sensitivity` labels. By default the run commits: it writes the proposed label
+  of every new or differing field that no human labeled, table by table, and requires a superuser; semantic types are
+  never written. With `dry_run`, the run writes nothing. A commit after a dry run classifies again: the model output
+  can change between runs, so the written labels can differ from what the dry run showed. A table that fails is an
+  error entry in a 200 response and the run continues. A `schema` with no active tables is a 404. Synchronous: the
+  whole scan runs within the request, so classify a large database one schema at a time."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [commit]} :- CommitParams
+   {:keys [dry_run]} :- DryRunParams
    {:keys [schema]} :- [:maybe [:map {:closed true}
                                 [:schema {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [database (api/write-check :model/Database id)]
     (when schema
       (api/check-404 (db/active-schema? id schema)))
-    (check-commit! commit)
+    (check-commit! dry_run)
     (check-available!)
-    (core/classify-database! database :schema schema :commit? commit)))
+    (core/classify-database! database :schema schema :commit? (not dry_run))))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the data-sensitivity API."

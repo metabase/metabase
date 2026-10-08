@@ -107,6 +107,22 @@
       (is (not (str/includes? msg "SEC_KEY")))
       (is (not (str/includes? msg "human-set"))))))
 
+(defn- rendered-values [line]
+  (second (re-find #"; values: (.*)\)$" line)))
+
+(deftest render-field-line-value-budget-test
+  (let [values (mapv #(str (char (+ 65 %)) (apply str (repeat 499 "x"))) (range 23))
+        line   (llm/render-field-line (field "NOTES" :sample_values (subvec values 0 8) :cached_values (subvec values 8)))
+        kept   (re-seq #"\"([^\"]*)\"" (rendered-values line))]
+    (testing "rendered values stay within the per-field budget"
+      (is (<= (count (rendered-values line)) llm/value-budget)))
+    (testing "the first values are kept, in order, sample values before cached values"
+      (is (= 3 (count kept)))
+      (is (= (take 3 values) (map second kept)))))
+  (testing "values within the budget are all rendered"
+    (is (= "\"a\", \"b\", \"c\""
+           (rendered-values (llm/render-field-line (field "X" :sample_values ["a" "b"] :cached_values ["b" "c"])))))))
+
 (deftest response-schema-test
   (let [item (get-in llm/response-schema [:properties :fields :items])]
     (is (= ["name" "reasoning" "data_sensitivity" "confidence" "semantic_type"] (:required item)))
@@ -196,6 +212,43 @@
                           (dissoc (:opts %) :request-id))
                       @calls))
           (is (= 3 (count (set (map #(get-in % [:opts :request-id]) @calls))))))))))
+
+(defn- long-values [prefix]
+  (mapv #(subs (str prefix "-" % "-" (apply str (repeat 500 "v"))) 0 500) (range 23)))
+
+(deftest classify-packet-char-budget-test
+  (let [fields (for [i (range 60)]
+                 (let [values (long-values (str "F" i))]
+                   (field (str "F" i) :sample_values (subvec values 0 8) :cached_values (subvec values 8))))
+        calls  (atom [])]
+    (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
+      (let [result   (llm/classify-packet (packet fields) :model "test/model")
+            contents (map #(:content (second (:messages %))) @calls)]
+        (testing "60 fields of 23 500-character values take more than one call"
+          (is (< 1 (:requests result))))
+        (testing "every user message is within the per-call budget"
+          (is (every? #(<= (count %) llm/default-char-budget) contents)))
+        (testing "every field is in exactly one call and classified once"
+          (is (= (map :name fields)
+                 (sort-by #(parse-long (subs % 1))
+                          (mapcat #(map second (re-seq #"(?m)^- (F\d+) \(" %)) contents))))
+          (is (= (set (map :name fields)) (set (keys (:fields result)))))
+          (is (every? #(= :labeled (:status %)) (vals (:fields result)))))
+        (testing "max-tokens follows the field count of each chunk"
+          (is (= (sort (map #(llm/max-tokens (count (re-seq #"(?m)^- F\d+ \(" %))) contents))
+                 (sort (map :max-tokens @calls)))))))))
+
+(deftest classify-packet-oversize-field-test
+  (let [big    (field "BIG" :description (apply str (repeat 300 "long description ")))
+        fields [(field "A") big (field "B")]
+        calls  (atom [])]
+    (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
+      (let [result (llm/classify-packet (packet fields) :model "test/model" :char-budget 2000)]
+        (testing "a field over the per-call budget alone is sent in a chunk of its own"
+          (is (= #{["A"] ["BIG"] ["B"]}
+                 (set (map #(mapv second (re-seq #"(?m)^- (\S+) \(" (:content (second (:messages %))))) @calls)))))
+        (testing "every field is still classified"
+          (is (= #{"A" "BIG" "B"} (set (keys (:fields result))))))))))
 
 (defn- latched-call
   "A `canned-call` stand-in that holds each call until `latch` has counted down to zero or 5 seconds pass, recording

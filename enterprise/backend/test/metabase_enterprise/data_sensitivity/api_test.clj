@@ -17,6 +17,9 @@
 (defn- database-url [db-id]
   (str "ee/data-sensitivity/database/" db-id))
 
+(defn- dry-run [url]
+  (str url "?dry_run=true"))
+
 (defn- field-rows [table-ids]
   (t2/select-fn-vec (juxt :id :data_sensitivity :semantic_type) :model/Field
                     {:where    [:in :table_id table-ids]
@@ -99,7 +102,7 @@
   (mt/with-premium-features #{:data-sensitivity}
     (testing "a provider rejection of a table run is a 502 carrying the vendor message and nothing else from the response"
       (let [body (core-test/do-with-llm! (throwing-llm nil provider-rejection)
-                                         #(mt/user-http-request :crowberto :post 502 (table-url (mt/id :people))))]
+                                         #(mt/user-http-request :crowberto :post 502 (dry-run (table-url (mt/id :people)))))]
         (is (= {:message    "Your credit balance is too low"
                 :reason     "provider-error"
                 :error-code "provider-error"}
@@ -109,7 +112,7 @@
             response (core-test/do-with-llm! (throwing-llm nil (ex-info "Unauthorized" {:api-error true :status 401
                                                                                         :provider "anthropic"
                                                                                         :error-code :provider-api-error}))
-                                             #(mt/user-http-request :crowberto :post 200 (database-url (mt/id))))]
+                                             #(mt/user-http-request :crowberto :post 200 (dry-run (database-url (mt/id)))))]
         (is (= (count tables) (:failed response) (count (:tables response))))
         (is (every? #(= {:error "Unauthorized" :error_code "provider-api-error"} (select-keys % [:error :error_code]))
                     (:tables response)))))
@@ -117,7 +120,7 @@
       (let [tables   (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:schema :asc] [:name :asc]]})
             failing  (:name (last tables))
             response (core-test/do-with-llm! (throwing-llm #{failing} provider-rejection)
-                                             #(mt/user-http-request :crowberto :post 200 (database-url (mt/id))))]
+                                             #(mt/user-http-request :crowberto :post 200 (dry-run (database-url (mt/id)))))]
         (is (= 1 (:failed response)))
         (is (=? {:table_name failing :error "Your credit balance is too low" :error_code "provider-api-error"}
                 (last (:tables response))))))
@@ -125,11 +128,11 @@
       (let [limit (ex-info "limit" {:type :metabot/usage-limit-reached :error-code "ai_usage_limit_reached"})]
         (is (=? {:message "The AI usage limit has been reached." :reason "usage-limit"}
                 (core-test/do-with-llm! (throwing-llm nil limit)
-                                        #(mt/user-http-request :crowberto :post 400 (table-url (mt/id :people))))))))
+                                        #(mt/user-http-request :crowberto :post 400 (dry-run (table-url (mt/id :people)))))))))
     (testing "any other failure is still an unexpected error"
       (is (=? {:message "kaboom"}
               (core-test/do-with-llm! (throwing-llm nil (ex-info "kaboom" {}))
-                                      #(mt/user-http-request :crowberto :post 500 (table-url (mt/id :people)))))))))
+                                      #(mt/user-http-request :crowberto :post 500 (dry-run (table-url (mt/id :people))))))))))
 
 (deftest classify-table-test
   (testing "the table endpoint returns the diff without :metabot-v3 and writes nothing"
@@ -143,7 +146,7 @@
               before   (field-rows [(mt/id :people)])
               response (core-test/do-with-llm!
                         (core-test/canned-llm #(get entries % {}))
-                        #(mt/user-http-request :crowberto :post 200 (table-url (mt/id :people))))
+                        #(mt/user-http-request :crowberto :post 200 (dry-run (table-url (mt/id :people)))))
               by-name  (into {} (map (juxt :name identity)) (:fields response))]
           (is (= before (field-rows [(mt/id :people)])) "the endpoint must not write to metabase_field")
           (is (=? {:table_id    (mt/id :people)
@@ -173,7 +176,7 @@
         (let [before   (field-rows (map :id tables))
               response (core-test/do-with-llm!
                         (core-test/canned-llm (constantly {}))
-                        #(mt/user-http-request :crowberto :post 200 (database-url (mt/id))))]
+                        #(mt/user-http-request :crowberto :post 200 (dry-run (database-url (mt/id)))))]
           (is (= before (field-rows (map :id tables))) "the endpoint must not write to metabase_field")
           (is (=? {:database_id (mt/id)
                    :schema      nil
@@ -187,7 +190,7 @@
               expected (filter #(= schema (:schema %)) tables)
               response (core-test/do-with-llm!
                         (core-test/canned-llm (constantly {}))
-                        #(mt/user-http-request :crowberto :post 200 (database-url (mt/id)) {:schema schema}))]
+                        #(mt/user-http-request :crowberto :post 200 (dry-run (database-url (mt/id))) {:schema schema}))]
           (is (= schema (:schema response)))
           (is (= (map :id expected) (map :table_id (:tables response)))))))))
 
@@ -198,18 +201,46 @@
       (core-test/do-with-llm!
        (core-test/canned-llm (constantly {}))
        (fn []
-         (testing "a user with database write access can run a dry run"
+         (testing "a user with database write access can run a dry run, which writes nothing"
            (let [before (field-rows [(mt/id :people)])]
              (is (=? {:table_id (mt/id :people)}
-                     (mt/user-http-request :rasta :post 200 (table-url (mt/id :people)))))
+                     (mt/user-http-request :rasta :post 200 (dry-run (table-url (mt/id :people))))))
+             (is (=? {:database_id (mt/id)}
+                     (mt/user-http-request :rasta :post 200 (dry-run (database-url (mt/id))))))
              (is (= before (field-rows [(mt/id :people)])))))
-         (testing "committing needs a superuser"
-           (let [before (field-rows [(mt/id :people)])]
-             (is (= "You don't have permissions to do that."
-                    (mt/user-http-request :rasta :post 403 (str (table-url (mt/id :people)) "?commit=true"))))
-             (is (= "You don't have permissions to do that."
-                    (mt/user-http-request :rasta :post 403 (str (database-url (mt/id)) "?commit=true"))))
+         (testing "a run without dry_run commits, so it needs a superuser and the 403 says to pass dry_run=true"
+           (let [before  (field-rows [(mt/id :people)])
+                 message (str "Only admins can write data-sensitivity labels. "
+                              "Pass dry_run=true to preview the classification.")]
+             (is (= message (mt/user-http-request :rasta :post 403 (table-url (mt/id :people)))))
+             (is (= message (mt/user-http-request :rasta :post 403 (database-url (mt/id)))))
+             (is (= message (mt/user-http-request :rasta :post 403 (str (table-url (mt/id :people)) "?dry_run=false"))))
              (is (= before (field-rows [(mt/id :people)]))))))))))
+
+(deftest dry-run-values-follow-user-permissions-test
+  (mt/with-premium-features #{:data-sensitivity :advanced-permissions}
+    (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :people :password) :type :full :values ["cached-marker"]}]
+      (testing "a superuser's dry run sends cached and sampled values to the model"
+        (let [messages (atom [])
+              response (core-test/do-with-llm!
+                        (core-test/recording-llm messages)
+                        #(mt/user-http-request :crowberto :post 200 (dry-run (table-url (mt/id :people)))))]
+          (is (nil? (:sample_error response)))
+          (is (core-test/values-rendered? @messages))
+          (is (str/includes? (pr-str @messages) "cached-marker"))))
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/manage-database :yes)
+        (mt/with-perm-for-group-and-table! (perms/all-users-group) (mt/id :people) :perms/view-data :blocked
+          (testing "a database manager with blocked view-data on the table gets a metadata-only dry run"
+            (let [messages (atom [])
+                  response (core-test/do-with-llm!
+                            (core-test/recording-llm messages)
+                            #(mt/user-http-request :rasta :post 200 (dry-run (table-url (mt/id :people)))))]
+              (is (= "the current user cannot query this table" (:sample_error response)))
+              (is (pos? (count (:fields response))))
+              (is (seq @messages))
+              (is (not (core-test/values-rendered? @messages)))
+              (is (not (str/includes? (pr-str @messages) "cached-marker"))))))))))
 
 (deftest commit-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -220,14 +251,19 @@
                                           :data_sensitivity :PII}]
       (let [llm    (core-test/canned-llm {"ds_api_new" {:data_sensitivity "PII"} "ds_api_agree" {:data_sensitivity "PII"}})
             labels #(t2/select-fn->fn :name :data_sensitivity :model/Field :table_id (:id table))]
-        (testing "a superuser commit on the table endpoint writes the new label"
+        (testing "a superuser dry run writes nothing"
           (let [response (core-test/do-with-llm!
-                          llm #(mt/user-http-request :crowberto :post 200 (str (table-url (:id table)) "?commit=true")))]
+                          llm #(mt/user-http-request :crowberto :post 200 (dry-run (table-url (:id table)))))]
+            (is (=? {:counts {:committed 0 :new 1}} response))
+            (is (= {"ds_api_new" nil "ds_api_agree" :PII} (labels)))))
+        (testing "a superuser run on the table endpoint commits by default and writes the new label"
+          (let [response (core-test/do-with-llm!
+                          llm #(mt/user-http-request :crowberto :post 200 (table-url (:id table))))]
             (is (=? {:counts {:committed 1}} response))
             (is (= {"ds_api_new" :PII "ds_api_agree" :PII} (labels))))
           (t2/update! :model/Field :table_id (:id table) :name "ds_api_new" {:data_sensitivity nil}))
-        (testing "a superuser commit on the database endpoint writes the new label"
+        (testing "a superuser run on the database endpoint commits by default and writes the new label"
           (let [response (core-test/do-with-llm!
-                          llm #(mt/user-http-request :crowberto :post 200 (str (database-url (:id db)) "?commit=true")))]
+                          llm #(mt/user-http-request :crowberto :post 200 (database-url (:id db))))]
             (is (=? {:counts {:committed 1} :tables [{:counts {:committed 1}}]} response))
             (is (= {"ds_api_new" :PII "ds_api_agree" :PII} (labels)))))))))
