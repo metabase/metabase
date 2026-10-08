@@ -140,7 +140,7 @@ const fileStub = stub("file-stub.cjs", 'module.exports = "test-file-stub";');
 const mapped = [
   [/\.(css|less)$/, () => styleStub],
   [/\.svg\?(component|source)$/, () => abs("frontend/test/__mocks__/svgMock.tsx")],
-  [/\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$/, () => fileStub],
+  [/\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)(\?url)?$/, () => fileStub],
   [/^cljs\/(.*)$/, (m) => findFile(abs(`target/cljs_dev/${m[1]}`))],
   [/^locales\/(.*)\.json$/, (m) => abs(`frontend/test/__mocks__/locales/${m[1]}.json`)],
   [/^csv-parse\/browser\/esm\/sync$/, () => abs("node_modules/csv-parse/dist/cjs/sync.cjs")],
