@@ -62,18 +62,12 @@ const nextFromParent = () =>
       if (!file) break;
       await test(file, (t) => runFile(t, file));
       const { rss } = process.memoryUsage();
-      if (process.env.NT_MEMLOG) {
-        if (globalThis.gc) globalThis.gc();
-        const heap = process.memoryUsage();
-        fs.appendFileSync(process.env.NT_MEMLOG, `${process.pid}\t${megabytes(rss)}\t${megabytes(heap.heapUsed)}\t${Object.keys(require.cache).length}\t${require("node:v8").queryObjects(require("node:module"), { format: "count" })}\t${globalThis.__nodeTestSpike.countWindows?.() ?? ""}\t${file}\n`);
-      }
       // A timed-out test leaves work running that cannot be stopped, so the
       // worker is spent: exit and let the pool start a clean one, rather than
       // skipping every remaining test in this process.
       if (globalThis.__nodeTestSpike.poisoned) return finish(RECYCLE_EXIT_CODE);
       if (megabytes(rss) > MAX_RSS_MB) return finish(RECYCLE_EXIT_CODE);
       ranHere += 1;
-      if (process.env.NT_HEAPSNAP && ranHere === Number(process.env.NT_HEAPSNAP_AFTER ?? 8)) { if (globalThis.gc) globalThis.gc(); require("node:v8").writeHeapSnapshot(process.env.NT_HEAPSNAP); }
       if (ranHere >= MAX_FILES) return finish(RECYCLE_EXIT_CODE);
     }
     return finish(0);
@@ -85,10 +79,7 @@ const nextFromParent = () =>
     if (process.env.NT_REMAINING) fs.writeFileSync(process.env.NT_REMAINING, files.slice(index + 1).join("\n") + "\n");
     if (process.env.NT_CURRENT) fs.writeFileSync(process.env.NT_CURRENT, file + "\n");
     await test(file, (t) => runFile(t, file));
-    const { rss, heapUsed } = process.memoryUsage();
-    if (process.env.NT_MEMLOG) {
-      fs.appendFileSync(process.env.NT_MEMLOG, `${process.pid}\t${megabytes(rss)}\t${megabytes(heapUsed)}\t${file}\n`);
-    }
+    const { rss } = process.memoryUsage();
     const remaining = files.slice(index + 1);
     if (globalThis.__nodeTestSpike.poisoned && remaining.length > 0) {
       console.error(`[harness] a test timed out and its work cannot be stopped, recycling with ${remaining.length} files left`);
