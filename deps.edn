@@ -630,6 +630,7 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals
+                                 :unused-ret-vals-in-try
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
                                  :wrong-arity
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
