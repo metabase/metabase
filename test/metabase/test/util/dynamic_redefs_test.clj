@@ -535,6 +535,32 @@
       (is (= [[:original :original] [:source :source]]
              [(calls) (redefined! source (constantly :source) calls)])))))
 
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest ^:synchronized one-with-redefs-of-reexport-and-source-test
+  (doseq [reexport-first? [true false]]
+    (testing (str "one `with-redefs` of both vars, restoring the " (if reexport-first? "re-export" "source") " first")
+      (let [source   (fresh-source! (fn [] :original))
+            reexport (reexport! source 'metabase.test.util.dynamic-redefs-test)
+            calls    (fn [] [(source) (reexport)])
+            stubs    (if reexport-first?
+                       (array-map reexport (constantly :stub) source (constantly :source-stub))
+                       (array-map source (constantly :source-stub) reexport (constantly :stub)))]
+        ;; The source is first redefined with the macro while both stubs are in place.
+        (with-redefs-fn stubs #(redefined! source (constantly :source) calls))
+        (is (= [[:original :original] [:source :source]]
+               [(calls) (redefined! source (constantly :source) calls)])
+            "the re-export follows its source once both stubs are gone")))))
+
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest ^:synchronized with-redefs-of-reexport-to-its-source's-function-test
+  (let [source   (fresh-source! (fn [] :original))
+        reexport (reexport! source 'metabase.test.util.dynamic-redefs-test)]
+    (redefined! reexport (constantly :reexport) reexport)
+    (testing "known limitation: a stub that is the source's own function reads as a copy, so it follows the source"
+      (is (= :source
+             (with-redefs-fn {reexport (mt/original-fn source)}
+               #(redefined! source (constantly :source) reexport)))))))
+
 (deftest reexport-of-unproxyable-value-test
   (testing "a re-export of a multimethod or of a value that is not a function is refused, like its source"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
