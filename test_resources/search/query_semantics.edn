@@ -3,7 +3,10 @@
 ;; A comparison inherits the scenario query and hits unless an engine gives an alternative {:query, :hits}.
 ;; Comparisons belong here only when at least one engine uses a different query.
 ;; `:correct` declares the intended results, which no engine need achieve.
-;; Semantic search returns the union of a keyword arm, which follows the appdb/PostgreSQL rules, and a vector arm.
+;; Semantic search returns the union of a keyword arm and a vector arm.
+;; The keyword arm gives the appdb/PostgreSQL results for every scenario here, but not for every query.
+;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
+;; does not, so a half-typed word such as "runni" finds "running" on appdb but not in the keyword arm.
 ;; Both arms are recorded, but comparisons and statistics count only the vector arm.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
