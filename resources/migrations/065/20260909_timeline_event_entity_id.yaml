@@ -28,13 +28,15 @@ databaseChangeLog:
       id: v65.zvhbd7
       author: havenchyk
       comment: Backfill entity IDs for existing timeline events
+      validCheckSum: 9:065ef0d3adb4f80c891c994e56a82df1
       changes:
         - sql:
             dbms: postgresql
             sql: UPDATE timeline_event SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
         - sql:
             dbms: mysql,mariadb
-            sql: UPDATE timeline_event SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+            # MariaDB auto-updates `timestamp` (the table's first TIMESTAMP column) unless it is assigned explicitly
+            sql: UPDATE timeline_event SET entity_id = substr(replace(uuid(), '-', ''), 1, 21), `timestamp` = `timestamp` WHERE entity_id IS NULL;
         - sql:
             dbms: h2
             sql: UPDATE timeline_event SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;

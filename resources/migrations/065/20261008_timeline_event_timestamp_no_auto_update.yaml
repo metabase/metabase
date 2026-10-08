@@ -1,0 +1,17 @@
+## On MariaDB before 10.10 (explicit_defaults_for_timestamp off), timeline_event.timestamp, the table's first TIMESTAMP
+## column, was created with ON UPDATE current_timestamp, so any UPDATE that does not set it resets the event's date.
+## Same fix as v48.00-010 for revision.timestamp: restating the column drops ON UPDATE only when the DEFAULT is explicit.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-08T20:00:00
+      author: havenchyk
+      comment: Remove ON UPDATE from timeline_event.timestamp on mysql, mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: ALTER TABLE `timeline_event` MODIFY `timestamp` timestamp(6) NOT NULL DEFAULT current_timestamp(6) COMMENT 'When the event happened';
+      rollback: []
