@@ -308,7 +308,7 @@ describe("admin > database > database routing", () => {
       assertDbRoutingDisabled(
         "Database routing can't be enabled if model persistence is enabled.",
       );
-      cy.findAllByTestId("database-model-features-section")
+      cy.findAllByTestId("database-model-persistence-section")
         .findByLabelText("Model persistence")
         .should("be.checked")
         .parent("label")
@@ -467,7 +467,7 @@ describe("admin > database > database routing", () => {
         cy.log(
           "should not be possible to enable model persistence when database routing is enabled",
         );
-        modelsSection().within(() => {
+        modelPersistenceSection().within(() => {
           cy.findByLabelText("Model persistence").should("be.disabled");
           cy.findByText(
             "Model persistence can't be enabled when database routing is enabled.",
@@ -479,7 +479,7 @@ describe("admin > database > database routing", () => {
         cy.log(
           "should not be possible to enable data actions when database routing is enabled",
         );
-        modelsSection().within(() => {
+        dataActionsSection().within(() => {
           cy.findByLabelText("Data actions").should("be.disabled");
           cy.findByText(
             "Data actions can't be enabled when database routing is enabled.",
@@ -575,8 +575,12 @@ function visitDatabaseAdminPage(databaseId: DatabaseId) {
   cy.visit(`/admin/databases/${databaseId}`);
 }
 
-function modelsSection() {
-  return cy.findByTestId("database-model-features-section");
+function modelPersistenceSection() {
+  return cy.findByTestId("database-model-persistence-section");
+}
+
+function dataActionsSection() {
+  return cy.findByTestId("database-data-actions-section");
 }
 
 function disableModelActionsViaApi(databaseId: DatabaseId) {
