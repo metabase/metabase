@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/settings";
+import {
+  useTokenRefreshUntil,
+  WAITING_REFRESH_INTERVAL,
+} from "metabase/settings";
 import {
   Box,
   Button,
@@ -15,10 +18,8 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-interface TransformsSettingUpModalProps extends Pick<
-  ModalProps,
-  "opened" | "onClose"
-> {
+interface TransformsSettingUpModalProps
+  extends Pick<ModalProps, "opened" | "onClose"> {
   isPython?: boolean;
 }
 
@@ -28,7 +29,10 @@ export const TransformsSettingUpModal = ({
   isPython = false,
 }: TransformsSettingUpModalProps) => {
   const featureToCheck = isPython ? "transforms-python" : "transforms-basic";
-  useTokenRefreshUntil(featureToCheck, { intervalMs: 1000, skip: !opened });
+  useTokenRefreshUntil(featureToCheck, {
+    intervalMs: WAITING_REFRESH_INTERVAL,
+    skip: !opened,
+  });
   const isSettingUp = !hasPremiumFeature(featureToCheck);
 
   return (
