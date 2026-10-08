@@ -46,6 +46,7 @@ export const isGeneratedCardPart = (
 // The error codes whose server-written message the chat shows as is.
 const SERVER_MESSAGE_ERROR_CODES = [
   "ai_usage_limit_reached",
+  "prompt_blocked",
   CONTEXT_FULL_ERROR_CODE,
   ...RETRIABLE_METABOT_TURN_ERROR_CODES,
 ] as const;

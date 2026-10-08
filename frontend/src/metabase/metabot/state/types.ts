@@ -34,6 +34,7 @@ export const UNRETRIABLE_METABOT_TURN_ERROR_CODES = [
   "metabase_ai_managed_locked",
   "ai_usage_limit_reached",
   "permission_denied",
+  "prompt_blocked",
 ] as const;
 
 // Errors a Retry can end differently — a provider failure resolves to the fallback provider on retry,

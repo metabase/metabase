@@ -8,6 +8,7 @@ describe("getServerErrorDisplay", () => {
     "ai_provider_auth",
     "ai_provider_unavailable",
     "provider_error",
+    "prompt_blocked",
     "ai_provider_context_full",
   ])("shows the server message for %s", (type) => {
     expect(getServerErrorDisplay({ type, message: "copy" })).toEqual({
