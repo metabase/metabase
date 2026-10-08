@@ -6,8 +6,8 @@
   [[metabase.util.retry/with-retry]]. The HTTP connection pool is sized to match the worker count so workers never
   contend for slots.
 
-  Emission is gated by [[metabase.analytics.settings/metaplow-tracking-enabled]]. The public entry point used by the
-  rest of the codebase is [[metabase.analytics.event/track-event!]], which fans out to both Snowplow and Metaplow."
+  Events go to [[collector-url]], and only while anonymous tracking is on. The public entry point used by the rest of
+  the codebase is [[metabase.analytics.event/track-event!]], which fans out to both Snowplow and Metaplow."
   (:require
    [clj-http.client :as http]
    [clj-http.conn-mgr :as conn-mgr]
@@ -16,6 +16,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -38,6 +39,17 @@
 (def ^:private payload-tag
   "Tag identifying the event source. Matches the FE constant in frontend/src/metabase/utils/metaplow.ts."
   "metabase-instance")
+
+(defn- collector-url
+  "URL of the collector that backend events go to.
+
+  That's [[metabase.analytics.settings/metaplow-url]] when set, otherwise the production collector in production
+  builds. The fallback isn't the setting's `:default` because the frontend reads the setting and should only send to
+  Metaplow where it's set explicitly."
+  []
+  (or (analytics.settings/metaplow-url)
+      (when config/is-prod?
+        "https://product-analytics-ingestion.metabase.com/api/send")))
 
 (def ^:private queue-size 10000)
 (def ^:private no-retry-status-codes #{400 401 403 410 422})
@@ -94,7 +106,7 @@
   on connection failure)."
   [payload]
   (try
-    (http/post (analytics.settings/metaplow-url)
+    (http/post (collector-url)
                {:body               (json/encode payload)
                 :content-type       :json
                 :socket-timeout     5000
@@ -163,12 +175,13 @@
 
 (mu/defn track-event! :- :boolean
   "Send a single analytics event to the Metaplow collector. Returns true when the event was enqueued, false when
-  Metaplow tracking is disabled or the queue is full."
+  anonymous tracking is off, there is no collector, or the queue is full."
   ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData]
    (track-event! schema data nil))
   ([schema :- snowplow/SnowplowSchema data :- snowplow/SnowplowEventData _user-id :- [:maybe ms/PositiveInt]]
    (boolean
-    (when (analytics.settings/metaplow-tracking-enabled)
+    (when (and (analytics.settings/anon-tracking-enabled)
+               (collector-url))
       (try
         (enqueue! (build-payload schema data))
         (catch Throwable e

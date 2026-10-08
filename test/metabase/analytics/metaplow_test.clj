@@ -1,8 +1,10 @@
 (ns metabase.analytics.metaplow-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.analytics.metaplow :as metaplow]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.version.core :as version])
@@ -55,15 +57,35 @@
       (is (=? {:payload {:hostname "anonymous.metabase.com"}}
               (#'metaplow/build-payload :snowplow/dashboard {:event :dashboard-created}))))))
 
-(deftest tracking-disabled-test
-  (testing "When metaplow-tracking-enabled is false the event is not enqueued and the call returns false"
-    (mt/with-temporary-setting-values [metaplow-url nil]
-      (let [collector (atom [])]
-        (mt/with-dynamic-fn-redefs [metaplow/enqueue! (fn [payload]
-                                                        (swap! collector conj payload)
-                                                        true)]
-          (is (false? (metaplow/track-event! :snowplow/dashboard {:event :dashboard-created})))
-          (is (empty? @collector)))))))
+(deftest tracking-enabled-test
+  (let [posted (atom [])
+        track! #(metaplow/track-event! :snowplow/dashboard {:event :dashboard-created})]
+    (mt/with-dynamic-fn-redefs [metaplow/enqueue! (fn [payload]
+                                                    (#'metaplow/send-event! payload)
+                                                    true)
+                                http/post         (fn [url _request]
+                                                    (swap! posted conj url)
+                                                    {:status 200})]
+      (mt/with-temporary-setting-values [anon-tracking-enabled true
+                                         metaplow-url          nil]
+        (testing "Outside production nothing is sent until a collector URL is configured"
+          (is (false? (track!)))
+          (is (empty? @posted)))
+        (with-redefs [config/is-prod? true]
+          (testing "In production, backend events go to the Metabase Track collector by default"
+            (is (true? (track!)))
+            (is (= ["https://product-analytics-ingestion.metabase.com/api/send"] @posted)))
+          (testing "The frontend only sends to Metaplow when a collector URL is configured"
+            (is (false? (analytics.settings/metaplow-tracking-enabled))))
+          (testing "Turning anonymous tracking off stops backend events too"
+            (mt/with-temporary-setting-values [anon-tracking-enabled false]
+              (is (false? (track!)))
+              (is (= 1 (count @posted))))))
+        (mt/with-temp-env-var-value! [mb-metaplow-url "https://product-analytics-ingestion.staging.metabase.com/api/send"]
+          (testing "MB_METAPLOW_URL sends backend and frontend events to another collector"
+            (is (true? (track!)))
+            (is (= "https://product-analytics-ingestion.staging.metabase.com/api/send" (last @posted)))
+            (is (true? (analytics.settings/metaplow-tracking-enabled)))))))))
 
 (deftest pipeline-integration-test
   (mt/with-temporary-setting-values [metaplow-url "http://fake-metaplow/api/send"
