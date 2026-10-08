@@ -13,6 +13,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
@@ -53,6 +54,9 @@
   recent-activity?]
  [mdb.data-source
   broken-out-details->DataSource]
+ [mdb.db
+  h2-lock-timeout
+  mariadb?]
  [mdb.env
   db-file]
  [mdb.jdbc-protocols

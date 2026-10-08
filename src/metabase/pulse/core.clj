@@ -4,11 +4,13 @@
   This namespace is deprecated, soon everything will be migrated to notifications."
   (:require
    [metabase.pulse.models.pulse]
+   [metabase.pulse.task.send-pulses-trigger]
    [metabase.pulse.update-alerts]
    [potemkin :as p]))
 
 (comment
   metabase.pulse.models.pulse/keep-me
+  metabase.pulse.task.send-pulses-trigger/keep-me
   metabase.pulse.update-alerts/keep-me)
 
 (p/import-vars
@@ -19,5 +21,7 @@
   retrieve-alerts-for-cards
   retrieve-pulse
   update-pulse!]
+ [metabase.pulse.task.send-pulses-trigger
+  update-send-pulse-trigger-if-needed!]
  [metabase.pulse.update-alerts
   delete-alerts-if-needed!])

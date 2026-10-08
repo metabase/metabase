@@ -4186,7 +4186,9 @@
            events
            lib.schema
            models
+           notification
            premium-features
+           pulse
            search
            settings
            startup
@@ -4201,6 +4203,7 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
                     :model/DataApp
                     :model/Document
                     :model/Field
@@ -4210,7 +4213,10 @@
                     :model/ModelIndex
                     :model/ModelIndexValue
                     :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/NotificationSubscription
                     :model/Pulse
+                    :model/PulseChannel
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table

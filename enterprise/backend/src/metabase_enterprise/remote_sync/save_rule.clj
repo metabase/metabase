@@ -15,9 +15,10 @@
   wrote for a remote change its content of the merge base again ([[restore-keys]], [[wrap-restore-one]] and
   [[lock-added-closure!]]).
 
-  The reconcile never waits for a row lock ([[run-reconcile!]]): a busy row rolls it back, and the pull runs it again.
-  A placement under a Collection that the reconcile locked fails. So when the reconcile commits, each entity that its
-  delete removes is in the delete set that its checks read.
+  The reconcile takes each row lock with NOWAIT, also on the content and the dashboard cards that its delete removes,
+  and its other statements wait at most the short lock timeout of [[run-reconcile!]]: a busy row rolls it back, and
+  the pull runs it again. A placement under a Collection that the reconcile locked fails. So when the reconcile
+  commits, each entity that its delete removes is in the delete set that its checks read.
 
   Every transaction of the pull locks entity rows before ledger rows, as the save paths do."
   (:require
@@ -27,6 +28,10 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
+   [metabase.notification.core :as notification]
+   [metabase.pulse.core :as pulse]
+   [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -242,12 +247,20 @@
   with those contents.
 
   With `:lock?`, it locks the rows of those Collections for update, then reads their contents, then locks the rows of
-  each round of the closure, parents first. Else it takes no lock."
+  each round of the closure, parents first, and then the rows of the dashboard cards that show the Cards of the delete.
+  Else it takes no lock."
   ([ids-by-model]
    (delete-closure ids-by-model {}))
   ([ids-by-model {:keys [lock?] :as opts}]
-   (let [delete-set (merge-with into ids-by-model (collection-contents (:model/Collection ids-by-model) lock?))]
-     (assoc (remote-sync.db/delete-closure delete-set opts) :delete-set delete-set))))
+   (let [delete-set (merge-with into ids-by-model (collection-contents (:model/Collection ids-by-model) lock?))
+         closure    (remote-sync.db/delete-closure delete-set opts)]
+     (when lock?
+       ;; the delete removes them by cascade: the hook of a Collection deletes each Card in it
+       (remote-sync.db/lock-dashboard-cards-of-cards!
+        (vec (sort (into (get-in closure [:ids-by-model :model/Card] #{})
+                         (when-let [subtree (seq (:model/Collection delete-set))]
+                           (remote-sync.db/ids-in-collections :model/Card (vec subtree))))))))
+     (assoc closure :delete-set delete-set))))
 
 (defn lock-closure!
   "Lock the entity rows of the delete closure (see [[delete-closure]]) of the entities `ids-by-model` (a map of model
@@ -344,21 +357,26 @@
       (= ::busy (:error (ex-data e)))))
 
 (defn- in-reconcile-transaction
-  "Run `(thunk)` in a new transaction in which no statement waits for a row lock. The explicit locks of the reconcile
-  take NOWAIT; this sets the lock timeout of the other statements to the minimum of the app DB: 1 ms on Postgres, 1 s
-  on MySQL, 0 on MariaDB. H2 ignores NOWAIT and does not make a foreign key check wait, so on H2 the transaction runs
-  in exclusive mode with a lock timeout of 1 ms, and it does not start while another session holds uncommitted work."
+  "Run `(thunk)` in a new transaction with the shortest lock timeout of the app DB: 1 ms on Postgres, 1 s on MySQL, 0
+  on MariaDB. The explicit locks of the reconcile take NOWAIT. H2 ignores NOWAIT and does not make a foreign key check
+  wait, so on H2 the transaction runs in exclusive mode with a lock timeout of 1 ms, and it does not start while
+  another session holds uncommitted work. In exclusive mode, a statement on another connection waits until the
+  transaction ends, so `thunk` must use no other connection. After the transaction, the connection has its lock
+  timeout of before."
   [thunk]
   (case (mdb/db-type)
     :postgres
     (t2/with-transaction [_conn]
-      (remote-sync.db/set-local-lock-timeout!)
-      (thunk))
+      (let [timeout (remote-sync.db/pg-lock-timeout)]
+        (remote-sync.db/set-local-lock-timeout! "1ms")
+        (u/prog1 (thunk)
+          ;; for an outer transaction; a rollback undoes the change by itself
+          (remote-sync.db/set-local-lock-timeout! timeout))))
 
     :mysql
     (t2/with-connection [_conn]
       (let [timeout (remote-sync.db/innodb-lock-wait-timeout)]
-        (remote-sync.db/set-innodb-lock-wait-timeout! (if (remote-sync.db/mariadb?) 0 1))
+        (remote-sync.db/set-innodb-lock-wait-timeout! (if (mdb/mariadb?) 0 1))
         (try
           (t2/with-transaction [_conn]
             (thunk))
@@ -372,7 +390,7 @@
       (t2/with-transaction [_conn]
         (thunk))
       (t2/with-connection [_conn]
-        (let [timeout (remote-sync.db/h2-lock-timeout)]
+        (let [timeout (mdb/h2-lock-timeout)]
           (remote-sync.db/set-h2-exclusive! true)
           (try
             ;; H2 waits about 4 s with a lock timeout of 0
@@ -386,34 +404,74 @@
               (remote-sync.db/set-h2-lock-timeout! timeout)
               (remote-sync.db/set-h2-exclusive! false))))))))
 
+(defn- scheduled-rows
+  "The rows with Quartz triggers that the delete of the locked delete `closure` (see [[lock-closure!]]) can remove (see
+  [[remote-sync.db/scheduled-rows-of-delete]])."
+  [{:keys [delete-set ids-by-model]}]
+  (remote-sync.db/scheduled-rows-of-delete (vec (:model/Collection delete-set))
+                                           (vec (:model/Dashboard ids-by-model))
+                                           (vec (:model/Card ids-by-model))))
+
+(def ^:private schedule-keys
+  "The columns of a PulseChannel that select its SendPulse trigger."
+  [:schedule_type :schedule_hour :schedule_day :schedule_frame])
+
+(defn- remove-triggers-of-deleted-rows!
+  "Remove the Quartz triggers of the rows `scheduled` (see [[scheduled-rows]]) that no longer exist: the ids of the
+  PulseChannels from their SendPulse triggers, and the triggers of the NotificationSubscriptions. A failure only logs:
+  the pull keeps its result."
+  [{:keys [pulse-channels subscription-ids]}]
+  (try
+    (when (seq pulse-channels)
+      (let [existing (remote-sync.db/existing-ids :model/PulseChannel (mapv :id pulse-channels))]
+        (doseq [[[pulse-id schedule] channels] (group-by (juxt :pulse_id #(select-keys % schedule-keys))
+                                                         (remove (comp existing :id) pulse-channels))]
+          (pulse/update-send-pulse-trigger-if-needed! pulse-id schedule :remove-pc-ids (into #{} (map :id) channels)))))
+    (when (seq subscription-ids)
+      (let [existing (remote-sync.db/existing-ids :model/NotificationSubscription (vec subscription-ids))]
+        (run! notification/delete-trigger-for-subscription! (remove existing subscription-ids))))
+    (catch Exception e
+      (log/warn e "Pull merge: the triggers of deleted subscriptions and alerts were not removed"))))
+
 (defn run-reconcile!
-  "Run `(thunk)`, the reconcile of a merge pull, in one transaction in which no statement waits for a row lock (see
+  "Run `(thunk note-delete!)`, the reconcile of a merge pull, in one transaction with a short lock timeout (see
   [[in-reconcile-transaction]]). When a row is busy, the transaction rolls back, and this runs it again after each wait
   of [[reconcile-retry-delays-ms]]. After the last busy run, it throws the stop with the reason `:busy` (see
-  [[stop-data]]). Returns the value of `(thunk)`. `(thunk)` must have no effect outside the app DB, because it can run
-  more than once."
+  [[stop-data]]). Returns the value of `(thunk note-delete!)`. `thunk` must have no effect outside the app DB, because
+  it can run more than once.
+
+  `thunk` runs with no Quartz scheduler (see [[task/do-without-scheduler]]), because the scheduler commits on a
+  connection of its own: the delete hooks change no trigger. Before its delete, `thunk` calls `(note-delete!
+  closure)` with the locked delete closure (see [[lock-closure!]]). After the last run, also when it throws, this
+  removes the triggers of the dashboard subscriptions and alerts of each noted closure that no longer exist."
   [thunk]
-  (loop [delays reconcile-retry-delays-ms]
-    (let [outcome (try
-                    {:value (in-reconcile-transaction thunk)}
-                    (catch Exception e
-                      (if (busy? e)
-                        {:busy e}
-                        (throw e))))]
-      (if-let [e (:busy outcome)]
-        (if-let [ms (first delays)]
-          (do
-            (log/infof "Pull merge: a row of the reconcile is busy (%s); run it again in %d ms" (ex-message e) ms)
-            (Thread/sleep (long ms))
-            (recur (rest delays)))
-          (throw (ex-info "A row of the reconcile stayed busy during the pull"
-                          {:error    stop-error
-                           :phase    :reconcile
-                           :reason   :busy
-                           :key      nil
-                           :closure? true}
-                          e)))
-        (:value outcome)))))
+  (let [scheduled    (atom {:pulse-channels #{} :subscription-ids #{}})
+        note-delete! (fn [closure]
+                       (swap! scheduled #(merge-with into % (scheduled-rows closure))))]
+    (try
+      (loop [delays reconcile-retry-delays-ms]
+        (let [outcome (try
+                        {:value (in-reconcile-transaction #(task/do-without-scheduler (fn [] (thunk note-delete!))))}
+                        (catch Exception e
+                          (if (busy? e)
+                            {:busy e}
+                            (throw e))))]
+          (if-let [e (:busy outcome)]
+            (if-let [ms (first delays)]
+              (do
+                (log/infof "Pull merge: a row of the reconcile is busy (%s); run it again in %d ms" (ex-message e) ms)
+                (Thread/sleep (long ms))
+                (recur (rest delays)))
+              (throw (ex-info "A row of the reconcile stayed busy during the pull"
+                              {:error    stop-error
+                               :phase    :reconcile
+                               :reason   :busy
+                               :key      nil
+                               :closure? true}
+                              e)))
+            (:value outcome))))
+      (finally
+        (remove-triggers-of-deleted-rows! @scheduled)))))
 
 (defn pre-check!
   "Stop the pull, before any write, when an entity of ours that the pull will load or delete (the merge keys

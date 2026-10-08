@@ -298,6 +298,66 @@
   (doseq [model collection-content-models]
     (lock-children! model :collection_id collection-ids {:nowait? true})))
 
+(mu/defn lock-dashboard-cards-of-cards! :- :nil
+  "Lock with NOWAIT (see [[LockOpts]]) the rows of the DashboardCards that show the Cards `card-ids`, in primary-key
+  order. A delete of those Cards removes these rows by cascade."
+  [card-ids :- [:sequential ms/PositiveInt]]
+  (lock-children! :model/DashboardCard :card_id card-ids {:nowait? true})
+  nil)
+
+(def ^:private ScheduledRows
+  "The rows of a delete that have Quartz triggers (see [[scheduled-rows-of-delete]])."
+  [:map {:closed true}
+   [:pulse-channels   [:set [:map
+                             [:id ms/PositiveInt]
+                             [:pulse_id ms/PositiveInt]]]]
+   [:subscription-ids [:set ms/PositiveInt]]])
+
+(defn- ids-where-in
+  "The ids of the instances of `model` whose `column` is in `values`, chunked."
+  [model column values]
+  (into #{}
+        (mapcat #(t2/select-pks-vec model column [:in %]))
+        (partition-all ids-per-query values)))
+
+(mu/defn scheduled-rows-of-delete :- ScheduledRows
+  "The rows with Quartz triggers that a delete of the Collections `collection-ids` with their contents, of the
+  Dashboards `dashboard-ids` and of the Cards `card-ids` can remove, as of now:
+  - `:pulse-channels`: the `:id`, `:pulse_id` and schedule columns of the PulseChannels of the Pulses in those
+    Collections, of those Dashboards and of the Dashboards in those Collections;
+  - `:subscription-ids`: the ids of the cron NotificationSubscriptions of the card Notifications of those Cards and of
+    the Cards in those Collections."
+  [collection-ids :- [:sequential ms/PositiveInt]
+   dashboard-ids  :- [:sequential ms/PositiveInt]
+   card-ids       :- [:sequential ms/PositiveInt]]
+  (let [dashboard-ids    (into (set dashboard-ids) (ids-where-in :model/Dashboard :collection_id collection-ids))
+        pulse-ids        (into (ids-where-in :model/Pulse :collection_id collection-ids)
+                               (ids-where-in :model/Pulse :dashboard_id (vec dashboard-ids)))
+        card-ids         (into (set card-ids) (ids-where-in :model/Card :collection_id collection-ids))
+        notification-ids (into #{}
+                               (mapcat #(t2/select-pks-vec :model/Notification
+                                                           :payload_type :notification/card
+                                                           :payload_id [:in ^:allow-subquery {:select [:id]
+                                                                                              :from   [:notification_card]
+                                                                                              :where  [:in :card_id %]}]))
+                               (partition-all ids-per-query card-ids))]
+    {:pulse-channels   (into #{}
+                             (mapcat #(t2/select [:model/PulseChannel :id :pulse_id
+                                                  :schedule_type :schedule_hour :schedule_day :schedule_frame]
+                                                 :pulse_id [:in %]))
+                             (partition-all ids-per-query pulse-ids))
+     :subscription-ids (into #{}
+                             (mapcat #(t2/select-pks-vec :model/NotificationSubscription
+                                                         :type :notification-subscription/cron
+                                                         :notification_id [:in %]))
+                             (partition-all ids-per-query notification-ids))}))
+
+(mu/defn existing-ids :- [:set ms/PositiveInt]
+  "The subset of `ids` that instances of `model` have."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (ids-where-in model :id ids))
+
 (def ^:private closure-lock-order
   "The order in which [[delete-closure]] locks the models of one round: parents before children."
   [:model/Dashboard :model/Document :model/Card :model/Action :model/Transform :model/TransformTest])
@@ -858,16 +918,16 @@
   []
   (t2/delete! :model/RemoteSyncObject))
 
-(mu/defn mariadb? :- :boolean
-  "Whether the app DB is MariaDB, which has the type `:mysql`."
+(mu/defn pg-lock-timeout :- :string
+  "Postgres: the lock timeout of the session of the bound connection, as `SHOW lock_timeout` gives it."
   []
-  (t2/with-connection [^java.sql.Connection conn]
-    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+  (:lock_timeout (t2/query-one ["SHOW lock_timeout"])))
 
 (mu/defn set-local-lock-timeout! :- :any
-  "Postgres: set the lock timeout of the open transaction to its minimum, 1 ms, until the transaction ends."
-  []
-  (t2/query ["SET LOCAL lock_timeout = '1ms'"]))
+  "Postgres: set the lock timeout of the open transaction to `timeout` (for example \"1ms\"), until the transaction
+  or the savepoint that holds the change ends. A rollback to an earlier savepoint undoes the change."
+  [timeout :- :string]
+  (t2/query ["SELECT set_config('lock_timeout', ?, true)" timeout]))
 
 (mu/defn innodb-lock-wait-timeout :- :int
   "MySQL and MariaDB: the lock wait timeout of the session of the bound connection, in seconds."
@@ -878,11 +938,6 @@
   "MySQL and MariaDB: set the lock wait timeout of the session of the bound connection to `seconds`."
   [seconds :- :int]
   (t2/query [(str "SET SESSION innodb_lock_wait_timeout = " seconds)]))
-
-(mu/defn h2-lock-timeout :- :int
-  "H2: the lock timeout of the session of the bound connection, in milliseconds."
-  []
-  (long (:lock_timeout (t2/query-one ["SELECT LOCK_TIMEOUT() AS lock_timeout"]))))
 
 (mu/defn set-h2-lock-timeout! :- :any
   "H2: set the lock timeout of the session of the bound connection to `ms` milliseconds."

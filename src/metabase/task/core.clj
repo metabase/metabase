@@ -15,6 +15,7 @@
   delete-all-triggers-of-job!
   delete-task!
   delete-trigger!
+  do-without-scheduler
   existing-triggers
   init!
   init-scheduler!

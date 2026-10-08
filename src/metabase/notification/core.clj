@@ -6,6 +6,7 @@
    [metabase.notification.payload.core]
    [metabase.notification.seed]
    [metabase.notification.send]
+   [metabase.notification.task.send-trigger]
    [potemkin :as p]))
 
 (comment
@@ -13,7 +14,8 @@
   metabase.notification.events.notification/keep-me
   metabase.notification.payload.core/keep-me
   metabase.notification.seed/keep-me
-  metabase.notification.send/keep-me)
+  metabase.notification.send/keep-me
+  metabase.notification.task.send-trigger/keep-me)
 
 (p/import-vars
  [metabase.notification.card
@@ -24,7 +26,9 @@
   seed-notification!]
  [metabase.notification.send
   send-notification!
-  shutdown!])
+  shutdown!]
+ [metabase.notification.task.send-trigger
+  delete-trigger-for-subscription!])
 
 (defmacro with-skip-sending-notification
   "Execute `body` with [[metabase.notification.events.notification/*skip-sending-notification?*]] bound to `skip?`."

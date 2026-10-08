@@ -100,28 +100,31 @@
 (mu/defn update-collection!
   "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Write-checks the collection,
   gates `authority_level` behind superuser plus the Official Collections feature, applies the plain column updates,
-  then moves or archives as `collection-updates` asks, and publishes the update and touch events. Returns the updated
-  collection. The single source of truth for collection updates; REST and agent callers both go through here."
+  then moves or archives as `collection-updates` asks, all in one transaction, and then publishes the update and touch
+  events. A failed check, move or archive writes nothing. Returns the updated collection. The single source of truth
+  for collection updates; REST and agent callers both go through here."
   [id                 :- ms/PositiveInt
    collection-updates :- UpdateCollectionArguments]
-  ;; do we have perms to edit this Collection?
-  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
-    ;; tenant-specific-root-collection collections cannot be updated
-    (api/check-400
-     (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
-    ;; if authority_level is changing, make sure we're allowed to do that
-    (when (and (contains? collection-updates :authority_level)
-               (not= (keyword (:authority_level collection-updates))
-                     (:authority_level collection-before-update)))
-      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 api/*is-superuser?*))
-    ;; ok, go ahead and update it! Only update keys that were specified in the request. But not `parent_id` since
-    ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
-      (when (seq updates)
-        (collections.db/update-collection! id updates)))
-    ;; if we're trying to move or archive the Collection, go ahead and do that
-    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (u/prog1 (collections.db/collection id)
-      (events/publish-event! :event/collection-update {:object <> :user-id api/*current-user-id*})
-      (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))))
+  ;; one transaction, so that a move or archive that fails leaves the plain column updates unwritten too
+  (t2/with-transaction [_conn]
+    ;; do we have perms to edit this Collection?
+    (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+      ;; tenant-specific-root-collection collections cannot be updated
+      (api/check-400
+       (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
+      ;; if authority_level is changing, make sure we're allowed to do that
+      (when (and (contains? collection-updates :authority_level)
+                 (not= (keyword (:authority_level collection-updates))
+                       (:authority_level collection-before-update)))
+        (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
+        (api/check-403 api/*is-superuser?*))
+      ;; ok, go ahead and update it! Only update keys that were specified in the request. But not `parent_id` since
+      ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
+      (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
+        (when (seq updates)
+          (collections.db/update-collection! id updates)))
+      ;; if we're trying to move or archive the Collection, go ahead and do that
+      (move-or-archive-collection-if-needed! collection-before-update collection-updates)))
+  (u/prog1 (collections.db/collection id)
+    (events/publish-event! :event/collection-update {:object <> :user-id api/*current-user-id*})
+    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))

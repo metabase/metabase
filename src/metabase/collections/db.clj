@@ -201,12 +201,6 @@
                                      [:in filter-column filter-ids])]
                         :order-by serdes/stable-storage-order}))
 
-(defn- mariadb?
-  "Whether the app DB is MariaDB, which has the type `:mysql`."
-  []
-  (t2/with-connection [^java.sql.Connection conn]
-    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
-
 (mu/defn lock-parent-and-count-collections :- :int
   "Lock the row of the Collection `parent-id` with no wait, in a mode that conflicts with a lock for update but not
   with another lock of this kind; then the number of Collections among `collection-ids`. The lock lasts until the
@@ -219,11 +213,11 @@
     (case (app-db/db-type)
       :postgres (t2/query (assoc lock-query :for [:key-share :nowait]))
       ;; MariaDB has no FOR SHARE
-      :mysql    (t2/query (if (mariadb?)
+      :mysql    (t2/query (if (app-db/mariadb?)
                             (assoc lock-query :lock [:in-share-mode :nowait])
                             (assoc lock-query :for [:share :nowait])))
       :h2       (t2/with-connection [_conn]
-                  (let [timeout (:lock_timeout (t2/query-one ["SELECT LOCK_TIMEOUT() AS lock_timeout"]))]
+                  (let [timeout (app-db/h2-lock-timeout)]
                     ;; H2 waits about 4 s with a lock timeout of 0
                     (t2/query ["SET LOCK_TIMEOUT 1"])
                     (try

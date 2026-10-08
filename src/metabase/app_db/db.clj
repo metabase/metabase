@@ -1,5 +1,5 @@
 (ns metabase.app-db.db
-  "Application database queries for the app-db module's encryption and setting storage. Every function here is a direct
+  "Application database queries for the app-db module's encryption, setting storage and session facts. Every function here is a direct
   Toucan 2 call with no additional logic, so no other namespace in the module runs a query itself -- except the custom
   migrations, which keep their own, frozen at the version they shipped in. Every write is a plain `t2/query` rather
   than a Toucan DML statement: the cloud-migration guard on Toucan DML reads `read-only-mode` through the Setting model
@@ -11,6 +11,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn current-timestamp-string
   "The application DB's own current timestamp, as a string, for app DB type `db-type`."
@@ -117,3 +119,14 @@
   DELETE, unlike `t2/delete!`, does not unwrap it)."
   []
   (t2/query {:delete-from :query_cache}))
+
+(mu/defn mariadb? :- :boolean
+  "Whether the app DB is MariaDB, which has the db type `:mysql`. Reads the product name of the bound connection."
+  []
+  (t2/with-connection [^java.sql.Connection conn]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
+(mu/defn h2-lock-timeout :- :int
+  "H2: the lock timeout of the session of the bound connection, in milliseconds."
+  []
+  (long (:lock_timeout (t2/query-one ["SELECT LOCK_TIMEOUT() AS lock_timeout"]))))

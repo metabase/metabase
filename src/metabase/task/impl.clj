@@ -52,6 +52,13 @@
   ^Scheduler []
   @*quartz-scheduler*)
 
+(defn do-without-scheduler
+  "Call `(thunk)` with no scheduler on this thread and on the threads that inherit its bindings: there [[scheduler]]
+  returns nil, so each scheduler call of `thunk` does nothing and opens no connection. Returns the value of `(thunk)`."
+  [thunk]
+  (binding [*quartz-scheduler* (atom nil)]
+    (thunk)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
