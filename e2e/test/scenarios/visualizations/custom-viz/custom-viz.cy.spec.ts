@@ -236,8 +236,18 @@ describe("admin > custom visualizations", () => {
         "/admin/settings/custom-visualizations/new",
       );
 
-      cy.log("Upload a valid bundle");
+      cy.log("Reopen the form from the list and upload a valid bundle");
+      cy.findByTestId("admin-layout-sidebar")
+        .findByRole("link", { name: /Manage visualizations/ })
+        .click();
+      H.getAddVisualizationLink().click();
+      cy.findByRole("button", { name: "Add visualization" }).should(
+        "be.disabled",
+      );
       H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
+      cy.findByRole("button", { name: "Add visualization" }).should(
+        "be.enabled",
+      );
 
       H.interceptPluginCreate();
       cy.findByRole("button", { name: "Add visualization" }).click();
@@ -425,14 +435,14 @@ describe("admin > custom visualizations", () => {
 
         // Custom viz section should not appear in chart type selector
         cy.findByTestId("viz-type-button").click();
-        cy.findByTestId("Table-button").should("be.visible");
+        cy.findByTestId("Number-button").should("be.visible");
         cy.findByText("Custom visualizations").should("not.exist");
 
         cy.log("make sure fallback is used after reload");
         cy.reload();
         cy.findByTestId("table-root").should("be.visible");
         cy.findByTestId("viz-type-button").click();
-        cy.findByTestId("Table-button").should("be.visible");
+        cy.findByTestId("Number-button").should("be.visible");
         cy.findByText("Custom visualizations").should("not.exist");
 
         cy.log("Enable the plugin again, then remove it");
@@ -467,7 +477,7 @@ describe("admin > custom visualizations", () => {
 
         // Custom viz section should not appear in chart type selector
         cy.findByTestId("viz-type-button").click();
-        cy.findByTestId("Table-button").should("be.visible");
+        cy.findByTestId("Number-button").should("be.visible");
         cy.findByText("Custom visualizations").should("not.exist");
         H.expectNoBadSnowplowEvents();
       });
@@ -607,7 +617,7 @@ describe("admin > custom visualizations", () => {
       H.main()
         .findByTestId("demo-viz-formatted-value")
         .should("contain", "foo");
-      cy.realPress("Escape");
+      cy.findByTestId("chartsettings-sidebar").findByText("Threshold").click();
       cy.findByTestId("chart-settings-widget-popover-content").should(
         "not.exist",
       );
@@ -863,7 +873,12 @@ describe("admin > custom visualizations", () => {
         { wrapId: true, idAlias: "publicQuestionId" },
       );
 
-      cy.get<CardId>("@publicQuestionId").then(H.visitPublicQuestion);
+      cy.get<CardId>("@publicQuestionId").then((questionId) => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+        });
+        H.visitPublicQuestion(questionId);
+      });
 
       cy.findByTestId("embed-frame").within(() => {
         cy.findByTestId("table-root").should("be.visible");
@@ -871,10 +886,6 @@ describe("admin > custom visualizations", () => {
       });
 
       cy.get<CardId>("@publicQuestionId").then((questionId) => {
-        cy.request("PUT", `/api/card/${questionId}`, {
-          enable_embedding: true,
-        });
-
         H.visitEmbeddedPage({
           resource: { question: questionId },
           params: {},
@@ -978,6 +989,9 @@ describe("admin > custom visualizations", () => {
       createCustomVizDashboard().then(({ body: dashcard }) => {
         const dashboardId = Number(checkNotNull(dashcard.dashboard_id));
         cy.wrap(dashboardId).as("dashboardId");
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          enable_embedding: true,
+        });
         H.visitPublicDashboard(dashboardId);
       });
 
@@ -987,10 +1001,6 @@ describe("admin > custom visualizations", () => {
         .should("not.exist");
 
       cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          enable_embedding: true,
-        });
-
         H.visitEmbeddedPage({
           resource: { dashboard: dashboardId },
           params: {},
@@ -1171,8 +1181,10 @@ describe("admin > custom visualizations", () => {
             "match",
             new RegExp(`^/question/${targetQuestionId}(?:-|$)`),
           );
+          H.tableInteractive().should("be.visible");
 
           cy.go("back");
+          cy.location("pathname").should("match", /^\/dashboard\//);
 
           cy.log("Navigate to another dashboard");
           H.getDashboardCard(3)
