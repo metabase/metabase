@@ -264,8 +264,11 @@
                              (preflight-ex (tru "{0} is not available. Models on offer: {1}."
                                                 (str requested-model) (str/join ", " (map :id entries))))
                              (no-models-ex))))]
+      ;; `::chat?` needs both `completion` and `tools`. Ollama gives tool calling only through the completion
+      ;; template, so a model that reports `tools` also reports `completion`. Thus, a model that fails this
+      ;; check cannot call tools: an embedding model has neither, and some chat models have no `tools`.
       (when-not (::chat? entry)
-        (throw (preflight-ex (tru "{0} is not a chat model — Ollama offers it for embedding only. Pick a model that supports tool calling."
+        (throw (preflight-ex (tru "{0} can''t call tools, which Metabot needs. Pick a model that supports tool calling."
                                   (str requested-model)))))
       entry)
     (or (u/seek ::chat? entries)

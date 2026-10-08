@@ -620,18 +620,21 @@
                      tool-calling-message)))))))
 
 (deftest preflight-diagnoses-a-model-that-was-asked-for-by-name-test
-  (testing "an API client can name an embedding model, which the picker no longer offers. Saying so
-           beats Ollama's own 400, and beats reporting a model the server plainly has as missing."
-    (with-clean-capabilities!
-      (fn []
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"embedding-model is not a chat model"
-             (mt/with-dynamic-fn-redefs [http/request (probing-server
-                                                       [{:id "embedding-model" :capabilities ["embedding"]}]
-                                                       {:tools      {:message tool-calling-message :finish_reason "tool_calls"}
-                                                        :structured structured-success})]
-               (ollama/list-models {:credentials credentials :model "embedding-model" :probe? true}))))))))
+  (testing "an API client can name a model the picker no longer offers. Saying why beats Ollama's own 400,
+           and beats reporting a model the server plainly has as missing."
+    (doseq [[label capabilities] {"an embedding model"                    ["embedding"]
+                                  "a chat model that cannot call tools" ["completion"]}]
+      (testing label
+        (with-clean-capabilities!
+          (fn []
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"named-model can't call tools, which Metabot needs"
+                 (mt/with-dynamic-fn-redefs [http/request (probing-server
+                                                           [{:id "named-model" :capabilities capabilities}]
+                                                           {:tools      {:message tool-calling-message :finish_reason "tool_calls"}
+                                                            :structured structured-success})]
+                   (ollama/list-models {:credentials credentials :model "named-model" :probe? true}))))))))))
 
 (deftest listing-offers-only-models-metabot-could-run-on-test
   (testing "the admin's picker is the catalog minus what Ollama says cannot chat"
