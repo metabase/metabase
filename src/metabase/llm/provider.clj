@@ -214,6 +214,7 @@
     :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
                     {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
                     {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "anthropic/claude-fable-5-1"          :display_name "Claude Fable 5.1"}
                     {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
                     {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
                     {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}

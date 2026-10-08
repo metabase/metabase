@@ -60,7 +60,8 @@
   and would need an explicit token budget.
   `:reasoning-mandatory?` marks models where `reasoning {:enabled false}` is rejected with a 400.
   `:required-tool-choice? false` marks models that don't support `:tool_choice \"required\"`; absent means they do."
-  {"anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
+  {"anthropic/claude-fable-5.1"      {:display-name "Claude Fable 5.1"        :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true :required-tool-choice? false}
+   "anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
    "anthropic/claude-opus-5"         {:display-name "Claude Opus 5"           :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.8"       {:display-name "Claude Opus 4.8"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.7"       {:display-name "Claude Opus 4.7"         :context-window 1000000 :reasoning :renderable}

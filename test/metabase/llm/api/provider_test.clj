@@ -149,6 +149,7 @@
           (is (= [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
                   {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
                   {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                  {:id "anthropic/claude-fable-5-1" :display_name "Claude Fable 5.1"}
                   {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
                   {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
                   {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
@@ -1315,6 +1316,7 @@
                      :models [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
                               {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
                               {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                              {:id "anthropic/claude-fable-5-1" :display_name "Claude Fable 5.1"}
                               {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
                               {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
                               {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
@@ -1339,7 +1341,7 @@
                                                                        :project-id         "my-project"
                                                                        :location           "us-east5"
                                                                        :probed-model       "anthropic/claude-sonnet-4-6"})]]
-          (is (=? [{:key "claude-only" :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]}]
+          (is (=? [{:key "claude-only" :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]}]
                   (mt/user-http-request :crowberto :get 200 "llm/models")))
           (is (= "anthropic/claude-sonnet-4-6" @probed)))))))
 
@@ -1383,7 +1385,7 @@
                                                                      :project-id         "my-project"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "wrong-model-google/anthropic/claude-opus-5"]
           (is (=? [{:key    "wrong-model-google"
-                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
                     :error  "Google API error: model not found"}]
                   (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
 
@@ -1399,7 +1401,7 @@
                                                                      :project-id         "my-project"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "forbidden-model-google/anthropic/claude-opus-5"]
           (is (=? [{:key    "forbidden-model-google"
-                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
                     :error  "Google API error: PERMISSION_DENIED"}]
                   (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
 
@@ -1416,7 +1418,7 @@
         (is (=? [{:key    "bad-key-google"
                   :name   "bad-key-google"
                   :type   "google"
-                  :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some?]
+                  :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
                   :error  "Google API error: invalid authentication credentials"}]
                 (mt/user-http-request :crowberto :get 200 "llm/models")))))))
 
