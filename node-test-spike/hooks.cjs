@@ -272,7 +272,11 @@ registerHooks({
 // --- jsdom as the global DOM -----------------------------------------------------
 const { JSDOM } = require(bunModule("jsdom").replace(/jsdom@[^/]+/, (m) => m)); 
 const createDom = () => new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", { url: "http://localhost/", pretendToBeVisual: process.env.NT_NO_RAF !== "1" });
-const FRESH_WINDOW = process.env.NT_FRESH_WINDOW === "1";
+// jest gives each file a new jsdom window. So does this, when project code is
+// isolated per file. Packages stay loaded, so the few that bind to the window
+// when they load are loaded again for each file.
+const FRESH_WINDOW = process.env.NT_ISOLATE_ALL === "1" && process.env.NT_FRESH_WINDOW !== "0";
+const WINDOW_BOUND_PACKAGES = process.env.NT_EVICT_PACKAGES ?? (FRESH_WINDOW ? "@testing-library|jest-canvas-mock|@emotion" : "");
 let dom = createDom();
 let win = dom.window;
 const keep = new Set(["undefined", "globalThis", "window", "self", "global", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "queueMicrotask", "console", "process", "performance", "structuredClone", "crypto", "URL", "URLSearchParams", "TextEncoder", "TextDecoder", "AbortController", "AbortSignal", "fetch", "Request", "Response", "Headers", "Blob", "File", "ReadableStream", "WritableStream", "TransformStream", "constructor"]);
@@ -331,6 +335,7 @@ if (process.env.NT_NODE_GLOBALS !== "1" && process.env.NT_NODE_URL !== "1") {
   for (const name of ["URL", "URLSearchParams", "WebSocket"]) { keep.delete(name); override.add(name); }
 }
 const installedWindowKeys = new Set();
+const windowForwarders = {};
 const installWindowGlobals = (again) => {
 for (const key of windowKeys) {
   if (keep.has(key)) continue;
@@ -349,7 +354,12 @@ for (const key of windowKeys) {
   }
   let value;
   try { value = win[key]; } catch { continue; }
-  const bound = typeof value === "function" && !/^[A-Z]/.test(key) ? value.bind(win) : value;
+  // With a new window per file, a package that saved a window function when it
+  // loaded (Mantine: `const raf = window.requestAnimationFrame`) must still reach
+  // the current window, so the global is a forwarder that outlives the window.
+  const isMethod = typeof value === "function" && !/^[A-Z]/.test(key);
+  if (isMethod && FRESH_WINDOW) windowForwarders[key] ??= function (...args) { return win[key].apply(win, args); };
+  const bound = isMethod ? (FRESH_WINDOW ? windowForwarders[key] : value.bind(win)) : value;
   try { Object.defineProperty(globalThis, key, { value: bound, writable: true, configurable: true, enumerable: false }); } catch {}
 }
 for (const alias of ["window", "self", "top", "parent"]) Object.defineProperty(globalThis, alias, { value: globalThis, configurable: true, writable: true });
@@ -868,7 +878,7 @@ const pendingTimers = new Set();
 // request settles passes under jest only because a cold file takes several
 // frames to do anything. Files here run about three times faster, so frames do too.
 const FRAME_INTERVAL = 1000 / 60;
-const FRAME_MS = process.env.NT_FRAME_MS ? Number(process.env.NT_FRAME_MS) : 4;
+const FRAME_MS = process.env.NT_FRAME_MS ? Number(process.env.NT_FRAME_MS) : 1;
 const trackedTimers = {
   setTimeout: (fn, delay, ...rest) => { const handle = realSetTimeout(fn, delay, ...rest); pendingTimers.add(handle); if (process.env.NT_DEBUG_TIMERS_LEFT) handle.__stack = new Error().stack; return handle; },
   setInterval: (fn, delay, ...rest) => { const handle = realSetInterval(fn, delay === FRAME_INTERVAL ? FRAME_MS : delay, ...rest); pendingTimers.add(handle); return handle; },
@@ -986,8 +996,8 @@ const fileCleanup = async (isolated) => {
     globalThis.__nodeTestSpike.remirror();
     if (!process.env.NT_FRESH_WINDOW_KEEP) try { previous.window.close(); } catch {}
   }
-  if (process.env.NT_EVICT_PACKAGES) {
-    const pattern = new RegExp(`/node_modules/(${process.env.NT_EVICT_PACKAGES})/`);
+  if (WINDOW_BOUND_PACKAGES) {
+    const pattern = new RegExp(`/node_modules/(${WINDOW_BOUND_PACKAGES})/`);
     let evicted = 0;
     for (const cachedFile of Object.keys(require.cache)) if (pattern.test(cachedFile)) { delete require.cache[cachedFile]; evicted += 1; }
     for (const kind of Object.keys(packageHooks)) packageHooks[kind].length = 0;
@@ -1012,7 +1022,7 @@ const fileCleanup = async (isolated) => {
     globalThis.window.MetabaseBootstrap = { ...initialBootstrap };
     resetNavigator();
     runSetupChain();
-    if (FRESH_WINDOW) globalThis.__nodeTestSpike.rebaseline();
+    if (FRESH_WINDOW) { globalThis.__nodeTestSpike.wrapCanvasGetContext(); globalThis.__nodeTestSpike.rebaseline(); }
     if (process.env.NT_DEBUG_FRESH) console.error(`[fresh] doc=${globalThis.document === win.document} body=${globalThis.document.body === win.document.body} HTMLElement=${globalThis.HTMLElement === win.HTMLElement} installed=${installedWindowKeys.size} hasDoc=${installedWindowKeys.has("document")}`);
   }
   require("metabase/plugins").reinitialize();
@@ -1754,7 +1764,7 @@ const resetTranslationLocale = () => {
 };
 // One window serves every file, so a spec that navigates leaves its URL behind.
 const resetLocation = () => {
-  if (process.env.NT_NO_LOCATION_RESET) return;
+  if (process.env.NT_NO_LOCATION_RESET || FRESH_WINDOW) return;
   try { if (globalThis.window.location.href !== "http://localhost/") dom.reconfigure({ url: "http://localhost/" }); } catch {}
 };
 // The chart library keeps one canvas context for measuring text. Its methods
@@ -1820,7 +1830,7 @@ patchCallHistory();
 // defined yet", would leave every later file with the classes of the first
 // file that loaded it. A new window has an empty registry, so empty this one.
 const resetCustomElements = () => {
-  if (process.env.NT_NO_CUSTOM_ELEMENTS_RESET) return;
+  if (process.env.NT_NO_CUSTOM_ELEMENTS_RESET || FRESH_WINDOW) return;
   try {
     const { implForWrapper } = require(path.join(bunModule("jsdom"), "lib/jsdom/living/generated/utils.js"));
     const registry = implForWrapper(globalThis.window.customElements);
@@ -1835,7 +1845,7 @@ const jsdomUtils = () => require(path.join(bunModule("jsdom"), "lib/jsdom/living
 const listenerTargets = () => [dom.window, dom.window.document, dom.window.document.documentElement, dom.window.document.body];
 let baselineListeners = null;
 const resetWindowListeners = () => {
-  if (process.env.NT_NO_LISTENER_RESET) return;
+  if (process.env.NT_NO_LISTENER_RESET || FRESH_WINDOW) return;
   try {
     baselineListeners ??= listenerTargets().map(() => ({}));
     listenerTargets().forEach((target, index) => {
@@ -1854,7 +1864,7 @@ const resetWindowListeners = () => {
 };
 // Storage, cookies, the title, and attributes on <html> and <body>.
 const resetWindowData = () => {
-  if (process.env.NT_NO_WINDOW_DATA_RESET) return;
+  if (process.env.NT_NO_WINDOW_DATA_RESET || FRESH_WINDOW) return;
   try { dom.window.localStorage.clear(); dom.window.sessionStorage.clear(); } catch {}
   try { dom.cookieJar.removeAllCookiesSync(); } catch {}
   try {
@@ -1880,6 +1890,7 @@ const resetTestingLibraryConfig = () => {
 resetTestingLibraryConfig();
 globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); resetLocation(); restoreCanvasMocks(); wrapCanvasGetContext(); resetCustomElements(); resetWindowListeners(); resetWindowData(); resetTestingLibraryConfig(); };
 wrapCanvasGetContext();
+globalThis.__nodeTestSpike.wrapCanvasGetContext = wrapCanvasGetContext;
 let baselineVisualizations = null;
 try {
   baselineVisualizations = new Set(require("metabase/viz-core/lib/registry").visualizations.keys());
