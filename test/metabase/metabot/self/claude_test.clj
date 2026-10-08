@@ -879,7 +879,9 @@
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
                    "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
                    "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-5-5" "claude-sonnet-6"
-                   "claude-fable-5"]]
+                   "claude-fable-5" "claude-fable-5-1" "claude-mythos-5-1"
+                   ;; an Azure deployment name without a version
+                   "claude-fable-prod"]]
       (is (false? (#'claude/model-supports-temperature? model))
           model))))
 

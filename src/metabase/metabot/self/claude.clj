@@ -409,11 +409,12 @@
   "Current-generation Claude (Fable, Mythos, Opus >=4.7, Sonnet >=5): no sampling params;
   thinking streams via `display: summarized`."
   [model]
-  (when-let [[family major minor] (claude-model-version model)]
-    (case family
-      ("fable" "mythos") true
-      "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
-      "sonnet"           (>= major 5))))
+  (or (str/starts-with? (strip-vendor-prefix model) "claude-fable")
+      (when-let [[family major minor] (claude-model-version model)]
+        (case family
+          ("fable" "mythos") true
+          "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
+          "sonnet"           (>= major 5)))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter. Sampling params
