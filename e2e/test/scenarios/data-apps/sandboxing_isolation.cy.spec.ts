@@ -18,6 +18,12 @@ describe("scenarios > data apps > sandbox isolation", () => {
 
     H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME, testEnv });
     H.openDataApp(APP_NAME);
+    H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+      cy.findByTestId("isolation-result", { timeout: 30000 }).should(
+        "have.text",
+        "pending",
+      );
+    });
   };
 
   /**
@@ -223,6 +229,12 @@ describe("scenarios > data apps > sandbox isolation", () => {
       allowedHosts: ["http://localhost:4444"],
     });
     H.openDataApp(APP_NAME);
+    H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+      cy.findByTestId("isolation-result", { timeout: 30000 }).should(
+        "have.text",
+        "pending",
+      );
+    });
 
     runProbes(["allowed-host-redirect"]);
   });
