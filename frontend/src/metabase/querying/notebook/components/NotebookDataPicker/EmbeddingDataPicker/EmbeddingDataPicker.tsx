@@ -144,6 +144,7 @@ export function EmbeddingDataPicker({
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
       canSelectMetric={hasMetrics && entityTypes.includes("metric")}
+      canSelectLibrary={entityTypes.includes("library")}
       popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget

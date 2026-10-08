@@ -9,6 +9,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createLibraryWithTable } from "e2e/support/test-library-data";
 import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
@@ -1404,6 +1405,38 @@ describe("scenarios > embedding > full app", () => {
           cy.findByText("Models").should("be.visible");
           cy.findByText("Raw Data").should("be.visible");
           cy.findByText("Metrics").should("not.exist");
+        });
+      });
+    });
+
+    describe("library", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        createLibraryWithTable();
+      });
+
+      it("should select a table published in the Library", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").click();
+          cy.findByText("Orders").click();
+        });
+        cy.wait("@getTableMetadata");
+
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+      });
+
+      it('should not show the Library when it is left out of "entity_types"', () => {
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: { entity_types: "table,model" },
+        });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("not.exist");
         });
       });
     });

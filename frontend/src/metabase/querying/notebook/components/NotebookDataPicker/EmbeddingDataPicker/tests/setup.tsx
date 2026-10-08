@@ -1,8 +1,11 @@
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
+  setupLibraryEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEmbeddingDataPickerState } from "__support__/state/embedding-data-picker";
 import { renderWithProviders } from "__support__/ui";
@@ -12,6 +15,7 @@ import Question from "metabase-lib/v1/Question";
 import {
   createMockModelResult,
   createMockSearchResult,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
@@ -27,6 +31,7 @@ import { EmbeddingDataPickerContextProvider } from "../context";
 interface SetupOpts {
   hasModels?: boolean;
   hasMetrics?: boolean;
+  hasLibrary?: boolean;
   entityTypes?: EmbeddingEntityType[];
   contextEntityTypes?: EmbeddingEntityType[];
 }
@@ -38,10 +43,23 @@ const DEFAULT_OPTS: Partial<SetupOpts> = {
 export function setup({
   hasModels = DEFAULT_OPTS.hasModels,
   hasMetrics = false,
+  hasLibrary = false,
   entityTypes,
   contextEntityTypes,
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
+
+  // `mockSettings` has to run first, as the Library plugin reads the token
+  // features when it initializes.
+  const settings = hasLibrary
+    ? mockSettings({
+        "token-features": createMockTokenFeatures({ library: true }),
+      })
+    : undefined;
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+    setupLibraryEndpoints(true);
+  }
 
   setupEmbeddingDataPickerDecisionEndpoints("staged");
 
@@ -76,15 +94,16 @@ export function setup({
     ) : (
       picker
     ),
-    entityTypes
-      ? {
-          storeInitialState: createMockState({
-            embeddingDataPicker: createMockEmbeddingDataPickerState({
-              entityTypes,
-            }),
+    {
+      storeInitialState: createMockState({
+        ...(settings && { settings }),
+        ...(entityTypes && {
+          embeddingDataPicker: createMockEmbeddingDataPickerState({
+            entityTypes,
           }),
-        }
-      : undefined,
+        }),
+      }),
+    },
   );
 }
 

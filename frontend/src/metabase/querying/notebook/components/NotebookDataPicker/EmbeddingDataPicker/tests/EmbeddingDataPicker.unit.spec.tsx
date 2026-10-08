@@ -151,5 +151,46 @@ describe("EmbeddingDataPicker", () => {
        * @see frontend/src/metabase/redux/embed/embed.unit.spec.ts
        */
     });
+
+    describe("the Library", () => {
+      it("should show the Library in full-app embedding without configuring `entity_types`", async () => {
+        setup({ hasLibrary: true });
+
+        expect(await screen.findByText("Library")).toBeInTheDocument();
+        expect(screen.getByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      });
+
+      it('should not show the Library in full-app embedding when `entity_types=["table"]`', async () => {
+        setup({ hasLibrary: true, entityTypes: ["table"] });
+
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      });
+
+      it('should not show the Library in full-app embedding when `entity_types=["model", "table"]`', async () => {
+        setup({ hasLibrary: true, entityTypes: ["model", "table"] });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      });
+
+      it('should show the Library in modular embedding when `entityTypes` includes "library"', async () => {
+        setup({
+          hasLibrary: true,
+          contextEntityTypes: ["model", "table", "library"],
+        });
+
+        expect(await screen.findByText("Library")).toBeInTheDocument();
+      });
+
+      it('should not show the Library in modular embedding when `entityTypes` leaves out "library"', async () => {
+        setup({ hasLibrary: true, contextEntityTypes: ["model", "table"] });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      });
+    });
   });
 });

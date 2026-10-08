@@ -19,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { canUserCreateQueries } from "metabase/current-user";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getShallowQuestions } from "metabase/metadata-store";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type DataSelectorDatabase,
   type DataSelectorSchema,
@@ -41,6 +42,7 @@ import type {
   CardType,
   CollectionId,
   DatabaseId,
+  LibraryCollection,
   ListDatabasesRequest,
   SchemaId,
   SearchModel,
@@ -59,6 +61,7 @@ import {
   type TriggerComponentProps,
 } from "../TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
+import { LibraryPicker } from "../library-picker/LibraryPicker";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
 import type { DataPickerDataType, SavedEntityType } from "../types";
 import { getDataTypes } from "../utils";
@@ -109,6 +112,7 @@ interface DataSelectorOwnProps {
   canSelectTable: boolean;
   canSelectQuestion: boolean;
   canSelectMetric: boolean;
+  canSelectLibrary: boolean;
 
   selectedDataBucketId?: DataPickerDataType | null;
   selectedDatabaseId?: DatabaseId | null;
@@ -148,6 +152,10 @@ interface SchemaFetchersProps {
   fetchSchemaTables: (schemaId: SchemaId) => Promise<unknown>;
 }
 
+interface LibraryInjectedProps {
+  libraryCollection?: LibraryCollection;
+}
+
 interface AvailableModelsInjectedProps {
   loading: boolean;
   loaded: boolean;
@@ -158,7 +166,8 @@ type DataSelectorProps = DataSelectorOwnProps &
   DataSelectorStateProps &
   DataSelectorDispatchProps &
   SchemaFetchersProps &
-  AvailableModelsInjectedProps;
+  AvailableModelsInjectedProps &
+  LibraryInjectedProps;
 
 interface ComputedDataSelectorState {
   databases: DataSelectorDatabase[];
@@ -491,7 +500,8 @@ export class UnconnectedDataSelector extends Component<
     return (
       this.hasUsableModels() ||
       this.hasSavedQuestions() ||
-      this.hasUsableMetrics()
+      this.hasUsableMetrics() ||
+      this.hasLibrary()
     );
   };
 
@@ -501,6 +511,11 @@ export class UnconnectedDataSelector extends Component<
       this.state.databases.some((database) => database.is_saved_questions) &&
       canSelectQuestion
     );
+  };
+
+  hasLibrary = (): boolean => {
+    const { canSelectLibrary, libraryCollection } = this.props;
+    return canSelectLibrary && libraryCollection != null;
   };
 
   isJoinStep(): boolean {
@@ -591,6 +606,7 @@ export class UnconnectedDataSelector extends Component<
         hasTables: this.props.canSelectTable,
         hasSavedQuestions: this.hasSavedQuestions(),
         hasMetrics: this.hasMetrics(),
+        hasLibrary: this.hasLibrary(),
         hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
       });
       if (dataTypes.length === 1) {
@@ -795,6 +811,9 @@ export class UnconnectedDataSelector extends Component<
       },
       false,
     );
+    if (selectedDataBucketId === DATA_BUCKET.LIBRARY) {
+      return;
+    }
     const database = this.props.databases.find((db) => db.is_saved_questions);
     if (database) {
       this.onChangeDatabase(database);
@@ -927,6 +946,7 @@ export class UnconnectedDataSelector extends Component<
                 hasTables: this.props.canSelectTable,
                 hasSavedQuestions: this.hasSavedQuestions(),
                 hasMetrics: this.hasMetrics(),
+                hasLibrary: this.hasLibrary(),
                 hasNestedQueriesEnabled,
               })}
               {...props}
@@ -955,7 +975,7 @@ export class UnconnectedDataSelector extends Component<
   isSavedEntitySelected = (): boolean =>
     isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedEntitySelect = async (tableOrCardId: string): Promise<void> => {
+  handleSavedEntitySelect = async (tableOrCardId: TableId): Promise<void> => {
     await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
       const table = this.props.entityLookups.table(tableOrCardId);
@@ -987,8 +1007,15 @@ export class UnconnectedDataSelector extends Component<
   renderContent = (): ReactNode => {
     const { isSavedEntityPickerShown, selectedDataBucketId, selectedTable } =
       this.state;
-    const { canChangeDatabase, selectedDatabaseId, selectedCollectionId } =
-      this.props;
+    const {
+      canChangeDatabase,
+      canSelectMetric,
+      canSelectModel,
+      canSelectTable,
+      libraryCollection,
+      selectedDatabaseId,
+      selectedCollectionId,
+    } = this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
@@ -1006,6 +1033,21 @@ export class UnconnectedDataSelector extends Component<
     }
 
     if (this.hasDataAccess()) {
+      if (selectedDataBucketId === DATA_BUCKET.LIBRARY && libraryCollection) {
+        return (
+          <LibraryPicker
+            libraryCollection={libraryCollection}
+            canSelectTable={canSelectTable}
+            canSelectModel={canSelectModel}
+            canSelectMetric={canSelectMetric}
+            databaseId={currentDatabaseId}
+            selectedTableId={selectedTable?.id}
+            onSelect={this.handleSavedEntitySelect}
+            onBack={this.previousStep}
+          />
+        );
+      }
+
       if (isPickerOpen) {
         return (
           <SavedEntityPicker
@@ -1070,13 +1112,15 @@ export class UnconnectedDataSelector extends Component<
 
 type ConnectOwnProps = DataSelectorOwnProps &
   SchemaFetchersProps &
-  AvailableModelsInjectedProps & {
+  AvailableModelsInjectedProps &
+  LibraryInjectedProps & {
     availableModelsResult?: AvailableModelsResult;
   };
 
 type WithoutSchemaFetchers = Omit<ConnectOwnProps, keyof SchemaFetchersProps>;
 
-type PublicDataSelectorProps = DataSelectorOwnProps & { allLoading?: boolean };
+type PublicDataSelectorProps = DataSelectorOwnProps &
+  LibraryInjectedProps & { allLoading?: boolean };
 
 // Exposes `fetchSchemas` / `fetchSchemaTables` as props backed by RTK's lazy
 // query triggers. The triggers' subscriptions are tied to this wrapper's
@@ -1144,6 +1188,30 @@ function withAvailableModels(
   };
 }
 
+// Resolves the Library collection through the plugin, so it is `undefined`
+// without the `library` token feature or when the user can't read it. The
+// loading state is forwarded as `allLoading` so the picker doesn't hydrate
+// its initial step before it knows whether to offer the Library bucket.
+function withLibraryCollection(
+  WrappedComponent: ComponentType<PublicDataSelectorProps>,
+): ComponentType<Omit<PublicDataSelectorProps, "libraryCollection">> {
+  return function DataSelectorWithLibraryCollection(
+    props: Omit<PublicDataSelectorProps, "libraryCollection">,
+  ) {
+    const { data: libraryCollection, isLoading } =
+      PLUGIN_LIBRARY.useGetLibraryCollection({
+        skip: !props.canSelectLibrary,
+      });
+    return (
+      <WrappedComponent
+        {...props}
+        libraryCollection={libraryCollection}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
+  };
+}
+
 // Prefetches the saved-databases list and forwards its loading state as
 // `allLoading` so the picker waits for the databases (not just the models
 // search) before hydrating its initial step. Without this the picker would
@@ -1170,7 +1238,7 @@ const isListDatabasesQuerySuccess = (
 ): boolean =>
   databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
 
-const DataSelector = withSavedDatabasesPrefetch(
+const DataSelectorWithoutLibrary = withSavedDatabasesPrefetch(
   withAvailableModels(
     withSchemaFetchers(
       connect(
@@ -1234,3 +1302,5 @@ const DataSelector = withSavedDatabasesPrefetch(
     ),
   ),
 );
+
+const DataSelector = withLibraryCollection(DataSelectorWithoutLibrary);
