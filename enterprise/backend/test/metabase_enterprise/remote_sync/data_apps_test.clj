@@ -841,6 +841,77 @@
                (is (= (count before) (count (resource-files mock))))
                (is (file-named mock "renamed"))))))))))
 
+(deftest an-apps-collection-cant-be-marked-remote-synced-test
+  (testing "an app's collection is synced with its app, and a pull refuses its file once it says remote-synced"
+    (with-data-apps-sync
+      (mt/with-additional-premium-features #{:remote-sync}
+        (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
+          (is (= :success (:status (import-at! mock "main" :force? true))))
+          (let [collection-id (shop-collection-id)]
+            (mt/with-dynamic-fn-redefs [impl/finish-remote-config! (constantly nil)]
+              (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings" {:collections {collection-id true}})
+              (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id collection-id)))
+              (testing "an ordinary collection still can be"
+                (mt/with-temp [:model/Collection {other-id :id} {:name "Ordinary"}]
+                  (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {other-id true}})
+                  (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id other-id))))))))))))
+
+(deftest an-action-in-an-apps-collection-stays-what-a-pull-accepts-test
+  (testing "an action there can't be made public or read a card outside the collection: the next export would write it
+            into a file every pull refuses"
+    (with-data-apps-sync
+      (data-apps.tu/do-with-sources!
+       (fn [{:keys [action-id]}]
+         (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
+                                                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                       [action-id])
+               mock      (test-helpers/create-mock-source :initial-files {"main" (shop-tree resources)})]
+           (is (= :success (:status (import-at! mock "main" :force? true))))
+           (let [copy-id (t2/select-one-pk :model/Action :collection_id (shop-collection-id))
+                 card-id (t2/select-one-pk :model/Card :entity_id question-eid)
+                 reads   (fn [id]
+                           (let [tag (str "#" id)]
+                             {:database (mt/id)
+                              :type     :native
+                              :native   {:query         (str "SELECT * FROM {{" tag "}}")
+                                         :template-tags {tag {:type         :card
+                                                              :card-id      id
+                                                              :name         tag
+                                                              :display-name tag
+                                                              :id           (str (random-uuid))}}}}))]
+             (mt/with-actions-enabled
+               (mt/with-temporary-setting-values [enable-public-sharing true]
+                 (mt/user-http-request :crowberto :post 400 (str "action/" copy-id "/public_link"))
+                 (is (nil? (t2/select-one-fn :public_uuid :model/Action :id copy-id)))
+                 (testing "the source action still can be"
+                   (mt/user-http-request :crowberto :post 200 (str "action/" action-id "/public_link"))))
+               (mt/with-temp [:model/Card {outside-id :id} {:name "Outside"}]
+                 (mt/user-http-request :crowberto :put 400 (str "action/" copy-id) {:dataset_query (reads outside-id)}))
+               (testing "it can read the app's own card"
+                 (mt/user-http-request :crowberto :put 200 (str "action/" copy-id) {:dataset_query (reads card-id)})))
+             (is (= :success (:status (export! mock))))
+             (is (= :success (:status (import-at! mock "main" :force? true)))))))))))
+
+(deftest the-bulk-move-endpoint-moves-app-cards-through-the-model-test
+  (testing "POST /api/card/collections runs the checks a PUT runs, and the export sees the move"
+    (with-data-apps-sync
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
+            mp   (mt/metadata-provider)
+            q    (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
+              collection-id (shop-collection-id)]
+          (testing "a model can't be moved in"
+            (mt/with-temp [:model/Card {model-id :id} {:name "A model" :type :model :dataset_query q}]
+              (mt/user-http-request :crowberto :post 400 "card/collections" {:card_ids [model-id] :collection_id collection-id})
+              (is (nil? (t2/select-one-fn :collection_id :model/Card :id model-id)))))
+          (testing "the app's card moved out is gone from the app's files on the next export"
+            (mt/user-http-request :crowberto :post 200 "card/collections" {:card_ids [card-id] :collection_id nil})
+            (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id)))
+            (is (= :success (:status (export! mock))))
+            (is (not (file-named mock "venueslist")))
+            (is (= :success (:status (import-at! mock "main" :force? true))))))))))
+
 (deftest a-refused-pull-names-the-file-whatever-its-name-test
   (testing "a validator failure is reported as what it is when a path has \"branch\" in it, not as a branch error"
     (with-data-apps-sync

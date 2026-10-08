@@ -33,8 +33,7 @@
   card-param-remapped-value]
  [metabase.queries.db
   card-query-info
-  cards-queries-info
-  move-actions-of-models!]
+  cards-queries-info]
  [metabase.queries.models.card
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!

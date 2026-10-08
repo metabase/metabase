@@ -459,6 +459,10 @@
                                                            (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (remote-sync.db/collections sync-off))))]
+    ;; a data app's collection is synced with its app, and a pull refuses its file once it says remote-synced
+    (when (some spec/data-apps-namespace-collection? sync-on)
+      (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
+                      {:status-code 400})))
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)

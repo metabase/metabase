@@ -1,5 +1,6 @@
 (ns metabase.actions.models
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.db :as actions.db]
@@ -166,7 +167,13 @@
                  (:archived <>)
                  (some? (:collection_id <>))
                  (contains? (set (perms/data-app-collection-ids)) (:collection_id <>)))
-        (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400}))))))
+        (throw (ex-info (tru "An action in a data app''s collection can''t be archived.") {:status-code 400})))
+      ;; an export writes the link into the action's file, which every pull then refuses
+      (when (and (changed? :public_uuid)
+                 (:public_uuid <>)
+                 (some? (:collection_id <>))
+                 (contains? (set (perms/data-app-collection-ids)) (:collection_id <>)))
+        (throw (ex-info (tru "An action in a data app''s collection can''t be made public.") {:status-code 400}))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -258,8 +265,35 @@
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
 ;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
+(defn- query-card-ids
+  "The IDs of the Cards the native `query` reads through card template tags, in either form of the query, whose
+  template tags are a map by name or, as an action's query stores them, a sequence."
+  [query]
+  (let [tags (or (get-in query [:native :template-tags])
+                 (some :template-tags (:stages query)))]
+    (into #{}
+          (comp (filter #(= :card (keyword (:type %))))
+                (keep :card-id))
+          (if (map? tags) (vals tags) tags))))
+
+(defn- check-data-app-action-query
+  "Throws unless `query`, of an action in the Collection with `collection-id`, reads only the app's own cards when that
+  is a data app's collection: the next export writes the action into the app's files, and every pull refuses a file
+  that reads a card outside."
+  [collection-id query]
+  (when (and (some? collection-id)
+             (contains? (set (perms/data-app-collection-ids)) collection-id))
+    (let [card-ids (query-card-ids query)
+          outside  (when (seq card-ids)
+                     (actions.db/card-ids-outside-collection card-ids collection-id))]
+      (when (seq outside)
+        (throw (ex-info (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
+                             (str/join ", " (sort outside)))
+                        {:status-code 400}))))))
+
 (mu/defn- insert*! :- ::actions.schema/id
   [action-data :- ::actions.schema/action.for-insert]
+  (check-data-app-action-query (:collection_id action-data) (:dataset_query action-data))
   (t2/with-transaction [_conn]
     (let [action (actions.db/insert-action! (select-keys action-data action-columns))
           row    (-> (apply dissoc action-data action-columns)
@@ -280,6 +314,12 @@
    existing-action          :- ::actions.schema/action]
   (let [updates (cond-> (assoc updates :type (or (:type updates) (:type existing-action)))
                   (get updates :model_id (:model_id existing-action)) (dissoc :collection_id))]
+    (check-data-app-action-query (if (contains? updates :collection_id)
+                                   (:collection_id updates)
+                                   (:collection_id existing-action))
+                                 (if (contains? updates :dataset_query)
+                                   (:dataset_query updates)
+                                   (:dataset_query existing-action)))
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))

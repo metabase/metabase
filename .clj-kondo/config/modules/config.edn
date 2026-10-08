@@ -3786,6 +3786,7 @@
                     :model/DataPermissions
                     :model/Database
                     :model/Field
+                    :model/NativeQuerySnippet
                     :model/Permissions
                     :model/PermissionsGroup
                     :model/QueryAction

@@ -31,3 +31,16 @@
                                     :dataset_query (native (format "SELECT * FROM {{#%d}} x JOIN checkins c ON c.venue_id = x.id" venues-id))}]
         (is (= (sort [(mt/id :venues) (mt/id :checkins)])
                (resource-tables/collection-table-ids collection-id)))))))
+
+(deftest a-table-in-a-snippet-is-recorded-test
+  (testing "a snippet tag stands for the SQL its snippet holds, snippets inside it included, so the tables it names
+            are read like the ones around it"
+    (let [native (fn [sql] (lib/native-query (mt/metadata-provider) sql))]
+      (mt/with-temp [:model/NativeQuerySnippet _ {:name "venues table" :content "venues"}
+                     :model/NativeQuerySnippet _ {:name "checked in" :content "id IN (SELECT venue_id FROM checkins)"}
+                     :model/NativeQuerySnippet _ {:name "open" :content "price > 1 AND {{snippet: checked in}}"}
+                     :model/Collection {collection-id :id} {:namespace :data-apps}
+                     :model/Card _ {:collection_id collection-id
+                                    :dataset_query (native "SELECT * FROM {{snippet: venues table}} v WHERE {{snippet: open}}")}]
+        (is (= (sort [(mt/id :venues) (mt/id :checkins)])
+               (resource-tables/collection-table-ids collection-id)))))))
