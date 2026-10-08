@@ -17,7 +17,7 @@ describe("scenarios > data apps > viewing & routing", () => {
   });
 
   describe("viewing permissions", () => {
-    it("lets a non-admin open a data app by direct URL, and shows the app shell but no data to a user without data access", () => {
+    it("lets a non-admin open a data app by direct URL", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
@@ -25,7 +25,6 @@ describe("scenarios > data apps > viewing & routing", () => {
 
       // A normal (non-admin) user has data access, so the app opens and renders
       // its data — the admin gate is only on *managing* apps, not viewing them.
-      cy.log("a non-admin with data access");
       cy.signInAsNormalUser();
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -36,11 +35,17 @@ describe("scenarios > data apps > viewing & routing", () => {
           .invoke("text")
           .should("match", /^\d+$/);
       });
+    });
+
+    it("opens the app shell for a user without data access, but shows no data", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
 
       // The `nodata` user can open the app (viewing isn't gated), but the query
       // the app runs goes through the QP with the user's own permissions — with
       // no data access it resolves to no data (the fixture renders "—").
-      cy.log("a user without data access");
       cy.signIn("nodata");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
