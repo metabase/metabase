@@ -202,6 +202,21 @@
       (is (= [:stub :stub] [(source-4) (import-4)])))
     (is (= [:original :original] [(source-4) (import-4)]))))
 
+(defn- source-5 [] :original)
+(p/import-fn source-5 import-5)
+
+(deftest ^:parallel original-fn-of-import-test
+  (testing "the `original-fn` of an import is its source var, whether or not the import has been proxied"
+    (let [before-proxying (mt/original-fn #'import-5)]
+      (mt/with-dynamic-fn-redefs [import-5 (constantly :import)]
+        (is (= :import (import-5))))
+      (is (= [#'source-5 #'source-5] [before-proxying (mt/original-fn #'import-5)]))))
+  (testing "a replacement that delegates through it follows a redef of the source"
+    (mt/with-dynamic-fn-redefs [import-5 (fn [] [:wrapped ((mt/original-fn #'import-5))])]
+      (is (= [:wrapped :original] (import-5)))
+      (mt/with-dynamic-fn-redefs [source-5 (constantly :source)]
+        (is (= [:wrapped :source] (import-5)))))))
+
 ;;; Model test: generated programs nest dynamic redefs, `with-redefs`, futures and exceptions around calls to three
 ;;; vars, one of them an import of another.
 ;;; The model is one rule: a call sees the innermost enclosing redef of its var, of either kind, else the original.

@@ -30,6 +30,22 @@
     (when (identical? a-var proxied-var)
       original)))
 
+(defn- import-source
+  "The var that potemkin imported `a-var` from, or nil when `a-var` is not an import that still mirrors its source."
+  ^Var [^Var a-var]
+  ;; potemkin watches the source with the import as the key, and copies the source's metadata over the import's.
+  ;; That includes `:ns`, so the source is normally interned in the namespace the import's metadata names.
+  (let [watching    (fn [vars]
+                      (some (fn [^Var v] (when (contains? (.getWatches v) a-var) v)) vars))
+        meta-ns     (:ns (meta a-var))
+        ^Var source (or (when (instance? Namespace meta-ns)
+                          (watching (vals (ns-interns meta-ns))))
+                        ;; An import of an import names the first source's namespace, so its own source can be anywhere.
+                        (when-not (identical? meta-ns (.ns a-var))
+                          (watching (mapcat (comp vals ns-interns) (all-ns)))))]
+    (when (and source (identical? (.getRawRoot source) (.getRawRoot a-var)))
+      source)))
+
 (defn dynamic-value
   "What a var calls on this thread: its replacement if one is in scope, else its original.
    Given a proxied function in place of a var, returns that function's original, which lets a replacement delegate.
@@ -41,9 +57,10 @@
 
 (defn original-fn
   "Return the original (unpatched) function for `a-var`.
-   That is the root it had when [[with-dynamic-fn-redefs]] proxied it, or its current root if it is not proxied."
+   That is the root it had when [[with-dynamic-fn-redefs]] proxied it, or its current root if it is not proxied.
+   For a potemkin re-export it is the source var, so calling it does whatever the source does on this thread."
   [a-var]
-  (or (proxy-original a-var) @a-var))
+  (or (proxy-original a-var) (import-source a-var) @a-var))
 
 (defn- deeper
   "The depths to bind for one more entry into `proxy` on this thread.
@@ -90,22 +107,6 @@
                          "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
                          "with a dedicated test dispatch value instead.")
                     {:var a-var}))))
-
-(defn- import-source
-  "The var that potemkin imported `a-var` from, or nil when `a-var` is not an import that still mirrors its source."
-  ^Var [^Var a-var]
-  ;; potemkin watches the source with the import as the key, and copies the source's metadata over the import's.
-  ;; That includes `:ns`, so the source is normally interned in the namespace the import's metadata names.
-  (let [watching    (fn [vars]
-                      (some (fn [^Var v] (when (contains? (.getWatches v) a-var) v)) vars))
-        meta-ns     (:ns (meta a-var))
-        ^Var source (or (when (instance? Namespace meta-ns)
-                          (watching (vals (ns-interns meta-ns))))
-                        ;; An import of an import names the first source's namespace, so its own source can be anywhere.
-                        (when-not (identical? meta-ns (.ns a-var))
-                          (watching (mapcat (comp vals ns-interns) (all-ns)))))]
-    (when (and source (identical? (.getRawRoot source) (.getRawRoot a-var)))
-      source)))
 
 (defn- var->proxy
   "Build a proxy for `a-var` that calls the replacement in scope on the current thread, or `original` with none."
