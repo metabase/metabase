@@ -15,6 +15,13 @@ describe("scenarios > data apps > group access (EMB-2415)", () => {
     H.setupGitSync();
     H.copySyncedCollectionFixture();
 
+    H.writeDataAppResources(H.LOCAL_GIT_PATH, {
+      collection: H.dataAppRepresentations.collection(
+        "groupAccessAppColl001",
+        `Data App: ${APP_DISPLAY_NAME}`,
+      ),
+    });
+
     // commit a built bundle and manifest so remote sync publishes a
     // real app, to use real permission checks.
     cy.task<string>("buildDataApp", { appName: APP_NAME }).then((bundle) =>

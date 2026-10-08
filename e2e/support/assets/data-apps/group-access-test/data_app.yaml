@@ -2,6 +2,7 @@ name: Group Access Test
 slug: group-access-test
 version: 1
 path: ./dist/index.js
+collection: groupAccessAppColl001
 entity_id: tQ8R4p2Y7mN6aX9cV3kL5
 serdes/meta:
 - model: DataApp
