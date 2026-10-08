@@ -371,7 +371,7 @@
 
 (defn- other-content-problems
   "A data app's collection holds cards and actions only, and a load would refuse anything else only after it had
-  started. A collection's file names its own entity ID as `collection_id`, so a collection is its own content."
+  started. A collection's own file is not its content, whatever `collection_id` it carries."
   [manifests files]
   (let [app-collections (into #{} (keep (comp :collection :entity)) manifests)]
     (for [{:keys [path entity]} files

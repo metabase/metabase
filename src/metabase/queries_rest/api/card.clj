@@ -717,7 +717,9 @@
     (api/write-check :model/Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
+    (let [cards  (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil) ; poisioned NULLs = ick
+          ;; whole, as the update event's previous object: a listener reads a card's metadata from it
+          before (when (seq cards) (queries-rest.db/cards-by-id (map u/the-id cards)))]
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
@@ -743,7 +745,7 @@
       ;; what a single card's update publishes too: remote sync listens to learn what entered or left its scope
       (doseq [card cards]
         (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
-                                                   :previous-object card
+                                                   :previous-object (get before (u/the-id card))
                                                    :user-id         api/*current-user-id*}))))
 
   (when new-collection-id-or-nil
