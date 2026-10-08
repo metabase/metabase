@@ -81,7 +81,8 @@
   Written out literally rather than derived from the default, so a change to the default, or to which surfaces send
   none, fails here instead of drifting quietly. [[omitted]] means no cap is sent at all."
   {;; Anthropic Messages, direct: the catalog's own dated and undated spellings
-   :anthropic         {"claude-fable-5"               32000
+   :anthropic         {"claude-fable-5-1"             32000
+                       "claude-fable-5"               32000
                        "claude-opus-5-5"              32000
                        "claude-opus-5"                32000
                        "claude-opus-4-8"              32000
@@ -96,7 +97,7 @@
                        "claude-opus-4-1-20250805"     32000
                        ;; an id no catalog names, and an admin-named deployment: the Messages API needs a cap, so
                        ;; they get the same default rather than an omission
-                       "claude-fable-5-1"             32000
+                       "claude-fable-6"               32000
                        "my-deployment-3"              32000}
    ;; OpenAI Responses, direct: no default cap is sent (see openai/openai-request-body)
    :openai            {"gpt-6-astra"                 omitted
@@ -112,7 +113,8 @@
    ;; the managed proxy: resolve-model-ref hands the adapter the bare model
    :managed           {"claude-sonnet-4-6"            32000}
    ;; Bedrock: vendor-prefixed
-   :bedrock-anthropic {"anthropic.claude-fable-5"     32000
+   :bedrock-anthropic {"anthropic.claude-fable-5-1"   32000
+                       "anthropic.claude-fable-5"     32000
                        "anthropic.claude-opus-5-5"    32000
                        "anthropic.claude-opus-5"      32000
                        "anthropic.claude-opus-4-8"    32000
@@ -126,7 +128,8 @@
                        "openai.gpt-5.5"               32000
                        "openai.gpt-5.5-2026-04-23"    32000}
    ;; Azure: the bare deployment name, dateless, and cased however the admin named it
-   :azure-anthropic   {"claude-fable-5"               32000
+   :azure-anthropic   {"claude-fable-5-1"             32000
+                       "claude-fable-5"               32000
                        "claude-opus-5-5"              32000
                        "claude-opus-5"                32000
                        "claude-opus-4-8"              32000
@@ -154,7 +157,8 @@
                        "gpt-5.4"                     omitted
                        "GPT-5.5"                     omitted}
    ;; Vertex: partner ids, dated with `@`
-   :vertex-claude     {"claude-fable-5"               32000
+   :vertex-claude     {"claude-fable-5-1"             32000
+                       "claude-fable-5"               32000
                        "claude-opus-5-5"              32000
                        "claude-opus-5"                32000
                        "claude-opus-4-6"              32000
@@ -169,7 +173,8 @@
    :deepseek          {"deepseek-v4-pro"              32000
                        "deepseek-flash"               32000}
    ;; OpenRouter: dotted Claude versions, dated DeepSeek snapshots
-   :openrouter        {"anthropic/claude-fable-5"         32000
+   :openrouter        {"anthropic/claude-fable-5.1"       32000
+                       "anthropic/claude-fable-5"         32000
                        "anthropic/claude-opus-5"          32000
                        "anthropic/claude-opus-4.8"        32000
                        "anthropic/claude-opus-4.7"        32000
@@ -200,7 +205,7 @@
                        "mistralai/mistral-medium-3-5"     32000
                        "moonshotai/kimi-k3"               32000
                        ;; ids no catalog names get the default too
-                       "anthropic/claude-fable-5.1"       32000
+                       "anthropic/claude-fable-6"         32000
                        "openai/gpt-4o"                    32000}
    :zai               {"glm-5.3"                      32000
                        "glm-5.2"                      32000
