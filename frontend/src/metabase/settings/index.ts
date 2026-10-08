@@ -10,6 +10,7 @@ export {
   useGetSettingsQuery,
   useGetVersionInfoQuery,
   useLazyGetSettingsQuery,
+  useListTimezonesQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,
 } from "./api";

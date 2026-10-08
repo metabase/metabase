@@ -12,6 +12,7 @@ import {
   canAccessContentDiagnostics,
   canAccessDependencyDiagnostics,
   canAccessMonitoringTools,
+  canAccessSessionManagement,
 } from "metabase/common/monitor/selectors";
 import { useUserKeyValue } from "metabase/current-user";
 import {
@@ -48,6 +49,10 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .with(
       P.string.startsWith(Urls.monitorModelPersistenceLog()),
       () => "model-caching",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorSessions()),
+      () => "session-management",
     )
     .with(
       P.string.startsWith(Urls.monitorAiAuditingMcp()),
@@ -92,8 +97,10 @@ export function MonitorLayout() {
   const canAccessContentDiagnosticsPage = useSelector(
     canAccessContentDiagnostics,
   );
+  const hasSessionManagementFeature = useHasTokenFeature("session-management");
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
+  const canAccessSessions = useSelector(canAccessSessionManagement);
   const canAccessAiAuditingTab = useSelector(canAccessAiAuditing);
 
   const activeSection = getActiveSection(pathname);
@@ -196,6 +203,17 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}
           />
+          {canAccessSessions && (
+            <AreaTab
+              label={t`Session management`}
+              icon="key"
+              to={Urls.monitorSessions()}
+              isSelected={activeSection === "session-management"}
+              showLabel={isNavbarOpened}
+              isGated={!hasSessionManagementFeature}
+              onClick={() => trackMonitorSectionClicked("session-management")}
+            />
+          )}
         </AreaTabGroup>
       )}
       {canAccessAiAuditingTab && hasAuditAppFeature && (

@@ -62,6 +62,14 @@ Every `<metabase-browser>` attribute and the `CollectionBrowser` props.
 
 Embed an AI chat with web components or the React SDK, so people can ask questions of their data in natural language.
 
+### [Configure your embeds](./config.md)
+
+Set the configuration that every embed on a page shares, like your Metabase URL, authentication, language, and theme, with web components or the React SDK.
+
+### [Config reference](./config-reference.md)
+
+Every `defineMetabaseConfig()` setting for web components, and the `MetabaseProvider` props for the React SDK.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.

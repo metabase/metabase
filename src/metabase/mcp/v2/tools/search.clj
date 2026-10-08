@@ -29,7 +29,7 @@
 
 (def ^:private all-types
   ["question" "model" "metric" "measure" "segment" "dashboard" "document" "collection"
-   "table" "database" "snippet" "transform" "action"])
+   "table" "database" "snippet" "action"])
 
 (def ^:private created-by-types
   "Types whose search model indexes a creator (`in_place/filter.clj`'s created-by methods);
@@ -43,9 +43,8 @@
 (def ^:private non-archivable-types
   "Types whose search model has no archived state (`:archived false` in their spec). `archived: true`
    with any of them can only ever return nothing, so the engine silently drops the type — a teaching
-   error instead. Note transforms *do* live in collections, so this is distinct from
-   `collectionless-types`."
-  #{"table" "database" "transform"})
+   error instead."
+  #{"table" "database"})
 
 (def ^:private type->rv-model
   "v2 type → the recent-views model keyword; the domain of this map is exactly the set of
@@ -180,9 +179,6 @@
                  (contains? types "snippet")
                  (message/raw "browse_collection(namespace: \"snippets\")")
 
-                 (contains? types "transform")
-                 (message/raw "browse_collection(namespace: \"transforms\")")
-
                  (collection-scoping? args)
                  (message/msg ["browse_collection(%s)"]
                               (common/list-message
@@ -314,33 +310,21 @@
         (common/throw-teaching-error
          (message/msg [(str "collection_id cannot filter snippets — list them "
                             "with type: [\"snippet\"] and no collection_id.")])))
-      (when (contains? types "transform")
-        (common/throw-teaching-error
-         (message/msg [(str "collection_id cannot filter transforms — the search index doesn't record "
-                            "their collection. Remove transform from type or drop collection_id.")])))
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
          (message/msg [(str "Filtering tables by collection_id requires the semantic layer feature, which "
                             "this instance doesn't have — remove table from type or drop collection_id.")])))
-      ;; Two more types a collection-scoped search never covers, each dropped by a different part of
-      ;; the engine rather than by the spec's collection attr: transform (no collection recorded in
-      ;; the index, so `search-context->applicable-models` drops the model) and, without the Library
-      ;; feature, table (excluded by the ::collection-hierarchy where-clause). Named explicitly each
-      ;; is a teaching error above; with `type` omitted they must be narrowed and disclosed, not
-      ;; dropped in silence.
-      (when type-omitted?
-        (when (contains? effective-types "transform")
-          (swap! narrowed conj
-                 {:excluded #{"transform"}
-                  :label    "collection_id"
-                  :because  (message/raw "isn't recorded with a collection in the search index")}))
-        (when (and (contains? effective-types "table")
-                   (not (premium-features/has-feature? :library)))
-          (swap! narrowed conj
-                 {:excluded #{"table"}
-                  :label    "collection_id"
-                  :because  (message/raw "isn't filtered by collection without the semantic layer feature")}))))
+      ;; Without the Library feature the engine's ::collection-hierarchy where-clause drops tables from a
+      ;; collection-scoped search. An explicit type: ["table"] is a teaching error above; with `type`
+      ;; omitted, the exclusion is narrowed and disclosed, not dropped in silence.
+      (when (and type-omitted?
+                 (contains? effective-types "table")
+                 (not (premium-features/has-feature? :library)))
+        (swap! narrowed conj
+               {:excluded #{"table"}
+                :label    "collection_id"
+                :because  (message/raw "isn't filtered by collection without the semantic layer feature")})))
     (when (true? archived)
       (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
         (if type-omitted?
@@ -451,17 +435,20 @@
   [{:keys [term_queries semantic_queries created_by archived]} entity-types collection-id limit offset]
   ;; The tool redirects query-less listings to browse_*, so engine-results only ever runs with a
   ;; query present — no :filters-only? branch to trip.
-  (let [results (metabot.search/search
-                 (cond-> {:term-queries     (vec term_queries)
-                          :semantic-queries (vec semantic_queries)
-                          :entity-types     (vec entity-types)
-                          :archived         (true? archived)
-                          :limit            limit
-                          :offset           offset}
-                   created_by    (assoc :created-by #{api/*current-user-id*})
-                   collection-id (assoc :collection-id collection-id)))]
-    {:rows  (add-collection-paths (vec results))
-     :total (:total (meta results))}))
+  (if (empty? entity-types)
+    ;; The engine reads an empty type list as every Metabot search model, transforms included.
+    {:rows [] :total 0}
+    (let [results (metabot.search/search
+                   (cond-> {:term-queries     (vec term_queries)
+                            :semantic-queries (vec semantic_queries)
+                            :entity-types     (vec entity-types)
+                            :archived         (true? archived)
+                            :limit            limit
+                            :offset           offset}
+                     created_by    (assoc :created-by #{api/*current-user-id*})
+                     collection-id (assoc :collection-id collection-id)))]
+      {:rows  (add-collection-paths (vec results))
+       :total (:total (meta results))})))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
@@ -523,8 +510,7 @@
   for mode (1): to browse or list without one (a collection's contents, a database's tables, your content in a
   collection), use browse_collection or browse_data instead — this tool redirects query-less listings there.
   type: [\"snippet\"] searches SQL snippets you can read by name and must be requested on its own, not alongside
-  other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace:
-  \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
+  other types. Returns {data, returned, total}; total is the number of matches, capped at the search ranking
   limit — so a large total is a floor (the response says \"at least N\"). An empty {data: [], total: 0} means no
   match against the search index, which on a freshly started instance can still be building — if content you can
   reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent."  {:name "search"

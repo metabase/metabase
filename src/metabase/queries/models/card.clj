@@ -861,6 +861,14 @@
   (cond->> (lib/normalize ::queries.schema/card card)
     (mu.fn/instrument-ns? *ns*) (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card])))
 
+(defn- library-content-type
+  "The content type a Library collection checks `card` against, counting a question as a dashboard question when `dashboard-pending?`."
+  [card dashboard-pending?]
+  (if (and (= :question (keyword (:type card)))
+           (or (:dashboard_id card) dashboard-pending?))
+    :dashboard-question
+    (:type card)))
+
 (t2/define-before-insert :model/Card
   [card]
   (u/prog1
@@ -875,7 +883,7 @@
         pre-insert
         populate-query-fields
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (:type <>) (:collection_id <>))))
+    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -896,6 +904,13 @@
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
+
+(defn- check-allowed-content
+  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection or dashboard."
+  [card changes]
+  (when (some #(contains? changes %) [:collection_id :dashboard_id])
+    (let [card (apply-dashboard-question-updates card changes)]
+      (collection/check-allowed-content (library-content-type card mi/*deserializing?*) (:collection_id card)))))
 
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
@@ -934,7 +949,7 @@
         ;; normalization preserving the instance's original.
         original (t2/original card)
         card     (normalize-card card)]
-    (collection/check-allowed-content (:type card) (:collection_id changes))
+    (check-allowed-content card changes)
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1482,6 +1497,18 @@
 
       :else base)))
 
+(defmethod serdes/load-one! "Card" [ingested maybe-local]
+  (u/prog1 (serdes/default-load-one! ingested maybe-local)
+    (collection/check-allowed-content
+     (library-content-type <> (and (some? (:dashboard_id ingested))
+                                   (contains? (::serdes/strip ingested) :dashboard_id)))
+     (:collection_id <>))))
+
+;; A data app's resource collection holds the saved questions and metric copies the app runs.
+(defmethod collection/allowed-namespaces :model/Card
+  [_]
+  (conj collection/default-allowed-namespaces collection/data-apps-ns))
+
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
@@ -1551,7 +1578,7 @@
     (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
     (metrics/dimension-mappings-deps allow-int-ids? dimension_mappings)
     (serdes/parameters-deps allow-int-ids? parameters)
-    (when database_id [[{:model "Database" :id database_id}]])
+    (when (and allow-int-ids? database_id) [[{:model "Database" :id database_id}]])
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})

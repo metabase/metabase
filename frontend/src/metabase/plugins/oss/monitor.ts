@@ -7,6 +7,8 @@ type MonitorPlugin = {
   getContentDiagnosticsRoutes: () => ReactNode;
   isDependencyDiagnosticsEnabled: boolean;
   getDependencyDiagnosticsRoutes: () => ReactNode;
+  isSessionManagementEnabled: boolean;
+  getSessionManagementRoutes: () => ReactNode;
 };
 
 const getDefaultPluginMonitor = (): MonitorPlugin => ({
@@ -14,6 +16,8 @@ const getDefaultPluginMonitor = (): MonitorPlugin => ({
   getContentDiagnosticsRoutes: () => null,
   isDependencyDiagnosticsEnabled: false,
   getDependencyDiagnosticsRoutes: () => null,
+  isSessionManagementEnabled: false,
+  getSessionManagementRoutes: () => null,
 });
 
 export const PLUGIN_MONITOR = definePluginSlot(getDefaultPluginMonitor);

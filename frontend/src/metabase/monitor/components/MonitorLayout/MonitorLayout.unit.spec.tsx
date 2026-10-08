@@ -153,6 +153,7 @@ describe("MonitorLayout", () => {
       ["Scheduled jobs", Urls.monitorJobs()],
       ["Application logs", Urls.monitorLogs()],
       ["Model persistence log", Urls.monitorModelPersistenceLog()],
+      ["Session management", Urls.monitorSessions()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -200,6 +201,11 @@ describe("MonitorLayout", () => {
       label: "Model persistence log",
       route: Urls.monitorModelPersistenceLog(),
       section: "model-caching",
+    },
+    {
+      label: "Session management",
+      route: Urls.monitorSessions(),
+      section: "session-management",
     },
   ] as const;
 
@@ -430,6 +436,33 @@ describe("MonitorLayout", () => {
     expect(onRender).toHaveBeenCalledTimes(renderCount);
   });
 
+  it.each([
+    {
+      description: "an analyst",
+      user: createMockUser({ is_superuser: false, is_data_analyst: true }),
+    },
+    {
+      description: "a non-admin with the monitoring permission",
+      user: createMockUser({
+        is_superuser: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    },
+  ])(
+    "hides Session management (admin-only) for $description",
+    async ({ user }) => {
+      setup({ user });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole("link", { name: "Session management" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   const getTabGem = (name: string) =>
     within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
 
@@ -503,6 +536,29 @@ describe("MonitorLayout", () => {
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      expectation:
+        "gates Session management without the session-management feature",
+      hasFeature: false,
+      isGated: true,
+    },
+    {
+      expectation:
+        "does not gate Session management with the session-management feature",
+      hasFeature: true,
+      isGated: false,
+    },
+  ])("$expectation", async ({ hasFeature, isGated }) => {
+    setup({ tokenFeatures: { "session-management": hasFeature } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Session management") !== null).toBe(isGated);
   });
 
   const AI_AUDITING_GROUP = "AI Auditing";

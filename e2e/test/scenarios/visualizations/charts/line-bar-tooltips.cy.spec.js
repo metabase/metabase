@@ -253,6 +253,162 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       .should("be.visible");
   });
 
+  it("should show correct tooltips for interpolated data points (metabase#47757)", () => {
+    H.visitQuestionAdhoc({
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+        series_settings: { Y: { "line.missing": "zero" } },
+      },
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select '2020-01-01' x, 10 y
+union all select '2020-03-01' x, 30 y
+union all select '2020-04-01' x, 40 y`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(0).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "January 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 10,
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(1).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "February 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 0,
+          secondaryValue: "-100%",
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(2).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "March 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 30,
+          secondaryValue: "+∞%",
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+  });
+
+  it("should wrap long values without expanding the tooltip beyond the viewport (metabase#68337)", () => {
+    const longTooltipValue = "a".repeat(10000);
+
+    H.visitQuestionAdhoc({
+      display: "line",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 as x, 10 as metric_value, '${longTooltipValue}' as details
+union all select 2, 20, 'short value'`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["METRIC_VALUE"],
+        "graph.tooltip_columns": [JSON.stringify(["name", "DETAILS"])],
+      },
+    });
+
+    H.cartesianChartCircle()
+      .should("have.length", 2)
+      .first()
+      .trigger("mousemove");
+
+    cy.window().then((appWindow) => {
+      H.echartsTooltip().then(($tooltip) => {
+        const tooltipRoot = $tooltip[0].parentElement;
+        expect(tooltipRoot).not.to.be.null;
+        if (tooltipRoot == null) {
+          return;
+        }
+
+        const tooltipBounds = tooltipRoot.getBoundingClientRect();
+
+        expect(tooltipBounds.left).to.be.at.least(0);
+        expect(tooltipBounds.right).to.be.at.most(appWindow.innerWidth);
+        expect(tooltipBounds.height).to.be.at.most(appWindow.innerHeight * 0.8);
+        expect(tooltipRoot.scrollHeight).to.be.greaterThan(
+          tooltipRoot.clientHeight,
+        );
+      });
+    });
+
+    H.echartsTooltip()
+      .findByText(longTooltipValue)
+      .should(($value) => {
+        const value = $value[0];
+        const fontSize = Number.parseFloat(getComputedStyle(value).fontSize);
+
+        expect(value.scrollWidth).to.be.at.most(value.clientWidth);
+        expect(value.clientHeight).to.be.greaterThan(fontSize * 2);
+      });
+  });
+
+  it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
+    const questionDetails = {
+      name: "11435",
+      display: "line",
+      native: {
+        query: `
+  SELECT "PUBLIC"."ORDERS"."ID" AS "ID", "PUBLIC"."ORDERS"."USER_ID" AS "USER_ID", "PUBLIC"."ORDERS"."PRODUCT_ID" AS "PRODUCT_ID", "PUBLIC"."ORDERS"."SUBTOTAL" AS "SUBTOTAL", "PUBLIC"."ORDERS"."TAX" AS "TAX", "PUBLIC"."ORDERS"."TOTAL" AS "TOTAL", "PUBLIC"."ORDERS"."DISCOUNT" AS "DISCOUNT", "PUBLIC"."ORDERS"."CREATED_AT" AS "CREATED_AT", "PUBLIC"."ORDERS"."QUANTITY" AS "QUANTITY"
+  FROM "PUBLIC"."ORDERS"
+  WHERE ("PUBLIC"."ORDERS"."CREATED_AT" >= timestamp with time zone '2028-03-12 00:00:00.000+03:00'
+         AND "PUBLIC"."ORDERS"."CREATED_AT" < timestamp with time zone '2028-03-13 00:00:00.000+03:00')
+  LIMIT 1048575`,
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["TOTAL"],
+        column_settings: {
+          '["name","CREATED_AT"]': {
+            time_enabled: "milliseconds",
+          },
+        },
+      },
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.cartesianChartCircle().eq(1).realHover();
+    H.assertEChartsTooltip({
+      header: "March 11, 2028, 5:55:36.759 PM",
+      rows: [
+        {
+          color: "#F9D45C",
+          name: "TOTAL",
+          value: "135.23",
+        },
+      ],
+    });
+  });
+
   describe("> additional columns setting", () => {
     const COUNT = "Count";
     const SUM_OF_TOTAL = "Sum of Total";
