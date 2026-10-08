@@ -36,6 +36,7 @@ module.exports = {
     "^Components/Inputs/PasswordInput Overview",
     "^Components/Inputs/TextInput Overview",
     "^Components/Inputs/NumberInput Overview",
+    "^Components/Inputs/Textarea Overview",
     "^Components/Data display/Accordion Overview",
     "^Components/Inputs/Select Overview",
     "^Components/Inputs/MultiSelect Overview",
