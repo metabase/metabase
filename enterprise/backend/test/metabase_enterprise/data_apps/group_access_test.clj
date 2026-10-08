@@ -230,7 +230,11 @@
                  :model/PermissionsGroup group {}]
     (let [assignment {:data_app_id (:id app) :permission_group_id (:id group)}]
       (t2/insert! :model/DataAppGroupAssignment assignment)
-      (is (thrown? Exception (t2/insert! :model/DataAppGroupAssignment assignment))))))
+      (is (thrown? Exception
+                   (t2/with-transaction [_conn]
+                     (t2/insert! :model/DataAppGroupAssignment assignment))))
+      (is (= 1 (t2/count :model/DataAppGroupAssignment
+                         :data_app_id (:id app) :permission_group_id (:id group)))))))
 
 (deftest revoke-assignment-after-group-becomes-ineligible-test
   (mt/with-premium-features #{:data-apps}
