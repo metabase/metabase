@@ -264,17 +264,17 @@
       (reset! probe-future nil)
       ;; Nothing probed yet, so the refresh is due.
       (reset! probe nil)
-      (with-redefs
-       [analytics/set-gauge!                                      #(swap! gauge-calls conj (vec %&))
-        semantic.store-health/collect-pgvector-readiness-metrics! #(swap! refreshes inc)
-        semantic.store-health/submit-pgvector-readiness-refresh!  #(do (swap! submitted conj %)
-                                                                       (future (deref hold 10000 ::hung)))]
-        ((:f collector))
-        ((:f collector))
-        (is (= 1 (count @submitted)) "overlapping scrapes share one local refresh")
-        (is (empty? @gauge-calls) "the scrape path writes no gauges of its own")
-        (is (zero? @refreshes) "the database probe does not run on the synchronous scrape path")
-        ((first @submitted)))
+      (mt/with-dynamic-fn-redefs
+        [semantic.store-health/collect-pgvector-readiness-metrics! #(swap! refreshes inc)
+         semantic.store-health/submit-pgvector-readiness-refresh!  #(do (swap! submitted conj %)
+                                                                        (future (deref hold 10000 ::hung)))]
+        (with-redefs [analytics/set-gauge! #(swap! gauge-calls conj (vec %&))]
+          ((:f collector))
+          ((:f collector))
+          (is (= 1 (count @submitted)) "overlapping scrapes share one local refresh")
+          (is (empty? @gauge-calls) "the scrape path writes no gauges of its own")
+          (is (zero? @refreshes) "the database probe does not run on the synchronous scrape path")
+          ((first @submitted))))
       (is (= 60 (:min-interval-s collector))
           "the scrape reconsiders often; the hourly cadence is readiness-refresh-due?'s job")
       (is (= 1 @refreshes))

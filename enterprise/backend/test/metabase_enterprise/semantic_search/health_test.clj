@@ -407,37 +407,37 @@
     (testing "a stored snapshot refreshes the garbage gauge immediately"
       (let [calls  (atom [])
             shared (atom nil)]
-        (with-redefs
-         [semantic.health/store-repair-metrics! (fn [_index-id counts] (reset! shared counts))
-          semantic.health/active-index
-          #(let [{:keys [orphan-count]} @shared]
-             {:pgvector :x
-              :state (update active-state :metadata-row assoc
-                             :repair_orphan_count orphan-count
-                             :repair_snapshot_at (t/offset-date-time))})
-          semantic.health/repair-snapshot-age (constantly 0)
-          analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
-          (semantic.health/report-repair-metrics! {:orphan-count 3}))
+        (mt/with-dynamic-fn-redefs
+          [semantic.health/store-repair-metrics! (fn [_index-id counts] (reset! shared counts))
+           semantic.health/active-index
+           #(let [{:keys [orphan-count]} @shared]
+              {:pgvector :x
+               :state (update active-state :metadata-row assoc
+                              :repair_orphan_count orphan-count
+                              :repair_snapshot_at (t/offset-date-time))})
+           semantic.health/repair-snapshot-age (constantly 0)]
+          (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+            (semantic.health/report-repair-metrics! {:orphan-count 3})))
         (is (= [[:metabase-search/index-garbage-count {:index "semantic-search"} 3]] @calls))))
     (testing "with no active index, the measure reads N/A instead of serving an old shared count"
       (let [calls (atom [])]
-        (with-redefs [semantic.health/store-repair-metrics! (constantly nil)
-                      semantic.health/active-index          (constantly nil)
-                      analytics/set-gauge!                  (fn [& args] (swap! calls conj (vec args)))]
-          (semantic.health/report-repair-metrics! {:orphan-count 3})
-          (semantic.health/report-repair-metrics! nil))
+        (mt/with-dynamic-fn-redefs [semantic.health/store-repair-metrics! (constantly nil)
+                                    semantic.health/active-index          (constantly nil)]
+          (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+            (semantic.health/report-repair-metrics! {:orphan-count 3})
+            (semantic.health/report-repair-metrics! nil)))
         (is (every? (fn [[_gauge _labels value]] (and (double? value) (Double/isNaN ^double value))) @calls)
             "no real value reaches the gauge while there's no active index")))
     (testing "an ordinary metric-sink error does not fail the repair job"
-      (with-redefs [semantic.health/store-repair-metrics! (constantly nil)
-                    semantic.health/active-index
-                    (constantly {:pgvector :x
-                                 :state (update active-state :metadata-row assoc
-                                                :repair_orphan_count 3
-                                                :repair_snapshot_at (t/offset-date-time))})
-                    semantic.health/repair-snapshot-age (constantly 0)
-                    analytics/set-gauge! (fn [& _] (throw (ex-info "boom" {})))]
-        (is (nil? (semantic.health/report-repair-metrics! {:orphan-count 3})))))))
+      (mt/with-dynamic-fn-redefs [semantic.health/store-repair-metrics! (constantly nil)
+                                  semantic.health/active-index
+                                  (constantly {:pgvector :x
+                                               :state (update active-state :metadata-row assoc
+                                                              :repair_orphan_count 3
+                                                              :repair_snapshot_at (t/offset-date-time))})
+                                  semantic.health/repair-snapshot-age (constantly 0)]
+        (with-redefs [analytics/set-gauge! (fn [& _] (throw (ex-info "boom" {})))]
+          (is (nil? (semantic.health/report-repair-metrics! {:orphan-count 3}))))))))
 
 (deftest invalid-repair-snapshot-age-is-omitted-test
   (doseq [age [-1 10801]]

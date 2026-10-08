@@ -178,24 +178,24 @@
                   (atom {"https://example.test/v1/embeddings"
                          (dh.cb/circuit-breaker
                           {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})})]
-      (with-redefs
-       [http/post                    (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
-                                                             "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
-        analytics/inc!               (constantly nil)
-        token-tracking/record-tokens (fn [& _] (throw (ex-info "appdb unavailable" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"appdb unavailable"
-             (#'semantic.embedding/openai-compatible-get-embeddings-batch
-              {:provider       "openai"
-               :endpoint       "https://example.test/v1/embeddings"
-               :api-key        "test-key"
-               :model-name     "test-model"
-               :vector-dimensions 1
-               :texts          ["bird"]
-               :record-tokens? true
-               :snowplow?      false})))
-        (is (= :closed (circuit-state "https://example.test/v1/embeddings")))))))
+      (mt/with-dynamic-fn-redefs
+        [http/post                    (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
+                                                              "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
+         token-tracking/record-tokens (fn [& _] (throw (ex-info "appdb unavailable" {})))]
+        (with-redefs [analytics/inc! (constantly nil)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"appdb unavailable"
+               (#'semantic.embedding/openai-compatible-get-embeddings-batch
+                {:provider       "openai"
+                 :endpoint       "https://example.test/v1/embeddings"
+                 :api-key        "test-key"
+                 :model-name     "test-model"
+                 :vector-dimensions 1
+                 :texts          ["bird"]
+                 :record-tokens? true
+                 :snowplow?      false})))
+          (is (= :closed (circuit-state "https://example.test/v1/embeddings"))))))))
 
 (deftest ^:synchronized malformed-response-trips-breaker-test
   (testing "a successful HTTP response is not a circuit success until its vectors are validated"

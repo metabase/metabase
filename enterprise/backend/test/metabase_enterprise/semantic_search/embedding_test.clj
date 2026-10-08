@@ -165,49 +165,49 @@
         analytics-calls  (atom [])
         tracking-calls   (atom [])
         resolution-calls (atom [])]
-    (with-redefs
-     [embeddings.provider/resolve-model            (fn [requested]
-                                                     (swap! resolution-calls conj requested)
-                                                     (assoc requested :model-name "local-model"))
-      embeddings.provider/embed-text               (fn [_ text _] [text])
-      embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
+    (mt/with-dynamic-fn-redefs
+      [embeddings.provider/resolve-model            (fn [requested]
+                                                      (swap! resolution-calls conj requested)
+                                                      (assoc requested :model-name "local-model"))
+       embeddings.provider/embed-text               (fn [_ text _] [text])
+       embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
+       semantic.models.token-tracking/record-tokens (fn [& args]
+                                                      (swap! tracking-calls conj args))]
       ;; `with-redefs` is process-wide, so ignore unrelated metrics emitted by background workers.
-      analytics/inc!                               (fn
-                                                     ([_metric] nil)
-                                                     ([_metric _labels-or-amount] nil)
-                                                     ([metric labels value]
-                                                      (when (= metric :metabase-search/semantic-embedding-tokens)
-                                                        (swap! analytics-calls conj [metric labels value]))))
-      semantic.models.token-tracking/record-tokens (fn [& args]
-                                                     (swap! tracking-calls conj args))]
-      (embedding/get-embedding model "Hello world" :type :query :record-tokens? true)
-      (embedding/get-embeddings-batch model ["Hello world" "again"] :type :index :record-tokens? true)
-      (testing "local calls report approximate token metrics and persistent usage"
-        (is (= [[:metabase-search/semantic-embedding-tokens
-                 {:provider "in-process" :model "local-model"}
-                 2]
-                [:metabase-search/semantic-embedding-tokens
-                 {:provider "in-process" :model "local-model"}
-                 3]]
-               @analytics-calls))
-        (is (= [["local-model" :query 2]
-                ["local-model" :index 3]]
-               @tracking-calls)))
-      (testing "named local models rely on the provider's embed-time resolution"
-        (is (empty? @resolution-calls)))
-      (testing "the adapter neither resolves nor counts other providers"
-        (embedding/get-embedding (assoc model :provider "openai") "Hello world")
-        (is (empty? @resolution-calls))
-        (is (= 2 (count @analytics-calls)))
-        (is (= 2 (count @tracking-calls))))
-      (testing "an unnamed local request resolves once to obtain its token label"
-        (embedding/get-embedding unnamed-model "Hello world" :type :query :record-tokens? true)
-        (is (= [unnamed-model] @resolution-calls))
-        (is (= [:metabase-search/semantic-embedding-tokens
-                {:provider "in-process" :model "local-model"}
-                2]
-               (last @analytics-calls)))
-        (is (= ["local-model" :query 2] (last @tracking-calls)))))))
+      (with-redefs [analytics/inc! (fn
+                                     ([_metric] nil)
+                                     ([_metric _labels-or-amount] nil)
+                                     ([metric labels value]
+                                      (when (= metric :metabase-search/semantic-embedding-tokens)
+                                        (swap! analytics-calls conj [metric labels value]))))]
+        (embedding/get-embedding model "Hello world" :type :query :record-tokens? true)
+        (embedding/get-embeddings-batch model ["Hello world" "again"] :type :index :record-tokens? true)
+        (testing "local calls report approximate token metrics and persistent usage"
+          (is (= [[:metabase-search/semantic-embedding-tokens
+                   {:provider "in-process" :model "local-model"}
+                   2]
+                  [:metabase-search/semantic-embedding-tokens
+                   {:provider "in-process" :model "local-model"}
+                   3]]
+                 @analytics-calls))
+          (is (= [["local-model" :query 2]
+                  ["local-model" :index 3]]
+                 @tracking-calls)))
+        (testing "named local models rely on the provider's embed-time resolution"
+          (is (empty? @resolution-calls)))
+        (testing "the adapter neither resolves nor counts other providers"
+          (embedding/get-embedding (assoc model :provider "openai") "Hello world")
+          (is (empty? @resolution-calls))
+          (is (= 2 (count @analytics-calls)))
+          (is (= 2 (count @tracking-calls))))
+        (testing "an unnamed local request resolves once to obtain its token label"
+          (embedding/get-embedding unnamed-model "Hello world" :type :query :record-tokens? true)
+          (is (= [unnamed-model] @resolution-calls))
+          (is (= [:metabase-search/semantic-embedding-tokens
+                  {:provider "in-process" :model "local-model"}
+                  2]
+                 (last @analytics-calls)))
+          (is (= ["local-model" :query 2] (last @tracking-calls))))))))
 
 (deftest test-batching-logic
   (testing "create-batches handles empty input"
@@ -315,33 +315,33 @@
                 :mock-response  {:embedding mock-embedding}
                 :counts-tokens? false}]]
         (t2/delete! :model/SemanticSearchTokenTracking)
-        (with-redefs [analytics/inc! (fn [metric & args]
-                                       (swap! analytics-calls conj [metric args]))
-                      http/post (fn post-mock [_url & _options]
-                                  {:status  200
-                                   :headers {"Content-Type" "application/json"}
-                                   :body    (json/encode mock-response)})]
-          (testing provider
-            (reset! analytics-calls [])
-            (is (= mock-embedding (vec (#'embedding/get-embedding {:provider          provider
-                                                                   :model-name        "some-model"
-                                                                   :vector-dimensions 4}
-                                                                  "hello"
-                                                                  {:record-tokens? true}))))
-            (is (= [mock-embedding] (mapv vec (#'embedding/get-embeddings-batch {:provider          provider
-                                                                                 :model-name        "some-model"
-                                                                                 :vector-dimensions 4}
-                                                                                ["hello"]
-                                                                                {:record-tokens? true}))))
-            (when counts-tokens?
-              (let [tokens-calls (filter #(= :metabase-search/semantic-embedding-tokens (first %)) @analytics-calls)]
-                (is (= 2 (count tokens-calls)))
-                (is (= {:provider provider
-                        :model    "some-model"}
-                       (-> tokens-calls first second first)))
-                (is (= (get-in mock-response [:usage :total_tokens])
-                       (-> tokens-calls first second second)))
-                (is (= 2 (t2/count :model/SemanticSearchTokenTracking)))))))))))
+        (mt/with-dynamic-fn-redefs [http/post (fn post-mock [_url & _options]
+                                                {:status  200
+                                                 :headers {"Content-Type" "application/json"}
+                                                 :body    (json/encode mock-response)})]
+          (with-redefs [analytics/inc! (fn [metric & args]
+                                         (swap! analytics-calls conj [metric args]))]
+            (testing provider
+              (reset! analytics-calls [])
+              (is (= mock-embedding (vec (#'embedding/get-embedding {:provider          provider
+                                                                     :model-name        "some-model"
+                                                                     :vector-dimensions 4}
+                                                                    "hello"
+                                                                    {:record-tokens? true}))))
+              (is (= [mock-embedding] (mapv vec (#'embedding/get-embeddings-batch {:provider          provider
+                                                                                   :model-name        "some-model"
+                                                                                   :vector-dimensions 4}
+                                                                                  ["hello"]
+                                                                                  {:record-tokens? true}))))
+              (when counts-tokens?
+                (let [tokens-calls (filter #(= :metabase-search/semantic-embedding-tokens (first %)) @analytics-calls)]
+                  (is (= 2 (count tokens-calls)))
+                  (is (= {:provider provider
+                          :model    "some-model"}
+                         (-> tokens-calls first second first)))
+                  (is (= (get-in mock-response [:usage :total_tokens])
+                         (-> tokens-calls first second second)))
+                  (is (= 2 (t2/count :model/SemanticSearchTokenTracking))))))))))))
 
 (deftest test-embedding-service-validation
   (let [mock-embedding [1.0 2.0 3.0 4.0]

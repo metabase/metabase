@@ -142,12 +142,12 @@
                  :index     :refresh-isolation-test
                  :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
       (with-redefs [index-health/live-gauge-series live]
-        (with-redefs [analytics/set-gauge!       (fn [& args] (swap! calls conj (vec args)))
-                      health-inspector/enabled? (constantly false)]
-          (#'index-health/run-measure! (assoc boom :collect
-                                              (constantly {:value 5 :health 100 :message "was fine"})))
-          (reset! calls [])
-          (run! #'index-health/refresh-index-check! [boom ok])))
+        (mt/with-dynamic-fn-redefs [health-inspector/enabled? (constantly false)]
+          (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+            (#'index-health/run-measure! (assoc boom :collect
+                                                (constantly {:value 5 :health 100 :message "was fine"})))
+            (reset! calls [])
+            (run! #'index-health/refresh-index-check! [boom ok]))))
       (is (=? [[:metabase-search/index-staleness-seconds {:index "refresh-isolation-test"}
                 (fn [v] (Double/isNaN ^double v))]
                [:metabase-search/index-coverage-ratio {:index "refresh-isolation-test"} 1.0]]

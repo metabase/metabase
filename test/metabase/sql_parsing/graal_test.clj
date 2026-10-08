@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics-interface]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.files :as u.files])
   (:import
    (java.io FileOutputStream)
@@ -54,11 +55,11 @@
   (testing (str "A fired Python-call timeout still surfaces as TimeoutException from the API even if "
                 "the timeout-metric bump throws — a misconfigured analytics registry must not shadow "
                 "the timeout (#77084).")
-    (with-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
-                  graal/with-timeout* (fn [_ _] :metabase.sql-parsing.graal/timeout)
-                  ;; poison only the timeout metric; leave the acquisition inc! alone
-                  analytics-interface/inc! (fn [k & _]
-                                             (when (= k :metabase-sql-parsing/context-timeouts)
-                                               (throw (Exception. "boom"))))]
-      (is (thrown? TimeoutException
-                   (sql-parsing/referenced-tables "postgres" "SELECT 1"))))))
+    ;; force the timeout branch of do-with-python-context without waiting 30s
+    (dynamic-redefs/with-dynamic-fn-redefs [graal/with-timeout* (fn [_ _] :metabase.sql-parsing.graal/timeout)]
+      ;; poison only the timeout metric; leave the acquisition inc! alone
+      (with-redefs [analytics-interface/inc! (fn [k & _]
+                                               (when (= k :metabase-sql-parsing/context-timeouts)
+                                                 (throw (Exception. "boom"))))]
+        (is (thrown? TimeoutException
+                     (sql-parsing/referenced-tables "postgres" "SELECT 1")))))))
