@@ -529,20 +529,24 @@
                    :model/AuthIdentity {duplicate-identity-id :id} {:user_id duplicate-user-id
                                                                     :provider "slack-connect"
                                                                     :provider_id "U-SLACK-SESSION"}
-                   :model/Session {duplicate-session-id :id} {:user_id duplicate-user-id
+                   :model/Session {duplicate-session-id :id} {:id (session/generate-session-id)
+                                                              :user_id duplicate-user-id
                                                               :session_key duplicate-slack-session-key
                                                               :auth_identity_id duplicate-identity-id}
                    :model/AuthIdentity {password-identity-id :id} {:user_id user-id
                                                                    :provider "password"
                                                                    :credentials {:password_hash "hash"
                                                                                  :password_salt "salt"}}
-                   :model/Session {slack-session-id :id} {:user_id user-id
+                   :model/Session {slack-session-id :id} {:id (session/generate-session-id)
+                                                          :user_id user-id
                                                           :session_key slack-session-key
                                                           :auth_identity_id slack-identity-id}
-                   :model/Session {other-slack-session-id :id} {:user_id user-id
+                   :model/Session {other-slack-session-id :id} {:id (session/generate-session-id)
+                                                                :user_id user-id
                                                                 :session_key other-slack-session-key
                                                                 :auth_identity_id slack-identity-id}
-                   :model/Session {password-session-id :id} {:user_id user-id
+                   :model/Session {password-session-id :id} {:id (session/generate-session-id)
+                                                             :user_id user-id
                                                              :session_key password-session-key
                                                              :auth_identity_id password-identity-id}]
       (is (nil? (client/client slack-session-key :delete 204 (str "user/" user-id "/slack"))))
