@@ -61,7 +61,6 @@ function createMetricAggregatedQuery() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "month",
           },
@@ -83,7 +82,7 @@ function createAggregatedQuery() {
           {
             type: "operator",
             operator: "avg",
-            args: [{ type: "column", sourceName: "ORDERS", name: "QUANTITY" }],
+            args: [{ type: "column", name: "QUANTITY" }],
           },
         ],
       },
@@ -166,6 +165,7 @@ describe("AggregateStep", () => {
                     {
                       type: "column",
                       name: "RATING",
+                      sourceFieldId: ORDERS.PRODUCT_ID,
                     },
                   ],
                 },

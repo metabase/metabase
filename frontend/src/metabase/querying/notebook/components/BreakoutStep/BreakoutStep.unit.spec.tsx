@@ -41,7 +41,6 @@ function createQueryWithBreakout() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "TAX",
           },
         ],
@@ -63,7 +62,6 @@ function createQueryWithBreakoutAndBinningCount(
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "TAX",
             binning:
               binningCount != null
@@ -87,13 +85,11 @@ function createQueryWithMultipleBreakoutsAndBinningStrategy() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "TAX",
             binning: { strategy: "num-bins", numBins: 10 },
           },
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "TAX",
             binning: { strategy: "num-bins", numBins: 50 },
           },
@@ -116,7 +112,6 @@ function createQueryWithBreakoutAndTemporalBucket(
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: temporalBucketName,
           },
@@ -137,13 +132,11 @@ function createQueryWithMultipleBreakoutsAndTemporalBucket() {
         breakouts: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "year",
           },
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             unit: "month",
           },
@@ -621,9 +614,7 @@ describe("BreakoutStep", () => {
               type: "table",
               id: ORDERS_ID,
             },
-            breakouts: [
-              { type: "column", sourceName: "ORDERS", name: "CREATED_AT" },
-            ],
+            breakouts: [{ type: "column", name: "CREATED_AT" }],
           },
         ],
       });
