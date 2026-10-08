@@ -248,6 +248,14 @@
       4096 {:schema {:type "object"} :max-tokens 4096}
       nil  {:schema {:type "object"}}
       512  {:max-tokens 512}))
+  (testing "z-ai/glm-5.3-flash rejects the disable, so a forced call gets the floor and no directive"
+    (let [body (body-for {:model "z-ai/glm-5.3-flash" :schema {:type "object"} :max-tokens 512})]
+      (is (= 2048 (:max_tokens body)))
+      (is (not (contains? body :reasoning)))))
+  (testing "google/gemini-3.8-flash rejects the disable, so a forced call gets the floor and no directive"
+    (let [body (body-for {:model "google/gemini-3.8-flash" :schema {:type "object"} :max-tokens 512})]
+      (is (= 2048 (:max_tokens body)))
+      (is (not (contains? body :reasoning)))))
   (testing "a non-mandatory model keeps its cap — it got the disable instead"
     (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :schema {:type "object"} :max-tokens 512})]
       (is (= 512 (:max_tokens body)))
@@ -270,8 +278,9 @@
                                "anthropic/claude-opus-4.8" "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6"
                                "anthropic/claude-sonnet-5"
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
-                               "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
-                               "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max-0902" "z-ai/glm-5.3" "z-ai/glm-5.2"}
+                               "deepseek/deepseek-v4-flash-0731" "google/gemini-3.8-flash"
+                               "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3" "openai/gpt-5.4" "openai/gpt-5.4-mini"
+                               "qwen/qwen3.8-max-0902" "z-ai/glm-5.3" "z-ai/glm-5.3-flash" "z-ai/glm-5.2"}
           renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
                                "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
           budget             #{"anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1" "anthropic/claude-sonnet-4.5"
