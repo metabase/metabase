@@ -658,7 +658,7 @@
                   (body {:model model :schema schema :max-tokens 512})))
           (is (=? {:tool_choice {:type "any"}}
                   (body {:model model :tools tools :tool_choice "required"}))))))
-    (testing "Opus and Sonnet from 5.5 and Fable and Mythos from 5.1 reject a forced tool choice, so they get auto and keep thinking"
+    (testing "Opus/Sonnet >=5.5 and Fable/Mythos >=5.1 get auto tool choice and keep thinking"
       (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"
                      "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"
                      "claude-fable-5-1" "anthropic.claude-fable-5-1" "claude-fable-5-1-prod" "claude-fable-5.1-prod"
