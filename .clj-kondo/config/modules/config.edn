@@ -112,6 +112,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            users
@@ -141,6 +142,7 @@
            collections
            events
            lib.schema
+           models
            permissions
            public-sharing
            util}

@@ -6,23 +6,23 @@ import { getResponseErrorMessage } from "metabase/utils/errors";
 
 import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 
-export interface ModelActionsSectionProps {
-  hasModelActionsEnabled: boolean;
-  onToggleModelActionsEnabled: (enabled: boolean) => Promise<void>;
+export interface DataActionsSectionProps {
+  hasDataActionsEnabled: boolean;
+  onToggleDataActionsEnabled: (enabled: boolean) => Promise<void>;
   disabled: boolean;
 }
 
-export function ModelActionsSection({
-  hasModelActionsEnabled,
-  onToggleModelActionsEnabled,
+export function DataActionsSection({
+  hasDataActionsEnabled,
+  onToggleDataActionsEnabled,
   disabled,
-}: ModelActionsSectionProps) {
+}: DataActionsSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
-  const handleToggleModelActionsEnabled = async (enabled: boolean) => {
+  const handleToggleDataActionsEnabled = async (enabled: boolean) => {
     try {
       setError(null);
-      await onToggleModelActionsEnabled(enabled);
+      await onToggleDataActionsEnabled(enabled);
     } catch (err) {
       setError(getResponseErrorMessage(err) || t`An error occurred`);
     }
@@ -31,13 +31,13 @@ export function ModelActionsSection({
   return (
     <div>
       <Flex align="center" justify="space-between" mb="xxs">
-        <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
+        <Label htmlFor="data-actions-toggle">{t`Data actions`}</Label>
         <Box>
           <Switch
-            id="model-actions-toggle"
-            checked={hasModelActionsEnabled}
+            id="data-actions-toggle"
+            checked={hasDataActionsEnabled}
             onChange={(e) =>
-              handleToggleModelActionsEnabled(e.currentTarget.checked)
+              handleToggleDataActionsEnabled(e.currentTarget.checked)
             }
             disabled={disabled}
           />
@@ -46,9 +46,7 @@ export function ModelActionsSection({
       <Box maw="22.5rem">
         {error ? <Error>{error}</Error> : null}
         <Description>
-          {t`Allow actions from models created from this data to be run. Actions are able to read, write, and possibly delete data.`}
-          <br />
-          {t`Note: Your database user will need write permissions, either through the main connection or through the write connection.`}
+          {t`Allow data actions that use this database to be run. Actions are able to read, write, and possibly delete data.`}
         </Description>
       </Box>
       {disabled && (
@@ -59,7 +57,7 @@ export function ModelActionsSection({
             icon={<Icon name="info" />}
             mb="lg"
           >
-            {t`Model actions can't be enabled when database routing is enabled.`}
+            {t`Data actions can't be enabled when database routing is enabled.`}
           </Alert>
         </Box>
       )}

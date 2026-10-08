@@ -125,7 +125,8 @@
 (mr/def ::action.parameters
   [:sequential [:ref ::action.parameter]])
 
-(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]
+(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]
+                         request?    :- :boolean]
   ;; `required-for-insert` = you have to specify this when you insert a row
   ;;
   ;; `not-null-in-app-db` = this is `NOT NULL` in the app DB, and will always come back when you `SELECT` something,
@@ -138,7 +139,8 @@
                              cat
                              [(case schema-type
                                 :select [[:id ::id]
-                                         [:creator {:optional true} [:maybe ::users.schema/user]]]
+                                         [:creator {:optional true} [:maybe ::users.schema/user]]
+                                         [:can_write {:optional true} :boolean]]
                                 :update [[:id {:optional true} ::id]]
                                 :insert nil)
                               [[:name                   required-for-insert :string]
@@ -152,14 +154,15 @@
                                [:database_id            {:optional true}    [:maybe ::lib.schema.id/database]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
                                [:visualization_settings {:optional true}    [:maybe ms/VisualizationSettings]]]
-                              [[:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
-                               [:updated_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
-                               [:public_uuid        {:optional true} [:maybe ms/UUIDString]]
-                               [:public_uuid_prefix {:optional true} [:maybe :string]]
-                               [:made_public_by_id  {:optional true} [:maybe ::lib.schema.id/user]]
-                               [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
-                               [:entity_id          {:optional true} [:maybe :string]]
-                               [:legacy_query       {:optional true} [:maybe :string]]]])]
+                              (when-not request?
+                                [[:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+                                 [:updated_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+                                 [:public_uuid        {:optional true} [:maybe ms/UUIDString]]
+                                 [:public_uuid_prefix {:optional true} [:maybe :string]]
+                                 [:made_public_by_id  {:optional true} [:maybe ::lib.schema.id/user]]
+                                 [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
+                                 [:entity_id          {:optional true} [:maybe :string]]
+                                 [:legacy_query       {:optional true} [:maybe :string]]])])]
     [:merge
      (into [:map {:closed true}] common)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
@@ -171,15 +174,23 @@
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."
-  (action-schema :select))
+  (action-schema :select false))
 
 (mr/def ::action.for-insert
-  "Schema for inserting a new Action (REST API or internally)."
-  (action-schema :insert))
+  "Schema for inserting a new Action internally."
+  (action-schema :insert false))
 
 (mr/def ::action.for-update
-  "Schema for updating an Action (REST API or internally)."
-  (action-schema :update))
+  "Schema for updating an Action internally."
+  (action-schema :update false))
+
+(mr/def ::action.create-request
+  "Schema for the REST API body that creates an Action, without the columns the server populates."
+  (action-schema :insert true))
+
+(mr/def ::action.update-request
+  "Schema for the REST API body that updates an Action, without the columns the server populates."
+  (action-schema :update true))
 
 (mr/def ::implicit-action.row
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."

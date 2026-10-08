@@ -1,4 +1,3 @@
-import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
 import {
@@ -14,7 +13,7 @@ import {
   createMockDatabase,
 } from "metabase-types/api/mocks";
 
-import { DatabaseModelFeaturesSection } from "./DatabaseModelFeaturesSection";
+import { DatabaseModelPersistenceSection } from "./DatabaseModelPersistenceSection";
 
 interface SetupOpts {
   database?: Database;
@@ -41,15 +40,13 @@ function setup({
 
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async
-  const updateDatabase = jest.fn().mockResolvedValue({});
   const dismissSyncSpinner = jest.fn().mockResolvedValue({});
   const deleteDatabase = jest.fn().mockResolvedValue({});
 
   const utils = renderWithProviders(
-    <DatabaseModelFeaturesSection
+    <DatabaseModelPersistenceSection
       database={database}
       isModelPersistenceEnabled={isModelPersistenceEnabled}
-      updateDatabase={updateDatabase}
     />,
     { storeInitialState: state },
   );
@@ -57,77 +54,15 @@ function setup({
   return {
     ...utils,
     database,
-    updateDatabase,
     dismissSyncSpinner,
     deleteDatabase,
   };
 }
 
-describe("DatabaseModelFeaturesSection", () => {
-  describe("model actions control", () => {
-    it("is shown if database supports actions", () => {
-      setup();
-
-      expect(screen.getByLabelText(/Model actions/i)).toBeInTheDocument();
-    });
-
-    it("isn't shown if database doesn't support actions", () => {
-      const features = _.without(COMMON_DATABASE_FEATURES, "actions");
-      setup({ database: createMockDatabase({ features }) });
-
-      expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
-    });
-
-    it("shows if actions are enabled", () => {
-      setup({
-        database: createMockDatabase({
-          settings: { "database-enable-actions": true },
-        }),
-      });
-
-      expect(screen.getByLabelText(/Model actions/i)).toBeChecked();
-    });
-
-    it("shows if actions are disabled", () => {
-      setup({
-        database: createMockDatabase({
-          settings: { "database-enable-actions": false },
-        }),
-      });
-
-      expect(screen.getByLabelText(/Model actions/i)).not.toBeChecked();
-    });
-
-    it("enables actions", async () => {
-      const { database, updateDatabase } = setup();
-
-      await userEvent.click(screen.getByLabelText(/Model actions/i));
-
-      expect(updateDatabase).toHaveBeenCalledWith({
-        id: database.id,
-        settings: { "database-enable-actions": true },
-      });
-    });
-
-    it("disables actions", async () => {
-      const database = createMockDatabase({
-        settings: { "database-enable-actions": true },
-      });
-      const { updateDatabase } = setup({ database });
-
-      await userEvent.click(screen.getByLabelText(/Model actions/i));
-
-      expect(updateDatabase).toHaveBeenCalledWith({
-        id: database.id,
-        settings: { "database-enable-actions": false },
-      });
-    });
-  });
-
+describe("DatabaseModelPersistenceSection", () => {
   describe("model caching control", () => {
     it("isn't shown if model caching is turned off globally", () => {
       setup({ isModelPersistenceEnabled: false });
-      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(
         screen.queryByLabelText("Model persistence"),
       ).not.toBeInTheDocument();
@@ -140,7 +75,6 @@ describe("DatabaseModelFeaturesSection", () => {
           features: _.without(COMMON_DATABASE_FEATURES, "persist-models"),
         }),
       });
-      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(
         screen.queryByLabelText("Model persistence"),
       ).not.toBeInTheDocument();
@@ -159,7 +93,6 @@ describe("DatabaseModelFeaturesSection", () => {
           features: [...COMMON_DATABASE_FEATURES, "persist-models-enabled"],
         }),
       });
-      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(screen.getByLabelText("Model persistence")).toBeInTheDocument();
       expect(screen.getByLabelText("Model persistence")).toBeChecked();
     });
