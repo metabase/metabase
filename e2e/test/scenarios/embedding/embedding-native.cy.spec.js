@@ -467,7 +467,7 @@ describe("scenarios > embedding > native questions", () => {
             });
 
             H.tableInteractiveHeader("COUNT(*)");
-            cy.findByRole("gridcell").should("contain", "5");
+            cy.findByRole("gridcell").should("have.text", "5");
           });
         });
       });

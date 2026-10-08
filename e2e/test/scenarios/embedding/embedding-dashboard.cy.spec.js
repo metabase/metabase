@@ -893,9 +893,8 @@ describe("scenarios > embedding > dashboard locked numeric parameters (metabase#
 
           // wait for the results to load
           cy.contains(dashboardDetails.name);
-          cy.get(".CardVisualization")
-            .should("contain", "COUNT(*)")
-            .and("contain", "5");
+          cy.get(".CardVisualization").should("contain", "COUNT(*)");
+          cy.get(".CardVisualization").findByText("5").should("be.visible");
         });
       });
     });
