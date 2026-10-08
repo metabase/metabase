@@ -258,12 +258,48 @@
 
 (deftest ^:parallel everything-failed-is-still-a-success-test
   (testing "OPEN QUESTION — nothing was delivered, yet the call succeeds and its whole output is
-           failure text. See the note in metabase.metabot.tools.protocols-spike-test."
+           failure text. Arguably it should fail, but as which error? There is no code for \"your
+           five items were five different kinds of missing\", and collapsing them loses the
+           attribution the agent needs to retry."
     (let [outcome (invoke "read_many" {:ids [3]})]
       (is (nil? (:error outcome)))
       (is (= ["Card 3 was not found. It may not exist, or you may not have access to it."
               "Call `search` to find the entity you want and use an id from the results."]
              (str/split-lines (:output outcome)))))))
+
+(deftest ^:parallel a-renderable-output-is-rendered-at-the-boundary-test
+  (testing "a tool may return a non-string renderable; this consumer wants a string and renders it"
+    (let [tool    (tool {:name "lines" :description "Returns a renderable."
+                         :args [:map {:closed true}]}
+                        (fn [_ _] {:output (reify tools/Renderable
+                                             (render-text [_] "line one\nline two"))}))
+          outcome (binding [scope/*current-user-scope* #{"*"}]
+                    (tools.runtime/invoke (tools/entries [tool])
+                                          (ctx {:tool-names #{"lines"}})
+                                          "lines" {}))]
+      (is (= {:output "line one\nline two"} outcome))
+      (is (string? (:output outcome))))))
+
+(deftest ^:parallel an-item-limit-is-a-schema-fact-test
+  (testing "RECORDED, NOT BLESSED. The cap belongs in the schema, but the generated message is
+           worse than the hand-written one it replaces. `read_resource` says today:
+
+             Too many URIs provided (6). Please limit to 5 URIs maximum. Be more selective and
+             focus on the most relevant items for the current task or fetch them in batches.
+
+           The limit now lives in a schema the tool composed itself, so an `:error/message` on that
+           entry is easy to add. That is the likely answer."
+    (let [tool    (tool {:name "capped" :description "Takes at most 5."
+                         :args [:map {:closed true}
+                                [:uris [:sequential {:min 1 :max 5} :string]]]}
+                        (fn [_ _] {:output "ok"}))
+          outcome (binding [scope/*current-user-scope* #{"*"}]
+                    (tools.runtime/invoke (tools/entries [tool])
+                                          (ctx {:tool-names #{"capped"}})
+                                          "capped" {:uris ["a" "b" "c" "d" "e" "f"]}))]
+      (is (= "Invalid tool arguments: `uris` should have at most 5 elements; received an array."
+             (:output outcome)))
+      (is (= {:class :validation :code :invalid-arguments} (:error outcome))))))
 
 ;;; ------------------------------------------------- render -------------------------------------------------------
 
