@@ -57,8 +57,8 @@
                           [:appdb-h2 :appdb-postgres] {:equal 5, :left-superset 6,  :left-subset 3,  :incomparable 2}
                           [:appdb-h2 :semantic]       {:equal 5, :left-superset 2,  :left-subset 8,  :incomparable 1}
                           [:appdb-postgres :semantic] {:equal 4, :left-superset 2,  :left-subset 10, :incomparable 0}}
-              :scores    {:in-place       {:precision 4511/6720, :recall 1,     :f1 53191/68640, :exact 4}
-                          :appdb-h2       {:precision 787/960,   :recall 91/96, :f1 10533/12320, :exact 6}
-                          :appdb-postgres {:precision 91/96,     :recall 23/24, :f1 1241/1320,   :exact 12}
-                          :semantic       {:precision 107/160,   :recall 43/48, :f1 25519/36960, :exact 3}}}
+              :scores    {:in-place       {:precision 2203/3360, :recall 1,     :f1 366617/480480, :exact 4}
+                          :appdb-h2       {:precision 193/240,   :recall 91/96, :f1 31159/36960,   :exact 6}
+                          :appdb-postgres {:precision 89/96,     :recall 23/24, :f1 2449/2640,     :exact 11}
+                          :semantic       {:precision 209/320,   :recall 43/48, :f1 25079/36960,   :exact 3}}}
              translations)))))

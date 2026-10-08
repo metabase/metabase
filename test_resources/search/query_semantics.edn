@@ -143,7 +143,7 @@
            :semantic       {:keyword [:A :C :D], :vector [:A :B :C :D]}}
   :comparisons
   [{:focus   "ordered phrase"
-    :correct [:A :C :D]
+    :correct [:A :D]
     :alternatives
     {:in-place {:query "amber cobalt", :hits [:A :B :C :D]}
      :appdb-h2 {:query "amber cobalt", :hits [:A :B :C :D]}}}]}
