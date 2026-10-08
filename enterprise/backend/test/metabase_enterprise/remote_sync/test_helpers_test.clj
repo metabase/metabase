@@ -1,8 +1,10 @@
 (ns metabase-enterprise.remote-sync.test-helpers-test
   "Tests for test-helpers: the MockSource implementation and the clean-remote-sync-state fixture."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [mb.hawk.parallel]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
@@ -20,6 +22,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.encryption-test :as encryption-test]
+   [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -678,3 +682,185 @@
               (select-keys (run-vars-quietly [#'clean-remote-sync-state-keeps-existing-transforms-ledger-row-test
                                               #'clean-remote-sync-state-keeps-transforms-setting-and-ledger-in-step-test])
                            [:fail :error])))))))
+
+;;; ------------------------------------------------ the shared fixture refuses a used app DB ------------------------------------------------
+
+(defn- do-with-dirty-row!
+  "Run `(thunk)` with one row in the app DB that no test of this JVM made, of the table that `kind` names, and no
+  such row afterwards."
+  [kind thunk]
+  (case kind
+    :ledger
+    (mt/with-temp [:model/RemoteSyncObject {id :id}
+                   {:model_type "Card" :model_id 7 :model_name "Dirty" :status "synced"
+                    :status_changed_at (t/offset-date-time)}]
+      (thunk))
+
+    :task
+    (mt/with-temp [:model/RemoteSyncTask {id :id}
+                   {:sync_task_type "import" :initiated_by (mt/user->id :rasta)}]
+      (thunk))
+
+    :setting
+    (do
+      (t2/insert! :model/Setting {:key "remote-sync-branch" :value "main"})
+      (try
+        (thunk)
+        (finally
+          (t2/delete! :setting :key "remote-sync-branch")
+          (setting/restore-cache!))))
+
+    :transform
+    (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-temp [:model/Transform {id :id}
+                     {:name        "Dirty"
+                      :source      {:type "query" :query (mt/native-query {:query "SELECT 1"})}
+                      :target      {:type "table" :schema "PUBLIC" :name "dirty_row"}}]
+        (thunk)))
+
+    :tag
+    (mt/with-temp [:model/TransformTag {id :id} {:name "Dirty"}]
+      (thunk))
+
+    :python-library
+    (mt/with-temp [:model/PythonLibrary {id :id} {:path "dirty_row.py" :source ""}]
+      (thunk))
+
+    :namespace-collection
+    (mt/with-temp [:model/Collection {id :id} {:name "Dirty transforms" :location "/" :namespace "transforms"}]
+      (thunk))
+
+    :card
+    (mt/with-temp [:model/Card {id :id} (merge (mt/with-temp-defaults :model/Card) {:name "Dirty"})]
+      (thunk))
+
+    :collection
+    (mt/with-temp [:model/Collection {id :id} {:name "Dirty" :location "/"}]
+      (thunk))))
+
+(deftest clean-remote-sync-state-refuses-to-run-on-a-used-app-db-test
+  (testing (str "clean-remote-sync-state refuses to run, and does not run the test body, when the app DB holds a "
+                "row from before the test in a table that it cleans")
+    (doseq [kind [:ledger :task :setting :transform :tag :python-library :namespace-collection :card :collection]]
+      (testing kind
+        (let [ran?  (atom false)
+              error (do-with-dirty-row!
+                     kind
+                     #(try
+                        (th/clean-remote-sync-state (fn [] (reset! ran? true)))
+                        nil
+                        (catch clojure.lang.ExceptionInfo e e)))]
+          (is (some? error) "the fixture refuses to run")
+          (is (str/includes? (or (some-> error ex-message) "") "fresh test database")
+              "the message tells the user to use a fresh test database")
+          (is (false? @ran?) "the test body does not run"))))))
+
+(deftest clean-remote-sync-state-runs-when-the-app-db-holds-only-builtin-rows-test
+  (testing (str "the Trash collection, the built-in TransformTags and the built-in common.py PythonLibrary, which "
+                "migrations and test setup make, do not stop the fixture")
+    (let [ran? (atom false)]
+      (th/clean-remote-sync-state (fn [] (reset! ran? true)))
+      (is (true? @ran?)))))
+
+(deftest clean-object-names-the-table-when-its-delete-after-the-test-fails-test
+  (testing "clean-object throws an exception that names the table when its delete after the test fails"
+    (let [delete! (mt/original-fn #'th/delete-rows-one-by-one!)
+          calls   (atom 0)
+          error   (try
+                    (mt/with-dynamic-fn-redefs [th/delete-rows-one-by-one!
+                                                (fn [table]
+                                                  ;; the first call empties the table for the test
+                                                  (if (= 2 (swap! calls inc))
+                                                    (throw (ex-info "delete failed" {}))
+                                                    (delete! table)))]
+                      (th/clean-object (fn [])))
+                    nil
+                    (catch clojure.lang.ExceptionInfo e e))]
+      (is (= "remote_sync_object" (:table (ex-data error))))
+      (is (str/includes? (ex-message error) "remote_sync_object")))))
+
+(defn- do-with-an-unrelated-lock-wait!
+  "MySQL and MariaDB only. Calls `(thunk id)` while one app DB session waits for a lock on a scratch setting row that a
+second session holds. `id` is the session id of a third session with an open transaction that holds the lock of
+another scratch row, which no session waits for. Throws when the wait does not start within 4 s. Ends the wait and
+the transactions, and deletes the scratch rows, before it returns."
+  [thunk]
+  (let [held        "t2-lock-held"
+        own         "t2-lock-own"
+        ds          ^javax.sql.DataSource (mdb/data-source)
+        id-of       (fn [conn] (:id (next.jdbc/execute-one! conn ["SELECT CONNECTION_ID() AS id"])))
+        update-row! (fn [conn k v] (next.jdbc/execute-one! conn ["UPDATE setting SET value = ? WHERE `key` = ?" v k]))]
+    (t2/query-one {:delete-from :setting :where [:in :key [held own]]})
+    (t2/insert! :setting [{:key held :value "0"} {:key own :value "0"}])
+    (try
+      (with-open [holder (.getConnection ds)
+                  waiter (.getConnection ds)
+                  other  (.getConnection ds)]
+        (let [waiter-id (id-of waiter)
+              wait      (atom nil)]
+          (try
+            (.setAutoCommit holder false)
+            (.setAutoCommit other false)
+            (update-row! holder held "holder")
+            (update-row! other own "other")
+            ;; so that the wait ends also when the rollback below does not run
+            (next.jdbc/execute-one! waiter ["SET SESSION innodb_lock_wait_timeout = 5"])
+            (reset! wait (future (try (update-row! waiter held "waiter") (catch Throwable e e))))
+            (let [deadline (+ (System/currentTimeMillis) 4000)]
+              (loop []
+                (cond
+                  (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.innodb_trx "
+                                                "WHERE trx_state = 'LOCK WAIT' AND trx_mysql_thread_id = ?")
+                                           waiter-id])))
+                  nil
+
+                  (< (System/currentTimeMillis) deadline)
+                  ;; MySQL refreshes `information_schema.innodb_trx` only when it was not read in the last 100 ms
+                  (do (Thread/sleep 200) (recur))
+
+                  :else
+                  (throw (ex-info "The unrelated lock wait did not start" {})))))
+            (thunk (id-of other))
+            (finally
+              (.rollback holder)
+              (.rollback other)
+              (some-> @wait (deref 10000 ::timeout))
+              (.setAutoCommit holder true)
+              (.setAutoCommit other true)
+              (next.jdbc/execute-one! waiter ["SET SESSION innodb_lock_wait_timeout = DEFAULT"])))))
+      (finally
+        (t2/query-one {:delete-from :setting :where [:in :key [held own]]})))))
+
+(deftest session-blocks-another-ignores-a-lock-wait-between-other-sessions-test
+  (testing (str "on MySQL and MariaDB, session-blocks-another? is false for a session with an open transaction that no "
+                "session waits for, while another session waits for a lock of a third session")
+    (when (#{:mysql :mariadb} (mdb/db-type))
+      (do-with-an-unrelated-lock-wait!
+       (fn [id]
+         (is (false? (#'session-blocks-another? id))))))))
+
+(deftest clean-remote-sync-state-setting-row-tests-pass-with-an-encryption-key-test
+  (testing (str "clean-remote-sync-state-restores-every-remote-sync-setting-row-test passes on an app DB whose settings "
+                "are encrypted under MB_ENCRYPTION_SECRET_KEY")
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ="
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (is (= {:fail 0 :error 0}
+               (select-keys (run-vars-quietly [#'clean-remote-sync-state-restores-every-remote-sync-setting-row-test])
+                            [:fail :error])))))))
+
+(deftest clean-imported-content-throws-without-running-the-test-in-a-parallel-test-test
+  (testing "clean-imported-content in a ^:parallel test throws and does not run the test body"
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (let [ran?   (atom false)
+            ;; hawk reports the error of the parallel check through `is`; keep it out of this test's report
+            thrown (binding [mb.hawk.parallel/*parallel?* true
+                             report                       (fn [_])]
+                     (try
+                       (th/clean-imported-content (fn [] (reset! ran? true)))
+                       nil
+                       (catch Throwable e
+                         e)))]
+        (is (some? thrown))
+        (is (false? @ran?))))))
