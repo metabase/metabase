@@ -38,20 +38,20 @@ export const CopyButton = ({
 
   return (
     <>
-      <UnstyledButton
-        className={cx(S.CopyButton, className)}
-        data-testid="copy-button"
-        aria-label={accessibleName}
-        onClick={handleClick}
-        style={style}
+      <Tooltip
+        label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
+        opened={clipboard.copied}
       >
-        <Tooltip
-          label={<Text fw={700} c="inherit">{t`Copied!`}</Text>}
-          opened={clipboard.copied}
+        <UnstyledButton
+          className={cx(S.CopyButton, className)}
+          data-testid="copy-button"
+          aria-label={accessibleName}
+          onClick={handleClick}
+          style={style}
         >
-          <span>{target ?? COPY_BUTTON_ICON}</span>
-        </Tooltip>
-      </UnstyledButton>
+          {target ?? COPY_BUTTON_ICON}
+        </UnstyledButton>
+      </Tooltip>
       <span role="status" className={visuallyHidden.visuallyHidden}>
         {clipboard.copied ? t`Copied!` : ""}
       </span>
