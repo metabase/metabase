@@ -28,11 +28,14 @@ measure() {
   else
     rm -f /tmp/harness.failures
     if [ "$runner" = "harness, isolated" ]; then export NT_ISOLATE_ALL=1 NT_SHARE_UI_PACKAGES=1; else unset NT_ISOLATE_ALL NT_SHARE_UI_PACKAGES; fi
-    NT_FAILURES=/tmp/harness.failures /usr/bin/time -f '%e %U %S' -o "$timing" \
+    rm -f /tmp/harness.detail
+    NT_FAILURES=/tmp/harness.failures NT_FAILURE_DETAIL=/tmp/harness.detail NT_DEBUG_PERFILE=1 /usr/bin/time -f '%e %U %S' -o "$timing" \
       node node-test-spike/pool.cjs "$LIST" "$WORKERS" > /dev/null 2> "$log"
     unset NT_ISOLATE_ALL NT_SHARE_UI_PACKAGES
     result="$(wc -l < /tmp/harness.failures 2>/dev/null || echo 0) failing tests in $(cut -f1 /tmp/harness.failures 2>/dev/null | sort -u | wc -l) files, $(grep -o '[0-9]* worker restarts' "$log" | tail -1)"
     cp /tmp/harness.failures "harness-failures-$round-${runner//[ ,]/}.tsv" 2>/dev/null
+    cp /tmp/harness.detail "harness-failures-$round-${runner//[ ,]/}.detail.tsv" 2>/dev/null
+    grep -a '^\[file\]' "$log" > "harness-failures-$round-${runner//[ ,]/}.order.tsv"
   fi
   tail -1 "$timing" | awk -v round="$round" -v runner="$runner" -v result="$result" \
     '{ printf "| %s | %s | %.1f | %.0f | %.1f | %s |\n", round, runner, $1, $2 + $3, ($2 + $3) / $1, result }' | tee -a "$OUT"
@@ -41,5 +44,5 @@ measure() {
 
 measure 1 jest
 measure 1 "harness, isolated"
-measure 1 "harness, shared"
 measure 2 "harness, isolated"
+measure 3 "harness, isolated"
