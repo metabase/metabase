@@ -67,9 +67,45 @@ describe("scenarios > embedding > native questions", () => {
     it("should display and work with enabled parameters while hiding the locked one", () => {
       createAndVisitQuestion();
 
+      cy.log(
+        "should (dis)allow setting parameters as required for a published embedding",
+      );
       H.setEmbeddingParameter("Order ID", "Editable");
-      H.setEmbeddingParameter("Created At", "Editable");
       H.setEmbeddingParameter("Total", "Locked");
+
+      H.publishChanges("card");
+      H.closeStaticEmbeddingModal();
+
+      cy.findByTestId("native-query-editor-container")
+        .findByText("Open Editor")
+        .click();
+
+      cy.findByTestId("native-query-editor-action-buttons")
+        .icon("variable")
+        .click();
+
+      assertRequiredEnabledForName({ name: "id", enabled: true });
+      assertRequiredEnabledForName({ name: "total", enabled: true });
+      assertRequiredEnabledForName({ name: "created_at", enabled: false });
+      assertRequiredEnabledForName({ name: "source", enabled: false });
+      assertRequiredEnabledForName({ name: "state", enabled: false });
+      assertRequiredEnabledForName({ name: "product_id", enabled: false });
+
+      cy.log("should display and work with enabled parameters");
+      H.visitQuestion("@questionId");
+
+      cy.get("@questionId").then((questionId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
+      });
+
+      H.assertEmbeddingParameter("Order ID", "Editable");
+      H.assertEmbeddingParameter("Total", "Locked");
+      H.setEmbeddingParameter("Created At", "Editable");
       H.setEmbeddingParameter("State", "Editable");
       H.setEmbeddingParameter("Product ID", "Editable");
 
@@ -182,34 +218,6 @@ describe("scenarios > embedding > native questions", () => {
       // And its default value must be in the URL
       cy.location("search").should("eq", "?total=100");
     });
-
-    it("should (dis)allow setting parameters as required for a published embedding", () => {
-      createAndVisitQuestion();
-      // Make one parameter editable and one locked
-      H.setEmbeddingParameter("Order ID", "Editable");
-      H.setEmbeddingParameter("Total", "Locked");
-
-      H.publishChanges("card");
-      H.closeStaticEmbeddingModal();
-
-      cy.findByTestId("native-query-editor-container")
-        .findByText("Open Editor")
-        .click();
-
-      // Open variable editor
-      cy.findByTestId("native-query-editor-action-buttons")
-        .icon("variable")
-        .click();
-
-      // Now check that all disabled parameters can't be required and the rest can
-      assertRequiredEnabledForName({ name: "id", enabled: true });
-      assertRequiredEnabledForName({ name: "total", enabled: true });
-      // disabled parameters
-      assertRequiredEnabledForName({ name: "created_at", enabled: false });
-      assertRequiredEnabledForName({ name: "source", enabled: false });
-      assertRequiredEnabledForName({ name: "state", enabled: false });
-      assertRequiredEnabledForName({ name: "product_id", enabled: false });
-    });
   });
 
   context("API", () => {
@@ -219,7 +227,8 @@ describe("scenarios > embedding > native questions", () => {
       });
     });
 
-    it("should hide filters via url", () => {
+    it("should hide filters, set filter values via url and lock all parameters", () => {
+      cy.log("should hide filters via url");
       cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
@@ -251,9 +260,9 @@ describe("scenarios > embedding > native questions", () => {
 
         H.filterWidget().should("not.exist");
       });
-    });
 
-    it("should set multiple filter values via url", () => {
+      cy.log("should set multiple filter values via url");
+      cy.signInAsAdmin();
       cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
@@ -296,9 +305,9 @@ describe("scenarios > embedding > native questions", () => {
 
         cy.contains("35.7").should("not.exist");
       });
-    });
 
-    it("should lock all parameters", () => {
+      cy.log("should lock all parameters");
+      cy.signInAsAdmin();
       cy.get("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
@@ -355,23 +364,7 @@ describe("scenarios > embedding > native questions", () => {
       });
     });
 
-    it("locked parameters require a value to be specified in the JWT", () => {
-      cy.get("@questionId").then((questionId) => {
-        const payload = {
-          resource: { question: questionId },
-          params: { source: null },
-        };
-
-        H.visitEmbeddedPage(payload);
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You must specify a value for :source in the JWT.").should(
-        "be.visible",
-      );
-    });
-
-    it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
+    it("locked parameters should still render results in the preview by default and require a value in the JWT (metabase#47570)", () => {
       H.visitQuestion("@questionId").then((id) => {
         H.openLegacyStaticEmbeddingModal({
           resource: "question",
@@ -388,6 +381,21 @@ describe("scenarios > embedding > native questions", () => {
         .findByText("2,500")
         .should("be.visible");
       cy.findByRole("heading", { name: "test question" }).should("be.visible");
+
+      cy.log("locked parameters require a value to be specified in the JWT");
+      cy.get("@questionId").then((questionId) => {
+        const payload = {
+          resource: { question: questionId },
+          params: { source: null },
+        };
+
+        H.visitEmbeddedPage(payload);
+      });
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("You must specify a value for :source in the JWT.").should(
+        "be.visible",
+      );
     });
   });
 });
