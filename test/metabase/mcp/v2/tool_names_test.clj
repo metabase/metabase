@@ -33,7 +33,6 @@
     "search"
     "segment_write"
     "subscription_write"
-    "transform_write"
     "visualize_query"})
 
 (defn- live-tool?

@@ -88,9 +88,9 @@ const mcpTools = [
     description: "Create, update, or archive a saved question.",
   }),
   createMockMcpTool({
-    name: "transform_write",
+    name: "segment_write",
     scope: "agent:content:write",
-    description: "Create or update a transform.",
+    description: "Create or update a segment.",
   }),
 ];
 
@@ -275,7 +275,7 @@ describe("McpToolsAccessPage", () => {
       "run_sql",
       "Write",
       "question_write",
-      "transform_write",
+      "segment_write",
     ]);
   });
 
@@ -340,7 +340,7 @@ describe("McpToolsAccessPage", () => {
     await userEvent.click(getToolCheckbox("All Users", "question_write"));
 
     expect(getToolCheckbox("All Users", "question_write")).not.toBeChecked();
-    expect(getToolCheckbox("All Users", "transform_write")).toBeChecked();
+    expect(getToolCheckbox("All Users", "segment_write")).toBeChecked();
     expect(getToolCheckbox("Administrators", "question_write")).toBeChecked();
     expect(
       fetchMock.callHistory.called(MCP_PERMISSIONS_URL, { method: "PUT" }),
@@ -370,11 +370,11 @@ describe("McpToolsAccessPage", () => {
       ],
     });
     await findGrid();
-    expect(getToolCheckbox("All Users", "transform_write")).toBeChecked();
+    expect(getToolCheckbox("All Users", "segment_write")).toBeChecked();
 
-    await userEvent.click(getToolCheckbox("All Users", "transform_write"));
+    await userEvent.click(getToolCheckbox("All Users", "segment_write"));
 
-    expect(getToolCheckbox("All Users", "transform_write")).not.toBeChecked();
+    expect(getToolCheckbox("All Users", "segment_write")).not.toBeChecked();
     expect(await savedPermissions()).toEqual([
       {
         group_id: allUsersGroup.id,
@@ -434,7 +434,7 @@ describe("McpToolsAccessPage", () => {
           run_query: "no",
           run_sql: "no",
           question_write: "no",
-          transform_write: "no",
+          segment_write: "no",
         },
       },
     ]);
