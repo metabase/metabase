@@ -7,6 +7,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
@@ -835,22 +836,24 @@
               (is (= {:ok true :message "pong"} (:structuredContent result))))))))))
 
 (defn- do-with-bearer-token!
-  "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
-  [scopes f]
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (oauth-server.tu/with-oauth-client [client-id]
-      (mt/with-model-cleanup [:model/OAuthAccessToken]
-        (let [token (str (random-uuid))]
-          ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-          ;; up, so the row has to be written the same way a real issued token would be — including a
-          ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
-          (t2/insert! :model/OAuthAccessToken
-                      {:token     (oidc.util/hash-token token)
-                       :user_id   (mt/user->id :crowberto)
-                       :client_id client-id
-                       :scope     (vec scopes)
-                       :expiry    (+ (System/currentTimeMillis) 3600000)})
-          (f {"authorization" (str "Bearer " token)}))))))
+  "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
+  ([scopes f]
+   (do-with-bearer-token! :crowberto scopes f))
+  ([user scopes f]
+   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+     (oauth-server.tu/with-oauth-client [client-id]
+       (mt/with-model-cleanup [:model/OAuthAccessToken]
+         (let [token (str (random-uuid))]
+           ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+           ;; up, so the row has to be written the same way a real issued token would be — including a
+           ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
+           (t2/insert! :model/OAuthAccessToken
+                       {:token     (oidc.util/hash-token token)
+                        :user_id   (mt/user->id user)
+                        :client_id client-id
+                        :scope     (vec scopes)
+                        :expiry    (+ (System/currentTimeMillis) 3600000)})
+           (f {"authorization" (str "Bearer " token)})))))))
 
 (defn- embedded-credential
   "The UI credential the fallback template embedded in shell `html`, or nil when it embedded none."
@@ -918,6 +921,34 @@
                                     :post 202 "dataset"
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
                                     native-query))))))))))))
+
+(deftest ui-credential-native-query-honors-the-execute-sql-group-policy-test
+  (testing "a user whose groups deny execute_sql must not run raw SQL through the iframe credential either, or
+            refresh_ui_credential plus POST /api/dataset rebuilds the tool an admin denied. The policy is read per
+            request, so a credential minted while execute_sql was allowed stops working once it is denied"
+    (mcp.ui-resource/with-fallback-template
+      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+            mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
+        (do-with-bearer-token!
+         :rasta #{"agent:query:run" "agent:sql:run"}
+         (fn [headers]
+           (let [credential (ui-credential-for headers)
+                 post       (fn [status query]
+                              (client/client-full-response
+                               :post status "dataset"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                               query))]
+             (is (string? credential)
+                 "the shell must render a credential — otherwise this test passes vacuously")
+             (testing "denied: the native query is refused with the execute_sql denial"
+               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "no"}])]
+                 (is (re-find #"needs the \"execute_sql\" tool, which is not enabled for your groups"
+                              (str (:body (post 403 native-query)))))
+                 (testing "while its MBQL queries are untouched"
+                   (is (= 202 (:status (post 202 mbql-query)))))))
+             (testing "allowed: the same credential runs the native query"
+               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "yes"}])]
+                 (is (= 202 (:status (post 202 native-query)))))))))))))
 
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
