@@ -97,11 +97,9 @@ describe("scenarios > visualizations > drillthroughs > table_drills > combine co
     H.popover().findByText("Combine columns").click();
     H.popover().findByText("Done").click();
 
-    cy.findAllByTestId("header-cell")
-      .contains("Combined Email, ID")
-      .should("exist");
-    cy.findAllByTestId("header-cell")
-      .contains("Combined Email, ID_2")
-      .should("exist");
+    cy.findByTestId("table-header").within(() => {
+      cy.findByText("Combined Email, ID").should("be.visible");
+      cy.findByText("Combined Email, ID_2").should("be.visible");
+    });
   });
 });

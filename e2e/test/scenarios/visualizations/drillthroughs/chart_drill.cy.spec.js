@@ -149,22 +149,24 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
   it("should drill through combined cards with one or more added series (metabase#11442, metabase#13457)", () => {
     H.createQuestion({
-      name: "Orders by year",
+      name: "Orders over 50 by year",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        filter: [">", ["field", ORDERS.TOTAL, null], 50],
       },
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
       H.createQuestion({
-        name: "Products by year",
+        name: "Products over 20 by year",
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
           breakout: [
             ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
           ],
+          filter: [">", ["field", PRODUCTS.PRICE, null], 20],
         },
         display: "line",
       }).then(({ body: { id: PRODUCTS_Q_ID } }) => {
@@ -232,6 +234,17 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       color: "#EF8C8C",
       underlyingRecords: "See these Orders",
     });
+
+    cy.log(
+      "metabase#11442: underlying records of an added series keep only its own filters",
+    );
+    H.getDashboardCard(0).within(() => {
+      H.cartesianChartCircleWithColor("#98D9D9").eq(0).click();
+    });
+    H.popover().findByText("See these Products").click();
+    cy.findByTestId("qb-filters-panel")
+      .should("contain", "Price is greater than 20")
+      .and("not.contain", "Total");
   });
 
   it("should drill through a nested query", () => {

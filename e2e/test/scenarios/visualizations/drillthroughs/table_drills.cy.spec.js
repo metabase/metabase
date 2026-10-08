@@ -599,8 +599,6 @@ describe("Issue 40061", () => {
     H.popover().findByText("Extract day, month…").click();
     H.popover().findByText("Year").click();
     cy.findByTestId("table-header").findByText("Year").should("exist");
-    cy.findByTestId("question-row-count")
-      .findByText("Showing 1,421 rows")
-      .should("exist");
+    H.tableInteractiveBody().findAllByText("2,025").should("not.be.empty");
   });
 });
