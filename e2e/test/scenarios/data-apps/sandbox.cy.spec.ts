@@ -100,6 +100,7 @@ describe("scenarios > data apps > sandbox & isolation", () => {
         followRedirect: false,
       }).then((res) => {
         expect(res.status).to.eq(200);
+        expect(String(res.body)).to.contain("app-data-app");
         const csp = String(res.headers["content-security-policy"] ?? "");
         expect(csp).to.contain("frame-ancestors 'self'");
         expect(csp).to.contain("default-src 'none'");
