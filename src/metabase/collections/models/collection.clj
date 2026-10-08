@@ -1634,7 +1634,10 @@
                  [:like :location (str (children-location collection) "%")]
                  [:not :archived]]})
       (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (t2/update! model {:collection_id [:in affected-collection-ids]}
+        ;; Dashboard subscriptions are skipped: they follow their Dashboard's `archived` flag, and their own
+        ;; `archived` flag records only that the user deleted them
+        (t2/update! model (cond-> {:collection_id [:in affected-collection-ids]}
+                            (= model :model/Pulse) (assoc :dashboard_id nil))
                     {:archived true}))
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
@@ -1708,7 +1711,10 @@
                  [:= :archive_operation_id (:archive_operation_id collection)]
                  [:not= :archived_directly true]]})
       (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (t2/update! model {:collection_id [:in affected-collection-ids]}
+        ;; Dashboard subscriptions are skipped: they follow their Dashboard's `archived` flag, and their own
+        ;; `archived` flag records only that the user deleted them
+        (t2/update! model (cond-> {:collection_id [:in affected-collection-ids]}
+                            (= model :model/Pulse) (assoc :dashboard_id nil))
                     {:archived false}))
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id     [:in affected-collection-ids]
