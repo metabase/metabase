@@ -17,6 +17,7 @@
            (java.nio.file Files FileSystems LinkOption Paths)
            (java.nio.file.attribute FileAttribute PosixFilePermissions)
            (java.util.concurrent CyclicBarrier TimeUnit)
+           (java.util.concurrent.locks ReentrantLock)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
@@ -1618,7 +1619,7 @@
             (git-working-commit! remote "Add after.txt")
             ;; JGit calls the transport callback inside the fetch, after it opens the transport.
             (mt/with-dynamic-fn-redefs [git/check-transport-url! (fn [transport remote-url clone-dir]
-                                                                   (case (swap! entered inc)
+                                                                   (case (int (swap! entered inc))
                                                                      1 (do (deliver first-in true)
                                                                            (deref release 10000 nil))
                                                                      2 (deliver second-in true)
@@ -1637,25 +1638,29 @@
           (finally (forget-clones! url)))))))
 
 (deftest interrupted-fetch-stops-waiting-for-the-fetch-lock-test
-  (testing "a fetch that waits for the fetch lock of its clone throws when its thread is interrupted, and does not fetch"
+  (testing "a fetch that waits for the fetch lock of its clone throws when its thread is interrupted, does not fetch,
+            and keeps the interrupt flag of its thread"
     (mt/with-temp-dir [remote-dir nil]
       (let [remote (init-remote! remote-dir :files {"master.txt" "File in master"})
             url    (remote-url remote)]
         (try
           (with-open [^java.io.Closeable source (git/git-source url "master" nil ingest/legal-top-level-paths)]
-            (let [lock    (#'git/fetch-lock (.getRepository ^Git (:git source)))
-                  held    (promise)
-                  release (promise)
-                  holder  (Thread. ^Runnable (fn []
-                                               (.lock lock)
-                                               (try
-                                                 (deliver held true)
-                                                 (deref release 10000 nil)
-                                                 (finally
-                                                   (.unlock lock)))))
-                  result  (promise)
-                  waiter  (Thread. ^Runnable (fn [] (deliver result (try (git/fetch! source) ::fetched
-                                                                         (catch Throwable e e)))))]
+            (let [^ReentrantLock lock (#'git/fetch-lock (.getRepository ^Git (:git source)))
+                  held         (promise)
+                  release      (promise)
+                  holder       (Thread. ^Runnable (fn []
+                                                    (.lock lock)
+                                                    (try
+                                                      (deliver held true)
+                                                      (deref release 10000 nil)
+                                                      (finally
+                                                        (.unlock lock)))))
+                  result       (promise)
+                  interrupted? (promise)
+                  waiter       (Thread. ^Runnable (fn []
+                                                    (deliver result (try (git/fetch! source) ::fetched
+                                                                         (catch Throwable e e)))
+                                                    (deliver interrupted? (.isInterrupted (Thread/currentThread)))))]
               (.start holder)
               (try
                 (is (true? (deref held 10000 false)) "precondition: another thread holds the fetch lock")
@@ -1667,6 +1672,7 @@
                 (is (instance? Exception (deref result 0 ::running)) "the interrupted fetch throws")
                 (is (str/includes? (str (ex-message (deref result 0 nil))) "Git FetchCommand failed")
                     "the error names the git command")
+                (is (true? (deref interrupted? 0 ::running)) "the thread of the interrupted fetch keeps its interrupt flag")
                 (finally
                   (deliver release true)
                   (.join holder 10000)
