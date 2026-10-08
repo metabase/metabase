@@ -447,6 +447,10 @@ union all select 2, 20, 'short value'`,
 
       // Tooltip by default shows only visible series data
       showTooltipForBarInSeries(COUNT_COLOR);
+      H.assertEChartsTooltip({
+        header: "0",
+        rows: [{ name: COUNT, value: "2,308" }],
+      });
       H.assertEChartsTooltipNotContain([SUM_OF_TOTAL, AVG_OF_QUANTITY]);
 
       // Go to the additional tooltip columns setting

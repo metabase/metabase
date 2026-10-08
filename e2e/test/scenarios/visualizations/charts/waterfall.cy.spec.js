@@ -145,10 +145,11 @@ describe("scenarios > visualizations > waterfall", () => {
       H.echartsContainer().within(() => {
         cy.findByText("Created At: Year").should("exist"); // x-axis
         cy.findByText("Count").should("exist"); // y-axis
+        cy.findByText("Total").should("exist");
         cy.findByText("Sum of Total").should("not.exist");
 
         // x-axis labels (some)
-        ["2025", "2026", "2029", "Total"].forEach((label) => {
+        ["2025", "2026", "2029"].forEach((label) => {
           cy.findByText(label).should("exist");
         });
 
@@ -172,8 +173,8 @@ describe("scenarios > visualizations > waterfall", () => {
       });
 
       H.echartsContainer().within(() => {
-        cy.findByText("Sum of Total").should("exist"); // x-axis
-        cy.findByText("Created At: Year").should("exist"); // y-axis
+        cy.findByText("Sum of Total").should("exist"); // y-axis
+        cy.findByText("Created At: Year").should("exist"); // x-axis
         cy.findByText("Count").should("not.exist");
 
         // x-axis labels (some)
@@ -487,6 +488,8 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
+      H.echartsContainer().find("text").contains("Total").should("exist");
+
       cy.get('[data-field-title="Show total"]').within(() => {
         cy.findByRole("switch").click({ force: true });
       });
@@ -503,6 +506,7 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
+      H.chartPathWithFillColor("#303D46").should("exist");
       H.echartsContainer().find("text").contains("(4.56)").should("not.exist");
 
       cy.get('[data-field-title="Show values on data points"]')

@@ -62,8 +62,8 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("(empty)").should("not.exist");
+      H.chartPathWithFillColor("#509EE3").should("have.length", 2);
+      H.echartsContainer().findByText("(empty)").should("not.exist");
     });
 
     it("should show an (empty) bar for null values when X axis is ordinal (metabase#12138)", () => {
@@ -202,10 +202,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      H.echartsContainer()
-        .get("text")
-        .should("contain", "19")
-        .and("contain", "20.0M");
+      H.getValueLabels().should("contain", "19").and("contain", "20.0M");
     });
 
     describe("issue 55853", () => {
@@ -613,6 +610,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     // Ensure the gray color did not get assigned to series
+    H.chartPathWithFillColor("#88BF4D").should("be.visible");
     H.chartPathWithFillColor(grayColor).should("not.exist");
 
     H.openVizSettingsSidebar();

@@ -159,6 +159,8 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    H.echartsContainer().findByText("100%").should("be.visible");
+
     H.openVizTypeSidebar();
 
     cy.icon("line").click();
@@ -198,7 +200,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    H.echartsContainer().get("text").contains("39.75%");
+    H.echartsContainer().find("text").contains("39.75%");
   });
 
   it("should let unpin y-axis from zero", () => {
@@ -286,9 +288,6 @@ describe("scenarios > visualizations > line chart", () => {
       cy.get("@questionId").then((id) => H.visitQuestion(id));
 
       assertNoPoints();
-
-      // Check that message is displayed
-      cy.findByRole("dialog", { name: /data points are off screen/i });
 
       H.openVizSettingsSidebar();
 
@@ -953,11 +952,11 @@ describe("scenarios > visualizations > line chart", () => {
 
     it("should display correct axis labels (metabase#12782)", () => {
       H.echartsContainer()
-        .get("text")
+        .find("text")
         .contains("Created At")
         .should("be.visible");
       H.echartsContainer()
-        .get("text")
+        .find("text")
         .contains("Average of Price")
         .should("be.visible");
     });

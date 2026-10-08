@@ -88,17 +88,16 @@ describe("scenarios > visualizations > rows", () => {
     });
 
     // Verify hovering bars does not change their size (metabase#43631)
-    cy.findAllByRole("graphics-symbol").eq(0).as("firstBar");
+    cy.findByTestId("query-visualization-root")
+      .findByRole("graphics-symbol", { name: "51" })
+      .as("firstBar");
     cy.get("@firstBar")
-      .invoke("width")
+      .invoke("attr", "width")
       .then((prevWidth) => {
-        cy.get("@firstBar")
-          .realHover()
-          .invoke("width")
-          .then((newWidth) => {
-            // eslint-disable-next-line metabase/no-unsafe-element-filtering
-            expect(prevWidth).eq(newWidth);
-          });
+        expect(Number(prevWidth)).to.be.greaterThan(0);
+        cy.get("@firstBar").realHover();
+        H.tooltip().should("contain", "51");
+        cy.get("@firstBar").should("have.attr", "width", prevWidth);
       });
   });
 
