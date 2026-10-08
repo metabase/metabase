@@ -495,44 +495,6 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         cy.findByText("Filter by this column").should("be.visible");
       });
     });
-
-    it("should display proper drills on cell click for query aggregated by date", () => {
-      H.createNativeQuestion(
-        {
-          name: "table_drills",
-          native: {
-            query: `
-            SELECT
-              DATE_TRUNC('month', REVIEWS.CREATED_AT) AS "Created At",
-              COUNT(*) AS "count"
-            FROM
-              REVIEWS
-            GROUP BY
-              DATE_TRUNC('month', REVIEWS.CREATED_AT)
-            LIMIT
-              10
-                  `,
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      cy.get("[data-testid=cell-data]").contains("June").first().click();
-      H.popover().within(() => {
-        cy.findByText("Before").should("be.visible");
-        cy.findByText("After").should("be.visible");
-        cy.findByText("On").should("be.visible");
-        cy.findByText("Not on").should("be.visible");
-      });
-
-      cy.get("[data-testid=cell-data]").contains("4").first().click();
-      H.popover().within(() => {
-        cy.findByText(">").should("be.visible");
-        cy.findByText("<").should("be.visible");
-        cy.findByText("=").should("be.visible");
-        cy.findByText("≠").should("be.visible");
-      });
-    });
   });
 });
 

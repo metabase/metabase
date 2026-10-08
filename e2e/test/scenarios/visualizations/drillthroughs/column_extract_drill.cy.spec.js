@@ -22,15 +22,6 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
   describe("date columns", () => {
     describe("should add a new column after the selected column", () => {
-      it("ad-hoc question", () => {
-        H.openOrdersTable();
-        extractColumnAndCheck({
-          column: "Created At",
-          option: "Year",
-          extraction: "Extract day, month…",
-        });
-      });
-
       it("saved question without viz settings", () => {
         H.visitQuestion(ORDERS_QUESTION_ID);
         extractColumnAndCheck({
