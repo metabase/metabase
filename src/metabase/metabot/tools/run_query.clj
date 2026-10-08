@@ -152,18 +152,24 @@
                  (no-permission)))))
     (lib/prepare-for-serialization normalized)))
 
+(defn- plain-decimal-text
+  "`n` written out in full, or nil when that would not fit in a cell."
+  [^BigDecimal n]
+  ;; The digits plus the zeros the scale adds bound the length, so a number too long to show is never written out.
+  (when (<= (+ (.precision n) (abs (.scale n))) max-cell-chars)
+    (.toPlainString n)))
+
 (defn- number-text
-  "`n` in plain decimal form, where `str` would give a large or small one an exponent."
+  "`n` in plain decimal form, where `str` would give a large or small one an exponent.
+   A number too long to write out in a cell keeps its exponent, which truncating would cut off."
   [n]
-  (cond
-    (instance? BigDecimal n)
-    (.toPlainString ^BigDecimal n)
+  (or (cond
+        (instance? BigDecimal n)
+        (plain-decimal-text n)
 
-    (and (float? n) (str/includes? (str n) "E"))
-    (.toPlainString (.stripTrailingZeros (BigDecimal. (str n))))
-
-    :else
-    (str n)))
+        (and (float? n) (str/includes? (str n) "E"))
+        (plain-decimal-text (.stripTrailingZeros (BigDecimal. (str n)))))
+      (str n)))
 
 (defn- cell-text
   [value]
