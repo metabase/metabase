@@ -96,7 +96,7 @@
   (t2/delete! :model/Card :entity_id [:like (str card-eid-prefix "%")])
   (t2/delete! :model/Collection :entity_id coll-eid))
 
-;;; ------------------------------------------- errors (rule L2) -------------------------------------------
+;;; ------------------------------------------------ errors ------------------------------------------------
 
 (defn- load-and-watch-connection!
   "Load `files` directly, not through remote sync. Returns the load result (or `{:thrown e}`), the cards in the app DB
@@ -345,7 +345,7 @@
         (finally
           (delete-content!))))))
 
-;;; ----------------------------------- the held connection (rule L6) -----------------------------------
+;;; --------------------------------------------- the held connection ---------------------------------------------
 
 (defn- busy-connections
   "The number of connections that are checked out of the app-DB pool now."
@@ -400,7 +400,7 @@
 (defn- cancelled-pull!
   "A scenario for [[busy-counts]]: a forced remote-sync pull of [[files]] on this thread. Before the 3rd file read,
   another thread cancels the task. Every progress report writes and so checks for a cancel, so the progress report of
-  that read stops the pull. Returns the result of `impl/import!` (nil for a cancelled pull)."
+  that read stops the pull. Returns the result of `impl/import!` ({:status :cancelled} for a cancelled pull)."
   [hook]
   (let [task-id  (:id (remote-sync.task/create-sync-task! "import" (mt/user->id :rasta)))
         src      (rs.test/versioned-source :trees {"v0" (files)} :current "v0")
@@ -428,7 +428,7 @@
                                            ["a load that fails" (direct-load! (files :bad #{bad})) :threw]
                                            ["a load that skips an error"
                                             (direct-load! (files :bad #{bad}) :continue-on-error true) :loaded]
-                                           ["a remote-sync pull that is cancelled during its load" cancelled-pull! nil]]]
+                                           ["a remote-sync pull that is cancelled during its load" cancelled-pull! {:status :cancelled}]]]
           (testing (str label ": the pool's busy count after the load is the same as before it")
             (try
               (let [{:keys [result before during after]} (busy-counts scenario)]

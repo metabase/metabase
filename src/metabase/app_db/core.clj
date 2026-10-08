@@ -49,7 +49,8 @@
   transaction-state
   with-unshared-connection]
  [mdb.connection-pool-setup
-  recent-activity?]
+  recent-activity?
+  unreturned-connection-timeout-ms]
  [mdb.data-source
   broken-out-details->DataSource]
  [mdb.env

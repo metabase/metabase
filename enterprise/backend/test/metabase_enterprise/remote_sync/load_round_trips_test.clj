@@ -5,14 +5,14 @@
   scheduler and other background activity don't leak in. Per-entity cost is the difference between two sizes of
   the same content, which cancels the fixed per-pull overhead. Not ^:parallel: the JDBC counter is JVM-wide.
 
-  The test app DB is H2, which never sends `DISCARD ALL`; Postgres sends one on every connection check-in. So the
-  budgets below are on connection check-outs as well as statements: a check-out is a pool round trip plus a
-  `DISCARD ALL` on Postgres."
+  The JDBC counter does not see the `DISCARD ALL` that the pool sends at each Postgres check-in, so the budgets
+  bound check-outs as well as statements."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.cost-test-util :as cost]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.app-db.core :as mdb]
    [metabase.search.test-util :as search.tu]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.log :as log]))
@@ -60,25 +60,34 @@
            (is (= :success (get-in m [:result :status])) "incremental pull")
            m))))))
 
+(def ^:private statements-per-card
+  "The measured statement count per card, by app DB. MySQL and MariaDB send one statement more than H2 and
+  Postgres per entity; the bound below each count has no margin, so an added statement fails the test."
+  {:h2 15.0 :postgres 15.0 :mysql 16.0 :mariadb 16.0})
+
 (deftest forced-reload-round-trips-per-card-test
-  (testing "A forced reload of unchanged MBQL cards: per card, no connection check-outs and at most 16 statements (15 on
-            H2 and Postgres, 16 on MySQL and MariaDB). With a check-out for each entity, on H2: 2 check-outs (2
-            `DISCARD ALL` on Postgres) and 15 statements."
+  (testing "A forced reload of unchanged MBQL cards: per card, no connection check-outs and no more statements than
+            the measured count for this app DB."
     (let [cost (per-entity (cost/forced-reload-of-unchanged! {:cards 10})
                            (cost/forced-reload-of-unchanged! {:cards 20})
                            10 20)]
       (log/infof "per MBQL card, forced reload of unchanged content (this thread): %s" cost)
       (is (= 0.0 (:checkouts cost)) (pr-str cost))
-      (is (<= (:statements cost) 16.0) (pr-str cost)))))
+      (is (<= (:statements cost) (get statements-per-card (mdb/db-type) 16.0))
+          (pr-str cost)))))
+
+(def ^:private statements-per-dashboard
+  "The measured statement count per changed dashboard, by app DB; no margin (see [[statements-per-card]])."
+  {:h2 32.0 :postgres 32.0 :mysql 33.0 :mariadb 33.0})
 
 (deftest incremental-pull-round-trips-per-dashboard-test
   (testing "An incremental pull where only dashboards changed. Each dashboard has 4 dashboard cards on the same 4
             cards, which are not in the pulled files, so they are checked locally. Per dashboard: no connection
-            check-outs, and at most 33 statements (32 on H2 and Postgres, 33 on MySQL and MariaDB). With a check-out
-            for each entity, on H2: 7 check-outs and 37 statements, because each dashboard looked up each card again."
+            check-outs and no more statements than the measured count for this app DB."
     (let [cost (per-entity (incremental-pull-of-changed-dashboards! {:cards 4 :dashboards 2 :dashcards 4})
                            (incremental-pull-of-changed-dashboards! {:cards 4 :dashboards 6 :dashcards 4})
                            2 6)]
       (log/infof "per dashboard (4 dashboard cards), incremental pull of changed dashboards (this thread): %s" cost)
       (is (= 0.0 (:checkouts cost)) (pr-str cost))
-      (is (<= (:statements cost) 33.0) (pr-str cost)))))
+      (is (<= (:statements cost) (get statements-per-dashboard (mdb/db-type) 33.0))
+          (pr-str cost)))))

@@ -9,7 +9,7 @@
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 ConnectionCustomizer DataSources PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 ConnectionCustomizer DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -198,6 +198,18 @@
       (true? (deref fut timeout-ms false))
       (catch Throwable _ false)
       (finally (future-cancel fut)))))
+
+(mu/defn unreturned-connection-timeout-ms :- [:maybe ms/PositiveInt]
+  "The `unreturnedConnectionTimeout` of the c3p0 pool `data-source`, in ms, or nil when `data-source` is not pooled
+  or enforces no timeout (0)."
+  [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (when (instance? PoolBackedDataSource data-source)
+    (let [^WrapperConnectionPoolDataSource pool-data-source
+          (.getConnectionPoolDataSource ^PoolBackedDataSource data-source)]
+      (when (instance? WrapperConnectionPoolDataSource pool-data-source)
+        (let [seconds (.getUnreturnedConnectionTimeout pool-data-source)]
+          (when (pos? seconds)
+            (* seconds 1000)))))))
 
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If

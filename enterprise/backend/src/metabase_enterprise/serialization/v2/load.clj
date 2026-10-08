@@ -22,8 +22,7 @@
 
 (defn- remember-local
   "Records in `ctx` that `path` is not in the files being loaded but exists locally, so later entities that depend on
-  it skip the lookup. Kept apart from `:seen`, which lists the entities this load loaded: callers use `:seen` as the
-  set of imported entities (e.g. remote sync records exactly those as synced)."
+  it skip the lookup. Kept apart from `:seen`, the set of entities this load loaded."
   [ctx path]
   (update ctx :local (fnil conj #{}) path))
 
@@ -78,10 +77,10 @@
                 (load-one! ctx dep)
                 (catch Exception e
                   (cond
-                    ;; It was missing, but we found it locally: remember that, so later entities skip the lookup.
+                    ;; It was missing, but we found it locally, so just return the context.
                     (and (= (:error (ex-data e)) ::not-found)
                          (serdes/load-find-local dep))
-                    (remember-local ctx dep)
+                    ctx
 
                     :else
                     (throw e)))))]
@@ -253,13 +252,13 @@
                                 e))))))))))
 
 (defn- discard-uncommitted!
-  "Rolls back anything a failed entity left uncommitted on the connection held by [[load-metabase!]], before the
-  load carries on with the next entity. A failed transaction normally rolls itself back and restores autocommit; if
-  its rollback failed, it leaves autocommit off so the writes are not committed, and relies on the pool to discard
-  them at check-in. The load keeps the connection, so it has to discard them itself, or the next entity's commit
-  would commit them too. Inside a caller's transaction the connection is the caller's and is left alone."
+  "Rolls back and restores autocommit on `conn` iff it is open, has autocommit off, and no transaction is open on
+  it. Call after a failed entity, before the next one."
   [^java.sql.Connection conn]
-  (when (and (not (mdb/in-transaction?))
+  ;; a transaction whose rollbacks failed leaves autocommit off and leaves its writes to the pool; the load keeps
+  ;; the connection, so the next entity's commit would commit them
+  (when (and (not (.isClosed conn))
+             (not (mdb/in-transaction?))
              (not (.getAutoCommit conn)))
     (.rollback conn)
     (.setAutoCommit conn true)))
@@ -281,12 +280,58 @@
    :ingestion ingestion
    :errors    []})
 
+(defn- held-connection-max-ms
+  "How long one segment of a load may hold its connection: a quarter of the app-DB pool's unreturned-connection
+  timeout, or nil when the pool enforces none. Well under the timeout, so the pool never destroys a connection the
+  load still holds."
+  []
+  (some-> (mdb/unreturned-connection-timeout-ms (mdb/data-source)) (/ 4)))
+
+(defn- load-contents!
+  "Loads `contents`, holding one app-DB connection per segment. A check-out per lookup and per entity transaction
+  costs pool work, and on Postgres each check-in sends `DISCARD ALL`; each entity still commits in its own
+  transaction. A segment ends when it has held its connection past [[held-connection-max-ms]], so the pool's
+  unreturned-connection timeout never destroys a connection the load still holds, or when the connection broke
+  during a failed entity; the next entity then takes a new connection. `continue-on-error?` records an entity's
+  error in `:errors` and goes on; otherwise the first error is thrown."
+  [ctx contents continue-on-error?]
+  (letfn [(load-segment! [ctx items]
+            (t2/with-connection [^java.sql.Connection conn]
+              (let [give-back-at (some-> (held-connection-max-ms) (+ (System/currentTimeMillis)))]
+                (reduce (fn [{:keys [ctx items] :as acc} item]
+                          (if (and give-back-at (> (System/currentTimeMillis) give-back-at))
+                            (reduced acc)
+                            (try
+                              {:ctx (load-one! ctx item), :items (rest items)}
+                              (catch Exception e
+                                (when-not continue-on-error?
+                                  (throw e))
+                                ;; a failed entity may leave its connection with autocommit off or broken; either
+                                ;; way the load must not use that connection for the next entity
+                                (let [reusable? (try (discard-uncommitted! conn) true
+                                                     (catch Exception clean-e
+                                                       (log/warn clean-e "Discarding the failed entity's writes failed; the load takes a new connection")
+                                                       false))
+                                      reusable? (and reusable?
+                                                     (not (try (.isClosed conn)
+                                                               (catch Exception _ true))))
+                                      acc'     {:ctx (update ctx :errors conj e), :items (rest items)}]
+                                  ;; eschew big and scary stacktrace
+                                  (log/warnf (u/strip-error e "Skipping deserialization error"))
+                                  (if reusable? acc' (reduced acc')))))))
+                        {:ctx ctx, :items items}
+                        items))))]
+    (loop [{:keys [ctx items]} (load-segment! ctx contents)]
+      (if (seq items)
+        (recur (load-segment! ctx items))
+        ctx))))
+
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance.
 
-  Holds one app-DB connection for the load of all entities. Code that the load calls must not start a thread that
-  conveys bindings (`future`, `bound-fn`, `u.jvm/in-virtual-thread*`): that thread would use the held connection, which
-  is not safe to use from two threads at once."
+  Holds one app-DB connection per segment of the load (see [[load-contents!]]). Code that the load calls must not
+  start a thread that conveys bindings (for example `future`, `bound-fn`, `u.jvm/in-virtual-thread*`): that thread
+  would use the held connection, which is not safe to use from two threads at once."
   [ingestion & {:keys [continue-on-error reindex?]
                 :or   {continue-on-error false
                        reindex?          true}}]
@@ -309,22 +354,7 @@
                              :files         file-names}
                             (first ingest-errors)))))
         (log/infof "Starting deserialization, total %s documents" (count contents))
-        ;; Hold one connection for the whole load. Otherwise every lookup outside a transaction and every entity's
-        ;; transaction checks a connection out of the pool and back in, and each check-in costs a round trip (a
-        ;; `DISCARD ALL` on Postgres). Each entity still commits in its own transaction on this connection.
-        (t2/with-connection [^java.sql.Connection conn]
-          (reduce (fn [ctx item]
-                    (try
-                      (load-one! ctx item)
-                      (catch Exception e
-                        (when-not continue-on-error
-                          (throw e))
-                        (discard-uncommitted! conn)
-                        ;; eschew big and scary stacktrace
-                        (log/warnf (u/strip-error e "Skipping deserialization error"))
-                        (update ctx :errors conj e))))
-                  ctx
-                  contents)))
+        (load-contents! ctx contents continue-on-error))
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.
