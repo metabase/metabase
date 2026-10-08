@@ -862,6 +862,11 @@
                     :model/Query
                     :model/User}}
 
+  data-apps
+  {:team "Embedding"
+   :api #{metabase.data-apps.core}
+   :uses #{premium-features}}
+
   data-studio
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
@@ -2569,6 +2574,7 @@
            app-db
            appearance
            core.initialization-status
+           data-apps
            driver
            embedding
            lib.be
@@ -3785,11 +3791,9 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
-                    :model/DataPermissions
                     :model/Database
                     :model/Field
                     :model/Permissions
-                    :model/PermissionsGroup
                     :model/QueryAction
                     :model/Table}
    :model-exports #{:model/DataApp}}

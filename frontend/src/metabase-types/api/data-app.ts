@@ -26,8 +26,6 @@ export interface DataApp {
   enabled: boolean;
   /** The collection that contains this app's saved questions and models. */
   resource_collection_id: number;
-  /** The group that grants users access to this data app. */
-  permission_group_id: number | null;
   /** Tables used by the last successful resource synchronization. */
   table_ids: number[];
   /**
@@ -57,4 +55,20 @@ export interface SetDataAppEnabledRequest {
   /** The app's slug. */
   name: string;
   enabled: boolean;
+}
+
+export interface DataAppGroup {
+  id: number;
+  name: string;
+  member_count: number;
+}
+
+export interface AddDataAppGroupsRequest {
+  name: string;
+  group_ids: number[];
+}
+
+export interface RemoveDataAppGroupRequest {
+  name: string;
+  group_id: number;
 }

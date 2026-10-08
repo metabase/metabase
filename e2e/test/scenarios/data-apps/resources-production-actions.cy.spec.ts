@@ -105,7 +105,9 @@ describe(
 
     it("executes the app's copy rather than the authored action, for a member of the app's group", () => {
       publishApp().then(({ app, actionCopy }) => {
-        H.addUserToGroup(app.permission_group_id, USERS.normal.email);
+        H.assignTestGroupToDataApp(app.name).then((groupId) => {
+          H.addUserToGroup(groupId, USERS.normal.email);
+        });
 
         cy.signInAsNormalUser();
         cy.intercept("POST", "/api/action/*/execute").as("execute");
