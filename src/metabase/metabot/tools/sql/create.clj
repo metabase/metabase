@@ -69,14 +69,16 @@
   ;; Validate access
   (validate-database-access database-id)
 
-  (let [{:keys [valid? transpiled-sql] :as validation-result}
-        (metabot.tools.sql.validation/validate-database-sql database-id sql)]
-    (merge {:validation-result validation-result}
-           (when valid?
-             (let [;; Create the in-memory query structure
-                   dataset-query (create-native-query database-id transpiled-sql)
-                   query-id (u/generate-nano-id)]
-               {:action-result {:query-id      query-id
-                                :query-content transpiled-sql
-                                :query         dataset-query
-                                :database      database-id}})))))
+  ;; Validation and the query share one metadata provider, so snippets and cards are looked up once.
+  (lib-be/with-metadata-provider-cache
+    (let [{:keys [valid? transpiled-sql] :as validation-result}
+          (metabot.tools.sql.validation/validate-database-sql database-id sql)]
+      (merge {:validation-result validation-result}
+             (when valid?
+               (let [;; Create the in-memory query structure
+                     dataset-query (create-native-query database-id transpiled-sql)
+                     query-id (u/generate-nano-id)]
+                 {:action-result {:query-id      query-id
+                                  :query-content transpiled-sql
+                                  :query         dataset-query
+                                  :database      database-id}}))))))

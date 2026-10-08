@@ -174,7 +174,7 @@
              {:output            (instructions/with-sql-reference-warnings
                                    "Draft chart payload generated from SQL query." warnings)
               :structured-output structured}
-             warnings)))))
+             validation-result)))))
     (catch Exception e
       (metabot.tools.u/handle-agent-error e))))
 

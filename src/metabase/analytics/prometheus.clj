@@ -830,7 +830,8 @@
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
    (prometheus/counter :metabase-metabot/sql-reference-checks
                        {:description (str "Reference checks of Metabot SQL with template tags, by outcome: `ran`, "
-                                          "`skipped` (table tags, or the query couldn't be compiled), or `failed` "
+                                          "`skipped` (table tags, a dialect without field checks, or the query couldn't be "
+                                          "compiled), or `failed` "
                                           "(the check threw).")
                         :labels [:status]})
    ;; messaging metrics

@@ -93,6 +93,33 @@
                     (is (str/includes? (:output result) (str "Card " Integer/MAX_VALUE " does not exist")))
                     (is (nil? (:structured-output result)))))))))))))
 
+(deftest create-sql-query-repeated-reference-warnings-test
+  (testing "resubmitting SQL that gets the same reference warnings in a turn accepts it, so the turn can end"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (binding [shared/*memory-atom* (atom {})]
+            (let [run #(agent-sql/create-sql-query-tool
+                        {:database_id (mt/id)
+                         :title       "Results"
+                         :sql_query   (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")})]
+              (is (=? {:non-terminal? true} (run)))
+              (let [result (run)]
+                (is (str/includes? (:output result) "- Column `customer_name` was not found"))
+                (is (some? (:structured-output result)))
+                (is (not (contains? result :non-terminal?)))))))))))
+
+(deftest create-sql-query-missing-card-without-field-checks-test
+  (testing "a reference to a missing card fails even for a dialect whose fields aren't checked"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (agent-sql/create-sql-query-tool
+                      {:database_id (mt/id)
+                       :title       "Results"
+                       :sql_query   (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")})]
+          (is (str/includes? (:output result) (str "Card " Integer/MAX_VALUE " does not exist")))
+          (is (nil? (:structured-output result))))))))
+
 (deftest create-sql-query-code-edit-agent-error-output-test
   (testing "create_sql_query in the code editor returns agent errors as output instead of throwing"
     (mt/with-current-user (mt/user->id :crowberto)

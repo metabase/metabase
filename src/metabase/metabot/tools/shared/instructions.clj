@@ -145,7 +145,9 @@ Reference items using: [name](metabase://type/id)")
          (apply str (map #(str "- " % "\n") warnings))
          "\n"
          "This check can report false positives. Verify each reference against the table and field metadata you "
-         "have gathered; fix any that are wrong, or tell the user if you are unsure.\n")))
+         "have gathered, and fix any that are wrong. If the references are correct, keep the query: when you can "
+         "only respond with tool calls, call the same tool again with the same SQL to accept it. If you are unsure, "
+         "ask the user (with `ask_for_sql_clarification` when that tool is available).\n")))
 
 (defn with-sql-reference-warnings
   "Append [[sql-reference-warnings-instructions]] for `warnings` to `text`, or return `text` when there are none."

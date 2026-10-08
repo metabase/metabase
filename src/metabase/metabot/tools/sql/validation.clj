@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
@@ -75,7 +76,9 @@
    [:dialect {:optional true} [:maybe :string]]
    [:error-message {:optional true} :string]
    [:transpiled-sql {:optional true} :string]
-   [:warnings {:optional true} [:sequential :string]]])
+   [:warnings {:optional true} [:sequential :string]]
+   ;; the same check already returned these warnings earlier in this turn
+   [:repeated-warnings? {:optional true} :boolean]])
 
 (mu/defn validate-sql :- ::validation-result
   "Validate sql query.
@@ -114,16 +117,12 @@
 
 ;;;; Reference checks for SQL with template tags
 ;;;
-;;; [[validate-sql]] can't parse SQL containing `{{...}}`. For such SQL we check that the referenced cards and snippets
-;;; exist and are readable, then compile the query (expanding those references into their SQL) and check its table and
-;;; column references against metadata.
+;;; [[validate-sql]] can't parse SQL containing `{{...}}` or `[[...]]`. For such SQL we check that the referenced cards
+;;; and snippets exist and are readable, then, for dialects [[validate-sql]] checks, compile the query (expanding those
+;;; references into their SQL) and check its table and column references against metadata.
 ;;;
 ;;; Column/table problems are returned as warnings rather than errors: the checker reports false positives on a
 ;;; noticeable share of working queries, so a hard failure would leave the agent stuck on valid SQL.
-
-(defn- references-template-tags?
-  [sql]
-  (str/includes? sql "{{"))
 
 (defn- error->warning
   "A human-readable warning for a [[driver/validate-native-query-fields]] error, or nil if it's not worth reporting."
@@ -218,18 +217,21 @@
 
 (mu/defn- check-templated-sql-references :- ::reference-check
   "Check the references of `sql`, a query with template tags, against `database-id`'s metadata. `:warnings` are
-  human-readable, and empty unless `:status` is `:ran`. Skips queries with table tags, whose table isn't known until
-  they run. Throws an agent error when `sql` references a card or snippet that doesn't exist or can't be read."
+  human-readable, and empty unless `:status` is `:ran`. Checks table and column references only when `check-fields?`,
+  and skips them for queries with table tags, whose table isn't known until they run. Throws an agent error when `sql`
+  references a card or snippet that doesn't exist or can't be read."
   [database-id   :- :int
    sql           :- :string
-   existing-tags :- [:maybe ::lib.schema.template-tag/template-tags]]
+   existing-tags :- [:maybe ::lib.schema.template-tag/template-tags]
+   check-fields? :- :boolean]
   (try
     (lib-be/with-metadata-provider-cache
       (let [mp    (lib-be/application-database-metadata-provider database-id)
             query (templated-query mp sql existing-tags)
             tags  (lib/all-template-tags query)]
         (check-references-exist! database-id tags)
-        (if-let [compiled (when-not (some #(= :table (:type %)) tags)
+        (if-let [compiled (when (and check-fields?
+                                     (not-any? #(= :table (:type %)) tags))
                             (compile-templated-query query))]
           {:status   :ran
            :warnings (->> (driver/validate-native-query-fields (:engine (lib.metadata/database mp)) compiled)
@@ -245,11 +247,25 @@
       (log/warnf "Reference check failed for database %d: %s" database-id (ex-message e))
       {:status :failed, :warnings []})))
 
+(defn- cached-reference-check
+  "[[check-templated-sql-references]], cached in agent memory for the rest of the turn so retrying the same SQL doesn't
+  repeat the work. `:repeated?` is true on a cache hit."
+  [database-id sql existing-tags check-fields?]
+  (let [k [database-id sql existing-tags check-fields?]]
+    (if-let [cached (get-in (shared/current-memory) [::reference-checks k])]
+      (assoc cached :repeated? true)
+      (let [{:keys [status] :as check} (check-templated-sql-references database-id sql existing-tags check-fields?)]
+        (analytics/inc! :metabase-metabot/sql-reference-checks {:status (name status)})
+        (when shared/*memory-atom*
+          (swap! shared/*memory-atom* assoc-in [::reference-checks k] check))
+        check))))
+
 (mu/defn validate-database-sql :- ::validation-result
   "[[validate-sql]] for `sql` against `database-id`, plus reference `:warnings` when `sql` has template tags (which
   [[validate-sql]] can't parse). `existing-tags` are the template tags of the stored query whose SQL `sql` replaces, if
   any. Throws an agent error when `sql` references a card or snippet that doesn't exist or that the current user can't
-  read. Like [[validate-sql]], checks nothing for dialects that [[dialect-mapping]] skips."
+  read. Like [[validate-sql]], checks no table or column references for dialects that [[dialect-mapping]] skips.
+  `:repeated-warnings?` is set when this turn already returned the same warnings for the same SQL."
   ([database-id :- :int
     sql         :- :string]
    (validate-database-sql database-id sql nil))
@@ -258,10 +274,10 @@
     existing-tags :- [:maybe ::lib.schema.template-tag/template-tags]]
    (let [dialect (database-id->dialect database-id)
          result  (validate-sql dialect sql)]
-     (if (and (get dialect-mapping dialect)
-              (references-template-tags? sql))
-       (let [{:keys [status warnings]} (check-templated-sql-references database-id sql existing-tags)]
-         (analytics/inc! :metabase-metabot/sql-reference-checks {:status (name status)})
+     (if (contains-template-tags? sql)
+       (let [{:keys [warnings repeated?]} (cached-reference-check database-id sql existing-tags
+                                                                  (some? (get dialect-mapping dialect)))]
          (cond-> result
-           (seq warnings) (assoc :warnings warnings)))
+           (seq warnings)                 (assoc :warnings warnings)
+           (and (seq warnings) repeated?) (assoc :repeated-warnings? true)))
        result))))

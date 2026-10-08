@@ -30,11 +30,12 @@
       (handle-agent-error e))))
 
 (defn non-terminal-when-warned
-  "Mark a tool's success `result` `:non-terminal?` when `warnings` is non-empty, so a profile that ends its turn on
-  that tool still gives the model a turn to act on them."
-  [result warnings]
+  "Mark a tool's success `result` `:non-terminal?` when `validation-result` has reference `:warnings` new to this turn,
+  so a profile that ends its turn on that tool still gives the model a turn to act on them. Warnings repeated for the
+  same SQL don't, so resubmitting the SQL unchanged accepts it rather than looping."
+  [result {:keys [warnings repeated-warnings?]}]
   (cond-> result
-    (seq warnings) (assoc :non-terminal? true)))
+    (and (seq warnings) (not repeated-warnings?)) (assoc :non-terminal? true)))
 
 (defn convert-field-type
   "Return tool type for `column`."
