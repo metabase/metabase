@@ -453,10 +453,10 @@ describe("dashboard preview", () => {
         cy.log("Assert filter 1");
         cy.button(filter.name).click();
         H.popover().within(() => {
+          cy.findByText("Doohickey").should("be.visible");
           cy.findByText("Gadget").should("not.exist");
           cy.findByText("Gizmo").should("not.exist");
           cy.findByText("Widget").should("not.exist");
-          cy.findByText("Doohickey").should("be.visible");
         });
       });
     });
@@ -553,10 +553,10 @@ describe("dashboard preview", () => {
       cy.log("Assert filter 1");
       cy.button(filter.name).click();
       H.popover().within(() => {
+        cy.findByText("Doohickey").should("be.visible");
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
-        cy.findByText("Doohickey").should("be.visible");
       });
     });
   });
