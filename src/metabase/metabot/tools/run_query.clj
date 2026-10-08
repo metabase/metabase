@@ -150,7 +150,10 @@
         (throw (if (every? #(some-> % mi/can-read?) cards)
                  (metabot-sql-card-refusal)
                  (no-permission)))))
-    (lib/prepare-for-serialization normalized)))
+    ;; Serializing drops `:parameters` as runtime-only, but the QP applies them as filters, so without them the
+    ;; query would read more rows than the one the user is viewing.
+    (cond-> (lib/prepare-for-serialization normalized)
+      (seq (:parameters normalized)) (assoc :parameters (:parameters normalized)))))
 
 (defn- cell-text
   [value]
