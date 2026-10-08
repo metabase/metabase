@@ -131,6 +131,9 @@ describe("admin > custom visualizations", () => {
 
         H.goToAdmin();
         cy.findByTestId("admin-layout-sidebar")
+          .findByText("Maps")
+          .should("be.visible");
+        cy.findByTestId("admin-layout-sidebar")
           .findByText("Custom visualizations")
           .should("not.exist");
       });
@@ -149,14 +152,14 @@ describe("admin > custom visualizations", () => {
         H.getAddVisualizationLink().click();
 
         cy.findByTestId("admin-layout-sidebar")
+          .findByRole("link", { name: /Custom visualizations/ })
+          .should("have.attr", "data-active", "true");
+        cy.findByTestId("admin-layout-sidebar")
           .findByRole("link", { name: /Development/ })
           .should("not.exist");
         cy.findByTestId("admin-layout-sidebar")
           .findByRole("link", { name: /Manage visualizations/ })
           .should("not.exist");
-        cy.findByTestId("admin-layout-sidebar")
-          .findByRole("link", { name: /Custom visualizations/ })
-          .should("have.attr", "data-active", "true");
 
         H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
         cy.findByRole("button", { name: "Add visualization" }).click();
@@ -249,6 +252,7 @@ describe("admin > custom visualizations", () => {
         "data-active",
         "true",
       );
+      cy.findByRole("link", { name: /Development/ }).should("be.visible");
 
       cy.log("Upload a non-tar.gz file so the BE rejects it.");
       H.dropCustomVizBundle({
@@ -311,6 +315,10 @@ describe("admin > custom visualizations", () => {
               "Replace bundle is reachable only via the row's Plugin actions menu — clicking the row itself does not navigate",
             );
             H.main().findByText("demo-viz").click();
+            cy.location("pathname").should(
+              "eq",
+              "/admin/settings/custom-visualizations",
+            );
             cy.findByRole("heading", {
               name: /Replace bundle for/,
             }).should("not.exist");
@@ -457,6 +465,7 @@ describe("admin > custom visualizations", () => {
 
           // Custom viz section should not appear in chart type selector
           cy.findByTestId("viz-type-button").click();
+          cy.findByTestId("Table-button").should("be.visible");
           cy.findByText("Custom visualizations").should("not.exist");
           H.expectNoBadSnowplowEvents();
 
@@ -516,6 +525,7 @@ describe("admin > custom visualizations", () => {
 
           // Custom viz section should not appear in chart type selector
           cy.findByTestId("viz-type-button").click();
+          cy.findByTestId("Table-button").should("be.visible");
           cy.findByText("Custom visualizations").should("not.exist");
           H.expectNoBadSnowplowEvents();
         });
@@ -733,6 +743,7 @@ describe("admin > custom visualizations", () => {
         },
       });
 
+      cy.findByTestId("scalar-value").should("be.visible");
       switchToDemoViz();
       H.main()
         .findByText("Custom viz rendered successfully")
@@ -1144,8 +1155,8 @@ describe("admin > custom visualizations", () => {
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
       // The demo plugin's query is `count(Orders)` with no breakout, so the
       // underlying-records drill produces an unfiltered Orders query.
-      H.queryBuilderFiltersPanel().should("not.exist");
       H.tableInteractive().findByText("37.65").should("be.visible");
+      H.queryBuilderFiltersPanel().should("not.exist");
     });
 
     describe("click behavior: custom destinations", () => {
@@ -1369,8 +1380,8 @@ describe("admin > custom visualizations", () => {
         cy.wait("@failedBundle");
 
         H.getDocumentCard(DOC_QUESTION_NAME).within(() => {
-          cy.findByText("Custom viz rendered successfully").should("not.exist");
           cy.findByTestId("table-root").should("be.visible");
+          cy.findByText("Custom viz rendered successfully").should("not.exist");
         });
       });
     });
