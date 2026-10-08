@@ -6,7 +6,15 @@ const path = require("node:path");
 
 const [listArg, countArg] = process.argv.slice(2);
 const files = fs.readFileSync(listArg.replace(/^@/, ""), "utf8").split("\n").filter(Boolean);
-const workers = Number(countArg ?? 4);
+// One worker per fast core. An Apple chip also reports its efficiency cores, and
+// workers on those only add timeouts.
+const fastCores = () => {
+  if (process.platform === "darwin") {
+    try { return Number(require("node:child_process").execFileSync("sysctl", ["-n", "hw.perflevel0.physicalcpu"], { encoding: "utf8" })); } catch {}
+  }
+  return require("node:os").availableParallelism();
+};
+const workers = Number(countArg ?? fastCores());
 const harness = path.join(__dirname, "hooks.cjs");
 const runner = path.join(__dirname, "run.cjs");
 
