@@ -108,6 +108,7 @@ interface GetLegendLayoutOptions {
   width: number;
   height: number;
   chartHeight?: number;
+  horizontalWidth?: number;
   size: LegendSize;
   fontFamily: string;
   measureText: TextWidthMeasurer;
@@ -124,6 +125,7 @@ export function getLegendLayout({
   width,
   height,
   chartHeight,
+  horizontalWidth = width,
   size,
   fontFamily,
   measureText,
@@ -147,8 +149,12 @@ export function getLegendLayout({
   );
 
   const availableWidth = width - config.horizontalPadding;
-  const horizontalWidth = sum(itemWidths) + config.itemGap * (items.length - 1);
-  if (horizontalWidth <= availableWidth) {
+  const availableHorizontalWidth = Math.min(
+    availableWidth,
+    horizontalWidth - LEGEND_PADDING * 2,
+  );
+  const itemsWidth = sum(itemWidths) + config.itemGap * (items.length - 1);
+  if (itemsWidth <= availableHorizontalWidth) {
     return { type: "horizontal" };
   }
 
