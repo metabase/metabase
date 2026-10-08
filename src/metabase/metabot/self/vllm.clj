@@ -182,8 +182,7 @@
 
 (def ^:private reasoning-model-token-floor
   "Smallest `max_tokens` any request gets once [[preflight!]] has observed the served model reasoning.
-  Chat Completions bills thinking, answer, and tool call against one budget. Mirrors
-  `claude-request-body`."
+  Chat Completions bills thinking, answer, and tool call against one budget."
   16384)
 
 (def ^:private default-temperature
