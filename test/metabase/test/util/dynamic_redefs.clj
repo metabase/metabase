@@ -33,10 +33,11 @@
 (defn dynamic-value
   "Get the value of this var that is in scope. It is the unpatched version if there is no override."
   [a-var]
-  ;; Callers also pass the proxy itself.
   (if (var? a-var)
     (get *local-redefs* (.getRawRoot ^Var a-var) (proxy-original a-var))
-    (get *local-redefs* a-var (second (.get proxies a-var)))))
+    ;; Callers also pass the proxy itself, usually as `(dynamic-value some-fn)` inside a replacement for `some-fn`.
+    ;; That has always meant the proxy's original, so the replacement can delegate without calling itself.
+    (second (.get proxies a-var))))
 
 (defn original-fn
   "Return the original (unpatched) function for `a-var`.

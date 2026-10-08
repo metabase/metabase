@@ -43,6 +43,16 @@
     (mt/with-dynamic-fn-redefs [arities (fn [x] x)]
       (is (thrown? clojure.lang.ArityException (arities 1 2))))))
 
+(defn- delegated [x] [:original x])
+
+(deftest ^:parallel replacement-delegates-to-original-test
+  (testing "a replacement reaches the original through `dynamic-value` of the function"
+    (mt/with-dynamic-fn-redefs [delegated (fn [x] [:wrapped ((mt/dynamic-value delegated) x)])]
+      (is (= [:wrapped [:original 1]] (delegated 1)))))
+  (testing "and through `original-fn` of the var"
+    (mt/with-dynamic-fn-redefs [delegated (fn [x] [:wrapped ((mt/original-fn #'delegated) x)])]
+      (is (= [:wrapped [:original 1]] (delegated 1))))))
+
 (defn- countdown [n]
   (if (pos? n) (countdown (dec n)) :done))
 
