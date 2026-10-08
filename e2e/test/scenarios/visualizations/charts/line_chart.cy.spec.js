@@ -59,6 +59,8 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.echartsContainer().findByText("prefix0");
+    // The popover closes on Escape only when the key event starts inside it
+    H.popover().findByPlaceholderText("$").focus();
     cy.realPress("Escape");
     cy.get("[data-element-id=mantine-popover]")
       .filter(":visible")

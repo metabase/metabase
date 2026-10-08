@@ -667,6 +667,26 @@ union all select 2, 20, 'short value'`,
       testAvgTotalChange();
       testCumSumChange();
 
+      H.cartesianChartCircleWithColor("#A989C5")
+        .first()
+        .as("firstCircle")
+        .trigger("mousemove");
+      H.assertEChartsTooltip({ header: "2025" });
+
+      cy.get("@firstCircle").click();
+
+      // The tooltip hides when the click popover is visible
+      H.popover().should("be.visible");
+      cy.get("body").should(($body) => {
+        const visibleTooltips = $body
+          .find('[data-testid="echarts-tooltip"]')
+          .toArray()
+          .filter(H.isFixedPositionElementVisible);
+        expect(visibleTooltips).to.have.length(0);
+      });
+      cy.realPress("Escape");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
         isVisualizerCard: false,
@@ -695,24 +715,6 @@ union all select 2, 20, 'short value'`,
             value: "3,236",
           },
         ],
-      });
-
-      H.cartesianChartCircleWithColor("#A989C5")
-        .first()
-        .as("firstCircle")
-        .trigger("mousemove");
-      H.assertEChartsTooltip({ header: "2025" });
-
-      cy.get("@firstCircle").click();
-
-      // The tooltip hides when the click popover is visible
-      H.popover().should("be.visible");
-      cy.get("body").should(($body) => {
-        const visibleTooltips = $body
-          .find('[data-testid="echarts-tooltip"]')
-          .toArray()
-          .filter(H.isFixedPositionElementVisible);
-        expect(visibleTooltips).to.have.length(0);
       });
     });
   });
