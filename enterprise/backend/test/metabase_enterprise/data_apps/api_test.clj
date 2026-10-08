@@ -6,7 +6,6 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
-   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.actions.core :as actions]
    [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.lib.core :as lib]
@@ -141,130 +140,6 @@
 (deftest ^:parallel query-definition-request-schema-is-closed-test
   (is (empty? (closed-schemas/findings ::query-definition/query-definition))))
 
-(deftest user-permission-warnings-test
-  (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Sandbox]
-      (mt/with-no-data-perms-for-all-users!
-        (create-app!)
-        (let [{app-group-id :permission_group_id}
-              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-              allowed-table-id (mt/id :venues)
-              missing-table-id (mt/id :orders)
-              user-id          (mt/user->id :rasta)]
-          (testing "an app with no synchronized dependencies has no warnings"
-            (is (= []
-                   (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
-                                         {:user_ids [user-id]}))))
-          (t2/update! :model/DataApp :name "demo" {:table_ids [allowed-table-id missing-table-id]})
-          (perms/add-user-to-group! user-id app-group-id)
-          (perms/set-table-permission! app-group-id
-                                       missing-table-id
-                                       :perms/view-data
-                                       :unrestricted)
-          (perms/set-table-permission! (perms/all-users-group)
-                                       allowed-table-id
-                                       :perms/view-data
-                                       :unrestricted)
-          (testing "returns only users who lack access from a non-data-app group"
-            (is (=? [{:user_id user-id
-                      :missing_tables [{:id missing-table-id
-                                        :name "Orders"
-                                        :database_id (mt/id)}]}]
-                    (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
-                                          {:user_ids [user-id (mt/user->id :crowberto)]}))))
-          (testing "unrestricted access from another group is adequate"
-            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-              (perms/add-user-to-group! user-id group-id)
-              (perms/set-table-permission! group-id
-                                           missing-table-id
-                                           :perms/view-data
-                                           :unrestricted)
-              (is (= []
-                     (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
-                                           {:user_ids [user-id]})))))
-          (testing "sandboxed access is adequate"
-            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                           :model/Sandbox _ {:group_id group-id :table_id missing-table-id}]
-              (perms/add-user-to-group! user-id group-id)
-              (is (= []
-                     (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
-                                           {:user_ids [user-id]}))))))))))
-
-(deftest permission-warning-lookups-are-batched-test
-  (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
-    (mt/with-no-data-perms-for-all-users!
-      (let [table-ids [(mt/id :venues) (mt/id :orders)]
-            users     [{:id (mt/user->id :rasta) :is_superuser false}
-                       {:id (mt/user->id :lucky) :is_superuser false}]
-            query-count (fn [users]
-                          (t2/with-call-count [call-count]
-                            (data-app.user-access/permission-warnings table-ids users)
-                            (call-count)))]
-        (is (= 3 (query-count users)))
-        (is (= (query-count (take 1 users))
-               (query-count users))
-            "permission warning query count must not grow with the number of users")))))
-
-(deftest data-app-list-warning-lookups-are-batched-test
-  (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
-    (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/PermissionsGroup {first-group-id :id} {}
-                     :model/PermissionsGroup {second-group-id :id} {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) first-group-id)
-        (perms/add-user-to-group! (mt/user->id :lucky) second-group-id)
-        (let [apps [{:permission_group_id first-group-id
-                     :table_ids [(mt/id :venues)]}
-                    {:permission_group_id second-group-id
-                     :table_ids [(mt/id :orders)]}]
-              warning-groups #(t2/with-call-count [call-count]
-                                (let [result (data-app.user-access/groups-with-permission-warnings %)]
-                                  {:result result :query-count (call-count)}))
-              one-app (warning-groups (take 1 apps))
-              two-apps (warning-groups apps)]
-          (is (= #{first-group-id} (:result one-app)))
-          (is (= #{first-group-id second-group-id} (:result two-apps)))
-          (is (= 3 (:query-count one-app) (:query-count two-apps))
-              "warning status query count must not grow with the number of apps"))))))
-
-(deftest data-app-list-includes-user-permission-warning-status-test
-  (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (mt/with-no-data-perms-for-all-users!
-        (create-app!)
-        (let [{app-group-id :permission_group_id}
-              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-              table-id (mt/id :orders)
-              user-id  (mt/user->id :rasta)
-              warning? #(->> (mt/user-http-request :crowberto :get 200 "apps")
-                             (filter (comp #{"demo"} :name))
-                             first
-                             :has_user_permission_warnings)]
-          (t2/update! :model/DataApp :name "demo" {:table_ids [table-id]})
-          (perms/add-user-to-group! user-id app-group-id)
-          (is (true? (warning?)))
-          (perms/set-table-permission! (perms/all-users-group)
-                                       table-id
-                                       :perms/view-data
-                                       :unrestricted)
-          (is (false? (warning?))))))))
-
-(deftest data-app-list-warning-status-ignores-deactivated-members-test
-  (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (mt/with-no-data-perms-for-all-users!
-        (create-app!)
-        (let [{app-group-id :permission_group_id}
-              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-              table-id (mt/id :orders)]
-          (mt/with-temp [:model/User {user-id :id} {:email "deactivated-data-app-user@example.com"}]
-            (perms/add-user-to-group! user-id app-group-id)
-            (t2/update! :model/User :id user-id {:is_active false})
-            (t2/update! :model/DataApp :name "demo" {:table_ids [table-id]})
-            (is (false? (->> (mt/user-http-request :crowberto :get 200 "apps")
-                             (filter (comp #{"demo"} :name))
-                             first
-                             :has_user_permission_warnings)))))))))
-
 (deftest deactivated-users-cannot-be-added-to-data-apps-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -275,38 +150,12 @@
                                                   :is_active false}]
           (is (= "Deactivated users cannot be added to data apps."
                  (mt/user-http-request :crowberto :post 400 "permissions/membership"
-                                       {:group_id app-group-id :user_id user-id})))
-          (is (= "Deactivated users cannot be added to data apps."
-                 (mt/user-http-request :crowberto :post 400 "apps/demo/user-permission-warnings"
-                                       {:user_ids [user-id]}))))))))
-
-(deftest user-permission-warnings-validates-users-test
-  (mt/with-premium-features #{:data-apps :tenants}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (testing "unknown users"
-        (mt/user-http-request :crowberto :post 404 "apps/demo/user-permission-warnings"
-                              {:user_ids [Integer/MAX_VALUE]}))
-      (testing "tenant users"
-        (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Data app tenant" :slug "data-app-tenant"}
-                       :model/User {user-id :id} {:email "data-app-tenant-user@example.com"
-                                                  :tenant_id tenant-id}]
-          (is (= "Tenant users cannot be added to data apps."
-                 (mt/user-http-request :crowberto :post 400 "apps/demo/user-permission-warnings"
-                                       {:user_ids [user-id]}))))))))
-
-(deftest non-superuser-cannot-read-user-permission-warnings-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "apps/demo/user-permission-warnings"
-                                   {:user_ids [(mt/user->id :rasta)]}))))))
+                                       {:group_id app-group-id :user_id user-id}))))))))
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
-    (mt/user-http-request :crowberto :post 402 "apps/demo/user-permission-warnings"
-                          {:user_ids [(mt/user->id :rasta)]})))
+    (mt/user-http-request :crowberto :post 402 "apps/serialize-resources"
+                          {:collection "goodAppCollection0000" :queries [] :actions []})))
 
 (deftest data-app-membership-additions-require-feature-token-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

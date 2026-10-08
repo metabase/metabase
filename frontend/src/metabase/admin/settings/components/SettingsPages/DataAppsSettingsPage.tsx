@@ -22,7 +22,3 @@ export function DataAppsManagePage() {
 
   return <PLUGIN_DATA_APPS.ManageDataAppsPage />;
 }
-
-export function DataAppUsersManagePage() {
-  return <PLUGIN_DATA_APPS.ManageDataAppUsersPage />;
-}

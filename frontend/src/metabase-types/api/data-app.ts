@@ -30,8 +30,6 @@ export interface DataApp {
   permission_group_id: number | null;
   /** Tables used by the last successful resource synchronization. */
   table_ids: number[];
-  /** Whether any app member lacks access to a table used by this app. */
-  has_user_permission_warnings?: boolean;
   /**
    * External origins the app's sandboxed bundle may `fetch`/XHR. Empty means
    * none (Metabase data still flows through the SDK). Each entry is an origin,
@@ -59,22 +57,4 @@ export interface SetDataAppEnabledRequest {
   /** The app's slug. */
   name: string;
   enabled: boolean;
-}
-
-export interface DataAppMissingTable {
-  id: number;
-  name: string;
-  schema: string | null;
-  database_id: number;
-  database_name: string;
-}
-
-export interface DataAppUserPermissionWarning {
-  user_id: number;
-  missing_tables: DataAppMissingTable[];
-}
-
-export interface GetDataAppUserPermissionWarningsRequest {
-  name: string;
-  user_ids: number[];
 }
