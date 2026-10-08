@@ -9,7 +9,7 @@
    [potemkin :as p]
    [potemkin.namespaces :as p.namespaces])
   (:import
-   (clojure.lang Var)
+   (clojure.lang MultiFn Var)
    (java.util.concurrent Callable CyclicBarrier Executors Future TimeUnit)))
 
 (set! *warn-on-reflection* true)
@@ -50,16 +50,23 @@
 (defn- delegated [x] [:original x])
 
 (deftest ^:parallel replacement-delegates-to-original-test
-  (testing "a replacement reaches the original through `dynamic-value` of the function"
-    (mt/with-dynamic-fn-redefs [delegated (fn [x] [:wrapped ((mt/dynamic-value delegated) x)])]
-      (is (= [:wrapped [:original 1]] (delegated 1)))))
-  (testing "and through `original-fn` of the var"
+  (testing "a replacement reaches the original through `original-fn`"
     (mt/with-dynamic-fn-redefs [delegated (fn [x] [:wrapped ((mt/original-fn #'delegated) x)])]
-      (is (= [:wrapped [:original 1]] (delegated 1)))))
-  (testing "given the var, `dynamic-value` is the replacement in scope"
+      (is (= [:wrapped [:original 1]] (delegated 1))))))
+
+(defn- never-redefined [] :original)
+
+(deftest ^:parallel dynamic-value-test
+  (testing "the replacement in scope"
     (let [replacement (fn [x] [:replaced x])]
       (mt/with-dynamic-fn-redefs [delegated replacement]
-        (is (identical? replacement (mt/dynamic-value #'delegated)))))))
+        (is (identical? replacement (mt/dynamic-value #'delegated))))))
+  (testing "the original once the redef has exited"
+    (is (= (mt/original-fn #'delegated) (mt/dynamic-value #'delegated))))
+  (testing "nil for a var that was never proxied"
+    (is (nil? (mt/dynamic-value #'never-redefined))))
+  (testing "a function is refused, because its var is what says which replacement is in scope"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"takes a var" (mt/dynamic-value delegated)))))
 
 (defn- countdown [n]
   (if (pos? n) (countdown (dec n)) :done))
@@ -161,7 +168,7 @@
     (is (= :outer (shadowed))))
   (is (= :original (shadowed))))
 
-;;; each test of a re-export gets its own source: whether a var has been proxied before is part of what they check.
+;;; Each test of a re-export gets its own source: whether a var has been proxied before is part of what they check.
 
 (defn- source-1 [] :original)
 (p/import-fn source-1 reexport-1)
@@ -226,51 +233,133 @@
     (testing "a replacement that delegates through it reaches the unpatched function while the source is redefined"
       (mt/with-dynamic-fn-redefs [reexport-5 (fn [] [:wrapped ((mt/original-fn #'reexport-5))])
                                   source-5 (constantly :source)]
-        (is (= [:source [:wrapped :original]] [(source-5) (reexport-5)]))))
-    (testing "and so does one that delegates through `dynamic-value` of the function"
-      (mt/with-dynamic-fn-redefs [reexport-5 (fn [] [:wrapped ((mt/dynamic-value reexport-5))])
-                                  source-5 (constantly :source)]
         (is (= [:source [:wrapped :original]] [(source-5) (reexport-5)]))))))
 
-(defn- fresh-reexport-pair!
-  "Intern a function and a re-export of it, linked the way `p/import-fn` links them. Returns `[source reexport]`."
-  []
-  (let [here   (the-ns 'metabase.test.util.dynamic-redefs-test)
-        source (intern here (gensym "raced-source-") (fn [] :original))
-        reexport (intern here (gensym "raced-reexport-") @source)]
+(defn- source-6 [] :original)
+(p/import-fn source-6 reexport-6)
+
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest ^:synchronized with-redefs-of-reexport-survives-first-redef-of-source-test
+  ;; The global root swap is the case under test.
+  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+  (with-redefs [reexport-6 (constantly :stub)]
+    (testing "a `with-redefs` stub on a re-export that was never proxied outlasts the first dynamic redef of its source"
+      (mt/with-dynamic-fn-redefs [source-6 (constantly :source)]
+        (is (= [:source :stub] [(source-6) (reexport-6)])))
+      (is (= [:original :stub] [(source-6) (reexport-6)]))))
+  (testing "and the re-export follows its source again once the stub is gone"
+    (is (= [:original :original] [(source-6) (reexport-6)]))
+    (mt/with-dynamic-fn-redefs [source-6 (constantly :source)]
+      (is (= [:source :source] [(source-6) (reexport-6)])))))
+
+(defn- source-7 [] :original)
+(p/import-fn source-7 reexport-7)
+
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest ^:synchronized reexport-first-redefined-inside-with-redefs-test
+  ;; The global root swap is the case under test.
+  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+  (with-redefs [reexport-7 (constantly :stub)]
+    (testing "the first dynamic redef of a re-export, inside a `with-redefs` of it"
+      (mt/with-dynamic-fn-redefs [reexport-7 (constantly :reexport)]
+        (is (= [:original :reexport] [(source-7) (reexport-7)])))
+      (is (= [:original :stub] [(source-7) (reexport-7)]))))
+  (testing "afterwards the re-export follows its source, and keeps a redef of its own"
+    (mt/with-dynamic-fn-redefs [source-7 (constantly :source)]
+      (is (= [:source :source] [(source-7) (reexport-7)]))
+      (mt/with-dynamic-fn-redefs [reexport-7 (constantly :reexport)]
+        (is (= [:source :reexport] [(source-7) (reexport-7)]))))))
+
+(defn- source-8 [] :original)
+(p/import-fn source-8 reexport-8)
+
+(defn- source-9 [] :original)
+(p/import-fn source-9 reexport-9)
+
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest ^:synchronized nested-with-redefs-of-reexport-and-source-test
+  (let [nested (fn [source reexport]
+                 (with-redefs-fn {reexport (constantly :stub)}
+                   (fn []
+                     (with-redefs-fn {source (constantly :source)}
+                       (fn [] [(source) (reexport)])))))]
+    (testing "once the source has been redefined with the macro, a stub on the re-export outlasts one on the source"
+      (mt/with-dynamic-fn-redefs [source-8 (constantly :source)]
+        (is (= :source (source-8))))
+      (is (= [:source :stub] (nested #'source-8 #'reexport-8))))
+    (testing "known limitation: until then potemkin copies the source's stub over the re-export's"
+      (is (= [:source :source] (nested #'source-9 #'reexport-9))))))
+
+(defn- reexport!
+  "Intern a re-export of `source` in the namespace named `ns-sym`, linked the way `p/import-fn` links them."
+  ^Var [^Var source ns-sym]
+  (let [reexport (intern (create-ns ns-sym) (gensym "reexport-") @source)]
     (alter-meta! reexport merge (dissoc (meta source) :name))
     (p.namespaces/link-vars source reexport)
-    [source reexport]))
+    reexport))
 
-(defn- call-redefined!
-  "Call `a-var` with `replacement` in scope, as `with-dynamic-fn-redefs` would for a var named in source."
-  [^Var a-var replacement]
+(defn- fresh-source!
+  "Intern a var holding `root` in this namespace."
+  ^Var [root]
+  (intern (the-ns 'metabase.test.util.dynamic-redefs-test) (gensym "source-") root))
+
+(defn- redefined!
+  "Call `thunk` with `replacement` in scope for `a-var`, as `with-dynamic-fn-redefs` would for a var named in source."
+  [^Var a-var replacement thunk]
   (dynamic-redefs/patch-vars! [a-var])
   (binding [dynamic-redefs/*local-redefs* (dynamic-redefs/local-redefs {a-var replacement})]
-    (a-var)))
+    (thunk)))
+
+(deftest reexport-of-reexport-in-another-namespace-test
+  (let [source (fresh-source! (fn [] :original))
+        middle (reexport! source 'metabase.test.util.dynamic-redefs-test.middle)
+        end    (reexport! middle 'metabase.test.util.dynamic-redefs-test.end)
+        calls  (fn [] [(source) (middle) (end)])]
+    (testing "a redef of the last link only reaches calls through it, and survives a first redef further up"
+      (is (= [[:original :original :end] [:original :middle :end] [:original :original :end]]
+             (redefined! end (constantly :end)
+                         (fn [] [(calls) (redefined! middle (constantly :middle) calls) (calls)])))))
+    (testing "every link follows the one before it"
+      (is (= [:source :source :source] (redefined! source (constantly :source) calls)))
+      (is (= [:original :middle :middle] (redefined! middle (constantly :middle) calls))))
+    (testing "the original of every link is the source's"
+      (is (= [@(delay (mt/original-fn source))] (distinct (map mt/original-fn [source middle end])))))))
+
+(defmulti ^:private a-multimethod {:arglists '([x])} identity)
+
+(deftest reexport-of-unproxyable-value-test
+  (testing "a re-export of a multimethod or of a value that is not a function is refused, like its source"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Cannot proxy multimethods"
+                          (dynamic-redefs/patch-vars! [(reexport! (fresh-source! a-multimethod)
+                                                                  'metabase.test.util.dynamic-redefs-test)])))
+    (is (instance? MultiFn a-multimethod))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Cannot proxy non-IFn values"
+                          (dynamic-redefs/patch-vars! [(reexport! (fresh-source! 23)
+                                                                  'metabase.test.util.dynamic-redefs-test)])))))
 
 (deftest first-redef-of-reexport-and-source-race-test
   (testing "a re-export and its source, each first redefined at the same moment on its own thread"
     (let [pairs 50
           pool  (Executors/newFixedThreadPool 2)
           race  (fn []
-                  (let [[source reexport] (fresh-reexport-pair!)
-                        barrier         (CyclicBarrier. 2)
-                        redef           (fn [a-var value]
-                                          (.submit pool ^Callable (fn []
-                                                                    (.await barrier)
-                                                                    (call-redefined! a-var (constantly value)))))
-                        tasks           [(redef reexport :reexport) (redef source :source)]]
+                  (let [source   (fresh-source! (fn [] :original))
+                        reexport (reexport! source 'metabase.test.util.dynamic-redefs-test)
+                        barrier  (CyclicBarrier. 2)
+                        redef    (fn [a-var value]
+                                   (.submit pool ^Callable (fn []
+                                                             (.await barrier)
+                                                             (redefined! a-var (constantly value) a-var))))
+                        tasks    [(redef reexport :reexport) (redef source :source)]]
                     ;; A timeout here is a deadlock between the two threads.
-                    {:during       (mapv #(.get ^Future % 30 TimeUnit/SECONDS) tasks)
-                     :reexport-redef [(call-redefined! reexport (constantly :reexport)) (source)]
-                     :source-redef (binding [dynamic-redefs/*local-redefs* (dynamic-redefs/local-redefs
-                                                                            {source (constantly :source)})]
-                                     [(reexport) (source)])}))]
+                    {:during         (mapv #(.get ^Future % 30 TimeUnit/SECONDS) tasks)
+                     :reexport-redef (redefined! reexport (constantly :reexport) (fn [] [(reexport) (source)]))
+                     :source-redef   (redefined! source (constantly :source) (fn [] [(reexport) (source)]))}))]
       (try
-        (is (= {{:during       [:reexport :source]
+        (is (= {{:during         [:reexport :source]
                  :reexport-redef [:reexport :original]
-                 :source-redef [:source :source]}
+                 :source-redef   [:source :source]}
                 pairs}
                (frequencies (repeatedly pairs race))))
         (finally
@@ -325,11 +414,11 @@
                       (throw (ex-info "leave the redef by exception" {::expected true}))))]
         (try
           (case [op v]
-            [:dynamic :a]        (mt/with-dynamic-fn-redefs [model-a f] (body!))
-            [:dynamic :b]        (mt/with-dynamic-fn-redefs [model-b f] (body!))
+            [:dynamic :a]          (mt/with-dynamic-fn-redefs [model-a f] (body!))
+            [:dynamic :b]          (mt/with-dynamic-fn-redefs [model-b f] (body!))
             [:dynamic :a-reexport] (mt/with-dynamic-fn-redefs [model-a-reexport f] (body!))
-            [:plain :a]          (with-redefs-fn {#'model-a f} body!)
-            [:plain :b]          (with-redefs-fn {#'model-b f} body!)
+            [:plain :a]            (with-redefs-fn {#'model-a f} body!)
+            [:plain :b]            (with-redefs-fn {#'model-b f} body!)
             [:plain :a-reexport]   (with-redefs-fn {#'model-a-reexport f} body!))
           (catch clojure.lang.ExceptionInfo e
             (when-not (::expected (ex-data e))
