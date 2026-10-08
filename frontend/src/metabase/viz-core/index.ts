@@ -56,6 +56,7 @@ export type {
   CartesianChartModel,
   ChartDataset,
   DataKey,
+  DateRange,
   Datum,
   DimensionModel,
   LegendItem,
@@ -80,7 +81,10 @@ export {
 export { TREND_LINE_WIDTH } from "./echarts/cartesian/option/trend-line";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
-export { getTimelineEventsModel } from "./echarts/cartesian/timeline-events/model";
+export {
+  getTimelineEventsModel,
+  isTimelineEventInRange,
+} from "./echarts/cartesian/timeline-events/model";
 export { EMPTY_TIMELINE_SELECTION_SERIES } from "./echarts/cartesian/timeline-events/option";
 export type {
   TimelineEventCluster,
@@ -272,6 +276,7 @@ export { computeMinimalBoundsCoordinates } from "./lib/mapping";
 export { computeChange, computeNumericDataInterval } from "./lib/numeric";
 export { getCanonicalRowKey } from "./lib/region-codes";
 export {
+  canDisplayTimelineEvents,
   canSavePng,
   getIconForVisualizationType,
   getMaxDimensionsSupported,
@@ -343,10 +348,7 @@ export {
 export { nestedSettings } from "./lib/settings/nested";
 export { keyForSingleSeries } from "./lib/settings/series";
 export { getStackOffset } from "./lib/settings/stacking";
-export {
-  getTimelineEventSettings,
-  TIMELINE_EVENTS_SETTINGS,
-} from "./lib/settings/timelineEvents";
+export { TIMELINE_EVENTS_SETTINGS } from "./lib/settings/timelineEvents";
 export {
   extendCardWithDashcardSettings,
   mergeSettings,
@@ -390,6 +392,7 @@ export {
 } from "./lib/table_format";
 export { truncateText } from "./lib/text";
 export { dimensionIsTimeseries } from "./lib/timeseries";
+export { getTimeseriesXAxis } from "./lib/timeseries-x-axis";
 export { formatValueForTooltipWithoutScaling } from "./lib/tooltip";
 export {
   computePreviousPeriodChange,
@@ -502,6 +505,7 @@ export type {
   RenderingContext,
   StaticVisualizationProps,
 } from "./types/rendering";
+export type { TimeseriesXAxis } from "./types/timeseries";
 export type {
   AggregationFunction,
   ChartSettingColorRangeProps,

@@ -3,6 +3,9 @@ import type {
   VisualizationGridSize,
 } from "../types";
 
+const HIDE_TIMELINE_EVENTS_HEIGHT_THRESHOLD = 200;
+const HIDE_TIMELINE_EVENTS_WIDTH_THRESHOLD = 240;
+
 // Thresholds prioritize grid size when available so that dashboards in the FE
 // and dashboard PDFs in the BE compute the same settings
 
@@ -86,6 +89,13 @@ export const getSizeAdjustedSettings = ({
 
   if (isBelowThreshold(HIDE_Y_AXIS_THRESHOLD, width, height, gridSize)) {
     adjusted["graph.y_axis.axis_enabled"] = false;
+  }
+
+  if (
+    height <= HIDE_TIMELINE_EVENTS_HEIGHT_THRESHOLD ||
+    width <= HIDE_TIMELINE_EVENTS_WIDTH_THRESHOLD
+  ) {
+    adjusted["timeline_events.enabled"] = false;
   }
 
   return adjusted;

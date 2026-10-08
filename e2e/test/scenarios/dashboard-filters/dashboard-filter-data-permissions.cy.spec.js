@@ -2,7 +2,6 @@ const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 function filterDashboard() {
-  H.visitDashboard(ORDERS_DASHBOARD_ID);
   H.filterWidget().click();
 
   cy.findByPlaceholderText("Search the list").type("Main Street");
@@ -38,16 +37,14 @@ describe("support > permissions (metabase#8472)", () => {
       "Address",
     );
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
+    H.saveDashboard();
   });
 
   it("should let admin and nodata users use the filter, and hide filter mapping from nodata users in edit mode", () => {
     filterDashboard();
 
     cy.signIn("nodata");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     filterDashboard();
 
     H.editDashboard();

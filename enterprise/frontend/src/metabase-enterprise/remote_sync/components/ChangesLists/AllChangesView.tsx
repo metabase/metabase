@@ -54,6 +54,9 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
     namespace: "snippets",
   });
+  const { data: dataActionCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "data-actions",
+  });
 
   // Build namespace-to-collection-ids map in a single pass
   const namespaceCollectionMap = useMemo(
@@ -61,8 +64,9 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
       buildNamespaceCollectionMap([
         ...collectionTree,
         ...snippetCollectionTree,
+        ...dataActionCollectionTree,
       ]),
-    [collectionTree, snippetCollectionTree],
+    [collectionTree, snippetCollectionTree, dataActionCollectionTree],
   );
 
   // Find the Transforms root entity (id=-1) if it exists

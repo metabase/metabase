@@ -112,12 +112,13 @@ describe("metabot > message", () => {
 
 const incompleteResponse = (
   finishReason: "length" | "tool-calls",
+  messageMetadata?: { contextTokens: number; contextWindowTokens: number },
 ): SSEEvent[] => [
   { type: "start", messageId: "msg_incomplete" },
   { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: "Here is the start of a long answer" },
   { type: "text-end", id: "t1" },
-  { type: "finish", finishReason },
+  { type: "finish", finishReason, messageMetadata },
 ];
 
 describe("metabot > finish reason", () => {
@@ -186,6 +187,26 @@ describe("metabot > finish reason", () => {
 
       expect(queryContinueResponseButton()).not.toBeInTheDocument();
     });
+  });
+
+  it("should not offer continue when the step limit left the context window full", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: incompleteResponse("tool-calls", {
+        contextTokens: 11000,
+        contextWindowTokens: 11000,
+      }),
+    });
+
+    await enterChatMessage("Tell me everything");
+
+    await assertConversation([
+      ["user", "Tell me everything"],
+      ["agent", "Here is the start of a long answer"],
+      ["agent", /paused after reaching its step limit/],
+    ]);
+    expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
+    expect(queryContinueResponseButton()).not.toBeInTheDocument();
   });
 
   describe("content-filter", () => {

@@ -1,9 +1,11 @@
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
+  canAccessApiKeyUsage,
   canAccessMonitor,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
+  canAccessSessionManagement,
 } from "metabase/common/monitor/selectors";
 import {
   MetabaseIsSetup,
@@ -32,8 +34,18 @@ const UserCanAccessAlertsManagement = createRedirectGuard(
   "/unauthorized",
 );
 
+const UserCanAccessSessionManagement = createRedirectGuard(
+  (state) => canAccessSessionManagement(state),
+  "/unauthorized",
+);
+
 const UserCanAccessAiAuditing = createRedirectGuard(
   (state) => canAccessAiAuditing(state),
+  "/unauthorized",
+);
+
+const UserCanAccessApiKeyUsage = createRedirectGuard(
+  (state) => canAccessApiKeyUsage(state),
   "/unauthorized",
 );
 
@@ -65,8 +77,20 @@ export const CanAccessAlertsManagement = () => (
   </UserCanAccessAlertsManagement>
 );
 
+export const CanAccessSessionManagement = () => (
+  <UserCanAccessSessionManagement>
+    <Outlet />
+  </UserCanAccessSessionManagement>
+);
+
 export const CanAccessAiAuditing = () => (
   <UserCanAccessAiAuditing>
     <Outlet />
   </UserCanAccessAiAuditing>
+);
+
+export const CanAccessApiKeyUsage = () => (
+  <UserCanAccessApiKeyUsage>
+    <Outlet />
+  </UserCanAccessApiKeyUsage>
 );
