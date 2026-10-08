@@ -507,28 +507,30 @@
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
 
-(deftest read-transform-resource-source-permission-test
-  (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
-           with query access to another table in its database, so the resource never reaches the source"
-    (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-temp [:model/Transform {transform-id :id}
-                     {:name   "Orders Rollup"
-                      :source {:type  "query"
-                               :query (lib/query (mt/metadata-provider)
-                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
-        (mt/with-data-analyst-role! (mt/user->id :rasta)
-          (mt/with-no-data-perms-for-all-users!
-            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
-            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
-            (mt/with-current-user (mt/user->id :rasta)
-              (is (=? {:resources [{:error "You don't have permissions to do that."}]}
-                      (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]}))))
-            (testing "and the query renders once the source table is granted"
-              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
-              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
-              (mt/with-current-user (mt/user->id :rasta)
-                (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
-                  (is (some? (get-in result [:resources 0 :content :structured-output :source :query]))))))))))))
+;; EE-only: the analyst reading here only can with `advanced-permissions`, which no OSS build can have
+(mt/when-ee-evailable
+ (deftest read-transform-resource-source-permission-test
+   (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
+            with query access to another table in its database, so the resource never reaches the source"
+     (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+       (mt/with-temp [:model/Transform {transform-id :id}
+                      {:name   "Orders Rollup"
+                       :source {:type  "query"
+                                :query (lib/query (mt/metadata-provider)
+                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+         (mt/with-data-analyst-role! (mt/user->id :rasta)
+           (mt/with-no-data-perms-for-all-users!
+             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+             (mt/with-current-user (mt/user->id :rasta)
+               (is (=? {:resources [{:error "You don't have permissions to do that."}]}
+                       (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]}))))
+             (testing "and the query renders once the source table is granted"
+               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+               (mt/with-current-user (mt/user->id :rasta)
+                 (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+                   (is (some? (get-in result [:resources 0 :content :structured-output :source :query])))))))))))))
 
 (defn- read-title
   "The chain-of-thought title `read-resource` derives from what it read."
@@ -793,7 +795,7 @@
                               :target_db_id       db-id
                               :table              target-table}]
           (testing "when user CAN read the target, it appears in the output"
-            (with-redefs [transforms.core/get-transform (constantly stub-transform)]
+            (mt/with-dynamic-fn-redefs [transforms.core/get-transform (constantly stub-transform)]
               (let [{:keys [output]} (read-resource/read-resource
                                       {:uris ["metabase://transform/999/target"]})]
                 (is (str/includes? output "TARGET-TABLE")

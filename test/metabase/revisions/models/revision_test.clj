@@ -115,6 +115,36 @@
              {:private true :collection_unknown_field nil}
              {:private false :collection_unknown_field 1}))))))
 
+(deftest ^:parallel every-revisioned-model-has-a-diff-description-test
+  (testing "Each revisioned model gets a description of a rename"
+    (let [model->display-name (cond-> {:model/Card        "Card"
+                                       :model/Dashboard   "Dashboard"
+                                       :model/Document    "Document"
+                                       :model/Exploration "Exploration"
+                                       :model/Measure     "Measure"
+                                       :model/Segment     "Segment"
+                                       :model/Transform   "Transform"}
+                                config/ee-available? (assoc :model/TransformTest "Transform test"))]
+      ;; `push-revision!` calls `serialize-instance`, which has no default: a model with revisions has a method.
+      (is (= (set (filter #(= "model" (namespace %)) (keys (methods revision/serialize-instance))))
+             (set (keys model->display-name))))
+      (doseq [[model display-name] model->display-name]
+        (testing model
+          (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+            (is (= (str "renamed this " display-name " from \"A\" to \"B\".")
+                   (u/build-sentence (revision/diff-strings model {:name "A"} {:name "B"}))))
+            ;; A missing display name falls back to the model string, which equals the display name for most models.
+            (testing "with no warning of a missing display name"
+              (is (= [] (messages))))))))))
+
+(deftest ^:parallel model-with-no-display-name-gets-a-description-test
+  (testing "A model with no display name gets a description with the model string, and a warning that names the model"
+    (mt/with-log-messages-for-level [messages [metabase.revisions.models.revision.diff :warn]]
+      (is (= "renamed this NoSuchModel from \"A\" to \"B\"."
+             (u/build-sentence (revision.diff/diff-strings* "NoSuchModel" {:name "A"} {:name "B"}))))
+      (is (=? [{:level :warn, :message #".*NoSuchModel.*"}]
+              (messages))))))
+
 ;;; # REVISIONS + PUSH-REVISION!
 
 (deftest new-object-no-revisions-test
@@ -245,6 +275,40 @@
             (t2/update! :model/Dashboard :id dash-id {:name "New name"})
             (push-revision)
             (is (= 2 (count (revision/revisions :model/Dashboard dash-id))))))))))
+
+(deftest do-not-record-card-revision-if-object-is-not-changed-test
+  (testing "Check that we don't record a revision for a real :model/Card that hasn't changed"
+    ;; The sibling test above exercises ::FakedCard, which has no `:card_schema`, so it never covered the
+    ;; Card-specific branch in `push-revision!`. `serialize-instance :model/Card` keeps `:card_schema`, so
+    ;; stripping it from only the previous revision made every Card compare as changed and recorded a
+    ;; revision on every push — filling a metric's history with "created a revision with no change." and
+    ;; evicting real edits once `max-revisions` was reached.
+    (mt/with-model-cleanup [:model/Revision]
+      (mt/with-temp [:model/Card {card-id :id} {:name "Tips Created by Day"}]
+        (let [push-revision (fn [] (revision/push-revision!
+                                    {:entity  :model/Card
+                                     :id      card-id
+                                     :user-id (mt/user->id :rasta)
+                                     :object  (t2/select-one :model/Card card-id)}))]
+          (testing "first revision should be recorded"
+            (push-revision)
+            (is (= 1 (count (revision/revisions :model/Card card-id)))))
+          (testing "pushing the same object again shouldn't record a new revision"
+            (dorun (repeatedly 3 push-revision))
+            (is (= 1 (count (revision/revisions :model/Card card-id)))))
+          (testing "a real change should record a new revision"
+            (t2/update! :model/Card :id card-id {:name "Spots Created by Day"})
+            (push-revision)
+            (is (= 2 (count (revision/revisions :model/Card card-id)))))
+          (testing "`:card_schema` is still stored in the snapshot, because revert reads it back"
+            ;; Excluding it from `serialize-instance` would also equalize the comparison, but then
+            ;; `revert-to-revision! :model/Card` would fall back to `starting-card-schema-version` and
+            ;; silently downgrade the card on every revert.
+            (let [card (t2/select-one :model/Card card-id)]
+              (is (= (:card_schema card)
+                     (:card_schema (revision/serialize-instance :model/Card card-id card))))
+              (is (> (:card_schema card) queries/starting-card-schema-version)
+                  "sanity check: the card is past the legacy schema version, so a downgrade would be visible"))))))))
 
 ;;; # REVISIONS+DETAILS
 

@@ -1012,7 +1012,7 @@
                              :quarter-of-year [:get-quarter field])
               extract-unit (if (= unit :day-of-week) :day-of-week-iso unit)]
           (into [:!= extract-expr]
-                (map #(u.time/extract % extract-unit))
+                (map #(u.time/extract {:start-of-week :monday} % extract-unit))
                 args))
         &match))))
 
@@ -1787,6 +1787,7 @@
    [:qp/stage-is-from-source-card  {:optional true} [:ref ::lib.schema.id/card]]
    [:qp/stage-had-source-card      {:optional true} [:ref ::lib.schema.id/card]]
    [:qp/skip-persisted-cache       {:optional true} :boolean]
+   [:qp.pivot/forced-shape         {:optional true} [:enum :native-pivot-query :union-all]]
    [:persisted-info/native         {:optional true} ::lib.schema.common/non-blank-string]
    [:source-query/model?           {:optional true} :boolean]
    [:source-query/native-model?    {:optional true} [:maybe :boolean]]
@@ -2420,6 +2421,9 @@
     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
      {:optional true}
      :metabase.lib.schema/sandboxing.original-metadata]
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
+     {:optional true}
+     :metabase.lib.schema/sandboxing.details]
     ;;
     ;; ACTIONS
     ;;

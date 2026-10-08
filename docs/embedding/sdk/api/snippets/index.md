@@ -44,6 +44,7 @@
 | [InteractiveQuestionProps](./api/InteractiveQuestionProps.md)                                                 | -                                                                                                                                                                                                                                                              |
 | [InteractiveQuestionQuestionSettingsDropdownProps](./api/InteractiveQuestionQuestionSettingsDropdownProps.md) | -                                                                                                                                                                                                                                                              |
 | [InteractiveQuestionQuestionVisualizationProps](./api/InteractiveQuestionQuestionVisualizationProps.md)       | -                                                                                                                                                                                                                                                              |
+| [InteractiveQuestionRefreshButtonProps](./api/InteractiveQuestionRefreshButtonProps.md)                       | -                                                                                                                                                                                                                                                              |
 | [InteractiveQuestionResetButtonProps](./api/InteractiveQuestionResetButtonProps.md)                           | -                                                                                                                                                                                                                                                              |
 | [InteractiveQuestionSaveQuestionFormProps](./api/InteractiveQuestionSaveQuestionFormProps.md)                 | -                                                                                                                                                                                                                                                              |
 | [InteractiveQuestionTitleProps](./api/InteractiveQuestionTitleProps.md)                                       | -                                                                                                                                                                                                                                                              |
@@ -225,10 +226,11 @@
 
 ## useMetabot
 
-| Name                                                | Description                           |
-| :-------------------------------------------------- | :------------------------------------ |
-| [useMetabot](./api/useMetabot.md)                   | Returns the Metabot conversation API. |
-| [MetabotChartProps](./api/MetabotChartProps.md)     | -                                     |
-| [MetabotErrorMessage](./api/MetabotErrorMessage.md) | -                                     |
-| [MetabotMessage](./api/MetabotMessage.md)           | -                                     |
-| [UseMetabotResult](./api/UseMetabotResult.md)       | -                                     |
+| Name                                                            | Description                           |
+| :-------------------------------------------------------------- | :------------------------------------ |
+| [useMetabot](./api/useMetabot.md)                               | Returns the Metabot conversation API. |
+| [MetabotChartProps](./api/MetabotChartProps.md)                 | -                                     |
+| [MetabotErrorMessage](./api/MetabotErrorMessage.md)             | -                                     |
+| [MetabotIncompleteResponse](./api/MetabotIncompleteResponse.md) | -                                     |
+| [MetabotMessage](./api/MetabotMessage.md)                       | -                                     |
+| [UseMetabotResult](./api/UseMetabotResult.md)                   | -                                     |

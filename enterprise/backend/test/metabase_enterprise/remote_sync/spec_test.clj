@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -44,7 +45,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :parent :setting :library-synced :always}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -58,8 +59,9 @@
             "events :prefix should be a keyword")
         (is (vector? (get-in spec [:events :types]))
             "events :types should be a vector")
-        (is (every? #{:create :update :delete :publish :unpublish} (get-in spec [:events :types]))
-            "events :types should only contain :create, :update, :delete, :publish, :unpublish")))))
+        (is (every? #{:create :update :delete :publish :unpublish :public-link-created :public-link-deleted}
+                    (get-in spec [:events :types]))
+            "events :types should only contain :create, :update, :delete, :publish, :unpublish, :public-link-created, :public-link-deleted")))))
 
 (deftest all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
@@ -133,7 +135,9 @@
       (is (contains? types "TransformTag"))
       (is (contains? types "TransformTest"))
       (is (contains? types "Glossary"))
-      (is (= 15 (count types))))))
+      (is (contains? types "Action"))
+      (is (contains? types "DataApp"))
+      (is (= 17 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -324,13 +328,117 @@
       (is (nil? (spec/query-export-roots segment-spec)))
       (is (nil? (spec/query-export-roots measure-spec))))))
 
+;;; ---------------------------------------------------- Actions ----------------------------------------------------
+
+(defn- do-with-synced-and-plain-actions!
+  "Runs `f` with `{:synced-coll :synced-action :plain-action}`: one action on a model in a remote-synced collection,
+  one on a model outside any."
+  [f]
+  (mt/with-temp [:model/Collection {synced-coll :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                 :model/Collection {plain-coll :id}    {:name "Plain" :location "/"}
+                 :model/Card       {synced-model :id}  {:type :model :collection_id synced-coll}
+                 :model/Card       {plain-model :id}   {:type :model :collection_id plain-coll}
+                 :model/Action     {synced-action :id} {:type :implicit :name "In Sync" :model_id synced-model}
+                 :model/Action     {plain-action :id}  {:type :implicit :name "Outside" :model_id plain-model}]
+    (f {:synced-coll synced-coll :synced-action synced-action :plain-action plain-action})))
+
+(deftest action-eligibility-follows-model-test
+  (testing "an action takes its model's collection, so it is eligible for remote sync exactly when its model is"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-action plain-action]}]
+       (let [action-spec (spec/spec-for-model-key :model/Action)]
+         (is (true? (spec/check-eligibility action-spec (t2/select-one :model/Action :id synced-action))))
+         (is (false? (spec/check-eligibility action-spec (t2/select-one :model/Action :id plain-action)))))))))
+
+(deftest action-removal-scoped-to-synced-models-test
+  (testing "a pull removes absent actions only when they are in a synced collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action plain-action]}]
+       (remote-sync.db/delete-removed-instances!
+        :model/Action
+        (spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))
+       (is (not (t2/exists? :model/Action :id synced-action)))
+       (is (t2/exists? :model/Action :id plain-action))))))
+
+(deftest action-sync-rows-carry-model-collection-test
+  (testing "GHY-4722: the ledger rows rebuilt after a pull give an action its model's collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action]}]
+       (let [eid (t2/select-one-fn :entity_id :model/Action :id synced-action)]
+         (is (=? [{:model_type "Action" :model_id synced-action :model_name "In Sync"
+                   :model_collection_id synced-coll :status "synced"}]
+                 (spec/sync-all-entities! (t/offset-date-time) {:by-entity-id {"Action" #{eid}}}))))))))
+
+(defn- do-with-data-actions!
+  "Runs `f` with `{:folder :root-action :folder-action :app-action}`: actions without a model in the data actions root,
+  a data actions folder, and a data app collection."
+  [f]
+  (mt/with-temp [:model/Collection {folder :id}        {:name "Billing" :namespace "data-actions" :location "/"}
+                 :model/Collection {app-coll :id}      {:name "App" :namespace "data-apps" :location "/"}
+                 :model/Action     {root-action :id}   {:type :query :name "At root"}
+                 :model/Action     {folder-action :id} {:type :query :name "In folder" :collection_id folder}
+                 :model/Action     {app-action :id}    {:type :query :name "App copy" :collection_id app-coll}]
+    (f {:folder folder :root-action root-action :folder-action folder-action :app-action app-action})))
+
+(deftest data-action-eligibility-follows-library-test
+  (testing "actions without a model are synced with the Library from the data actions root and namespace"
+    (do-with-data-actions!
+     (fn [{:keys [root-action folder-action app-action]}]
+       (let [action-spec (spec/spec-for-model-key :model/Action)
+             eligible?   #(spec/check-eligibility action-spec (t2/select-one :model/Action :id %))]
+         (collections.tu/with-library-synced
+           (is (true? (eligible? root-action)))
+           (is (true? (eligible? folder-action)))
+           (is (false? (eligible? app-action))))
+         (collections.tu/with-library-not-synced
+           (is (false? (eligible? root-action)))
+           (is (false? (eligible? folder-action)))))))))
+
+(deftest data-action-export-and-removal-test
+  (testing "with the Library synced, root data actions are export roots and absent ones are removed on pull"
+    (do-with-data-actions!
+     (fn [{:keys [folder root-action app-action]}]
+       (collections.tu/with-library-synced
+         (let [action-spec (spec/spec-for-model-key :model/Action)]
+           (is (contains? (set (spec/query-export-roots action-spec)) ["Action" root-action]))
+           (is (contains? (set (spec/query-export-roots (spec/spec-for-model-key :model/Collection)))
+                          ["Collection" folder]))
+           (remote-sync.db/delete-removed-instances!
+            :model/Action
+            (spec/removal-opts action-spec [] #{}))
+           (is (not (t2/exists? :model/Action :id root-action)))
+           (is (t2/exists? :model/Action :id app-action))))))))
+
+(deftest data-action-read-only-test
+  (testing "data actions synced with the Library cannot be changed while remote sync is read-only"
+    (do-with-data-actions!
+     (fn [{:keys [root-action app-action]}]
+       (collections.tu/with-library-synced
+         (mt/with-current-user (mt/user->id :crowberto)
+           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
+             (is (false? (mi/can-write? (t2/select-one :model/Action :id root-action))))
+             (is (true? (mi/can-write? (t2/select-one :model/Action :id app-action)))))
+           (mt/with-temporary-setting-values [remote-sync-type :read-write]
+             (is (true? (mi/can-write? (t2/select-one :model/Action :id root-action)))))))))))
+
 ;;; -------------------------------------------- Editability Checking Tests ----------------------------------------
 
 (deftest model-editable?-unknown-model-test
   (testing "model-editable? returns true for models not in the spec"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (is (true? (spec/model-editable? :model/UnknownModel {}))
           "Unknown models should always be editable"))))
+
+(deftest model-editable?-remote-sync-disabled-test
+  (testing "model-editable? returns true for every model while remote sync is not configured"
+    (mt/with-temporary-setting-values [remote-sync-url  nil
+                                       remote-sync-type :read-only]
+      (is (true? (spec/model-editable? :model/DataApp {:draft false})))
+      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))
+    (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                       remote-sync-type :read-only]
+      (is (false? (spec/model-editable? :model/DataApp {:draft false})))
+      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))))
 
 (deftest model-editable?-read-write-mode-test
   (testing "model-editable? returns true in read-write mode regardless of eligibility"
@@ -343,12 +451,12 @@
 (deftest model-editable?-library-synced-eligibility-test
   (testing "model-editable? with :library-synced eligibility (NativeQuerySnippet)"
     (testing "returns false when library is synced and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
           (is (false? (spec/model-editable? :model/NativeQuerySnippet {}))
               "Snippets should NOT be editable when library is synced and mode is read-only"))))
     (testing "returns true when library is NOT synced even in read-only mode"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
           (is (true? (spec/model-editable? :model/NativeQuerySnippet {}))
               "Snippets should be editable when library is NOT synced"))))))
@@ -356,12 +464,12 @@
 (deftest model-editable?-setting-eligibility-test
   (testing "model-editable? with :setting eligibility (Transform)"
     (testing "returns false when setting is enabled and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
                                          remote-sync-transforms true]
         (is (false? (spec/model-editable? :model/Transform {}))
             "Transforms should NOT be editable when transforms setting is enabled and mode is read-only")))
     (testing "returns true when setting is disabled even in read-only mode"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
                                          remote-sync-transforms false]
         (is (true? (spec/model-editable? :model/Transform {}))
             "Transforms should be editable when transforms setting is disabled")))))
@@ -369,23 +477,23 @@
 (deftest model-editable?-collection-eligibility-test
   (testing "model-editable? with :collection eligibility (Card)"
     (testing "returns false when card is in remote-synced collection and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced Collection" :is_remote_synced true :location "/"}]
           (is (false? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in synced collections should NOT be editable in read-only mode"))))
     (testing "returns true when card is in non-synced collection even in read-only mode"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Normal Collection" :is_remote_synced false :location "/"}]
           (is (true? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in non-synced collections should be editable"))))))
 
 (deftest model-editable?-nil-instance-test
   (testing "model-editable? works with nil instance for global eligibility models"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
                                        remote-sync-transforms true]
       (is (false? (spec/model-editable? :model/Transform nil))
           "Transforms with nil instance should check setting-based eligibility"))
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
         (is (false? (spec/model-editable? :model/NativeQuerySnippet nil))
             "Snippets with nil instance should check library-synced eligibility")))))
@@ -422,7 +530,7 @@
 
 (deftest batch-model-editable?-unknown-model-test
   (testing "batch-model-editable? returns true for all instances of unknown models"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (let [instances [{:id 1} {:id 2} {:id 3}]
             result (spec/batch-model-editable? :model/UnknownModel instances)]
         (is (= {1 true, 2 true, 3 true} result))))))
@@ -438,13 +546,13 @@
 (deftest batch-model-editable?-library-synced-test
   (testing "batch-model-editable? with :library-synced eligibility"
     (testing "returns false for all when library is synced and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
             (is (= {1 false, 2 false, 3 false} result))))))
     (testing "returns true for all when library is not synced"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
@@ -644,8 +752,8 @@
 
 (deftest git-sync-exports-only-user-settings-test
   (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
-            those belong to sync, which runs against each instance's own warehouse -- as one TableUserSettings
-            entity per Table inlining its Fields' edits, never separate FieldUserSettings entities"
+            those belong to sync, which runs against each instance's own warehouse -- each settings row and Dimension
+            as an entity of its own"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -655,17 +763,16 @@
                      :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
-        (let [exportable (spec/exportable-entities)]
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table's own edit, plus its edited Field's, are carried by one TableUserSettings entity")
-          (is (nil? (get exportable "FieldUserSettings"))
-              "FieldUserSettings is never exported as its own entity")
+        (let [dimension-id (t2/insert-returning-pk! :model/Dimension {:field_id f1 :name "F1" :type :internal})
+              exportable   (spec/exportable-entities)]
+          (is (= [table-id] (get exportable "TableUserSettings")))
+          (is (= [f2] (get exportable "FieldUserSettings")))
+          (is (= [dimension-id] (get exportable "Dimension")))
           (is (not (contains? (set (get exportable "Table")) table-id)))
           (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))
 
-(deftest git-sync-exports-table-user-settings-for-field-only-edit-test
-  (testing "a Table with no TableUserSettings row of its own, but an edited Field, is still exportable -- the
-            TableUserSettings entity is synthesized to carry the Field's edit"
+(deftest git-sync-exports-no-table-user-settings-for-field-only-edit-test
+  (testing "a Table with no TableUserSettings row of its own exports only its edited Field's settings"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -674,10 +781,8 @@
                      :model/Field      {f1 :id}       {:name "F1" :table_id table-id}]
         (t2/insert! :model/FieldUserSettings {:field_id f1 :description "curated" :description_set true})
         (let [exportable (spec/exportable-entities)]
-          (is (not (t2/exists? :model/TableUserSettings :table_id table-id))
-              "the Table has no settings row of its own")
-          (is (contains? (set (get exportable "TableUserSettings")) table-id)
-              "the Table is still exportable, synthesized from its Field's edit"))))))
+          (is (nil? (get exportable "TableUserSettings")))
+          (is (= [f1] (get exportable "FieldUserSettings"))))))))
 
 (deftest ^:parallel exportable-entity-count-test
   (testing "exportable-entity-count sums the ids across every model in the targets map"

@@ -373,8 +373,6 @@ const elements = [
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
-    "frontend/src/metabase/app/selectors.ts",
-    "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
@@ -571,4 +569,15 @@ export {
   enforcedRules,
   getFeatureModules,
   getPublicApiModules,
+};
+
+export const boundarySettings = {
+  "boundaries/elements": elements,
+  "boundaries/ignore": ["**/e2e/**", "test/**"],
+  "boundaries/dependency-nodes": ["import", "dynamic-import"],
+};
+export const boundaryOptions = {
+  default: "disallow",
+  rules: enforcedRules,
+  message: "${file.type} cannot import from ${dependency.type}",
 };

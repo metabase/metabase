@@ -9,16 +9,8 @@ table_id:
 database_type: CHARACTER VARYING
 base_type: type/Text
 effective_type: type/Text
-dimensions: []
 position: 10
 database_position: 10
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PEOPLE
-  model: Table
-- id: ZIP
-  model: Field
+- model: Field
 database_indexed: false

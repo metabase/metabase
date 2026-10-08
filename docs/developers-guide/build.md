@@ -237,7 +237,7 @@ nix build .#metabase-wrapped
 If you want to build Metabase without installing Clojure, Java, and Node.js on your host machine, you can build the Uberjar inside a container by running:
 
 ```
-DOCKER_BUILDKIT=1 docker build --output container-output/ .
+DOCKER_BUILDKIT=1 docker build --output container-output/ --build-arg VERSION=vx.x.x .
 ```
 
-Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.
+Replace `VERSION=vx.x.x` with `vx.x.x` matching your major and minor release tag like `VERSION=v0.63.18`. Make sure that your Docker Daemon is running before executing the command. After running the command, you'll find the Metabase JAR file at `./container-output/app/metabase.jar`.

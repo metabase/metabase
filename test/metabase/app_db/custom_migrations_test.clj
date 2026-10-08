@@ -2957,34 +2957,6 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest backfill-mfa-confirmed-at-test
-  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
-    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
-      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
-        (let [confirmed-at "2026-07-01T12:00:00Z"
-              insert-identity!
-              (fn [user-id credentials-str]
-                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
-                                                         :provider    "totp"
-                                                         :credentials credentials-str
-                                                         :created_at  :%now
-                                                         :updated_at  :%now}))
-              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
-              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
-              pending         (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s3"})))]
-          (migrate!)
-          (testing "encrypted confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
-          (testing "legacy plaintext confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
-          (testing "pending (unconfirmed) enrollment stays null"
-            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
-
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
@@ -3014,6 +2986,34 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v63.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v63.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
 
 (deftest retire-mcp-v1-oauth-scopes-test
   (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
@@ -3088,3 +3088,32 @@
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
+
+(deftest move-data-app-resource-collections-to-their-namespace-test
+  (testing "v65.2026-10-06T00:00:01: every data app's resource collection is in the data-apps namespace"
+    (impl/test-migrations ["v65.2026-10-06T00:00:01"] [migrate!]
+      (let [insert-app! (fn [slug collection-id]
+                          (t2/insert-returning-pk! :data_app {:name                   slug
+                                                              :display_name           slug
+                                                              :bundle_path            "dist/index.js"
+                                                              :entity_id              (str slug "Entity0000000000")
+                                                              :resource_collection_id collection-id
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            old-coll    (t2/insert-returning-pk! :collection {:name       "Data App: sales"
+                                                              :slug       "data_app__sales"
+                                                              :location   "/"
+                                                              :entity_id  "salesCollection000001"
+                                                              :created_at :%now})
+            with-coll   (insert-app! "sales" old-coll)
+            without     (insert-app! "ops" nil)]
+        (migrate!)
+        (testing "a collection from before the namespace existed is moved into it"
+          (is (= "data-apps" (t2/select-one-fn :namespace :collection :id old-coll)))
+          (is (= old-coll (t2/select-one-fn :resource_collection_id :data_app :id with-coll))))
+        (testing "an app without a collection gets one, at the root of the namespace"
+          (let [collection-id (t2/select-one-fn :resource_collection_id :data_app :id without)]
+            (is (some? collection-id))
+            (is (=? {:name "Data App: ops" :slug "data_app__ops" :location "/" :namespace "data-apps"}
+                    (t2/select-one :collection :id collection-id)))
+            (is (= 21 (count (t2/select-one-fn :entity_id :collection :id collection-id))))))))))

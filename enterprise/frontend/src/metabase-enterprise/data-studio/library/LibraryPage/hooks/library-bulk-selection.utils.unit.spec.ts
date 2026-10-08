@@ -1,5 +1,9 @@
 import type { TreeItem } from "metabase/data-studio/common/types";
-import type { CollectionId, CollectionType } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionNamespace,
+  CollectionType,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -24,7 +28,17 @@ import {
 const SECTION_TYPE: Record<LibrarySection, CollectionType | null> = {
   data: "library-data",
   metrics: "library-metrics",
+  dashboards: "library-dashboards",
   snippets: null,
+  actions: null,
+};
+
+const SECTION_NAMESPACE: Record<LibrarySection, CollectionNamespace> = {
+  data: null,
+  metrics: null,
+  dashboards: null,
+  snippets: "snippets",
+  actions: "data-actions",
 };
 
 function tableItem(
@@ -58,6 +72,24 @@ function metricItem(
     data: createMockCollectionItem({
       id,
       model: "metric",
+      collection_id: opts.collectionId ?? null,
+      can_write: true,
+    }),
+  };
+}
+
+function dashboardItem(
+  id: number,
+  opts: { collectionId?: number | null } = {},
+): TreeItem {
+  return {
+    id: `dashboard:${id}`,
+    name: `Dashboard ${id}`,
+    icon: "dashboard",
+    model: "dashboard",
+    data: createMockCollectionItem({
+      id,
+      model: "dashboard",
       collection_id: opts.collectionId ?? null,
       can_write: true,
     }),
@@ -101,7 +133,7 @@ function subCollection(
       ...createMockCollection({
         id,
         type: SECTION_TYPE[section],
-        namespace: section === "snippets" ? "snippets" : null,
+        namespace: SECTION_NAMESPACE[section],
         is_library_root: false,
         parent_id: opts.parentId ?? null,
         can_write: opts.canWrite ?? true,
@@ -113,7 +145,8 @@ function subCollection(
 }
 
 function sectionRoot(section: LibrarySection, children: TreeItem[]): TreeItem {
-  const id: CollectionId = section === "snippets" ? "root" : 100;
+  const isNamespaceRoot = SECTION_NAMESPACE[section] != null;
+  const id: CollectionId = isNamespaceRoot ? "root" : 100;
   return {
     id: `collection:${id}`,
     name: section,
@@ -123,12 +156,27 @@ function sectionRoot(section: LibrarySection, children: TreeItem[]): TreeItem {
       ...createMockCollection({
         id,
         type: SECTION_TYPE[section],
-        namespace: section === "snippets" ? "snippets" : null,
-        is_library_root: section !== "snippets",
+        namespace: SECTION_NAMESPACE[section],
+        is_library_root: !isNamespaceRoot,
       }),
       model: "collection",
     },
     children,
+  };
+}
+
+function actionItem(id: number): TreeItem {
+  return {
+    id: `action:${id}`,
+    name: `Action ${id}`,
+    icon: "bolt",
+    model: "action",
+    data: createMockCollectionItem({
+      id,
+      model: "action",
+      collection_id: null,
+      can_write: true,
+    }),
   };
 }
 
@@ -154,10 +202,14 @@ describe("library-bulk-selection.utils", () => {
     it("derives the section from model and collection type/namespace", () => {
       expect(getItemSection(tableItem(1))).toBe("data");
       expect(getItemSection(metricItem(1))).toBe("metrics");
+      expect(getItemSection(dashboardItem(1))).toBe("dashboards");
       expect(getItemSection(snippetItem(1))).toBe("snippets");
       expect(getItemSection(subCollection(2, "data"))).toBe("data");
       expect(getItemSection(subCollection(3, "metrics"))).toBe("metrics");
+      expect(getItemSection(subCollection(5, "dashboards"))).toBe("dashboards");
       expect(getItemSection(subCollection(4, "snippets"))).toBe("snippets");
+      expect(getItemSection(actionItem(1))).toBe("actions");
+      expect(getItemSection(subCollection(6, "actions"))).toBe("actions");
       expect(getItemSection(emptyState())).toBeNull();
     });
   });
@@ -166,11 +218,14 @@ describe("library-bulk-selection.utils", () => {
     it("treats section roots as non-selectable and content items as selectable", () => {
       expect(isSectionRoot(sectionRoot("data", []))).toBe(true);
       expect(isSectionRoot(sectionRoot("snippets", []))).toBe(true);
+      expect(isSectionRoot(sectionRoot("actions", []))).toBe(true);
       expect(isSectionRoot(subCollection(2, "data"))).toBe(false);
 
       expect(isSelectableItem(tableItem(1))).toBe(true);
       expect(isSelectableItem(metricItem(1))).toBe(true);
       expect(isSelectableItem(snippetItem(1))).toBe(true);
+      expect(isSelectableItem(actionItem(1))).toBe(true);
+      expect(isSelectableItem(subCollection(6, "actions"))).toBe(true);
       expect(isSelectableItem(subCollection(2, "data"))).toBe(true);
       expect(isSelectableItem(sectionRoot("data", []))).toBe(false);
       expect(isSelectableItem(emptyState())).toBe(false);
@@ -266,6 +321,21 @@ describe("library-bulk-selection.utils", () => {
           section: "data",
           entityId: 5,
           sourceCollectionId: 10,
+          canWrite: true,
+        },
+      ]);
+    });
+
+    it("reads dashboard rows into the dashboards section", () => {
+      expect(
+        deriveSelectedItems([dashboardItem(7, { collectionId: 12 })]),
+      ).toEqual([
+        {
+          key: "dashboard:7",
+          model: "dashboard",
+          section: "dashboards",
+          entityId: 7,
+          sourceCollectionId: 12,
           canWrite: true,
         },
       ]);

@@ -195,7 +195,6 @@
                                  "card")
                       ;; Named for the wire, as the dirty-changes payload already does for `display`.
                       :display (some-> display name)}]))
-          ;; :card_schema is required alongside :type — selecting it runs Card's schema upgrades.
           (remote-sync.db/card-types ids))))
 
 (defn- describe-entities
@@ -235,7 +234,9 @@
                      top-level-ancestor-id
                      (get top-levels))]
     (cond
-      (= :library-synced (get-in (spec/spec-for-model-key (keyword "model" model)) [:eligibility :type]))
+      (let [spec (spec/spec-for-model-key (keyword "model" model))]
+        (or (= :library-synced (get-in spec [:eligibility :type]))
+            (spec/library-content? spec instance)))
       (if library
         {:type       :collection
          :collection (remedy-collection library)}

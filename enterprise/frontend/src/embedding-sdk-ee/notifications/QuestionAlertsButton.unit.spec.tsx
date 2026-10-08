@@ -6,6 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockSettingsState } from "__support__/state/settings";
+import { waitForRequestsToSettle } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
@@ -119,17 +120,13 @@ describe("QuestionAlertsButton", () => {
     // would 403 as soon as it was clicked.
     setup({ isDataApp: true });
 
-    // Give the probe the same window the first test needs to make it, and assert it never
-    // arrives. Asserting straight after render would pass either way, since nothing has
-    // resolved yet at that point.
-    await expect(
-      waitFor(async () => {
-        expect(await getFormInputRequests()).toHaveLength(1);
-      }),
-    ).rejects.toThrow();
+    // The data-app check is synchronous, so nothing can issue the request later.
+    // Settle any fetch that did start before asserting none was the probe.
+    await waitForRequestsToSettle();
 
     expect(
       screen.queryByRole("button", { name: "Alerts" }),
     ).not.toBeInTheDocument();
+    expect(await getFormInputRequests()).toHaveLength(0);
   });
 });

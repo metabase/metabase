@@ -8,11 +8,11 @@
    [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.server.instance :as server.instance]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
+   [metabase.server.test-util :as server.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -181,16 +181,11 @@
                                  (recur)))))
                          (catch Exception _e
                            (reset! canceled :not-nice))))
-                     req)))
-        server   (doto (server.instance/create-server handler {:port 0 :join? false})
-                   .start)
-        url      (str "http://localhost:" (.. server getURI getPort))]
-    (try
+                     req)))]
+    (server.tu/with-test-server [url handler]
       (with-redefs [streaming-response/async-cancellation-poll-interval-ms 5]
         (testing "Closing body stops request handler"
-          (let [res (http/request {:method          :post :url url
-                                   :as              :stream
-                                   :decompress-body false})]
+          (let [res (server.tu/request url :post "" {:as :stream})]
             (.read ^InputStream (:body res)) ;; start the handler
             ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
             (.close ^Closeable (:http-client res))
@@ -202,9 +197,7 @@
             (testing "cancellation is working"
               ;; we're not checking for particular way of cancelling, because cancellation poll interval can conflict
               ;; with Thread/sleep and will make this test flaky
-              (is (some? @canceled))))))
-      (finally
-        (.stop server)))))
+              (is (some? @canceled)))))))))
 
 (deftest abort-on-committed-error-test
   (testing "An error after the response is committed aborts the connection so the client cannot read a complete body"
@@ -216,26 +209,20 @@
                         (.write os (.getBytes "a,b,c\n1,2,3\n" "UTF-8"))
                         (.flush os)
                         (streaming-response/write-error! os {:error "boom"} :csv 500))
-                      req)))
-          server  (doto (server.instance/create-server handler {:port 0 :join? false})
-                    .start)
-          url     (str "http://localhost:" (.. server getURI getPort))
-          consume (fn [] (let [res (http/request {:method :get, :url url, :as :stream, :decompress-body false})]
-                           [res (slurp (:body res))]))]
-      (try
-        (testing "the response is chunked so a missing terminator is detectable"
-          ;; can't read the body cleanly, so just open a request to inspect the headers
-          (let [res (http/request {:method :get, :url url, :as :stream, :decompress-body false})]
-            (is (= "chunked" (get-in res [:headers "transfer-encoding"])))
-            (u/ignore-exceptions (.close ^InputStream (:body res)))))
-        (testing "consuming the whole body throws because the stream was aborted without a clean chunk terminator"
-          (is (thrown? Exception (consume))))
-        (testing "no JSON error blob is appended to the body"
-          (is (not (re-find #"boom" (try (second (consume)) (catch Exception _ ""))))))
-        (finally
-          (.stop server))))))
+                      req)))]
+      (server.tu/with-test-server [url handler]
+        (let [consume (fn [] (let [res (server.tu/request url :get "" {:as :stream})]
+                               [res (slurp (:body res))]))]
+          (testing "the response is chunked so a missing terminator is detectable"
+            ;; can't read the body cleanly, so just open a request to inspect the headers
+            (let [res (server.tu/request url :get "" {:as :stream})]
+              (is (= "chunked" (get-in res [:headers "transfer-encoding"])))
+              (u/ignore-exceptions (.close ^InputStream (:body res)))))
+          (testing "consuming the whole body throws because the stream was aborted without a clean chunk terminator"
+            (is (thrown? Exception (consume))))
+          (testing "no JSON error blob is appended to the body"
+            (is (not (re-find #"boom" (try (second (consume)) (catch Exception _ "")))))))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *number-of-cans* nil)
 
 (deftest ^:parallel preserve-bindings-test
@@ -414,8 +401,8 @@
                 "Response should not contain :trace key")
             (is (not (contains? error-response :via))
                 "Response should not contain :via key")
-            (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")))))))
+            (is (not (contains? error-response :data))
+                "Response should not contain the ex-data either, like the regular exception middleware")))))))
 
 (deftest write-error-nested-exception-with-stacktraces-disabled-test
   (testing "write-error! includes nested exception details when hide-stacktraces is false"
@@ -484,6 +471,120 @@
                 "Response should not contain :via key")
             (is (= "preserve-me" (:custom-data error-response))
                 "Response should still include custom data")))))))
+
+(defn- error-response-fn-for-test [error]
+  {:status :failed, :error "generic message", :original-keys (sort (keys error))})
+
+(defn- error-carrying-output-stream
+  "An output stream like the one a streaming response body is handed, carrying `error-response-fn`, that writes to
+  `os`."
+  ^java.io.OutputStream [os error-response-fn]
+  (#'streaming-response/delay-output-stream (delay os) error-response-fn))
+
+(deftest write-error-applies-error-response-fn-test
+  (testing "when the output stream carries an :error-response-fn, write-error! writes what it returns instead of the error itself"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (testing "for a raw exception (formatted to a map first, so the fn always sees a map)"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos error-response-fn-for-test)
+                                             (ex-info "SENSITIVE MESSAGE" {:query "SENSITIVE QUERY"})
+                                             :api)
+          (let [output (String. (.toByteArray baos) "UTF-8")]
+            (is (= {:status        "failed"
+                    :error         "generic message"
+                    :original-keys ["cause" "data" "trace" "via"]}
+                   (json/decode output true)))
+            (is (not (re-find #"SENSITIVE" output))))))
+      (testing "for an already-formatted error map"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos error-response-fn-for-test)
+                                             {:status :failed, :error "SENSITIVE", :json_query "SENSITIVE"}
+                                             :api)
+          (let [output (String. (.toByteArray baos) "UTF-8")]
+            (is (= {:status        "failed"
+                    :error         "generic message"
+                    :original-keys ["error" "json_query" "status"]}
+                   (json/decode output true)))
+            (is (not (re-find #"SENSITIVE" output))))))
+      (testing "an output stream without one writes the error unchanged"
+        (let [baos (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/write-error! (error-carrying-output-stream baos nil)
+                                             {:status :failed, :error "visible"}
+                                             :api)
+          (is (= {:status "failed", :error "visible"}
+                 (json/decode (String. (.toByteArray baos) "UTF-8") true))))))))
+
+(defn- respond-and-capture
+  "Respond with `streaming-response` against a fake servlet response. Returns the status code and the body written."
+  [streaming-response]
+  (with-open [os (java.io.ByteArrayOutputStream.)]
+    (let [complete-promise (promise)
+          status           (atom nil)]
+      (server.protocols/respond streaming-response
+                                {:response (reify HttpServletResponse
+                                             (isCommitted [_] false)
+                                             (setStatus [_ new-status] (reset! status new-status))
+                                             (setContentType [_ _])
+                                             (setHeader [_ _ _])
+                                             (getOutputStream [_]
+                                               (proxy [ServletOutputStream] []
+                                                 (write
+                                                   ([byytes]
+                                                    (.write os ^bytes byytes))
+                                                   ([byytes offset length]
+                                                    (.write os ^bytes byytes offset length))))))
+                                 :async-context (reify AsyncContext
+                                                  (addListener [_ _])
+                                                  (complete [_]
+                                                    (deliver complete-promise true)))})
+      (is (true? (deref complete-promise 1000 ::timed-out)))
+      {:status @status
+       :body   (String. (.toByteArray os) "UTF-8")})))
+
+(deftest with-error-response-fn-test
+  (testing "with-error-response-fn makes a streaming response pass any error its body produces through the fn"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (testing "an exception thrown by the body, on the worker thread"
+        (let [{:keys [status body]} (respond-and-capture
+                                     (streaming-response/with-error-response-fn
+                                       (streaming-response/streaming-response {:content-type "application/json"} [_os _]
+                                         (throw (ex-info "SENSITIVE MESSAGE" {:query "SENSITIVE QUERY"})))
+                                       error-response-fn-for-test))]
+          (is (= 500 status))
+          (is (= {:status        "failed"
+                  :error         "generic message"
+                  :original-keys ["cause" "data" "trace" "via"]}
+                 (json/decode body true)))
+          (is (not (re-find #"SENSITIVE" body)))))
+      (testing "an error map the body writes itself with write-error!, as the query processor does"
+        (let [{:keys [status body]} (respond-and-capture
+                                     (streaming-response/with-error-response-fn
+                                       (streaming-response/streaming-response {:content-type "application/json"} [os _]
+                                         (streaming-response/write-error! os {:status :failed, :error "SENSITIVE", :json_query "SENSITIVE"} :api 400))
+                                       error-response-fn-for-test))]
+          (is (= 400 status))
+          (is (= {:status        "failed"
+                  :error         "generic message"
+                  :original-keys ["error" "json_query" "status"]}
+                 (json/decode body true)))
+          (is (not (re-find #"SENSITIVE" body))))))))
+
+(deftest with-error-response-fn-response-shapes-test
+  (let [sr (streaming-response/streaming-response {:content-type "application/json"} [_os _])]
+    (testing "a streaming response gets the fn added to its options, which are otherwise kept"
+      (let [sr' (streaming-response/with-error-response-fn sr error-response-fn-for-test)]
+        (is (instance? metabase.server.streaming_response.StreamingResponse sr'))
+        (is (= {:content-type "application/json", :error-response-fn error-response-fn-for-test}
+               (.options ^metabase.server.streaming_response.StreamingResponse sr')))))
+    (testing "a Ring response map whose body is a streaming response gets its body updated"
+      (let [response (streaming-response/with-error-response-fn {:status 202, :body sr} error-response-fn-for-test)]
+        (is (= 202 (:status response)))
+        (is (= error-response-fn-for-test
+               (:error-response-fn (.options ^metabase.server.streaming_response.StreamingResponse (:body response)))))))
+    (testing "any other response is returned unchanged"
+      (is (= {:status 200, :body {:a 1}}
+             (streaming-response/with-error-response-fn {:status 200, :body {:a 1}} error-response-fn-for-test)))
+      (is (nil? (streaming-response/with-error-response-fn nil error-response-fn-for-test))))))
 
 (deftest ^:parallel streaming-response-schema-error-test
   (testing "streaming-response-schema correctly validates responses"
@@ -653,6 +754,47 @@
           (is (false? (.await complete-called 100 TimeUnit/MILLISECONDS))
               "Worker thread should not call .complete when timeout already completed the context"))))))
 
+(deftest async-timeout-ms-test
+  (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+    (let [started (promise)
+          release (promise)
+          handler (fn [req respond _raise]
+                    (let [no-timeout? (= "/no-timeout" (:uri req))
+                          options     (cond-> {:content-type "text/plain"}
+                                        no-timeout? (assoc :async-timeout-ms 0))]
+                      (respond
+                       (compojure.response/render
+                        (streaming-response/streaming-response options [os _]
+                          (when no-timeout?
+                            (deliver started true))
+                          (deref release 5000 nil)
+                          (.write os (.getBytes "done" "UTF-8")))
+                        req))))]
+      (server.tu/with-test-server [url handler]
+        (try
+          (let [no-timeout (future (:body (server.tu/request url :get "/no-timeout")))]
+            (is (true? (deref started 5000 ::timed-out)))
+            (testing "Jetty completes a response that runs past MB_JETTY_ASYNC_RESPONSE_TIMEOUT"
+              (is (= "" (:body (server.tu/request url :get "/")))))
+            (deliver release true)
+            (testing "unless the response sets :async-timeout-ms 0"
+              (is (= "done" (deref no-timeout 5000 ::timed-out)))))
+          (finally
+            (deliver release true)))))))
+
+(deftest positive-async-timeout-ms-test
+  (testing "A positive response timeout replaces the shorter server timeout"
+    (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+      (let [handler (fn [req respond _raise]
+                      (respond
+                       (compojure.response/render
+                        (streaming-response/streaming-response {:content-type "text/plain" :async-timeout-ms 2000} [os _]
+                          (a/<!! (a/timeout 300))
+                          (.write os (.getBytes "done" "UTF-8")))
+                        req)))]
+        (server.tu/with-test-server [url handler]
+          (is (= "done" (:body (server.tu/request url :get "/")))))))))
+
 (deftest do-f-async-custom-executor-test
   (testing "the :executor option runs `f` on that executor instead of the shared streaming pool"
     (let [executor      (java.util.concurrent.Executors/newSingleThreadExecutor
@@ -675,7 +817,7 @@
            finished-chan
            canceled-chan
            (AtomicBoolean. false)
-           executor)
+           {:executor executor})
           (is (= "custom-streaming-executor" (deref ran-on 5000 ::timed-out)))
           (is (= :completed (a/<!! finished-chan))))
         (finally

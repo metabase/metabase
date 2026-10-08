@@ -99,7 +99,6 @@
   :init       (comp str random-uuid)
   :encryption :when-encryption-key-set)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *enabled?* false)
 
 (defsetting test-enabled-setting-no-default
@@ -1371,6 +1370,10 @@
         (catch Exception e
           (is (= "Setting name 'retired-setting' is retired; use a different name instead"
                  (ex-message e))))))))
+
+(deftest ^:parallel llm-max-tokens-is-retired-test
+  (testing "the removed llm-max-tokens setting's name cannot be reused by a new setting"
+    (is (contains? @#'setting/retired-setting-names "llm-max-tokens"))))
 
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"

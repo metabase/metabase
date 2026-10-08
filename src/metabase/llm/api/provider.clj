@@ -51,6 +51,8 @@
    ;; the fixed catalog, for types whose models cannot be listed from the provider; the connection form offers
    ;; these so the connect-time credential probe runs against the model the admin actually wants
    [:models [:sequential [:map [:id :string] [:display_name :string]]]]
+   ;; the config fields that name a connection's model once all are filled, in place of a pick from `models`
+   [:model_fields [:sequential :string]]
    ;; alternative credential groups: the connection is complete when one group is filled in full
    [:required_any [:sequential [:sequential :string]]]
    ;; paired credential groups: each must be filled in full or left empty in full
@@ -108,7 +110,7 @@
     show-when   (assoc :show_when {:field (name (:field show-when)) :value (:value show-when)})))
 
 (defn- provider-type-response
-  [{:keys [type label managed? singleton? default-model required-any requires fields]}]
+  [{:keys [type label managed? singleton? default-model model-fields required-any requires fields]}]
   {:type          type
    :label         (str label)
    :managed       (boolean managed?)
@@ -116,6 +118,7 @@
    :available     (llm.provider/type-available? type)
    :default_model default-model
    :models        (mapv #(select-keys % [:id :display_name]) (llm.provider/fixed-models type))
+   :model_fields  (into [] (comp (filter keyword?) (map name)) model-fields)
    :required_any  (mapv #(mapv name %) required-any)
    :requires      (into {} (map (fn [[k deps]] [(name k) (mapv name deps)])) requires)
    :fields        (mapv field-response fields)})
@@ -168,9 +171,9 @@
   serves — the `:probed-model` an earlier probe recorded, or the catalog's first entry — which a type is free to
   ignore.
 
-  A type that names its model in `:config` (Azure, whose deployments its listing endpoint does not return) makes
-  the call for the same reason, but the model it serves comes from the connection rather than from the empty list
-  that comes back.
+  A connection that names its model in `:config` (an Azure deployment or a Google Model Garden endpoint, which no
+  listing returns) makes the call for the same reason. That model is the one verified, whichever model the caller or
+  the Metabot selection names, and the only one listed, in place of the type's catalog.
 
   `probe?` asks a type that can check more than its credentials to do so — vLLM exercises the tool calling and
   structured output the agent loop depends on against the model it will run on. Only [[verify-credentials!]] sets
@@ -184,7 +187,7 @@
             configured-model (llm.provider/connection-model type config)
             ;; Our best guess at the model to try if caller did not specify a model.
             proposed-model   (or (:probed-model config) (:id (first fixed)))
-            model            (or model configured-model (selected-model conn-key))
+            model            (or configured-model model (selected-model conn-key))
             config-models    (cond
                                configured-model [{:id           configured-model
                                                   :display_name (last (str/split configured-model #"/"))}]
@@ -274,14 +277,19 @@
   for a type that probes more than its credentials, by exercising the model it will run on. Throws a 400 carrying
   the provider's own message when the credentials are rejected.
 
-  Returns the model listing and `:connection-info`: whatever the probe determined about the connection, for the
-  caller to store on it. A probe records the model it exercised as `:probed-model`."
+  Returns the model listing and `:connection-info`: whatever the listing determined about the connection, for the
+  caller to store on it. A probe records the model it exercised as `:probed-model`, and every listing records the
+  type's mini model when it includes it as `:mini-model`."
   [conn config model]
   (when-not (llm.provider/managed-type? (:type conn))
-    (let [{:keys [error] :as listed} (list-connection-models* conn config model true)]
+    (let [{:keys [error models] :as listed} (list-connection-models* conn config model true)]
       (when error
         (throw (ex-info error {:status-code 400 :api-error true})))
-      listed)))
+      (update listed :connection-info merge (llm.provider/served-mini-model (:type conn) models)))))
+
+(defn- with-connection-info
+  [config connection-info]
+  (without-blank-values (merge config connection-info)))
 
 (defn- seed-models-cache!
   "Cache the listing that verified `conn` under its post-save config and selected model. Call this only after any
@@ -290,14 +298,19 @@
   (when listed
     (swap! models-cache cache/miss (models-cache-key conn) (select-keys listed [:models]))))
 
+(defn- composed-model-ref
+  "The `connection-key/model` reference to the model `conn`'s own config names, like Azure's deployment or a Google
+  connection's Model Garden endpoint, or nil when the config names none."
+  [{conn-key :key :keys [type config]}]
+  (some->> (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
+           (str conn-key "/")))
+
 (defn- connection-model-ref
   "The `connection-key/model` reference that points Metabot at `conn`: the model the connection's own config names
-  (Azure's deployment) when it has one, and the type's default model otherwise. Nil when the type neither names nor
-  defaults to a model."
-  [{conn-key :key :keys [type config]}]
-  (when-let [model (or (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (llm.provider/default-model type))]
-    (str conn-key "/" model)))
+  when it has one, and the type's default model otherwise. Nil when the type neither names nor defaults to a model."
+  [{conn-key :key :keys [type] :as conn}]
+  (or (composed-model-ref conn)
+      (some->> (llm.provider/default-model type) (str conn-key "/"))))
 
 (defn- fallback-model-ref
   "A model reference to fall back to once the connection Metabot was pointed at is gone: the first remaining
@@ -337,11 +350,13 @@
 (defn- select-model-for-new-connection!
   "Point Metabot at a freshly created connection when it had nothing usable to run on, so connecting the first
   provider leaves the instance working rather than connected-but-with-no-model-selected. An existing selection that
-  still resolves is left alone — adding a second provider must not silently switch Metabot over to it."
+  still resolves is left alone: adding a second provider must not silently switch Metabot over to it.
+
+  A model the connection's own config names wins over `requested-model`."
   [{conn-key :key :as conn} requested-model]
-  (when-let [model-ref (if (not-empty requested-model)
-                         (str conn-key "/" requested-model)
-                         (connection-model-ref conn))]
+  (when-let [model-ref (or (composed-model-ref conn)
+                           (some->> (not-empty requested-model) (str conn-key "/"))
+                           (connection-model-ref conn))]
     (repoint-metabot! model-ref)))
 
 (defn- follow-edited-connection-model!
@@ -356,9 +371,8 @@
   An explicitly pinned mini model moves with a composed model the same way — its reference goes just as stale —
   but not with a pick, which changes what the admin prefers rather than what the connection can serve. A derived
   mini model needs no help, since it follows the Metabot selection on its own."
-  [{conn-key :key :keys [type config] :as conn} requested-model]
-  (let [composed-ref (when (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (connection-model-ref conn))
+  [{conn-key :key :keys [type] :as conn} requested-model]
+  (let [composed-ref (composed-model-ref conn)
         picked-ref   (when (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
                        (str conn-key "/" requested-model))
         metabot-ref  (metabot.settings/llm-metabot-provider)
@@ -439,7 +453,7 @@
                     :config config}]
       (llm.provider/validate-config! type config)
       (let [{:keys [connection-info] :as listed} (verify-credentials! conn config model)
-            conn              (update conn :config merge connection-info)
+            conn              (update conn :config with-connection-info connection-info)
             had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
         (when-not had-usable-model?
@@ -488,8 +502,8 @@
     (llm.provider/validate-config! (:type merged) effective)
     (let [{:keys [connection-info] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
-          merged                   (update merged :config merge connection-info)
-          effective                (merge effective connection-info)]
+          merged                   (update merged :config with-connection-info connection-info)
+          effective                (with-connection-info effective connection-info)]
       (llm.provider/set-connections! (assoc stored idx merged))
       (follow-edited-connection-model! (assoc merged :config effective) model)
       (seed-models-cache! (assoc merged :config effective) listed)

@@ -1,32 +1,21 @@
 const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
-function filterDashboard(suggests = true) {
-  H.visitDashboard(ORDERS_DASHBOARD_ID);
-  cy.contains("Orders");
-  cy.contains("Text").click();
+function filterDashboard() {
+  H.filterWidget().click();
 
-  // We should get a suggested response and be able to click it if we're an admin
-  if (suggests) {
-    cy.findByPlaceholderText("Search the list").type("Main Street");
-    cy.contains("100 Main Street").click();
-  } else {
-    cy.findByPlaceholderText("Search the list").type("100 Main Street").blur();
-    cy.wait("@search").should(({ response }) => {
-      expect(response.statusCode).to.equal(403);
-    });
-  }
-  cy.contains("Add filter").click({ force: true });
-  cy.contains("100 Main Street");
+  cy.findByPlaceholderText("Search the list").type("Main Street");
+  cy.contains("100 Main Street").click();
+
+  H.dashboardParametersPopover().button("Add filter").click();
+  H.filterWidget().should("contain", "100 Main Street");
+  cy.location("search").should((search) =>
+    expect(new URLSearchParams(search).get("text")).to.eq("100 Main Street"),
+  );
 }
 
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
-    cy.intercept(
-      "GET",
-      `/api/dashboard/${ORDERS_DASHBOARD_ID}/params/*/search/*").as("search`,
-    );
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -34,6 +23,11 @@ describe("support > permissions (metabase#8472)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     H.editDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .findByLabelText("Add a filter")
+      .should("be.visible");
 
     H.setFilter("Text or Category", "Is");
 
@@ -43,20 +37,25 @@ describe("support > permissions (metabase#8472)", () => {
       "Address",
     );
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders in a dashboard").click();
+    H.saveDashboard();
   });
 
-  it("should allow an admin user to select the filter", () => {
+  it("should let admin and nodata users use the filter, and hide filter mapping from nodata users in edit mode", () => {
     filterDashboard();
-  });
 
-  it("should allow a nodata user to select the filter", () => {
     cy.signIn("nodata");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     filterDashboard();
+
+    H.editDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .findByTestId("dashboardcard-actions-panel")
+      .should("be.visible");
+    H.getDashboardCard(0).findByLabelText("Add a filter").should("not.exist");
+
+    H.filterWidget({ isEditing: true }).click();
+    H.getDashboardCard(0).icon("key").should("be.visible");
   });
 });

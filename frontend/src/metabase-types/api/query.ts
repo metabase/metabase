@@ -46,7 +46,6 @@ export interface InternalDatasetQuery {
   offset?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
@@ -521,6 +520,10 @@ export type TestOperatorSpec = {
   type: "operator";
   operator: string;
   args?: readonly TestExpressionSpec[];
+
+  // For an aggregation: the name of its result column, which a later stage
+  // refers to.
+  name?: string;
 };
 
 export type TestTemporalBucketSpec = {

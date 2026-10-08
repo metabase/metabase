@@ -67,6 +67,7 @@ export * from "./e2e-ui-elements-overflow-helpers";
 export * from "./e2e-ui-select";
 export * from "./e2e-upload-helpers";
 export * from "./e2e-users-helpers";
+export * from "./e2e-timelines-helpers";
 export * from "./e2e-visual-tests-helpers";
 export * from "./e2e-viz-settings-helpers";
 export * from "./embedding-sdk-helpers/constants";

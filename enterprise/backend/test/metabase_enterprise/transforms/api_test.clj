@@ -155,8 +155,8 @@
       ;; `-if-supported` variant keeps the legacy-search leg running on app dbs that cannot hold an index.
       (search.tu/with-temp-index-table-if-supported
         (let [search-term (str "transform-search-" (u/generate-nano-id))
-              query-name  (str search-term "-query")
-              python-name (str search-term "-python")]
+              query-name  (str search-term "_query")
+              python-name (str search-term "_python")]
           (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
                                                                 :name query-name)
                          :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
@@ -178,8 +178,8 @@
       ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
       (search.tu/with-temp-index-table-if-supported
         (let [search-term (str "transform-search-" (u/generate-nano-id))
-              query-name  (str search-term "-query")
-              python-name (str search-term "-python")]
+              query-name  (str search-term "_query")
+              python-name (str search-term "_python")]
           (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
                                                                 :name query-name)
                          :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
@@ -199,7 +199,7 @@
         ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
-                query-name  (str search-term "-query")]
+                query-name  (str search-term "_query")]
             (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
                                                                   :name query-name)]
               (search.tu/with-appdb-search-and-legacy-search
@@ -442,7 +442,7 @@
               ;; if harbormaster somehow sends lock state for such a customer, or the setting gets tampered.
               ;; (Note: pure OSS doesn't reach this branch because check-feature-enabled! 402s earlier on
               ;; missing premium features.)
-              (with-redefs [premium-features/transform-metered-as (constantly nil)]
+              (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (constantly nil)]
                 (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
                                                                   :transform-advanced-runs true}]
                   (mt/user-http-request :crowberto :post 202

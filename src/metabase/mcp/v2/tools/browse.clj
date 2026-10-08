@@ -222,11 +222,11 @@
   "Columns `list_models` selects for the `:question` projection."
   ;; Naming the columns keeps `t2/select` from running the `dataset_query` and `result_metadata`
   ;; transforms on every model — the expensive part of listing a database with thousands of cards.
-  ;; `:card_schema` is never projected, but Card's after-select hook throws without it once the
-  ;; row carries `:id` plus any of `:dataset_query`/`:result_metadata`/`:database_id`/`:type`.
+  ;; None of these are [[metabase.queries.card-schema/schema-governed-columns]], so the Card schema
+  ;; upgrade stays out of the way and `:card_schema` does not have to ride along.
   ;; `question-enrichment-keys` are projection keys `get_content` computes, not Card columns;
   ;; selecting them would name a nonexistent column, so they are dropped from the DB select here.
-  (into [:model/Card :card_schema]
+  (into [:model/Card]
         (remove projections/question-enrichment-keys projections/question-detailed-keys)))
 
 (defn- list-models
@@ -667,7 +667,6 @@
   (case ns-str
     nil          (into #{} (map type->rest-model) type)
     "snippets"   #{:snippet :collection}
-    "transforms" #{:transform :collection}
     "analytics"  #{:collection}))
 
 (defn- collection-items-content
@@ -836,8 +835,8 @@
     [:maybe [:enum {:description "items (default) lists the collection's contents; tree returns the nested subcollection structure (collections only, no items, no pagination)."}
              "items" "tree"]]]
    [:namespace {:optional true}
-    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; transforms holds transform folders and transforms; analytics is the read-only usage-analytics tree."}
-             "content" "snippets" "transforms" "analytics"]]]
+    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; analytics is the read-only usage-analytics tree."}
+             "content" "snippets" "analytics"]]]
    [:type {:optional true}
     [:maybe [:sequential [:enum {:description "items mode, content namespace only: return only these item types."}
                           "question" "model" "metric" "dashboard" "collection" "document"]]]]

@@ -110,7 +110,6 @@
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.2"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
-  net.thisptr/jackson-jq                        {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.datasketches/datasketches-java     ^:antq/exclude                      ; Sketching algorithms (used for fingerprinting)
@@ -291,7 +290,7 @@
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.2.54"}                    ; clojure source parsing and rewriting
+    rewrite-clj/rewrite-clj      {:mvn/version "1.2.57"}                    ; clojure source parsing and rewriting
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing

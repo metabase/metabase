@@ -1790,6 +1790,57 @@
         },
         "additionalProperties" : false
       },
+      "metabase-enterprise.data-apps.schema.allowed-host" : {
+        "description" : "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an\n   optional port.",
+        "type" : "string",
+        "pattern" : "\\Ahttps?://(\\*\\.)?[a-z0-9-]+(\\.[a-z0-9-]+)*(:\\d+)?\\z"
+      },
+      "metabase-enterprise.data-apps.schema.allowed-hosts" : {
+        "description" : "The origins a data app's sandboxed bundle may fetch, `[]` when nil.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-host"
+        }
+      },
+      "metabase-enterprise.data-apps.schema.bundle-path" : {
+        "description" : "The path of a data app's bundle, relative to the app's directory and inside it.",
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase-enterprise.data-apps.schema.bundle-text" : {
+        "description" : "The text of a data app's bundle file.",
+        "type" : "string",
+        "maxLength" : 10485760
+      },
+      "metabase-enterprise.data-apps.schema.description" : {
+        "description" : "A data app's optional one-line summary, nil when blank.",
+        "oneOf" : [ {
+          "type" : "string",
+          "maxLength" : 255
+        }, {
+          "type" : "null"
+        } ]
+      },
+      "metabase-enterprise.data-apps.schema.display-name" : {
+        "description" : "A data app's display name.",
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase-enterprise.data-apps.schema.slug" : {
+        "description" : "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters.",
+        "allOf" : [ {
+          "type" : "string",
+          "maxLength" : 100
+        }, {
+          "type" : "string",
+          "pattern" : "\\A[a-z0-9]+(?:-[a-z0-9]+)*\\z"
+        } ]
+      },
+      "metabase-enterprise.data-apps.schema.version" : {
+        "description" : "The data app contract version an app was built for, 1 when it declares none.",
+        "type" : "integer",
+        "minimum" : 1
+      },
       "metabase-enterprise.data-complexity-score.api.node" : {
         "anyOf" : [ {
           "type" : "object",
@@ -4443,134 +4494,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "name", "type", "model_id" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -4620,6 +4543,13 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
@@ -4634,7 +4564,8 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              "type" : "integer",
+              "minimum" : 1
             },
             "parameters" : {
               "oneOf" : [ {
@@ -4652,6 +4583,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
             },
             "public_uuid_prefix" : {
               "oneOf" : [ {
@@ -4731,6 +4665,13 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
@@ -4745,7 +4686,11 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
             },
             "parameters" : {
               "oneOf" : [ {
@@ -4764,6 +4709,9 @@
                 "type" : "null"
               } ]
             },
+            "archived_directly" : {
+              "type" : "boolean"
+            },
             "public_uuid_prefix" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -4779,7 +4727,7 @@
               } ]
             }
           },
-          "required" : [ "name", "type", "model_id" ],
+          "required" : [ "name", "type" ],
           "additionalProperties" : false
         }, {
           "type" : "object",
@@ -4789,13 +4737,6 @@
                 "description" : "Value must be a map.",
                 "type" : "object",
                 "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
               }, {
                 "type" : "null"
               } ]
@@ -4856,22 +4797,15 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
             },
             "created_at" : { },
             "public_uuid" : {
@@ -4884,10 +4818,11 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
             },
             "parameters" : {
               "oneOf" : [ {
@@ -4906,6 +4841,9 @@
                 "type" : "null"
               } ]
             },
+            "archived_directly" : {
+              "type" : "boolean"
+            },
             "public_uuid_prefix" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -4921,7 +4859,7 @@
               } ]
             }
           },
-          "required" : [ "name", "type", "model_id" ],
+          "required" : [ "name", "type" ],
           "additionalProperties" : false
         } ]
       },
@@ -4939,136 +4877,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -5121,6 +4929,13 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
@@ -5135,7 +4950,8 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              "type" : "integer",
+              "minimum" : 1
             },
             "parameters" : {
               "oneOf" : [ {
@@ -5153,6 +4969,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
             },
             "public_uuid_prefix" : {
               "oneOf" : [ {
@@ -5234,6 +5053,13 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
@@ -5248,7 +5074,11 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
             },
             "parameters" : {
               "oneOf" : [ {
@@ -5266,6 +5096,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
             },
             "public_uuid_prefix" : {
               "oneOf" : [ {
@@ -5291,13 +5124,6 @@
                 "description" : "Value must be a map.",
                 "type" : "object",
                 "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
               }, {
                 "type" : "null"
               } ]
@@ -5361,22 +5187,15 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
             },
             "created_at" : { },
             "public_uuid" : {
@@ -5389,10 +5208,11 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
             },
             "parameters" : {
               "oneOf" : [ {
@@ -5410,6 +5230,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
             },
             "public_uuid_prefix" : {
               "oneOf" : [ {
@@ -5597,45 +5420,6 @@
           } ]
         }
       },
-      "metabase.actions.schema..http-action.json-query" : {
-        "description" : "must be a valid json-query, something like '.item.title'",
-        "type" : "string"
-      },
-      "metabase.actions.schema..http-action.template" : {
-        "type" : "object",
-        "properties" : {
-          "body" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "headers" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "method" : {
-            "type" : "string",
-            "enum" : [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "url" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "method", "url" ],
-        "additionalProperties" : false
-      },
       "metabase.actions.schema..implicit-action.kind" : {
         "description" : "Unsupported implicit action kind",
         "type" : "string",
@@ -5655,144 +5439,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.users.schema.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "id" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -5852,6 +5498,13 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
@@ -5866,7 +5519,8 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              "type" : "integer",
+              "minimum" : 1
             },
             "parameters" : {
               "oneOf" : [ {
@@ -5884,6 +5538,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
             },
             "public_uuid_prefix" : {
               "oneOf" : [ {
@@ -5973,6 +5630,13 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
@@ -5987,7 +5651,11 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
             },
             "parameters" : {
               "oneOf" : [ {
@@ -6005,6 +5673,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
             },
             "public_uuid_prefix" : {
               "oneOf" : [ {
@@ -6031,13 +5702,6 @@
                 "description" : "Value must be a map.",
                 "type" : "object",
                 "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
               }, {
                 "type" : "null"
               } ]
@@ -6108,22 +5772,15 @@
                 "type" : "null"
               } ]
             },
+            "collection_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
             },
             "created_at" : { },
             "public_uuid" : {
@@ -6136,10 +5793,11 @@
               } ]
             },
             "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
             },
             "parameters" : {
               "oneOf" : [ {
@@ -6157,6 +5815,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
             },
             "public_uuid_prefix" : {
               "oneOf" : [ {
@@ -6206,7 +5867,7 @@
       "metabase.actions.schema.type" : {
         "description" : "Unsupported action type",
         "type" : "string",
-        "enum" : [ "http", "implicit", "query" ]
+        "enum" : [ "implicit", "query" ]
       },
       "metabase.actions.types..scope.raw" : {
         "type" : "object",
@@ -13209,6 +12870,9 @@
               "type" : "null"
             } ]
           },
+          "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details"
+          },
           "user-parameters" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
           },
@@ -13450,6 +13114,69 @@
       "metabase.lib.schema..query.snapshot" : {
         "description" : "A whole copy of a query stashed on the query itself under one of the internal keys below: the same shape as\n  [[::query]] minus the `:and`-level constraints, so validating the stashed copy does not re-run uniqueness checks\n  against the query it was copied from.",
         "$ref" : "#/components/schemas/metabase.lib.schema..query.map"
+      },
+      "metabase.lib.schema..sandboxing.details" : {
+        "description" : "Audit-log details for the sandboxes (row-level restrictions) applied to a query, keyed by the Table ID each one sandboxes. Stashed on the query by the enterprise sandboxing middleware and copied into the results metadata so the restrictions can be recorded in the QueryExecution log.",
+        "type" : "object",
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details.entry"
+        }
+      },
+      "metabase.lib.schema..sandboxing.details.entry" : {
+        "description" : "Audit-log entry describing one applied sandbox (row-level restriction): which Table it sandboxes, which sandbox/group/Card it came from, and which login attributes were remapped to which Fields. An attribute's `:value` is the user's actual attribute value, recorded only when `analytics-pii-retention-enabled` is set.",
+        "type" : "object",
+        "properties" : {
+          "attributes" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : {
+                "field_id" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "value" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.parameter..parameter.value"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "required" : [ "field_id" ],
+              "additionalProperties" : false
+            }
+          },
+          "card_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "group_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sandbox_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          }
+        },
+        "required" : [ "table_id", "sandbox_id", "group_id", "card_id", "attributes" ],
+        "additionalProperties" : false
       },
       "metabase.lib.schema..sandboxing.original-metadata" : {
         "description" : "The legacy columns a query was expected to return before sandboxes replaced its source tables, stashed on the query by the enterprise sandboxing middleware and merged into the sandboxed results.",
@@ -19115,6 +18842,9 @@
                 "type" : "null"
               } ]
             },
+            "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.details"
+            },
             "user-parameters" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
             },
@@ -23793,13 +23523,6 @@
                 "additionalProperties" : false
               }
             },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.notification.models.EchoedUser"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "updated_at" : {
               "oneOf" : [ {
                 "anyOf" : [ {
@@ -23955,13 +23678,6 @@
                 "required" : [ "channel_type" ],
                 "additionalProperties" : false
               }
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.notification.models.EchoedUser"
-              }, {
-                "type" : "null"
-              } ]
             },
             "updated_at" : {
               "oneOf" : [ {
@@ -29051,6 +28767,13 @@
               "$ref" : "#/components/schemas/metabase.query-processor.schema..result-metadata.column"
             }
           },
+          "sandbox_details" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
           "results_timezone" : {
             "type" : "string"
           },
@@ -30618,7 +30341,7 @@
       "get" : {
         "operationId" : "get-api-action",
         "summary" : "GET /api/action",
-        "description" : "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional\n  `?model-id=<model-id>` to limit to actions on a particular model.",
+        "description" : "Returns the unarchived actions in collections the current user can read. Pass optional `?model-id=<model-id>` to\n  limit to the actions of a particular model.",
         "parameters" : [ {
           "in" : "query",
           "name" : "model-id",
@@ -32240,7 +31963,7 @@
       "get" : {
         "operationId" : "get-api-apps",
         "summary" : "GET /api/apps",
-        "description" : "List the data apps provided by the connected repository. Pass `available=true`\n   to return only enabled apps without sync errors. An outdated app is never\n   available, and otherwise listed only to superusers, who see it badged.",
+        "description" : "List the data apps. Pass `available=true` to return only enabled apps that aren't drafts. An outdated app is never\n   available, and otherwise listed only to superusers, who see it badged.",
         "parameters" : [ {
           "in" : "query",
           "name" : "available",
@@ -32266,11 +31989,6 @@
                       "properties" : {
                         "has_user_permission_warnings" : {
                           "type" : "boolean"
-                        },
-                        "last_synced_at" : {
-                          "oneOf" : [ { }, {
-                            "type" : "null"
-                          } ]
                         },
                         "table_ids" : {
                           "type" : "array",
@@ -32319,20 +32037,6 @@
                             "type" : "null"
                           } ]
                         },
-                        "last_synced_sha" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "sync_error" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
                         "allowed_hosts" : {
                           "type" : "array",
                           "items" : {
@@ -32343,13 +32047,9 @@
                           "type" : "boolean"
                         },
                         "resource_collection_id" : {
-                          "oneOf" : [ {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }, {
-                            "type" : "null"
-                          } ]
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
                         },
                         "description" : {
                           "oneOf" : [ {
@@ -32363,7 +32063,7 @@
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
@@ -32389,6 +32089,143 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      },
+      "post" : {
+        "operationId" : "post-api-apps",
+        "summary" : "POST /api/apps",
+        "description" : "Create a data app from its manifest fields and bundle. A draft with the same slug becomes the app.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "has_user_permission_warnings" : {
+                      "type" : "boolean"
+                    },
+                    "table_ids" : {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    },
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : { },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "permission_group_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "allowed_hosts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
+                    "resource_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "bundle_path" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "allowed_hosts" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
+                  },
+                  "bundle" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-text"
+                  },
+                  "bundle_path" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
+                  },
+                  "description" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+                  },
+                  "display_name" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
+                  },
+                  "name" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
+                  },
+                  "version" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
+                  }
+                },
+                "required" : [ "name", "display_name", "bundle_path", "bundle" ],
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/apps" ]
@@ -32463,7 +32300,7 @@
       "put" : {
         "operationId" : "put-api-apps-slug",
         "summary" : "PUT /api/apps/{slug}",
-        "description" : "Enable or disable a single data app. Disabled apps are not served.",
+        "description" : "Update a data app's manifest fields or bundle, or enable or disable it. Disabled apps are not served.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -32483,11 +32320,6 @@
                   "properties" : {
                     "has_user_permission_warnings" : {
                       "type" : "boolean"
-                    },
-                    "last_synced_at" : {
-                      "oneOf" : [ { }, {
-                        "type" : "null"
-                      } ]
                     },
                     "table_ids" : {
                       "type" : "array",
@@ -32536,20 +32368,6 @@
                         "type" : "null"
                       } ]
                     },
-                    "last_synced_sha" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "sync_error" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
                     "allowed_hosts" : {
                       "type" : "array",
                       "items" : {
@@ -32560,13 +32378,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -32580,7 +32394,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -32598,11 +32412,28 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "allowed_hosts" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
+                  },
+                  "bundle" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-text"
+                  },
+                  "bundle_path" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
+                  },
+                  "description" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+                  },
+                  "display_name" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
+                  },
                   "enabled" : {
                     "type" : "boolean"
+                  },
+                  "version" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
                   }
                 },
-                "required" : [ "enabled" ],
                 "additionalProperties" : false
               }
             }
@@ -32613,7 +32444,7 @@
       "delete" : {
         "operationId" : "delete-api-apps-slug",
         "summary" : "DELETE /api/apps/{slug}",
-        "description" : "Remove a single data app (its row and cached bundle). Intended for clearing out\n   apps left behind by a repository that is no longer connected: while a repo is\n   connected, an app still in it is re-materialized by the next sync, and one no\n   longer in it is pruned by that sync anyway.",
+        "description" : "Delete a data app, its bundle, and the collection and permission group it owns.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -32668,11 +32499,6 @@
                       "has_user_permission_warnings" : {
                         "type" : "boolean"
                       },
-                      "last_synced_at" : {
-                        "oneOf" : [ { }, {
-                          "type" : "null"
-                        } ]
-                      },
                       "table_ids" : {
                         "type" : "array",
                         "items" : {
@@ -32720,20 +32546,6 @@
                           "type" : "null"
                         } ]
                       },
-                      "last_synced_sha" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "sync_error" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
                       "allowed_hosts" : {
                         "type" : "array",
                         "items" : {
@@ -32744,13 +32556,9 @@
                         "type" : "boolean"
                       },
                       "resource_collection_id" : {
-                        "oneOf" : [ {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }, {
-                          "type" : "null"
-                        } ]
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
                       },
                       "description" : {
                         "oneOf" : [ {
@@ -32764,7 +32572,7 @@
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
@@ -32842,14 +32650,13 @@
       "post" : {
         "operationId" : "post-api-apps-slug-draft",
         "summary" : "POST /api/apps/{slug}/draft",
-        "description" : "Create or reuse a data app draft before its first repository import.",
+        "description" : "Create or reuse a data app draft, which reserves a slug and the app's resources before the app is created.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
           }
         } ],
         "responses" : {
@@ -32862,11 +32669,6 @@
                   "properties" : {
                     "has_user_permission_warnings" : {
                       "type" : "boolean"
-                    },
-                    "last_synced_at" : {
-                      "oneOf" : [ { }, {
-                        "type" : "null"
-                      } ]
                     },
                     "table_ids" : {
                       "type" : "array",
@@ -32915,20 +32717,6 @@
                         "type" : "null"
                       } ]
                     },
-                    "last_synced_sha" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "sync_error" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
                     "allowed_hosts" : {
                       "type" : "array",
                       "items" : {
@@ -32939,13 +32727,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -32959,7 +32743,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -33108,7 +32892,7 @@
       "post" : {
         "operationId" : "post-api-apps-slug-query-table-dependencies",
         "summary" : "POST /api/apps/{slug}/query-table-dependencies",
-        "description" : "Return the tables read by already-saved queries, including ones reached only through an implicit join.\n\n   Sync copies models, actions and metrics whose queries it never resolves through `/query`, and only\n   this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key\n   appears nowhere in the query itself.",
+        "description" : "Return the tables read by already-saved queries, including ones reached only through an implicit join.\n\n   Sync copies actions and metrics whose queries it never resolves through `/query`, and only\n   this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key\n   appears nowhere in the query itself.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -33195,11 +32979,6 @@
                     "has_user_permission_warnings" : {
                       "type" : "boolean"
                     },
-                    "last_synced_at" : {
-                      "oneOf" : [ { }, {
-                        "type" : "null"
-                      } ]
-                    },
                     "table_ids" : {
                       "type" : "array",
                       "items" : {
@@ -33247,20 +33026,6 @@
                         "type" : "null"
                       } ]
                     },
-                    "last_synced_sha" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "sync_error" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
                     "allowed_hosts" : {
                       "type" : "array",
                       "items" : {
@@ -33271,13 +33036,9 @@
                       "type" : "boolean"
                     },
                     "resource_collection_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     },
                     "description" : {
                       "oneOf" : [ {
@@ -33291,7 +33052,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -40426,7 +40187,7 @@
       "get" : {
         "operationId" : "get-api-database",
         "summary" : "GET /api/database",
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `include_stubs` includes stub DBs, which serialization creates for missing databases. Default: `false`.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "in" : "query",
           "name" : "saved",
@@ -40476,6 +40237,18 @@
             } ]
           },
           "description" : "include must be either empty, 'tables', or 'schemas'"
+        }, {
+          "in" : "query",
+          "name" : "include_stubs",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         }, {
           "in" : "query",
           "name" : "router_database_id",
@@ -40681,7 +40454,7 @@
       "post" : {
         "operationId" : "post-api-database-validate",
         "summary" : "POST /api/database/validate",
-        "description" : "Validate that we can connect to a database given a set of details.",
+        "description" : "Validate that we can connect to a database given a set of details.\n\n  Pass the `id` of an existing Database to test edited details against it: sensitive values the client left redacted\n  are resolved from the stored Database, and its own engine may be tested even when creating new Databases of that\n  engine is disallowed.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -40712,6 +40485,15 @@
                         "description" : "value must be a valid database engine.",
                         "type" : "string",
                         "minLength" : 1
+                      },
+                      "id" : {
+                        "oneOf" : [ {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
                       }
                     },
                     "required" : [ "engine", "details" ],
@@ -56209,6 +55991,12 @@
                       "label" : {
                         "type" : "string"
                       },
+                      "model_fields" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
                       "type" : {
                         "type" : "string"
                       },
@@ -56344,7 +56132,7 @@
                         }
                       }
                     },
-                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "requires", "fields" ]
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "model_fields", "required_any", "requires", "fields" ]
                   }
                 }
               }
@@ -61840,7 +61628,7 @@
       "get" : {
         "operationId" : "get-api-permissions-invite-group-ids",
         "summary" : "GET /api/permissions/invite-group-ids",
-        "description" : "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a\n  `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark\n  the ones whose members can already see the item; the Administrators group has implicit access to everything and is\n  never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a\n  grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself.",
+        "description" : "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a\n  `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark\n  the ones whose members can already see the item; the Administrators group has implicit access to everything and is\n  never included. The Data Analysts group is omitted unless `advanced-permissions` is enabled. The ids are otherwise\n  unfiltered. Superuser-only, like the invite action itself.",
         "parameters" : [ {
           "in" : "query",
           "name" : "type",
@@ -66194,6 +65982,46 @@
                 "additionalProperties" : false
               }
             }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
+    "/api/session/illustration/{key}" : {
+      "get" : {
+        "operationId" : "get-api-session-illustration-key",
+        "summary" : "GET /api/session/illustration/{key}",
+        "description" : "Fetch the uploaded image of a custom illustration setting, e.g. `login-page-illustration-custom`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "v",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/session" ]
@@ -74511,7 +74339,7 @@
           "description" : "Whether to include the entire metric library."
         }, {
           "in" : "query",
-          "name" : "include-models",
+          "name" : "include-actions",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -74520,7 +74348,7 @@
               "type" : "null"
             } ]
           },
-          "description" : "Include models with actions. Database scope filters models; library scope does not. Without a scope, returns models only."
+          "description" : "Include query actions that belong to no model. Database scope filters them; library scope does not. Without a scope, returns actions only."
         } ],
         "responses" : {
           "2XX" : {

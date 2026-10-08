@@ -2,18 +2,30 @@
   "Application database queries for the actions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn unarchived-models-visible-to-user
-  "The unarchived model Cards in Collections the current user can read."
-  []
-  (t2/select :model/Card {:where [:and
-                                  [:= :type "model"]
-                                  [:= :archived false]
-                                  (collection/visible-collection-filter-clause)]}))
+(mu/defn action-ids-visible-to-user
+  "The ids of the Actions that are `:archived` or not, of the model `:model-id`, or else in Collections the current
+  user can read or in the data actions root without a model, limited to actions of `:type` if given."
+  [{action-type :type, model-id :model-id, :keys [archived]} :- [:map {:closed true}
+                                                                 [:type     {:optional true} [:maybe ::actions.schema/type]]
+                                                                 [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
+                                                                 [:archived :boolean]]]
+  (t2/select-pks-vec :model/Action {:where [:and
+                                            [:= :archived archived]
+                                            (when action-type
+                                              [:= :type (name action-type)])
+                                            (if model-id
+                                              [:= :model_id model-id]
+                                              [:or
+                                               (collection/visible-collection-filter-clause
+                                                :collection_id
+                                                {:include-archived-items (if archived :all :exclude)})
+                                               [:and [:= :model_id nil] [:= :collection_id nil]]])]}))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."
