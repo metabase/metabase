@@ -2860,12 +2860,13 @@
    :error {:type    "invalid_request_error"
            :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
 
+(def ^:private byok-model "anthropic/claude-sonnet-4-6")
+
 (deftest provider-error-test
-  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                     llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+  (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections]
     (testing "classifies the failures that the customer can fix on their side, and the provider's outages"
       (are [code provider status body]
-           (= code (:error-code (mt/as-admin (self/provider-error (provider-api-error! provider status body)))))
+           (= code (:error-code (mt/as-admin (self/provider-error (provider-api-error! provider status body) byok-model))))
         "ai_provider_billing"     "anthropic"  400 anthropic-credit-balance-body
         "ai_provider_billing"     "anthropic"  400 {:error {:type    "invalid_request_error"
                                                             :message "You have reached your specified API usage limits."}}
@@ -2893,17 +2894,18 @@
     (testing "admins are told which provider failed, everyone else is not"
       (doseq [status [402 429 401 529]]
         (let [e (provider-api-error! "anthropic" status {})]
-          (is (str/includes? (:message (mt/as-admin (self/provider-error e)))
+          (is (str/includes? (:message (mt/as-admin (self/provider-error e byok-model)))
                              "Anthropic"))
           (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
-                                              (self/provider-error e)))
+                                              (self/provider-error e byok-model)))
                                   "Anthropic"))))))
     (testing "on the managed provider only an outage is explained, and without naming the provider"
-      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
-        (is (nil? (mt/as-admin
-                    (self/provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))
-        (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
-                (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
+      (is (nil? (mt/as-admin
+                  (self/provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)
+                                       "metabase/anthropic/claude-sonnet-4-6"))))
+      (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
+              (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})
+                                                "metabase/anthropic/claude-sonnet-4-6")))))))
 
 (defn- openrouter-relayed-error-body
   "OpenRouter's 400 body when every upstream refused the request with the JSON string `raw`.
