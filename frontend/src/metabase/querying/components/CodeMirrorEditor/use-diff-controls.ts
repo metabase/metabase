@@ -11,24 +11,27 @@ import {
 } from "@codemirror/view";
 import { useMemo } from "react";
 import { useLatest } from "react-use";
+import { once } from "underscore";
 
 import { isMac, isWindows } from "metabase/utils/browser";
 
 const CONTROLS_CLASS_NAME = "cm-diff-controls";
 const FALLBACK_CLASS_NAME = "cm-diff-controls-fallback";
-const CONTROLS_THEME = EditorView.baseTheme({
-  [`.${CONTROLS_CLASS_NAME}`]: {
-    position: "sticky",
-    bottom: "0",
-    zIndex: "1",
-    boxSizing: "border-box",
-  },
-  [`.${FALLBACK_CLASS_NAME}`]: {
-    position: "absolute",
-    left: "0",
-    bottom: "0",
-  },
-});
+const getControlsTheme = once(() =>
+  EditorView.baseTheme({
+    [`.${CONTROLS_CLASS_NAME}`]: {
+      position: "sticky",
+      bottom: "0",
+      zIndex: "1",
+      boxSizing: "border-box",
+    },
+    [`.${FALLBACK_CLASS_NAME}`]: {
+      position: "absolute",
+      left: "0",
+      bottom: "0",
+    },
+  }),
+);
 
 function getShortcuts() {
   let keyModifiers = "Ctrl-Alt";
@@ -166,7 +169,7 @@ export function createDiffControlsExtensions({
   });
 
   return [
-    CONTROLS_THEME,
+    getControlsTheme(),
     controlsField,
     EditorView.scrollMargins.of(() => ({ bottom: container.offsetHeight })),
     ViewPlugin.define(
