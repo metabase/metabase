@@ -16,6 +16,10 @@ interface ContentDiagnosticsBulkDismissButtonProps extends BulkDismissAction {
   onDismiss: (findingIds: number[]) => void;
 }
 
+function getDismissLabel(count: number) {
+  return ngettext(msgid`Dismiss finding`, `Dismiss findings`, count);
+}
+
 export function ContentDiagnosticsBulkDismissButton({
   findingIds,
   onDismiss,
@@ -75,7 +79,7 @@ export function ContentDiagnosticsBulkDismissButton({
   return (
     <>
       <BulkActionButton disabled={isDismissing} onClick={open}>
-        {t`Dismiss`}
+        {getDismissLabel(findingIds.length)}
       </BulkActionButton>
       <ConfirmModal
         opened={isOpen}
@@ -85,7 +89,7 @@ export function ContentDiagnosticsBulkDismissButton({
           count,
         )}
         message={t`Dismissed findings will be hidden for everyone. The underlying content will not be deleted.`}
-        confirmButtonText={t`Dismiss`}
+        confirmButtonText={getDismissLabel(count)}
         confirmButtonProps={{ color: "brand", disabled: isDismissing }}
         onConfirm={handleConfirm}
         onClose={() => {

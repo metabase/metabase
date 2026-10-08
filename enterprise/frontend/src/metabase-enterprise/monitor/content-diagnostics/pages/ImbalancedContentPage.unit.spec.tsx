@@ -197,17 +197,21 @@ describe("ImbalancedContentPage", () => {
 
     await screen.findByRole("treegrid");
     await userEvent.click(screen.getByLabelText("Select all"));
-    expect(screen.getByRole("button", { name: "Dismiss" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    ).toBeEnabled();
     expect(
       screen.queryByRole("button", { name: "Move to trash" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Delete" }),
     ).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    );
     await userEvent.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Dismiss",
+        name: "Dismiss finding",
       }),
     );
     await waitFor(() =>

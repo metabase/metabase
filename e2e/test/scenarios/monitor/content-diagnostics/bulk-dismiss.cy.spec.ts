@@ -53,11 +53,11 @@ describe("scenarios > monitor > content diagnostics > bulk dismissal", () => {
 
     cy.findByTestId("content-diagnostics-bulk-actions").within(() => {
       cy.findByText("2 items selected").should("be.visible");
-      cy.findByRole("button", { name: "Dismiss" }).click();
+      cy.findByRole("button", { name: "Dismiss findings" }).click();
     });
     H.modal().within(() => {
       cy.findByText("Dismiss 2 findings?").should("be.visible");
-      cy.findByRole("button", { name: "Dismiss" }).click();
+      cy.findByRole("button", { name: "Dismiss findings" }).click();
     });
 
     cy.wait("@dismissFindings").its("response.statusCode").should("eq", 200);

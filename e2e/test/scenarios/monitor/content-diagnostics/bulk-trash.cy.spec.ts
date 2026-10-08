@@ -98,7 +98,9 @@ describe("scenarios > monitor > content diagnostics > bulk trash", () => {
 
     cy.findByTestId("content-diagnostics-bulk-actions").within(() => {
       cy.findByRole("button", { name: "Move to trash" }).should("be.disabled");
-      cy.findByRole("button", { name: "Dismiss" }).should("be.enabled");
+      cy.findByRole("button", { name: "Dismiss findings" }).should(
+        "be.enabled",
+      );
     });
   });
 });

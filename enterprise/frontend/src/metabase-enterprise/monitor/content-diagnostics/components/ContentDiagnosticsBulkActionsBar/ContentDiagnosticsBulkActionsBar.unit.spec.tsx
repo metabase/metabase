@@ -329,10 +329,31 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
   describe("dismiss", () => {
     const endpoint = "path:/api/ee/content-diagnostics/invalidate";
 
-    async function openConfirmation() {
-      await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    async function openConfirmation(name = "Dismiss finding") {
+      await userEvent.click(screen.getByRole("button", { name }));
       return screen.findByRole("dialog");
     }
+
+    it.each([
+      { count: 1, label: "Dismiss finding" },
+      { count: 2, label: "Dismiss findings" },
+    ])(
+      "labels both dismissal actions for $count selected findings",
+      async ({ count, label }) => {
+        setup(
+          Array.from({ length: count }, (_, index) => card({ id: index + 1 })),
+        );
+
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        const dialog = await screen.findByRole("dialog");
+        expect(
+          within(dialog).getByRole("button", { name: label }),
+        ).toBeEnabled();
+        expect(
+          within(dialog).getByRole("button", { name: "Cancel" }),
+        ).toBeEnabled();
+      },
+    );
 
     it("dismisses mixed finding types using finding IDs without deleting content", async () => {
       fetchMock.post(endpoint, { invalidated: [11, 22], skipped: [] });
@@ -340,7 +361,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
         card({ id: 11, entity_id: 101 }),
         transform({ id: 22, entity_id: 202 }),
       ]);
-      const dialog = await openConfirmation();
+      const dialog = await openConfirmation("Dismiss findings");
       expect(
         within(dialog).getByText(
           "Dismissed findings will be hidden for everyone. The underlying content will not be deleted.",
@@ -348,7 +369,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       ).toBeInTheDocument();
       expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(0);
       await userEvent.click(
-        within(dialog).getByRole("button", { name: "Dismiss" }),
+        within(dialog).getByRole("button", { name: "Dismiss findings" }),
       );
       await waitFor(() => expect(onSettled).toHaveBeenCalledWith([], [11, 22]));
       const calls = fetchMock.callHistory.calls(endpoint);
@@ -417,7 +438,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       }
       const dialog = await openConfirmation();
       await userEvent.click(
-        within(dialog).getByRole("button", { name: "Dismiss" }),
+        within(dialog).getByRole("button", { name: "Dismiss finding" }),
       );
       for (const tab of ["Stale", "Slow", "Duplicated", "Imbalanced"]) {
         expect(await screen.findByText(`${tab}: 0`)).toBeInTheDocument();
@@ -444,7 +465,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       const { onSettled, store } = setup([card({ id: 11 })]);
       const dialog = await openConfirmation();
       await userEvent.click(
-        within(dialog).getByRole("button", { name: "Dismiss" }),
+        within(dialog).getByRole("button", { name: "Dismiss finding" }),
       );
       await waitFor(() => expect(hasUndo(store, "Dismiss failed")).toBe(true));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -452,7 +473,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       failed = false;
       const retryDialog = await openConfirmation();
       await userEvent.click(
-        within(retryDialog).getByRole("button", { name: "Dismiss" }),
+        within(retryDialog).getByRole("button", { name: "Dismiss finding" }),
       );
       await waitFor(() => expect(onSettled).toHaveBeenCalledWith([], [11]));
       expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(2);
@@ -473,9 +494,9 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
           card({ id: 11 }),
           card({ id: 22 }),
         ]);
-        const dialog = await openConfirmation();
+        const dialog = await openConfirmation("Dismiss findings");
         await userEvent.click(
-          within(dialog).getByRole("button", { name: "Dismiss" }),
+          within(dialog).getByRole("button", { name: "Dismiss findings" }),
         );
         await waitFor(() =>
           expect(onSettled).toHaveBeenCalledWith([], [11, 22]),
@@ -499,12 +520,14 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
       );
       const { onSettled } = setup([card({ id: 11 })]);
       const dialog = await openConfirmation();
-      const confirm = within(dialog).getByRole("button", { name: "Dismiss" });
+      const confirm = within(dialog).getByRole("button", {
+        name: "Dismiss finding",
+      });
       await userEvent.click(confirm);
       await waitFor(() =>
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
       );
-      const dismiss = screen.getByRole("button", { name: "Dismiss" });
+      const dismiss = screen.getByRole("button", { name: "Dismiss finding" });
       expect(dismiss).toBeDisabled();
       await userEvent.click(dismiss);
       expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(1);
@@ -523,7 +546,7 @@ describe("ContentDiagnosticsBulkActionsBar", () => {
         />,
       );
       await userEvent.click(
-        within(dialog).getByRole("button", { name: "Dismiss" }),
+        within(dialog).getByRole("button", { name: "Dismiss findings" }),
       );
       expect(fetchMock.callHistory.calls(endpoint)).toHaveLength(0);
       expect(onSettled).not.toHaveBeenCalled();

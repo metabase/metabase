@@ -243,7 +243,9 @@ describe("StaleContentPage", () => {
     expect(
       screen.getByRole("button", { name: "Move to trash" }),
     ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Dismiss" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    ).toBeEnabled();
   });
 
   it("dismisses findings, refetches the list, and clears selection", async () => {
@@ -268,10 +270,12 @@ describe("StaleContentPage", () => {
     });
     await screen.findByRole("treegrid");
     await userEvent.click(screen.getByLabelText("Select all"));
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    );
     await userEvent.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Dismiss",
+        name: "Dismiss finding",
       }),
     );
     expect(
@@ -318,7 +322,7 @@ describe("StaleContentPage", () => {
       await screen.findByText("Sales overview");
       expect(screen.getByText("Marketing funnel")).toBeVisible();
       await selectFinding("Sales overview");
-      await confirmBulkAction("Dismiss");
+      await confirmBulkAction("Dismiss finding");
 
       expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
       expect(screen.getByText("Marketing funnel")).toBeVisible();
@@ -364,7 +368,7 @@ describe("StaleContentPage", () => {
       for (const name of ["Sales overview", "Marketing funnel"]) {
         expect(within(getFindingRow(name)).getByRole("checkbox")).toBeChecked();
       }
-      await confirmBulkAction("Dismiss");
+      await confirmBulkAction("Dismiss findings");
       expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
       expect(screen.queryByText("Marketing funnel")).not.toBeInTheDocument();
       expect(screen.queryByText("Dismiss failed")).not.toBeInTheDocument();
@@ -379,7 +383,9 @@ describe("StaleContentPage", () => {
         expect(within(row).getByRole("checkbox")).toBeChecked();
       }
       expect(screen.getByText("2 items selected")).toBeVisible();
-      expect(screen.getByRole("button", { name: "Dismiss" })).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Dismiss findings" }),
+      ).toBeEnabled();
       expect(
         screen.queryByText("Dismissed 2 findings"),
       ).not.toBeInTheDocument();
@@ -431,7 +437,7 @@ describe("StaleContentPage", () => {
     try {
       await screen.findByText("Dismiss me");
       await selectFinding("Dismiss me");
-      await confirmBulkAction("Dismiss");
+      await confirmBulkAction("Dismiss finding");
       expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
       expect(screen.getByText("Trash me")).toBeVisible();
       await waitFor(() =>
@@ -487,10 +493,12 @@ describe("StaleContentPage", () => {
     });
     await screen.findByText("Last page finding");
     await userEvent.click(screen.getByLabelText("Select all"));
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    );
     await userEvent.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Dismiss",
+        name: "Dismiss finding",
       }),
     );
     expect(await screen.findByText("Sales overview")).toBeInTheDocument();
