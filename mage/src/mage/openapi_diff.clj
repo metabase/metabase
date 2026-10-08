@@ -39,32 +39,97 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- resolve-refs
-  "Inline `$ref`s in `node` so two specs compare structurally rather than by ref name. Component
-  schemas change too, so a ref that looks identical can point at a different shape.
+(def ^:private ^java.util.IdentityHashMap stamped
+  "Digest of every node [[resolver]] built, by object identity. Not metadata: `dissoc` and `assoc`
+  copy metadata to the map they return, which would carry the parent's digest onto a different map.
 
-  There is no depth limit: `seen` holds every ref on the current path, so a repeat becomes
-  `<recursive ...>` and every path terminates against a finite component set. A hop limit would
-  instead replace deep nodes with the same literal on both sides, which compares equal and hides
-  the change - the MBQL clause schemas form chains long enough to hit it."
-  ([node spec] (resolve-refs node spec #{}))
-  ([node spec seen]
-   (cond
-     (map? node)
-     ;; A $ref node holds a STRING pointer. SCIM schemas have a property literally named "$ref"
-     ;; (`{"properties": {"$ref": {...}}}`), which is data, not a reference - hence the string check.
-     (if-let [ref (let [r (get node "$ref")] (when (string? r) r))]
-       (if (contains? seen ref)
-         (str "<recursive " ref ">")
-         (let [path   (str/split (subs ref 2) #"/")
-               target (get-in spec path {})
-               rest'  (dissoc node "$ref")
-               merged (if (seq rest') (merge target rest') target)]
-           (resolve-refs merged spec (conj seen ref))))
-       (update-vals node #(resolve-refs % spec seen)))
+  ponytail: process-lifetime and unbounded; it holds the nodes of the specs this run reads."
+  (java.util.IdentityHashMap.))
 
-     (sequential? node) (mapv #(resolve-refs % spec seen) node)
-     :else node)))
+(defn- digest-of
+  "SHA-256 content digest of a JSON-shaped value, so two schemas compare in constant time.
+
+  Resolved schemas share structure: a component used in a thousand places is one object, and
+  comparing two specs with `=` walks it a thousand times. [[resolver]] records each node it builds
+  in [[stamped]]. Any other node, such as the result of a `dissoc`, digests from its children."
+  [x]
+  (or (when (coll? x) (.get stamped x))
+      (let [md    (java.security.MessageDigest/getInstance "SHA-256")
+            feed! (fn [^String s] (.update md (.getBytes s "UTF-8")))]
+        (cond
+          (map? x)        (doseq [k (sort (keys x))]
+                            (feed! (str "{" (pr-str k)))
+                            (feed! (digest-of (get x k))))
+          (sequential? x) (do (feed! "[")
+                              (doseq [v x] (feed! (digest-of v)))
+                              (feed! "]"))
+          :else           (feed! (str "=" (pr-str x))))
+        (.encodeToString (java.util.Base64/getEncoder) (.digest md)))))
+
+(defn- same?
+  "Whether two schemas are equal. Constant time for stamped nodes, unlike `=` on shared structure."
+  [a b]
+  (= (digest-of a) (digest-of b)))
+
+(defn- stamp [x]
+  (.put stamped x (digest-of x))
+  x)
+
+(defn- string-ref
+  "The pointer of a `$ref` node. SCIM schemas have a property literally named \"$ref\"
+  (`{\"properties\": {\"$ref\": {...}}}`), which is data, not a reference - hence the string check."
+  [node]
+  (let [r (get node "$ref")] (when (string? r) r)))
+
+(defn- ref-target [spec ref]
+  (get-in spec (str/split (subs ref 2) #"/") {}))
+
+(defn- resolver
+  "A fn that inlines the `$ref`s in a node of `spec`, so two specs compare structurally rather than
+  by ref name. Component schemas change too, so a ref that looks identical can point at a
+  different shape.
+
+  A ref already on the current path becomes `<recursive ...>`, so every path terminates against a
+  finite component set. There is no depth limit, which would replace deep nodes with the same
+  literal on both sides and hide the change.
+
+  Resolved refs are cached, so a component is built once however many places use it, and the
+  results share structure. Inlining every use separately grows as 2^depth when schemas share refs;
+  the document schemas reach about 300 MB for one operation that way. A resolution depends only on
+  which refs it can reach are already on the path, so those form the cache key."
+  [spec]
+  (let [reachable (memoize
+                   (fn [ref]
+                     (loop [todo [ref], seen #{}]
+                       (if-let [[r & more] (seq todo)]
+                         (if (contains? seen r)
+                           (recur more seen)
+                           (recur (into (vec more)
+                                        (keep #(when (map? %) (string-ref %)))
+                                        (tree-seq coll? #(if (map? %) (vals %) %) (ref-target spec r)))
+                                  (conj seen r)))
+                         seen))))
+        cache (volatile! {})]
+    (fn resolve
+      ([node] (resolve node #{}))
+      ([node path]
+       (cond
+         (map? node)
+         (if-let [ref (string-ref node)]
+           (let [rest' (dissoc node "$ref")]
+             (cond
+               (contains? path ref) (str "<recursive " ref ">")
+               ;; Sibling keys make this node unique, so it is not worth caching.
+               (seq rest') (resolve (merge (ref-target spec ref) rest') (conj path ref))
+               :else (let [k [ref (set/intersection path (reachable ref))]]
+                       (or (get @cache k)
+                           (let [r (resolve (ref-target spec ref) (conj path ref))]
+                             (vswap! cache assoc k r)
+                             r)))))
+           (stamp (update-vals node #(resolve % path))))
+
+         (sequential? node) (stamp (mapv #(resolve % path) node))
+         :else node)))))
 
 (defn- non-null
   "The single real variant of a nullable union such as `oneOf [<array> {type: null}]`, else `node`."
@@ -183,7 +248,9 @@
           (every? #(or (not (contains? wide %)) (= (get wide %) (get narrow %))) ["pattern" "format"])
           (or (not (true? (get wide "uniqueItems"))) (true? (get narrow "uniqueItems")))))))
 
-(defn- compatible?
+(declare compatible?)
+
+(defn- compatible-uncached?
   "True when changing a schema from `old` to `new` keeps existing callers working.
 
   `dir` is `:request` or `:response`. Value constraints (type, enum, bounds) invert between the
@@ -194,10 +261,10 @@
   A keyword this function does not model ranks as incompatible when it changes. A false breaking
   finding costs a reviewer one look; a missed one ships undocumented."
   [dir old new]
-  (let [req?  (= dir :request)
-        same? #(compatible? dir %1 %2)]
+  (let [req? (= dir :request)
+        ok?  #(compatible? dir %1 %2)]
     (cond
-      (= old new) true
+      (same? old new) true
 
       ;; An ABSENT old schema constrained nothing, so anything that does not newly demand something
       ;; is safe. `{}` is not absent - it accepts any value, and narrowing it requires more.
@@ -211,10 +278,10 @@
       ;; response may only return variants it already could.
       (or (union? old) (union? new))
       (and (if req?
-             (every? (fn [o] (some #(same? o %) (variants new))) (variants old))
-             (every? (fn [n] (some #(same? % n) (variants old))) (variants new)))
+             (every? (fn [o] (some #(ok? o %) (variants new))) (variants old))
+             (every? (fn [n] (some #(ok? % n) (variants old))) (variants new)))
            (or (not (and (union? old) (union? new)))
-               (= (dissoc old "oneOf" "anyOf") (dissoc new "oneOf" "anyOf"))))
+               (same? (dissoc old "oneOf" "anyOf") (dissoc new "oneOf" "anyOf"))))
 
       :else
       (let [[wide narrow] (if req? [new old] [old new])
@@ -225,11 +292,11 @@
             ;; Members pair by position. `allOf` members are conjuncts, so the narrower side may carry
             ;; extra trailing ones: the old side for a request, the new side for a response.
             positional? (fn [k] (let [o (members old k), n (members new k)]
-                                  (or (= o n)
+                                  (or (same? o n)
                                       (and (if (= k "allOf")
                                              (if req? (<= (count n) (count o)) (<= (count o) (count n)))
                                              (= (count o) (count n)))
-                                           (every? true? (map same? o n))))))
+                                           (every? true? (map ok? o n))))))
             open-values (fn [s] (let [a (get s "additionalProperties")] (if (map? a) a {})))
             closed?     (fn [s] (false? (get s "additionalProperties")))
             old-props (get old "properties" {}), new-props (get new "properties" {})
@@ -242,26 +309,48 @@
               (or (not req?) (not (contains? old "default")) (= (get old "default") (get new "default")))
               (positional? "allOf")
               (positional? "prefixItems")
-              (same? (get old "items" {}) (get new "items" {}))
+              (ok? (get old "items" {}) (get new "items" {}))
               ;; A map-of value schema: `additionalProperties` holding a schema.
-              (or (closed? old) (closed? new) (same? (open-values old) (open-values new)))
+              (or (closed? old) (closed? new) (ok? (open-values old) (open-values new)))
               (not (and req? (closed? new) (not (closed? old))))
               (empty? (set/difference (set (keys old-props)) (set (keys new-props))))
               (empty? (if req? (set/difference new-req old-req) (set/difference old-req new-req)))
-              (every? #(same? (get old-props %) (get new-props %))
+              (every? #(ok? (get old-props %) (get new-props %))
                       (set/intersection (set (keys old-props)) (set (keys new-props))))
-              (= (apply dissoc old modeled-keys) (apply dissoc new modeled-keys))))))))
+              (same? (apply dissoc old modeled-keys) (apply dissoc new modeled-keys))))))))
 
+(def ^:private compatible-cache
+  "Results of [[compatible?]] by direction and content digest. A digest names a schema's content, so
+  an entry stays true for the life of the process.
+
+  ponytail: process-lifetime cache, unbounded; it holds a few thousand booleans per diff."
+  (atom {}))
+
+(defn- compatible?
+  "[[compatible-uncached?]], cached by content digest. A schema shared by many fields is compared
+  once per pair of versions, not once per path that reaches it, which is exponential in depth."
+  [dir old new]
+  (let [k [dir (digest-of old) (digest-of new)]]
+    (if-some [hit (get @compatible-cache k)]
+      hit
+      (let [result (boolean (compatible-uncached? dir old new))]
+        (swap! compatible-cache assoc k result)
+        result))))
 (defn- operations
   "`{\"POST /api/card\" {:params .. :body .. :responses .. :description .. :docs ..}}` for every
-  operation. Schemas are ref-resolved and stripped of [[doc-keys]]; `:docs` keeps the whole
-  resolved operation, so a documentation-only change can still be reported."
+  operation. Schemas are ref-resolved and stripped of [[doc-keys]]; `:docs` is a digest of the
+  whole resolved operation, so a documentation-only change can still be reported."
   [spec]
-  (let [entries
-        (for [[path methods] (get spec "paths")
-              [method raw-op] methods
-              :when (map? raw-op)
-              :let [op   (resolve-refs raw-op spec)
+  (let [;; Stripping docs from the unresolved spec is linear; stripping resolved schemas is not.
+        stripped       (strip-docs spec)
+        resolve-schema (resolver stripped)
+        resolve-raw    (resolver spec)
+        entries
+        (for [[path methods] (get stripped "paths")
+              [method stripped-op] methods
+              :when (map? stripped-op)
+              :let [raw-op (get-in spec ["paths" path method])
+                    op     (resolve-schema stripped-op)
                     ;; A caller never sends a path variable's NAME, so renaming `{id}` to
                     ;; `{card-id}` is not a change. Key operations and path params by position.
                     slot (zipmap (map second (re-seq #"\{([^}]+)\}" path)) (range))]]
@@ -274,23 +363,22 @@
                                (str (get p "in") ":" (get p "name")))
                              {:label    (str (get p "in") ":" (get p "name"))
                               :required (boolean (get p "required"))
-                              :schema   (strip-docs (get p "schema" {}))}]))
+                              :schema   (get p "schema" {})}]))
             ;; nil when there is no body at all. An empty MAP means "any value" (Malli `:any`) and
             ;; must still be compared: narrowing it to a type requires more of the caller.
             :body-required (boolean (get-in op ["requestBody" "required"]))
             :body-types (set (keys (get-in op ["requestBody" "content"])))
             :body (let [content (get-in op ["requestBody" "content"])]
-                    (some-> (or (get-in content ["application/json" "schema"])
-                                (some #(get % "schema") (vals content)))
-                            strip-docs))
+                    (or (get-in content ["application/json" "schema"])
+                        (some #(get % "schema") (vals content))))
             :responses (into {}
                              (for [[code resp] (get op "responses")
                                    :when (map? resp)
                                    :let [schema (get-in resp ["content" "application/json" "schema"])]
                                    :when schema]
-                               [code (strip-docs schema)]))
-            :description (str/trim (or (get op "description") ""))
-            :docs op}])
+                               [code schema]))
+            :description (str/trim (or (get raw-op "description") ""))
+            :docs (digest-of (resolve-raw raw-op))}])
         ;; `/api/database/{id}/schemas` and `/api/database/{virtual-db}/schemas` are distinct routes,
         ;; told apart by parameter patterns. Where position-keying would merge two, keep the names.
         collides? (set (for [[k n] (frequencies (map first entries)) :when (> n 1)] k))]
@@ -299,35 +387,50 @@
 (defn- brief
   "One-line schema summary: type/enum/const rather than a wall of JSON."
   ([value] (brief value 200))
-  ([value limit]
-   (if (map? value)
-     (let [truncate #(cond-> % (> (count %) limit) (-> (subs 0 limit) (str "...")))]
+  ([value limit] (brief value limit 0))
+  ([value limit depth]
+   (let [truncate #(cond-> % (> (count %) limit) (-> (subs 0 limit) (str "...")))
+         nested   #(brief % 60 (inc depth))]
+     (cond
+       ;; Resolved schemas can nest thousands of levels; a summary needs the top few.
+       (and (coll? value) (> depth 2)) "..."
+       (map? value)
        (cond
          (contains? value "const") (str "const=" (truncate (json/write-str (get value "const"))))
          (contains? value "enum") (str "enum=" (truncate (json/write-str (get value "enum"))))
          (seq (concat (get value "oneOf") (get value "anyOf")))
-         (str/join " | " (map #(brief % 60) (take 4 (concat (get value "oneOf") (get value "anyOf")))))
+         (str/join " | " (map nested (take 4 (concat (get value "oneOf") (get value "anyOf")))))
+         (seq (get value "allOf")) (str/join " & " (map nested (take 4 (get value "allOf"))))
          (and (= "object" (get value "type")) (map? (get value "properties")))
          (str "object{" (truncate (str/join "," (sort (keys (get value "properties"))))) "}")
-         (= "array" (get value "type")) (str "array<" (brief (get value "items" {}) 60) ">")
+         (= "array" (get value "type")) (str "array<" (nested (get value "items" {})) ">")
          (get value "type") (str (get value "type"))
-         :else (truncate (json/write-str value))))
-     (let [s (json/write-str value)]
-       (cond-> s (> (count s) limit) (-> (subs 0 limit) (str "...")))))))
+         :else (truncate (str "{" (str/join "," (sort (keys value))) "}")))
+       (sequential? value) (str "[" (count value) " items]")
+       :else (truncate (json/write-str value))))))
+
+(defn- lazy-mapcat
+  "`mapcat`, but lazy in the results of `f` too. `mapcat` realizes the first few results through
+  `apply concat`, which forces about three subtrees per level of a recursive walk."
+  [f coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (concat (f (first s)) (lazy-mapcat f (rest s))))))
 
 (defn- deltas
-  "Paths at which `o` and `n` differ. Lists of scalars, such as enums, show added/removed values."
+  "Paths at which `o` and `n` differ, lazily. Lists of scalars, such as enums, show added/removed
+  values."
   [path o n]
   (let [show #(if (nil? %) "(none)" (brief % 40))]
     (cond
-      (= o n) []
+      (same? o n) []
       (and (map? o) (map? n))
-      (mapcat #(deltas (conj path %) (get o %) (get n %)) (sort (set/union (set (keys o)) (set (keys n)))))
+      (lazy-mapcat #(deltas (conj path %) (get o %) (get n %)) (sort (set/union (set (keys o)) (set (keys n)))))
       (and (sequential? o) (sequential? n) (= (count o) (count n)))
-      (mapcat #(deltas (conj path %1) %2 %3) (range) o n)
+      (lazy-mapcat (fn [[i a b]] (deltas (conj path i) a b)) (map vector (range) o n))
       :else
       [(str (if (seq path) (str/join "." path) "value") ": "
-            (if (and (sequential? o) (sequential? n) (not-any? coll? (concat o n)))
+            (if (and (sequential? o) (sequential? n) (not-any? coll? o) (not-any? coll? n))
               (str/join " " (concat (map #(str "+" (json/write-str %)) (remove (set o) n))
                                     (map #(str "-" (json/write-str %)) (remove (set n) o))))
               (str (show o) " -> " (show n))))])))
@@ -339,7 +442,8 @@
   (let [o (brief old), n (brief new)]
     (if (not= o n)
       (str o " -> " n)
-      (let [ds (deltas [] old new)]
+      ;; Lazy: two large schemas can differ at thousands of paths, and the summary shows three.
+      (let [ds (take 4 (deltas [] old new))]
         (str o " (" (str/join "; " (take 3 ds)) (when (> (count ds) 3) "; ...") ")")))))
 
 (def ^:private breaking :breaking)
@@ -366,7 +470,7 @@
   "A finding for the keywords beside an object's properties, when they changed."
   [dir pad label old-schema new-schema]
   (let [o (object-shell old-schema), n (object-shell new-schema)]
-    (when (not= o n)
+    (when-not (same? o n)
       [[(if (compatible? dir o n) additive breaking)
         (str pad "~ " label ": " (brief-change o n))]])))
 
@@ -417,7 +521,7 @@
           (mapcat (fn [k]
                     (let [o (get old-props k), n (get new-props k)]
                       (concat
-                       (when-not (= o n) (body-lines (str label "." k) o n (inc depth)))
+                       (when-not (same? o n) (body-lines (str label "." k) o n (inc depth)))
                        (cond
                          (and (contains? new-req k) (not (contains? old-req k)))
                          [[breaking (str pad "! " label "." k " is now REQUIRED (breaking)")]]
@@ -449,7 +553,7 @@
        (let [o (non-null old-schema), n (non-null new-schema)]
          (and (= "array" (get o "type")) (= "array" (get n "type"))
               (= (type-set old-schema) (type-set new-schema))
-              (not= (get o "items") (get n "items"))))
+              (not (same? (get o "items") (get n "items")))))
        (response-lines (str code "[]") (get (non-null old-schema) "items" {})
                        (get (non-null new-schema) "items" {}) (inc depth))
 
@@ -483,7 +587,7 @@
             [breaking (str pad "! " label "." k " is no longer always returned (provides less)")])
           (mapcat (fn [k]
                     (let [o (get old-props k), n (get new-props k)]
-                      (when (not= o n)
+                      (when-not (same? o n)
                         (response-lines (str code "." k) o n (inc depth)))))
                   (sort (set/intersection old-keys new-keys)))))))))
 
@@ -507,7 +611,7 @@
                     ;; Becoming optional requires LESS of the caller: additive.
                     [[(if (:required pn) breaking additive)
                       (str "    ! param " (lbl p) " required: " (:required po) " -> " (:required pn))]])
-                  (when (not= (:schema po) (:schema pn))
+                  (when-not (same? (:schema po) (:schema pn))
                     [[(if (compatible? :request (:schema po) (:schema pn)) additive breaking)
                       (str "    ~ param " (lbl p) " schema: " (brief-change (:schema po) (:schema pn)))]]))))
              (sort (set/intersection old-keys new-keys)))
@@ -518,13 +622,13 @@
      ;; A caller sends one content type; dropping it fails that caller even if the schema is the same.
      (when-let [dropped (seq (sort (set/difference (:body-types old-op) (:body-types new-op))))]
        [[breaking (str "    - body content type no longer accepted: " (str/join ", " dropped))]])
-     (when (not= (:body old-op) (:body new-op))
+     (when-not (same? (:body old-op) (:body new-op))
        (body-lines "body" (:body old-op) (:body new-op)))
      (let [old-resp (:responses old-op), new-resp (:responses new-op)]
        (concat
         (mapcat (fn [code] (response-lines code (get old-resp code) (get new-resp code)))
                 (->> (set/intersection (set (keys old-resp)) (set (keys new-resp)))
-                     (filter #(not= (get old-resp %) (get new-resp %)))
+                     (remove #(same? (get old-resp %) (get new-resp %)))
                      sort))
         (for [code (sort (set/difference (set (keys old-resp)) (set (keys new-resp))))]
           [breaking (str "    - response " code " schema removed (provides less)")])
@@ -558,7 +662,7 @@
                                               ;; The walk found nothing, yet the stripped schemas
                                               ;; differ: rank the whole schema rather than let a
                                               ;; real change fall through to doc-only below.
-                                              (not= (schemas o) (schemas n))
+                                              (not (same? (schemas o) (schemas n)))
                                               [[(if (and (compatible? :request (:body o) (:body n))
                                                          (every? #(compatible? :response (get-in o [:responses %]) (get-in n [:responses %]))
                                                                  (keys (:responses o))))

@@ -579,3 +579,21 @@
     (testing "a response default is not part of the contract"
       (is (not (breaking? (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string" "default" "x"}}))}})
                           (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string" "default" "y"}}))}})))))))
+
+(deftest shared-refs-do-not-expand-exponentially-test
+  (testing "a schema referenced twice at every level of a 40-deep chain is compared, not inlined 2^40 times"
+    (let [schemas (fn [leaf]
+                    (into {"S40" leaf}
+                          (for [i (range 40)]
+                            [(str "S" i) (obj {"a" {"$ref" (str "#/components/schemas/S" (inc i))}
+                                               "b" {"$ref" (str "#/components/schemas/S" (inc i))}})])))
+          body    {"$ref" "#/components/schemas/S0"}]
+      (is (breaking? (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a" "b"]})})
+                     (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a"]})}))))))
+
+(deftest ref-shared-by-request-and-response-is-compared-in-both-directions-test
+  (testing "a new enum value in a schema the request and response share breaks the response"
+    (let [s (fn [vs] (spec {"/api/x" {"post" (op :body {"$ref" "#/components/schemas/E"}
+                                                 :response {"$ref" "#/components/schemas/E"})}}
+                           {"schemas" {"E" {"type" "string" "enum" vs}}}))]
+      (is (breaking? (s ["a"]) (s ["a" "b"]))))))
