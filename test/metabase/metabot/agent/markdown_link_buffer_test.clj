@@ -52,7 +52,7 @@
          [outputs (mlb/flush-state state) @registry])))))
 
 (defn- resolve-parts
-  "Run parts through a fresh `resolve-xf` with no queries or charts."
+  "Run parts through a fresh [[mlb/resolve-xf]] with no queries or charts."
   [parts]
   (into [] (mlb/resolve-xf {} {} (atom {})) parts))
 
