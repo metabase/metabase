@@ -6,6 +6,7 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 
+import type { UseHasDataResult } from "../../metabot-analytics/hooks/useHasData";
 import { useHasData } from "../../metabot-analytics/hooks/useHasData";
 import type { McpFilters } from "../query-utils";
 import { buildTotalCountQuery } from "../query-utils";
@@ -25,7 +26,7 @@ export function useMcpHasData({
   groupId,
   tenantId,
   errorsOnly = false,
-}: DataSources & McpFilters & { errorsOnly?: boolean }) {
+}: DataSources & McpFilters & { errorsOnly?: boolean }): UseHasDataResult {
   const query = useMemo(
     () =>
       provider && table && groupMembersTable

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import type { CliFilters } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import { buildTotalCountQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
+import type { UseHasDataResult } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useHasData";
 import { useHasData } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useHasData";
 import type {
   CardMetadata,
@@ -24,7 +25,7 @@ export function useCliHasData({
   groupId,
   tenantId,
   errorsOnly = false,
-}: DataSources & CliFilters & { errorsOnly?: boolean }) {
+}: DataSources & CliFilters & { errorsOnly?: boolean }): UseHasDataResult {
   const query = useMemo(
     () =>
       provider && table && groupMembersTable

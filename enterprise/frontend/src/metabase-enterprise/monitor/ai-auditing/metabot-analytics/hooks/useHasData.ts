@@ -5,7 +5,7 @@ import type { Dataset } from "metabase-types/api";
 
 import { useAdhocBreakoutQuery } from "./useAdhocBreakoutQuery";
 
-type Result = {
+export type UseHasDataResult = {
   /** No count has resolved yet, or the view's metadata is still loading: show a loader, never the empty state. */
   isInitialLoading: boolean;
   /** A later load triggered by a filter change: let the charts show their own skeletons. */
@@ -28,7 +28,7 @@ function getCount(dataset: Dataset | undefined): number {
  * Distinguishes the initial load (loader) from a filter-change refetch (skeletons) so the page
  * never flashes the empty state before the first result has resolved.
  */
-export function useHasData(countQuery: Query | null): Result {
+export function useHasData(countQuery: Query | null): UseHasDataResult {
   const { data, currentData, isFetching, error } =
     useAdhocBreakoutQuery(countQuery);
 
