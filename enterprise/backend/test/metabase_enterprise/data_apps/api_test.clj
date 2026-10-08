@@ -365,7 +365,8 @@
                                                         :display_name "Action perms app"
                                                         :bundle_path  "data_apps/action-perms-app/index.js"}))]
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
-            (mt/with-temp [:model/Collection {source-collection-id :id} {}]
+            ;; an action on no model lives in a data actions collection, as a data app runs them
+            (mt/with-temp [:model/Collection {source-collection-id :id} {:namespace :data-actions}]
               ;; A query action on no model, as a data app runs them, and its copy in the app's own collection.
               (let [action    {:name          "Rename venue"
                                :type          :query
