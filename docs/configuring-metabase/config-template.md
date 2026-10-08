@@ -227,13 +227,15 @@ config:
     llm-google-oauth-access-token: null
     llm-google-project-id: null
     llm-google-service-account-key: null
-    llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mini-model: null
     llm-mistral-api-base-url: https://api.mistral.ai/v1
     llm-mistral-api-key: null
     llm-moonshot-api-base-url: https://api.moonshot.ai/v1
     llm-moonshot-api-key: null
+    llm-ollama-api-base-url: null
+    llm-ollama-api-key: null
+    llm-ollama-request-timeout-ms: 300000
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
@@ -244,6 +246,8 @@ config:
     llm-vllm-api-base-url: null
     llm-vllm-api-key: null
     llm-vllm-request-timeout-ms: 300000
+    llm-xai-api-base-url: https://api.x.ai/v1
+    llm-xai-api-key: null
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science

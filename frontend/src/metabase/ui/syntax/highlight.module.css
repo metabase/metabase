@@ -74,6 +74,11 @@
   font-weight: bold;
 }
 
+/* Markdown markup (#, *, -, backticks) carries .processingInstruction too; this must follow it to win the cascade */
+.markdownMark {
+  color: var(--mb-color-text-primary);
+}
+
 .strong {
   font-weight: bold;
 }

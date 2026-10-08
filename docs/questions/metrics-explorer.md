@@ -40,7 +40,7 @@ To return to the metric's home page, click the metric card in the search bar and
 
 To open a **measure** in the metrics explorer:
 
-1. Navigate to the measure in **Data studio > Tables > [Your table] > Measures**.
+1. Navigate to the measure in **Data Studio > Connected data > [Your table] > Measures**.
 2. Select your measure.
 3. On the measure's page, click **three dots** next to the measure's name and select **Explore**.
 

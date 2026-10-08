@@ -16,6 +16,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -104,11 +105,37 @@
     (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                     {:status-code 400}))))
 
-(defn- check-collection-content
-  "Throws unless an Action may go in the Collection with `collection-id`."
+;; A data app's resource collection holds the copies of the actions the app runs, and actions without a model live in
+;; the data actions namespace.
+(defmethod collection/allowed-namespaces :model/Action
+  [_]
+  (conj collection/default-allowed-namespaces collection/data-apps-ns collection/data-actions-ns))
+
+(def ^:private model-less-namespaces
+  "The Collection namespaces an Action without a model may go in, besides the data actions root."
+  #{collection/data-actions-ns collection/data-apps-ns})
+
+(defn- collection-namespace
+  "The namespace of the Collection with `collection-id` as a keyword, or nil."
   [collection-id]
+  (some-> collection-id actions.db/collection-namespace keyword))
+
+(defn- check-model-less-collection
+  "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection."
+  [{model-id :model_id, collection-id :collection_id}]
+  (when (and (nil? model-id)
+             collection-id
+             (not (contains? model-less-namespaces (collection-namespace collection-id))))
+    (let [msg (tru "An action without a model can only go in a data actions or data app collection.")]
+      (throw (ex-info msg {:status-code 400
+                           :errors      {:collection_id msg}})))))
+
+(defn- check-collection-content
+  "Throws unless `action` may go in its Collection."
+  [{collection-id :collection_id, :as action}]
   (collection/check-collection-namespace :model/Action collection-id)
-  (collection/check-allowed-content :action collection-id))
+  (collection/check-allowed-content :action collection-id)
+  (check-model-less-collection action))
 
 (defn- set-model-collection
   "`action` with the `:collection_id` of its model Card."
@@ -121,7 +148,7 @@
              model-id set-model-collection)
     (when (implicit? action)
       (check-implicit-action-model model-id))
-    (check-collection-content (:collection_id <>))))
+    (check-collection-content <>)))
 
 (t2/define-before-update :model/Action
   [{model-id :model_id, :as action}]
@@ -132,8 +159,8 @@
       (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
-      (when (contains? (t2/changes <>) :collection_id)
-        (check-collection-content (:collection_id <>))))))
+      (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
+        (check-collection-content <>)))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -182,12 +209,29 @@
       (when collection-id
         (api/check-404 (actions.db/collection-exists? collection-id))))))
 
+(defmethod mi/perms-objects-set :model/Action
+  [{model-id :model_id, collection-id :collection_id, :as action} read-or-write]
+  (cond
+    model-id
+    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
+
+    (and (= read-or-write :write)
+         (not (remote-sync/model-editable? :model/Action (assoc action :model_id nil))))
+    #{"___no-remote-sync-access"}
+
+    (nil? collection-id)
+    (perms/perms-objects-set-for-parent-collection collection/data-actions-ns nil read-or-write)
+
+    :else
+    ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)))
+
 (defn- collection-writable?
   "Whether the current user can write the Collection `action` goes in."
-  [action]
-  ((get-method mi/can-create? :perms/use-parent-collection-perms)
-   :model/Action
-   (assoc action :collection_id (effective-collection-id action))))
+  [{model-id :model_id, :as action}]
+  (let [action (assoc action :collection_id (effective-collection-id action))]
+    (if model-id
+      ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
+      (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
@@ -488,15 +532,6 @@
    action-ids   :- [:sequential ::lib.schema.id/action]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
 
-(mu/defn select-actions-for-models :- [:maybe [:sequential ::actions.schema/action]]
-  "Find the unarchived Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
-   [[select-actions]] does.
-
-   Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential ::queries.schema/card]]
-   model-ids    :- [:sequential ms/PositiveInt]]
-  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
-
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
    `options` is interpreted by [[select-actions-matching-options]]."
@@ -576,6 +611,14 @@
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false, :archived_directly false}})
 
+(defmethod serdes/storage-path "Action" [{:keys [model_id collection_id] :as action} ctx]
+  (if (and (nil? model_id)
+           (or (nil? collection_id)
+               (= collection/data-actions-ns
+                  (some-> (actions.db/collection-namespace-with-entity-id collection_id) keyword))))
+    (serdes/storage-default-collection-path action ctx (name collection/data-actions-ns))
+    (serdes/storage-default-collection-path action ctx)))
+
 (defmethod serdes/load-one! "Action" [ingested maybe-local]
   (when-not (= "http" (some-> (:type ingested) name))
     (serdes/default-load-one! ingested maybe-local)))
@@ -587,12 +630,8 @@
       [[{:model "Collection" :id collection-id}]])
     (when-let [model-id (:model_id action)]
       [[{:model "Card" :id model-id}]])
-    ;; this method is called on ingested data before transformation, and so here it always will be a string
     (when (= (:type action) "query")
-      (let [{:keys [database_id dataset_query]} (first (:query action))]
-        (concat
-         [[{:model "Database" :id database_id}]]
-         (serdes/mbql-deps false dataset_query)))))))
+      (serdes/mbql-deps false (:dataset_query (first (:query action))))))))
 
 (defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id collection_id model_id type]}]
   ;; Serialization runs on the raw entity, whose query lives in the `query_action` child table (`:type` is a keyword

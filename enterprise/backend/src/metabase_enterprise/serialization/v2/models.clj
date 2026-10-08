@@ -4,7 +4,9 @@
 (def data-model
   "Schema model types"
   ["Database"
+   "Dimension"
    "Field"
+   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
@@ -17,6 +19,8 @@
   ["Table"
    "TableUserSettings"
    "Field"
+   "FieldUserSettings"
+   "Dimension"
    "Segment"])
 
 (def content
@@ -29,6 +33,11 @@
    "Glossary"
    "NativeQuerySnippet"
    "Timeline"])
+
+(def elidable-content-models
+  "Content models a reference may name without the target being in the archive or the destination. Such references
+  are dropped on import instead of failing the load."
+  #{"Timeline"})
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
@@ -53,8 +62,6 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "DashboardTab"
-   "Dimension"
-   "FieldUserSettings"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -70,6 +77,7 @@
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
+   "ApiKeyUsageLog"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"

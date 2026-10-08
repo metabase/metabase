@@ -525,6 +525,19 @@
                   {:type :reasoning-delta :id "r1" :delta "c"}
                   {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
 
+(deftest ^:parallel aisdk-xf-orphan-chunk-test
+  (testing "a group that does not open with its start chunk fails with an error naming the chunk"
+    (doseq [[mode xf] [["aisdk-xf" (self.core/aisdk-xf)]
+                       ["lite-aisdk-xf" (self.core/lite-aisdk-xf)]]]
+      (testing mode
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Model stream sent a :tool-input-delta chunk for \"call-1\" without its start chunk"
+             (into [] xf
+                   [{:type :start :messageId "msg-1"}
+                    {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{}"}
+                    {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])))))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
@@ -987,6 +1000,26 @@
       (is (=? {:type "finish" :finishReason "length"}
               (last (sse-events [(usage-part "length" "max_tokens")
                                  {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a content-filter finish outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "content-filter"}
+              (last (sse-events [(usage-part "content-filter" "refusal")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "the last non-nil usage finish reason decides"
+      (testing "a later stop supersedes an earlier content-filter"
+        (is (=? {:type "finish" :finishReason "stop"}
+                (last (sse-events [(usage-part "content-filter" "refusal")
+                                   (usage-part "stop" "end_turn")])))))
+      (testing "a later usage carrying no finish reason leaves an earlier length in place"
+        (is (=? {:type "finish" :finishReason "length"}
+                (last (sse-events [(usage-part "length" "max_tokens")
+                                   (usage-part nil nil)])))))
+      (testing "a filtered step with a tool call, then a completed OpenAI Responses step, is a normal stop"
+        (let [parts [(usage-part "content-filter" "content_filter")
+                     {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}
+                     (usage-part "stop" "completed")]]
+          (is (nil? (self.core/parts->incomplete-finish-reason parts)))
+          (is (=? {:type "finish" :finishReason "stop"}
+                  (last (sse-events parts)))))))
     (testing "a turn ending on a terminal tool call is a normal stop, not an incomplete turn"
       (is (=? {:type "finish" :finishReason "stop"}
               (last (sse-events [(usage-part "tool-calls" "tool_use")])))))
@@ -1372,17 +1405,53 @@
 
 (defn- malformed-tool-input-response
   "A reducible LLM stream whose forced tool call streams invalid JSON, so
-  `parse-tool-arguments` yields the `{:_raw_arguments ...}` sentinel."
+  `parse-tool-arguments` yields the `{:_raw_arguments ...}` sentinel.
+  `trailing-parts` are appended after it, e.g. a [[usage-part]] carrying a finish reason."
+  [& trailing-parts]
+  (let [chunks (concat [{:type :start :messageId "m1"}
+                        {:type :tool-input-start :toolCallId "c1" :toolName "json"}
+                        {:type :tool-input-delta :toolCallId "c1" :inputTextDelta "{not valid json"}
+                        {:type :tool-input-available :toolCallId "c1" :toolName "json"}]
+                       (test-util/parts->aisdk-chunks trailing-parts))]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (reduce rf init chunks)))))
+
+(defn- structured-call-error
+  "Run a structured call against whatever `openrouter/openrouter` is currently redefined to, and return the
+  exception it threw. Returns the call's result instead when it did not throw, so a test that expects a
+  failure fails on its assertions rather than propagating."
   []
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (reduce rf init [{:type :start :messageId "m1"}
-                       {:type :tool-input-start :toolCallId "c1" :toolName "json"}
-                       {:type :tool-input-delta :toolCallId "c1" :inputTextDelta "{not valid json"}
-                       {:type :tool-input-available :toolCallId "c1" :toolName "json"}]))))
+  (try
+    (self/call-llm-structured "openrouter/test-model"
+                              [{:role "user" :content "test"}]
+                              {:type "object" :properties {:answer {:type "string"}}}
+                              0.3 1024 {:tag "metabot_agent"})
+    (catch clojure.lang.ExceptionInfo e e)))
+
+(defn- text-turn-response
+  "A mocked LLM stream for a turn that answers in text: a `:start` part, one `:text` part per string in
+  `texts`, then `trailing-parts`, e.g. a [[usage-part]]."
+  [texts & trailing-parts]
+  (test-util/mock-llm-response
+   (concat [{:type :start :id "m1"}]
+           (map-indexed (fn [i text] {:type :text :id (str "t" i) :text text}) texts)
+           trailing-parts)))
+
+(def ^:private answer-text "Here you go:\n```json\n{\"answer\": \"42\"}\n```")
+
+(def ^:private more-text "\n\nI could also explain how I got there, step by st")
 
 (deftest call-llm-structured-rejects-malformed-json-test
   (llm.tu/with-default-connections
+    (testing "a content-filter finish does not reroute malformed JSON — only a truncation does"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (malformed-tool-input-response
+                                                          (usage-part "content-filter" "refusal")))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "structured-output-invalid" (:error-code (ex-data e))))))))
     (testing "malformed tool-call JSON is rejected as an error, not returned as a bogus result"
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
                                   openrouter/openrouter (constantly (malformed-tool-input-response))]
@@ -1399,6 +1468,15 @@
 
 (deftest call-llm-structured-surfaces-provider-error-test
   (llm.tu/with-default-connections
+    (testing "with no tool call, a provider :error part outranks an incomplete finish reason"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type :error :errorText "content policy violation"}
+                                                           (usage-part "length" "max_tokens")]))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "llm-stream-error" (:error-code (ex-data e))))))))
     (testing "a provider mid-stream :error part surfaces its message, not a generic 'no tool call' error"
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms      (constantly 0)
                                   openrouter/openrouter    (constantly
@@ -1467,6 +1545,166 @@
                        :id        "c1"
                        :function  "structured_output"
                        :arguments {:title "From the tool"}})))))))
+
+(deftest call-llm-structured-incomplete-without-tool-call-test
+  (llm.tu/with-default-connections
+    (testing "a turn that stopped early, with no tool call and no JSON in its text, reports why, not a generic 'no tool call' error"
+      (doseq [[reason raw] [["length" "max_tokens"] ["content-filter" "refusal"]]]
+        (testing reason
+          (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                      openrouter/openrouter (constantly
+                                                             (test-util/mock-llm-response
+                                                              [{:type :start :id "m1"}
+                                                               {:type :text :id "t1" :text "partial answer"}
+                                                               (usage-part reason raw)]))]
+            (let [e (structured-call-error)]
+              (is (instance? clojure.lang.ExceptionInfo e))
+              (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+              (is (= reason (:finish-reason (ex-data e))))
+              (is (= raw (:raw-finish-reason (ex-data e))))
+              (is (not (re-find #"no tool call" (ex-message e)))
+                  "the message must distinguish an incomplete turn from a model that simply did not call the tool"))))))))
+
+(deftest call-llm-structured-incomplete-truncated-json-test
+  (llm.tu/with-default-connections
+    (mt/with-log-level [metabase.metabot.self :fatal]
+      (testing "a tool call cut off mid-JSON by a length finish is incomplete, not invalid"
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                    openrouter/openrouter (constantly
+                                                           (malformed-tool-input-response
+                                                            (usage-part "length" "max_tokens")))]
+          (let [e (structured-call-error)]
+            (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+            (is (= "length" (:finish-reason (ex-data e))))
+            (is (= "max_tokens" (:raw-finish-reason (ex-data e)))))))
+      (testing "the truncated tool call outranks an :error part in the same turn"
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                    openrouter/openrouter (constantly
+                                                           (malformed-tool-input-response
+                                                            {:type :error :errorText "provider exploded"}
+                                                            (usage-part "length" "max_tokens")))]
+          (let [e (structured-call-error)]
+            (is (= "structured-output-incomplete" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-incomplete-is-not-retried-test
+  (llm.tu/with-default-connections
+    (testing "an incomplete structured response is not transient, so the provider is called exactly once"
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                    openrouter/openrouter (fn [_opts]
+                                                            (swap! calls inc)
+                                                            (test-util/mock-llm-response
+                                                             [{:type :start :id "m1"}
+                                                              (usage-part "length" "max_tokens")]))]
+          (structured-call-error)
+          (is (= 1 @calls)))))))
+
+(deftest call-llm-structured-text-json-on-early-stop-test
+  (llm.tu/with-default-connections
+    (testing "a text reply with a closed JSON block that matches the schema is used, also after an early stop"
+      (doseq [[reason raw] [["length" "max_tokens"] ["content-filter" "refusal"]]]
+        (testing reason
+          (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                      openrouter/openrouter (constantly
+                                                             (text-turn-response
+                                                              [answer-text more-text]
+                                                              (usage-part reason raw)))]
+            (is (= {:answer "42"} (structured-call-error)))))))))
+
+(deftest call-llm-structured-text-json-logs-finish-reason-test
+  (llm.tu/with-default-connections
+    (testing "a text JSON result after an early stop logs the finish reasons"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          [answer-text more-text]
+                                                          (usage-part "length" "max_tokens")))]
+        (log.capture/with-log-messages-for-level [messages [metabase.metabot.self :info]]
+          (structured-call-error)
+          (let [msg (some #(when (str/includes? (str (:message %)) "LLM answered in text") (:message %))
+                          (messages))]
+            (is (some? msg))
+            (is (re-find #":finish-reason \"?length" (str msg)))
+            (is (re-find #":raw-finish-reason \"?max_tokens" (str msg)))))))))
+
+(defn- empty-tool-call-response
+  "A reducible LLM stream for a turn that answers in `text`, then starts a `json` tool call and stops with a
+  `length` finish after the argument deltas `arg-deltas` (none by default)."
+  [text & arg-deltas]
+  (let [chunks (concat (test-util/parts->aisdk-chunks [{:type :start :id "m1"}
+                                                       {:type :text :id "t1" :text text}])
+                       [{:type :tool-input-start :toolCallId "c1" :toolName "json"}]
+                       (for [delta arg-deltas]
+                         {:type :tool-input-delta :toolCallId "c1" :inputTextDelta delta})
+                       (test-util/parts->aisdk-chunks [(usage-part "length" "max_tokens")]))]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (reduce rf init chunks)))))
+
+(deftest call-llm-structured-empty-tool-call-on-length-stop-uses-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a tool call cut off before its first argument byte has no arguments, so the text JSON is used"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly (empty-tool-call-response answer-text))]
+        (is (= {:answer "42"} (structured-call-error)))))))
+
+(deftest call-llm-structured-truncated-tool-call-outranks-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a tool call cut off after its first argument byte throws, even when the text holds valid JSON"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly (empty-tool-call-response answer-text "{"))]
+        (is (=? {:error-code    "structured-output-incomplete"
+                 :finish-reason "length"}
+                (ex-data (structured-call-error))))))))
+
+(deftest call-llm-structured-draft-json-before-unclosed-block-test
+  (llm.tu/with-default-connections
+    (testing "a closed JSON block is used when an unclosed block after it was cut off by a length stop"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": \"draft\"}\n```"
+                                                           "\n\nRevised:\n```json\n{\"answer\": \"fin"]
+                                                          (usage-part "length" "max_tokens")))]
+        (is (= {:answer "draft"} (structured-call-error)))))))
+
+(deftest call-llm-structured-schema-invalid-text-json-on-length-stop-test
+  (llm.tu/with-default-connections
+    (testing "text JSON that does not match the schema is not used, so a length stop reports why"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": 42}\n```" more-text]
+                                                          (usage-part "length" "max_tokens")))]
+        (let [e (structured-call-error)]
+          (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+          (is (= "length" (:finish-reason (ex-data e))))
+          (is (= "max_tokens" (:raw-finish-reason (ex-data e)))))))))
+
+(deftest call-llm-structured-error-part-outranks-text-json-test
+  (llm.tu/with-default-connections
+    (testing "a provider :error part outranks JSON in the text reply"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          [answer-text]
+                                                          {:type :error :errorText "content policy violation"}
+                                                          (usage-part "length" "max_tokens")))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [e (structured-call-error)]
+            (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-unclosed-json-on-length-stop-test
+  (llm.tu/with-default-connections
+    (testing "JSON in an unclosed block is never used, so a length stop reports why"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (text-turn-response
+                                                          ["Here you go:\n```json\n{\"answer\": \"4"]
+                                                          (usage-part "length" "max_tokens")))]
+        (let [e (structured-call-error)]
+          (is (= "structured-output-incomplete" (:error-code (ex-data e))))
+          (is (= "length" (:finish-reason (ex-data e)))))))))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
@@ -2331,6 +2569,63 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+(defn- provider-api-error!
+  "What an adapter throws when `provider` answers with an HTTP error `status` and a JSON `body`."
+  [provider status body]
+  (mt/with-log-level [metabase.metabot.self.core :fatal]
+    (caught #(self.core/rethrow-api-error! provider
+                                           (constantly "API error")
+                                           (ex-info "clj-http error"
+                                                    {:status  status
+                                                     :headers {"content-type" "application/json"}
+                                                     :body    (json/encode body)})))))
+
+(def ^:private anthropic-credit-balance-body
+  {:type  "error"
+   :error {:type    "invalid_request_error"
+           :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
+
+(deftest byok-provider-error-test
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+    (testing "classifies the failures that the customer can fix on their side"
+      (are [code provider status body]
+           (= code (:error-code (mt/as-admin (self/byok-provider-error (provider-api-error! provider status body)))))
+        "ai_provider_billing"    "anthropic"  400 anthropic-credit-balance-body
+        "ai_provider_billing"    "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                           :message "You have reached your specified API usage limits."}}
+        "ai_provider_billing"    "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
+        "ai_provider_billing"    "anthropic"  429 {:error {:type    "rate_limit_error"
+                                                           :message "You have reached your API usage limits."
+                                                           :details {:error_code "enforced_spend_limit_reached"}}}
+        "ai_provider_billing"    "openai"     429 {:error {:type    "insufficient_quota"
+                                                           :code    "insufficient_quota"
+                                                           :message "You exceeded your current quota."}}
+        "ai_provider_billing"    "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
+        "ai_provider_rate_limit" "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
+        "ai_provider_rate_limit" "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
+        "ai_provider_auth"       "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
+        "ai_provider_auth"       "anthropic"  403 {:error {:type    "permission_error"
+                                                           :message "Your API key does not have permission to use the specified resource."}}
+        nil                      "openai"     403 {:error {:type    "request_forbidden"
+                                                           :code    "unsupported_country_region_territory"
+                                                           :message "Country, region, or territory not supported"}}
+        nil                      "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                           :message "max_tokens: Input should be greater than 0"}}
+        nil                      "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}))
+    (testing "admins are told which provider failed, everyone else is not"
+      (doseq [status [402 429 401]]
+        (let [e (provider-api-error! "anthropic" status {})]
+          (is (str/includes? (:message (mt/as-admin (self/byok-provider-error e)))
+                             "Anthropic"))
+          (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
+                                              (self/byok-provider-error e)))
+                                  "Anthropic"))))))
+    (testing "the managed provider keeps the generic error, since its failures are Metabase's to fix"
+      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+        (is (nil? (mt/as-admin
+                    (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))))))
 
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"

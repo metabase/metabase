@@ -45,7 +45,7 @@
 
   This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
   available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
-  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
+  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm` and `ollama`, which serve whatever the
   operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
   [provider]
   (when-let [models (registry/optional provider :supported-models)]
@@ -347,6 +347,54 @@
                (recur (inc attempt)))
            (:ok result)))))))
 
+(def ^:private provider-billing-error-codes
+  "Codes Anthropic and OpenAI put in an error body when the account is out of credit or over a spend limit."
+  #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
+    "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
+
+(defn- provider-failure
+  "Classify a provider API error's ex-data as `:billing`, `:rate-limit` or `:auth`, or nil for any other failure."
+  [{:keys [status body]}]
+  (let [{error-type :type error-code :code :keys [message details]} (:error body)]
+    (cond
+      (or (= status 402)
+          (some provider-billing-error-codes [error-type error-code (:error_code details)])
+          ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
+          (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
+      :billing
+
+      (= status 429)
+      :rate-limit
+
+      (or (= status 401) (= "permission_error" error-type))
+      :auth)))
+
+(defn byok-provider-error
+  "A user-facing `{:message :error-code}` for a provider failure that the customer can fix on their side, or nil.
+  Always nil on the managed provider, where these failures are Metabase's to fix. Only admins are told which
+  provider failed and where to fix it."
+  [e]
+  (let [{:keys [api-error provider] :as data} (ex-data e)]
+    (when-let [failure (and api-error
+                            provider
+                            (not (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider)))
+                            (provider-failure data))]
+      (let [admin?        api/*is-superuser?*
+            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
+        (case failure
+          :billing    {:error-code "ai_provider_billing"
+                       :message    (if admin?
+                                     (tru "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account." provider-name)
+                                     (tru "The AI provider rejected the request because of a billing issue. Please contact your administrator."))}
+          :rate-limit {:error-code "ai_provider_rate_limit"
+                       :message    (if admin?
+                                     (tru "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account." provider-name)
+                                     (tru "The AI provider is rate limiting requests right now. Please try again in a moment."))}
+          :auth       {:error-code "ai_provider_auth"
+                       :message    (if admin?
+                                     (tru "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings." provider-name)
+                                     (tru "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."))})))))
+
 (defn- missing-required-permission
   "Returns the metabot permission keyword that the current user is missing
   (the base `:permission/metabot` or `required-perm`), or nil when granted.
@@ -524,6 +572,32 @@
                 value)))
           (cons text (reverse (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text)))))))
 
+(defn- incomplete-structured-output-error
+  "The error for a structured call whose turn stopped early without a usable result.
+
+  Two cases use it: the tool call was cut off, or the turn made no tool call and its text held no JSON that
+  matches the schema.
+
+  Reports `:error-code \"structured-output-incomplete\"` with `:finish-reason` and `:raw-finish-reason` in
+  ex-data, so callers can tell it from a model that simply did not call the tool. It carries no `:status`
+  and no cause, so [[retryable-error?]] is false — a replay would stop at the same ceiling."
+  [parts reason]
+  (ex-info "LLM stopped before completing its structured response"
+           {:parts             parts
+            :error-code        "structured-output-incomplete"
+            :finish-reason     reason
+            :raw-finish-reason (core/parts->raw-finish-reason parts)}))
+
+(defn- no-structured-output-error
+  "The error for a structured call with no tool call and no text JSON that matches the schema.
+
+  When the turn stopped early, this is [[incomplete-structured-output-error]], so the caller sees why.
+  Otherwise the model chose not to call the tool, and the error says so."
+  [parts incomplete-reason]
+  (if incomplete-reason
+    (incomplete-structured-output-error parts incomplete-reason)
+    (ex-info "LLM returned no tool call in structured response" {:parts parts})))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
@@ -590,12 +664,22 @@
                 error  (some (fn [{:keys [type error]}]
                                (when (= type :error)
                                  error))
-                             parts)]
+                             parts)
+                ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
+                ;; part, which the agent loop emits and this single-shot path never runs.
+                incomplete-reason (core/parts->incomplete-finish-reason parts)
+                malformed?        (and (map? result) (contains? result :_raw_arguments))]
             (cond
+              ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
+              ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
+              ;; ends the turn without truncating the JSON it already sent.
+              (and malformed? (= incomplete-reason "length"))
+              (throw (incomplete-structured-output-error parts incomplete-reason))
+
               ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
               ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
               ;; bogus map back to the caller as if it were a valid structured result.
-              (and (map? result) (contains? result :_raw_arguments))
+              malformed?
               (throw (ex-info "LLM returned malformed JSON in its structured tool call"
                               {:parts         parts
                                :error-code    "structured-output-invalid"
@@ -611,13 +695,19 @@
               (throw (ex-info (or (:message error) "LLM stream returned an error")
                               {:parts parts :error error :error-code "llm-stream-error"}))
 
+              ;; No tool call. Use JSON from the text when it matches the schema, also when the turn
+              ;; stopped early: JSON that the model completed before the stop, in the whole reply or in
+              ;; a fenced block, is usable.
               :else
               (if-let [output (structured-output-in-text parts json-schema)]
                 (do (log/info "LLM answered in text instead of calling the structured-output tool"
-                              {:provider provider :model model :tag (:tag opts)})
+                              {:provider          provider
+                               :model             model
+                               :tag               (:tag opts)
+                               :finish-reason     incomplete-reason
+                               :raw-finish-reason (core/parts->raw-finish-reason parts)})
                     {:result output :parts parts})
-                (throw (ex-info "LLM returned no tool call in structured response"
-                                {:parts parts}))))))))))
+                (throw (no-structured-output-error parts incomplete-reason))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.
@@ -640,6 +730,9 @@
 
   Returns the parsed JSON map from the forced tool call. When the model answers
   in text instead, the JSON in that text is returned if it matches `json-schema`.
+  This is also true after an early stop, but not when the stop truncated the JSON
+  of a tool call. That case, and an early stop with no matching JSON, throw
+  `structured-output-incomplete`.
   For access to the full streamed trace (non-tool text), see
   [[call-llm-structured-with-trace]]."
   [provider-and-model messages json-schema temperature max-tokens opts]

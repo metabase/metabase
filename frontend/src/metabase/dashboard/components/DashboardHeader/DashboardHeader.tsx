@@ -21,11 +21,11 @@ import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useMaybeLocation } from "metabase/router";
 import { getSetting } from "metabase/settings";
-import { Flex, Loader } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
 
+import { DashboardHeaderSkeleton } from "./DashboardHeaderSkeleton";
 import { DashboardHeaderView } from "./DashboardHeaderView";
 import { CancelEditButton, SaveEditButton } from "./buttons";
 
@@ -61,13 +61,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
       getSetting(state, "custom-homepage-dashboard") === dashboard?.id,
   );
 
-  const { data: collection, isLoading: isLoadingCollection } =
-    useGetCollectionQuery(
-      { id: dashboard.collection_id || "root" },
-      {
-        skip: isGuestEmbed,
-      },
-    );
+  const { data: collection } = useGetCollectionQuery(
+    { id: dashboard.collection_id || "root" },
+    {
+      skip: isGuestEmbed,
+    },
+  );
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
@@ -116,17 +115,6 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
     ];
   };
 
-  // We don't fetch collection info for static embedding
-  if (!isGuestEmbed) {
-    if (isLoadingCollection || !collection) {
-      return (
-        <Flex justify="center" py="1.5rem">
-          <Loader size={29} />
-        </Flex>
-      );
-    }
-  }
-
   const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
   const editingButtons = getEditingButtons();
@@ -164,10 +152,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
 };
 
 export const DashboardHeader = () => {
-  const { dashboard } = useDashboardContext();
+  const { dashboard, dashboardId, titled } = useDashboardContext();
 
   if (!dashboard) {
-    return null;
+    return (
+      <DashboardHeaderSkeleton dashboardId={dashboardId} titled={titled} />
+    );
   }
 
   return <DashboardHeaderInner dashboard={dashboard} />;

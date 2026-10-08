@@ -30,7 +30,7 @@ You pick which AI providers Metabase can use:
 - If you're **self-hosting Metabase** and want to use Metabot, you'll need to [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials.
 - On **Metabase Cloud**, you can [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials, [use the Metabase AI service](#metabase-ai-service), or both.
 
-The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
+The providers you set up here power Metabase's built-in AI features. The [MCP server](mcp.md#turn-on-the-mcp-server) doesn't use them; your MCP client brings its own model.
 
 ### Metabase AI service
 
@@ -94,6 +94,8 @@ If you're self-hosting, you can configure a provider with [environment variables
 
 An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
 
+A connection's credentials and its address have to come from the same place. For Ollama, if `MB_LLM_OLLAMA_API_BASE_URL` points a connection at a different server (such as Ollama Cloud at `https://ollama.com/v1`), Metabase won't send an API key entered in the UI there: set `MB_LLM_OLLAMA_API_KEY` too.
+
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
 On Metabase Cloud, [contact support](https://www.metabase.com/help-premium) if you want environment variables set for your instance.
@@ -122,7 +124,7 @@ _Admin > AI_
 
 ![Metabot settings](./images/ai-settings.png)
 
-The **Metabot settings** card has two tabs — **Internal** and **Embedded** — so you can configure Metabot for your internal Metabase separately from [embedded](../embedding/introduction.md) Metabase contexts. That way you can, for example, use Metabot in your Metabase while not granting access to Metabot in your embedded Metabase. Each tab has its own enable toggle, verified-content setting, allowed collection, and prompt suggestions, all configured independently.
+The **Metabot settings** card has two tabs, **Internal** and **Embedded**, so you can configure Metabot in different contexts. Each tab has its own enable toggle, verified or curated content setting, allowed collection, and prompt suggestions.
 
 ### Enable Metabot
 
@@ -143,13 +145,13 @@ The **Enable Embedded Metabot** toggle turns embedded Metabot on or off. The tog
 - [Full-app embedding](../embedding/full-app-embedding.md): The Metabot icon and keyboard shortcuts are only available when Metabot is enabled. Turning off Embedded Metabot will hide these icons and disable the keyboard shortcuts.
 - [Modular embedding](../embedding/modular-embedding.md): The toggle doesn't add Metabot anywhere; you have to explicitly include a chat component (like the SDK's [`MetabotQuestion`](../embedding/ai-chat.md)) in your application. If, however, you've added a component, and you turn off the Embedded Metabot toggle, your chat component will stop working, so you should also remove or hide the component in your application.
 
-### Verified content
+### Verified or curated content
+
+{% include plans-blockquote.html feature="Verified or curated content" %}
 
 _Available on both the Internal and Embedded tabs, configured independently._
 
-Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models/models.md) and [metrics](../data-modeling/semantic-layer/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
-
-Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
+When turned on, Metabot only uses content that's [verified](../exploration-and-organization/content-verification.md), in an [official collection](../exploration-and-organization/collections.md#official-collections), or published to the [Library](../data-modeling/semantic-layer/library.md). Published tables only count if their [visibility layer](../data-modeling/metadata/managing-tables.md#visibility-layer) is **Final**.
 
 ### Collection for natural language querying
 
@@ -169,7 +171,7 @@ If you're embedding the Metabot component in an app, you can point embedded Meta
 
 Picking **Our analytics** is the same as picking no collection at all, so pick something narrower if you want the scoping to do anything. And once you set a collection, tables drop out of embedded Metabot's search results, so pick a collection with the metrics and models you want people building on.
 
-This setting narrows where embedded Metabot searches; it's _not_ a substitute for setting permissions. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in. Restricting Metabot to [verified content](#verified-content) narrows those recent items to verified, official, and [Library](../data-modeling/semantic-layer/library.md) content, but it doesn't confine them to the collection you picked. To control what data people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
+This setting narrows where embedded Metabot searches; it's _not_ a substitute for setting permissions. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in. Restricting Metabot to [verified or curated content](#verified-or-curated-content) narrows those recent items to verified, official, and [Library](../data-modeling/semantic-layer/library.md) content, but it doesn't confine them to the collection you picked. To control what data people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
 
 ### Prompt suggestions
 

@@ -7,8 +7,6 @@ import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
 
 describe("scenarios > dashboard > filters > number", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -29,68 +27,7 @@ describe("scenarios > dashboard > filters > number", () => {
     );
   });
 
-  it("should work when set through the filter widget", () => {
-    DASHBOARD_NUMBER_FILTERS.forEach(({ operator, single }) => {
-      cy.log(`Make sure we can connect ${operator} filter`);
-      H.setFilter("Number", operator);
-
-      if (single) {
-        cy.findAllByRole("radio", { name: "A single value" })
-          .click()
-          .should("be.checked");
-      }
-
-      cy.findByText("Select…").click();
-      H.popover().contains("Tax").click();
-    });
-
-    H.saveDashboard();
-    cy.wait("@dashboardData");
-
-    DASHBOARD_NUMBER_FILTERS.forEach(
-      ({ operator, value, representativeResult }, index) => {
-        // eslint-disable-next-line metabase/no-unsafe-element-filtering
-        H.filterWidget().eq(index).click();
-        addWidgetNumberFilter(value);
-        cy.wait("@dashboardData");
-
-        cy.log(`Make sure ${operator} filter returns correct result`);
-        cy.findByTestId("dashcard").should("contain", representativeResult);
-
-        H.clearFilterWidget(index);
-        cy.wait("@dashboardData");
-      },
-    );
-  });
-
-  it("should work when set as the default filter", () => {
-    H.setFilter("Number", "Equal to");
-    H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Default value").next().click();
-
-    addWidgetNumberFilter("2.07");
-
-    H.saveDashboard();
-    cy.wait("@dashboardData");
-
-    cy.findByTestId("dashcard")
-      .should("contain", "37.65")
-      .and("not.contain", "101.04");
-
-    H.clearFilterWidget();
-    cy.wait("@dashboardData");
-
-    H.filterWidget().click();
-    addWidgetNumberFilter("5.27", { buttonLabel: "Update filter" });
-    cy.wait("@dashboardData");
-
-    cy.findByTestId("dashcard")
-      .should("contain", "101.04")
-      .and("not.contain", "37.65");
-  });
-
-  it("should support being required", () => {
+  it("should support being required, and work when set through the filter widget", () => {
     H.setFilter("Number", "Equal to", "Equal to");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
 
@@ -116,7 +53,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     H.saveDashboard();
     cy.wait("@dashboardData");
-    H.ensureDashboardCardHasText("37.65");
+    assertDefaultTaxApplied();
 
     // Updates the filter value
     H.setFilterWidgetValue("5.27", "Enter a number");
@@ -127,32 +64,81 @@ describe("scenarios > dashboard > filters > number", () => {
     H.resetFilterWidgetToDefault();
     H.filterWidget().findByText("2.07");
     cy.wait("@dashboardData");
-    H.ensureDashboardCardHasText("37.65");
+    assertDefaultTaxApplied();
 
     // Removing value resets back to default
+    H.setFilterWidgetValue("5.27", "Enter a number");
+    cy.wait("@dashboardData");
+    H.ensureDashboardCardHasText("95.77");
     H.setFilterWidgetValue(null, "Enter a number", {
       buttonLabel: "Set to default",
     });
+    cy.wait("@dashboardData");
     H.filterWidget().findByText("2.07");
-    H.ensureDashboardCardHasText("37.65");
-  });
+    assertDefaultTaxApplied();
 
-  it("should allow between filters without min or max (metabase#54364)", () => {
+    cy.log("remove the required filter");
+    H.editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Equal to")
+      .click();
+    H.sidebar().findByRole("button", { name: "Remove" }).click();
+
+    DASHBOARD_NUMBER_FILTERS.forEach(({ operator, single }) => {
+      cy.log(`Make sure we can connect ${operator} filter`);
+      H.setFilter("Number", operator);
+
+      if (single) {
+        cy.findAllByRole("radio", { name: "A single value" })
+          .click()
+          .should("be.checked");
+      }
+
+      cy.findByText("Select…").click();
+      H.popover().contains("Tax").click();
+    });
+
+    H.setFilter("Number", "Between");
+    H.selectDashboardFilter(H.getDashboardCard(), "Total");
+
+    // Removing the required filter can re-run the card, and no wait takes that request.
+    // A new alias makes the waits below start at the save.
+    cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as(
+      "savedDashboardData",
+    );
+    H.saveDashboard();
+    cy.wait("@savedDashboardData");
+
+    DASHBOARD_NUMBER_FILTERS.forEach(
+      ({ operator, value, representativeResult, negativeAssertion }, index) => {
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        H.filterWidget().eq(index).click();
+        addWidgetNumberFilter(value);
+        cy.wait("@savedDashboardData");
+
+        cy.log(`Make sure ${operator} filter returns correct result`);
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", negativeAssertion);
+
+        H.clearFilterWidget(index);
+        cy.wait("@savedDashboardData");
+      },
+    );
+
+    cy.log("Between filters work without min or max (metabase#54364)");
+    const betweenIndex = DASHBOARD_NUMBER_FILTERS.length;
     const getInput = (index) =>
       cy
         .findAllByPlaceholderText("Enter a number")
         .should("have.length", 2)
         .eq(index);
-
     const getMinInput = () => getInput(0);
     const getMaxInput = () => getInput(1);
 
-    H.setFilter("Number", "Between");
-    H.selectDashboardFilter(H.getDashboardCard(), "Total");
-    H.saveDashboard();
-
     cy.log("min only");
-    H.filterWidget().click();
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.filterWidget().eq(betweenIndex).click();
     H.popover().within(() => {
       getMinInput().type("150");
       cy.button("Add filter").click();
@@ -160,7 +146,8 @@ describe("scenarios > dashboard > filters > number", () => {
     H.getDashboardCard().within(() => H.assertTableRowsCount(256));
 
     cy.log("max only");
-    H.filterWidget().click();
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.filterWidget().eq(betweenIndex).click();
     H.popover().within(() => {
       getMinInput().clear();
       getMaxInput().type("20");
@@ -168,8 +155,9 @@ describe("scenarios > dashboard > filters > number", () => {
     });
     H.getDashboardCard().within(() => H.assertTableRowsCount(52));
 
-    cy.log("min and max only");
-    H.filterWidget().click();
+    cy.log("min and max");
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.filterWidget().eq(betweenIndex).click();
     H.popover().within(() => {
       getMinInput().clear().type("150");
       getMaxInput().clear().type("155");
@@ -178,3 +166,10 @@ describe("scenarios > dashboard > filters > number", () => {
     H.getDashboardCard().within(() => H.assertTableRowsCount(166));
   });
 });
+
+function assertDefaultTaxApplied() {
+  cy.findByTestId("dashcard")
+    .should("contain", "37.65")
+    .and("not.contain", "110.93")
+    .and("not.contain", "95.77");
+}

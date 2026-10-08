@@ -1,4 +1,5 @@
 import { DateTime } from "metabase/common/components/DateTime";
+import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { TimelineEvent } from "metabase-types/api";
 
@@ -39,13 +40,21 @@ export const TimelineEventRow = ({
 
 interface TimelineEventsListProps {
   events: TimelineEvent[];
+  showDetails?: boolean;
 }
 
-export const TimelineEventsList = ({ events }: TimelineEventsListProps) => (
+export const TimelineEventsList = ({
+  events,
+  showDetails = false,
+}: TimelineEventsListProps) => (
   <Stack gap={0} data-testid="timeline-events-list">
     {events.map((event) => (
       <Box key={event.id} className={S.listItemWrapper}>
-        <TimelineEventRow event={event} />
+        {showDetails ? (
+          <TimelineEventInfo event={event} />
+        ) : (
+          <TimelineEventRow event={event} />
+        )}
       </Box>
     ))}
   </Stack>
