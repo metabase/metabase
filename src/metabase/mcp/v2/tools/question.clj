@@ -130,17 +130,16 @@
                     stages)))))
 
 (defn- check-native-source-gates!
-  "The gates an inline `native` source passes: the user's groups allowing `execute_sql`, the
-   `agent:sql:run` scope, and the `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own three,
-   because the stored card is raw SQL a later `run_saved_question` executes, so accepting one under
-   `question_write`'s policy and content write scope alone would rebuild `execute_sql` for a user an
-   admin denied it, or without its scope or its kill switch. Every source that can resolve
-   to native passes these, `query_handle` included — holding a handle is not proof the gates were
-   spent (`construct_native_query` mints under `agent:sql:construct` and never consults the kill
-   switch, and a handle resolves on `core_session.user_id`, so any credential of that user can spend
-   one minted by another). No-op on the scope half for unscoped callers (cookie sessions bind the
-   unrestricted sentinel, which matches everything)."
+  "Throw unless the current user and `token-scopes` may store a native question: the user's groups must allow
+   `execute_sql`, the scopes must match `agent:sql:run`, and the `mcp-execute-sql-enabled` kill switch must be on."
   [token-scopes]
+  ;; `execute_sql`'s own three gates. A stored native card is raw SQL a later `run_saved_question` executes, so
+  ;; accepting one under `question_write`'s policy and the content write scope alone would rebuild `execute_sql` for
+  ;; a user an admin denied it, or without its scope or its kill switch. Every source that can resolve to native
+  ;; passes these, `query_handle` included: holding a handle is not proof the gates were spent
+  ;; (`construct_native_query` mints under `agent:sql:construct` and never consults the kill switch, and a handle
+  ;; resolves on `core_session.user_id`, so any credential of that user can spend one minted by another). Unscoped
+  ;; callers bind the unrestricted sentinel, which matches every scope.
   (registry/check-tool-allowed! "execute_sql" (message/raw "Saving a native (SQL) query"))
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (common/throw-insufficient-scope!
@@ -583,7 +582,7 @@
                              visibility-type-strs)]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope, the instance-level mcp-execute-sql-enabled setting, and the execute_sql tool enabled for your groups, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
   {:name           "question_write"
    :default-access :allowed
    :scope          metabot.scope/agent-content-write
