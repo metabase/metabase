@@ -633,9 +633,17 @@ describe("issue 31274", () => {
 
   it("should not clip dashcard actions (metabase#31274)", () => {
     H.createDashboard().then(({ body: dashboard }) => {
-      const dashcards = createTextCards(3);
-      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-        dashcards,
+      const [text1, text2, text3] = createTextCards(3);
+      // Dashcards render in creation order. Text 3 is created last, so it
+      // comes after Text 2 in the DOM while it sits above it.
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [text1, text2],
+      }).then(({ body: { dashcards } }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [...dashcards, text3],
+        });
       });
 
       H.visitDashboard(dashboard.id);
@@ -643,11 +651,12 @@ describe("issue 31274", () => {
 
       H.assertTabSelected("Tab 1");
 
-      // Text 3 sits above Text 2 and comes after it in the DOM, so it could cover its actions
-      H.getDashboardCard(1).findByText("Text 2");
-      H.getDashboardCard(2).findByText("Text 3");
+      H.getDashboardCards()
+        .should("have.length", 3)
+        .last()
+        .findByText("Text 3");
 
-      H.getDashboardCard(1).realHover({
+      H.getDashboardCards().filter(":contains('Text 2')").realHover({
         scrollBehavior: false, // prevents flaky tests
       });
 
@@ -1608,7 +1617,7 @@ describe("issue 64138", () => {
       });
 
     cy.log("hovering marker icons should not open their tooltips");
-    getMarkerIcon(0).trigger("mousemove");
+    getMarkerIcon(0).trigger("mousemove", { force: true });
     H.tooltip().should("not.exist");
 
     cy.log("clicking marker icons should not navigate to the question");
@@ -1621,7 +1630,7 @@ describe("issue 64138", () => {
     );
     cy.findByTestId("edit-bar").button("Cancel").click();
     H.getDashboardCard(0).findByLabelText("Zoom in").should("exist");
-    getMarkerIcon(0).trigger("mousemove");
+    getMarkerIcon(0).trigger("mousemove", { force: true });
     H.tooltip().should("be.visible");
     getMarkerIcon(0).click({ force: true });
     cy.location("pathname").should("match", /^\/question/);
