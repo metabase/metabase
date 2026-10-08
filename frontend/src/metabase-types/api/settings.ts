@@ -466,6 +466,7 @@ interface InstanceSettings {
   "enable-embedding-modular": boolean;
   "enable-embedding-sdk": boolean;
   "enable-embedding-interactive": boolean;
+  "enable-embedding-sidecar": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;

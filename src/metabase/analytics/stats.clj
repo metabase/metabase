@@ -136,6 +136,7 @@
    ;; reports keep resolving; they now both report that one flag.
    :enable_embedding_simple              (setting/get :enable-embedding-modular)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
+   :enable_embedding_sidecar             (setting/get :enable-embedding-sidecar)
    :enable_embedding_static              (setting/get :enable-embedding-modular)
    :enable_embedding_modular             (setting/get :enable-embedding-modular)
    :embedding_app_origin_set             (boolean
@@ -637,6 +638,7 @@
    [:enable_embedding_sdk :boolean]
    [:enable_embedding_simple :boolean]
    [:enable_embedding_interactive :boolean]
+   [:enable_embedding_sidecar :boolean]
    [:enable_embedding_static :boolean]
    [:enable_embedding_modular :boolean]
    [:embedding_app_origin_set :boolean]
@@ -951,6 +953,9 @@
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
+   {:name      :sidecar-embedding
+    :available true
+    :enabled   (setting/get :enable-embedding-sidecar)}
    {:name      :tenants
     :enabled   (setting/get :use-tenants)
     :available (premium-features/enable-tenants?)}

@@ -254,6 +254,7 @@ export const createMockSettings = (
   "enable-embedding-modular": false,
   "enable-embedding-sdk": false,
   "enable-embedding-interactive": false,
+  "enable-embedding-sidecar": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,
   "enable-sandboxes?": true,

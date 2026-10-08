@@ -124,6 +124,7 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "enable-embedding-interactive",
   "enable-embedding-modular",
   "enable-embedding-sdk",
+  "enable-embedding-sidecar",
   "enable-nested-queries",
   "enable-password-login",
   "enable-pivoted-exports",

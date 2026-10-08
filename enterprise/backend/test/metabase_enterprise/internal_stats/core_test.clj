@@ -76,3 +76,13 @@
     (mt/with-temporary-setting-values [enable-embedding-sdk true
                                        jwt-enabled          false]
       (is (not (:enabled-embedding-sdk (sut/embedding-settings 0 0)))))))
+
+(deftest enabled-embedding-sidecar-test
+  (testing "with side-car enabled, whatever the sign-in setup"
+    (mt/with-temporary-setting-values [enable-embedding-sidecar true
+                                       jwt-enabled              false
+                                       saml-enabled             false]
+      (is (:enabled-embedding-sidecar (sut/embedding-settings 0 0)))))
+  (testing "with side-car disabled"
+    (mt/with-temporary-setting-values [enable-embedding-sidecar false]
+      (is (not (:enabled-embedding-sidecar (sut/embedding-settings 0 0)))))))
