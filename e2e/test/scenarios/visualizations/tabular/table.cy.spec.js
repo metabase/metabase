@@ -41,6 +41,7 @@ describe("scenarios > visualizations > table", () => {
     H.assertTableData({
       columns: initialColumnsOrder,
     });
+    assertColumnNotSortable("Count");
 
     H.notebookButton().click();
 
@@ -56,6 +57,7 @@ describe("scenarios > visualizations > table", () => {
     H.assertTableData({
       columns: initialColumnsOrder,
     });
+    assertColumnNotSortable("Count");
   });
 
   it("should allow changing column title when the field ref is the same except for the join-alias", () => {
@@ -77,7 +79,8 @@ describe("scenarios > visualizations > table", () => {
     });
 
     cy.realPress("Escape");
-    headerCells().findAllByText("ID updated").should("have.length", 1);
+    H.tableHeaderColumn("ID updated").should("exist");
+    H.tableHeaderColumn("Orders → ID").should("exist");
   });
 
   it("should allow selecting cells in a table and copy the values", () => {
@@ -145,6 +148,7 @@ describe("scenarios > visualizations > table", () => {
 
     // Click outside to clear selection
     getNonPKCells().eq(0).click();
+    assertSelectedCells(1);
     // Click outside the table
     H.queryBuilderHeader().findByText("Orders").click();
     assertSelectedCells(0);
@@ -155,6 +159,10 @@ describe("scenarios > visualizations > table", () => {
     H.openVizSettingsSidebar();
     H.sidebar().findByText("Display").click();
     H.sidebar().findByText("Show row index").click();
+    H.tableInteractive()
+      .findAllByTestId("row-id-cell")
+      .eq(5)
+      .should("have.text", "6");
 
     H.openObjectDetail(5);
 
@@ -208,8 +216,8 @@ describe("scenarios > visualizations > table", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait(["@getSearchResults", "@getDataset"]);
 
-    H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
-    H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
+    H.getColumnWidth("first_column").as("firstWidth", { type: "static" });
+    H.getColumnWidth("second_column").as("secondWidth", { type: "static" });
 
     H.tableHeaderColumn("first_column").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", {
@@ -218,15 +226,11 @@ describe("scenarios > visualizations > table", () => {
 
     const assertUnchangedWidths = () => {
       cy.get("@firstWidth").then((firstWidth) => {
-        H.tableHeaderColumn("first_column")
-          .invoke("outerWidth")
-          .should("eq", firstWidth);
+        H.getColumnWidth("first_column").should("eq", firstWidth);
       });
 
       cy.get("@secondWidth").then((secondWidth) => {
-        H.tableHeaderColumn("second_column")
-          .invoke("outerWidth")
-          .should("eq", secondWidth);
+        H.getColumnWidth("second_column").should("eq", secondWidth);
       });
     };
 
@@ -496,13 +500,15 @@ describe("scenarios > visualizations > table", () => {
       });
     });
 
+    cy.clock();
     cy.button("Visualize").click();
 
-    cy.clock();
-    cy.tick(1000);
     cy.findByTestId("query-builder-main").findByText("Doing science...");
+    cy.findByTestId("query-builder-main")
+      .findByText("Waiting for results...")
+      .should("not.exist");
 
-    cy.tick(5000);
+    cy.tick(4000);
     cy.findByTestId("query-builder-main").findByText("Waiting for results...");
   });
 
@@ -537,7 +543,8 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should not crash when the table viz gets automatically pivoted (metabase#45481)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable();
+    H.openNotebook();
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Count of rows").click();
     H.getNotebookStep("summarize")
@@ -553,7 +560,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Category").click();
     });
     H.visualize();
-    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().should("contain", "Doohickey");
   });
 
   describe("issue 56094", () => {
@@ -717,11 +724,14 @@ describe("scenarios > visualizations > table", () => {
       H.tableInteractive().should("be.visible");
       cy.findByTestId("visualization-root").icon("warning").should("not.exist");
 
+      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTestId("qb-header-action-panel")
         .findByText("Explore results")
         .click();
+      cy.wait("@dataset");
 
       H.tableInteractive().should("be.visible");
+      cy.findByTestId("visualization-root").icon("warning").should("not.exist");
     });
   });
 });
@@ -762,10 +772,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     H.dashboardCards()
       .eq(0)
       .as("tableDashcard")
-      .findByText(rowsRegex)
-      .should("not.exist");
-
-    cy.get("@tableDashcard").findByText("Showing first 2,000 rows");
+      .findByText("Showing first 2,000 rows");
+    cy.get("@tableDashcard").findByText(rowsRegex).should("not.exist");
 
     // Enable pagination
     H.editDashboard();
@@ -1013,11 +1021,14 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         .should("exist")
         .then(() => {
           H.tableHeaderClick("Rating");
+          H.tableHeaderColumn("Rating")
+            .closest("[role=columnheader]")
+            .findByLabelText("chevrondown icon");
 
           // Verify rows don't overlap by checking their bounding rects
           H.tableInteractiveBody()
             .find("[role=row]")
-            .then(($rows) => {
+            .should(($rows) => {
               const rects = $rows
                 .toArray()
                 .map((row) => row.getBoundingClientRect())
@@ -1031,10 +1042,13 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
           // Sort again (descending) to verify heights update on subsequent sorts
           H.tableHeaderClick("Rating");
+          H.tableHeaderColumn("Rating")
+            .closest("[role=columnheader]")
+            .findByLabelText("chevronup icon");
 
           H.tableInteractiveBody()
             .find("[role=row]")
-            .then(($rows) => {
+            .should(($rows) => {
               const rects = $rows
                 .toArray()
                 .map((row) => row.getBoundingClientRect())
@@ -1187,6 +1201,14 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
     // Apply sorting to ensure row index does not change
     H.tableHeaderClick("ID");
+    H.tableHeaderColumn("ID")
+      .closest("[role=columnheader]")
+      .findByLabelText("chevrondown icon");
+    H.tableInteractiveBody()
+      .findAllByRole("row")
+      .first()
+      .find("[data-column-id=ID]")
+      .should("have.text", "2000");
 
     H.tableInteractiveBody()
       .findAllByTestId("row-id-cell")
@@ -1456,7 +1478,9 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     H.openOrdersTable();
 
     const targetDatasetIndex = 15;
+    const firstRowSelector = '[role=row][data-dataset-index="0"]';
 
+    H.tableInteractiveBody().find(firstRowSelector).should("exist");
     H.tableInteractiveBody()
       .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
       .then(($row) => {
@@ -1468,6 +1492,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
             currentScroll + 36 * (targetDatasetIndex - 1);
         });
 
+        H.tableInteractiveBody().find(firstRowSelector).should("not.exist");
         H.tableInteractiveBody()
           .find(`[role=row][data-dataset-index="${targetDatasetIndex}"]`)
           .should("exist")
@@ -1478,6 +1503,12 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
       });
   });
 });
+
+function assertColumnNotSortable(columnName) {
+  H.tableHeaderColumn(columnName)
+    .parents('[aria-roledescription="sortable"]')
+    .should("not.exist");
+}
 
 function headerCells() {
   return cy.findAllByTestId("header-cell");
