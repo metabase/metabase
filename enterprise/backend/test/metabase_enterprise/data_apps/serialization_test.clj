@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -102,10 +103,10 @@
                      :allowed_hosts ["https://api.example.com"]}
                     imported))
             (is (= "console.log(1)" (bundle-text imported)))
-            (testing "the import links the collection the manifest names and creates the permission group"
+            (testing "the import links the collection the manifest names without importing group assignments"
               (is (=? {:entity_id collection-entity-id :namespace :data-apps}
                       (t2/select-one :model/Collection :id (:resource_collection_id imported))))
-              (is (t2/exists? :model/PermissionsGroup :id (:permission_group_id imported))))))))))
+              (is (not (t2/exists? :model/DataAppGroupAssignment :data_app_id (:id imported)))))))))))
 
 (deftest import-refuses-a-manifest-that-names-another-collection-test
   (mt/with-premium-features #{:data-apps}
@@ -133,7 +134,9 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-update-"]
-        (let [app (insert-app! :enabled false)]
+        (let [app (insert-app! :enabled false)
+              group (t2/insert-returning-instance! :model/PermissionsGroup {:name "Assigned group"})]
+          (group-access/add-groups! app [(:id group)])
           (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
                                                            :path "./dist/index.js")
                             {"dist/index.js" "console.log(2)"})
@@ -141,9 +144,10 @@
           (let [updated (t2/select-one :model/DataApp :id (:id app))]
             (is (=? {:display_name           "Renamed"
                      :enabled                false
-                     :resource_collection_id (:resource_collection_id app)
-                     :permission_group_id    (:permission_group_id app)}
+                     :resource_collection_id (:resource_collection_id app)}
                     updated))
+            (is (t2/exists? :model/DataAppGroupAssignment
+                            :data_app_id (:id app) :permission_group_id (:id group)))
             (is (= "console.log(2)" (bundle-text updated)))
             (is (not= (:bundle_hash app) (:bundle_hash updated)))))))))
 

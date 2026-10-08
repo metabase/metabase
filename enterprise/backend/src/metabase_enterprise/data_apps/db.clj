@@ -12,7 +12,7 @@
 (def non-blob-columns
   "Every DataApp column except the raw bundle blob."
   [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
-   :resource_collection_id :permission_group_id :table_ids :bundle_hash :created_at :updated_at])
+   :resource_collection_id :table_ids :bundle_hash :created_at :updated_at])
 
 (def ^:private non-blob-model
   (into [:model/DataApp] non-blob-columns))
@@ -39,6 +39,31 @@
              (cond-> {:order-by [[:display_name :asc]]}
                available? (assoc :where [:= :enabled true]))))
 
+(defn- read-scope-clause
+  [scope]
+  (if (= scope :all)
+    [:= 1 1]
+    [:in :id ^:allow-subquery
+     {:select [:assignment.data_app_id]
+      :from [[:data_app_group_assignment :assignment]]
+      :join [[:permissions_group_membership :pgm] [:= :pgm.group_id :assignment.permission_group_id]
+             [:core_user :u] [:= :u.id :pgm.user_id]]
+      :where [:and [:= :u.id (:user-id scope)] [:= :u.tenant_id nil]]}]))
+
+(mu/defn non-blob-data-apps
+  "DataApps in the read scope without bundles, ordered by display name. Optionally restrict to enabled apps."
+  [scope :- [:or [:= :all] [:map {:closed true} [:user-id ms/PositiveInt]]]
+   available? :- [:maybe :boolean]]
+  (t2/select non-blob-model
+             {:order-by [[:display_name :asc]]
+              :where (cond-> [:and (read-scope-clause scope)]
+                       available? (conj [:= :enabled true]))}))
+
+(defn readable-data-app?
+  "Whether the app exists in the read scope."
+  [scope app-id]
+  (t2/exists? :model/DataApp :id app-id {:where (read-scope-clause scope)}))
+
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
@@ -54,11 +79,6 @@
                        (cond-> {}
                          filter-column       (assoc :where [:in filter-column filter-ids])
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
-
-(defn users-for-permission-warnings
-  "The fields needed to calculate permission warnings for Users with `user-ids`."
-  [user-ids]
-  (t2/select [:model/User :id :is_superuser :is_active :tenant_id] :id [:in user-ids]))
 
 (mu/defn data-app-exists?
   "Whether a DataApp named `slug` exists."
@@ -96,31 +116,6 @@
   [data-app-id :- ms/PositiveInt]
   (t2/delete! :model/DataApp :id data-app-id))
 
-(defn permission-group
-  "The permission group with `group-id`, or nil."
-  [group-id]
-  (t2/select-one :model/PermissionsGroup :id group-id))
-
-(defn insert-permission-group!
-  "Insert a permission group and return it."
-  [row]
-  (t2/insert-returning-instance! :model/PermissionsGroup row))
-
-(defn update-permission-group!
-  "Apply `changes` to the permission group with `group-id`."
-  [group-id changes]
-  (t2/update! :model/PermissionsGroup :id group-id changes))
-
-(defn delete-permission-group!
-  "Delete the permission group with `group-id`."
-  [group-id]
-  (t2/delete! :model/PermissionsGroup :id group-id))
-
-(defn data-app-group-ids
-  "The IDs of permission groups owned by data apps."
-  []
-  (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
-
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
   []
@@ -130,21 +125,6 @@
   "The ID of the resource collection owned by the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
   (t2/select-one-fn :resource_collection_id :model/DataApp :id data-app-id))
-
-(defn databases-with-legacy-permissions
-  "Database IDs with legacy View Data permissions from groups not owned by apps."
-  [database-ids]
-  (if (seq database-ids)
-    (t2/select-fn-set :db_id :model/DataPermissions
-                      {:select [:p.db_id]
-                       :from [[:data_permissions :p]]
-                       :join [[:permissions_group :g] [:= :g.id :p.group_id]]
-                       :where [:and
-                               [:in :p.db_id database-ids]
-                               [:= :p.perm_type "perms/view-data"]
-                               [:= :p.perm_value "legacy-no-self-service"]
-                               [:= :g.is_data_app_group false]]})
-    #{}))
 
 (defn resource-collection-owned?
   "Whether a data app owns the collection with `collection-id`."
@@ -236,11 +216,6 @@
   [collection-id]
   (t2/delete! :model/Collection :id collection-id))
 
-(defn non-router-database-ids
-  "The IDs of databases that are not routed through another database."
-  []
-  (t2/select-pks-set :model/Database :router_database_id nil))
-
 (defn permissions-for-paths-excluding-group
   "Permission grants for `paths`, excluding `group-id`."
   [paths group-id]
@@ -267,8 +242,35 @@
     (t2/select :model/Card :id [:in card-ids])
     []))
 
+(defn app-assignments
+  "Assignments for the requested apps."
+  [app-ids]
+  (if (seq app-ids)
+    (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
+    []))
+
+(defn insert-assignments!
+  "Assign groups to an app. The unique constraint rejects concurrent duplicates."
+  [app-id group-ids]
+  (t2/insert! :model/DataAppGroupAssignment
+              (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
+
+(defn delete-assignment!
+  "Remove one group assignment."
+  [app-id group-id]
+  (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id group-id))
+
+(defn permissions-for-warnings
+  "View-data permission rows for the warning tables and their databases."
+  [group-ids database-ids table-ids]
+  (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
+             :group_id [:in group-ids]
+             :db_id [:in database-ids]
+             :perm_type :perms/view-data
+             {:where [:or [:in :table_id table-ids] [:= :table_id nil]]}))
+
 (defn table-details
-  "Table names and database details for `table-ids`."
+  "Names and database details for the active tables in `table-ids`."
   [table-ids]
   (t2/select :model/Table
              {:select [:t.id
@@ -277,53 +279,6 @@
                        [:t.db_id :database_id]
                        [:d.name :database_name]]
               :from [(warehouse-schema-overlay/table-query {:alias :t})]
-              :join [[:metabase_database :d] [:= :d.id :t.db_id]]
-              :where [:in :t.id table-ids]
+              :join [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
+              :where [:and [:in :t.id table-ids] [:= :t.active true]]
               :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))
-
-(defn sandboxed-user-table-access
-  "Sandboxed table access from non-data-app groups for the requested users and tables."
-  [user-ids table-ids]
-  (t2/query {:select-distinct [[:pgm.user_id :user_id]
-                               [:s.table_id :table_id]]
-             :from [[:permissions_group_membership :pgm]]
-             :join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]
-                    [:permissions_group :pg] [:= :pg.id :pgm.group_id]]
-             :where [:and
-                     [:in :pgm.user_id user-ids]
-                     [:in :s.table_id table-ids]
-                     [:not :pg.is_data_app_group]]}))
-
-(defn unrestricted-user-table-access
-  "Unrestricted table access from non-data-app groups for the requested users and tables."
-  [user-ids table-ids]
-  (t2/query {:select-distinct [[:pgm.user_id :user_id]
-                               [:t.id :table_id]]
-             :from [[:permissions_group_membership :pgm]]
-             :join [[:data_permissions :dp] [:= :dp.group_id :pgm.group_id]
-                    [:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                    (warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
-                    [:and
-                     [:= :t.db_id :dp.db_id]
-                     [:or
-                      [:= :dp.table_id nil]
-                      [:= :dp.table_id :t.id]]]]
-             :where [:and
-                     [:in :pgm.user_id user-ids]
-                     [:in :t.id table-ids]
-                     [:not :pg.is_data_app_group]
-                     [:= :dp.perm_type (u/qualified-name :perms/view-data)]
-                     [:= :dp.perm_value "unrestricted"]]}))
-
-(defn active-group-members
-  "Active user memberships for `group-ids`, including API-key users."
-  [group-ids]
-  (t2/query {:select [[:pgm.group_id :group_id]
-                      [:u.id :id]
-                      :u.is_superuser
-                      :u.email]
-             :from [[:permissions_group_membership :pgm]]
-             :join [[:core_user :u] [:= :u.id :pgm.user_id]]
-             :where [:and
-                     [:in :pgm.group_id group-ids]
-                     [:= :u.is_active true]]}))

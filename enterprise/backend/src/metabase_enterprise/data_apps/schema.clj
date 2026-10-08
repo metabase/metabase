@@ -113,7 +113,6 @@
    [:description     {:optional true} ::description]
    [:version         {:optional true} ::version]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:permission_group_id    {:optional true} [:maybe ms/PositiveInt]]
    [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (mr/def ::data-app.insert
