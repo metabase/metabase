@@ -50,6 +50,7 @@ export * from "./revision";
 export * from "./search";
 export * from "./segment";
 export * from "./session";
+export * from "./session-management";
 export * from "./settings";
 export * from "./setup";
 export * from "./slack";

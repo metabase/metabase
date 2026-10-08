@@ -148,3 +148,19 @@
          (map str/trim)
          (keep not-empty)
          (str/join " "))))
+
+(def ^:private client-key->setting-key
+  "Maps a client key from [[metabase.mcp.usage/detect-client]] to the key its toggle uses in
+   [[mcp-apps-cors-enabled-clients]]. VS Code shares the Cursor toggle: both render in a vscode-webview."
+  {"claude"        "claude"
+   "chatgpt"       "chatgpt"
+   "cursor-vscode" "cursor-vscode"
+   "vscode"        "cursor-vscode"})
+
+(defn inline-ui-enabled-for-client?
+  "Whether `client-key` may render MCP Apps UI. An iframe from a client the admin switched off fails its CORS
+   preflight, so it would show a broken card. Clients without a toggle are not gated."
+  [client-key]
+  (if-let [setting-key (client-key->setting-key client-key)]
+    (boolean (some #{setting-key} (mcp-apps-cors-enabled-clients)))
+    true))

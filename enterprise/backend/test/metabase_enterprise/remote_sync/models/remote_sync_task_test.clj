@@ -521,7 +521,7 @@
       (testing "Ignores a conflict task even though it records the version it conflicted against"
         (let [conflict-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/set-version! (:id conflict-task) "version 1.5")
-          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"])
+          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"] nil)
           (is (= "version 1" (rst/last-version)))))
       (testing "Returns a newer successful task's version"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]

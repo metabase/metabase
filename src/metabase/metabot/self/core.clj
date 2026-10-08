@@ -76,6 +76,7 @@
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema MalliSchema]
+   [:declaration {:optional true} [:maybe [:fn delay?]]]
    [:fn [:fn fn?]]
    [:decode {:optional true} [:maybe [:fn fn?]]]
    [:prompt {:optional true} [:maybe :string]]
@@ -421,10 +422,19 @@
                             :function    (:toolName chunk)
                             :result      (:result chunk)
                             :error       (:error chunk)
-                            :duration-ms (::duration-ms chunk)}))
+                            :duration-ms (::duration-ms chunk)}
+    ;; A group opening with a continuation chunk (:tool-input-delta, :text-delta, ...) has lost its start chunk,
+    ;; and with it the data the part needs (a tool call's name), so it cannot be assembled.
+    (let [id (or (:id chunk) (:toolCallId chunk))]
+      (throw (ex-info (format "Model stream sent a %s chunk for %s without its start chunk" (:type chunk) (pr-str id))
+                      {:chunk-type (:type chunk)
+                       :id         id})))))
 
 (defn aisdk-xf
-  "Collect a stream of AI SDK v5 chunks into a list of parts (joins by id)."
+  "Collect a stream of AI SDK v5 chunks into a list of parts (joins by id).
+
+  Producers must emit the chunks of each id contiguously, the start chunk first. A group that does not open
+  with its start chunk throws."
   ([] (aisdk-xf nil))
   ([{:keys [stream-text?]}]
    (fn [rf]

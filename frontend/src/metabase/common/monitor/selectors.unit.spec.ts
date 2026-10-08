@@ -12,6 +12,7 @@ import {
   canAccessDependencyDiagnostics,
   canAccessMonitor,
   canAccessMonitoringTools,
+  canAccessSessionManagement,
 } from "./selectors";
 
 jest.mock("metabase/utils/iframe", () => ({
@@ -290,6 +291,52 @@ describe("canAccessAlertsManagement", () => {
     });
 
     expect(canAccessAlertsManagement(state)).toBe(false);
+  });
+});
+
+describe("canAccessSessionManagement", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    isWithinIframe.mockReturnValue(false);
+  });
+
+  it("returns false when in embedding iframe", () => {
+    isWithinIframe.mockReturnValue(true);
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessSessionManagement(state)).toBe(false);
+  });
+
+  it("returns true when user is admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessSessionManagement(state)).toBe(true);
+  });
+
+  it("returns false for an analyst without admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+      }),
+    });
+
+    expect(canAccessSessionManagement(state)).toBe(false);
+  });
+
+  it("returns false for a non-admin with the monitoring application permission", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    expect(canAccessSessionManagement(state)).toBe(false);
   });
 });
 

@@ -110,9 +110,6 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))
 
-(defmethod serdes/deserialization-dependencies "FieldUserSettings" [field-user-settings]
-  [[(first (serdes/path field-user-settings))]])
-
 (defmethod serdes/load-find-local "FieldUserSettings" [path]
   (when-let [field (serdes/load-find-local (pop path))]
     (warehouse-schema.db/field-user-settings (:id field))))
@@ -134,10 +131,13 @@
    :transform {:created_at   (serdes/date)
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
-                              :export     (constantly ::serdes/skip)
+                              :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]
                                                      (serdes/*import-field-fk*
                                                       (serdes/field-path->field-ref (pop (serdes/path current)))))}}})
+
+(defmethod serdes/ingested-path "FieldUserSettings" [_ {:keys [field_id]}]
+  (conj (serdes/field->path field_id) {:model "FieldUserSettings" :id "1"}))
 
 (def ^:private field-user-settings-slug "___fieldusersettings")
 

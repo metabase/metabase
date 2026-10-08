@@ -382,6 +382,7 @@ export const tokenFeatures = [
   "library",
   "library_retrieval",
   "support-users",
+  "session-management",
   "tenants",
   "writable_connection",
   "admin_security_center",
@@ -587,7 +588,6 @@ interface PublicSettings {
   // Non-null: :public visibility and a total getter (computed from the jar's
   // bundled translation resources), so every viewer always receives a list.
   "available-locales": LocaleData[];
-  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
@@ -607,7 +607,6 @@ interface PublicSettings {
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
   "enable-sandboxes?": boolean;
-  engines: Record<EngineKey, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
@@ -853,6 +852,7 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
   "llm-mini-model"?: string | null;
+  "ee-embedding-provider"?: string | null;
   "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-proxy-configured?"?: boolean | null;

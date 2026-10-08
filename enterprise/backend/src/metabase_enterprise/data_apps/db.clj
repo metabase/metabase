@@ -143,7 +143,12 @@
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
   []
-  (t2/select-fn-set :resource_collection_id :model/DataApp :resource_collection_id [:not= nil]))
+  (t2/select-fn-set :resource_collection_id :model/DataApp))
+
+(mu/defn resource-collection-id
+  "The ID of the resource collection owned by the DataApp with `data-app-id`."
+  [data-app-id :- ms/PositiveInt]
+  (t2/select-one-fn :resource_collection_id :model/DataApp :id data-app-id))
 
 (defn databases-with-legacy-permissions
   "Database IDs with legacy View Data permissions from groups not owned by apps."
@@ -164,11 +169,6 @@
   "The resource collection with `collection-id`, or nil."
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
-
-(defn insert-resource-collection!
-  "Insert a resource collection and return it."
-  [row]
-  (t2/insert-returning-instance! :model/Collection row))
 
 (defn update-resource-collection!
   "Apply `changes` to the resource collection with `collection-id`."

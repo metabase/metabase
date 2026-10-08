@@ -528,19 +528,14 @@
                :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
 (defmethod serdes/deserialization-dependencies "Transform"
-  [{:keys [collection_id source tags source_database_id]}]
-  (let [checkpoint-field-ref (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
-    (set
-     (concat
-      (when collection_id
-        [[{:model "Collection" :id collection_id}]])
-      (when source_database_id
-        [[{:model "Database" :id source_database_id}]])
-      (for [{tag-id :tag_id} tags]
-        [{:model "TransformTag" :id tag-id}])
-      (when (some-> checkpoint-field-ref pos-int? not)
-        [(serdes/field->path checkpoint-field-ref)])
-      (serdes/mbql-deps false source)))))
+  [{:keys [collection_id source tags]}]
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (for [{tag-id :tag_id} tags]
+      [{:model "TransformTag" :id tag-id}])
+    (serdes/mbql-deps false source))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))

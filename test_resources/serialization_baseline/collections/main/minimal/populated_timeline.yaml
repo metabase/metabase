@@ -10,13 +10,7 @@ events:
   time_matters: true
   timestamp: '2020-04-11T00:00:00Z'
   timezone: US/Pacific
-  serdes/meta:
-  - id: null
-    label: first_event
-    model: TimelineEvent
 icon: star
 name: Populated Timeline
 serdes/meta:
-- id: jqbQYdaqb_vXFlZnjvshP
-  label: populated_timeline
-  model: Timeline
+- model: Timeline

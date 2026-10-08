@@ -1,14 +1,16 @@
 import { t } from "ttag";
 
+import {
+  DetailsTable,
+  SidebarSection,
+} from "metabase/monitor/components/DetailSidebar";
 import { summarizeChannels } from "metabase/monitor/tools/notifications/utils";
 import { Flex, Stack, Text } from "metabase/ui";
 
 import { trackAlertsManagementRunHistoryViewAllClicked } from "../analytics";
 
 import { DetailsSection } from "./DetailsSection";
-import { DetailsTable } from "./DetailsTable";
 import { NotificationRunSummaryLog } from "./NotificationRunSummaryLog";
-import { SidebarSection } from "./SidebarSection";
 import type { SidebarBodyProps } from "./types";
 import {
   getEmailRecipientLabel,

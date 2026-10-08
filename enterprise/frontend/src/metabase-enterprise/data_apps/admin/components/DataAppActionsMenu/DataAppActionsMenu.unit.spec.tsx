@@ -15,7 +15,7 @@ const setup = ({
 }: {
   enabled?: boolean;
   canRemove?: boolean;
-  resourceCollectionId?: number | null;
+  resourceCollectionId?: number;
   permissionGroupId?: number | null;
 } = {}) => {
   const app = createMockDataApp({
@@ -62,16 +62,6 @@ describe("DataAppActionsMenu", () => {
       "/admin/settings/apps/sales/users",
     );
     expect(menuItems[2]).toHaveTextContent("Disable");
-  });
-
-  it("does not show the collection link before an app has a collection", async () => {
-    setup({ resourceCollectionId: null });
-
-    await openMenu();
-
-    expect(
-      screen.queryByRole("menuitem", { name: "View resources" }),
-    ).not.toBeInTheDocument();
   });
 
   it("does not show the group link before an app has a permission group", async () => {

@@ -10,7 +10,7 @@ import { SettingHeader } from "metabase/settings-components";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";
 
-import { PreviewImage } from "./IllustrationWidget.styled";
+import S from "./IllustrationWidget.module.css";
 
 const MB = 1024 * 1024;
 const IMAGE_SIZE_LIMIT = 2 * MB;
@@ -98,15 +98,20 @@ export function ImageUploadWidget({
         <Paper withBorder shadow="none">
           <Flex>
             <Flex
+              className={S.borderRight}
               align="center"
               justify="center"
               w="7.5rem"
-              style={{
-                borderRight: "1px solid var(--mb-color-border-neutral)",
-              }}
             >
               {!isDefaultImage && typeof imageSource === "string" && (
-                <PreviewImage src={imageSource} aria-label={t`Image preview`} />
+                <Box
+                  component="img"
+                  className={S.previewImage}
+                  src={imageSource}
+                  aria-label={t`Image preview`}
+                  w="6.25rem"
+                  h="5.625rem"
+                />
               )}
             </Flex>
             <Flex p="xl" gap="lg" direction="column" justify="center" w="100%">

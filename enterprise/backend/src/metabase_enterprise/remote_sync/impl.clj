@@ -57,6 +57,13 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
+(defn- keep-library-dashboards
+  "Adds the Library's Dashboards collection to `imported-data` when it has the Library, since repos may predate it."
+  [imported-data]
+  (cond-> imported-data
+    (contains? (get-in imported-data [:by-entity-id "Collection"]) collection/library-entity-id)
+    (update-in [:by-entity-id "Collection"] conj collection/library-dashboards-entity-id)))
+
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
 
@@ -122,23 +129,13 @@
        (remove nil?)
        (str/join " ")))
 
-(defn- cause-with-error
-  "Returns the first exception in `e`'s cause chain whose ex-data `:error` is `error-type`, or nil."
-  [e error-type]
-  (->> (iterate ex-cause e)
-       (take-while some?)
-       (some (fn [ex]
-               (when (= error-type (:error (ex-data ex)))
-                 ex)))))
-
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
 
   Takes a throwable exception and returns a string message that categorizes the error (network, authentication,
   repository not found, branch, or generic) based on the exception type and message content."
   [e]
-  (let [missing-db (cause-with-error e :metabase.models.serialization.resolve.db/database-not-found)
-        message    (or (ex-message e) "")]
+  (let [message (or (ex-message e) "")]
     (cond
       (or (instance? java.net.UnknownHostException e)
           (instance? java.net.UnknownHostException (ex-cause e)))
@@ -163,11 +160,6 @@
       (let [{:keys [model id referrer]} (ex-data e)]
         (missing-reference-message {:missing  {:model model :id id}
                                     :referrer referrer}))
-
-      ;; the entity that failed to load is the one holding the reference to the absent database
-      missing-db
-      (missing-reference-message {:missing  {:model "Database" :id (:db-name (ex-data missing-db))}
-                                  :referrer (:entity (ex-data e))})
 
       (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/load-failure)
       (let [{:keys [entity stripped-keys]} (ex-data e)]
@@ -417,7 +409,7 @@
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
-            _                     (remove-unsynced! synced-collection-ids imported-data)
+            _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
@@ -426,6 +418,7 @@
         (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                                (source.ingestable/cached-file-paths base-ingestable))
         (track-user-settings! settings-table-ids sync-timestamp)
+        (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
@@ -677,6 +670,7 @@
                 {:status    :conflict
                  :version   snapshot-version
                  :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+                 :outcome   {:kind "history-rewritten"}
                  :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
 
                 ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
@@ -1292,6 +1286,7 @@
               {:status    :conflict
                :version   remote-version
                :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+               :outcome   {:kind "history-rewritten"}
                :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
               :else
@@ -1303,7 +1298,9 @@
             diverged? ;; and not merge? option
             {:status    :conflict
              :version   remote-version
+             ;; Nothing collided: the divergence itself is why it stopped, so the cause rides in `:outcome`.
              :conflicts []
+             :outcome   {:kind "remote-changed"}
              :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 
             ;; There's nothing to export: no dirty rows and no stale files.
@@ -1488,7 +1485,7 @@
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
-                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
+                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:outcome result)))
                   :error (remote-sync.task/fail-sync-task! task-id (:message result))
                   (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
                 true))))]
