@@ -29,6 +29,7 @@
    [toucan2.core :as t2])
   (:import
    (java.net URI)
+   (java.util.concurrent.locks ReentrantLock)
    (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.lib PersonIdent)))
 
@@ -2661,6 +2662,112 @@ serdes/meta:
                (is (true? (deref interrupted 5000 false)) "precondition: the timeout interrupts the task")
                (is (wait-until #(task-ended? task-id)) "precondition: the task ended")
                (is (wait-until #(empty? (test-helpers/leases url))) "no lease holds a clone after the timeout")))))))))
+
+;; ---------- the bookkeeping after the task timeout interrupts the body ------------------------
+;;
+;; On a virtual thread whose interrupt flag is set, each app-DB query fails on Postgres, MySQL and MariaDB ("Closed by
+;; interrupt"). H2 does not fail, so on H2 only the flag assertions show the fault.
+
+(defn- flag-spy
+  "A fn that conjoins to `flags` whether the current thread is interrupted, then calls `f`."
+  [flags f]
+  (fn [& args]
+    (swap! flags conj (.isInterrupted (Thread/currentThread)))
+    (apply f args)))
+
+(defn- do-with-bookkeeping-flag-spies!
+  "Calls `(f flags)` while [[impl/handle-task-result!]] and the exit check of the task record into the atom `flags`
+  whether their thread is interrupted."
+  [f]
+  (let [flags (atom [])]
+    (mt/with-dynamic-fn-redefs [impl/handle-task-result! (flag-spy flags (mt/original-fn #'impl/handle-task-result!))
+                                impl/ensure-task-ended!  (flag-spy flags (mt/original-fn #'impl/ensure-task-ended!))]
+      (f flags))))
+
+(defn- do-with-held-fetch-lock!
+  "Calls `(f hold!)`. `(hold!)` makes another thread take the fetch lock of the clone of the settings, and returns true
+  when that thread holds it. The other thread releases the lock after `f`."
+  [f]
+  (let [holder-src (source/source-from-settings)
+        ^ReentrantLock lock (#'git/fetch-lock (.getRepository ^Git (:git holder-src)))
+        held       (promise)
+        release    (promise)
+        holder     (Thread. ^Runnable (fn []
+                                        (.lock lock)
+                                        (try
+                                          (deliver held true)
+                                          (deref release 30000 nil)
+                                          (finally (.unlock lock)))))]
+    (try
+      (f (fn [] (.start holder) (deref held 10000 false)))
+      (finally
+        (deliver release true)
+        (.join holder 10000)
+        (source/close! holder-src)))))
+
+(deftest import-task-whose-fetch-the-timeout-interrupts-records-the-error-test
+  (testing "an import task whose fetch waits for the fetch lock until the task timeout interrupts it ends its row with
+            the fetch error"
+    (do-with-git-remote!
+     (fn [_url]
+       ;; The first clone of the process registry starts its sweep of the old clone directories of all local Metabase
+       ;; processes, with an idle time of 10 times this setting. So the first clone runs before the setting change.
+       (source/close! (source/source-from-settings))
+       (do-with-held-fetch-lock!
+        (fn [hold!]
+          (let [entered (promise)
+                held    (promise)]
+            (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 300]
+              (do-with-bookkeeping-flag-spies!
+               (fn [flags]
+                 (mt/with-dynamic-fn-redefs [impl/import! (fn [snapshot & _]
+                                                            (deliver entered true)
+                                                            ;; A spin, not an interruptible wait: the interrupt must
+                                                            ;; come while the fetch waits for the lock.
+                                                            (while (not (realized? held)) (Thread/onSpinWait))
+                                                            (git/fetch! snapshot)
+                                                            {:status :success})]
+                   (let [{task-id :id} (impl/async-import! "master" true {})]
+                     (is (true? (deref entered 10000 false)) "precondition: the task runs import!")
+                     (is (true? (hold!)) "precondition: another thread holds the fetch lock")
+                     (deliver held true)
+                     (is (wait-until #(task-ended? task-id)) "the task ends")
+                     (is (=? {:ended_at some? :error_message #".*FetchCommand.*"}
+                             (t2/select-one :model/RemoteSyncTask :id task-id))
+                         "the row records the fetch error")
+                     (is (=? [false false] @flags)
+                         "the bookkeeping runs with no interrupt flag")))))))))))))
+
+(deftest import-task-that-the-timeout-interrupts-in-app-db-reads-records-an-error-test
+  (testing "an import task that the task timeout interrupts while it reads the app DB ends its row with an error"
+    (do-with-git-remote!
+     (fn [_url]
+       (source/close! (source/source-from-settings))
+       (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 300]
+         (do-with-bookkeeping-flag-spies!
+          (fn [flags]
+            (mt/with-dynamic-fn-redefs [impl/import! (fn [& _]
+                                                       (let [deadline (+ (System/currentTimeMillis) 15000)]
+                                                         (loop []
+                                                           (t2/count :model/Collection)
+                                                           (cond
+                                                             ;; A query on H2 does not see the interrupt: stop as a
+                                                             ;; query on the other app DBs stops, with the flag set.
+                                                             (.isInterrupted (Thread/currentThread))
+                                                             (throw (ex-info "The interrupt stopped the app-DB reads" {}))
+
+                                                             (< (System/currentTimeMillis) deadline)
+                                                             (recur)
+
+                                                             :else
+                                                             {:status :success}))))]
+              (let [{task-id :id} (impl/async-import! "master" true {})]
+                (is (wait-until #(task-ended? task-id)) "the task ends")
+                (is (=? {:ended_at some? :error_message some?}
+                        (t2/select-one :model/RemoteSyncTask :id task-id))
+                    "the row records an error")
+                (is (=? [false false] @flags)
+                    "the bookkeeping runs with no interrupt flag"))))))))))
 
 (deftest request-that-throws-releases-its-lease-test
   (testing "a request that throws while it reads the clone releases the lease of its source"
