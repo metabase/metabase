@@ -214,11 +214,19 @@
        "AI Controls"
        (mt/user-http-request :crowberto :post 402 "ee/ai-controls/mcp-permissions/advanced")))))
 
-(deftest ^:parallel get-permissions-without-ai-controls-feature-test
-  (mt/with-premium-features #{}
-    (testing "an admin can still read the policy the rows enforce"
-      (is (=? {:advanced boolean? :tools seq :permissions seq}
-              (mt/user-http-request :crowberto :get 200 endpoint))))))
+(deftest get-permissions-without-ai-controls-feature-test
+  (mcp.tu/with-mcp-group-permissions-snapshot
+    (let [all-users-id (u/the-id (perms/all-users-group))]
+      (t2/delete! :model/McpGroupPermission)
+      (t2/insert! :model/McpGroupPermission {:group_id    all-users-id
+                                             :mcp_enabled true
+                                             :tool_access {"execute_sql" "no"}})
+      (mt/with-premium-features #{}
+        (testing "an admin can still read the policy the rows enforce"
+          (let [response (mt/user-http-request :crowberto :get 200 endpoint)]
+            (is (=? {:advanced false :tools seq} response))
+            (is (= {:group_id all-users-id :mcp_enabled true :tool_access {:execute_sql "no"}}
+                   (group-permission response all-users-id)))))))))
 
 (deftest disable-advanced-mode-without-ai-controls-feature-test
   (mcp.tu/with-group-level-mode

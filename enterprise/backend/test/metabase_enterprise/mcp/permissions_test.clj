@@ -8,6 +8,9 @@
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util]
+   ;; Register execute_sql and question_write, the tools the native-save test denies and calls.
+   [metabase.mcp.v2.tools.query]
+   [metabase.mcp.v2.tools.question]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -133,3 +136,35 @@
         (testing "group-level mode: All Users has no row, so a user in no enabled group has no access"
           (mcp.db/delete-hidden-group-permissions! true)
           (is (= no-access-policy (mcp.perms/effective-policy (mt/user->id :rasta)))))))))
+
+(deftest rows-denying-execute-sql-refuse-a-native-question-test
+  (testing "a group row denying execute_sql makes question_write refuse a native save, read from the rows rather
+            than a stubbed policy"
+    (mt/with-premium-features #{:ai-controls}
+      (mcp.tu/with-group-level-mode
+        (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                       :model/PermissionsGroupMembership _              {:group_id group-id
+                                                                         :user_id  (mt/user->id :rasta)}
+                       :model/McpGroupPermission         _              {:group_id    group-id
+                                                                         :mcp_enabled true
+                                                                         :tool_access {"execute_sql" "no"}}]
+          (mt/with-model-cleanup [:model/Card]
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [save! (fn [card-name]
+                            (:result (registry/call-tool #{"agent:content:write" "agent:sql:run"}
+                                                         (str (random-uuid))
+                                                         "question_write"
+                                                         {:method "create"
+                                                          :name   card-name
+                                                          :native {:database_id (mt/id) :sql "SELECT 1"}})))]
+                (testing "denied: refused, naming the tool, and nothing is written"
+                  (let [result (save! "EE Denied Native Q")]
+                    (is (:isError result))
+                    (is (re-find #"needs the \"execute_sql\" tool, which is not enabled for your groups"
+                                 (-> result :content first :text)))
+                    (is (zero? (t2/count :model/Card :name "EE Denied Native Q")))))
+                (testing "allowed once the row says so"
+                  (t2/update! :model/McpGroupPermission {:group_id group-id} {:tool_access {"execute_sql" "yes"}})
+                  (let [result (save! "EE Allowed Native Q")]
+                    (is (not (:isError result)) (-> result :content first :text))
+                    (is (= 1 (t2/count :model/Card :name "EE Allowed Native Q")))))))))))))
