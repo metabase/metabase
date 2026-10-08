@@ -5,6 +5,7 @@
 
   https://platform.kimi.ai/docs"
   (:require
+   [clojure.set :as set]
    [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -83,17 +84,19 @@
    (adapter/model-listing supported-models (adapter/fetch-catalog provider opts))))
 
 (def ^:private forced-tool-call-token-floor
-  "Smallest `max_tokens` a forced tool call on a thinking-only model may be capped at.
+  "Smallest `max_completion_tokens` a forced tool call on a thinking-only model may be capped at.
 
-  kimi-k3 cannot stop thinking and Chat Completions bills thinking and the tool call against one budget, so a small
-  caller cap (the conversation-title path sends 512) risks a `length` finish before the tool call is emitted.
+  kimi-k3 cannot stop thinking. The Kimi docs say that thinking and the tool call share one `max_tokens` budget
+  (https://platform.kimi.ai/docs/guide/use-thinking-models). They do not say if `max_completion_tokens` also counts
+  reasoning (https://platform.kimi.ai/docs/api/chat). If it does, a small caller cap (the conversation-title path
+  sends 512) risks a `length` finish before the tool call is emitted. The floor is correct in both cases.
   Matches vLLM's probe-proven floor."
   2048)
 
-(defn- floor-max-tokens
-  "Raises the `max_tokens` cap to [[forced-tool-call-token-floor]]."
+(defn- floor-max-completion-tokens
+  "Raises the `max_completion_tokens` cap to [[forced-tool-call-token-floor]]."
   [body]
-  (update body :max_tokens max forced-tool-call-token-floor))
+  (update body :max_completion_tokens max forced-tool-call-token-floor))
 
 (defn- reasoning-message
   "The replayed assistant message for a coalesced in-turn :reasoning part.
@@ -123,9 +126,11 @@
   - **`reasoning_effort`** for [[thinking-only-models]] (kimi-k3, which explicitly does not support `thinking`
     and is the only model accepting `reasoning_effort`): \"max\" when the chat path renders reasoning, \"low\"
     otherwise; their in-turn reasoning is replayed (see [[reasoning-message]]) and forced tool calls get a
-    `max_tokens` floor (see [[forced-tool-call-token-floor]]).
+    `max_completion_tokens` floor (see [[forced-tool-call-token-floor]]).
   - **`prompt_cache_key`.** Moonshot caching is automatic and hits without it, but a `:prompt-cache-key` — the
     conversation id — is forwarded when present.
+  - **`max_completion_tokens`** carries the output cap instead of `max_tokens`, which Moonshot deprecates
+    (https://platform.kimi.ai/docs/api/chat).
 
   A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
   [{:keys [model prompt-cache-key reasoning? schema tool_choice max-tokens] :as opts
@@ -159,15 +164,16 @@
          ;; reasoning_content — a replay hook there would only burn prompt tokens.
          ;; https://platform.kimi.ai/docs/guide/use-kimi-k2-thinking-model
          (when (and thinking? thinking-only?) {:reasoning-part->message reasoning-message}))
+        (set/rename-keys {:max_tokens :max_completion_tokens})
         (dissoc :temperature)
         (cond-> thinking-only?               (assoc :reasoning_effort (if thinking? "max" "low"))
                 ;; Every forced tool call — schema or tool_choice "required" — must survive the
-                ;; thinking spend: reasoning and the tool call share one max_tokens budget ("the
-                ;; sum of tokens in reasoning_content and content must be <= max_tokens", and the
-                ;; guide recommends >= 16000 for tool calls —
-                ;; https://platform.kimi.ai/docs/guide/use-thinking-models). A tool call cut off
-                ;; at `length` fails the whole turn.
-                (and thinking-only? forced?) floor-max-tokens
+                ;; thinking spend. A tool call cut off at `length` fails the whole turn. See
+                ;; [[forced-tool-call-token-floor]] for the budget scope. The guide recommends
+                ;; >= 16000 for multi-step tool calls on kimi-k2.6 and kimi-k2.7-code
+                ;; (https://platform.kimi.ai/docs/guide/use-thinking-models). This is one forced
+                ;; call on kimi-k3, so the floor stays at 2048.
+                (and thinking-only? forced?) floor-max-completion-tokens
                 (not thinking-only?)         (assoc :thinking {:type (if thinking? "enabled" "disabled")})
                 prompt-cache-key             (assoc :prompt_cache_key prompt-cache-key)))))
 
