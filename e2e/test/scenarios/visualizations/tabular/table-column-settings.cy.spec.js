@@ -331,9 +331,20 @@ describe("scenarios > visualizations > table column settings", () => {
   };
 
   describe("tables", () => {
-    it("should be able to show and hide table fields", () => {
+    it("should be able to show and hide table fields, implicitly joinable fields, and rename columns via popover", () => {
       H.createQuestion(tableQuestion, { visitQuestion: true });
       openSettings();
+
+      const implicitColumn = {
+        column: "Category",
+        columnName: "Product → Category",
+        table: "product",
+      };
+
+      _addColumn(implicitColumn);
+      _hideColumn(implicitColumn);
+      _showColumn(implicitColumn);
+      _removeColumn(implicitColumn);
 
       const testData = {
         column: "Tax",
@@ -346,10 +357,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _removeColumn(testData);
       _addColumn(testData);
-    });
-
-    it("should be able to rename table columns via popover", () => {
-      H.createQuestion(tableQuestion, { visitQuestion: true });
 
       H.tableHeaderClick("Product ID");
 
@@ -366,24 +373,7 @@ describe("scenarios > visualizations > table column settings", () => {
       });
     });
 
-    it("should be able to show and hide table fields with in a join", () => {
-      H.createQuestion(tableQuestionWithJoin, { visitQuestion: true });
-      openSettings();
-
-      const testData = {
-        column: "Category",
-        columnName: "Products → Category",
-        sanityCheck: "Products → Ean",
-        table: "products",
-      };
-
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
-    });
-
-    it("should be able to show and hide all table fields with a single click", () => {
+    it("should be able to show and hide all and single table fields in a join", () => {
       H.createQuestion(tableQuestionWithJoin, { visitQuestion: true });
       openSettings();
 
@@ -419,6 +409,19 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByLabelText("Category").should("be.checked");
         cy.findByLabelText("Price").should("be.checked");
       });
+      cy.findByRole("button", { name: /Done picking columns/ }).click();
+
+      const testData = {
+        column: "Category",
+        columnName: "Products → Category",
+        sanityCheck: "Products → Ean",
+        table: "products",
+      };
+
+      _hideColumn(testData);
+      _showColumn(testData);
+      _removeColumn(testData);
+      _addColumn(testData);
     });
 
     it("should be able to show and hide table fields with a join with fields", () => {
@@ -462,22 +465,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _removeColumn(testData);
       _addColumn(testData);
-    });
-
-    it("should be able to show and hide implicitly joinable fields for a table", () => {
-      H.createQuestion(tableQuestion, { visitQuestion: true });
-      openSettings();
-
-      const testData = {
-        column: "Category",
-        columnName: "Product → Category",
-        table: "product",
-      };
-
-      _addColumn(testData);
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
     });
 
     it("should be able to show and hide custom expressions for a table", () => {
@@ -688,11 +675,21 @@ describe("scenarios > visualizations > table column settings", () => {
   });
 
   describe("nested structured questions", () => {
-    it("should be able to show and hide fields from a nested query", () => {
+    it("should be able to show and hide fields and implicitly joinable fields from a nested query", () => {
       H.createQuestion(tableQuestion).then(({ body: card }) => {
         H.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
+
+      const implicitColumn = {
+        column: "Category",
+        columnName: "Product → Category",
+        table: "product",
+      };
+
+      _addColumn(implicitColumn);
+      _hideColumn(implicitColumn);
+      _removeColumn(implicitColumn);
 
       const testData = {
         column: "Tax",
@@ -767,23 +764,6 @@ describe("scenarios > visualizations > table column settings", () => {
         columnName: "User → ID",
         table: "user",
         scrollTimes: 3,
-      };
-
-      _addColumn(newColumn);
-      _hideColumn(newColumn);
-      _removeColumn(newColumn);
-    });
-
-    it("should be able to show and hide implicitly joinable fields for a nested query", () => {
-      H.createQuestion(tableQuestion).then(({ body: card }) => {
-        H.createQuestion(nestedQuestion(card), { visitQuestion: true });
-      });
-      openSettings();
-
-      const newColumn = {
-        column: "Category",
-        columnName: "Product → Category",
-        table: "product",
       };
 
       _addColumn(newColumn);
