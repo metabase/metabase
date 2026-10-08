@@ -1,5 +1,5 @@
 import { getStore, mainReducers } from "__support__/entities-store";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { createMockSettingsState } from "__support__/state";
 import { getRoutes } from "metabase/routes";
 
 import { collectRouteChunks } from "./derive-route-preloads";
