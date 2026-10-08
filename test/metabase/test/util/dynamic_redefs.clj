@@ -40,10 +40,10 @@
   [a-var]
   (or (proxy-original a-var) @a-var))
 
-(defn- call-replacement
-  "Call the replacement `f` that is in scope for `a-var`.
-   Throws an `AssertionError` once this thread has re-entered the proxy more than [[max-proxy-depth]] times."
-  [a-var f args]
+(defn- deeper
+  "The depths to bind for one more entry into `a-var`'s proxy on this thread.
+   Throws an `AssertionError` once the thread has re-entered the proxy more than [[max-proxy-depth]] times."
+  [a-var]
   (let [depth (get *proxy-depths* a-var 0)]
     (when (> depth max-proxy-depth)
       ;; Throw an Error, not an Exception: a `(catch Exception ...)` in the code under test would swallow an Exception
@@ -54,16 +54,16 @@
                    "(closing over the var resolves to the proxy, not the original). "
                    "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
                    "to capture the unpatched function."))))
-    (binding [*proxy-depths* (assoc *proxy-depths* a-var (inc depth))]
-      (apply f args))))
+    (assoc *proxy-depths* a-var (inc depth))))
 
-(defmacro ^:private call-through
-  "Call the replacement in scope for `a-var` with `args`, or evaluate `direct-call` when there is none."
-  [a-var direct-call args]
-  `(let [f# (get *local-redefs* ~a-var ::none)]
-     (if (identical? f# ::none)
-       ~direct-call
-       (call-replacement ~a-var f# ~args))))
+(defmacro ^:private in-scope
+  "Bind `f` to what `a-var` calls on this thread, its replacement or else `original`, and evaluate `call`."
+  [[f [a-var original]] call]
+  `(let [~f (get *local-redefs* ~a-var ~original)]
+     (if (identical? ~f ~original)
+       ~call
+       (binding [*proxy-depths* (deeper ~a-var)]
+         ~call))))
 
 (defn- var->proxy
   "Build a proxy for `a-var` that calls the replacement in scope on the current thread, or `original` with none.
@@ -79,19 +79,19 @@
                          "with a dedicated test dispatch value instead.")
                     {:var a-var})))
   ;; The proxy outlives the redef that installed it, so most calls find no replacement in scope and must stay cheap.
-  ;; The fixed arities avoid an argument seq for those calls, and only `call-replacement` makes a `binding`.
-  ;; The recursion check lives there too: without a replacement, any recursion is the original's own.
+  ;; The fixed arities avoid an argument seq for those calls, and only a replacement gets a `binding`.
+  ;; The recursion check is skipped with it: without a replacement, any recursion is the original's own.
   ;;
   ;; Each proxy keeps its own original. Something else can put a different root over the proxy and a later patch
   ;; then treats that root as the original, so an original stored on the var would be wrong for this proxy.
   ^{::proxy-for a-var, ::original original}
   (fn
-    ([]                (call-through a-var (original) nil))
-    ([a]               (call-through a-var (original a) (list a)))
-    ([a b]             (call-through a-var (original a b) (list a b)))
-    ([a b c]           (call-through a-var (original a b c) (list a b c)))
-    ([a b c d]         (call-through a-var (original a b c d) (list a b c d)))
-    ([a b c d & more]  (call-through a-var (apply original a b c d more) (list* a b c d more)))))
+    ([]                (in-scope [f [a-var original]] (f)))
+    ([a]               (in-scope [f [a-var original]] (f a)))
+    ([a b]             (in-scope [f [a-var original]] (f a b)))
+    ([a b c]           (in-scope [f [a-var original]] (f a b c)))
+    ([a b c d]         (in-scope [f [a-var original]] (f a b c d)))
+    ([a b c d & more]  (in-scope [f [a-var original]] (apply f a b c d more)))))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
