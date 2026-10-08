@@ -111,11 +111,9 @@ describe("admin > custom visualizations", () => {
         H.popover().findByText("Deactivate custom visualizations").click();
 
         H.main()
-          .findByRole("heading", { name: "Add a new visualization" })
-          .should("not.exist");
-        H.main()
           .findByRole("heading", { name: "Enable custom visualizations" })
           .should("be.visible");
+        H.getAddVisualizationLink().should("not.exist");
       });
 
       it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
@@ -464,6 +462,9 @@ describe("admin > custom visualizations", () => {
 
           cy.log("make sure fallback is used after reload");
           cy.reload();
+          cy.findByTestId("table-root").should("be.visible");
+          cy.findByTestId("viz-type-button").click();
+          cy.findByTestId("Table-button").should("be.visible");
           cy.findByText("Custom visualizations").should("not.exist");
         });
       });
@@ -917,6 +918,7 @@ describe("admin > custom visualizations", () => {
       cy.get<CardId>("@questionId").then((questionId) => {
         cy.request("PUT", `/api/card/${questionId}`, {
           enable_embedding: true,
+          display: H.CUSTOM_VIZ_DISPLAY,
         });
 
         H.visitEmbeddedPage({
@@ -1242,13 +1244,15 @@ describe("admin > custom visualizations", () => {
           H.visitDashboard(dashcard.dashboard_id);
         });
 
-        H.onNextAnchorClick((anchor: HTMLAnchorElement) => {
-          expect(anchor).to.have.attr(
-            "href",
-            "https://metabase.test/custom-viz",
-          );
-        });
+        const anchorClick = cy.stub();
+        H.onNextAnchorClick((anchor: HTMLAnchorElement) =>
+          anchorClick(anchor.href),
+        );
         H.getDashboardCard().findByTestId("demo-viz-click-target").click();
+        cy.wrap(anchorClick).should(
+          "have.been.calledOnceWith",
+          "https://metabase.test/custom-viz",
+        );
       });
 
       it("updates a dashboard filter", () => {
@@ -1827,21 +1831,11 @@ describe("sandbox", () => {
     name: string;
     payload: string;
     errorPattern: RegExp;
-    before?: () => void;
-    additionalAssertions?: () => void;
   }> = [
     {
       name: "window.fetch",
       payload: 'window.fetch("/api/canary-should-be-blocked-by-sandbox");',
       errorPattern: blockedPattern(/API call: window\.fetch/),
-      before: () => {
-        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-          "canary",
-        );
-      },
-      additionalAssertions: () => {
-        cy.get("@canary.all").should("have.length", 0);
-      },
     },
     {
       name: "document.open",
@@ -1990,14 +1984,6 @@ describe("sandbox", () => {
       payload:
         "eval('window.fetch(\"/api/canary-should-be-blocked-by-sandbox\")');",
       errorPattern: blockedPattern(/API call: window\.fetch/),
-      before: () => {
-        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-          "canary",
-        );
-      },
-      additionalAssertions: () => {
-        cy.get("@canary.all").should("have.length", 0);
-      },
     },
     {
       name: "XMLHttpRequest",
@@ -2013,14 +1999,6 @@ describe("sandbox", () => {
       name: "window.open",
       payload: 'window.open("/api/canary-should-be-blocked-by-sandbox");',
       errorPattern: blockedPattern(/API call: window\.open/),
-      before: () => {
-        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-          "canary",
-        );
-      },
-      additionalAssertions: () => {
-        cy.get("@canary.all").should("have.length", 0);
-      },
     },
     {
       name: "document.write",
@@ -2048,14 +2026,6 @@ describe("sandbox", () => {
       payload:
         'window.fetch.bind(window)("/api/canary-should-be-blocked-by-sandbox");',
       errorPattern: blockedPattern(/API call: window\.fetch/),
-      before: () => {
-        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-          "canary",
-        );
-      },
-      additionalAssertions: () => {
-        cy.get("@canary.all").should("have.length", 0);
-      },
     },
     {
       // Try to bypass via Function.prototype.bind.call. Confirms the check
@@ -2064,14 +2034,6 @@ describe("sandbox", () => {
       payload:
         'Function.prototype.bind.call(window.fetch, window)("/api/canary-should-be-blocked-by-sandbox");',
       errorPattern: blockedPattern(/API call: window\.fetch/),
-      before: () => {
-        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-          "canary",
-        );
-      },
-      additionalAssertions: () => {
-        cy.get("@canary.all").should("have.length", 0);
-      },
     },
     {
       name: "Worker constructor",
@@ -2161,14 +2123,6 @@ describe("sandbox", () => {
       payload:
         'new FontFace("x", "url(/api/canary-should-be-blocked-by-sandbox)").load();',
       errorPattern: blockedPattern(/API call: FontFace\.load/),
-      before: () => {
-        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
-          "canary",
-        );
-      },
-      additionalAssertions: () => {
-        cy.get("@canary.all").should("have.length", 0);
-      },
     },
     {
       name: "document.adoptedStyleSheets setter",
@@ -2299,8 +2253,12 @@ describe("sandbox", () => {
   it("blocks browser APIs that are not allowed in the sandbox", () => {
     const bundle = SANDBOX_CASES.map((c, index) => {
       const delay = 1000 + index * 100;
-      return `window.setTimeout(function() { try { ${c.payload} } catch (e) { console.error(e); } }, ${delay});`;
+      return `window.setTimeout(function() { try { ${c.payload} } catch (e) { console.error(${JSON.stringify(c.name)}, e); } }, ${delay});`;
     }).join("\n");
+
+    cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+      "canary",
+    );
 
     cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
       req.continue((res) => {
@@ -2317,20 +2275,15 @@ describe("sandbox", () => {
     cy.wait("@injectedBundle");
     cy.get("@consoleLog").should("be.calledWith", "injected bundle");
 
-    for (const {
-      name,
-      errorPattern,
-      before,
-      additionalAssertions,
-    } of SANDBOX_CASES) {
-      before?.();
+    for (const { name, errorPattern } of SANDBOX_CASES) {
       cy.log(`Verifying error pattern for: ${name}`);
       cy.get("@consoleError").should(
-        "have.been.calledWithMatch",
+        "have.been.calledWith",
+        name,
         Cypress.sinon.match.has("message", Cypress.sinon.match(errorPattern)),
       );
-      additionalAssertions?.();
     }
+    cy.get("@canary.all").should("have.length", 0);
   });
 
   // `window.location` and the Location attributes are `[LegacyUnforgeable]`,
@@ -2348,9 +2301,13 @@ describe("sandbox", () => {
       'location.hash = "#attacker-pwned";',
     ];
     // Run inline in the bundle preamble. Each is wrapped in try/catch so an
-    // attempt that errors doesn't short-circuit the rest.
+    // attempt that errors doesn't short-circuit the rest, and logs whether it
+    // ran to the end or threw.
     const attackBundle = payloads
-      .map((p) => `try { ${p} } catch (e) {}`)
+      .map(
+        (p, index) =>
+          `try { ${p}; console.log("plugin location op", ${index}, "ran"); } catch (e) { console.log("plugin location op", ${index}, "threw"); }`,
+      )
       .join("\n");
 
     cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
@@ -2360,17 +2317,26 @@ describe("sandbox", () => {
       });
     }).as("injectedBundle");
 
-    H.visitQuestion("@sandboxCardId");
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+      },
+    });
     cy.wait("@injectedBundle");
 
     cy.findByRole("heading", {
       name: "Custom viz rendered successfully",
     }).should("be.visible");
+    payloads.forEach((_payload, index) => {
+      cy.get("@consoleLog").should(
+        "have.been.calledWith",
+        "plugin location op",
+        index,
+      );
+    });
 
     cy.location("pathname").should("match", /\/question/);
-    cy.location("href").then((href) => {
-      expect(href).not.to.include("attacker");
-    });
+    cy.location("href").should("not.include", "attacker");
     cy.location("search").should("not.contain", "attacker-pwned");
     cy.location("hash").should("not.contain", "attacker-pwned");
   });
@@ -2493,17 +2459,19 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
+        // The bundle loads after the card query, so the marker is in the
+        // host DOM before the plugin walker runs.
+        win.document.addEventListener("DOMContentLoaded", () => {
+          const marker = win.document.createElement("span");
+          marker.id = "treewalker-host-marker";
+          marker.textContent = HOST_MARKER_TEXT;
+          win.document.body.appendChild(marker);
+        });
       },
     });
     cy.wait("@injectedBundle");
 
-    cy.window().then((win) => {
-      const marker = win.document.createElement("span");
-      marker.id = "treewalker-host-marker";
-      marker.textContent = HOST_MARKER_TEXT;
-      win.document.body.appendChild(marker);
-    });
-
+    cy.get("#treewalker-host-marker").should("have.text", HOST_MARKER_TEXT);
     cy.findByRole("heading", {
       name: "Custom viz rendered successfully",
     }).should("be.visible");
@@ -2559,17 +2527,25 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
+        // @ts-expect-error - test window property
+        win.SECRET = "abracadabra";
       },
-    });
-    cy.window().then((win) => {
-      // @ts-expect-error - test window property
-      win.SECRET = "abracadabra";
     });
     cy.wait("@injectedBundle");
 
     cy.findByRole("heading", {
       name: "Custom viz rendered successfully",
     }).should("be.visible");
+
+    cy.log("The host realm has these globals");
+    cy.window().its("SECRET").should("eq", "abracadabra");
+    cy.window().its("MetabaseBootstrap").should("exist");
+
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees SECRET:",
+      "undefined",
+    );
 
     cy.get("@consoleLog").should(
       "have.been.calledWith",
@@ -2715,7 +2691,14 @@ describe("sandbox", () => {
         subtree: true,
         attributes: true,
       });
+      var ownMutations = 0;
+      var ownNode = document.createElement('div');
+      new MutationObserver(function(records) {
+        ownMutations += records.length;
+      }).observe(ownNode, { attributes: true });
+      ownNode.setAttribute('data-own-mutation', 'true');
       setTimeout(function() {
+        console.log('plugin observed own mutations:', ownMutations);
         console.log('plugin observed mutations:', seenMutations);
       }, 1500);
     `;
@@ -2751,6 +2734,11 @@ describe("sandbox", () => {
       doc.body.removeAttribute("data-mutation-probe-attr");
     });
 
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin observed own mutations:",
+      1,
+    );
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin observed mutations:",
