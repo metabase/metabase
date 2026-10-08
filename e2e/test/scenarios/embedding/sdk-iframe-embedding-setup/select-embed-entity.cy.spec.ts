@@ -32,8 +32,6 @@ describe(suiteTitle, () => {
     H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
 
     mockEmbedJsToDevServer();
   });
@@ -50,7 +48,6 @@ describe(suiteTitle, () => {
       ({ body: { id: secondDashboardId } }) => {
         logRecent("dashboard", secondDashboardId);
         logRecent("dashboard", ORDERS_DASHBOARD_ID);
-        cy.wrap(secondDashboardId).as("secondDashboardId");
       },
     );
 
@@ -163,8 +160,6 @@ describe("recently created dashboards", () => {
     H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
-    cy.intercept("GET", "/api/search?*").as("searchQuery");
 
     mockEmbedJsToDevServer();
   });

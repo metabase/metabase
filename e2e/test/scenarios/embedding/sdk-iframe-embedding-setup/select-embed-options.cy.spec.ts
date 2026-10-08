@@ -36,7 +36,6 @@ describe("OSS", { tags: "@OSS" }, () => {
       H.updateSetting("enable-embedding-simple", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
       mockEmbedJsToDevServer();
     });
@@ -72,7 +71,6 @@ describe("EE without license", () => {
       H.updateSetting("enable-embedding-simple", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
       mockEmbedJsToDevServer();
     });
@@ -99,7 +97,6 @@ describe(suiteTitle, () => {
     H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
       "persistSettings",
     );
