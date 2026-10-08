@@ -22,7 +22,7 @@ const runner = path.join(__dirname, "run.cjs");
 // A worker loads one project's setup when it starts, so each worker serves one
 // project, and the pool moves workers to whichever project has files left.
 const SDK_PROJECT = /^(frontend\/src\/embedding-sdk-(bundle|shared)|enterprise\/frontend\/src\/embedding-sdk-(package|ee))\//;
-const projectOf = (file) => (process.env.NT_ONE_PROJECT !== "1" && SDK_PROJECT.test(path.relative(path.resolve(__dirname, ".."), path.resolve(file))) ? "sdk" : "core");
+const projectOf = (file) => (SDK_PROJECT.test(path.relative(path.resolve(__dirname, ".."), path.resolve(file))) ? "sdk" : "core");
 // The slowest files go first. Taken in list order, a 20 second file can be the
 // last one picked up, and then one worker runs it while the others sit idle.
 // The times come from the previous run, and a file with no record goes first.
@@ -38,9 +38,7 @@ const durations = (() => {
 })();
 const queues = { core: [], sdk: [] };
 for (const file of files) queues[projectOf(file)].push(file);
-if (process.env.NT_NO_SLOWEST_FIRST !== "1") {
-  for (const queue of Object.values(queues)) queue.sort((a, b) => (durations[b] ?? Infinity) - (durations[a] ?? Infinity));
-}
+for (const queue of Object.values(queues)) queue.sort((a, b) => (durations[b] ?? Infinity) - (durations[a] ?? Infinity));
 const measured = {};
 const serving = { core: 0, sdk: 0 };
 
@@ -84,11 +82,10 @@ const spawn = (project) => {
       ...(process.env.NT_NODE_EXTRA ? process.env.NT_NODE_EXTRA.split(" ") : []),
     ],
     env: { ...process.env, NT_QUEUE: "1", NT_PROJECT: project },
-    stdio: ["ignore", "pipe", "pipe", "ipc"],
+    stdio: ["ignore", "ignore", "pipe", "ipc"],
   });
   live += 1;
   serving[project] += 1;
-  child.stdout.on("data", (chunk) => { if (process.env.NT_STDOUT) require("node:fs").appendFileSync(process.env.NT_STDOUT, chunk); });
   child.stderr.on("data", (chunk) => process.stderr.write(chunk));
   let running = null;
   child.on("message", (message) => {
