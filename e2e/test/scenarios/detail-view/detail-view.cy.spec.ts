@@ -19,7 +19,7 @@ describe("detail view", () => {
   });
 
   describe("table", () => {
-    it("displays object details, breadcrumbs, relationships, email links, and 404 error state", () => {
+    it("displays object details, breadcrumbs, relationships, and 404 error state", () => {
       DetailView.visitTable(PRODUCTS_ID, 9999);
       cy.findByTestId("loading-indicator").should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
