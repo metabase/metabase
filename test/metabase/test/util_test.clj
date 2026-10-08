@@ -192,7 +192,7 @@
   "The var `premium-features/is-hosted?` is imported from, checked so these tests fail if the re-export moves."
   []
   (let [src #'premium-features.settings/is-hosted?]
-    (assert (contains? (.getWatches ^clojure.lang.Var src) #'premium-features/is-hosted?))
+    (assert (identical? (:ns (meta src)) (:ns (meta #'premium-features/is-hosted?))))
     src))
 
 ;; Not ^:parallel: patching a source, or `with-redefs` on it, replaces the re-export's root for every thread.
