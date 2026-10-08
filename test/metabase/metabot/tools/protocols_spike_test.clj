@@ -263,7 +263,7 @@
   ([tool-names tool args]
    (binding [scope/*current-user-scope* #{"*"}]
      (tools.runtime/invoke entries
-                           {:profile-id :nlq :metabot-id nil :tool-names tool-names}
+                           {:profile-id :nlq :metabot nil :tool-names tool-names}
                            tool args))))
 
 ;;; ── the single form is a real tool ────────────────────────────────────────────────────────────
@@ -288,7 +288,7 @@
       (is (= {:output "read x"}
              (binding [scope/*current-user-scope* #{"*"}]
                (tools.runtime/invoke (tools/entries [single])
-                                     {:profile-id :nlq :metabot-id nil :tool-names #{"one_only"}}
+                                     {:profile-id :nlq :metabot nil :tool-names #{"one_only"}}
                                      "one_only" {:uri "x"})))))))
 
 ;;; ── what the consumer publishes ───────────────────────────────────────────────────────────────
@@ -414,7 +414,7 @@
                      (compose [_ es _] (tools/concatenated es)))
           outcome  (binding [scope/*current-user-scope* #{"*"}]
                      (tools.runtime/invoke (tools/entries [crashing])
-                                           {:profile-id :nlq :metabot-id nil :tool-names #{"crash"}}
+                                           {:profile-id :nlq :metabot nil :tool-names #{"crash"}}
                                            "crash" {:ns [1 2]}))]
       (is (= {:class :unrecoverable :code :internal} (:error outcome)))
       (doseq [secret ["hunter2" "a real bug" "fine"]]

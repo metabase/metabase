@@ -109,7 +109,7 @@
   ([extra-tool-names tool-name args]
    (binding [scope/*current-user-scope* #{"*"}]
      (tools.runtime/invoke entries
-                           {:profile-id :nlq :metabot-id nil
+                           {:profile-id :nlq :metabot nil
                             :tool-names (into extra-tool-names (keys entries))}
                            tool-name args))))
 
@@ -228,7 +228,7 @@
     (is (=? {:error {:class :unrecoverable :code :scope-denied}}
             (binding [scope/*current-user-scope* #{"agent:nothing"}]
               (tools.runtime/invoke entries
-                                    {:profile-id :nlq :metabot-id nil
+                                    {:profile-id :nlq :metabot nil
                                      :tool-names (set (keys entries))}
                                     "old_plain" {:n 1})))))
   (testing "a converted tool's recovery steps are filtered the same way"

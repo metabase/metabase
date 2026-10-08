@@ -1,6 +1,9 @@
 (ns metabase.metabot.tools.timelines-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.timelines :as tools.timelines]
    [metabase.test :as mt]))
 
@@ -29,6 +32,11 @@
                 names (set (map :name items))]
             (is (not (contains? names "Archived TL")))))))))
 
+(defn- details
+  "Call the converted `get_timeline_details` tool for `timeline-id`."
+  [timeline-id]
+  (tools.core/handle tools.timelines/get-timeline-details-tool {:timeline_id timeline-id} {}))
+
 (deftest get-timeline-details-tool-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection    {coll-id :id} {:name "Events Coll"}
@@ -40,25 +48,25 @@
                                                         :timeline_id tl-id
                                                         :timestamp   #t "2025-06-01T00:00:00Z"
                                                         :icon        "star"}]
-      (testing "returns timeline details with events"
-        (let [result     (tools.timelines/get-timeline-details-tool {:timeline_id tl-id})
-              structured (:structured_output result)]
-          (is (= "Releases" (:name structured)))
-          (is (= "Release dates" (:description structured)))
-          (is (= 1 (count (:events structured))))
-          (is (= "v1.0" (-> structured :events first :name)))))
-      (testing "output contains XML-formatted text with events"
-        (let [{:keys [output]} (tools.timelines/get-timeline-details-tool {:timeline_id tl-id})]
+      (testing "the details reach the model as XML, with its events"
+        (let [{:keys [output]} (details tl-id)]
           (is (re-find #"<timeline" output))
           (is (re-find #"<events>" output))
           (is (re-find #"v1.0" output))))
       (testing "events render as well-formed XML (closed attribute quote and opening tag)"
-        (let [{:keys [output]} (tools.timelines/get-timeline-details-tool {:timeline_id tl-id})]
+        (let [{:keys [output]} (details tl-id)]
           (is (re-find #"<event id=\"\d+\" name=\"v1\.0\" timestamp=\"[^\"]+\">Initial release</event>"
                        output))))
-      (testing "throws for a nonexistent timeline (read-check 404)"
-        (is (thrown? Exception
-                     (tools.timelines/get-timeline-details-tool {:timeline_id Integer/MAX_VALUE})))))))
+      (testing "no :structured-output: nothing reads one for a timeline"
+        (is (= [:output] (keys (details tl-id)))))
+      (testing "a missing timeline is a declared recoverable error, not a bare throw"
+        ;; Before conversion this returned `{:structured_output nil}` with no `:output`, so the model
+        ;; was shown the printed map.
+        (let [e (is (thrown? clojure.lang.ExceptionInfo (details Integer/MAX_VALUE)))]
+          (is (=? {:class   :recoverable
+                   :code    :metabase.metabot.tools.recoverable.common/not-found
+                   :message #(str/starts-with? % "Timeline ")}
+                  (tools.error/classify e))))))))
 
 (deftest timeline-output-xml-escaping-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -76,7 +84,7 @@
           (is (re-find #"name=\"Q&amp;A &lt;&quot;Launches&quot;&gt;\"" output))
           (is (re-find #"Tags: &lt;b&gt; &amp; &quot;quotes&quot;" output))))
       (testing "details output escapes XML-special characters in timeline and event fields"
-        (let [{:keys [output]} (tools.timelines/get-timeline-details-tool {:timeline_id tl-id})]
+        (let [{:keys [output]} (details tl-id)]
           (is (re-find #"name=\"Q&amp;A &lt;&quot;Launches&quot;&gt;\"" output))
           (is (re-find #"name=\"R&amp;D &lt;event&gt; &quot;one&quot;\"" output))
           (is (re-find #"a &lt; b &amp; c &gt; d" output))

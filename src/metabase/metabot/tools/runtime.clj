@@ -64,7 +64,9 @@
   forgot to add their tool to it."
   [:map {:closed true}
    [:profile-id  :keyword]
-   [:metabot-id  [:maybe :string]]
+   ;; The resolved Metabot row, not an id: `tools.shared/*metabot*` carries the row so a tool can
+   ;; scope a query to that metabot's collection.
+   [:metabot     [:maybe :map]]
    [:tool-names  [:set :string]]
    [:memory-atom {:optional true} :any]])
 
@@ -249,11 +251,25 @@
   ^Throwable [code message]
   (ex-info message {tools.error/error-key {:class :validation :code code :message message}}))
 
+(defn- unknown-tool-message
+  [tool-name tool-names]
+  (str "Tool `" tool-name "` does not exist. Available tools: "
+       (str/join ", " (sort tool-names)) "."))
+
 (defn- unknown-tool-ex
   ^Throwable [tool-name entries]
-  (validation-ex :unknown-tool
-                 (str "Tool `" tool-name "` does not exist. Available tools: "
-                      (str/join ", " (sort (keys entries))) ".")))
+  (validation-ex :unknown-tool (unknown-tool-message tool-name (keys entries))))
+
+(defn unknown-tool-outcome
+  "The failure [[::outcome]] for a call to a tool that is not in `tool-names`.
+
+  Public because the agent's `run-tool` resolves the entry before it has anything to invoke, so it
+  reaches this directly rather than through [[invoke]]. One definition of the message either way."
+  [tool-name tool-names]
+  (render {:class   :validation
+           :code    :unknown-tool
+           :message (unknown-tool-message tool-name tool-names)}
+          tool-names))
 
 (defn- check-scope!
   "Throw an unrecoverable `:scope-denied` error when the current user's scope does not cover the
@@ -293,8 +309,8 @@
   The vars are bound as well as the ctx passed because code a tool reaches *through* does not take a
   ctx — `metabase.metabot.tools.shared.content-store`, which the representations pipeline uses, reads
   the vars. Tools themselves read ctx."
-  [tool args {:keys [metabot-id profile-id memory-atom] :as ctx}]
-  (binding [shared/*metabot-id*  metabot-id
+  [tool args {:keys [metabot profile-id memory-atom] :as ctx}]
+  (binding [shared/*metabot*     metabot
             shared/*profile-id*  profile-id
             shared/*memory-atom* memory-atom]
     (tools/call tool args ctx)))

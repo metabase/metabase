@@ -99,7 +99,7 @@
 (defn- ctx
   ([] (ctx {}))
   ([overrides]
-   (merge {:profile-id :sql :metabot-id nil :tool-names all-tool-names} overrides)))
+   (merge {:profile-id :sql :metabot nil :tool-names all-tool-names} overrides)))
 
 (defn- invoke
   ([tool-name args] (invoke (ctx) tool-name args))

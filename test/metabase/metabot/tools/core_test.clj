@@ -132,7 +132,7 @@
 
 (defn- item-tool [] (->ItemTool nil nil))
 
-(def ^:private ctx {:profile-id :nlq :metabot-id nil :tool-names #{"search"}})
+(def ^:private ctx {:profile-id :nlq :metabot nil :tool-names #{"search"}})
 
 (deftest ^:parallel the-single-form-is-a-real-tool-test
   (testing "take BatchedTool away and this still works; handle is the item loader"

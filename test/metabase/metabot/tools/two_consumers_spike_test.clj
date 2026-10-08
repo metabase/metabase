@@ -132,7 +132,7 @@
 (defn- metabot-call [args]
   (binding [scope/*current-user-scope* #{"*"}]
     (tools.runtime/invoke entries
-                          {:profile-id :nlq :metabot-id nil :tool-names #{"glossary"}}
+                          {:profile-id :nlq :metabot nil :tool-names #{"glossary"}}
                           "glossary" args)))
 
 (deftest ^:parallel the-same-tool-serves-both-consumers-test
