@@ -474,6 +474,7 @@ describe(suiteTitle, () => {
 
     cy.log("drill-through should be enabled by default in chart preview");
     H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByTestId("interactive-question-result-toolbar").should("exist");
       cy.findByText("18,760").should("be.visible").click();
       cy.findByText("See these Orders").should("exist");
     });
@@ -490,6 +491,10 @@ describe(suiteTitle, () => {
 
     cy.log("drill-through should be disabled in chart preview");
     H.getSimpleEmbedIframeContent().within(() => {
+      cy.log("the static question has no interactive toolbar");
+      cy.findByTestId("interactive-question-result-toolbar", {
+        timeout: RERENDER_TIMEOUT,
+      }).should("not.exist");
       cy.findByText("18,760").should("be.visible").click();
       cy.findByText("See these Orders").should("not.exist");
     });
