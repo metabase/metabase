@@ -95,7 +95,7 @@ describe("Embedding SDK: data-app resources (queries)", () => {
                   },
                 ],
               },
-              "serdes/meta": [{ model: "Card", id: question, label: "orders" }],
+              "serdes/meta": [{ model: "Card" }],
             });
           });
         }),
