@@ -453,7 +453,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.visit(`${location.origin}${location.pathname}?id=1&id=3`),
       );
 
-      cy.findByTestId("scalar-value").contains("2");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
     });
   });
 
