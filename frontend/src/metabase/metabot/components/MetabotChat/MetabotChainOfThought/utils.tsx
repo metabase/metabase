@@ -223,19 +223,34 @@ const exactSeconds = (durationMs: number | undefined): number | null =>
     ? Math.round(durationMs / 1000)
     : null;
 
-const thoughtFor = (seconds: number) =>
-  ngettext(
-    msgid`Thought for ${seconds} second`,
-    `Thought for ${seconds} seconds`,
+const formatDuration = (totalSeconds: number): string => {
+  const minutes = Math.floor(totalSeconds / 60);
+  const minutesLabel = ngettext(
+    msgid`${minutes} minute`,
+    `${minutes} minutes`,
+    minutes,
+  );
+
+  const seconds = totalSeconds % 60;
+  const secondsLabel = ngettext(
+    msgid`${seconds} second`,
+    `${seconds} seconds`,
     seconds,
   );
 
-const workedFor = (seconds: number) =>
-  ngettext(
-    msgid`Worked for ${seconds} second`,
-    `Worked for ${seconds} seconds`,
-    seconds,
-  );
+  if (minutes === 0) {
+    return secondsLabel;
+  } else if (seconds === 0) {
+    return minutesLabel;
+  } else {
+    return `${minutesLabel} ${secondsLabel}`;
+  }
+};
+
+const thoughtFor = (seconds: number) =>
+  t`Thought for ${formatDuration(seconds)}`;
+
+const workedFor = (seconds: number) => t`Worked for ${formatDuration(seconds)}`;
 
 export const reasoningLabel = (durationMs: number | undefined): string => {
   const seconds = exactSeconds(durationMs);
