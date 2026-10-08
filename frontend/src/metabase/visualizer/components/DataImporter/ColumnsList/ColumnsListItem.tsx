@@ -82,7 +82,11 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
           <Ellipsified>{displayNameForColumn(column)}</Ellipsified>
         </Flex>
         {!!onRemove && (
-          <ActionIcon aria-label={t`Remove`} onClick={handleRemoveClick}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Remove`}
+            onClick={handleRemoveClick}
+          >
             <Icon name="close" size={14} />
           </ActionIcon>
         )}

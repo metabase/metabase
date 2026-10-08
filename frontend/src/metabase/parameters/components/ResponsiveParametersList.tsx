@@ -83,7 +83,7 @@ export const ResponsiveParametersList = ({
           <Flex p="0.75rem 1rem" align="center" justify="space-between">
             <h3>{t`Filters`}</h3>
             <ActionIcon
-              variant="viewHeader"
+              variant="subtle"
               aria-label={t`Close`}
               onClick={handleFilterButtonClick}
             >

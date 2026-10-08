@@ -309,6 +309,7 @@ export const ListViewConfiguration = ({
                 <Menu.Divider m={0} />
                 <SimpleGrid cols={5} p="lg">
                   <ActionIcon
+                    variant="subtle"
                     radius="lg"
                     p="lg"
                     w="2rem"
@@ -352,6 +353,7 @@ export const ListViewConfiguration = ({
                   {Object.entries(ENTITY_ICONS).map(([key, iconName]) => (
                     <Flex justify="center" align="center" key={key}>
                       <ActionIcon
+                        variant="subtle"
                         w="2rem"
                         h="2rem"
                         radius="lg"

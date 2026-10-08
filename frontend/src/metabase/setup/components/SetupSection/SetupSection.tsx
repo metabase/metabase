@@ -37,12 +37,7 @@ export const SetupSection = ({
               {description}
             </Box>
           </Box>
-          <ActionIcon
-            component="span"
-            variant="default"
-            radius="xl"
-            size="2.5rem"
-          >
+          <ActionIcon component="span" radius="xl" size="2.5rem">
             <Icon
               name={isExpanded ? "chevronup" : "chevrondown"}
               c="core-brand"

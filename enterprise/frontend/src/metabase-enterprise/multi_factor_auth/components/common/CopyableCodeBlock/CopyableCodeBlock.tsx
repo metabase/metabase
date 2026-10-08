@@ -34,7 +34,13 @@ export function CopyableCodeBlock({ codes }: CopyableCodeBlockProps) {
       <CopyButton value={codes.join("\n")}>
         {({ copy, copied }) => (
           <Tooltip label={copied ? t`Copied!` : t`Copy`}>
-            <ActionIcon size="xs" m={-1} aria-label={t`Copy`} onClick={copy}>
+            <ActionIcon
+              variant="subtle"
+              size="xs"
+              m={-1}
+              aria-label={t`Copy`}
+              onClick={copy}
+            >
               <FixedSizeIcon name="copy" />
             </ActionIcon>
           </Tooltip>

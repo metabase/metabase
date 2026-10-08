@@ -246,6 +246,7 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
       <Text fw="bold">{formatPartType(type)}</Text>
     </Flex>
     <ActionIcon
+      variant="subtle"
       component={ForwardRefLink}
       to={path}
       target="_blank"
@@ -292,6 +293,7 @@ const DataPartJsonCard = ({
           <Text fw="bold">{formatPartType(type)}</Text>
         </Flex>
         <ActionIcon
+          variant="subtle"
           h="sm"
           onClick={() => clipboard.copy(formatted)}
           className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
@@ -357,6 +359,7 @@ const CodeEditDataPart = ({
           </Badge>
         </Flex>
         <ActionIcon
+          variant="subtle"
           h="sm"
           onClick={() => clipboard.copy(value.value)}
           className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}

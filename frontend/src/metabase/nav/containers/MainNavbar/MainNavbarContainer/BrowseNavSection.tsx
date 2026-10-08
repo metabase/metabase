@@ -53,8 +53,8 @@ export const BrowseNavSection = ({
         showAddDataButton ? (
           <Tooltip label={t`Add data`}>
             <ActionIcon
+              variant="subtle"
               aria-label={t`Add data`}
-              color="text-secondary"
               onClick={() => {
                 trackAddDataModalOpened("left-nav");
                 onAddDataModalOpen();

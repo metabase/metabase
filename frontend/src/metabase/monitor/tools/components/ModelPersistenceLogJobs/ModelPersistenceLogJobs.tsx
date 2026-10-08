@@ -230,6 +230,7 @@ function getColumns(
           <Flex justify="flex-end" w="100%">
             <Tooltip label={t`Refresh`}>
               <ActionIcon
+                variant="subtle"
                 aria-label={t`Refresh`}
                 onClick={(event) => {
                   event.stopPropagation();

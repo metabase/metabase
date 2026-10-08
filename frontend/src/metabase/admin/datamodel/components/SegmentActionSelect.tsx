@@ -27,7 +27,7 @@ export function SegmentActionSelect({
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon>
+          <ActionIcon variant="subtle">
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>

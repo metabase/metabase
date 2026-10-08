@@ -330,6 +330,7 @@ function SidebarShowFilterMenu({
     <Menu position="bottom-end">
       <Menu.Target>
         <ActionIcon
+          variant="subtle"
           className={cx(S.filterButton, {
             [S.filterButtonActive]: showHidden,
           })}

@@ -67,7 +67,7 @@ export const PaginationControls = ({
         )}
       </Text>
       <ActionIcon
-        variant="viewHeader"
+        variant="subtle"
         onClick={onPreviousPage ?? undefined}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
@@ -77,7 +77,7 @@ export const PaginationControls = ({
       </ActionIcon>
 
       <ActionIcon
-        variant="viewHeader"
+        variant="subtle"
         onClick={onNextPage ?? undefined}
         disabled={isNextDisabled}
         data-testid="next-page-btn"

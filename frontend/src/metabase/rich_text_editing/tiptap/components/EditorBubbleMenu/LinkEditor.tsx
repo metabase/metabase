@@ -70,17 +70,17 @@ export const LinkEditor = ({
       </Box>
       <Box c="text-secondary">
         <Tooltip label={t`Save`}>
-          <ActionIcon c="inherit" onClick={handleSubmit}>
+          <ActionIcon variant="subtle" c="inherit" onClick={handleSubmit}>
             <FixedSizeIcon name="check" />
           </ActionIcon>
         </Tooltip>
         <Tooltip label={t`Remove link`}>
-          <ActionIcon c="inherit" onClick={() => onSubmit("")}>
+          <ActionIcon variant="subtle" c="inherit" onClick={() => onSubmit("")}>
             <FixedSizeIcon name="trash" />
           </ActionIcon>
         </Tooltip>
         <Tooltip label={t`Formatting`}>
-          <ActionIcon c="inherit" onClick={handleCancel}>
+          <ActionIcon variant="subtle" c="inherit" onClick={handleCancel}>
             <FixedSizeIcon name="ellipsis" />
           </ActionIcon>
         </Tooltip>

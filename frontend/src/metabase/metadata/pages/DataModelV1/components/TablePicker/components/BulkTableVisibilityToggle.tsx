@@ -87,7 +87,7 @@ export function BulkTableVisibilityToggle({
 
   if (isLoading) {
     return (
-      <ActionIcon disabled variant="transparent">
+      <ActionIcon variant="subtle" disabled>
         <Loader size="xs" />
       </ActionIcon>
     );
@@ -96,10 +96,10 @@ export function BulkTableVisibilityToggle({
   return (
     <Tooltip label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}>
       <ActionIcon
+        variant="subtle"
         aria-label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}
         className={className}
         disabled={isLoading}
-        variant="transparent"
         onClick={handleClick}
       >
         <Icon name={areAllHidden ? "eye_crossed_out" : "eye"} />

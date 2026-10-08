@@ -15,12 +15,7 @@ export const TenantsDocsButton = () => {
   return (
     <ExternalLink href={url}>
       <Tooltip label={t`View documentation`}>
-        <ActionIcon
-          size="lg"
-          variant="outline"
-          c="text-primary"
-          bd="1px solid var(--mb-color-border-neutral)"
-        >
+        <ActionIcon size="lg">
           <Icon name="reference" />
         </ActionIcon>
       </Tooltip>

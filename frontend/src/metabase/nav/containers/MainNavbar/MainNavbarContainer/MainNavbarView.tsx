@@ -264,8 +264,8 @@ export function MainNavbarView({
                   canWriteToCollections && !isTenantUser ? (
                     <Tooltip label={t`Create a new collection`}>
                       <ActionIcon
+                        variant="subtle"
                         aria-label={t`Create a new collection`}
-                        color="text-secondary"
                         onClick={() => {
                           trackNewCollectionFromNavInitiated();
                           handleCreateNewCollection();

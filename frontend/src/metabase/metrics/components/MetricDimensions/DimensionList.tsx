@@ -81,10 +81,10 @@ export function DimensionList({
         <Group gap="lg" wrap="nowrap" align="center">
           {hasChecked && (
             <ActionIcon
+              variant="subtle"
               className={S.deleteIconButton}
               aria-label={t`Remove`}
               onClick={onRemove}
-              variant="viewHeader"
             >
               <Icon name="trash" />
             </ActionIcon>

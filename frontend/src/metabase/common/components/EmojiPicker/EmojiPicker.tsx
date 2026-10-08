@@ -100,6 +100,7 @@ function Emoji({
 }: Omit<EmojiPickerListEmojiProps, "color">) {
   return (
     <ActionIcon
+      variant="subtle"
       c="text-primary"
       component="button"
       w="2rem"

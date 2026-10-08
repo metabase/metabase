@@ -147,7 +147,7 @@ function JobRunSidebarHeader({ onClose }: JobRunSidebarHeaderProps) {
       data-testid="job-run-list-sidebar-header"
     >
       <Title order={3}>{t`Job run`}</Title>
-      <ActionIcon aria-label={t`Close`} onClick={onClose}>
+      <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
         <FixedSizeIcon name="close" />
       </ActionIcon>
     </Group>

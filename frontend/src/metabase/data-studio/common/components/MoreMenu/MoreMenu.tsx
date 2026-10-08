@@ -40,7 +40,7 @@ export function MoreMenu({
     <>
       <Menu>
         <Menu.Target>
-          <ActionIcon aria-label={ariaLabel}>
+          <ActionIcon variant="subtle" aria-label={ariaLabel}>
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>

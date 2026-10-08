@@ -56,7 +56,7 @@ export const ChartTypeOption = ({
               onSelectVisualization(visualizationType);
             }
           }}
-          color="core-brand"
+          color="brand"
           data-is-selected={isSelected}
           variant={isSelected ? "filled" : "outline"}
           className={cx(
@@ -81,12 +81,11 @@ export const ChartTypeOption = ({
 
         {isSelected && onOpenSettings && (
           <ActionIcon
+            variant="subtle"
             pos="absolute"
             top="-0.5rem"
             right="-0.6rem"
             radius="xl"
-            color="text-disabled"
-            variant="viewHeader"
             bg="background_page-primary"
             className={cx(
               ChartTypeOptionS.BorderedButton,

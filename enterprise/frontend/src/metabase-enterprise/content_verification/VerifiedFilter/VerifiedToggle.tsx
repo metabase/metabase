@@ -15,11 +15,11 @@ export const VerifiedToggle = ({
   return (
     <Tooltip label={buttonLabel} position="bottom">
       <ActionIcon
+        variant="subtle"
         aria-label={buttonLabel}
         aria-selected={verified}
         size={32}
         role="switch"
-        variant="viewHeader"
         onClick={() => handleVerifiedFilterChange(!verified)}
         c={verified ? "core-brand" : "text-primary"}
       >

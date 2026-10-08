@@ -46,11 +46,11 @@ export const BookmarkToggle = forwardRef(function BookmarkToggle(
   return (
     <Tooltip label={label} position={tooltipPlacement}>
       <ActionIcon
+        variant="subtle"
         {...props}
         aria-label={label}
         ref={ref}
         onClick={handleClick}
-        variant="viewHeader"
         size="2rem"
       >
         <Icon

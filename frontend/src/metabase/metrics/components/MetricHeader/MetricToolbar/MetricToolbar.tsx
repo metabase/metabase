@@ -120,7 +120,6 @@ function MetricToolbarButtons({
     <Menu position="bottom-end">
       <Menu.Target>
         <ActionIcon
-          variant="default"
           size="lg"
           className={S.moreOptionsButton}
           aria-label={t`More options`}

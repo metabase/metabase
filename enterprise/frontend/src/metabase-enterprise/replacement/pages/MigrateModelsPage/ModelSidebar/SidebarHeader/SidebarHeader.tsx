@@ -39,6 +39,7 @@ export function SidebarHeader({ card, onClose }: SidebarHeaderProps) {
       <Group gap="xxs" wrap="nowrap">
         <Tooltip label={t`Open in new tab`} openDelay={300}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={link}
             target="_blank"
@@ -49,6 +50,7 @@ export function SidebarHeader({ card, onClose }: SidebarHeaderProps) {
         </Tooltip>
         <Tooltip label={t`View in dependency graph`} openDelay={300}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={Urls.dependencyGraph({
               entry: { id: card.id, type: "card" },
@@ -59,7 +61,7 @@ export function SidebarHeader({ card, onClose }: SidebarHeaderProps) {
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

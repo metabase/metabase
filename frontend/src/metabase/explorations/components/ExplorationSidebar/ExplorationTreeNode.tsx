@@ -306,6 +306,7 @@ function ExplorationGroupMenu({
     <Menu>
       <Menu.Target>
         <ActionIcon
+          variant="subtle"
           className={S.groupMenuTrigger}
           size="1rem"
           c="icon-primary"

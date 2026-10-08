@@ -60,6 +60,7 @@ export const useColumnDef = ({ handleUnarchiveClick }: ColumnDefProps) => {
           return (
             <Tooltip label={t`Unarchive snippet`}>
               <ActionIcon
+                variant="subtle"
                 aria-label={t`Unarchive snippet`}
                 size="md"
                 onClick={async (event) => {
