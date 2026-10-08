@@ -847,7 +847,10 @@ describe("document comments", () => {
       });
 
       cy.realType("s");
-      cy.wait("@searchTables").its("response.statusCode").should("eq", 200);
+      cy.wait("@searchTables").then(({ request, response }) => {
+        expect(response?.statusCode).to.eq(200);
+        logSearchDiagnostics(request.url, response?.body);
+      });
       H.documentMentionDialog().within(() => {
         cy.findByText("Bobby Tables").should("be.visible");
         cy.findByText("Bobby Tables's Personal Collection").should(
@@ -1643,6 +1646,35 @@ function selectCharactersLeft(count: number) {
   for (let i = 0; i < count; ++i) {
     cy.realPress(["Shift", "ArrowLeft"]);
   }
+}
+
+// TEMPORARY (GDGT-3326): print what search returned, and why the current
+// user's personal collection is missing from it, to the CI log.
+function logSearchDiagnostics(searchUrl: string, searchBody: any) {
+  const names = (searchBody?.data ?? []).map(
+    (result: { model: string; name: string }) =>
+      `${result.model}:${result.name}`,
+  );
+
+  cy.request("/api/user/current").then(({ body: user }) => {
+    const url = new URL(searchUrl);
+    url.pathname = "/api/search/debug";
+    url.searchParams.set("expected_result_type", "collection");
+    url.searchParams.set(
+      "expected_result_id",
+      String(user.personal_collection_id),
+    );
+
+    cy.request({
+      url: `${url.pathname}${url.search}`,
+      failOnStatusCode: false,
+    }).then(({ status, body: debug }) => {
+      cy.task(
+        "log",
+        `[GDGT-3326] ${new Date().toISOString()} search=${JSON.stringify(names)} debug(${status})=${JSON.stringify(debug)}`,
+      );
+    });
+  });
 }
 
 function startNewCommentIn1ParagraphDocument() {
