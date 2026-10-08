@@ -230,6 +230,27 @@
                    {:choices [{:delta {} :finish_reason "stop"}]
                     :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}])))))
 
+(deftest ^:parallel zai-context-window-exceeded-is-a-length-stop-test
+  (letfn [(usage-chunk [finish-reason]
+            (->> (into [] (zai/zai->aisdk-chunks-xf)
+                       [{:id      "20260723-3"
+                         :model   "glm-5.2"
+                         :choices [{:delta {:role "assistant" :content "Partial"}}]}
+                        {:choices [{:delta {} :finish_reason finish-reason}]
+                         :usage   {:prompt_tokens 199000 :completion_tokens 1000 :total_tokens 200000}}])
+                 (filter #(= :usage (:type %)))
+                 first))]
+    (testing "a stop at the context window reads as a length stop, so the \"full\" path can run"
+      (is (=? {:finish-reason "length" :raw-finish-reason "model_context_window_exceeded"}
+              (usage-chunk "model_context_window_exceeded"))))
+    (testing "the other Z.AI finish reasons keep their mapping"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "length"        "length"
+        "stop"          "stop"
+        "sensitive"     "content-filter"
+        "network_error" "error"))))
+
 (deftest ^:parallel zai-whole-tool-call-conv-test
   (testing "a tool call arriving whole in one delta (tool_stream false) is mapped correctly"
     (is (=? [{:type :start}

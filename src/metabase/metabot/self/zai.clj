@@ -136,10 +136,15 @@
 
 (def ^:private stop-reasons
   "Z.AI signals a filtered response with `sensitive` rather than OpenAI's `content_filter`, and reports an upstream
-  failure as a finish reason instead of an error event."
+  failure as a finish reason instead of an error event.
+
+  Z.AI also lists `model_context_window_exceeded` with no description
+  (https://docs.z.ai/api-reference/llm/chat-completion). It maps to `length`, as Anthropic's reason of the same name
+  does in `metabase.metabot.self.claude`, so a stop at the context window reads as an incomplete turn."
   (assoc chat-completions/stop-reasons
-         "sensitive"     "content-filter"
-         "network_error" "error"))
+         "sensitive"                     "content-filter"
+         "network_error"                 "error"
+         "model_context_window_exceeded" "length"))
 
 (defn zai->aisdk-chunks-xf
   "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks.
