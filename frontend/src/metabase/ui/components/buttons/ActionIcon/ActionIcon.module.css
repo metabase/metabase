@@ -108,9 +108,6 @@
 }
 
 .root[data-variant="default"] {
-  --mb-ai-bg: var(--mb-color-button-default-neutral-default);
-  --mb-ai-hover: var(--mb-color-button-default-neutral-hover);
-  --mb-ai-pressed: var(--mb-color-button-default-neutral-pressed);
   --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
   --mb-ai-bd-color: var(--mb-color-border-neutral-strong);
 
@@ -118,39 +115,27 @@
 }
 
 .root[data-variant="light"] {
-  --mb-ai-bg: var(--mb-color-button-light-neutral-default);
-  --mb-ai-hover: var(--mb-color-button-light-neutral-hover);
-  --mb-ai-pressed: var(--mb-color-button-light-neutral-pressed);
   --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
 }
 
 .root[data-variant="subtle"] {
-  --mb-ai-bg: var(--mb-color-button-subtle-neutral-default);
-  --mb-ai-hover: var(--mb-color-button-subtle-neutral-hover);
-  --mb-ai-pressed: var(--mb-color-button-subtle-neutral-pressed);
   --mb-ai-disabled-bg: var(--mb-ai-bg);
 }
 
 .root[data-variant="default"],
 .root[data-variant="light"],
 .root[data-variant="subtle"] {
-  color: var(--mb-ai-color, var(--mb-color-icon-primary));
+  color: var(--mb-ai-color);
   background-color: var(--mb-ai-bg);
   border: 0.5px solid var(--mb-ai-bd-color, transparent);
 
   &:hover:not([data-loading], :disabled, [data-disabled]) {
-    color: var(
-      --mb-ai-hover-color,
-      var(--mb-ai-color, var(--mb-color-icon-primary))
-    );
+    color: var(--mb-ai-hover-color);
     background-color: var(--mb-ai-hover);
   }
 
   &:active:not([data-loading], :disabled, [data-disabled]) {
-    color: var(
-      --mb-ai-hover-color,
-      var(--mb-ai-color, var(--mb-color-icon-primary))
-    );
+    color: var(--mb-ai-hover-color);
     background-color: var(--mb-ai-pressed);
     box-shadow: none;
   }
