@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { render, screen } from "__support__/ui";
 
-import { Tab } from "../Tab";
+import { TabButton } from "../TabButton";
 
 import { TabList } from "./TabList";
 
@@ -12,8 +12,8 @@ const TestTabList = () => {
 
   return (
     <TabList value={value} onChange={setValue}>
-      <Tab value={1}>Tab 1</Tab>
-      <Tab value={2}>Tab 2</Tab>
+      <TabButton label="Tab 1" value={1} />
+      <TabButton label="Tab 2" value={2} />
     </TabList>
   );
 };
