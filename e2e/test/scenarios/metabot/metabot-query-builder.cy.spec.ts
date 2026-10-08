@@ -21,32 +21,9 @@ describe("Metabot Query Builder", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.setupAnthropicLlmProvider();
-    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });
 
-  it("should show setup guidance when llm-metabot-configured? is false", () => {
-    H.clearLlmProviders();
-    cy.visit("/question/ask");
-    cy.url().should("include", "/question/ask");
-    cy.findByRole("button", { name: "connect to a model" }).should(
-      "be.visible",
-    );
-    cy.findByRole("button", { name: "connect to a model" }).click();
-    cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
-  });
-
-  it("should redirect to notebook when metabot-enabled? is false", () => {
-    H.updateSetting("metabot-enabled?", false);
-
-    cy.log(
-      "visiting '/question/ask' should redirect to notebook when metabot is disabled",
-    );
-    cy.visit("/question/ask");
-    cy.url().should("include", "/question#");
-    cy.findByTestId("metabot-chat").should("not.exist");
-  });
-
-  it("should render the agent's reply inline without leaving the page", () => {
+  it("should render the agent's reply inline and support clicking suggested prompts", () => {
     cy.visit("/question/ask");
     H.metabotChatInput().should("be.visible");
 
@@ -64,25 +41,8 @@ describe("Metabot Query Builder", () => {
 
     // ...and we move to the conversation's permalink
     cy.url().should("include", "/metabot/conversation/");
-  });
 
-  it("should render a generated chart inline without leaving the page", () => {
-    cy.visit("/question/ask");
-    H.metabotChatInput().should("be.visible");
-
-    H.mockMetabotResponse({
-      body: mockGeneratedEntityResponse(allOrdersQuestion.dataset_query),
-    });
-    H.sendMetabotMessage("Show me all orders");
-
-    cy.wait("@metabotAgent");
-    // the chart renders inline rather than in the query builder
-    cy.findByTestId("metabot-inline-chart").should("be.visible");
-    cy.findByTestId("qb-header").should("not.exist");
-    cy.url().should("include", "/metabot/conversation/");
-  });
-
-  it("should support clicking suggested prompts", () => {
+    cy.log("suggested prompts");
     // mock suggested prompts
     cy.intercept("GET", "/api/metabot/metabot/*/prompt-suggestions*", {
       prompts: [{ prompt: "Show me all orders" }],
@@ -101,21 +61,12 @@ describe("Metabot Query Builder", () => {
     // the chart renders inline rather than in the query builder
     cy.wait("@metabotAgent");
     cy.findByTestId("metabot-inline-chart").should("be.visible");
+    cy.findByTestId("qb-header").should("not.exist");
     cy.url().should("include", "/metabot/conversation/");
-  });
 
-  it("should handle errors", () => {
-    // visit AI exploration page
-    cy.visit("/question/ask");
-    H.metabotChatInput().should("be.visible");
-
-    // mock the agent request to stream an error
+    cy.log("errors");
     H.mockMetabotResponse({ body: mockErrorResponse });
-
-    // send a prompt
     H.sendMetabotMessage("Show me all orders");
-
-    // should show an error message inline
     H.lastChatMessage().should("contain.text", "Something went wrong");
   });
 });
