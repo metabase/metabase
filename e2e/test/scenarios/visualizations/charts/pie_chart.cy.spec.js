@@ -261,26 +261,6 @@ describe("scenarios > visualizations > pie chart", () => {
     });
   });
 
-  it("should automatically map dimension columns in query to rings", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: twoRingQuery,
-      display: "pie",
-    });
-
-    ensurePieChartRendered(
-      [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ],
-      ["Doohickey", "Gadget", "Gizmo", "Widget"],
-    );
-  });
-
   it("should allow the user to edit rings", () => {
     H.visitQuestionAdhoc({
       dataset_query: threeRingQuery,
@@ -347,9 +327,6 @@ describe("scenarios > visualizations > pie chart", () => {
       H.visitQuestionAdhoc({
         dataset_query: twoRingQuery,
         display: "pie",
-        visualization_settings: {
-          "pie.slice_threshold": 0,
-        },
       });
 
       ensurePieChartRendered(
