@@ -713,9 +713,12 @@
                referenced))))))
 
 (defn- incompatible-metric-explanation
-  "An LLM-facing message naming each metric in `required-by-metric-id` and the source it must be used on. Takes the
-  classification [[incompatible-metrics]] already made rather than redoing it, so the two cannot drift. `mp` supplies
-  only the database name for a required table's portable FK."
+  "An LLM-facing message naming each metric in `required-by-metric-id` and the source it must be used on, as
+  `{:message … :usable-sources {metric-id {:source-table id} | {:source-card id}}}`. Takes the classification
+  [[incompatible-metrics]] already made rather than redoing it, so the two cannot drift. `mp` supplies only the
+  database name for a required table's portable FK.
+
+  `:usable-sources` names by numeric id exactly the sources the message names, for surfaces that speak numeric ids."
   [mp required-by-metric-id]
   (let [metric-ids   (keys required-by-metric-id)
         required     (vals required-by-metric-id)
@@ -755,16 +758,22 @@
                            table-fk
                            (tru "{0} (needs source-table: {1})" metric-name (json/encode table-fk))
 
-                           (= :table (:kind r))
-                           (tru "{0} (needs its base table as source-table:)" metric-name)
-
                            eid
                            (tru "{0} (needs source-card: {1})" metric-name (pr-str eid))
 
                            :else
                            (tru "{0} (defined on a source you do not have access to)" metric-name))))]
-    (tru "These metrics cannot be used on this stage''s source: {0}. A metric only works on the source it was defined on, so the stage must use that source. Either change the stage''s source-table:/source-card: to the one shown for each metric, or drop the metric and express the aggregation directly."
-         (str/join ", " (map describe metric-ids)))))
+    {:message        (tru "These metrics cannot be used on this stage''s source: {0}. A metric only works on the source it was defined on, so the stage must use that source. Either change the stage''s source-table:/source-card: to the one shown for each metric, or drop the metric and express the aggregation directly."
+                          (str/join ", " (map describe metric-ids)))
+     :usable-sources (into {}
+                           (keep (fn [[metric-id r]]
+                                   (cond
+                                     (and (= :table (:kind r)) (contains? table-id->fk (:table-id r)))
+                                     [metric-id {:source-table (:table-id r)}]
+
+                                     (and (= :card (:kind r)) (contains? readable (:card-id r)))
+                                     [metric-id {:source-card (:card-id r)}])))
+                           required-by-metric-id)}))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -861,11 +870,13 @@
             ;; Metric/source compatibility. After the schema gates so it only inspects a well-formed query,
             ;; before execution so a bad pairing is a retryable agent error rather than a QP 500.
             _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
-                            (throw (ex-info (incompatible-metric-explanation mp bad)
-                                            {:agent-error? true
-                                             :error        :incompatible-metric
-                                             :metric-ids   (vec (keys bad))
-                                             :status-code  400})))
+                            (let [{:keys [message usable-sources]} (incompatible-metric-explanation mp bad)]
+                              (throw (ex-info message
+                                              {:agent-error?   true
+                                               :error          :incompatible-metric
+                                               :metric-ids     (vec (keys bad))
+                                               :usable-sources usable-sources
+                                               :status-code    400}))))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]

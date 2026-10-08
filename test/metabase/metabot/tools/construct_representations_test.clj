@@ -2300,9 +2300,12 @@
                                                :aggregation  [[:count]]}}}]
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (mt/with-current-user (mt/user->id :rasta)
-        (let [msg (#'construct/incompatible-metric-explanation
-                   (lib-be/application-database-metadata-provider (mt/id))
-                   {metric-id {:kind :card, :card-id question-id}})]
+        (let [{msg :message, :keys [usable-sources]}
+              (#'construct/incompatible-metric-explanation
+               (lib-be/application-database-metadata-provider (mt/id))
+               {metric-id {:kind :card, :card-id question-id}})]
+          (is (empty? usable-sources)
+              "nor its numeric id")
           (is (str/includes? msg "Metric on secret question")
               "the metric itself is readable to this user, so naming it is fine")
           (is (not (str/includes? msg question-eid))
@@ -2326,9 +2329,9 @@
                                                :aggregation  [[:count]]}}}]
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (mt/with-current-user (mt/user->id :rasta)
-        (let [msg (#'construct/incompatible-metric-explanation
-                   (lib-be/application-database-metadata-provider (mt/id))
-                   {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? false}})]
+        (let [msg (:message (#'construct/incompatible-metric-explanation
+                             (lib-be/application-database-metadata-provider (mt/id))
+                             {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? false}}))]
           (is (not (str/includes? msg "Secret metric"))
               "the name of a metric this user cannot read must not come back")
           (is (str/includes? msg (str metric-id))
@@ -2336,7 +2339,8 @@
 
 (deftest incompatible-metric-message-does-not-disclose-unqueryable-base-table-test
   (testing (str "A required table is named only when this user can query it -- the check `metric-details` and search\n"
-                "make before offering the same table. Otherwise the message says a base table is needed, not which.")
+                "make before offering the same table. Otherwise the metric reads as having an inaccessible source,\n"
+                "matching the `source_unavailable` those surfaces report.")
     (mt/with-temp [:model/Card {metric-id :id}
                    {:name          "Products metric"
                     :type          :metric
@@ -2348,17 +2352,20 @@
             required {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? true}}]
         (testing "queryable: the portable FK to paste"
           (mt/with-current-user (mt/user->id :rasta)
-            (is (str/includes? (#'construct/incompatible-metric-explanation mp required)
-                               (str "\"Products metric\" (needs source-table: "
-                                    (json/encode (products-source-table-fk)) ")")))))
+            (let [{:keys [message usable-sources]} (#'construct/incompatible-metric-explanation mp required)]
+              (is (str/includes? message
+                                 (str "\"Products metric\" (needs source-table: "
+                                      (json/encode (products-source-table-fk)) ")")))
+              (is (= {metric-id {:source-table (mt/id :products)}} usable-sources)))))
         (testing "not queryable: no table name"
           ;; Its own `with-current-user`, inside the perms change: each binds fresh data-permission caches that keep the
           ;; first answer they get, so sharing one with the queryable case above would replay its cached grant.
           (mt/with-no-data-perms-for-all-users!
             (mt/with-current-user (mt/user->id :rasta)
-              (let [msg (#'construct/incompatible-metric-explanation mp required)]
-                (is (str/includes? msg "\"Products metric\" (needs its base table as source-table:)"))
-                (is (not (str/includes? msg "PRODUCTS")))))))))))
+              (let [{msg :message, :keys [usable-sources]} (#'construct/incompatible-metric-explanation mp required)]
+                (is (str/includes? msg "\"Products metric\" (defined on a source you do not have access to)"))
+                (is (not (str/includes? msg "PRODUCTS")))
+                (is (empty? usable-sources))))))))))
 
 (defn- table-query
   "A Lib query on the test-data table `table-key`."
@@ -2403,7 +2410,7 @@
                         "A metric only works on the source it was defined on, so the stage must use that source. "
                         "Either change the stage's source-table:/source-card: to the one shown for each metric, "
                         "or drop the metric and express the aggregation directly.")
-                   (#'construct/incompatible-metric-explanation mp {metric-id nil})))))))))
+                   (:message (#'construct/incompatible-metric-explanation mp {metric-id nil}))))))))))
 
 (deftest card-based-metric-pinned-to-its-own-card-test
   (testing (str "A card-based metric is pinned to the exact card it was defined on -- a different card over the same\n"
