@@ -232,7 +232,7 @@ Credentials:
 - **Project ID**. The Google Cloud project to use. Optional if the service account key provides it. [Where do I find this?](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects) You can also set it with the environment variable `MB_LLM_GOOGLE_PROJECT_ID`.
 - **Location**. Optional. Defaults to global. You can also set it with the environment variable `MB_LLM_GOOGLE_LOCATION`.
 - **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `service-account-key`, `oauth-token`. Defaults to `service-account-key`.
-- **Service account key file**. Only when **Authentication method** is **Service account key** (`service-account-key`). Upload [a service account key file to authenticate with](https://docs.cloud.google.com/iam/docs/keys-create-delete). You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
+- **Service account key file**. Only when **Authentication method** is **Service account key** (`service-account-key`). Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
 - **OAuth access token**. Only when **Authentication method** is **OAuth token** (`oauth-token`). A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
 - **Model Garden endpoint ID**. Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.
 - **API base URL** (advanced). Derived from the location when left at the global host. Defaults to `https://aiplatform.googleapis.com`. You can also set it with the environment variable `MB_LLM_GOOGLE_API_BASE_URL`.
@@ -379,7 +379,7 @@ Metabase lists whichever models your Ollama server has available, so what you ca
 
 Credentials:
 
-- **API base URL** (required). Your Ollama server's address, ending in /v1, or https://ollama.com/v1 for Ollama Cloud. To reach a server on your private network, set `MB_LLM_ALLOWED_NETWORKS=allow-private`; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
+- **API base URL** (required). Your Ollama server's address, ending in /v1, or https://ollama.com/v1 for Ollama Cloud. To reach a server on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
 - **API key**. Required for Ollama Cloud. Leave blank if your server doesn't require one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
 
 ### Context window
