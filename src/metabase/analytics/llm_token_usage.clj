@@ -47,8 +47,6 @@
                                                                     (analytics.util/hashed-metabase-token-or-uuid))
                                  :request-id                    request-id
                                  :model-id                      model-id
-                                 :provider                      provider
-                                 :model-name                    model-name
                                  :total-tokens                  total-tokens
                                  :prompt-tokens                 prompt-tokens
                                  :completion-tokens             completion-tokens
@@ -61,7 +59,9 @@
                                  :tag                           tag
                                  :session-id                    session-id
                                  :profile                       profile}
-                                user-id))
+                                user-id
+                                {:provider   provider
+                                 :model-name model-name}))
 
 (def ^:private prometheus-arg-keys
   [:model-id :provider :tag :prompt-tokens :completion-tokens :cache-creation-tokens :cache-read-tokens])

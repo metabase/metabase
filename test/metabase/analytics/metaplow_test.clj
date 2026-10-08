@@ -13,6 +13,19 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn events-sent-by!
+  "Calls `thunk` with Metaplow tracking on and returns the payload of each event it tracked.
+  The events are kept in memory instead of being sent."
+  [thunk]
+  (let [payloads (atom [])]
+    (mt/with-temporary-setting-values [metaplow-url          "http://fake-metaplow/api/send"
+                                       anon-tracking-enabled true]
+      (mt/with-dynamic-fn-redefs [metaplow/enqueue! (fn [payload]
+                                                      (swap! payloads conj (:payload payload))
+                                                      true)]
+        (thunk)))
+    @payloads))
+
 (deftest build-payload-test
   (testing "Schemas with an `:event` key produce `<schema>.<event>` and the event key is removed from data"
     (let [payload (#'metaplow/build-payload :snowplow/dashboard
