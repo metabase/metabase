@@ -69,8 +69,12 @@
     (is (= ::omitted (cap-for-window {:input (long-input "x" 70000)} 65536))))
   (testing "a caller's cap is dropped the same way rather than lowered"
     (is (= ::omitted (cap-for-window {:input (long-input "x" 70000) :max-tokens 512} 32768))))
+  (testing "digits count one token each, as Qwen3 tokenizes them"
+    ;; Qwen3 gives each digit its own token, so 40000 digits are 40000 tokens and 32000 does not fit in
+    ;; 65536; at 2 bytes per token the estimate was about 21000 and sent a cap that vLLM rejects
+    (is (= ::omitted (cap-for-window {:input (long-input "7" 40000)} 65536))))
   (testing "a non-ASCII prompt is counted in bytes, not characters"
-    ;; 25000 CJK characters are 75000 UTF-8 bytes, about 38500 estimated tokens, so 32000 no longer fits;
+    ;; 25000 CJK characters are 75000 UTF-8 bytes, about 76000 estimated tokens, so 32000 no longer fits;
     ;; counted as characters they would leave room for it
     (is (= ::omitted (cap-for-window {:input (long-input "表" 25000)} 65536)))))
 

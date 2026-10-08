@@ -192,12 +192,6 @@
   tools: role markers, a tool-use preamble, the generation prompt."
   1024)
 
-(def ^:private prompt-bytes-per-token
-  "Bytes of JSON `messages` and `tools` [[estimated-prompt-tokens]] counts as one token. Metabot agent
-  prompts measured 4.1 to 4.3 bytes per token on Qwen3, so 2 leaves room for content that tokenizes
-  denser, such as digit-heavy query results."
-  2)
-
 (def ^:private known-window-ttl-ms
   "How long [[served-max-model-len]] reuses a context window the server reported.
 
@@ -494,14 +488,16 @@
 (defn- estimated-prompt-tokens
   "A high estimate of the prompt tokens in the Chat Completions `body`.
 
-  The UTF-8 bytes of its JSON `messages` and `tools`, divided by [[prompt-bytes-per-token]], plus
-  [[prompt-overhead-tokens]]. A high estimate is the safe side: [[output-cap]] then sends no cap, where
-  a low one would send a cap that does not fit."
+  The UTF-8 bytes of its JSON `messages` and `tools`, plus [[prompt-overhead-tokens]]. One byte counts as
+  one token: the server can host any model, and no token of a byte-level BPE or byte-fallback tokenizer
+  is shorter than one byte. That is an upper bound, not a typical rate. Metabot prose measures 4 to 5
+  bytes per token, but rows of numbers measure 1.0 on Qwen3, which gives each digit its own token, and
+  below 2 on a tokenizer that groups up to three digits. A high estimate is the safe side:
+  [[output-cap]] then sends no cap, where a low one would send a cap that does not fit."
   [body]
-  (let [json-bytes (alength (.getBytes ^String (json/encode (select-keys body [:messages :tools]))
-                                       StandardCharsets/UTF_8))]
-    (+ prompt-overhead-tokens
-       (quot (+ json-bytes (dec prompt-bytes-per-token)) prompt-bytes-per-token))))
+  (+ prompt-overhead-tokens
+     (alength (.getBytes ^String (json/encode (select-keys body [:messages :tools]))
+                         StandardCharsets/UTF_8))))
 
 (defn- raise-to-floors
   "Raise `cap` to [[forced-tool-call-token-floor]] on a `forced?` call, and to
