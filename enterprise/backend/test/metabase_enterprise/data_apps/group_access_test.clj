@@ -147,8 +147,9 @@
       (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
       (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
         (mt/with-current-user (mt/user->id :crowberto)
-          (collection/archive-or-unarchive-collection!
-           (t2/select-one :model/Collection :id collection-id) {:archived true}))
+          (mt/with-dynamic-fn-redefs [perms/data-app-collection? (constantly false)]
+            (collection/archive-or-unarchive-collection!
+             (t2/select-one :model/Collection :id collection-id) {:archived true})))
         (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group)))
         (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
         (is (empty? (t2/select :model/Permissions :group_id (:id group)
