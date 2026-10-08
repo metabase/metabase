@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.walk :as lib.walk]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -127,6 +128,18 @@
                 "wrote. To get values, build the question from tables with construct_notebook_query instead.")
            {:agent-error? true}))
 
+(defn- serialized-with-parameters
+  "`query` serialized, keeping the `:parameters` of the query and of each of its stages.
+   Serializing drops them as runtime-only, but the QP applies them as filters, so without them the query would read
+   more rows than the one the user is viewing."
+  [query]
+  (let [parameters-at (fn [path] (not-empty (:parameters (get-in query path))))]
+    (cond-> (lib.walk/walk-stages (lib/prepare-for-serialization query)
+                                  (fn [_query path stage]
+                                    (cond-> stage
+                                      (parameters-at path) (assoc :parameters (parameters-at path)))))
+      (parameters-at []) (assoc :parameters (parameters-at [])))))
+
 (defn- runnable-query
   "The serialized MBQL 5 form of `query`, which state may hold as MBQL 4 (the user's viewing context) or MBQL 5.
    Throws an agent error for a query that can't be read, that is SQL, or that the current user may not run."
@@ -150,10 +163,7 @@
         (throw (if (every? #(some-> % mi/can-read?) cards)
                  (metabot-sql-card-refusal)
                  (no-permission)))))
-    ;; Serializing drops `:parameters` as runtime-only, but the QP applies them as filters, so without them the
-    ;; query would read more rows than the one the user is viewing.
-    (cond-> (lib/prepare-for-serialization normalized)
-      (seq (:parameters normalized)) (assoc :parameters (:parameters normalized)))))
+    (serialized-with-parameters normalized)))
 
 (defn- cell-text
   [value]
