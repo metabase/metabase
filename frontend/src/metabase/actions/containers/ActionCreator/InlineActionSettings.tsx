@@ -15,16 +15,31 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
-import { ActionIcon, Icon, Switch, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Icon, Switch, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import { isActionPublic, isSavedAction } from "../../utils";
 
-import {
-  ActionSettingsContent,
-  CopyWidgetContainer,
-} from "./InlineActionSettings.styled";
+type ActionSettingsTriggerButtonProps = {
+  onClick: () => void;
+};
+
+export function ActionSettingsTriggerButton({
+  onClick,
+}: ActionSettingsTriggerButtonProps) {
+  return (
+    <Tooltip label={t`Action settings`}>
+      <ActionIcon
+        variant="subtle"
+        onClick={onClick}
+        aria-label={t`Action settings`}
+      >
+        <Icon name="gear" />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
 
 type InlineActionSettingsProps = {
   action?: Partial<WritebackAction>;
@@ -35,30 +50,14 @@ type InlineActionSettingsProps = {
   onBack?: () => void;
 };
 
-export const ActionSettingsTriggerButton = ({
-  onClick,
-}: {
-  onClick: () => void;
-}) => (
-  <Tooltip label={t`Action settings`}>
-    <ActionIcon
-      variant="subtle"
-      onClick={onClick}
-      aria-label={t`Action settings`}
-    >
-      <Icon name="gear" />
-    </ActionIcon>
-  </Tooltip>
-);
-
-const InlineActionSettings = ({
+export function InlineActionSettings({
   action,
   formSettings,
   isEditable,
   onChangeFormSettings,
   onClose,
   onBack,
-}: InlineActionSettingsProps) => {
+}: InlineActionSettingsProps) {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const isAdmin = useSelector((state) => getUserIsAdmin(state));
   const isPublicSharingEnabled = useSelector((state) =>
@@ -105,7 +104,7 @@ const InlineActionSettings = ({
       onClose={onClose}
       onBack={onBack}
     >
-      <ActionSettingsContent>
+      <Box mx="xl" my="lg">
         {action && hasSharingPermission && (
           <FormField
             title={t`Make public`}
@@ -129,12 +128,12 @@ const InlineActionSettings = ({
           </FormField>
         )}
         {action?.public_uuid && hasSharingPermission && (
-          <CopyWidgetContainer>
+          <Box mb="1.25rem">
             <CopyTextInput
               value={Urls.publicAction(siteUrl, action.public_uuid)}
               aria-label={t`Public action form URL`}
             />
-          </CopyWidgetContainer>
+          </Box>
         )}
         <ConfirmModal
           opened={modalOpened}
@@ -153,10 +152,7 @@ const InlineActionSettings = ({
             onChange={handleSuccessMessageChange}
           />
         </FormField>
-      </ActionSettingsContent>
+      </Box>
     </SidebarContent>
   );
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default InlineActionSettings;
+}

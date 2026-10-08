@@ -230,7 +230,7 @@
 
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
-    (mt/with-temp [:model/Collection collection {}
+    (mt/with-temp [:model/Collection collection {:namespace "data-actions"}
                    :model/Action     action     {:type :query :name "No model" :model_id nil
                                                  :collection_id (u/the-id collection)}]
       (t2/delete! :model/Collection :id (u/the-id collection))
@@ -478,6 +478,24 @@
                    (visible-collection-ids {:archive-operation-id "1234"
                                             :include-archived-items :all
                                             :include-trash-collection? true})))))))))
+
+(deftest visible-collection-ids-root-namespace-test
+  (mt/with-temp [:model/Collection {default-id :id} {}
+                 :model/Collection {data-actions-id :id} {:namespace "data-actions"}]
+    (letfn [(visible-collection-ids* [config]
+              (into #{}
+                    (keep {default-id 'default, data-actions-id 'data-actions, "root" 'root})
+                    (visible-collection-ids (merge {:permission-level :read} config))))]
+      (with-current-user-perms-for-collections! [default-id data-actions-id]
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
+          (testing "the default root needs the default root's permission"
+            (is (= '#{root default data-actions} (visible-collection-ids* {}))))
+          (testing "another namespace's root needs that root's permission"
+            (is (= '#{default data-actions} (visible-collection-ids* {:root-namespace :data-actions}))))
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-all-users-permission "/collection/namespace/data-actions/root/read/"
+              (is (= '#{root default data-actions} (visible-collection-ids* {:root-namespace :data-actions})))
+              (is (= '#{default data-actions} (visible-collection-ids* {}))))))))))
 
 (deftest effective-location-path-test
   (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)]
@@ -1586,7 +1604,7 @@
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collection or :tenant-specific or :analytics namespace."
+             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collection or :tenant-specific or :analytics or :data-apps namespace."
              (collection/check-collection-namespace :model/Card collection-id)))))
     (testing "Should throw exception if Collection does not exist"
       (is (thrown-with-msg?
@@ -3309,12 +3327,31 @@
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
 
+(deftest ensure-library-dashboards-collection-test
+  (mt/with-empty-h2-app-db!
+    (testing "Without a Library there is nothing to restore"
+      (is (nil? (collection/ensure-library-dashboards-collection!))))
+    (let [library (collection/create-library-collection!)]
+      (testing "An existing Dashboards collection is kept"
+        (is (nil? (collection/ensure-library-dashboards-collection!))))
+      (testing "A missing Dashboards collection is recreated with the Library's permissions"
+        (t2/delete! :model/Collection :type collection/library-dashboards-collection-type)
+        (let [dashboards (collection/ensure-library-dashboards-collection!)]
+          (is (=? {:name     "Dashboards"
+                   :type     collection/library-dashboards-collection-type
+                   :location (str "/" (:id library) "/")}
+                  dashboards))
+          (binding [api/*current-user*                 (mt/user->id :rasta)
+                    api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
+            (is (true? (mi/can-read? dashboards)))
+            (is (false? (mi/can-write? dashboards)))))))))
+
 (deftest create-library
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
-        (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
+        (is (= ["Dashboards" "Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
           (binding [api/*current-user*                 (mt/user->id :rasta)
                     api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]

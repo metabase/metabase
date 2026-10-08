@@ -1,7 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
+  actionApi,
   collectionApi,
   snippetApi,
   transformApi,
@@ -71,6 +73,9 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
       dispatch(snippetApi.util.invalidateTags([listTag("snippet")]));
     } else if (collection.namespace === "transforms") {
       dispatch(transformApi.util.invalidateTags([listTag("transform")]));
+    } else if (collection.namespace === "data-actions") {
+      dispatch(actionApi.util.invalidateTags([listTag("action")]));
+      dispatch(collectionApi.util.invalidateTags([listTag("collection")]));
     } else {
       dispatch(collectionApi.util.invalidateTags([listTag("collection")]));
     }
@@ -120,10 +125,10 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
       }
     };
 
-    const label =
-      collection.namespace === "snippets"
-        ? t`Unarchive snippet folder`
-        : t`Unarchive collection`;
+    const label = match(collection.namespace)
+      .with("snippets", () => t`Unarchive snippet folder`)
+      .with("data-actions", () => t`Unarchive folder`)
+      .otherwise(() => t`Unarchive collection`);
 
     return (
       <Tooltip label={label}>
@@ -142,10 +147,13 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
     );
   }
 
-  const optionsLabel =
-    collection.namespace === "snippets"
-      ? t`Snippet folder options`
-      : t`Collection options`;
+  const optionsLabel = match(collection.namespace)
+    .with("snippets", () => t`Snippet folder options`)
+    .with("data-actions", () => t`Folder options`)
+    .otherwise(() => t`Collection options`);
+  const isFolder =
+    collection.namespace === "snippets" ||
+    collection.namespace === "data-actions";
 
   return (
     <Box onClick={(e) => e.stopPropagation()}>
@@ -167,9 +175,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
               leftSection={<Icon name="pencil" />}
               onClick={toggleEditModal}
             >
-              {collection.namespace === "snippets"
-                ? t`Edit folder details`
-                : t`Edit collection details`}
+              {isFolder ? t`Edit folder details` : t`Edit collection details`}
             </Menu.Item>
           )}
           {showPermissionsOption && (

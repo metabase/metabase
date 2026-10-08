@@ -13,12 +13,5 @@ semantic_type: type/Longitude
 position: 6
 database_position: 6
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PEOPLE
-  model: Table
-- id: LONGITUDE
-  model: Field
+- model: Field
 database_indexed: false

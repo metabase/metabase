@@ -33,13 +33,19 @@
   card-param-remapped-value]
  [metabase.queries.db
   card-query-info
-  cards-queries-info
-  move-actions-of-models!]
+  cards-queries-info]
  [metabase.queries.models.card
-  create-card!]
+  check-shared-dashboard-timeline-permissions!
+  check-newly-exposed-dashcards-timeline-permissions!
+  check-shared-dashboard-timeline-permissions-for-card-ids!
+  create-card!
+  card-exposed-timeline-ids
+  dashcard-hides-card-events?
+  with-copy-source-card]
  [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
+  check-allowed-to-delete-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
   check-card-can-be-saved!
@@ -55,6 +61,7 @@
   model?
   sole-dashboard-id
   starting-card-schema-version
+  timeline-events-supported-display?
   update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata

@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -1606,3 +1607,69 @@
                             {:ids [t1 t2] :visibility_type nil})
       (is (= [nil nil]
              (map #(user-table-fn :visibility_type %) [t1 t2]))))))
+
+;;; ---------------------------------- #83937 dimension-backfill canary -----------------------------------
+
+(defn- counting-dimension-pairs
+  "Calls `thunk` with [[lib-metric.dimension.jvm/compute-dimension-pairs]] counted, returning
+  `[result call-count]`.
+
+  That function is the expensive primitive behind the `card_schema` 24 dimension backfill: it runs
+  `lib/visible-columns` over the metric's table *plus* every FK-reachable table and fetches every one of those
+  Fields. Running it once per metric is what made `query_metadata` for a wide table take minutes and exhaust the
+  heap in #83937, so these tests assert it never runs at all on that path."
+  [thunk]
+  (let [calls (atom 0)
+        orig  lib-metric.dimension.jvm/compute-dimension-pairs]
+    (mt/with-dynamic-fn-redefs [lib-metric.dimension.jvm/compute-dimension-pairs
+                                (fn [& args]
+                                  (clojure.core/swap! calls inc)
+                                  (apply orig args))]
+      [(thunk) @calls])))
+
+(defn- make-pre-curation-metric!
+  "Put `card-id` back into the pre-64 shape: `card_schema` 23 with no stored dimensions, so reading it is what
+  triggers the backfill. Needs a raw UPDATE because before-insert forces `:card_schema` to current."
+  [card-id]
+  (t2/query-one {:update :report_card
+                 :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
+                 :where  [:= :id card-id]}))
+
+(deftest query-metadata-does-not-backfill-metric-dimensions-test
+  (testing "query_metadata must not run the pre-64 dimension backfill for a table's metrics (#83937)"
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card {question-id :id} {:database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id, :card_id question-id}]
+      (make-pre-curation-metric! metric-id)
+      ;; Without this the whole test could pass vacuously: if the fixture ever stopped being a genuine
+      ;; pre-curation metric, nothing would backfill and the zero-call assertions below would be meaningless.
+      (testing "the fixture really is a metric whose dimensions get backfilled on an ordinary read"
+        (is (pos? (second (counting-dimension-pairs
+                           #(t2/select-one :model/Card :id metric-id))))))
+      (testing "GET /api/table/:id/query_metadata"
+        (let [[response calls] (counting-dimension-pairs
+                                #(mt/user-http-request :crowberto :get 200
+                                                       (format "table/%d/query_metadata" (mt/id :venues))))
+              metrics          (:metrics response)]
+          (is (zero? calls)
+              "the dimension backfill ran while hydrating a table's metrics")
+          (is (some #(= metric-id (:id %)) metrics)
+              "the metric should still be hydrated, just without its backfilled dimensions")
+          (is (every? (comp nil? :dimensions) metrics)
+              "no metric should come back carrying a backfilled dimension set")))
+      (testing "GET /api/dashboard/:id/query_metadata"
+        (let [[_response calls] (counting-dimension-pairs
+                                 #(mt/user-http-request :crowberto :get 200
+                                                        (format "dashboard/%d/query_metadata" dash-id)))]
+          (is (zero? calls)
+              "the dimension backfill ran while loading dashboard query metadata")))
+      (testing "the stored row is untouched — still schema 23, so a later write still upgrades it"
+        (is (= 23 (:card_schema (t2/query-one {:select [:card_schema]
+                                               :from   [:report_card]
+                                               :where  [:= :id metric-id]}))))))))

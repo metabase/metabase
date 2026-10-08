@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { SidebarNavButton } from "metabase/monitor/components/DetailSidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
@@ -23,7 +24,6 @@ import {
 } from "../analytics";
 
 import { ChannelAvatarStack } from "./ChannelAvatarStack";
-import S from "./NotificationDetailSidebar.module.css";
 import type { SidebarHeaderProps } from "./types";
 
 export const SidebarHeader = ({
@@ -61,24 +61,18 @@ export const SidebarHeader = ({
     <Stack gap="xl">
       <Flex justify="space-between" align="center">
         <Group gap="sm">
-          <ActionIcon
-            aria-label={t`Previous alert`}
-            size="lg"
-            className={S.navButton}
+          <SidebarNavButton
+            direction="previous"
+            label={t`Previous alert`}
             disabled={prevNotificationId === undefined}
             onClick={() => handleNavigate(prevNotificationId)}
-          >
-            <Icon name="chevronup" />
-          </ActionIcon>
-          <ActionIcon
-            aria-label={t`Next alert`}
-            size="lg"
-            className={S.navButton}
+          />
+          <SidebarNavButton
+            direction="next"
+            label={t`Next alert`}
             disabled={nextNotificationId === undefined}
             onClick={() => handleNavigate(nextNotificationId)}
-          >
-            <Icon name="chevrondown" />
-          </ActionIcon>
+          />
         </Group>
         <Group gap="sm">
           <Menu position="bottom-end" withinPortal>

@@ -1,37 +1,27 @@
-import { useEffect, useState } from "react";
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
-import { isEqual } from "underscore";
+import { useState } from "react";
 
 const yourQuestionId = 1;
+const order = {};
+
+const api = {
+  saveOrder: async (order: unknown) => {},
+};
 
 const Example = () => {
   // [<snippet example>]
-  // Inside your application component
-  const [data, setData] = useState({});
-  // This is used to force reloading Metabase components
-  const [counter, setCounter] = useState(0);
+  const [dataVersion, setDataVersion] = useState(0);
 
-  // This ensures we only change the `data` reference when it's actually changed
-  const handleDataChange = newData => {
-    setData(prevData => {
-      if (isEqual(prevData, newData)) {
-        return prevData;
-      }
-
-      return newData;
-    });
+  const saveOrder = async (order) => {
+    await api.saveOrder(order); // Your app changes its data...
+    setDataVersion((v) => v + 1); // ...then changes the key, reloading the embed.
   };
 
-  useEffect(() => {
-    /**
-     * When you set `data` as the `useEffect` hook's dependency, it will trigger the effect
-     * and increment the counter which is used in a Metabase component's `key` prop, forcing it to reload.
-     */
-    if (data) {
-      setCounter(counter => counter + 1);
-    }
-  }, [data]);
-
-  return <InteractiveQuestion key={counter} questionId={yourQuestionId} />;
+  return (
+    <>
+      <button onClick={() => saveOrder(order)}>Save order</button>
+      <InteractiveQuestion key={dataVersion} questionId={yourQuestionId} />
+    </>
+  );
   // [<endsnippet example>]
 };

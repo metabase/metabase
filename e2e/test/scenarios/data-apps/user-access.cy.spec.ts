@@ -5,6 +5,7 @@ import {
   COLLECTION_GROUP_ID,
   DATA_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { PortableTable } from "e2e/support/helpers";
 import {
   type DataApp,
   DataPermission,
@@ -14,11 +15,11 @@ import {
 
 const { H } = cy;
 
-const DATA_APP_NAME = "user-access-test";
-
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const SYNCED_APP_SLUG = "good";
+const DATA_APP_NAME = SYNCED_APP_SLUG;
+const DATA_APP_DISPLAY_NAME = "Good App";
 const ALLOWED_HOST = "https://secret-api.data-app.test";
 
 const NORMAL_USER_NAME = `${USERS.normal.first_name} ${USERS.normal.last_name}`;
@@ -29,20 +30,10 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-
-    cy.request<DataApp>("POST", `/api/apps/${DATA_APP_NAME}/draft`).then(
-      ({ body: app }) => {
-        expect(app.permission_group_id).not.to.be.null;
-
-        cy.wrap(app.permission_group_id, { log: false }).as("dataAppGroupId");
-      },
-    );
   });
 
   it("adds and removes a data app user by pasting a single email", () => {
-    cy.request("PUT", `/api/apps/${DATA_APP_NAME}/table-dependencies`, {
-      table_ids: [],
-    });
+    pullAppReading([]);
 
     cy.visit("/admin/settings/apps");
     openManageUserAccessFromAppRow();
@@ -54,7 +45,7 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
 
     H.main().within(() => {
       cy.findByRole("link", { name: "Data apps" }).should("be.visible");
-      cy.findByText(DATA_APP_NAME).should("be.visible");
+      cy.findByText(DATA_APP_DISPLAY_NAME).should("be.visible");
       cy.findByText("No one has access yet").should("be.visible");
 
       cy.findByRole("heading", { name: "Manage access to this app" }).should(
@@ -92,6 +83,8 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
   });
 
   it("adds users from comma-separated emails without duplicating existing members", () => {
+    pullAppReading([]);
+
     cy.get<number>("@dataAppGroupId").then((groupId) => {
       H.addUserToGroup(groupId, USERS.normal.email);
     });
@@ -146,12 +139,10 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
 
     H.activateToken("bleeding-edge");
 
-    cy.get<Table>("@sqliteTable").then(({ id, schema }) => {
+    cy.get<Table>("@sqliteTable").then(({ name, schema }) => {
       expect(schema).to.equal("");
 
-      cy.request("PUT", `/api/apps/${DATA_APP_NAME}/table-dependencies`, {
-        table_ids: [id],
-      });
+      pullAppReading([["sqlite", null, name]]);
     });
 
     cy.get<number>("@dataAppGroupId").then((groupId) => {
@@ -238,9 +229,16 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
       },
     });
 
-    cy.request("PUT", `/api/apps/${DATA_APP_NAME}/table-dependencies`, {
-      table_ids: [ORDERS_ID, PRODUCTS_ID],
-    });
+    pullAppReading([
+      ["Sample Database", "PUBLIC", "ORDERS"],
+      ["Sample Database", "PUBLIC", "PRODUCTS"],
+    ]);
+    cy.request<DataApp>(`/api/apps/${DATA_APP_NAME}`)
+      .its("body.table_ids")
+      .should(
+        "deep.equal",
+        [ORDERS_ID, PRODUCTS_ID].sort((a, b) => a - b),
+      );
 
     cy.get<number>("@dataAppGroupId").then((groupId) => {
       H.addUserToGroup(groupId, USERS.normal.email);
@@ -336,7 +334,7 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
 
     cy.visit("/admin/settings/apps");
     dataAppRow().within(() => {
-      cy.findByText(DATA_APP_NAME).should("be.visible");
+      cy.findByText(DATA_APP_DISPLAY_NAME).should("be.visible");
 
       cy.findByRole("link", {
         name: "Some users are missing data access.",
@@ -356,6 +354,7 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
             "name: Good App",
             `slug: ${SYNCED_APP_SLUG}`,
             "path: ./index.js",
+            "collection: goodAppCollection0000",
             "allowed_hosts:",
             `  - ${ALLOWED_HOST}`,
             "entity_id: Ioxf30LzIQCGwbCNtaG62",
@@ -440,10 +439,36 @@ const dataAppRow = () =>
 
 function openManageUserAccessFromAppRow() {
   dataAppRow()
-    .findByRole("button", { name: `Actions for ${DATA_APP_NAME}` })
+    .findByRole("button", { name: `Actions for ${DATA_APP_DISPLAY_NAME}` })
     .click();
 
   H.popover().findByText("Manage user access").click();
 }
 
 const userRow = (email: string) => H.main().findByText(email).closest("tr");
+
+/**
+ * Pulls the example data apps with the `good` app's saved questions replaced by
+ * one per table in `tables`, so the app depends on exactly those tables. The
+ * import records them as the app's table dependencies.
+ */
+function pullAppReading(tables: PortableTable[]) {
+  H.pullExampleDataApps({
+    goodAppCards: tables.map((table, index) =>
+      H.dataAppRepresentations.card({
+        entityId: `goodAppReads${String(index).padStart(9, "0")}`,
+        name: table[2],
+        type: "question",
+        collection: "goodAppCollection0000",
+        table,
+      }),
+    ),
+  });
+
+  cy.request<DataApp>(`/api/apps/${DATA_APP_NAME}`).then(({ body: app }) => {
+    expect(app.resource_collection_id).to.be.a("number");
+    expect(app.permission_group_id).not.to.eq(null);
+
+    cy.wrap(app.permission_group_id, { log: false }).as("dataAppGroupId");
+  });
+}

@@ -2,8 +2,8 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { t } from "ttag";
 
-import { CopyButton } from "metabase/common/components/CopyButton";
 import CS from "metabase/css/core/index.css";
+import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
 import {
   ActionIcon,
   Badge,
@@ -102,7 +102,7 @@ function ErrorListItem({ item }: ErrorListItemProps) {
   return (
     <Tooltip opened={clipboard.copied} label={t`Copied!`}>
       <Group
-        className={cx(S.item, CS.hoverParent, CS.hoverVisibility)}
+        className={S.item}
         p="lg"
         justify="space-between"
         wrap="nowrap"
@@ -111,15 +111,17 @@ function ErrorListItem({ item }: ErrorListItemProps) {
         <Box className={cx(CS.textWrap, CS.textMonospace)} fz="sm" lh="1rem">
           {item}
         </Box>
-        <CopyButton
-          className={CS.hoverChild}
-          value={item}
-          target={
-            <ActionIcon variant="subtle" aria-label={t`Copy`}>
-              <FixedSizeIcon name="copy" />
-            </ActionIcon>
-          }
-        />
+        {/* The click bubbles up to the row, which does the copying */}
+        <ActionIcon
+          variant="subtle"
+          className={S.copyIcon}
+          aria-label={t`Copy`}
+        >
+          <FixedSizeIcon name="copy" />
+        </ActionIcon>
+        <span role="status" className={visuallyHidden.visuallyHidden}>
+          {clipboard.copied ? t`Copied!` : ""}
+        </span>
       </Group>
     </Tooltip>
   );

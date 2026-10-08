@@ -102,6 +102,10 @@ const parseEntityLink = (
   return path && { ...path, href };
 };
 
+// Excludes `//host`, which browsers resolve to another origin
+const isRelativePath = (href?: string): href is string =>
+  href != null && /^\/(?!\/)/.test(href);
+
 const getComponents = ({
   onInternalLinkClick,
 }: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
@@ -127,7 +131,7 @@ const getComponents = ({
       );
     }
 
-    if (href?.startsWith("/")) {
+    if (isRelativePath(href)) {
       return (
         <InternalLink
           onInternalLinkClick={onInternalLinkClick}

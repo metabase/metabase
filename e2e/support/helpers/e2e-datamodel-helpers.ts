@@ -155,7 +155,6 @@ export const DataModel = {
     getReplaceButton: getSourceReplacementReplaceButton,
     getCancelButton: getSourceReplacementCancelButton,
     getTargetPickerButton: getSourceReplacementTargetPickerButton,
-    getDependentsTab: getSourceReplacementDependentsTab,
     getFindAndReplaceButton: getSourceReplacementFindAndReplaceButton,
   },
 };
@@ -982,12 +981,6 @@ function getSourceReplacementTargetPickerButton() {
     "button",
     "Pick a table, model, or saved question",
   );
-}
-
-function getSourceReplacementDependentsTab(count: number) {
-  return getSourceReplacementModal().findByRole("tab", {
-    name: new RegExp(`${count} items? will be changed`),
-  });
 }
 
 function getSourceReplacementFindAndReplaceButton() {

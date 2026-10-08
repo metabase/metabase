@@ -107,7 +107,8 @@
    [:semantic-version       {:optional true} [:or
                                               [:sequential :int]
                                               [:map {:closed true} [:major :int] [:minor :int]]]]
-   [:cloud                  {:optional true} :boolean]])
+   [:cloud                  {:optional true} :boolean]
+   [:single-node            {:optional true} :boolean]])
 
 (mr/def ::task-details.empty
   [:map {:closed true}])

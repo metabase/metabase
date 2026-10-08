@@ -24,58 +24,74 @@ from everyone else, and a 409 to open.
 ## Serialization
 
 A serialized app is a `data_app.yaml` in its own directory under `data_apps/`, with its bundle as a
-plain file next to it at its `path`:
+plain file next to it at its `path`. Its resource collection is a collection of the `data-apps`
+namespace, serialized like any collection under `collections/`:
 
 ```
 data_apps/
   sales/
-    data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts
+    data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts, collection
     dist/index.js          # the bundle
+collections/
+  data_apps/
+    data_app__sales.yaml   # the app's resource collection (namespace: data-apps)
+    data_app__sales/
+      *.yaml               # the saved questions, metric copies, and action copies the app runs
 ```
 
+Collections of the `data-apps` namespace are written under `collections/data_apps/`, as the
+`transforms` and `snippets` namespaces have their folders.
+
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
-`display_name`, and `path` the `bundle_path`. The bundle travels as a serdes *resource file*: the
-entity carries it in `:serdes/resources` on export, the storage writers put it next to the YAML,
-and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path must stay
-inside the entity's directory.
+`display_name`, `path` the `bundle_path`, and `collection` the entity ID of the app's resource
+collection, which the app depends on and so loads after. The bundle travels as a serdes *resource
+file*: the entity carries it in `:serdes/resources` on export, the storage writers put it next to
+the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path
+must stay inside the entity's directory.
 
-Only the manifest is serialized. `enabled` is admin-owned and never leaves the instance; the
-collection, permission group, and `table_ids` are server-managed; `bundle_hash` is recomputed from
-the bundle on import. Drafts are not exported.
+`enabled` is admin-owned and never leaves the instance; the permission group and `table_ids` are
+server-managed; `bundle_hash` is recomputed from the bundle on import.
+A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
-An import matches an app by `entity_id`, falling back to its slug so it takes over a draft, and
-reasserts the app's resources. It is a no-op without the `:data-apps` feature.
+An import matches an app by `entity_id` and reasserts the app's resources; a manifest whose slug an app
+made on the instance holds is refused. A manifest that names a collection the repository lacks, or one
+other than the collection the app already owns, fails to load. It is a no-op without the
+`:data-apps` feature.
 
-Remote sync treats data apps like any other entity, globally rather than per collection. Because
-the bundle is a separate file, a pull that changes only a bundle, or an export that touches an app,
-takes the full rather than the incremental path. An app's directory also holds its source, which
-serialization doesn't own, so exports replace only the YAML and resource files in `data_apps/`.
+Remote sync treats data apps like any other entity, globally rather than per collection, and their
+collections like any namespace's: in scope for import, cleanup and export by their namespace. Before
+an import loads anything, `resource_validation.clj` checks every manifest with its collection and
+the cards and actions in it, and fails the pull naming the file that a load couldn't take as the
+author meant it. Because the bundle is a separate file, a pull that changes only a bundle, or an
+export that touches an app, takes the full rather than the incremental path. An app's directory
+also holds its source, which serialization doesn't own, so exports replace only the YAML and
+resource files in `data_apps/`.
 
-## Drafts
-
-`POST /api/apps/:slug/draft` reserves a slug and creates the app's resources before the app itself
-exists, so its resources can be prepared ahead of time. Creating the app fills the draft.
+An author deletes an app by deleting its directory and its collection's files under
+`collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
+hook deletes the collection with what it holds. A commit that deletes the directory but keeps the
+collection's files still deletes the app and its collection; the next export removes the files,
+and until then a full pull loads them back as a collection no app owns.
 
 ## Serving
 
 Routes are mounted at `/api/apps` (`api.clj`). Not `/app/*` — the server reserves that for static
 assets (`metabase.server.routes/static-files-handler`).
 
-- `GET /api/apps` — list; `?available=true` filters to enabled apps that aren't drafts.
+- `GET /api/apps` — list; `?available=true` filters to enabled apps.
 - `GET /api/apps/:slug` — metadata for one enabled app.
 - `GET /api/apps/:slug/bundle` — the cached bytes, with a content-hash ETag and `If-None-Match`
   → 304. Carries `X-Metabase-Data-App-Allowed-Hosts`, which the iframe reads to configure its
   sandbox fetch allowlist.
 - `GET /api/apps/sandbox-host` — the empty document loaded as the Near-Membrane realm iframe,
   carrying the CSP that confines `'unsafe-eval'` to that realm.
-- `POST /api/apps` — create an app from its manifest fields and bundle text, filling a draft with
-  the same slug (superuser).
+- `POST /api/apps` — create an app from its manifest fields and bundle text (superuser).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
-- `POST /api/apps/:slug/draft` — create or reuse a draft row with its resources (superuser).
-- `POST /api/apps/:slug/query` — resolve an authored query definition into a serializable
-  Metabase query plus the table IDs it touches (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
+- `POST /api/apps/serialize-resources` — what the files of an app's collection are written from: the query Metabase builds
+  from each `defineQuery` definition, and the actions and metrics it copies, all as serialization writes
+  them (`resource_serialization.clj`). An action must belong to no model (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
 `display_name` only. The bundle blob is never serialized into JSON, and metadata reads go through
@@ -87,9 +103,13 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-Each app owns two server-managed resources (`resources.clj`), created with the app (or its draft)
-and reasserted on every import: a **collection** holding the copies the app is served from (saved
-questions, actions, table-sourced metrics) and a **permissions group** its users belong to.
+Each app owns two server-managed resources, created with the app and reasserted on
+every import: a **collection** holding the copies the app is served from (saved questions, actions,
+table-sourced metrics) and a **permissions group** its users belong to. The collection is a root
+collection of the `data-apps` namespace, created as the app's row is inserted unless an import names
+one (`models/data_app.clj`), and can never be swapped for another; `resources.clj` keeps its name and
+permissions in step and brings it out of the trash. Deleting the app deletes both, and the
+collection's own hooks delete what it holds.
 
 The group is set database-level `view-data :blocked` on every database, so it grants **no data
 access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
@@ -97,27 +117,31 @@ admins is revoked from the collection before the app group gets read access. Del
 both resources and everything in the collection.
 
 **Viewing an app** requires read access to its resource collection. You have to be a member in
-the app's group or be an admin. An app without a linked resource collection is considered _unpublished_.
-The app's metadata and bundle endpoint returns HTTP 409 for all signed-in users. The frontend
-shows the error "This data app isn’t published yet".
+the app's group or be an admin.
 
 **A viewer sees an app's data only through access they already hold.** The app group grants no
 view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no
 data from it — their own groups' permissions and sandboxes apply unchanged. Because the group grants
 nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
 
-**Managing is superuser-only** — enabling, disabling, deleting, drafts, query resolution, and repo
-status.
+**Managing is superuser-only** — enabling, disabling, deleting, and repo status.
+Exporting an app's resources also needs a superuser.
 
 ## Namespace map
 
 | Namespace             | Responsibility                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------- |
-| `apps.clj`            | Creating apps and drafts; the connected repository's URL.                                           |
+| `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
+| `core.clj`            | What other modules ask: resource file problems and table dependencies.                             |
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
 | `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
+| `resource_serialization.clj` | The serialization an app's resource files are written from: built queries, actions, metrics. |
+| `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
+| `resource_validation.clj` | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
+| `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |
+| `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
