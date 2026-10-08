@@ -75,7 +75,8 @@
 
 (defn wrap-progress-ingestable
   "Wraps `ingestable` so that ingesting the n-th of its N entities reports the fraction `lo` + n/N * (`hi` - `lo`)
-  through `report`, a fn of a fraction such as one from `make-progress-reporter`.
+  through `report`, a fn of a fraction such as one from `make-progress-reporter`. The fraction never exceeds `hi`,
+  also when an entity is ingested more than once.
 
   A failed report is logged and ignored so it can never abort the load it tracks; a cancellation raised by the
   report (see `update-progress!`) propagates and stops the load."
@@ -85,8 +86,10 @@
     (letfn [(progress-callback [item _]
               (when item
                 (try
-                  ;; counted down from hi so the last entity lands on hi exactly, not a rounding neighbour
-                  (report (- hi (* (- hi lo) (/ (- total (swap! calls inc)) total))))
+                  ;; Counted down from hi so the last entity lands on hi exactly, not a rounding neighbour. Capped at
+                  ;; hi because calls can exceed total: the load ingests a file twice to break a circular dependency
+                  ;; (e.g. a dashboard question).
+                  (report (min hi (- hi (* (- hi lo) (/ (- total (swap! calls inc)) total)))))
                   (catch Exception e
                     (if (:cancelled? (ex-data e))
                       (throw e)

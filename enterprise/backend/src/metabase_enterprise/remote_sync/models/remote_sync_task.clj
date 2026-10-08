@@ -92,7 +92,8 @@
 
   Call the returned fn with a fraction in [0.0, 1.0]. It writes progress (and bumps
   `last_progress_report_at`) at most once per throttle window and never moves the fraction backward.
-  Pass `{:force? true}` to write immediately regardless of the throttle — use at phase boundaries.
+  Pass `{:force? true}` to write immediately regardless of the throttle — use at phase boundaries. A forced report
+  always writes, and so always checks for a cancel (see `update-progress!`); it writes the highest fraction so far.
 
   Options:
    - :throttle-ms  minimum ms between throttled writes (default 10000)
@@ -110,11 +111,11 @@
        ([fraction {:keys [force?]}]
         (let [now (now-fn)
               f   (-> (double fraction) (max 0.0) (min 1.0))]
-          (when (and (>= f @last-fraction)
-                     (or force? (nil? @last-ms) (>= (- now @last-ms) throttle-ms)))
+          (when (or force?
+                    (and (>= f @last-fraction)
+                         (or (nil? @last-ms) (>= (- now @last-ms) throttle-ms))))
             (vreset! last-ms now)
-            (vreset! last-fraction f)
-            (write-fn f))))))))
+            (write-fn (vswap! last-fraction max f)))))))))
 
 (def default-heartbeat-interval-ms
   "Ms between heartbeat writes while a task runs. Deliberately not derived from `remote-sync-task-time-limit-ms`:
