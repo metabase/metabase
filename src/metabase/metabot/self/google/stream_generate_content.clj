@@ -429,7 +429,8 @@
              (some? block-reason) (-> (close-blocks!)
                                       (rf {:type              :error
                                            :errorText         (str "Prompt blocked by Google: " block-reason)
-                                           :request-specific? true}))
+                                           :request-specific? true
+                                           :error-code        "prompt_blocked"}))
              ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
              (some? error)        (-> (close-blocks!)
                                       (rf {:type      :error

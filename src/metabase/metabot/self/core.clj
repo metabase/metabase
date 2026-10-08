@@ -424,7 +424,7 @@
     :error                 (if (:error chunk)
                              chunk
                              (cond-> {:type :error :error {:message    (:errorText chunk)
-                                                           :error-code "provider_error"}}
+                                                           :error-code (or (:error-code chunk) "provider_error")}}
                                (:request-specific? chunk) (assoc :request-specific? true)))
     :text-start            {:type :text
                             :id   (:id chunk)

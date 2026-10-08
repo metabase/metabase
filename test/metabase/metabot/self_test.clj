@@ -272,6 +272,29 @@
           (finally
             (llm.health/record-success! "google")))))))
 
+(deftest call-llm-records-only-provider-failures-from-openai-streams-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(stream! [error]
+                (mt/with-dynamic-fn-redefs [openai/openai-raw
+                                            (constantly [{:type "response.created" :response {:id "resp_1"}}
+                                                         {:type "response.failed" :response {:id "resp_1" :error error}}])]
+                  (mt/with-log-level [metabase.metabot.self :fatal]
+                    (into [] (self/call-llm "openai/gpt-5.4" nil [] {}
+                                            {:tag "agent" :required-permission :permission/metabot}
+                                            nil)))))]
+        (llm.health/record-success! "openai")
+        (try
+          (testing "a prompt OpenAI flags under its usage policy is about the prompt, so the connection stays healthy"
+            (stream! {:code "invalid_prompt" :message "Invalid prompt: flagged as potentially violating our usage policy."})
+            (is (true? (llm.health/healthy? "openai"))))
+          (testing "a server error is the provider failing"
+            (stream! {:code "server_error" :message "The server had an error while processing your request."})
+            (is (=? {:message "The server had an error while processing your request." :fatal? false}
+                    (llm.health/failure "openai"))))
+          (finally
+            (llm.health/record-success! "openai")))))))
+
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
     (testing "passes required tool choice to LLM providers"

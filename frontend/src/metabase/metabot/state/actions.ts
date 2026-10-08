@@ -726,6 +726,7 @@ export const sendAgentRequest = createAsyncThunk<
             {
               type: P.union(
                 "ai_usage_limit_reached",
+                "prompt_blocked",
                 ...RETRIABLE_METABOT_TURN_ERROR_CODES,
               ),
               message: P.string,
