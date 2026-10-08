@@ -279,8 +279,7 @@ describe("suggested prompts", () => {
     await userEvent.click(regenerateButton);
 
     // should load while regenerating
-    const [loadingRow] = await screen.findAllByTestId("prompt-loading-row");
-    expect(loadingRow).toBeInTheDocument();
+    await screen.findAllByTestId("prompt-loading-row");
 
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
   });
