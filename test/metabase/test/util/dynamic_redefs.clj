@@ -1,17 +1,22 @@
 (ns metabase.test.util.dynamic-redefs
   (:import
-   (clojure.lang MultiFn Var)))
+   (clojure.lang MultiFn Var)
+   (java.util Collections Map WeakHashMap)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic *local-redefs*
-  "A thread-local mapping from vars to their most recently bound definition."
+  "A thread-local mapping from each proxy to the replacement it calls on this thread."
   {})
 
 (def ^:private ^:dynamic *proxy-depths*
-  "Thread-local map from redefined var to current recursion depth through its proxy.
+  "Thread-local map from proxy to current recursion depth through it.
    Used to detect capture bugs that would otherwise manifest as StackOverflowError."
   {})
+
+(def ^:private ^Map proxies
+  "Every proxy built, mapped to `[a-var original]`: the var it was built for and the root it replaced."
+  (Collections/synchronizedMap (WeakHashMap.)))
 
 (def ^:private max-proxy-depth
   "Re-entries of one var's proxy allowed on a thread, while a replacement is in scope, before assuming a capture bug.
@@ -21,18 +26,17 @@
 (defn- proxy-original
   "The original that the proxy at the root of `a-var` was built with, or nil when the root is not its proxy."
   [^Var a-var]
-  (let [root (.getRawRoot a-var)]
-    (when (identical? a-var (::proxy-for (meta root)))
-      (::original (meta root)))))
+  (let [[proxied-var original] (.get proxies (.getRawRoot a-var))]
+    (when (identical? a-var proxied-var)
+      original)))
 
 (defn dynamic-value
   "Get the value of this var that is in scope. It is the unpatched version if there is no override."
   [a-var]
-  ;; Callers also pass the proxy itself, which carries its original.
-  (get *local-redefs* a-var
-       (if (var? a-var)
-         (proxy-original a-var)
-         (::original (meta a-var)))))
+  ;; Callers also pass the proxy itself.
+  (if (var? a-var)
+    (get *local-redefs* (.getRawRoot ^Var a-var) (proxy-original a-var))
+    (get *local-redefs* a-var (second (.get proxies a-var)))))
 
 (defn original-fn
   "Return the original (unpatched) function for `a-var`.
@@ -41,10 +45,11 @@
   (or (proxy-original a-var) @a-var))
 
 (defn- deeper
-  "The depths to bind for one more entry into `a-var`'s proxy on this thread.
+  "The depths to bind for one more entry into `proxy` on this thread.
    Throws an `AssertionError` once the thread has re-entered the proxy more than [[max-proxy-depth]] times."
-  [a-var]
-  (let [depth (get *proxy-depths* a-var 0)]
+  [proxy]
+  (let [depth (get *proxy-depths* proxy 0)
+        a-var (first (.get proxies proxy))]
     (when (> depth max-proxy-depth)
       ;; Throw an Error, not an Exception: a `(catch Exception ...)` in the code under test would swallow an Exception
       ;; and turn this diagnostic into silent, confusing behavior.
@@ -54,15 +59,15 @@
                    "(closing over the var resolves to the proxy, not the original). "
                    "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
                    "to capture the unpatched function."))))
-    (assoc *proxy-depths* a-var (inc depth))))
+    (assoc *proxy-depths* proxy (inc depth))))
 
 (defmacro ^:private in-scope
-  "Bind `f` to what `a-var` calls on this thread, its replacement or else `original`, and evaluate `call`."
-  [[f [a-var original]] call]
-  `(let [~f (get *local-redefs* ~a-var ~original)]
+  "Bind `f` to what `proxy` calls on this thread, its replacement or else `original`, and evaluate `call`."
+  [[f [proxy original]] call]
+  `(let [~f (get *local-redefs* ~proxy ~original)]
      (if (identical? ~f ~original)
        ~call
-       (binding [*proxy-depths* (deeper ~a-var)]
+       (binding [*proxy-depths* (deeper ~proxy)]
          ~call))))
 
 (defn- var->proxy
@@ -84,14 +89,18 @@
   ;;
   ;; Each proxy keeps its own original. Something else can put a different root over the proxy and a later patch
   ;; then treats that root as the original, so an original stored on the var would be wrong for this proxy.
-  ^{::proxy-for a-var, ::original original}
-  (fn
-    ([]                (in-scope [f [a-var original]] (f)))
-    ([a]               (in-scope [f [a-var original]] (f a)))
-    ([a b]             (in-scope [f [a-var original]] (f a b)))
-    ([a b c]           (in-scope [f [a-var original]] (f a b c)))
-    ([a b c d]         (in-scope [f [a-var original]] (f a b c d)))
-    ([a b c d & more]  (in-scope [f [a-var original]] (apply f a b c d more)))))
+  ;;
+  ;; Replacements are looked up by proxy, not by var, for the same reason: a replacement bound while an earlier proxy
+  ;; was the root must not reach through a proxy built later, over whatever replaced that root.
+  (let [proxy (fn proxy
+                ([]                (in-scope [f [proxy original]] (f)))
+                ([a]               (in-scope [f [proxy original]] (f a)))
+                ([a b]             (in-scope [f [proxy original]] (f a b)))
+                ([a b c]           (in-scope [f [proxy original]] (f a b c)))
+                ([a b c d]         (in-scope [f [proxy original]] (f a b c d)))
+                ([a b c d & more]  (in-scope [f [proxy original]] (apply f a b c d more))))]
+    (.put proxies proxy [a-var original])
+    proxy))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
@@ -102,6 +111,15 @@
     (locking a-var
       (when-not (proxy-original a-var)
         (.bindRoot a-var (var->proxy a-var (.getRawRoot a-var)))))))
+
+(defn local-redefs
+  "The value to bind [[*local-redefs*]] to so that each var in `var->replacement` calls its replacement.
+   The vars must already be proxied: see [[patch-vars!]]."
+  [var->replacement]
+  (reduce-kv (fn [redefs ^Var a-var replacement]
+               (assoc redefs (.getRawRoot a-var) replacement))
+             *local-redefs*
+             var->replacement))
 
 (defn- sym->var [sym] `(var ~sym))
 
@@ -127,12 +145,10 @@
      `Thread`, quartz/cron workers, and unwrapped `ExecutorService` tasks do not. For those
      keep `with-redefs` — the root swap is visible to every thread.
    - Redefining a potemkin re-export only intercepts calls made through the re-export.
-     Callers of the var it was imported from still see the original.
-   - A `with-redefs` of a var inside a dynamic redef of the same var holds only until a dynamic redef
-     nested further in exits. From then on the outer dynamic replacement is in effect, not the stub."
+     Callers of the var it was imported from still see the original."
   [bindings & body]
   (let [var->definition (bindings->var->definition bindings)]
     `(do
        (patch-vars! ~(vec (keys var->definition)))
-       (binding [*local-redefs* (merge *local-redefs* ~var->definition)]
+       (binding [*local-redefs* (local-redefs ~var->definition)]
          ~@body))))
