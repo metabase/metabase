@@ -1579,6 +1579,34 @@ The Moonshot AI API Key.
 
 Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
+### `MB_LLM_OLLAMA_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-base-url`
+
+The base URL of your Ollama server's OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.
+
+Backed by the Ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
+
+### `MB_LLM_OLLAMA_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-key`
+
+The API key for Ollama Cloud, with `MB_LLM_OLLAMA_API_BASE_URL` set to https://ollama.com/v1. For self-hosted servers, only needed behind an authenticated proxy.
+
+Backed by the Ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OLLAMA_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `llm-ollama-request-timeout-ms`
+
+Socket timeout in milliseconds for requests to your Ollama server.
+
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
 - Type: string

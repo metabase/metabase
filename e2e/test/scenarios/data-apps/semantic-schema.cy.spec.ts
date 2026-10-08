@@ -48,30 +48,17 @@ describe("scenarios > data apps > semantic schema", () => {
       "GET",
       "/api/typed-schemas/v1/typescript?include-metric-library=true",
     ).then(({ body }) => {
-      const comments = commentsAbove(body, "revenue: {");
+      const metadata = H.typedSchemaMetadata(body, "revenue: {");
 
-      expect(comments).to.include(`// Description: ${METRIC_DESCRIPTION}`);
-      expect(comments).to.include("// Filters:");
-      expect(
-        comments.some(
-          (line) => line.startsWith("// - ") && line.includes("Created At"),
-        ),
-      ).to.eq(true);
+      expect(metadata.description).to.eq(METRIC_DESCRIPTION);
+      expect(metadata.filters).to.satisfy(
+        (filters: unknown) =>
+          Array.isArray(filters) &&
+          filters.some(
+            (filter) =>
+              typeof filter === "string" && filter.includes("Created At"),
+          ),
+      );
     });
   });
 });
-
-/** The comment lines directly above the schema entry that opens with `entry`. */
-function commentsAbove(body: string, entry: string) {
-  const lines = body.split("\n").map((line) => line.trim());
-  const comments: string[] = [];
-
-  for (let index = lines.indexOf(entry) - 1; index >= 0; index--) {
-    if (!lines[index].startsWith("//")) {
-      break;
-    }
-    comments.unshift(lines[index]);
-  }
-
-  return comments;
-}

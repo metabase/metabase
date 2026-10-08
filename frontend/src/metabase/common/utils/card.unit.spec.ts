@@ -51,7 +51,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
               type: "column",
               name: "TOTAL",
               sourceName: "ORDERS",
-              bins: 10,
+              binning: { strategy: "num-bins", numBins: 10 },
             },
           ],
         },

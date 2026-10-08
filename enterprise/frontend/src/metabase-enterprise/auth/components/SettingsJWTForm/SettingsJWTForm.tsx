@@ -190,11 +190,6 @@ export const SettingsJWTForm = () => {
         {({ dirty, isSubmitting }) => (
           <Form>
             <Stack gap="xl">
-              <UserProvisioningSection
-                settingKey="jwt-user-provisioning-enabled?"
-                providerName="JWT"
-                reactivatesAccounts
-              />
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -221,6 +216,11 @@ export const SettingsJWTForm = () => {
                   />
                 </Stack>
               </SettingsSection>
+              <UserProvisioningSection
+                settingKey="jwt-user-provisioning-enabled?"
+                providerName="JWT"
+                reactivatesAccounts
+              />
               <CollapsibleSettingsSection
                 title={t`User attribute configuration`}
                 description={t`You can send additional user attributes to ${applicationName} by adding the attributes as key/value pairs to your JWT`}

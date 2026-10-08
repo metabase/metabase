@@ -43,7 +43,7 @@ describe("describeQueryStage", () => {
               type: "column",
               name: "RATING",
               sourceName: "PRODUCTS",
-              bins: 10,
+              binning: { strategy: "num-bins", numBins: 10 },
             },
           ],
         },
