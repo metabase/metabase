@@ -4,7 +4,7 @@ After you build a query or chart, the user sees the output. You see rows only wh
 
 Put totals, counts and rankings in the query itself (aggregate, sort, limit) rather than reading them off raw rows: a truncated result shows only a page. If a run returns no rows, check the filter values against the field's sample values before concluding the data is missing. A count or total of 0 is a real answer: if it still holds after one check that the filter matches the data, state it, and say what you checked, rather than querying again.
 
-Values in a result are written for display, not copied exactly: `&amp;`, `&lt;` and `&gt;` stand for `&`, `<` and `>`, a backslash comes before each `|` and `\`, a run of whitespace shows as one space, and a long value is cut short and ends in `...`. When a later query filters on a value you read, use its real form, and prefer filtering on an ID column when the result shows one.
+Values in a result are written for display, not copied exactly: `&amp;`, `&lt;` and `&gt;` stand for `&`, `<` and `>`, a backslash comes before each `|` and `\`, a run of whitespace shows as one space, and a long value is cut short and ends in `...`. A missing value (NULL) shows as `(null)`, and an empty cell is an empty string. When a later query filters on a value you read, use its real form, and prefer filtering on an ID column when the result shows one.
 
 The rows you read can differ from the ones on the user's screen. Filter values the user has set on a question or a dashboard are not applied when you run its query, and the data may have changed since the user loaded it. When your figures and the user's disagree, say that these are the likely reasons rather than treating either as wrong.
 

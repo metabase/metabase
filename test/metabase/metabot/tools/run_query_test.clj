@@ -128,9 +128,13 @@
     (testing "cell text cannot break the table"
       (is (= ["| A\\|B |" "| --- |" "| x\\|y z |"]
              (data-lines (output [{:display_name "A|B"}] [["x|y\nz"]])))))
-    (testing "false renders as a value"
-      (is (= ["| A | B |" "| --- | --- |" "| false |  |"]
-             (data-lines (output [{:display_name "A"} {:display_name "B"}] [[false nil]])))))
+    (testing "false renders as a value, and a missing value differs from an empty string"
+      (is (= ["| A | B | C |" "| --- | --- | --- |" "| false | (null) |  |"]
+             (data-lines (output [{:display_name "A"} {:display_name "B"} {:display_name "C"}] [[false nil ""]])))))
+    (testing "large and small numbers render without an exponent"
+      (is (= ["| A | B | C | D | E |" "| --- | --- | --- | --- | --- |" "| 12345678.9 | 0.0005 | 10000000000 | 1000 | 1.5 |"]
+             (data-lines (output (for [n ["A" "B" "C" "D" "E"]] {:display_name n})
+                                 [[1.23456789E7 5.0E-4 1.0E10 1E+3M 1.5]])))))
     (testing "a backslash cannot unescape a pipe, and Unicode line breaks collapse"
       (is (= ["| A |" "| --- |" "| x\\\\\\|y a b |"]
              (data-lines (output [{:display_name "A"}] [["x\\|y a\u2028b"]])))))
