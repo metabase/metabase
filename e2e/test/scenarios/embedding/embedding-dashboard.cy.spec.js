@@ -701,6 +701,113 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 });
 
+describe("issue 20438", () => {
+  const questionDetails = {
+    name: "20438",
+    native: {
+      query:
+        "SELECT * FROM PRODUCTS\nWHERE true\n    [[AND {{CATEGORY}}]]\n limit 30",
+      "template-tags": {
+        CATEGORY: {
+          id: "24f69111-29f8-135f-9321-1ff94bbb31ad",
+          name: "CATEGORY",
+          "display-name": "Category",
+          type: "dimension",
+          dimension: ["field", PRODUCTS.CATEGORY, null],
+          "widget-type": "string/=",
+          default: null,
+        },
+      },
+    },
+  };
+
+  const filter = {
+    name: "Text",
+    slug: "text",
+    id: "b555d25b",
+    type: "string/=",
+    sectionId: "string",
+  };
+
+  const dashboardDetails = {
+    parameters: [filter],
+  };
+
+  beforeEach(() => {
+    cy.intercept("GET", "/api/embed/dashboard/**").as("getEmbed");
+
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      // Connect filter to the card
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 24,
+            size_y: 8,
+            parameter_mappings: [
+              {
+                parameter_id: filter.id,
+                card_id,
+                target: ["dimension", ["template-tag", "CATEGORY"]],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Enable embedding and enable the "Text" filter
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        enable_embedding: true,
+        embedding_params: { [filter.slug]: "enabled" },
+      });
+
+      cy.wrap(card_id).as("questionId");
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      H.visitDashboard(dashboard_id);
+    });
+  });
+
+  it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboardId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
+
+    H.visitIframe();
+
+    cy.wait("@getEmbed");
+
+    H.filterWidget().click();
+    cy.wait("@getEmbed");
+
+    H.popover().contains("Doohickey").click();
+    cy.wait("@getEmbed");
+
+    cy.button("Add filter").click();
+    cy.wait("@getEmbed");
+
+    cy.findAllByRole("gridcell")
+      // One of product titles for Doohickey
+      .should("contain", "Small Marble Shoes")
+      // One of product titles for Gizmo
+      .and("not.contain", "Rustic Paper Wallet");
+  });
+});
+
 describe("scenarios > embedding > dashboard locked numeric parameters (metabase#25031)", () => {
   const dashboardFilter = {
     name: "Equal to",
