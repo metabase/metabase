@@ -3,10 +3,13 @@ const fs = require("fs");
 const path = require("path");
 
 const {
+  FORMATS,
   LATIN_UNICODE_RANGE,
   REST_UNICODE_RANGE,
   SUBSET_OPTIONS,
   buildFontFaces,
+  convertFace,
+  fallbackFormatsFor,
   latinCharacters,
   restCharacters,
   subsetFace,
@@ -18,7 +21,12 @@ const {
 const RECIPE = crypto
   .createHash("sha1")
   .update(
-    JSON.stringify([LATIN_UNICODE_RANGE, REST_UNICODE_RANGE, SUBSET_OPTIONS]),
+    JSON.stringify([
+      FORMATS,
+      LATIN_UNICODE_RANGE,
+      REST_UNICODE_RANGE,
+      SUBSET_OPTIONS,
+    ]),
   )
   .update(fs.readFileSync(require.resolve("subset-font")))
   .digest("hex");
@@ -82,17 +90,36 @@ async function rewrite(loader) {
       const chunkRel = path.join(dir, `${base}.${key}.${name}.woff2`);
       const chunkPath = path.join(outputDir, chunkRel);
       if (!fs.existsSync(chunkPath)) {
-        writeAtomic(chunkPath, await subsetFace(buf, characters));
+        const subset = await subsetFace(buf, characters);
+        // The woff2 goes last: it is the one whose presence marks the chunk as
+        // made, so the formats derived from it have to exist before it does.
+        for (const extension of fallbackFormatsFor(dir)) {
+          writeAtomic(
+            chunkPath.replace(/woff2$/, extension),
+            await convertFace(subset, extension),
+          );
+        }
+        writeAtomic(chunkPath, subset);
       }
       made[name] = chunkRel;
     }
     return made;
   };
 
+  const sourcesFor = (chunkRel) =>
+    ["woff2", ...fallbackFormatsFor(path.dirname(chunkRel))]
+      .map(
+        (extension) =>
+          `url("~generated-fonts/${chunkRel.replace(/woff2$/, extension)}") format("${FORMATS[extension]}")`,
+      )
+      .join(",\n    ");
+
   const splitFace = async (block) => {
-    const urls = [...block.matchAll(/url\("~fonts\/([^"]+\.woff2)"\)/g)];
-    // Only the woff2 of a face is split. Its other formats stay whole in both
-    // rules, for a browser that cannot read woff2.
+    const urls = [
+      ...block.matchAll(/url\("~fonts\/([^"]+\.woff2)"\) format\("woff2"\)/g),
+    ];
+    // Every bundled face names exactly one woff2. Anything else is not ours
+    // to cut, so it passes through.
     if (urls.length !== 1) {
       return block;
     }
@@ -105,7 +132,7 @@ async function rewrite(loader) {
 
     const withChunk = (face, chunkRel, range) =>
       face
-        .replace(urls[0][0], `url("~generated-fonts/${chunkRel}")`)
+        .replace(urls[0][0], sourcesFor(chunkRel))
         .replace(/\}$/, `  unicode-range: ${range};\n}`);
 
     return (
