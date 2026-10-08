@@ -6,6 +6,7 @@ exclude = [
   # Bot-blocked: 403 for anything that isn't a browser.
   "^https://(www|dev)\\.mysql\\.com/",
   "^https://platform\\.deepseek\\.com/",
+  "^https://console\\.x\\.ai/",
   # Login-walled: redirects forever between console and auth.
   "^https://console\\.mistral\\.ai/",
   # GitHub renders issue comments client-side, so lychee can't see #issuecomment anchors.

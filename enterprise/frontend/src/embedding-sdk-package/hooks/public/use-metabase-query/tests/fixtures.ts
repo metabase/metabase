@@ -105,6 +105,7 @@ export const TEST_SCHEMA = {
           type: "measure" as const,
           id: 21,
           tableId: 1,
+          name: "Revenue",
           columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
         },
       },
@@ -132,6 +133,7 @@ export const TEST_SCHEMA = {
     revenue: {
       type: "metric" as const,
       id: 31,
+      name: "Revenue",
       sourceTableId: 1,
       mappedTableIds: [1, 2],
       columns: [{ name: "sum", displayName: "Revenue", jsType: "number" }],
@@ -158,39 +160,33 @@ export const TEST_SCHEMA = {
       sourceCardId: 41,
     },
   },
-  models: {
-    orders: {
-      actions: {
-        create: {
-          kind: "action" as const,
-          id: 51,
-          name: "Create Order",
-          type: "implicit" as const,
-          implicitKind: "row/create" as const,
-          parameters: [
-            {
-              slug: "status",
-              displayName: "Status",
-              jsType: "string" as const,
-            },
-          ],
+  actions: {
+    createOrder: {
+      kind: "action" as const,
+      id: 51,
+      name: "Create Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "status",
+          displayName: "Status",
+          jsType: "string" as const,
         },
-        update: {
-          kind: "action" as const,
-          id: 52,
-          name: "Update Order",
-          type: "implicit" as const,
-          implicitKind: "row/update" as const,
-          parameters: [
-            {
-              slug: "id",
-              displayName: "ID",
-              jsType: "number" as const,
-              required: true,
-            },
-          ],
+      ],
+    },
+    updateOrder: {
+      kind: "action" as const,
+      id: 52,
+      name: "Update Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "id",
+          displayName: "ID",
+          jsType: "number" as const,
+          required: true,
         },
-      },
+      ],
     },
   },
   questions: {

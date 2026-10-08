@@ -7,6 +7,7 @@ import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
 import { Link } from "metabase/common/components/Link";
 import {
+  SIDESHEET_HORIZONTAL_PADDING,
   Sidesheet,
   SidesheetCard,
   SidesheetCardTitle,
@@ -79,7 +80,7 @@ export const QuestionInfoSidebar = ({
         defaultValue="overview"
         className={SidesheetStyles.FlexScrollContainer}
       >
-        <Tabs.List mx="xxl">
+        <Tabs.List mx={SIDESHEET_HORIZONTAL_PADDING}>
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
           <Tabs.Tab value="relationships">{t`Relationships`}</Tabs.Tab>

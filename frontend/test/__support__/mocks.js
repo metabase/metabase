@@ -59,6 +59,8 @@ jest.mock("@uiw/react-codemirror", () => {
     );
   });
 
+  MockEditor.displayName = "MockEditor";
+
   return {
     __esModule: true,
     ...jest.requireActual("@uiw/react-codemirror"),

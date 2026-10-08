@@ -4,6 +4,7 @@ import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
 
 export type RemoteSyncEntityModel =
+  | "action"
   | "card"
   | "dataset"
   | "metric"

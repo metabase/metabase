@@ -8,6 +8,8 @@ redirect_from:
 
 # Dependency graph
 
+_Data Studio > Dependency graph_
+
 {% include plans-blockquote.html feature="Dependency graph" %}
 
 ![Dependency graph](../images/dependency-graph.png)
@@ -41,7 +43,7 @@ To open the full dependency graph:
 
 This opens a canvas view where you can search for and visualize the dependencies of any item across your entire Metabase instance.
 
-You can also view the dependency graph from any item in Data Studio by switching to the Dependencies tab.
+You can also view an item's dependencies from its page in Data Studio. Published tables, metrics, snippets, segments, measures, and transforms have a **Dependencies** tab. For tables in **Connected data**, click the **Dependency graph** button on the table's **Details** tab.
 
 ## What the dependency graph shows
 

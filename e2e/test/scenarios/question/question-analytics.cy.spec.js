@@ -12,6 +12,7 @@ describe("scenarios > question > snowplow", () => {
         cy.findByText("Quantity").click();
         cy.button("Done").click();
       });
+      H.echartsContainer().findByText("Count").should("be.visible");
     };
 
     beforeEach(() => {

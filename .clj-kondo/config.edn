@@ -424,6 +424,7 @@
     metabase.analyze.classifiers.core         classifiers
     metabase.channel.core                     channel
     metabase.channel.render.core              channel.render
+    metabase.channel.render.markdown          markdown
     metabase.cloud-migration.core             cloud-migration
     metabase.eid-translation.core             eid-translation
     metabase.llm.test-util                    llm.tu
@@ -460,7 +461,6 @@
     metabase.util.macros                      u.macros
     metabase.util.malli                       mu
     metabase.util.malli.schema                ms
-    metabase.util.markdown                    markdown
     metabase.util.password                    u.password
     metabase.util.ui-logic                    ui-logic
     metabase.xrays.core                       xrays
@@ -495,6 +495,7 @@
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
+  metabase.transforms.test-util/with-transforms-api-users!                              clojure.core/fn
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.connection/with-unshared-connection                                   clojure.core/fn
   metabase.app-db.core/with-unshared-connection                                         clojure.core/fn
@@ -623,6 +624,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
+   metabase-enterprise.remote-sync.metric-dimension-api-test/with-synced-metric                                              hooks.common/with-one-binding
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
@@ -960,6 +962,10 @@
     :private-call                                        {:level :off}
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
+    ;; Test fixtures and per-test overrides use `binding`-scoped dynamic vars legitimately; this ratchet
+    ;; isn't aimed at that pattern. Mocking functions that way is the narrower case
+    ;; `:metabase/prefer-with-dynamic-fn-redefs` already covers.
+    :metabase/discourage-dynamic-vars                    {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
@@ -980,6 +986,20 @@
   ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
   ;; `metabase.app-db.value-guard`.
   metabase.content-translation.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+  metabase.settings.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.auth-identity.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.usage-metadata.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.user-key-value.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
+  metabase.public-sharing.db
   {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,

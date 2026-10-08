@@ -157,8 +157,7 @@
   (vec (distinct (cons (:id lib) (collections/descendant-ids lib)))))
 
 (defn- library-cards [lib-ids id]
-  ;; :card_schema is mandatory in any column-scoped Card SELECT (toucan guard). Card :type is keywordized
-  ;; (:metric / :model); the entity_type is its name string.
+  ;; Card :type is keywordized (:metric / :model); the entity_type is its name string.
   (->> (entity-retrieval.db/library-cards-in-collections lib-ids id)
        (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))))))
 

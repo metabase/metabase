@@ -45,6 +45,47 @@ describe("issue 13751", { tags: "@external" }, () => {
   });
 });
 
+describe("postgres > question > custom columns", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body }) => {
+        const tableId = body.find((table) => table.name === "orders").id;
+        H.openTable({
+          database: WRITABLE_DB_ID,
+          table: tableId,
+          mode: "notebook",
+        });
+      },
+    );
+
+    cy.findByRole("button", { name: "Summarize" }).click();
+  });
+
+  it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Pick a function or metric").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: "Percentile([Subtotal], 0.1)",
+      format: true,
+    });
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Function Percentile expects 1 argument").should("not.exist");
+    H.CustomExpressionEditor.nameInput().type("Expression name");
+    cy.button("Done").should("not.be.disabled").click();
+    // Todo: Add positive assertions once this is fixed
+
+    cy.findByTestId("aggregate-step")
+      .contains("Expression name")
+      .should("exist");
+  });
+});
+
 describe("issue 14843", () => {
   const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
   const CC_NAME = "City Length";
@@ -486,6 +527,59 @@ describe("issue 21135", () => {
 
       cy.findByText("29.46"); // actual Price column
       cy.findByText("31.46"); // custom column
+    });
+  });
+});
+
+describe("issue 40064", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Tax: ["*", ["field", ORDERS.TAX, { "base-type": "type/Float" }], 2],
+          },
+          limit: 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("check the initial expression value");
+    H.tableInteractive().findByText("4.14").should("be.visible");
+
+    cy.log("update the expression and check the value");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Tax").click();
+    H.enterCustomColumnDetails({ formula: "[Tax] * 3", blur: true });
+    H.popover().button("Update").click();
+    H.visualize();
+    H.tableInteractive().findByText("6.21").should("be.visible");
+
+    cy.log("rename the expression and make sure you cannot create a cycle");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Tax").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().button("Update").should("not.be.disabled").click();
+    H.getNotebookStep("expression").findByText("Tax3").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax3] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().within(() => {
+      cy.findByText("Unknown column: Tax3").should("be.visible");
+      cy.button("Update").should("be.disabled");
     });
   });
 });
