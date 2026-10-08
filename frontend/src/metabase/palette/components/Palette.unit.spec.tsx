@@ -34,7 +34,7 @@ const setup = ({
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", can_write: true })],
   });
-  renderWithProviders(
+  return renderWithProviders(
     <Route path={initialRoute ? "*" : "/"} element={<Palette />} />,
     {
       withKBar: true,
@@ -100,6 +100,21 @@ describe("command palette", () => {
       value: "auto",
     });
   });
+
+  it.each(["New question", "New document"])(
+    "should collapse the navbar when running the %s action",
+    async (actionName) => {
+      const { store } = setup();
+      expect(store.getState().app.isNavbarOpen).toBe(true);
+
+      await userEvent.keyboard("[ControlLeft>]k");
+      const input = await screen.findByPlaceholderText(/search for anything/i);
+      await userEvent.type(input, actionName);
+      await userEvent.click(await screen.findByText(actionName));
+
+      expect(store.getState().app.isNavbarOpen).toBe(false);
+    },
+  );
 
   it("should match the action with alias when typing original name", async () => {
     setup();
