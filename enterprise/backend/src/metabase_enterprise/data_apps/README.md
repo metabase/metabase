@@ -14,9 +14,9 @@ themselves, cached in the app DB so serving never reads a repository.
 
 The model's hooks hold its invariants: every write is normalized and validated against the column
 schemas in `schema.clj`, `bundle_hash` always matches `bundle`, an inserted app gets the collection
-and permission group it owns (see Permissions), and a deleted one loses them. Its default fields
-leave the bundle out, so listing apps never drags bundles out of the DB; `db.clj`'s
-`data-app-bundle` reads it explicitly.
+it owns (see Permissions), and deleting an app deletes its collection and group assignments while
+preserving the assigned permission groups. Its default fields leave the bundle out, so listing apps
+never drags bundles out of the DB; `db.clj`'s `data-app-bundle` reads it explicitly.
 
 An app with a lower `version` than this Metabase serves is outdated — badged for admins, hidden
 from everyone else, and a 409 to open.
@@ -49,8 +49,8 @@ file_: the entity carries it in `:serdes/resources` on export, the storage write
 the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path
 must stay inside the entity's directory.
 
-`enabled` is admin-owned and never leaves the instance; the permission group and `table_ids` are
-server-managed; `bundle_hash` is recomputed from the bundle on import.
+`enabled` is admin-owned and never leaves the instance; group assignments also stay local to the
+instance. `table_ids` are server-managed, and `bundle_hash` is recomputed from the bundle on import.
 A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
 An import matches an app by `entity_id` and reasserts the app's resources; a manifest whose slug an app
@@ -131,24 +131,24 @@ The Data Apps feature is required for all app API endpoints, including group lis
 
 ## Namespace map
 
-| Namespace             | Responsibility                                                                                      |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
-| `core.clj`            | Public access checks, resource file problems, and table dependencies.                             |
-| `config.clj`          | The serialized layout and data app contract version constants.                                     |
-| `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
-| `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
-| `resources.clj`       | Lifecycle of the app-owned collection and derived collection permissions. |
-| `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
-| `resource_serialization.clj` | The serialization an app's resource files are written from: built queries, actions, metrics. |
-| `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
-| `resource_validation.clj` | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
-| `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |
-| `access.clj` | App access through assigned groups. |
-| `group_access.clj` | Assignment management and collection grant reconciliation. |
-| `models/data_app_group_assignment.clj` | App-to-group assignments. |
-| `db.clj`              | The module's application-database queries.                                                          |
-| `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
-| `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
+| Namespace                              | Responsibility                                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `apps.clj`                             | Creating apps; the connected repository's URL.                                                  |
+| `core.clj`                             | Public access checks, resource file problems, and table dependencies.                           |
+| `config.clj`                           | The serialized layout and data app contract version constants.                                  |
+| `schema.clj`                           | Column schemas, with the normalization and validation every write goes through.                 |
+| `api.clj`                              | The `/api/apps` endpoints, bundle serving, ETag handling.                                       |
+| `resources.clj`                        | Lifecycle of the app-owned collection and derived collection permissions.                       |
+| `models/data_app.clj`                  | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.           |
+| `resource_serialization.clj`           | The serialization an app's resource files are written from: built queries, actions, metrics.    |
+| `query_definition.clj`                 | The closed schema of a `defineQuery` definition the serialization accepts.                      |
+| `resource_validation.clj`              | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
+| `resource_tables.clj`                  | The tables an app's resources read, recorded on the app after an import.                        |
+| `access.clj`                           | App access through assigned groups.                                                             |
+| `group_access.clj`                     | Assignment management and collection grant reconciliation.                                      |
+| `models/data_app_group_assignment.clj` | App-to-group assignments.                                                                       |
+| `db.clj`                               | The module's application-database queries.                                                      |
+| `csp.clj`                              | `allowed_hosts` lookup for the core CSP middleware.                                             |
+| `init.clj`                             | Loads the above so endpoints, models, and hooks register.                                       |
 
 `group_access.clj` manages assignments. `models/data_app_group_assignment.clj` defines the local association model.
