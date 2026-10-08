@@ -107,7 +107,9 @@
   (map metabot.db/card (lib/all-source-card-ids-recursive query)))
 
 (defn- metabot-sql-card?
-  "Whether `card` is a SQL question that Metabot saved and nobody has edited since."
+  "Whether `card` is a SQL question that Metabot saved and nobody has edited since.
+   Saving a chart from a conversation sets the two columns, in [[metabot.db/link-card-to-conversation!]].
+   The Card model's `clear-metabot-origin` clears them when the query, display or visualization settings change."
   [card]
   ;; A question's `query_type` is native only when its whole query is one SQL stage, so a notebook stage over SQL
   ;; needs the query itself read.
