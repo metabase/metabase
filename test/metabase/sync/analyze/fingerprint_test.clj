@@ -285,7 +285,7 @@
         ;; fingerprinters/fingerprinter is a multimethod, so we can't use with-dynamic-fn-redefs
         (with-redefs [qp/process-query             (fn [_query rff]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:global {:distinct-count 5, :nil% 0.0}}))]
+                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-rf {:global {:distinct-count 5, :nil% 0.0}}))]
           (is (= {:no-data-fingerprints   0
                   :failed-fingerprints    0
                   :updated-fingerprints   1
@@ -383,7 +383,7 @@
   "Query returns rows but each Field's fingerprinter yields a Throwable — exercises the per-field failure path in
   `fingerprint-fields!`."
   {#'qp/process-query             (fn [_query rff] (transduce identity (rff :metadata) [["a"] ["b"]]))
-   #'fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter (ex-info "fingerprinter boom" {})))})
+   #'fingerprinters/fingerprinter (constantly (fingerprinters/constant-rf (ex-info "fingerprinter boom" {})))})
 
 (deftest retry-loop-on-failed-fingerprint-test
   (testing "GHY-3695: a Field whose fingerprint reliably fails must not be re-attempted on every sync"

@@ -180,6 +180,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       expect(await call?.request?.json()).toEqual({
         ...question.datasetQuery(),
         parameters: [],
+        middleware: { "skip_insights?": true },
       });
     });
 
@@ -196,6 +197,18 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         pivot_rows: [],
         show_column_totals: true,
         show_row_totals: true,
+      });
+    });
+
+    it("should not skip insights for a scalar display", async () => {
+      const question = createMockAdHocQuestion({ display: "scalar" });
+
+      await setupRunQuestionQuery(question);
+
+      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+      expect(await call?.request?.json()).toEqual({
+        ...question.datasetQuery(),
+        parameters: [],
       });
     });
 

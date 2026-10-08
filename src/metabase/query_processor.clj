@@ -112,7 +112,7 @@
        (cond-> info (update :info merge info)))))
 
 (def ^:private userland-query-middleware-options
-  #{:js-int-to-string? :ignore-cached-results?})
+  #{:js-int-to-string? :ignore-cached-results? :skip-insights?})
 
 (mu/defn userland-query-with-default-constraints :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same
