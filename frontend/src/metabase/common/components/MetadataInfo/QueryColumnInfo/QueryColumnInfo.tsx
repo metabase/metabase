@@ -41,7 +41,7 @@ export function QueryColumnInfo({
       data-testid="column-info"
     >
       <ColumnDescription description={description} />
-      <Box fz="0.9em">
+      <Box fz="sm">
         <SemanticTypeLabel semanticType={semanticType} />
         {query && showFingerprintInfo && (
           <QueryColumnFingerprintInfo

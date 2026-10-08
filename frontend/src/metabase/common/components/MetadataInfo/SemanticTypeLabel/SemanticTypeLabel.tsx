@@ -23,7 +23,7 @@ export function SemanticTypeLabel({
 
   return (
     <LabelContainer className={className} c="core-brand">
-      <Icon name={semanticTypeIcon} w="1em" h="1em" />
+      <Icon name={semanticTypeIcon} size={12} />
       <Label>{semanticTypeName}</Label>
     </LabelContainer>
   );
