@@ -11,7 +11,6 @@ const tableQuestion = {
   query: {
     "source-table": ORDERS_ID,
   },
-  limit: 5,
 };
 
 const tableQuestionWithJoin = {
@@ -75,7 +74,6 @@ const tableQuestionWithJoinAndFields = {
       },
     ],
   },
-  limit: 5,
 };
 
 const tableQuestionWithSelfJoinAndFields = {
@@ -163,7 +161,6 @@ const nativeQuestion = {
   native: {
     query: "SELECT * FROM ORDERS",
   },
-  limit: 5,
 };
 
 const nestedQuestion = (card) => ({
@@ -171,7 +168,6 @@ const nestedQuestion = (card) => ({
   query: {
     "source-table": `card__${card.id}`,
   },
-  limit: 5,
 });
 
 const nestedQuestionWithJoinOnTable = (card) => ({
