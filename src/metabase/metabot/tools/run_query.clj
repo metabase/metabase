@@ -108,8 +108,10 @@
 (defn- metabot-sql-card?
   "Whether `card` is a SQL question that Metabot saved and nobody has edited since."
   [card]
-  (boolean (and (= :native (:query_type card))
-                (or (:metabot_conversation_id card) (:metabot_chart_id card)))))
+  ;; A question's `query_type` is native only when its whole query is one SQL stage, so a notebook stage over SQL
+  ;; needs the query itself read.
+  (boolean (and (or (:metabot_conversation_id card) (:metabot_chart_id card))
+                (some-> (:dataset_query card) not-empty lib/any-native-stage?))))
 
 (defn- sql-refusal
   []
