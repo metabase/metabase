@@ -311,7 +311,10 @@
       (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
         {:kind :card, :card-id card-id}
         {:kind             :table
-         :table-id         (metric-card-shape-get card :table-id :table_id)
+         ;; The definition's own `:source-table` when it has one, which is what the QP compares; `table_id` is
+         ;; derived at save time and only needed for a card-rooted definition.
+         :table-id         (or (:source-table (first stages))
+                               (metric-card-shape-get card :table-id :table_id))
          :bare-table-only? (> (count stages) 1)}))))
 
 (defn metric-compatible-with-stage?

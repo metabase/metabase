@@ -580,6 +580,9 @@
                          :metrics (when with-metrics?
                                     (let [metrics  (lib/available-metrics table-query)
                                           verdicts (card-read-verdicts-for-metrics metrics)]
+                                      ;; As in `cards-details`: `metric-details` fetches each readable source card.
+                                      (when-let [ids (seq (keep (fn [[id readable?]] (when readable? id)) verdicts))]
+                                        (lib.metadata/bulk-metadata mp :metadata/card ids))
                                       (not-empty (mapv #(convert-metric % mp options verdicts) metrics))))
                          :measures (when with-measures?
                                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)

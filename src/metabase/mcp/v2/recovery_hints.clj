@@ -9,6 +9,7 @@
    error key with no entry here yields no sentence, which is the intended failure mode: a
    missing hint reads as terse, a wrong one sends the agent at a tool it does not have."
   (:require
+   [clojure.string :as str]
    [metabase.mcp.v2.message :as message]))
 
 (set! *warn-on-reflection* true)
@@ -20,9 +21,12 @@
   (let [id (or (parse-long (str entity-id)) entity-id)]
     (case entity-type
       "metric"
-      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, put its base table's "
-                         "numeric id into `source-table:` (find it via \"search\" or \"browse_data\") and "
-                         "reference the metric by its numeric id: `aggregation: [[metric, {}, %s]]`.")]
+      ;; Not the base table unconditionally: a metric defined on a saved question only works on that question.
+      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, build the stage on the source it "
+                         "was defined on -- its base table's numeric id in `source-table:`, or, for a metric defined "
+                         "on a saved question or model, that card's numeric id in `source-card:` (find it via "
+                         "\"search\" or \"browse_data\") -- and reference the metric by its numeric id: "
+                         "`aggregation: [[metric, {}, %s]]`.")]
                    id id)
 
       ("question" "model" "card")
@@ -36,10 +40,24 @@
 
       (message/msg ["`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."]))))
 
+(defn- usable-sources-hint
+  "The numeric-id restatement of an `:incompatible-metric` error's sources, whose message names them portably."
+  [usable-sources]
+  (when (seq usable-sources)
+    (apply message/msg
+           [(str "On this surface use numeric ids: " (str/join "; " (repeat (count usable-sources) "%s")) ".")]
+           (for [[metric-id {:keys [source-table source-card]}] (sort-by key usable-sources)]
+             (if source-table
+               (message/msg ["metric %s needs `\"source-table\": %s`"] metric-id source-table)
+               (message/msg ["metric %s needs `\"source-card\": %s`"] metric-id source-card))))))
+
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id]}]
+  [{:keys [error entity-type entity-id usable-sources]}]
   (case error
+    :incompatible-metric
+    (usable-sources-hint usable-sources)
+
     :uri-in-source-table
     (uri-hint entity-type entity-id)
 
