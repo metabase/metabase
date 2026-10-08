@@ -36,7 +36,98 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
     });
 
-    it("works when both filters are enabled and their values are set through UI", () => {
+    it("works when main filter's value is set through URL, hidden, or set through UI", () => {
+      cy.log("works when main filter's value is set through URL");
+      cy.get("@dashboardId").then((dashboard_id) => {
+        const payload = {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        };
+
+        H.visitEmbeddedPage(payload, {
+          setFilters: { state: "AK" },
+        });
+      });
+
+      H.filterWidget().should("have.length", 2);
+
+      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+
+      H.assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "count", value: "68" }],
+        blurAfter: true,
+      });
+
+      openFilterOptions("City");
+
+      searchFieldValuesFilter();
+
+      H.popover()
+        .filter(":contains('Add filter')")
+        .within(() => {
+          H.fieldValuesTextbox().click();
+        });
+
+      H.popover().button("Add filter").click();
+
+      cy.location("search").should("eq", "?city=Anchorage&state=AK");
+
+      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+
+      H.assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "count", value: "1" }],
+      });
+
+      cy.log(
+        "works when main filter's value is set through URL and when it is hidden at the same time",
+      );
+      cy.get("@dashboardId").then((dashboard_id) => {
+        const payload = {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        };
+
+        H.visitEmbeddedPage(payload, {
+          setFilters: { state: "AK" },
+          additionalHashOptions: {
+            hideFilters: ["state"],
+          },
+        });
+      });
+
+      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+
+      H.assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "count", value: "68" }],
+        blurAfter: true,
+      });
+
+      H.filterWidget().should("have.length", 1).and("contain", "City").click();
+
+      searchFieldValuesFilter();
+
+      H.popover()
+        .filter(":contains('Add filter')")
+        .within(() => {
+          H.fieldValuesTextbox().click();
+        });
+      H.popover().button("Add filter").click();
+
+      cy.location("search").should("eq", "?city=Anchorage&state=AK");
+
+      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+
+      H.assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "count", value: "1" }],
+      });
+
+      cy.log(
+        "works when both filters are enabled and their values are set through UI",
+      );
       cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
@@ -99,7 +190,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
     });
 
-    it("works when both filters are enabled and their values are set through UI with auto-apply filters disabled", () => {
+    it("works with auto-apply filters disabled and when main filter is locked", () => {
+      cy.log(
+        "works when both filters are enabled and their values are set through UI with auto-apply filters disabled",
+      );
       cy.get("@dashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
@@ -173,99 +267,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
-    });
 
-    it("works when main filter's value is set through URL", () => {
-      cy.get("@dashboardId").then((dashboard_id) => {
-        const payload = {
-          resource: { dashboard: dashboard_id },
-          params: {},
-        };
-
-        H.visitEmbeddedPage(payload, {
-          setFilters: { state: "AK" },
-        });
-      });
-
-      H.filterWidget().should("have.length", 2);
-
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
-
-      H.assertEChartsTooltip({
-        header: "AK",
-        rows: [{ color: "#509EE3", name: "count", value: "68" }],
-        blurAfter: true,
-      });
-
-      openFilterOptions("City");
-
-      searchFieldValuesFilter();
-
-      H.popover()
-        .filter(":contains('Add filter')")
-        .within(() => {
-          H.fieldValuesTextbox().click();
-        });
-
-      H.popover().button("Add filter").click();
-
-      cy.location("search").should("eq", "?city=Anchorage&state=AK");
-
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
-
-      H.assertEChartsTooltip({
-        header: "AK",
-        rows: [{ color: "#509EE3", name: "count", value: "1" }],
-      });
-    });
-
-    it("works when main filter's value is set through URL and when it is hidden at the same time", () => {
-      cy.get("@dashboardId").then((dashboard_id) => {
-        const payload = {
-          resource: { dashboard: dashboard_id },
-          params: {},
-        };
-
-        H.visitEmbeddedPage(payload, {
-          setFilters: { state: "AK" },
-          additionalHashOptions: {
-            hideFilters: ["state"],
-          },
-        });
-      });
-
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
-
-      H.assertEChartsTooltip({
-        header: "AK",
-        rows: [{ color: "#509EE3", name: "count", value: "68" }],
-        blurAfter: true,
-      });
-
-      H.filterWidget().should("have.length", 1).and("contain", "City").click();
-
-      searchFieldValuesFilter();
-
-      H.popover()
-        .filter(":contains('Add filter')")
-        .within(() => {
-          H.fieldValuesTextbox().click();
-        });
-      H.popover().button("Add filter").click();
-
-      cy.location("search").should("eq", "?city=Anchorage&state=AK");
-
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
-
-      H.assertEChartsTooltip({
-        header: "AK",
-        rows: [{ color: "#509EE3", name: "count", value: "1" }],
-      });
-    });
-
-    it("works when main filter is locked", () => {
+      cy.log("works when main filter is locked");
+      cy.signInAsAdmin();
       cy.get("@dashboardId").then((dashboard_id) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          auto_apply_filters: true,
           embedding_params: {
             city: "enabled",
             state: "locked",
@@ -315,7 +322,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
     });
 
-    it("works when both filters are enabled and their values are set through UI", () => {
+    it("works when filter values are set through UI or URL, and when the default filter is hidden or locked", () => {
+      cy.log(
+        "works when both filters are enabled and their values are set through UI",
+      );
       cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
@@ -345,9 +355,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .findAllByRole("row")
         .should("have.length", 1)
         .and("contain", "Gizmo");
-    });
 
-    it("works when main filter's value is set through URL", () => {
+      cy.log("works when main filter's value is set through URL");
       cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
@@ -424,9 +433,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.findByText("Widget").should("not.exist");
         });
       });
-    });
 
-    it("works when the default filter is hidden", () => {
+      cy.log("works when the default filter is hidden");
       cy.get("@guiDashboardId").then((dashboard_id) => {
         const payload = {
           resource: { dashboard: dashboard_id },
@@ -456,9 +464,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Widget").should("not.exist");
       });
-    });
 
-    it("works when the default filter is locked", () => {
+      cy.log("works when the default filter is locked");
+      cy.signInAsAdmin();
       cy.get("@guiDashboardId").then((dashboard_id) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           embedding_params: {
