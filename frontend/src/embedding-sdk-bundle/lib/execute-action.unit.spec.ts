@@ -34,16 +34,16 @@ describe("executeAction", () => {
     EMBEDDING_SDK_CONFIG.isDataAppDev = false;
   });
 
-  describe("a synchronized action definition", () => {
+  describe("an action definition with a copied action", () => {
     const AUTHORED_ID = 51;
-    const COPIED_ID = 91;
+    const COPIED_ENTITY_ID = "copiedActionEntity091";
     const definition = {
       action: { id: AUTHORED_ID },
-      copiedActionId: COPIED_ID,
+      copiedActionEntityId: COPIED_ENTITY_ID,
     };
 
     const expectExecuted = async (
-      id: number,
+      id: number | string,
       actionId: Parameters<ReturnType<typeof executeAction>>[0]["actionId"],
     ) => {
       fetchMock.post(`path:/api/action/${id}/execute`, {
@@ -61,10 +61,11 @@ describe("executeAction", () => {
     it("runs the copy in a production build", async () => {
       EMBEDDING_SDK_CONFIG.isDataApp = true;
 
-      await expectExecuted(COPIED_ID, definition);
+      await expectExecuted(COPIED_ENTITY_ID, definition);
     });
 
     it("runs the authored action in the dev preview", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
       EMBEDDING_SDK_CONFIG.isDataAppDev = true;
 
       await expectExecuted(AUTHORED_ID, definition);
@@ -74,12 +75,14 @@ describe("executeAction", () => {
       await expectExecuted(AUTHORED_ID, { action: { id: AUTHORED_ID } });
     });
 
-    it("refuses an unsynchronized definition in a production build", async () => {
+    it("refuses a definition without a copied action in a production build", async () => {
       EMBEDDING_SDK_CONFIG.isDataApp = true;
 
       await expect(
         executeAction(setup())({ actionId: { action: { id: AUTHORED_ID } } }),
-      ).rejects.toThrow("has not been synchronized");
+      ).rejects.toThrow(
+        "This action has no copy. Copy it into the app's collection under `collections/data_apps/`",
+      );
     });
 
     it("refuses a raw id inside a data app", async () => {
