@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.metabot.tools.core :as tools]
-   [metabase.metabot.tools.error :as tools.error]))
+   [metabase.metabot.tools.error :as tools.error]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,6 +31,44 @@
        :scope                "agent:sql:create"
        :metabot/capabilities #{:permission-write-sql-queries}})
     (handle [_ _args _ctx] {:output "ok"})))
+
+(def ^:private ctx {:profile-id :nlq :metabot-id nil :tool-names #{"search"}})
+
+;;; ------------------------------------------------ Renderable ----------------------------------------------------
+
+(defrecord Lines [lines]
+  tools/Renderable
+  (render-text [_] (str/join "\n" lines)))
+
+(deftest ^:parallel renderable-test
+  (testing "a string is the trivial case, so a tool author writes strings and never thinks about this"
+    (is (tools/renderable? "plain"))
+    (is (= "plain" (tools/render-text "plain"))))
+  (testing "anything extending the protocol renders itself, which is how a consumer with its own
+           text model — MCP renders prose at the boundary — avoids forcing a change in tool code"
+    (let [output (->Lines ["<term>churn</term>" "<definition>…</definition>"])]
+      (is (tools/renderable? output))
+      (is (= "<term>churn</term>\n<definition>…</definition>" (tools/render-text output)))))
+  (testing "and nothing else is renderable, so a result whose :output is a map or a keyword is
+           rejected rather than coerced"
+    (doseq [x [{:not :text} :keyword 42 nil]]
+      (is (not (tools/renderable? x)) (pr-str x))
+      (is (not (mr/validate ::tools/result {:output x}))))))
+
+(deftest ^:parallel a-renderable-output-is-a-valid-result-test
+  (is (mr/validate ::tools/result {:output (->Lines ["one"])}))
+  (testing "and survives composition, where entries carry rendered strings"
+    (is (= {:output "one\ntwo"}
+           (tools/call (reify
+                         tools/Tool
+                         (declaration [_] {:name "r" :description "d" :args :any})
+                         (handle [_ {:keys [n]} _] {:output (->Lines [n])})
+                         tools/BatchedTool
+                         (batched-declaration [_ d] d)
+                         (batched-args [_ _] [{:n "one"} {:n "two"}])
+                         (around-batch [_ _ _ run] (run))
+                         (compose [_ es _] (tools/concatenated es)))
+                       {} ctx)))))
 
 ;;; ------------------------------------------------ Tool ----------------------------------------------------------
 
@@ -131,8 +170,6 @@
   (compose [_ entries _ctx] ((or compose-fn tools/concatenated) entries)))
 
 (defn- item-tool [] (->ItemTool nil nil))
-
-(def ^:private ctx {:profile-id :nlq :metabot-id nil :tool-names #{"search"}})
 
 (deftest ^:parallel the-single-form-is-a-real-tool-test
   (testing "take BatchedTool away and this still works; handle is the item loader"
