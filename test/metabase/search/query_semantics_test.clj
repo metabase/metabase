@@ -22,28 +22,16 @@
 (defn- check-in-place-query!
   "Search only this case's cards, even for queries containing LIKE wildcards."
   [docs query expected]
-  ;; `with-temp` needs fixed bindings, so absent cards get filler names.
-  ;; `:ids` excludes them, even when the query is a match-all LIKE pattern.
+  ;; `:ids` excludes the filler cards, even when the query is a match-all LIKE pattern.
   ;; These cards are queried directly, so they must not enqueue index updates.
-  (binding [search.ingestion/*disable-updates* true]
-    (let [missing {:name (str "zzq-nonmatch-" (random-uuid))}]
-      (mt/with-temp
-        [:model/Card {a :id} (get docs :A missing)
-         :model/Card {b :id} (get docs :B missing)
-         :model/Card {c :id} (get docs :C missing)
-         :model/Card {d :id} (get docs :D missing)
-         :model/Card {e :id} (get docs :E missing)
-         :model/Card {f :id} (get docs :F missing)
-         :model/Card {g :id} (get docs :G missing)
-         :model/Card {h :id} (get docs :H missing)]
-        (let [label->id {:A a, :B b, :C c, :D d, :E e, :F f, :G g, :H h}
-              ids       (set (map label->id (keys docs)))
-              id->label (set/map-invert label->id)]
-          (is (= expected
-                 (result-ids query {:search-engine "in-place"
-                                    :models        #{"card"}
-                                    :ids           ids}
-                             id->label))))))))
+  (search.tu/do-with-labelled-cards
+   docs
+   (fn [label->id]
+     (is (= expected
+            (result-ids query {:search-engine "in-place"
+                               :models        #{"card"}
+                               :ids           (set (vals label->id))}
+                        (set/map-invert label->id)))))))
 
 (defn- index-documents!
   "Insert this case's documents into the temporary app-db search index."

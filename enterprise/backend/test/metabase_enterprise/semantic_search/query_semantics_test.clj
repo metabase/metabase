@@ -13,8 +13,8 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.query-semantics-vectors :as vectors]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.query-semantics :as fixtures]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
@@ -75,43 +75,34 @@
   [{:keys [id config docs expect query comparisons] :as case} index frozen]
   (mt/with-temporary-setting-values [search-language config]
     ;; Temporary cards keep the semantic engine's read-permission checks live.
-    ;; `with-temp` needs fixed bindings, so it creates all eight; only the cards in `:docs` get indexed.
+    ;; Only the cards in `:docs` get indexed.
     ;; The test indexes them itself, so automatic ingestion stays off.
-    (binding [search.ingestion/*disable-updates* true]
-      (let [missing {:name (str "zzq-nonmatch-" (random-uuid))}]
-        (mt/with-temp
-          [:model/Card {a :id} (get docs :A missing)
-           :model/Card {b :id} (get docs :B missing)
-           :model/Card {c :id} (get docs :C missing)
-           :model/Card {d :id} (get docs :D missing)
-           :model/Card {e :id} (get docs :E missing)
-           :model/Card {f :id} (get docs :F missing)
-           :model/Card {g :id} (get docs :G missing)
-           :model/Card {h :id} (get docs :H missing)]
-          (let [label->id    {:A a, :B b, :C c, :D d, :E e, :F f, :G g, :H h}
-                id->label    (set/map-invert label->id)
-                documents    (vec (indexed-documents docs label->id))
-                rewrites     (filter #(get-in % [:alternatives :semantic]) comparisons)
-                embeddings   (frozen-embeddings frozen (concat (map :embeddable_text documents)
-                                                               (map vectors/query-text
-                                                                    (vectors/semantic-queries case))))
-                query-vector (comp embeddings vectors/query-text)]
-            (semantic.tu/with-mock-embeddings embeddings
-              (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                             [(str "TRUNCATE TABLE \"" (:table-name index) "\"")])
-              (semantic.tu/upsert-index! documents :index index :serial? true)
-              (doseq [arm [:keyword :vector]]
-                (testing (str id " " (name arm) " arm")
-                  (is (= (set (get-in expect [:semantic arm]))
-                         (sql-arm-hits! index (query-vector query) (search-context query) id->label arm)))))
-              (testing (str id " hybrid")
-                (is (= (fixtures/expected-hybrid-hits case)
-                       (hybrid-hits! index query id->label))))
-              (doseq [comparison rewrites
-                      :let [{:keys [query hits]} (fixtures/comparison-spec case comparison :semantic)]]
-                (testing (str id " / " (:focus comparison) " semantic vector arm")
-                  (is (= hits (sql-arm-hits! index (query-vector query) (search-context query)
-                                             id->label :vector))))))))))))
+    (search.tu/do-with-labelled-cards
+     docs
+     (fn [label->id]
+       (let [id->label    (set/map-invert label->id)
+             documents    (vec (indexed-documents docs label->id))
+             rewrites     (filter #(get-in % [:alternatives :semantic]) comparisons)
+             embeddings   (frozen-embeddings frozen (concat (map :embeddable_text documents)
+                                                            (map vectors/query-text
+                                                                 (vectors/semantic-queries case))))
+             query-vector (comp embeddings vectors/query-text)]
+         (semantic.tu/with-mock-embeddings embeddings
+           (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                          [(str "TRUNCATE TABLE \"" (:table-name index) "\"")])
+           (semantic.tu/upsert-index! documents :index index :serial? true)
+           (doseq [arm [:keyword :vector]]
+             (testing (str id " " (name arm) " arm")
+               (is (= (set (get-in expect [:semantic arm]))
+                      (sql-arm-hits! index (query-vector query) (search-context query) id->label arm)))))
+           (testing (str id " hybrid")
+             (is (= (fixtures/expected-hybrid-hits case)
+                    (hybrid-hits! index query id->label))))
+           (doseq [comparison rewrites
+                   :let [{:keys [query hits]} (fixtures/comparison-spec case comparison :semantic)]]
+             (testing (str id " / " (:focus comparison) " semantic vector arm")
+               (is (= hits (sql-arm-hits! index (query-vector query) (search-context query)
+                                          id->label :vector)))))))))))
 
 (deftest semantic-query-semantics-test
   (mt/with-premium-features #{:semantic-search}
