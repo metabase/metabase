@@ -9,7 +9,9 @@ name: Test gate
 # In a stack of PRs, only the ends run CI: the lowest unmerged PR (the one whose
 # base ref is the stack base) and the top PR (the one at the last position).
 # Every PR in between is force-skipped and gets tested once it reaches the
-# bottom of the stack, unless it carries the `ci:run-all` label.
+# bottom of the stack, unless it carries the `ci:run-all` label. The top diffs
+# against `diff-base`, where the stack forked from its base, so the whole stack
+# decides what runs and not just the top PR's own slice.
 on:
   workflow_call:
     inputs:
@@ -41,6 +43,12 @@ on:
       verdict:
         description: force-run, force-skip, or defer.
         value: ${{ jobs.should-run.outputs.verdict }}
+      diff-base:
+        description: >-
+          The commit to diff against instead of the PR's own base: set only on the top PR of a
+          stack, to where the stack forked from its base. Callers that narrow by diff should use it
+          when it is set.
+        value: ${{ jobs.should-run.outputs.diff-base }}
 
 jobs:
   should-run:
@@ -50,6 +58,7 @@ jobs:
     outputs:
       verdict: ${{ steps.decide.outputs.verdict }}
       filters: ${{ steps.decide.outputs.filters }}
+      diff-base: ${{ steps.diff-base.outputs.sha }}
     steps:
       - name: Decide
         id: decide
@@ -68,6 +77,28 @@ jobs:
           echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
           # Echoed back as JSON so a force-run can report every requested filter as matched.
           echo "filters=$(jq -Rc 'split("[,\\s]+";"") | map(select(length > 0))' <<< "$FILTERS")" | tee -a "$GITHUB_OUTPUT"
+      # A stacked PR that defers is the bottom or the top, and only the top has a base ref other
+      # than the stack's. The merge base, not the stack base's SHA, so commits that landed on the
+      # base after the stack last synced don't count as the stack's changes.
+      - name: Find where the stack forked from its base
+        id: diff-base
+        if: >-
+          ${{ steps.decide.outputs.verdict == 'defer'
+          && github.event.pull_request.stack != null
+          && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref }}
+        uses: actions/github-script@v9
+        env:
+          STACK_BASE_SHA: ${{ github.event.pull_request.stack.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: | # js
+            const { data } = await github.rest.repos.compareCommitsWithBasehead({
+              ...context.repo,
+              basehead: `${process.env.STACK_BASE_SHA}...${process.env.HEAD_SHA}`,
+              per_page: 1,
+            });
+            core.info(`diff-base: ${data.merge_base_commit.sha}`);
+            core.setOutput('sha', data.merge_base_commit.sha);
 
   files-changed:
     name: Detect changed files
@@ -90,7 +121,10 @@ jobs:
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
-          token: ${{ github.token }}
+          # The API only lists the PR's own files, so a `diff-base` needs git, which an empty token
+          # switches paths-filter to. It fetches the commit itself.
+          token: ${{ needs.should-run.outputs.diff-base == '' && github.token || '' }}
+          base: ${{ needs.should-run.outputs.diff-base }}
           filters: .github/file-paths.yaml
       - name: Match the diff against the requested filters
         id: match
