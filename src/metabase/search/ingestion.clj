@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.db :as search.db]
@@ -291,7 +292,9 @@
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
-  Can also be forced to run synchronously for testing."
+  Can also be forced to run synchronously for testing.
+  Async updates are only queued once the current transaction commits, since the worker reads the rows back on its own
+  connection and would otherwise miss any that are not yet committed."
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
@@ -299,10 +302,12 @@
      (if sync?
        (bulk-ingest! updates)
        (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
+         (mdb/do-after-commit
+          (fn []
+            (doseq [update updates]
+              (log/trace "Queuing update" update)
+              (queue/put-with-delay! queue message-delay-ms update))
+            (track-queue-size!)))
          true)))))
 
 (defn wait-for-idle!

@@ -15,6 +15,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (deftest extract-model-and-id
@@ -263,3 +264,30 @@
                           first)]
           (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
                   result)))))))
+
+(deftest ingest-maybe-async!-queues-after-commit-test
+  ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction
+  ;; commits, and the transaction takes longer than the queue delay, the worker finds no row and the entity is
+  ;; silently left out of the index (GDGT-3326).
+  (let [update ["collection" [:= 1 :this.id]]]
+    (testing "async updates made inside a transaction are only queued once it commits"
+      (let [test-queue (queue/delay-queue)]
+        (with-redefs [search.ingestion/queue test-queue]
+          (t2/with-transaction [_conn]
+            (search.ingestion/ingest-maybe-async! [update] false)
+            (testing "nothing is queued while the transaction is still open"
+              (is (empty? test-queue))))
+          (is (= 1 (count test-queue))))))
+    (testing "nothing is queued when the transaction rolls back"
+      (let [test-queue (queue/delay-queue)]
+        (with-redefs [search.ingestion/queue test-queue]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback"
+                                (t2/with-transaction [_conn]
+                                  (search.ingestion/ingest-maybe-async! [update] false)
+                                  (throw (ex-info "rollback" {})))))
+          (is (empty? test-queue)))))
+    (testing "outside a transaction the update is queued immediately"
+      (let [test-queue (queue/delay-queue)]
+        (with-redefs [search.ingestion/queue test-queue]
+          (search.ingestion/ingest-maybe-async! [update] false)
+          (is (= 1 (count test-queue))))))))
