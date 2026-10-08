@@ -222,20 +222,16 @@
   Prometheus + Snowplow:
     - `:model`      - the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
     - `:tag`        - the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
-
-  Prometheus only:
     - `:provider`   - the provider type serving it (e.g. `openrouter`)
-    - `:ai-proxy?`  - whether the call went through the managed AI proxy
+    - `:ai-proxy?`  - whether the call went through the managed AI proxy, reported as the `metabase` provider
 
   Snowplow only:
+    - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)
     - `:profile-id` - the profile id (e.g. `:internal`)
     - `:request-id` - UUID string for this request
     - `:session-id` - conversation UUID string
     - `:source`     - the source of the request (e.g., 'metabot_agent', 'document_generate_content').
-                      Indicates which API endpoint or workflow initiated the LLM call.
-
-  Neither:
-    - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)"
+                      Indicates which API endpoint or workflow initiated the LLM call."
   [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
@@ -253,6 +249,7 @@
                  :profile               (some-> profile-id name)
                  :model-id              model
                  :provider              (provider-label tracking-opts)
+                 :model-name            model-name
                  :prompt-tokens         prompt
                  :completion-tokens     completion
                  :cache-creation-tokens cache-creation
