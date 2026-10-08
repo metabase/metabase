@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { b64hash_to_utf8 } from "metabase/utils/encoding";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
@@ -44,6 +45,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     cy.log("Assertions on a table itself");
+    H.tableInteractive().should("be.visible");
+    cy.findByTestId("pivot-table").should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText(/Users? → Source/);
       cy.findByText("783"); // Affiliate - Doohickey
@@ -186,6 +189,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("215"); // see a non-subtotal value
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("294"); // see a value in another section
 
     // click to collapse rows
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -519,9 +524,9 @@ WHERE NOT (
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("899").should("not.exist"); // confirm that "Affiliate" is collapsed
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520"); // affiliate subtotal is visible
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("899").should("not.exist"); // confirm that "Affiliate" is collapsed
 
     // open settings
     H.openVizSettingsSidebar();
@@ -1044,7 +1049,11 @@ WHERE NOT (
     cy.reload();
 
     cy.icon("download").click();
-    H.popover().findByText(HINT_TEXT).should("not.exist");
+    H.popover().within(() => {
+      cy.findByText(".xlsx").click();
+      cy.findByLabelText(".xlsx").should("be.checked");
+      cy.findByText(HINT_TEXT).should("not.exist");
+    });
   });
 
   it("should work with custom mapping of display values (metabase#14985)", () => {
@@ -1146,6 +1155,8 @@ WHERE NOT (
     cy.findByText("November 10, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 11, 2025");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Totals for November 10, 2025").should("not.exist");
     collapseRowsFor("Created At: Day");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for November 9, 2025");
@@ -1716,8 +1727,10 @@ WHERE NOT (
 
     // Close the notebook editor
     H.openNotebook();
+    H.getNotebookStep("summarize").should("not.exist");
     cy.findByTestId("pivot-table")
-      .should("contain", "User → Source")
+      .should("be.visible")
+      .and("contain", "User → Source")
       .and("contain", "Sum of Subtotal")
       .and("contain", "Sum of Total")
       .and("contain", "Grand totals");
@@ -1891,11 +1904,10 @@ function sortColumnResults(column, direction) {
   // Click anywhere to dismiss the popover from UI
   cy.get("body").click("topLeft");
 
-  cy.location("hash").then((hash) => {
-    // Get rid of the leading `#`
-    const base64EncodedQuery = hash.slice(1);
-    const decodedQuery = atob(base64EncodedQuery);
-    expect(decodedQuery).to.include(direction);
+  cy.location("hash").should((hash) => {
+    expect(b64hash_to_utf8(hash)).to.include(
+      `"pivot_table.column_sort_order":"${direction}"`,
+    );
   });
 }
 
