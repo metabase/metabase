@@ -3,9 +3,6 @@ name: E2E Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
       test-plan-artifact-id:
         description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         type: string
@@ -17,8 +14,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: e2e_all
+
   e2e-matrix-builder:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
@@ -29,10 +32,9 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-    if: |
-      !cancelled() && !inputs.skip &&
-      needs.e2e-matrix-builder.result == 'success' &&
-      needs.e2e-matrix-builder.outputs.hasTests == 'true'
+    # No status function, so a skipped or failed matrix builder keeps this out: the strategy below
+    # cannot parse a matrix it never produced. The builder itself only runs when the gate says so.
+    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -52,7 +54,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     needs: e2e-tests
-    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -111,21 +113,26 @@ jobs:
 
   e2e-tests-result:
     needs:
+      - gate
       - e2e-matrix-builder
       - e2e-tests
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
       MATRIX_RESULT: ${{ needs.e2e-matrix-builder.result }}
       HAS_TESTS: ${{ needs.e2e-matrix-builder.outputs.hasTests }}
-      SKIP: ${{ inputs.skip }}
+      GATE_RESULT: ${{ needs.gate.result }}
+      RUN: ${{ needs.gate.outputs.run }}
     steps:
       - name: Test results
         run: | # sh
-          if [ "$SKIP" = "true" ]; then
+          if [ "$GATE_RESULT" != "success" ]; then
+            echo "The test gate failed, so the suite never ran"
+            exit 1
+          elif [ "$RUN" != "true" ]; then
             echo "Didn't run due to conditional filtering"
           elif [ "$MATRIX_RESULT" != "success" ]; then
             echo "E2E matrix builder failed"
