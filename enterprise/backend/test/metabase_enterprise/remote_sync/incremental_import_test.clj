@@ -256,9 +256,12 @@
            (let [task (t2/insert-returning-pk! :model/RemoteSyncTask
                                                {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
              (is (= :success (:status (impl/import! (source.p/snapshot-at src "v1") task))))
-             ;; The worker died between the commit and the result bookkeeping.
+             ;; The worker died between the commit and the result bookkeeping, after a cancel request.
              (remote-sync.task/cancel-sync-task! task)
-             (is (=? {:cancelled true :version "v1"} (t2/select-one :model/RemoteSyncTask :id task))))
+             (is (=? {:cancelled true :version "v1" :ended_at nil}
+                     (t2/select-one :model/RemoteSyncTask :id task)))
+             ;; the next pull needs the row to end, as the stale check would end it for a dead worker
+             (remote-sync.task/end-task-cancelled! task))
            (is (= "v1" (remote-sync.task/last-version)))
            (is (=? {:status :success :outcome {:kind "pull-skipped"}} (rs.test/import-at! src "v1")))))))))
 
