@@ -538,6 +538,36 @@
                     {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{}"}
                     {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])))))))
 
+(deftest ^:parallel aisdk-xf-nested-object-arguments-validate-test
+  (testing "a tool call with object-valued arguments replays as valid LLMRequestOpts input"
+    ;; The agent loop replays tool calls on its next iteration, where every adapter validates them against
+    ;; `LLMRequestOpts`.
+    (let [chunks [{:type :tool-input-start :toolCallId "call-1" :toolName "construct_notebook_query"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "{\"query\":{\"lib/type\":\"mbql/query\","}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"stages\":[{\"source-table\":[\"db\",\"public\",\"orders\"]}]},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"visualization\":{\"chart_type\":\"line\"},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"title\":\"Orders per month\",\"description\":\"Monthly orders in 2025\"}"}
+                  {:type :tool-input-available :toolCallId "call-1" :toolName "construct_notebook_query"}]
+          parts  (into [] (self.core/aisdk-xf) chunks)]
+      (is (= [{:type      :tool-input
+               :id        "call-1"
+               :function  "construct_notebook_query"
+               :arguments {:query         {"lib/type" "mbql/query"
+                                           "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                           :visualization {"chart_type" "line"}
+                           :title         "Orders per month"
+                           :description   "Monthly orders in 2025"}}]
+             parts))
+      (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
@@ -719,6 +749,27 @@
                          [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])]
       (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
              (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message))))))
+
+(deftest ^:parallel tool-non-object-arguments-test
+  (let [received (atom ::not-called)
+        tools    {"open" {:fn     (fn [args] (reset! received args) {:output "ok"})
+                          :doc    "accepts any object"
+                          :schema [:=> [:cat [:map]] :any]}}
+        run      (fn [raw]
+                   (reset! received ::not-called)
+                   (-> (into [] (self.core/tool-executor-xf tools)
+                             [{:type :tool-input-start :toolName "open" :toolCallId "call-n"}
+                              {:type :tool-input-delta :toolCallId "call-n" :inputTextDelta raw}
+                              {:type :tool-input-available :toolName "open" :toolCallId "call-n"}])
+                       last :error :message))]
+    (testing "valid JSON that isn't an object is rejected before it reaches a tool whose schema accepts any map"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (run "[\"orders\"]")))
+      (is (= ::not-called @received)))
+    (testing "a JSON string holding an object is reported as the string the model sent, not decoded into one"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received a string."
+             (run "\"{\\\"names\\\": [\\\"orders\\\"]}\"")))
+      (is (= ::not-called @received)))))
 
 (deftest ^:parallel tool-without-schema-is-not-validated-test
   (testing "a tool with no declared argument schema is left alone"
@@ -1385,7 +1436,7 @@
 
 (defn- malformed-tool-input-response
   "A reducible LLM stream whose forced tool call streams invalid JSON, so
-  `parse-tool-arguments` yields the `{:_raw_arguments ...}` sentinel."
+  `parse-tool-arguments` yields the raw-arguments sentinel."
   []
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -1407,8 +1458,28 @@
                                               0.3 1024 {:tag "metabot_agent"})
                     (catch clojure.lang.ExceptionInfo e e))]
             (is (instance? clojure.lang.ExceptionInfo e)
-                "malformed JSON must throw, not return the {:_raw_arguments ...} sentinel as a result")
-            (is (= "structured-output-invalid" (:error-code (ex-data e))))))))))
+                "malformed JSON must throw, not return the raw-arguments sentinel as a result")
+            (is (= "structured-output-invalid" (:error-code (ex-data e))))
+            (is (= "{not valid json" (:raw-arguments (ex-data e))))))))))
+
+(deftest call-llm-structured-rejects-non-object-json-test
+  (llm.tu/with-default-connections
+    (testing "valid JSON that isn't an object is rejected as an error, not returned as a bogus result"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type :start :id "m1"}
+                                                           {:type :tool-input :id "c1" :function "json" :arguments ["orders"]}]))]
+        (let [e (try
+                  (self/call-llm-structured "openrouter/test-model"
+                                            [{:role "user" :content "test"}]
+                                            {:type "object" :properties {:answer {:type "string"}}}
+                                            0.3 1024 {:tag "metabot_agent"})
+                  (catch clojure.lang.ExceptionInfo e e))]
+          (is (instance? clojure.lang.ExceptionInfo e)
+              "a non-object payload must throw, not come back as the structured result")
+          (is (= "structured-output-invalid" (:error-code (ex-data e))))
+          (is (= ["orders"] (:non-object-arguments (ex-data e)))))))))
 
 (deftest call-llm-structured-surfaces-provider-error-test
   (llm.tu/with-default-connections
