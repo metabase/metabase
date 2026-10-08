@@ -519,6 +519,22 @@
     (testing "the original of every link is the source's"
       (is (= [@(delay (mt/original-fn source))] (distinct (map mt/original-fn [source middle end])))))))
 
+;; Not ^:parallel: `with-redefs` replaces the var's root for every thread.
+(deftest ^:synchronized reexport-first-redefined-under-a-stub-potemkin-overwrote-test
+  (let [source   (fresh-source! (fn [] :original))
+        reexport (reexport! source 'metabase.test.util.dynamic-redefs-test)
+        calls    (fn [] [(source) (reexport)])]
+    (testing "potemkin copies a stub of the source over a stub of the re-export, which then looks like a plain copy"
+      (is (= [[:source :source] [:source :reexport]]
+             (with-redefs-fn {reexport (constantly :stub)}
+               (fn []
+                 (with-redefs-fn {source (constantly :source)}
+                   (fn []
+                     [(calls) (redefined! reexport (constantly :reexport) calls)])))))))
+    (testing "the re-export still follows its source after both stubs are gone"
+      (is (= [[:original :original] [:source :source]]
+             [(calls) (redefined! source (constantly :source) calls)])))))
+
 (deftest reexport-of-unproxyable-value-test
   (testing "a re-export of a multimethod or of a value that is not a function is refused, like its source"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -533,7 +549,7 @@
 
 (deftest first-redef-of-reexport-and-source-race-test
   (testing "a re-export and its source, each first redefined at the same moment on its own thread"
-    (let [pairs 50
+    (let [pairs 300
           pool  (Executors/newFixedThreadPool 2)
           race  (fn []
                   (let [source   (fresh-source! (fn [] :original))
