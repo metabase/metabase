@@ -700,6 +700,10 @@
 (defmethod upgrade-card-schema-to 24
   [{:keys [dataset_query dimensions entity_id] :as card} _schema-version]
   (cond
+    ;; The caller declared it does not read a metric's dimensions, so don't pay to backfill them.
+    ;; See [[card-schema/*skip-dimension-backfill?*]].
+    card-schema/*skip-dimension-backfill?*    card
+
     (not= :metric (keyword (:type card))) card   ; Ignore non-:metric cards
     (empty? dataset_query)                card   ; And those without real queries
 
