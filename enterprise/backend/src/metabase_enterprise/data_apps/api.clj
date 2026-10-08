@@ -359,7 +359,6 @@
   (api/check-superuser)
   (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))
 
-
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
 ;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
 ;; what iframe to render, before any data-app realm exists, so the request never carries the
