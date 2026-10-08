@@ -1,6 +1,8 @@
 ---
 name: metabase-data-app-setup
-description: Scaffold a new Metabase data-app into the connected remote-sync repository's `data_apps/<app>/` directory from the `data-app-template`. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
+description: Scaffold a new Metabase data-app into the connected remote-sync repository's `data_apps/<app>/` directory from the `data-app-template`. Use when the user asks to start, create, scaffold, or set up a data-app from scratch, or to remove one.
+metadata:
+    version: master
 ---
 
 # Create a Metabase Data App
@@ -16,6 +18,7 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 - "scaffold a new data app" / "create a Metabase data app" / "set up a data-app project"
 - "I want to build a data app" / any vague intent to author a data app
 - Starting a fresh agent task that will produce a data-app bundle.
+- "remove the <slug> data app" / "delete a data app" — only *Removing an app* below applies.
 - Do **not** use this skill for an existing data-app project when the task is to
   build screens, use Metabase data, generate or refresh schema files, wire saved
   questions / tables / metrics / actions, add filters, or author data hooks.
@@ -334,7 +337,7 @@ src/
 ├── index.tsx          (template — the factory; don't edit)
 ├── App.tsx            (routing + composition only)
 ├── theme.ts
-├── metabase.data.ts   (generated schema — see the semantic-layer skill)
+├── metabase.data.ts   (generated schema — use skill discovery for the data-app semantic layer)
 ├── pages/             (one file per screen)
 │   ├── Overview.tsx
 │   └── CustomerDetail.tsx
@@ -356,7 +359,7 @@ Vite bundles everything reachable from `src/index.tsx` into a single `dist/index
 const [active, setActive] = useState(TABS[0].id); // default = leftmost tab
 ```
 
-If the tabs are instead backed by URL routes (multiple pages), the same rule applies via the router — see the `metabase-data-app-routing` skill for making the base path `/` resolve to the default tab. Either way, verify by loading the app fresh: the leftmost tab's content is visible immediately and reads as selected.
+If the tabs are instead backed by URL routes (multiple pages), the same rule applies via the router — use skill discovery for data-app routing to make the base path `/` resolve to the default tab. Either way, verify by loading the app fresh: the leftmost tab's content is visible immediately and reads as selected.
 
 **The build output is one self-contained `.js` file — nothing else.** The backend serves a single bundle, so there are no sidecar files: CSS is inlined into the JS, and every imported asset (images, fonts, SVGs-as-URLs) is base64-inlined as a data URI. So `import logo from "./logo.png"` / `import iconUrl from "./icon.svg"` give you a ready-to-use data-URI string, and SVGs can also be imported as React components with the **`?react`** suffix (built-in `svgr`): `import Icon from "./icon.svg?react"`. Everything gets baked into `dist/index.js` — just keep large binaries out, since inlining inflates the bundle. (If your editor doesn't recognize a `?react` import, add `declare module "*.svg?react";` to a `.d.ts` in `src/`.)
 
@@ -556,7 +559,21 @@ Data apps are delivered by Git — you commit the app directory and Metabase pul
 > **Don't offer to "deploy" the app or ask how the bundle reaches a staging environment** — there is no separate deploy step, and the question only confuses users: Metabase imports the committed bundle straight from the connected repo on its next sync. Once the change is on the branch Metabase syncs from — however the user gets it there (a merged PR, or a push straight to that branch) — just tell them to pull it in and open the app in Metabase at `/apps/<slug>`.
 
 - **To update:** update the app's collection files if the definitions changed, commit a new build, and pull again.
-- **To remove:** delete the app's directory `data_apps/<slug>/` **and** its collection's files — `collections/data_apps/<collection>.yaml` and the `collections/data_apps/<collection>/` directory, the collection `data_app.yaml` names — in one commit, and push. The next sync removes the app, and with it its collection, saved questions, metrics and actions. Never delete one without the other: a collection file left behind is loaded back on the next pull as a collection no app owns, and an app whose collection file is gone is refused.
+- **To remove:** see *Removing an app* below.
+
+## Removing an app
+
+When the user asks to remove or delete a data app, delete its directory **and** its collection's files in one commit, from the repo root, and push:
+
+```bash
+git rm -r data_apps/<slug> collections/data_apps/<collection>.yaml collections/data_apps/<collection>
+git commit -m "Remove <slug> data app"
+git push
+```
+
+`<collection>` is the collection `data_app.yaml` names as `collection`: the file under `collections/data_apps/` whose `entity_id` is that value, and the directory of the same name beside it (`data_app__order_desk` for `Data App: Order Desk`). The next pull removes the app, and with it its collection, saved questions, metric copies and action copies.
+
+A directory deleted without its collection's files still removes the app on the next pull, and with it the collection; the next push from Metabase then deletes those files from the repository. Delete both anyway: until that push, a pull that reloads every file brings the collection back as one no app owns, and the push would then keep it. The other way round is refused: an app whose directory stays while its collection file is gone fails the pull.
 
 ## Common pitfalls
 

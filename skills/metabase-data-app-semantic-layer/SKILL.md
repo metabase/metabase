@@ -1,6 +1,8 @@
 ---
 name: metabase-data-app-semantic-layer
 description: Use when building, creating, or editing data apps that should query Metabase tables and metrics through generated schema files like metabase.data.ts or *.metabase.data.ts.
+metadata:
+  version: master
 ---
 
 # Metabase Data App Semantic Layer

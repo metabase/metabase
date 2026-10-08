@@ -65,6 +65,16 @@
   [slug :- :string]
   (t2/exists? :model/DataApp :name slug))
 
+(mu/defn data-app-entity-id-named
+  "The `:entity_id` of the DataApp named `slug`, or nil."
+  [slug :- :string]
+  (t2/select-one-fn :entity_id :model/DataApp :name slug))
+
+(mu/defn resource-collection?
+  "Whether the Collection with `collection-id` is the resource collection of a DataApp."
+  [collection-id :- pos-int?]
+  (t2/exists? :model/DataApp :resource_collection_id collection-id))
+
 (mu/defn insert-data-app!
   "Insert the DataApp `row`."
   [row :- ::data-apps.schema/data-app.update]
@@ -114,7 +124,7 @@
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
   []
-  (t2/select-fn-set :resource_collection_id :model/DataApp))
+  (t2/select-fn-set :resource_collection_id :model/DataApp :resource_collection_id [:not= nil]))
 
 (mu/defn resource-collection-id
   "The ID of the resource collection owned by the DataApp with `data-app-id`."
@@ -135,6 +145,81 @@
                                [:= :p.perm_value "legacy-no-self-service"]
                                [:= :g.is_data_app_group false]]})
     #{}))
+
+(defn resource-collection-owned?
+  "Whether a data app owns the collection with `collection-id`."
+  [collection-id]
+  (t2/exists? :model/DataApp :resource_collection_id collection-id))
+
+(defn data-app-by-entity-id
+  "The `:id`, `:entity_id`, and `:resource_collection_id` of the DataApp with `entity-id`, or nil."
+  [entity-id]
+  (t2/select-one [:model/DataApp :id :entity_id :resource_collection_id] :entity_id entity-id))
+
+(defn data-apps-with-resource-collections
+  "The `:id` and `:resource_collection_id` of every DataApp that has a resource collection."
+  []
+  (t2/select [:model/DataApp :id :resource_collection_id] :resource_collection_id [:not= nil]))
+
+(defn active-table?
+  "Whether the table with `table-id` is active."
+  [table-id]
+  (some? (t2/select-one-pk :model/Table :id table-id :active true
+                           {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})))
+
+(defn active-field?
+  "Whether the field with `field-id` is active."
+  [field-id]
+  (some? (t2/select-one-pk :model/Field :id field-id :active true
+                           {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
+
+(defn collections-by-entity-ids
+  "The `:id`, `:entity_id` and `:namespace` of the collections with `entity-ids`."
+  [entity-ids]
+  (if (seq entity-ids)
+    (t2/query {:select [:id :entity_id :namespace] :from [:collection] :where [:in :entity_id entity-ids]})
+    []))
+
+(defn cards-by-entity-ids
+  "The `:entity_id` and `:collection_id` of the cards with `entity-ids`."
+  [entity-ids]
+  (if (seq entity-ids)
+    (t2/query {:select [:entity_id :collection_id] :from [:report_card] :where [:in :entity_id entity-ids]})
+    []))
+
+(defn actions-by-entity-ids
+  "The `:entity_id` and `:collection_id` of the actions with `entity-ids`."
+  [entity-ids]
+  (if (seq entity-ids)
+    (t2/select [:model/Action :entity_id :collection_id] :entity_id [:in entity-ids])
+    []))
+
+(defn table-ids-named
+  "The IDs of the active tables in the database with `database-id` that `refs` (maps of `:schema` and `:table`)
+  name: by name, and by schema when the reference has one, ignoring case."
+  [database-id refs]
+  (if (seq refs)
+    (let [lower  #(some-> % u/lower-case-en)
+          tables (t2/select [:model/Table :id :schema :name] :db_id database-id :active true
+                            {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                             :where [:in [:lower :name] (into [] (keep (comp lower :table)) refs)]})]
+      (into (sorted-set)
+            (for [{:keys [schema table]} refs
+                  {:keys [id] :as named} tables
+                  :when (and (= (lower table) (lower (:name named)))
+                             (or (nil? schema) (= (lower schema) (lower (:schema named)))))]
+              id)))
+    #{}))
+
+(defn collection-dataset-queries
+  "The queries of the cards and of the query actions in the collection with `collection-id`."
+  [collection-id]
+  (into (t2/select-fn-vec :dataset_query :model/Card :collection_id collection-id)
+        (t2/select-fn-vec :dataset_query :model/QueryAction
+                          {:select [:qa.*]
+                           :from   [[:query_action :qa]]
+                           :join   [[:action :a] [:= :a.id :qa.action_id]]
+                           :where  [:= :a.collection_id collection-id]})))
 
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."

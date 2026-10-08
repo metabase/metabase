@@ -351,7 +351,10 @@ export const closeSyncResultModal = () => {
   cy.findByTestId("sync-success-close-button").click();
 };
 
-const TASK_POLL_LIMIT = 30;
+// An import's first native SQL parse starts the Python parser, which on a slow runner takes longer than the
+// fifteen seconds thirty polls allow. Giving up while the import still runs is worse than waiting: a retry
+// restores the app DB under the live import, which then dies on a closed connection.
+const TASK_POLL_LIMIT = 120;
 
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },

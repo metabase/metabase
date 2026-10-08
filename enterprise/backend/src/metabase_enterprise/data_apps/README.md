@@ -33,11 +33,14 @@ data_apps/
     data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts, collection
     dist/index.js          # the bundle
 collections/
-  main/
+  data_apps/
     data_app__sales.yaml   # the app's resource collection (namespace: data-apps)
     data_app__sales/
       *.yaml               # the saved questions, metric copies, and action copies the app runs
 ```
+
+Collections of the `data-apps` namespace are written under `collections/data_apps/`, as the
+`transforms` and `snippets` namespaces have their folders.
 
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
 `display_name`, `path` the `bundle_path`, and `collection` the entity ID of the app's resource
@@ -55,11 +58,20 @@ made on the instance holds is refused. A manifest that names a collection the re
 other than the collection the app already owns, fails to load. It is a no-op without the
 `:data-apps` feature.
 
-Remote sync treats data apps like any other entity, globally rather than per collection; the app's
-collection and what it holds travel with it as its serdes descendants. Because the bundle is a separate file, a pull that changes
-only a bundle, or an export that touches an app, takes the full rather than the incremental path.
-An app's directory also holds its source, which serialization doesn't own, so exports replace only
-the YAML and resource files in `data_apps/`.
+Remote sync treats data apps like any other entity, globally rather than per collection, and their
+collections like any namespace's: in scope for import, cleanup and export by their namespace. Before
+an import loads anything, `resource_validation.clj` checks every manifest with its collection and
+the cards and actions in it, and fails the pull naming the file that a load couldn't take as the
+author meant it. Because the bundle is a separate file, a pull that changes only a bundle, or an
+export that touches an app, takes the full rather than the incremental path. An app's directory
+also holds its source, which serialization doesn't own, so exports replace only the YAML and
+resource files in `data_apps/`.
+
+An author deletes an app by deleting its directory and its collection's files under
+`collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
+hook deletes the collection with what it holds. A commit that deletes the directory but keeps the
+collection's files still deletes the app and its collection; the next export removes the files,
+and until then a full pull loads them back as a collection no app owns.
 
 ## Serving
 
@@ -120,6 +132,7 @@ Exporting an app's resources also needs a superuser.
 | Namespace             | Responsibility                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------- |
 | `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
+| `core.clj`            | What other modules ask: resource file problems and table dependencies.                             |
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
@@ -127,6 +140,8 @@ Exporting an app's resources also needs a superuser.
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
 | `resource_serialization.clj` | The serialization an app's resource files are written from: built queries, actions, metrics. |
 | `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
+| `resource_validation.clj` | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
+| `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |
 | `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |

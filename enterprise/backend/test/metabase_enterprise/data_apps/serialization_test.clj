@@ -5,6 +5,9 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
@@ -185,7 +188,11 @@
       (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
         (let [app (insert-app!)]
           (write-app-files! dump-dir "sales-ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
+          (let [e (try (import! dump-dir) nil (catch clojure.lang.ExceptionInfo e e))]
+            (is (re-find #"Failed to load" (ex-message e)))
+            (testing "the pull says what to do, rather than failing on the slug's unique index"
+              (is (re-find #"named \"sales-ops\" already exists on this instance"
+                           (ex-message (ex-cause e))))))
           (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app)))))))))
 
 (deftest export-includes-data-apps-test
@@ -193,3 +200,34 @@
     (let [app (insert-app!)]
       (is (some #(= [{:model "DataApp" :id (:entity_id app)}] (map (fn [m] (dissoc m :label)) (:serdes/meta %)))
                 (into [] (extract/extract {:no-collections true :no-data-model true :no-settings true})))))))
+
+(deftest round-trip-with-resources-test
+  (testing "an app travels with its collection and what that holds, written under collections/data_apps/"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
+        (ts/with-random-dump-dir [dump-dir "data-app-resources-"]
+          (let [app           (insert-app!)
+                collection-id (:resource_collection_id app)
+                mp            (mt/metadata-provider)
+                query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+            (mt/with-temp [:model/Card {question-eid :entity_id} {:name "Venues list" :type :question
+                                                                  :collection_id collection-id :dataset_query query}]
+              (let [action-id  (actions/insert! {:name          "Rename venue"
+                                                 :type          :query
+                                                 :collection_id collection-id
+                                                 :database_id   (mt/id)
+                                                 :dataset_query (lib/native-query mp "UPDATE venues SET name = 'x'")})
+                    action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
+                (export! dump-dir :with-collections? true)
+                (testing "the files sit under the collection's directory of the data-apps namespace"
+                  (doseq [path ["data_app__sales_ops.yaml" "data_app__sales_ops/venues_list.yaml"
+                                "data_app__sales_ops/rename_venue.yaml"]]
+                    (is (.exists (io/file dump-dir "collections" "data_apps" path)) path)))
+                (t2/delete! :model/DataApp (:id app))
+                (is (not (t2/exists? :model/Card :entity_id question-eid)) "deleting the app deletes its collection's cards")
+                (import! dump-dir)
+                (let [imported      (t2/select-one :model/DataApp :entity_id (:entity_id app))
+                      collection-id (:resource_collection_id imported)]
+                  (is (pos-int? collection-id))
+                  (is (= collection-id (t2/select-one-fn :collection_id :model/Card :entity_id question-eid)))
+                  (is (= collection-id (t2/select-one-fn :collection_id :model/Action :entity_id action-eid))))))))))))

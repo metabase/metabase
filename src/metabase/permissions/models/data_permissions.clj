@@ -1348,6 +1348,12 @@
   []
   #{})
 
+(defenterprise data-app-collection?
+  "Whether the collection with `collection-id` is one a data app owns. OSS has none."
+  metabase-enterprise.data-apps.models.data-app
+  [_collection-id]
+  false)
+
 (defenterprise new-table-sandboxed-groups
   "Returns the subset of `group-ids` whose new tables on `db-id` have a sandbox somewhere in this DB, and must therefore
   have their `view-data` forced to `:blocked` regardless of the new table's schema.

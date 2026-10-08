@@ -1,7 +1,7 @@
 import { nanoid } from "@reduxjs/toolkit";
 import yaml from "js-yaml";
 
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import { NANOID_LENGTH } from "metabase-types/api";
 import type {
@@ -11,6 +11,7 @@ import type {
   CollectionPermissionsGraph,
   DataApp,
   Group,
+  RemoteSyncTask,
   WritebackAction,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -21,6 +22,7 @@ import { getIframeBody } from "./e2e-embedding-helpers";
 import {
   LOCAL_GIT_PATH,
   commitToRepo,
+  configureGit,
   configureGitAndPullChanges,
   copySyncedCollectionFixture,
   setupGitSync,
@@ -176,7 +178,7 @@ export function assertNoDataAppScopeDenials() {
     expect(
       scopeDenials,
       `data-app scope rejections:\n${scopeDenials.join("\n")}`,
-    ).to.be.empty;
+    ).to.deep.eq([]);
   });
 }
 
@@ -378,6 +380,7 @@ const resourceCard = ({
   display: type === "metric" ? "scalar" : "table",
   entity_id: entityId,
   collection_id: collection,
+  creator_id: USERS.admin.email,
   dataset_query: {
     "lib/type": "mbql/query",
     database: table[0],
@@ -388,6 +391,41 @@ const resourceCard = ({
   visualization_settings: {},
   "serdes/meta": serdesMeta("Card", entityId, name),
 });
+
+/**
+ * The copies of the actions `copies` name, as an author writes them into the
+ * app's collection: what Metabase serializes for each source action, with the
+ * copy's entity ID and in the app's `collection`.
+ */
+export function serializeDataAppActionCopies(
+  copies: Array<{ sourceActionId: number; entityId: string }>,
+  collection: string,
+) {
+  return cy
+    .request<{ actions: Array<{ entity: ResourceEntity }> }>(
+      "POST",
+      "/api/apps/serialize-resources",
+      {
+        collection,
+        actions: copies.map(({ sourceActionId }) => sourceActionId),
+      },
+    )
+    .then(({ body }) =>
+      cy.wrap(
+        copies.map(({ entityId }, index): ResourceEntity => {
+          const { entity } = body.actions[index];
+
+          return {
+            ...entity,
+            entity_id: entityId,
+            collection_id: collection,
+            "serdes/meta": serdesMeta("Action", entityId, String(entity.name)),
+          };
+        }),
+        { log: false },
+      ),
+    );
+}
 
 /**
  * The YAML an author writes for an app's collection, in the Metabase
@@ -438,6 +476,28 @@ export function writeDataAppResources(
           yaml.dump(entity),
         ]),
       ),
+    },
+  });
+}
+
+/** Declares one `defineAction` per action, as the generated schema names it, with the ID of its copy. */
+export function declareDataAppActions(
+  appRoot: string,
+  actions: Array<{
+    exportName: string;
+    sourceActionId: number;
+    copiedActionEntityId: string;
+  }>,
+) {
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${appRoot}/actions/orders.action.ts`]: [
+        'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
+        ...actions.map(
+          ({ exportName, sourceActionId, copiedActionEntityId }) =>
+            `export const ${exportName} = defineAction({ copiedActionEntityId: "${copiedActionEntityId}", action: { id: ${sourceActionId}, parameters: [] } });`,
+        ),
+      ].join("\n"),
     },
   });
 }
@@ -505,14 +565,157 @@ export const copySyncedDataAppsFixture = () =>
 /**
  * Pulls `example_synced_data_apps` through a real remote-sync import, so a spec
  * gets real app rows, each with its resource collection and permission group.
- * Both `good` and `second-app` are served.
+ * Both `good` and `second-app` are served. `goodAppCards` replaces the
+ * `good` app's saved questions, so a spec decides which tables it reads.
  */
-export function pullExampleDataApps() {
+export function pullExampleDataApps({
+  goodAppCards,
+}: { goodAppCards?: ResourceEntity[] } = {}) {
   setupGitSync();
   copySyncedCollectionFixture();
   copySyncedDataAppsFixture();
+  if (goodAppCards) {
+    writeDataAppResources(LOCAL_GIT_PATH, {
+      collection: resourceCollection(
+        "goodAppCollection0000",
+        "Data App: Good App",
+      ),
+      cards: goodAppCards,
+    });
+  }
   commitToRepo("Add data apps");
   configureGitAndPullChanges("read-write");
+}
+
+/** A data app whose resources loaded: it has its collection and its permission group. */
+export type SyncedDataApp = DataApp & {
+  resource_collection_id: number;
+  permission_group_id: number;
+};
+
+/** The host app's checked-in `data_app.yaml`, as serialization reads it. */
+export const DATA_APP_HOST_APP_MANIFEST = `version: 1
+name: Vite 6 Data App
+slug: vite-6-data-app-host-app
+path: ./dist/index.js
+allowed_hosts:
+  - https://allowed.data-app.test
+entity_id: qxpaPkU_WRE2ZQu0cmpqD
+serdes/meta:
+- model: DataApp
+  id: qxpaPkU_WRE2ZQu0cmpqD
+  label: vite-6-data-app-host-app
+`;
+
+const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
+  typeof app.resource_collection_id === "number" &&
+  typeof app.permission_group_id === "number";
+
+/**
+ * Writes the app's manifest into the sync repository as `data_apps/<slug>`, makes
+ * the repository's `collections/data_apps/` what the host app holds, and
+ * commits them, as an author does. The bundle is a placeholder, since specs
+ * serve the built one through `mockDataApp`. Pass `initializeRepo: false` to
+ * write into the repository an earlier call set up.
+ */
+function commitDataApp(
+  appRoot: string,
+  slug: string,
+  { initializeRepo = true }: { initializeRepo?: boolean } = {},
+) {
+  const appDir = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
+  const collectionsDir = `${LOCAL_GIT_PATH}/collections/data_apps`;
+
+  if (initializeRepo) {
+    setupGitSync();
+    copySyncedCollectionFixture();
+  }
+  // A copy only adds, so a file the author deleted would stay in the repository.
+  cy.task("removeDataAppPaths", { paths: [collectionsDir] });
+  cy.task("copyDirectory", {
+    source: `${appRoot}/collections/data_apps`,
+    destination: collectionsDir,
+  });
+  cy.readFile(`${appRoot}/data_app.yaml`).then((manifest: string) =>
+    cy.task("writeDataAppFiles", {
+      files: {
+        [`${appDir}/data_app.yaml`]: manifest,
+        [`${appDir}/dist/index.js`]: "// served by the spec",
+      },
+    }),
+  );
+  commitToRepo(`Publish ${slug}`);
+}
+
+/**
+ * Publishes the app with a pull and yields it once its resources loaded: with
+ * its collection and its permission group, which the admin list carries.
+ */
+export function publishDataApp(
+  appRoot: string,
+  slug: string,
+  options?: { initializeRepo?: boolean },
+) {
+  commitDataApp(appRoot, slug, options);
+  configureGitAndPullChanges("read-write");
+
+  return cy.request<DataApp[]>("/api/apps").then(({ body: apps }) => {
+    const app = apps.find(({ name }) => name === slug);
+
+    if (!app) {
+      throw new Error(`The pull loaded no data app named ${slug}.`);
+    }
+    if (!isSyncedDataApp(app)) {
+      throw new Error(
+        `Data app ${slug} loaded without its resource collection or group.`,
+      );
+    }
+
+    return cy.wrap(app, { log: false });
+  });
+}
+
+const IMPORT_POLL_LIMIT = 120;
+
+/** Yields the error of the import that is running or just ran, once it fails. */
+function waitForImportError(retries = 0): Cypress.Chainable<string> {
+  if (retries > IMPORT_POLL_LIMIT) {
+    throw new Error("The import did not fail in time.");
+  }
+
+  return cy
+    .request<RemoteSyncTask | null>("/api/ee/remote-sync/current-task")
+    .then(({ body }) => {
+      if (body?.sync_task_type === "import" && body.status === "errored") {
+        return cy.wrap(body.error_message ?? "", { log: false });
+      }
+
+      if (body?.sync_task_type === "import" && body.status === "successful") {
+        throw new Error(
+          "The import succeeded, but its resources should have been refused.",
+        );
+      }
+
+      cy.wait(500);
+      return waitForImportError(retries + 1);
+    });
+}
+
+/**
+ * Publishes an app whose resource files the pull is expected to refuse, and
+ * yields the pull's error. A refused file fails the whole pull, so nothing of
+ * the app loads.
+ */
+export function publishDataAppExpectingRefusal(
+  appRoot: string,
+  slug: string,
+  options?: { initializeRepo?: boolean },
+) {
+  commitDataApp(appRoot, slug, options);
+  configureGit("read-write");
+  cy.request("POST", "/api/ee/remote-sync/import", { expected_branch: "main" });
+
+  return waitForImportError();
 }
 
 /**

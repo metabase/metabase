@@ -1,6 +1,8 @@
 ---
 name: metabase-data-app-migrate
 description: Migrate an existing Metabase data app that Metabase marks Outdated (its `data_app.yaml` `version` is below the data-app contract version the installed skills and SDK target) to the current version, one upgrade at a time, with a resumable procedure. Use when Metabase shows an app as Outdated, `npm run typecheck` or `npm run build` fails after an SDK upgrade, or an existing app's `version` is behind the one the installed skills target. Not for creating an app.
+metadata:
+  version: master
 ---
 
 # Migrate a data app to the current contract version

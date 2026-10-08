@@ -33,8 +33,7 @@
   card-param-remapped-value]
  [metabase.queries.db
   card-query-info
-  cards-queries-info
-  move-actions-of-models!]
+  cards-queries-info]
  [metabase.queries.models.card
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
@@ -46,6 +45,7 @@
  [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
+  check-allowed-to-delete-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
   check-card-can-be-saved!

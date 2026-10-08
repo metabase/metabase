@@ -1,0 +1,10 @@
+version: 1
+name: Synced App
+slug: synced-app
+path: ./dist/index.js
+collection: syncedAppCollection01
+entity_id: syncedAppEntityId0001
+serdes/meta:
+- model: DataApp
+  id: syncedAppEntityId0001
+  label: synced-app
