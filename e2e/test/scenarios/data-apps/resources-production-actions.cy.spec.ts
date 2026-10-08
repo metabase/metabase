@@ -78,7 +78,8 @@ describe(
           .then((app) => cy.wrap({ app, actionCopy }, { log: false }));
       });
 
-    it("serializes the action an author copies, with no model, as its file holds it", () => {
+    it("serializes the action an author copies, and executes the app's copy rather than the authored action, for a member of the app's group", () => {
+      cy.log("serialize an action with no model, as its file holds it");
       H.createDataAppScoreboardAction().then((source) => {
         // Executing the action reads this, so the copy must keep it.
         cy.request("PUT", `/api/action/${source.id}`, {
@@ -101,9 +102,8 @@ describe(
             .that.deep.include({ hidden: true, defaultValue: 0 });
         });
       });
-    });
 
-    it("executes the app's copy rather than the authored action, for a member of the app's group", () => {
+      cy.log("execute the app's copy of a separate action");
       publishApp().then(({ app, actionCopy }) => {
         H.addUserToGroup(app.permission_group_id, USERS.normal.email);
 
