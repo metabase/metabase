@@ -1,4 +1,4 @@
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 
 import {
   setupCurrentUserEndpoint,
@@ -6,6 +6,8 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { setup as setupAccountPassword } from "metabase/account/password/containers/UserPasswordApp/tests/setup";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -159,6 +161,54 @@ describe("application routes", () => {
         expect(router?.location.pathname).toBe("/unauthorized");
       });
     });
+  });
+});
+
+describe("disconnecting Slack with application routes", () => {
+  afterEach(reinitialize);
+
+  it("should clear the cached user and render sign in when the Slack session ends", async () => {
+    const { router, store, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "slack",
+        slack_account_status: "active",
+      }),
+      currentUserStatus: 401,
+      routes: getRoutes,
+    });
+    const visited: string[] = [];
+    router?.onLocationChange((location) => visited.push(location.pathname));
+
+    await disconnect();
+
+    expect(await screen.findByText(/Sign in to/)).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/auth/login");
+    expect(getUser(store.getState())).toBeNull();
+    expect(visited).not.toContain("/");
+    expect(screen.queryByText("Slack")).not.toBeInTheDocument();
+  });
+
+  it("should replace the empty Authentication page in browser history", async () => {
+    const { router, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "google",
+        slack_account_status: "active",
+      }),
+      hasAuthPlugin: true,
+      tokenFeatures: { disable_password_login: true },
+      routes: getRoutes,
+    });
+
+    await disconnect();
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/account/profile"),
+    );
+    expect(await screen.findByTestId("user-locale-select")).toBeInTheDocument();
+
+    act(() => router?.back());
+
+    expect(router?.location.pathname).toBe("/account/profile");
+    expect(screen.getByTestId("user-locale-select")).toBeInTheDocument();
   });
 });
 

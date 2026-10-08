@@ -21,6 +21,7 @@
    [metabase.slackbot.settings :as slackbot.settings]
    [metabase.slackbot.streaming :as slackbot.streaming]
    [metabase.slackbot.uploads :as slackbot.uploads]
+   [metabase.sso.core :as sso]
    [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -89,22 +90,12 @@
 
 ;; ------------------------- AUTHENTICATION ------------------------------
 
-(defn- current-signing-secret-version
-  []
-  (or (server.settings/slack-connect-signing-secret-version) 0))
-
-(defn- auth-identity-signing-secret-version
-  [identity]
-  (or (get-in identity [:metadata :signing_secret_version]) 0))
-
 (defn- slack-id->user-id
-  "Look up a Metabase user ID from Slack user ID. Only returns a match if the identity was created under the current
-  signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
-  identities without an explicit version are treated as version 0."
+  "Return the user ID of the newest Slack link if it is current and its user is active, or nil.
+  Rotating the signing secret automatically invalidates existing identity links."
   [slack-user-id]
   (let [identity (slackbot.db/active-slack-connect-identity slack-user-id)]
-    (when (= (auth-identity-signing-secret-version identity)
-             (current-signing-secret-version))
+    (when (sso/slack-connect-identity-current? identity)
       (:user_id identity))))
 
 (defn- slack-user-authorize-link
@@ -467,7 +458,7 @@
                         :slack-connect-enabled        (boolean all-set?)})
     (when signing-secret-changed?
       (server.settings/slack-connect-signing-secret-version!
-       (inc (current-signing-secret-version))))
+       (inc (server.settings/slack-connect-signing-secret-version))))
     {:ok true}))
 
 ;; ------------------------- FEEDBACK BUTTONS ------------------------------

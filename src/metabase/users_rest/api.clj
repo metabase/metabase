@@ -380,6 +380,7 @@
    [:has_invited_second_user    :boolean]
    [:has_question_and_dashboard :boolean]
    [:has_model                  :boolean]
+   [:slack_account_status       [:maybe [:enum "active" "inactive"]]]
    [:can_write_any_collection   :boolean]
    [:sso_source                 [:maybe :keyword]]
    [:locale                     [:maybe :string]]
@@ -409,7 +410,18 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info
-      add-can-write-any-collection))
+      add-can-write-any-collection
+      (assoc :slack_account_status (sso/slack-account-status api/*current-user-id*))))
+
+(api.macros/defendpoint :delete "/:id/slack" :- [:map {:closed true}
+                                                 [:status [:= 204]]
+                                                 [:body :nil]]
+  "Remove every Slack Connect link for the current user's Slack ID, on every Metabase account."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-403 (= id api/*current-user-id*))
+  (sso/disconnect-slack-account! id)
+  api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -444,6 +444,117 @@
                  :has_invited_second_user (= 1 (mt/user->id :rasta))}
                 (mt/user-http-request :rasta :get 200 "user/current")))))))
 
+(deftest current-user-slack-account-test
+  (doseq [[enabled? version metadata expected-status]
+          [[true 0 nil "active"]
+           [true 2 {:signing_secret_version 2} "active"]
+           [true 2 {:signing_secret_version 1} "inactive"]
+           [true 2 nil "inactive"]
+           [false 2 {:signing_secret_version 2} "inactive"]]]
+    (testing (str "Slack enabled=" enabled? ", version=" version ", metadata=" metadata)
+      (mt/with-temporary-setting-values [slack-connect-client-id "test-client"
+                                         slack-connect-client-secret "test-secret"
+                                         slack-connect-enabled enabled?
+                                         slack-connect-signing-secret-version version]
+        (mt/with-temp [:model/User {user-id :id} {}]
+          (is (nil? (:slack_account_status (mt/user-http-request user-id :get 200 "user/current"))))
+          (mt/with-temp [:model/AuthIdentity _ {:user_id user-id
+                                                :provider "slack-connect"
+                                                :provider_id "U-LINKED"
+                                                :metadata metadata}]
+            (is (= expected-status
+                   (:slack_account_status (mt/user-http-request user-id :get 200 "user/current"))))))))))
+
+(deftest disconnect-slack-account-removes-matching-links-test
+  (mt/with-temporary-setting-values [slack-connect-client-id "test-client"
+                                     slack-connect-client-secret "test-secret"
+                                     slack-connect-enabled true
+                                     slack-connect-signing-secret-version 1]
+    (doseq [disconnect-first? [true false]
+            other-version [1 0]]
+      (testing (str "Disconnect first user=" disconnect-first? ", other link version=" other-version)
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/User {other-user-id :id} {}
+                       :model/AuthIdentity _ {:user_id user-id
+                                              :provider "slack-connect"
+                                              :provider_id "U-DUPLICATE"
+                                              :metadata {:signing_secret_version 1}}
+                       :model/AuthIdentity _ {:user_id other-user-id
+                                              :provider "slack-connect"
+                                              :provider_id "U-DUPLICATE"
+                                              :metadata {:signing_secret_version other-version}}]
+          (is (= "active" (:slack_account_status (mt/user-http-request user-id :get 200 "user/current"))))
+          (is (= (if (= other-version 1) "active" "inactive")
+                 (:slack_account_status (mt/user-http-request other-user-id :get 200 "user/current"))))
+          (let [disconnect-user-id (if disconnect-first? user-id other-user-id)]
+            (mt/user-http-request disconnect-user-id :delete 204 (str "user/" disconnect-user-id "/slack")))
+          (doseq [id [user-id other-user-id]]
+            (is (nil? (:slack_account_status (mt/user-http-request id :get 200 "user/current")))))
+          (is (not (t2/exists? :model/AuthIdentity :provider "slack-connect" :provider_id "U-DUPLICATE"))))))))
+
+(deftest ^:parallel disconnect-slack-account-test
+  (mt/with-temp [:model/User {user-id :id} {}
+                 :model/User {other-user-id :id} {}
+                 :model/AuthIdentity {slack-identity-id :id} {:user_id user-id
+                                                              :provider "slack-connect"
+                                                              :provider_id "U-DISCONNECT"}
+                 :model/AuthIdentity {other-identity-id :id} {:user_id other-user-id
+                                                              :provider "slack-connect"
+                                                              :provider_id "U-OTHER"}
+                 :model/AuthIdentity {google-identity-id :id} {:user_id user-id
+                                                               :provider "google"
+                                                               :provider_id "U-DISCONNECT"}]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request user-id :delete 403 (str "user/" other-user-id "/slack"))))
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :crowberto :delete 403 (str "user/" user-id "/slack"))))
+    (is (t2/exists? :model/AuthIdentity :id slack-identity-id))
+    (is (nil? (mt/user-http-request user-id :delete 204 (str "user/" user-id "/slack"))))
+    (is (not (t2/exists? :model/AuthIdentity :id slack-identity-id)))
+    (is (t2/exists? :model/AuthIdentity :id other-identity-id))
+    (is (t2/exists? :model/AuthIdentity :id google-identity-id))
+    (is (nil? (:slack_account_status (mt/user-http-request user-id :get 200 "user/current"))))
+    (is (nil? (mt/user-http-request user-id :delete 204 (str "user/" user-id "/slack"))))))
+
+(deftest ^:parallel disconnect-slack-account-revokes-slack-sessions-test
+  (let [slack-session-key (session/generate-session-key)
+        other-slack-session-key (session/generate-session-key)
+        password-session-key (session/generate-session-key)
+        duplicate-slack-session-key (session/generate-session-key)]
+    (mt/with-temp [:model/User {user-id :id} {:sso_source "slack"}
+                   :model/User {duplicate-user-id :id} {}
+                   :model/AuthIdentity {slack-identity-id :id} {:user_id user-id
+                                                                :provider "slack-connect"
+                                                                :provider_id "U-SLACK-SESSION"}
+                   :model/AuthIdentity {duplicate-identity-id :id} {:user_id duplicate-user-id
+                                                                    :provider "slack-connect"
+                                                                    :provider_id "U-SLACK-SESSION"}
+                   :model/Session {duplicate-session-id :id} {:user_id duplicate-user-id
+                                                              :session_key duplicate-slack-session-key
+                                                              :auth_identity_id duplicate-identity-id}
+                   :model/AuthIdentity {password-identity-id :id} {:user_id user-id
+                                                                   :provider "password"
+                                                                   :credentials {:password_hash "hash"
+                                                                                 :password_salt "salt"}}
+                   :model/Session {slack-session-id :id} {:user_id user-id
+                                                          :session_key slack-session-key
+                                                          :auth_identity_id slack-identity-id}
+                   :model/Session {other-slack-session-id :id} {:user_id user-id
+                                                                :session_key other-slack-session-key
+                                                                :auth_identity_id slack-identity-id}
+                   :model/Session {password-session-id :id} {:user_id user-id
+                                                             :session_key password-session-key
+                                                             :auth_identity_id password-identity-id}]
+      (is (nil? (client/client slack-session-key :delete 204 (str "user/" user-id "/slack"))))
+      (is (not (t2/exists? :model/Session :id duplicate-session-id)))
+      (is (= "Unauthenticated" (client/client duplicate-slack-session-key :get 401 "user/current")))
+      (is (not (t2/exists? :model/Session :id slack-session-id)))
+      (is (not (t2/exists? :model/Session :id other-slack-session-id)))
+      (is (t2/exists? :model/Session :id password-session-id))
+      (is (= "Unauthenticated" (client/client slack-session-key :get 401 "user/current")))
+      (is (= "Unauthenticated" (client/client other-slack-session-key :get 401 "user/current")))
+      (is (nil? (:slack_account_status (client/client password-session-key :get 200 "user/current")))))))
+
 (deftest ^:parallel get-current-user-test-2
   (testing "GET /api/user/current"
     (testing "check that `has_question_and_dashboard` is `true`."
