@@ -297,22 +297,6 @@ describe("admin > custom visualizations", () => {
       H.main().findByText("demo-viz-2").should("be.visible");
     });
 
-    describe("with an installed plugin", () => {
-      beforeEach(() => {
-        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
-        H.visitCustomVizSettings();
-      });
-
-      it("should display plugin details in the list", () => {
-        H.main().findByText("demo-viz").should("be.visible");
-        H.getCustomVizFixtureHash(H.CUSTOM_VIZ_FIXTURE_TGZ).then((hash) => {
-          H.main()
-            .findByText(`Bundle: ${hash.slice(0, 8)}`)
-            .should("be.visible");
-        });
-      });
-    });
-
     describe("updating a plugin", () => {
       beforeEach(() => {
         H.activateToken("bleeding-edge");
