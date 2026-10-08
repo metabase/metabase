@@ -34,8 +34,8 @@ import {
 } from "metabase/plugins";
 import {
   QuestionHashRedirect,
-  loadMetabotQueryBuilder,
-  loadQueryBuilder,
+  loadMetabotQueryBuilder as metabotQueryBuilder,
+  loadQueryBuilder as queryBuilder,
 } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { getReferenceRoutes } from "metabase/reference/routes";
@@ -82,23 +82,6 @@ export function LegacyBrowseRedirect() {
 
   return <Navigate to={`/browse/databases/${dbIdAndSlug}`} replace />;
 }
-
-/**
- * The query builder, in its own chunk. Every route that renders it names the
- * same `import()`, so they share one chunk that is fetched the first time one of
- * them is visited.
- *
- * A `lazy` route makes that first navigation asynchronous: the router resolves
- * the module before it commits the location. It resolves the route in place, so
- * every later navigation to the query builder is synchronous again.
- */
-const queryBuilder = () =>
-  loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
-
-const metabotQueryBuilder = () =>
-  loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
-    Component: MetabotQueryBuilder,
-  }));
 
 /**
  * Documents, in their own chunk. It carries the rich text editing stack, which
