@@ -8,7 +8,7 @@
  */
 
 .adminSelected:not([data-css-specificity-hack="🦑"]) {
-  color: var(--mb-color-core-white);
+  color: var(--mb-color-core-white_constant);
   background-color: var(--mb-color-navbar-admin);
 }
 
