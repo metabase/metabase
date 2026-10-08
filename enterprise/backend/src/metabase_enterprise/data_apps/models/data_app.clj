@@ -153,7 +153,7 @@
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
-               :draft :bundle_hash
+               :bundle_hash
                ;; server-managed resources, recreated on import
                :permission_group_id :table_ids]
    :transform {:created_at   (serdes/date)
@@ -177,17 +177,17 @@
 
 (defmethod serdes/extract-query "DataApp"
   [model-name {:keys [filter-column filter-ids] :as opts}]
-  (eduction (remove :draft)
-            (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
-                                                           (serdes/extract-order-columns model-name opts))))
+  (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
+                                                 (serdes/extract-order-columns model-name opts)))
 
 (defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection resource_collection_id]}]
-  ;; A manifest names the collection as `collection`; serialization's own checks ask by the column.
+  ;; The resource collection the manifest names loads first, so the app links to it as it lands. A manifest names it
+  ;; as `collection`; serialization's own checks ask by the column.
   (when-let [collection-entity-id (or collection resource_collection_id)]
     [[{:model "Collection" :id collection-entity-id}]]))
 
 (defmethod serdes/descendants "DataApp" [_model-name id _opts]
-  ;; An app's resource collection, and through it what it holds, travel with the app.
+  ;; An app's resource collection, and through it the copies it holds, travel with the app.
   (when-let [collection-id (data-apps.db/resource-collection-id id)]
     {["Collection" collection-id] {"DataApp" id}}))
 
@@ -201,10 +201,14 @@
 
 (defmethod serdes/load-one! "DataApp"
   [ingested maybe-local]
-  (let [local (or maybe-local (data-apps.db/draft-by-slug (:slug ingested)))
-        app   (serdes/default-load-one! ingested local)]
-    (data-apps.db/update-data-app! (:id app) {:draft false})
-    (when local
+  ;; an app made on the instance keeps its slug: the unique index would refuse the insert anyway, but with an error
+  ;; that doesn't say what to do
+  (when (and (nil? maybe-local) (data-apps.db/data-app-exists? (:slug ingested)))
+    (throw (ex-info (tru "A data app named \"{0}\" already exists on this instance. Delete it, or give the app in the repository another slug."
+                         (:slug ingested))
+                    {:status-code 400})))
+  (let [app (serdes/default-load-one! ingested maybe-local)]
+    (when maybe-local
       (data-app.resources/ensure-resources! app))
     app))
 
@@ -216,7 +220,13 @@
   (data-apps.db/data-app-group-ids))
 
 (defenterprise data-app-collection-ids
-  "The resource collections of the data apps, which hold the copies `sync-resources` makes."
+  "The resource collections of the data apps, which hold the copies an app runs."
   :feature :none
   []
   (data-apps.db/resource-collection-ids))
+
+(defenterprise data-app-collection?
+  "Whether the Collection with `collection-id` is a data app's resource collection."
+  :feature :none
+  [collection-id]
+  (data-apps.db/resource-collection? collection-id))

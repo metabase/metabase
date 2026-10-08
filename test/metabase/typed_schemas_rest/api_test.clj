@@ -12,6 +12,12 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
+(deftest only-a-superuser-generates-the-schema-test
+  (testing "the schema is what an app's author builds from, and only an admin works with an app's repository"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "typed-schemas/v1/typescript")))
+    (is (string? (mt/user-http-request :crowberto :get 200 "typed-schemas/v1/typescript")))))
+
 (defn- without-generated-at
   [typescript]
   (str/replace typescript #"generatedAt: \"[^\"]+\"" "generatedAt: \"<generated-at>\""))
@@ -107,23 +113,6 @@
           (is (str/includes? (schema :database (mt/id) :include-actions true) "copiedOrder"))
           (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{(:id copies)})]
             (is (not (str/includes? (schema :database (mt/id) :include-actions true) "copiedOrder")))))))))
-
-(deftest actions-in-data-actions-root-test
-  (mt/with-actions-enabled
-    (mt/with-temp [:model/Action root-action {:name "Discount order", :type :query}
-                   :model/QueryAction _ {:action_id     (:id root-action)
-                                         :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                          "UPDATE orders SET discount = 0")}]
-      (let [rasta-schema #(:body (mt/user-http-request-full-response :rasta :get 200 "typed-schemas/v1/typescript"
-                                                                     :database (mt/id) :include-actions true))]
-        (testing "permissions on the default root do not reveal an action in the data actions root"
-          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
-            (is (t2/exists? :model/Permissions :group_id (:id (perms/all-users-group)) :object "/collection/root/"))
-            (is (not (str/includes? (rasta-schema) "discountOrder")))))
-        (testing "permissions on the data actions root reveal it without the default root"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-all-users-permission "/collection/namespace/data-actions/root/read/"
-              (is (str/includes? (rasta-schema) "discountOrder")))))))))
 
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response

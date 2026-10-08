@@ -389,7 +389,8 @@
          (collections.tu/with-library-synced
            (is (true? (eligible? root-action)))
            (is (true? (eligible? folder-action)))
-           (is (false? (eligible? app-action))))
+           ;; an app's copy is synced with the app, whatever the Library does
+           (is (true? (eligible? app-action))))
          (collections.tu/with-library-not-synced
            (is (false? (eligible? root-action)))
            (is (false? (eligible? folder-action)))))))))
@@ -417,7 +418,8 @@
          (mt/with-current-user (mt/user->id :crowberto)
            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
              (is (false? (mi/can-write? (t2/select-one :model/Action :id root-action))))
-             (is (true? (mi/can-write? (t2/select-one :model/Action :id app-action)))))
+             ;; an app's copy is synced with the app, which a read-only instance can't push either
+             (is (false? (mi/can-write? (t2/select-one :model/Action :id app-action)))))
            (mt/with-temporary-setting-values [remote-sync-type :read-write]
              (is (true? (mi/can-write? (t2/select-one :model/Action :id root-action)))))))))))
 
@@ -433,12 +435,12 @@
   (testing "model-editable? returns true for every model while remote sync is not configured"
     (mt/with-temporary-setting-values [remote-sync-url  nil
                                        remote-sync-type :read-only]
-      (is (true? (spec/model-editable? :model/DataApp {:draft false})))
-      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))
+      (is (true? (spec/model-editable? :model/DataApp {})))
+      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1}]))))
     (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                        remote-sync-type :read-only]
-      (is (false? (spec/model-editable? :model/DataApp {:draft false})))
-      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))))
+      (is (false? (spec/model-editable? :model/DataApp {})))
+      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1}]))))))
 
 (deftest model-editable?-read-write-mode-test
   (testing "model-editable? returns true in read-write mode regardless of eligibility"
