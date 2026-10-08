@@ -117,6 +117,24 @@
               [{:type :reasoning :id "r1" :text "alone"}]
               {:reasoning-part->message top-level-hook}))))))
 
+(deftest ^:parallel whitespace-only-argument-fragments-survive-test
+  (testing (str "fragments are joined verbatim, so a whitespace-only one cannot be dropped: inside a "
+                "JSON string those characters are content — indentation in streamed SQL, and syntax "
+                "in streamed Python")
+    (let [fragments ["{\"code\": \"def f():" "\\n" "    " "return 1\"}"]
+          chunk     (fn [delta] {:id "c" :model "m" :choices [{:index 0 :delta delta}]})
+          parts     (into [] (chat-completions/chat-completions->aisdk-chunks-xf
+                              chat-completions/stop-reasons {})
+                          (concat [(chunk {:role "assistant" :content ""})
+                                   (chunk {:tool_calls [{:index 0 :id "call-1" :type "function"
+                                                         :function {:name      "run_python"
+                                                                    :arguments (first fragments)}}]})]
+                                  (for [f (rest fragments)]
+                                    (chunk {:tool_calls [{:index 0 :function {:arguments f}}]}))))]
+      (is (= (apply str fragments)
+             (apply str (keep :inputTextDelta parts)))
+          "the indented line is not silently deleted from the arguments"))))
+
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
     (is (=? [{:role       "assistant"
@@ -624,6 +642,115 @@
                   {:choices [{:index 0 :delta {:tool_calls [{:index    0
                                                              :function {:arguments ": \"Berlin\"}"}}]}}]}
                   {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
+(deftest ^:parallel chunks-xf-batched-tool-calls-all-reach-the-caller-test
+  (testing "a server may put a whole turn's worth of calls in one delta's `tool_calls` array — Ollama
+           does when a model's tool parser flushes more than one at a time. Reading one call per delta
+           kept the first and silently dropped the rest, and a dropped call is a tool that never runs."
+    (is (= [{:type :start :messageId "chatcmpl-b"}
+            {:type :tool-input-start :toolCallId "call-a" :toolName "get_table"}
+            {:type :tool-input-delta :toolCallId "call-a" :inputTextDelta "{\"id\":1}"}
+            {:type :tool-input-available :toolCallId "call-a" :toolName "get_table"}
+            {:type :tool-input-start :toolCallId "call-b" :toolName "get_table"}
+            {:type :tool-input-delta :toolCallId "call-b" :inputTextDelta "{\"id\":2}"}
+            {:type :tool-input-available :toolCallId "call-b" :toolName "get_table"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                 [{:id "chatcmpl-b" :model "m" :choices [{:index 0 :delta {:role "assistant" :content ""}}]}
+                  {:id      "chatcmpl-b"
+                   :model   "m"
+                   :choices [{:index 0
+                              :delta {:tool_calls [{:index 0 :id "call-a" :type "function"
+                                                    :function {:name "get_table" :arguments "{\"id\":1}"}}
+                                                   {:index 1 :id "call-b" :type "function"
+                                                    :function {:name "get_table" :arguments "{\"id\":2}"}}]}}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
+(deftest ^:parallel chunks-xf-batched-tool-calls-end-the-turn-once-test
+  (testing "`finish_reason` and `usage` riding the batched delta are reported once, after the calls —
+           asserted over the whole sequence, since the ordering is the claim"
+    (is (= [{:type :start :messageId "chatcmpl-b"}
+            {:type :tool-input-start :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-a" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-start :toolCallId "call-b" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-b" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-b" :toolName "t"}
+            {:type              :usage
+             :usage             {:promptTokens 10 :completionTokens 4
+                                 :cacheCreationTokens 0 :cacheReadTokens 0}
+             :id                "chatcmpl-b"
+             :model             "m"
+             :finish-reason     "tool-calls"
+             :raw-finish-reason "tool_calls"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                 [{:id      "chatcmpl-b"
+                   :model   "m"
+                   :choices [{:index         0
+                              :delta         {:tool_calls [{:index 0 :id "call-a" :type "function"
+                                                            :function {:name "t" :arguments "{}"}}
+                                                           {:index 1 :id "call-b" :type "function"
+                                                            :function {:name "t" :arguments "{}"}}]}
+                              :finish_reason "tool_calls"}]
+                   :usage   {:prompt_tokens 10 :completion_tokens 4}}])))))
+
+(deftest ^:parallel chunks-xf-content-and-tool-calls-in-one-delta-test
+  (testing "a delta can carry text and tool calls together. Ollama sends this shape when its parser flushes text
+           and a call at the same time. The text comes first and its block closes, then every call follows in
+           wire order."
+    (is (= [{:type :start :messageId "chatcmpl-b"}
+            {:type :text-start}
+            {:type :text-delta :delta "on it"}
+            {:type :text-end}
+            {:type :tool-input-start :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-a" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-start :toolCallId "call-b" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-b" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-b" :toolName "t"}]
+           (mapv #(dissoc % :id)
+                 (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                       [{:id      "chatcmpl-b"
+                         :model   "m"
+                         :choices [{:index 0
+                                    :delta {:content    "on it"
+                                            :tool_calls [{:index 0 :id "call-a" :type "function"
+                                                          :function {:name "t" :arguments "{}"}}
+                                                         {:index 1 :id "call-b" :type "function"
+                                                          :function {:name "t" :arguments "{}"}}]}}]}]))))))
+
+(deftest ^:parallel chunks-xf-empty-continuation-arguments-emit-nothing-test
+  (testing "a continuation fragment carrying \"\" emits no delta, since an empty string adds nothing
+           to the joined arguments. This pins the chunk stream, which is what a consumer counting
+           deltas would notice."
+    (is (= [{:type :start :messageId "chatcmpl-s"}
+            {:type :tool-input-start :toolCallId "call-1" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"a\":1}"}
+            {:type :tool-input-available :toolCallId "call-1" :toolName "t"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                 [{:id      "chatcmpl-s"
+                   :model   "m"
+                   :choices [{:index 0
+                              :delta {:tool_calls [{:index 0 :id "call-1" :type "function"
+                                                    :function {:name "t" :arguments "{\"a\":1}"}}]}}]}
+                  ;; the empty fragment some servers send between meaningful ones
+                  {:choices [{:index 0 :delta {:tool_calls [{:index 0 :function {:arguments ""}}]}}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
+(deftest ^:parallel chunks-xf-arguments-without-an-open-call-are-dropped-test
+  (testing "arguments that belong to no open call emit no delta, so aggregation never sees a delta without a toolCallId"
+    (doseq [[label entries]
+            {"a new id without a name"
+             [{:index 0 :id "call-1" :type "function" :function {:name "t" :arguments "{\"a\":1}"}}
+              {:index 1 :id "call-2" :type "function" :function {:arguments "{\"b\":2}"}}]}]
+      (testing label
+        (is (=? [{:type :start}
+                 {:type :tool-input :id "call-1" :function "t" :arguments {:a 1}}]
+                (into [] (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                               (self.core/aisdk-xf))
+                      (concat [{:id "chatcmpl-o" :model "m" :choices [{:index 0 :delta {:role "assistant"}}]}]
+                              (for [entry entries]
+                                {:choices [{:index 0 :delta {:tool_calls [entry]}}]})
+                              [{:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}]))))))))
 
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"

@@ -233,6 +233,9 @@ config:
     llm-mistral-api-key: null
     llm-moonshot-api-base-url: https://api.moonshot.ai/v1
     llm-moonshot-api-key: null
+    llm-ollama-api-base-url: null
+    llm-ollama-api-key: null
+    llm-ollama-request-timeout-ms: 300000
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4

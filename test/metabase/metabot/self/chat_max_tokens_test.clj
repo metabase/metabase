@@ -16,6 +16,7 @@
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
@@ -70,6 +71,7 @@
        :moonshot   (get (moonshot/moonshot-request-body opts) :max_tokens omitted)
        :mistral    (get (mistral/mistral-request-body opts) :max_tokens omitted)
        :vllm       (get (vllm/vllm-request-body opts) :max_tokens omitted)
+       :ollama     (get (ollama/ollama-request-body opts) :max_tokens omitted)
        ;; xAI sends the cap as max_completion_tokens
        :xai        (get (xai/xai-request-body opts) :max_completion_tokens omitted)
        :gemini     (get-in (stream-generate-content/request-body opts)
@@ -219,7 +221,11 @@
                        "grok-4.3"                     32000}
    ;; no default cap without a known context window, which the pure builder is not given
    ;; (see vllm/vllm-request-body)
-   :vllm              {"Qwen/Qwen3-32B"              omitted}})
+   :vllm              {"Qwen/Qwen3-32B"              omitted}
+   ;; the default with no known window, unlike vLLM: Ollama shortens a prompt that does not fit rather than
+   ;; refusing it. Self-hosted, and a Cloud model forwarded under its `-cloud` name
+   :ollama            {"qwen3:4b"                     32000
+                       "gpt-oss:120b-cloud"           32000}})
 
 (deftest ^:parallel chat-cap-is-the-flat-default-test
   (testing "each surface sends the same default cap for every model, or deliberately none"
@@ -243,6 +249,7 @@
       :openrouter "z-ai/glm-5.3"             32000
       :zai        "glm-5.3"                  32000
       :moonshot   "kimi-k3"                  32000
+      :ollama     "qwen3:4b"                 32000
       :gemini     "google/gemini-3.7-flash"  32000))
   (testing "vLLM with no known window still sends no cap: a floor raises a caller's cap, it never adds one"
     (is (= omitted (cap-for :vllm "Qwen/Qwen3-32B" {:schema {:type "object"}})))))

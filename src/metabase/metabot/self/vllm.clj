@@ -18,16 +18,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
+   (com.fasterxml.jackson.core JsonProcessingException)
    (java.io IOException)
    (java.net SocketTimeoutException)
    (java.nio.charset StandardCharsets)
    (java.util.concurrent ExecutionException)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private min-context-length
-  "Smallest `max_model_len` [[preflight!]] will accept. A product floor, not a measurement."
-  16384)
 
 (defn- missing-base-url-ex []
   (ex-info (tru "No vLLM base URL is set")
@@ -90,15 +87,11 @@
   {:socket-timeout     (llm/llm-vllm-request-timeout-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
-(def ^:private probe-timeout-ceiling-ms
-  "Upper bound on a single preflight probe, which blocks the admin behind a spinner."
-  120000)
-
 (defn- probe-timeouts
   "Timeouts for a preflight probe. An operator who lowers `llm-vllm-request-timeout-ms` below the
   ceiling gets their own value."
   []
-  {:socket-timeout     (min (llm/llm-vllm-request-timeout-ms) probe-timeout-ceiling-ms)
+  {:socket-timeout     (min (llm/llm-vllm-request-timeout-ms) adapter/probe-timeout-ceiling-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
 ;;; ----------------------------------------------- Transport errors ---------------------------------------------
@@ -138,54 +131,26 @@
   No timeouts are passed: this is not a generation, so it rides [[core/request]]'s shared default
   budget rather than vLLM's longer [[inference-timeouts]] one."
   [{{:keys [base-url]} :credentials :as req}]
-  (try
-    (let [res (adapter/request! provider (assoc req
-                                                :method :get
-                                                :path   "/models"
-                                                :as     :json))]
-      ;; The URL off the request credentials, not the setting: a connect verifies them before they are saved.
-      (chat-completions/models-catalog
-       "vLLM" res
-       {:detail (tru "Check that {0} is a vLLM server''s OpenAI-compatible API — the base URL should end in /v1."
-                     (str base-url))}))
-    ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
-    ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
-    (catch IOException e
-      (throw (list-models-io-ex e base-url)))
-    (catch Exception e
-      (adapter/rethrow! provider e))))
+  ;; The URL off the request credentials, not the setting: a connect verifies them before they are saved.
+  (let [detail (tru "Check that {0} is a vLLM server''s OpenAI-compatible API — the base URL should end in /v1."
+                    (str base-url))]
+    (try
+      (let [res (adapter/request! provider (assoc req
+                                                  :method :get
+                                                  :path   "/models"
+                                                  :as     :json))]
+        (chat-completions/models-catalog "vLLM" res {:detail detail}))
+      ;; Ordered ahead of the `IOException` catch, which Jackson's parse error is one of: a 2xx whose
+      ;; body is not JSON means the server answered, so the address is wrong rather than unreachable.
+      (catch JsonProcessingException e
+        (throw (chat-completions/malformed-catalog-ex "vLLM" detail e)))
+      ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
+      (catch IOException e
+        (throw (list-models-io-ex e base-url)))
+      (catch Exception e
+        (adapter/rethrow! provider e)))))
 
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
-
-(def ^:private probe-tool
-  {:type     "function"
-   :function {:name        "record_table_name"
-              :description "Record the name of the table the user mentioned."
-              :parameters  {:type                 "object"
-                            :properties           {:table_name {:type        "string"
-                                                                :description "The table name the user mentioned."}}
-                            :required             ["table_name"]
-                            :additionalProperties false}}})
-
-(def ^:private probe-messages
-  [{:role "user" :content "Record the table name: orders"}])
-
-(def ^:private probe-max-tokens
-  "Generation ceiling for a preflight probe. High enough to clear a reasoning model's thinking, which
-  is billed against it: a probe that stops at `length` before the tool call looks identical to a
-  server that will not call tools at all."
-  2048)
-
-(def ^:private forced-tool-call-token-floor
-  "Smallest `max_tokens` a cap on a forced tool call is raised to — below it a reasoning model spends
-  the budget thinking and emits no tool call. Equal to [[probe-max-tokens]], which [[preflight!]]
-  already proves the served model can clear."
-  probe-max-tokens)
-
-(def ^:private reasoning-model-token-floor
-  "Smallest `max_tokens` a cap is raised to once [[preflight!]] has observed the served model
-  reasoning. Chat Completions bills thinking, answer, and tool call against one budget."
-  16384)
 
 (def ^:private prompt-overhead-tokens
   "Tokens [[estimated-prompt-tokens]] adds for what the chat template wraps around the messages and
@@ -215,12 +180,6 @@
   catalog is cheap to serve, and the chat request waits for this lookup."
   5000)
 
-(def ^:private default-temperature
-  "Sampling temperature for a caller that supplies none. vLLM's own default is 1.0, which is wrong for
-  the tool-calling and SQL-generation work the agent loop does. The hosted providers pick a sane
-  default server-side; a self-hosted server does not, so the adapter supplies one."
-  0.3)
-
 (defn- preflight-ex
   "A preflight failure, tagged so `metabase.metabot.api` surfaces the message verbatim, not as a 500."
   [msg]
@@ -231,7 +190,7 @@
 (defn- probe-chat!
   "Run one non-streaming Chat Completions turn against `model` and return the first choice. The
   `finish_reason` is part of the return value because a generation truncated at
-  [[probe-max-tokens]] and a server that will not call tools both produce empty `tool_calls`."
+  [[adapter/probe-max-tokens]] and a server that will not call tools both produce empty `tool_calls`."
   [req model tool-choice]
   (let [res (adapter/request! provider
                               (assoc req
@@ -239,20 +198,20 @@
                                      :path    "/chat/completions"
                                      :as      :json
                                      :body    (json/encode {:model       model
-                                                            :messages    probe-messages
-                                                            :tools       [probe-tool]
+                                                            :messages    adapter/probe-messages
+                                                            :tools       [adapter/probe-tool]
                                                             :tool_choice tool-choice
                                                             :temperature 0
-                                                            :max_tokens  probe-max-tokens}))
+                                                            :max_tokens  adapter/probe-max-tokens}))
                               (probe-timeouts))]
     (get-in res [:body :choices 0])))
 
 (defn- check-context-budget!
   [{:keys [id max_model_len]}]
-  (when (and max_model_len (< (long max_model_len) min-context-length))
+  (when (and max_model_len (< (long max_model_len) adapter/min-context-window-tokens))
     (throw (preflight-ex
             (tru "{0} is served with a {1} token context window, which is too small for Metabot — it needs at least {2}. Restart vLLM with a larger --max-model-len."
-                 (str id) (str max_model_len) (str min-context-length))))))
+                 (str id) (str max_model_len) (str adapter/min-context-window-tokens))))))
 
 (defn- check-tool-calling!
   "Check that the server was started with `--enable-auto-tool-choice` and a `--tool-call-parser` whose
@@ -282,7 +241,7 @@
           (throw (preflight-ex
                   (if truncated?
                     (tru "{0} reached the {1} token connection-test ceiling partway through a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
-                         (str model) (str probe-max-tokens))
+                         (str model) (str adapter/probe-max-tokens))
                     (tru "The vLLM server returned a tool call whose arguments are not valid JSON. The --tool-call-parser most likely does not match {0}''s output format."
                          (str model))))))
         (not (str/blank? reasoning)))
@@ -290,7 +249,7 @@
       (and truncated? (not (str/blank? reasoning)))
       (throw (preflight-ex
               (tru "{0} spent the entire {1} token connection-test budget reasoning without calling a tool. A model that thinks this long about a trivial prompt is too slow to drive Metabot."
-                   (str model) (str probe-max-tokens))))
+                   (str model) (str adapter/probe-max-tokens))))
 
       ;; A tool call cut off at the ceiling reaches here, not the `(seq tool-calls)` branch above: the
       ;; parsers extract from complete output, so a call missing its closing sentinel yields no
@@ -302,7 +261,7 @@
       truncated?
       (throw (preflight-ex
               (tru "{0} reached the {1} token connection-test ceiling before completing a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
-                   (str model) (str probe-max-tokens))))
+                   (str model) (str adapter/probe-max-tokens))))
 
       :else
       (throw (preflight-ex
@@ -318,7 +277,7 @@
       (throw (preflight-ex
               (if (= "length" finish_reason)
                 (tru "{0} reached the {1} token connection-test ceiling without producing a forced tool call. Metabot needs structured output support for conversation titles and SQL generation."
-                     (str model) (str probe-max-tokens))
+                     (str model) (str adapter/probe-max-tokens))
                 (tru "The vLLM server did not honor a forced tool call. Metabot needs structured output support for conversation titles and SQL generation.")))))))
 
 (defn- no-models-ex []
@@ -509,12 +468,12 @@
                          StandardCharsets/UTF_8))))
 
 (defn- raise-to-floors
-  "Raise `cap` to [[forced-tool-call-token-floor]] on a `forced?` call, and to
-  [[reasoning-model-token-floor]] on a reasoning connection."
+  "Raise `cap` to [[adapter/forced-tool-call-token-floor]] on a `forced?` call, and to
+  [[adapter/reasoning-model-token-floor]] on a reasoning connection."
   [cap forced? credentials]
   (cond-> cap
-    forced?                             (max forced-tool-call-token-floor)
-    (reasoning-connection? credentials) (max reasoning-model-token-floor)))
+    forced?                             (max adapter/forced-tool-call-token-floor)
+    (reasoning-connection? credentials) (max adapter/reasoning-model-token-floor)))
 
 (defn- output-cap
   "The `max_tokens` to send with `body`, or nil to send none.
@@ -543,7 +502,7 @@
 
   Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is the one
   [[output-cap]] picks for the context window `max-model-len` (nil when unknown), and `temperature`
-  falls back to [[default-temperature]]. Both stay adapter-local rather than moving into the shared
+  falls back to [[adapter/default-temperature]]. Both stay adapter-local rather than moving into the shared
   builder, which would also change Z.AI, Mistral, and OpenRouter.
 
   Pure: [[vllm-raw]] looks the window up. The 1-arity, which Model Garden endpoints use, has none."
@@ -553,7 +512,7 @@
     max-model-len                                                            :- [:maybe pos-int?]]
    (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))
          body    (chat-completions/request-body (cond-> (dissoc opts :max-tokens)
-                                                  (nil? temperature) (assoc :temperature default-temperature)))
+                                                  (nil? temperature) (assoc :temperature adapter/default-temperature)))
          cap     (output-cap body max-tokens forced? credentials max-model-len)]
      (cond-> body
        cap (assoc :max_tokens cap)))))
@@ -595,20 +554,6 @@
              e)
     (unreachable-ex e base-url {:retryable? false})))
 
-(defn- io-guarded
-  "Wrap a stream reducible so a transport failure while consuming it surfaces as [[stream-io-ex]]
-  rather than a raw `IOException`. The adapter's own `try` covers only establishing the request.
-
-  Goes inside `core/reducible-with-api-errors`, never outside: [[stream-io-ex]] tags `:api-error
-  true`, which `core/rethrow-api-error!` rethrows unchanged, so this translation wins for IO."
-  [reducible timeout-ms]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (try
-        (.reduce ^clojure.lang.IReduceInit reducible rf init)
-        (catch IOException e
-          (throw (stream-io-ex e timeout-ms)))))))
-
 (mu/defn vllm-raw
   "Perform a streaming request to a vLLM server's Chat Completions API.
   Opts map takes `:credentials` (`{:base-url ... :api-key ...}`) from the connection serving this
@@ -623,7 +568,7 @@
                      {:path             "/chat/completions"
                       :body             (vllm-request-body opts (served-max-model-len opts))
                       :request-options  (inference-timeouts)
-                      :wrap-stream      #(io-guarded % timeout-ms)
+                      :wrap-stream      #(adapter/io-guarded % (fn [e] (stream-io-ex e timeout-ms)))
                       ;; clj-http raises an `IOException` only when there is no response at all, so the
                       ;; IO branch cannot swallow a failure the provider's own messages would have translated.
                       :on-request-error (fn [e]
