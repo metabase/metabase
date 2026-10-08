@@ -19,11 +19,11 @@ That's the entire surface. **No `react-router` of any version, no `<BrowserRoute
 
 ## When to use this skill
 
-- The user has a working data-app project — scaffolded from the `data-app-template` repo, so a one-liner `vite.config.ts` (`dataAppConfig()`) and an `src/index.tsx` that exports a factory already exist. The dev preview has no in-project entry: the SDK's dev preset serves it.
+- The user has a working data-app project — scaffolded from the data-app template, so a one-liner `vite.config.ts` (`dataAppConfig()`) and an `src/index.tsx` that exports a factory already exist. The dev preview has no in-project entry: the SDK's dev preset serves it.
 - The user wants the bundle to render different content at different URLs (`/overview`, `/customers/:id`).
 - **Do not use this skill** to scaffold a project from scratch — it only patches an existing data-app project. If there is no project yet, stop and tell the user to start with a new data-app scaffold before adding routing.
 
-The template already externalizes `@metabase/embedding-sdk-react/data-app` in `vite.config.ts`. You do NOT need to edit `vite.config.ts` to add routing — just edit `src/App.tsx` (and add more component files as needed) per the step below.
+`dataAppConfig()` already externalizes `@metabase/embedding-sdk-react/data-app`. You do NOT need to edit `vite.config.ts` to add routing — just edit `src/App.tsx` (and add more component files as needed) per the step below.
 
 ## Step 1 — Wrap `App.tsx` with `<DataAppRouter>`
 
@@ -182,7 +182,5 @@ function useCustomerIdFromPath(): number | null {
 | Symptom | Fix |
 |---|---|
 | `<DataAppLink>` renders as plain text (no clickable link) on initial load. | The bundle hasn't finished loading and the fallback path is showing. The provider wrap is supplied automatically (the SDK dev preview's `DataAppDevProvider`, or the host's `DataAppProvider`) — don't add `<MetabaseProvider>` inside the app. The fallback resolves to a real link once the bundle is up. |
-| URL changes in dev preview but the production iframe shows the bundle re-render itself on every navigation (or routes don't work in prod at all). | `vite.config.ts` got edited and lost `@metabase/embedding-sdk-react/data-app` from `external` / `output.globals`. Restore from the [template](https://github.com/metabase/data-app-template) — without it, Vite inlines the package's implementation into `dist/index.js`, which runs inside the Near Membrane sandbox and breaks React's state batching. |
 | URL changes but UI doesn't. | A `<BrowserRouter>`/`<HashRouter>` is still in the tree. Strip the router library out and use `<DataAppRouter>` / `<DataAppLink>` instead — the Near Membrane interaction with React-18 batching breaks every router that runs its own `setState` inside the bundle. |
-| Reload at a deep URL in dev (`localhost:5174/customers/42`) shows a blank page. | Vite's dev server is serving the route as a 404 instead of falling back to `index.html`. Set `appType: "spa"` in `vite.config.ts` (it's the default — only an issue if someone overrode it). |
 | Middle-click on a `<DataAppLink>` does nothing. | The link uses `event.button !== 0` to skip non-left clicks; check you haven't wrapped it in another component that swallows the event. |
