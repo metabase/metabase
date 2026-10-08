@@ -14,7 +14,6 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -92,13 +91,6 @@
   []
   (ex-info "You do not have permission to run this query." {:agent-error? true}))
 
-(defn- check-cards-runnable!
-  "Refuse `query` when it reads a saved question and the current user may not run it."
-  [query]
-  (when (and (lib/all-source-card-ids query)
-             (not (query-perms/can-run-query? query)))
-    (throw (no-permission))))
-
 (defn- saved-questions-read
   "The saved questions `query` reads at any depth: its source, in a join, or through another saved question.
    Holds a nil for each question that no longer exists."
@@ -137,7 +129,8 @@
 
 (defn- runnable-query
   "The serialized MBQL 5 form of `query`, which state may hold as MBQL 4 (the user's viewing context) or MBQL 5.
-   Throws an agent error for a query that can't be read, that is SQL, or that the current user may not run."
+   Throws an agent error for a query that can't be read or that is SQL.
+   Permission to run it is left to the QP, which refuses a query the current user may not run."
   [query]
   (let [normalized (lib-be/normalize-query query)]
     ;; Normalizing recovers to an empty map from a query it can't read.
@@ -147,15 +140,13 @@
                       {:agent-error? true})))
     (when (lib/any-native-stage? normalized)
       (throw (sql-refusal)))
-    (check-cards-runnable! normalized)
     ;; A saved question runs here as it does for the user anywhere else, SQL or not. The exception is SQL that
     ;; Metabot saved itself, which would otherwise be a way to run SQL it may not run. A question keeps the mark
     ;; of its Metabot origin until someone edits its query or display.
     (let [cards (saved-questions-read normalized)]
       (when (some metabot-sql-card? cards)
         ;; The SQL refusal says what a question holds, so it goes only to a user who can read every question
-        ;; involved. The check above passes a readable question that reads one the user can't; the QP would
-        ;; refuse it.
+        ;; involved. Anyone else gets the refusal the QP would give them for a question they can't read.
         (throw (if (every? #(some-> % mi/can-read?) cards)
                  (metabot-sql-card-refusal)
                  (no-permission)))))
@@ -264,8 +255,15 @@
                            :returned   returned
                            :truncated? truncated?}})
     (catch Exception e
-      (let [{:keys [error query-error]} (ex-data e)]
-        ;; The exception message embeds the warehouse's error text unquoted.
-        (if (= :query-failed error)
+      (let [{:keys [error query-error permissions-error?]} (ex-data e)]
+        (cond
+          ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
+          permissions-error?
+          {:output (ex-message (no-permission))}
+
+          ;; The exception message embeds the warehouse's error text unquoted.
+          (= :query-failed error)
           {:output (query-failed-output query-error)}
+
+          :else
           (tools.u/handle-agent-or-api-error e))))))
