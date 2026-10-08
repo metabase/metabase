@@ -160,9 +160,15 @@
   [tool]
   (cond
     (var? tool)
-    (if (legacy-tool? tool)
-      (->LegacyTool tool)
-      (throw (ex-info (str tool " is not a tool: its var carries no :tool-name metadata")
+    (cond
+      ;; Old shape: the metadata says so, and the var itself is the handler.
+      (legacy-tool? tool)                  (->LegacyTool tool)
+      ;; Converted, but still named as a var — which is how profiles name every tool, so they do
+      ;; not change as tools are converted one at a time.
+      (satisfies? tools/Tool (deref tool)) (deref tool)
+      :else
+      (throw (ex-info (str tool " is not a tool: its var carries no :tool-name metadata, and its "
+                           "value does not implement metabase.metabot.tools.core/Tool")
                       {:var tool})))
 
     (satisfies? tools/Tool tool)
@@ -177,3 +183,11 @@
   "Every tool in `tools` through [[adapt]], in order. What a profile's tool list goes through."
   [tools]
   (mapv adapt tools))
+
+(defn declaration-of
+  "The declaration for `tool`, converted or not.
+
+  For code that reads a tool's name, scope or capabilities without calling it — the profile filters,
+  for instance, which used to read those off the var's metadata."
+  [tool]
+  (tools/declaration (adapt tool)))

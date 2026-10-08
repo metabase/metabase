@@ -95,16 +95,18 @@
 
 (defn tool-boundary-error
   "Run one tool call through the agent tool boundary — the path production uses — and
-  return the error message the model would see, or nil when the call was accepted."
+  return the error text the model would see, or nil when the call was accepted.
+
+  The text is the outcome's `:output`, which is where a failure's message lives now; a failure also
+  carries `:error` with its class and code."
   [tool-name tool-var arguments]
-  (let [tools  (metabot.tools/wrap-tools-with-state {tool-name tool-var} (atom {}) nil nil)
+  (let [tools  (metabot.tools/->entries [tool-var] (atom {}) nil nil)
         chunks (parts->aisdk-chunks
                 [{:type :start :id "msg-boundary"}
-                 {:type :tool-input :id "call-boundary" :function tool-name :arguments arguments}])]
-    (-> (into [] (self.core/tool-executor-xf tools) chunks)
-        last
-        :error
-        :message)))
+                 {:type :tool-input :id "call-boundary" :function tool-name :arguments arguments}])
+        result (-> (into [] (self.core/tool-executor-xf tools) chunks) last :result)]
+    (when (:error result)
+      (:output result))))
 
 (defn mock-llm-response
   "Create a mock LLM response (reducible) from high-level parts."

@@ -254,12 +254,16 @@
                                                 :name  (:function part)
                                                 :input (or (:arguments part) {})}]}
                        :tool-output {:role    "user"
-                                     :content [{:type        "tool_result"
-                                                :tool_use_id (:id part)
-                                                :content     (or (get-in part [:result :output])
-                                                                 (when-let [err (:error part)]
-                                                                   (str "Error: " (:message err)))
-                                                                 (pr-str (:result part)))}]}
+                                     :content [(cond-> {:type        "tool_result"
+                                                        :tool_use_id (:id part)
+                                                        :content     (or (get-in part [:result :output])
+                                                                         (pr-str (:result part)))}
+                                                 ;; A failed call is marked as one. Without this the
+                                                 ;; model reads the failure text as an ordinary
+                                                 ;; result, and the thinking panel shows the step as
+                                                 ;; having worked.
+                                                 (get-in part [:result :error])
+                                                 (assoc :is_error true))]}
                        ;; User messages pass through
                        {:role    (name (or (:role part) "user"))
                         :content (:content part)}))))

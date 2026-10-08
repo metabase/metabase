@@ -516,12 +516,24 @@
              [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
 
 (deftest ^:parallel parts->claude-messages-error-result-test
-  (testing "tool error is formatted as error string"
+  (testing "a failed call carries its text and is marked as a failure, so the model does not read
+           it as an ordinary result"
     (is (=? [{:role    "user"
-              :content [{:type    "tool_result"
-                         :content #"Error:.*failed"}]}]
+              :content [{:type        "tool_result"
+                         :tool_use_id "call-1"
+                         :content     "Card 7 was not found."
+                         :is_error    true}]}]
             (claude/parts->claude-messages
-             [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+             [{:type   :tool-output :id "call-1"
+               :result {:output "Card 7 was not found."
+                        :error  {:class :recoverable :code :x}}}]))))
+  (testing "a successful call is not marked"
+    (is (= [{:role    "user"
+             :content [{:type        "tool_result"
+                        :tool_use_id "call-1"
+                        :content     "<card/>"}]}]
+           (claude/parts->claude-messages
+            [{:type :tool-output :id "call-1" :result {:output "<card/>"}}])))))
 
 (deftest ^:parallel parts->claude-messages-blank-content-test
   (testing "blank string content is filtered out during merge"

@@ -249,11 +249,25 @@
   ^Throwable [code message]
   (ex-info message {tools.error/error-key {:class :validation :code code :message message}}))
 
+(defn- unknown-tool-message
+  [tool-name tool-names]
+  (str "Tool `" tool-name "` does not exist. Available tools: "
+       (str/join ", " (sort tool-names)) "."))
+
 (defn- unknown-tool-ex
   ^Throwable [tool-name entries]
-  (validation-ex :unknown-tool
-                 (str "Tool `" tool-name "` does not exist. Available tools: "
-                      (str/join ", " (sort (keys entries))) ".")))
+  (validation-ex :unknown-tool (unknown-tool-message tool-name (keys entries))))
+
+(defn unknown-tool-outcome
+  "The failure [[::outcome]] for a call to a tool that is not in `tool-names`.
+
+  Public because the agent's `run-tool` resolves the entry before it has anything to invoke, so it
+  reaches this directly rather than through [[invoke]]. One definition of the message either way."
+  [tool-name tool-names]
+  (render {:class   :validation
+           :code    :unknown-tool
+           :message (unknown-tool-message tool-name tool-names)}
+          tool-names))
 
 (defn- check-scope!
   "Throw an unrecoverable `:scope-denied` error when the current user's scope does not cover the
