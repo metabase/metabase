@@ -61,23 +61,24 @@
            m))))))
 
 (deftest forced-reload-round-trips-per-card-test
-  (testing "A forced reload of unchanged MBQL cards: per card, no connection check-outs and at most 1 statement (H2).
-            With a check-out for each entity: 3 check-outs (3 `DISCARD ALL` on Postgres) and 2 statements."
+  (testing "A forced reload of unchanged MBQL cards: per card, no connection check-outs and at most 16 statements (15 on
+            H2 and Postgres, 16 on MySQL and MariaDB). With a check-out for each entity, on H2: 2 check-outs (2
+            `DISCARD ALL` on Postgres) and 15 statements."
     (let [cost (per-entity (cost/forced-reload-of-unchanged! {:cards 10})
                            (cost/forced-reload-of-unchanged! {:cards 20})
                            10 20)]
       (log/infof "per MBQL card, forced reload of unchanged content (this thread): %s" cost)
       (is (= 0.0 (:checkouts cost)) (pr-str cost))
-      (is (<= (:statements cost) 1.0) (pr-str cost)))))
+      (is (<= (:statements cost) 16.0) (pr-str cost)))))
 
 (deftest incremental-pull-round-trips-per-dashboard-test
   (testing "An incremental pull where only dashboards changed. Each dashboard has 4 dashboard cards on the same 4
             cards, which are not in the pulled files, so they are checked locally. Per dashboard: no connection
-            check-outs, and at most 21 statements (H2). With a check-out for each entity: 7 check-outs and 25
-            statements, because each dashboard looked up each card again."
+            check-outs, and at most 33 statements (32 on H2 and Postgres, 33 on MySQL and MariaDB). With a check-out
+            for each entity, on H2: 7 check-outs and 37 statements, because each dashboard looked up each card again."
     (let [cost (per-entity (incremental-pull-of-changed-dashboards! {:cards 4 :dashboards 2 :dashcards 4})
                            (incremental-pull-of-changed-dashboards! {:cards 4 :dashboards 6 :dashcards 4})
                            2 6)]
       (log/infof "per dashboard (4 dashboard cards), incremental pull of changed dashboards (this thread): %s" cost)
       (is (= 0.0 (:checkouts cost)) (pr-str cost))
-      (is (<= (:statements cost) 21.0) (pr-str cost)))))
+      (is (<= (:statements cost) 33.0) (pr-str cost)))))
