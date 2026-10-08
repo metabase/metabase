@@ -1,7 +1,7 @@
 (ns metabase.funnysql.core
-  "Compiles Honey SQL-shaped app-DB queries to `[sql & args]` for `:h2`, `:postgres` or `:mysql.` Closed: a clause or
-  function absent from [[clause-fns]]/[[fn-call!]] throws. Values bind as `?`; only numbers, booleans, validated
-  tokens and [[h2x/literal]] are spliced. A map compiles as a query only at top level or when marked
+  "Compiles Honey SQL-shaped app-DB queries to `[sql & args]` for `:h2`, `:postgres` or `:mysql`. Closed: a clause or
+  function absent from [[clause-fns]]/[[fn-call!]] throws. Values bind as `?`; only integers, booleans, validated
+  tokens, [[h2x/literal]] and `[:inline <number>]` are spliced. A map compiles as a query only at top level or when marked
   `^:allow-subquery`. No support at all for `:raw`."
   (:refer-clojure :exclude [format])
   (:require
@@ -52,19 +52,27 @@
 (defn- boolean! [x context]
   (append-sql! context (str x)))
 
-(defn- number! [n context]
-  (if (instance? clojure.lang.Ratio n)
-    ;; bind a Ratio rather than splicing it as a decimal literal. Postgres (and H2) type a literal like `0.1` as an exact
-    ;; `NUMERIC`, so the value would come back as a `BigDecimal`; bound, [[metabase.app-db.jdbc-protocols]] sets it as
-    ;; a double, which is what Honey SQL did (#9246).
-    (object! n context)
-    (let [s (str n)]
-      ;; don't trust `(str n)` blindly -- fail closed instead of splicing whatever it produces. This rejects
-      ;; non-finite Doubles (`NaN`, `Infinity`) and guards against a hostile custom `Number` implementation whose
-      ;; `toString` isn't numeric SQL syntax.
-      (when-not (re-matches #"-?\d+(\.\d+)?([eE][+-]?\d+)?" s)
-        (throw (ex-info "Invalid number" {:n n})))
-      (append-sql! context s))))
+(defn- splice-number!
+  "Write `n` into the SQL text as a numeric literal. A Ratio is written as a double, since `1/2` is not SQL."
+  [n context]
+  (let [s (str (cond-> n (ratio? n) double))]
+    ;; don't trust `(str n)` blindly -- fail closed instead of splicing whatever it produces. This rejects
+    ;; non-finite Doubles (`NaN`, `Infinity`) and guards against a hostile custom `Number` implementation whose
+    ;; `toString` isn't numeric SQL syntax.
+    (when-not (re-matches #"-?\d+(\.\d+)?([eE][+-]?\d+)?" s)
+      (throw (ex-info "Invalid number" {:n n})))
+    (append-sql! context s)))
+
+(defn- number!
+  "Splice an integer; bind anything else. Postgres and H2 type a decimal literal like `0.5` as an exact `NUMERIC`, so a
+  spliced Double, Float or Ratio would come back as a `BigDecimal`, and a Float would be written as its shortest
+  decimal rather than the value it holds. Bound, each keeps its type -- [[metabase.app-db.jdbc-protocols]] sets a
+  Ratio as a double -- which is what Honey SQL did (#9246). Use `[:inline n]` where a non-integral number has to be a
+  literal."
+  [n context]
+  (if (integer? n)
+    (splice-number! n context)
+    (object! n context)))
 
 (defn- interpose-fn
   "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
@@ -191,21 +199,45 @@
 (defn- raw-type-name! [type-name context]
   ;; `[::h2x/raw-type-name "<type>"]` is how `h2x/cast` carries an already-validated type name through Honey SQL,
   ;; which has no other form that splices one without mangling it. Here the name is just the name, so unwrap it.
-  (let [type-name (if (and (vector? type-name)
-                           (= (first type-name) ::h2x/raw-type-name))
-                    (second type-name)
-                    type-name)
-        ;; support annoying forms like `[:varchar 26]` -- we still want to validate these so compile them recursively
-        ;; to a string like `varchar(26)` so we can validate them
-        type-name-str (-> (if (vector? type-name)
-                            (let [recursive-context (default-context (engine context) (options context))]
-                              (simple-fn! (first type-name) (rest type-name) recursive-context)
-                              (first (result! recursive-context)))
-                            (name type-name))
-                          (str/replace #"-" " "))]
+  (let [type-name     (if (and (vector? type-name)
+                               (= (first type-name) ::h2x/raw-type-name))
+                        (second type-name)
+                        type-name)
+        ;; a keyword spells the spaces in a type name as dashes, e.g. `:timestamp-with-time-zone`. A string is the name
+        ;; exactly as given, where a dash can be meaningful -- ClickHouse's `DateTime64(3, 'America/Port-au-Prince')`
+        keyword-name  (fn [k]
+                        (str/replace (name k) #"-" " "))
+        type-name-str (cond
+                        ;; support annoying forms like `[:varchar 26]` -- we still want to validate these so compile
+                        ;; them recursively to a string like `varchar(26)` so we can validate them
+                        (vector? type-name)
+                        (let [recursive-context (default-context (engine context) (options context))]
+                          (simple-fn! (keyword-name (first type-name)) (rest type-name) recursive-context)
+                          (first (result! recursive-context)))
+
+                        (keyword? type-name)
+                        (keyword-name type-name)
+
+                        :else
+                        (name type-name))]
     (when-not (h2x/raw-type-name? type-name-str)
       (throw (ex-info "Invalid type" {:type type-name-str})))
     (append-sql! context type-name-str)))
+
+(defn- column-default!
+  "Compile the value of a column's `DEFAULT`. DDL takes no parameters, so the value has to end up in the SQL text: a
+  number is spliced even where [[number!]] would bind it, and anything that would compile to a `?` -- a string, say --
+  throws rather than producing a `CREATE TABLE` the database rejects. Use [[h2x/literal]] for a string default."
+  [x context]
+  (if (number? x)
+    (splice-number! x context)
+    (let [recursive-context (default-context (engine context) (options context))
+          _                 (compile! x recursive-context)
+          [sql & args]      (result! recursive-context)]
+      (when (seq args)
+        (throw (ex-info "A column default cannot be a parameter; use h2x/literal for a string default"
+                        {:default x, :args args})))
+      (append-sql! context sql))))
 
 (defn- with-columns! [column-specs context]
   (append-sql! context "(")
@@ -238,7 +270,7 @@
                   (when-not (seq args)
                     (throw (ex-info "Missing value for :default" {})))
                   (append-sql! context "DEFAULT ")
-                  (compile! (first args) context))
+                  (column-default! (first args) context))
 
                 (throw (ex-info "Unknown column option" {:option option, :args args})))))
           (options! [options]
@@ -305,7 +337,7 @@
   (append-sql! context "UPDATE ")
   (identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
 
-(defn- set! [kvs context]
+(defn- set-clause! [kvs context]
   (append-sql! context "SET ")
   (kvs-map! kvs context))
 
@@ -493,7 +525,7 @@
    :values          values!
    :drop-table      drop-table!
    :update          update!
-   :set             set!
+   :set             set-clause!
    :delete-from     delete-from!
    :select          (partial select! "SELECT ")
    :select-distinct (partial select! "SELECT DISTINCT ")
@@ -560,20 +592,29 @@
       (quoted-identifier! part context))))
 
 (defn- identifier!
-  "Emit a (possibly qualified) identifier composed of multiple [[-identifier-part!]]s."
+  "Emit a (possibly qualified) identifier composed of multiple [[identifier-part!]]s."
   [s context]
   (interpose-fn (str/split s #"\.") #(identifier-part! % context) #(append-sql! context ".")))
 
 (defn- alias!
   "Emit the alias in `<x> AS <alias>`. An alias names a single thing, so like Honey SQL, an unqualified keyword alias is
   quoted whole rather than split on `.` into qualified parts -- `:report_card.name` is the column `\"report_card.name\"`,
-  not `\"report_card\".\"name\"`, which isn't valid SQL in an alias."
+  not `\"report_card\".\"name\"`, which isn't valid SQL in an alias. For the same reason a qualified keyword or a
+  multi-part [[h2x/identifier]] throws rather than compiling to `AS \"a\".\"b\"`."
   [alias context]
-  (if (simple-keyword? alias)
+  (cond
+    (simple-keyword? alias)
     (let [s (name alias)]
       (when-not (re-matches #"^[A-Za-z_][?A-Za-z0-9_.-]*$" s)
         (throw (ex-info "Invalid alias" {:alias alias})))
       (quoted-identifier! s context))
+
+    (or (qualified-keyword? alias)
+        ;; otherwise it's `[::h2x/identifier <identifier-type> <parts>]`, since [[check-identifier-form]] ran first
+        (> (count (get alias 2)) 1))
+    (throw (ex-info "Invalid alias: an alias cannot be qualified" {:alias alias}))
+
+    :else
     (compile! alias context)))
 
 (defn- keyword!
@@ -604,7 +645,7 @@
 
 (def ^:private predicate-operators
   "Operators that compile to a bare SQL predicate -- `x IS NULL`, `a AND b`, `x IN (...)`, `x < 1`. Used as the operand
-  of a comparison these have to be parenthesized; everything else ([[-simple-fn!]] calls, `:cast`, the `h2x/` forms,
+  of a comparison these have to be parenthesized; everything else ([[simple-fn!]] calls, `:cast`, the `h2x/` forms,
   arithmetic) either brings its own delimiters or binds tighter than a comparison already, and wrapping those would
   just add noise."
   #{:!=
@@ -791,14 +832,25 @@
 (defn- inline! [x context]
   (letfn [(inlineable-atomic-value? [x]
             ((some-fn number? boolean?) x))
-          (inlineable? [x]
-            (or (inlineable-atomic-value? x)
-                (and ((some-fn sequential? set?) x)
-                     (every? inlineable-atomic-value? x))))]
-    ;; TODO (Cam 2026-10-01) Make this an actual error instead of just a warning
-    (when-not (inlineable? x)
-      (log/warnf ":inline is only allowed for numbers and booleans, got: %s" (pr-str x))))
-  (compile! x context))
+          ;; splice numbers directly rather than via [[compile!]], since [[number!]] binds non-integral ones
+          (inline-atomic-value! [x]
+            ((if (number? x) splice-number! compile!) x context))]
+    (cond
+      (inlineable-atomic-value? x)
+      (inline-atomic-value! x)
+
+      (and ((some-fn sequential? set?) x)
+           (every? inlineable-atomic-value? x))
+      (do
+        (append-sql! context "(")
+        (interpose-fn x inline-atomic-value! #(append-sql! context ", "))
+        (append-sql! context ")"))
+
+      :else
+      (do
+        ;; TODO (Cam 2026-10-01) Make this an actual error instead of just a warning
+        (log/warnf ":inline is only allowed for numbers and booleans, got: %s" (pr-str x))
+        (compile! x context)))))
 
 (defn- check-valid-unit [unit]
   (when-not (and ((some-fn keyword? string?) unit)
@@ -851,10 +903,12 @@
   (case f
     :+ (compile! x context)
     :- (if (number? x)
-         (compile! (- x) context)
+         (compile! (-' x) context)
          (do
            (append-sql! context "-")
-           ((if (binary-arithmetic-call? x) parens! compile!) x context)))))
+           ;; always parenthesize the operand: written bare, one that compiles to a negative number would give `--1`,
+           ;; which starts a SQL comment
+           (parens! x context)))))
 
 (defn- binary-operator! [f args context]
   (if (= (count args) 1)
@@ -912,8 +966,8 @@
   (when-not (number? fraction)
     (throw (ex-info "Invalid continuous percentile fraction" {:fraction fraction})))
   (append-sql! context "percentile_cont(")
-  ;; splice the fraction as a literal even when it's a Ratio, which [[number!]] would otherwise bind as a parameter
-  (compile! (cond-> fraction (ratio? fraction) double) context)
+  ;; splice the fraction as a literal, which [[number!]] would otherwise bind as a parameter
+  (splice-number! fraction context)
   (append-sql! context ") WITHIN GROUP (ORDER BY ")
   (compile! expr context)
   (append-sql! context ")"))
@@ -943,7 +997,9 @@
   (append-sql! context (case engine
                          :postgres "INTERVAL '"
                          :mysql "INTERVAL "))
-  (compile! amount context)
+  ;; always splice the amount: a non-integral one would otherwise be bound, and on Postgres the `?` would land inside
+  ;; the quoted literal, where JDBC ignores it
+  (splice-number! amount context)
   (append-sql! context " ")
   (append-sql! context (name unit))
   (when (= engine :postgres)
@@ -1004,6 +1060,7 @@
     ::h2x/identifier        (h2x-identifier! args context)
     ::h2x/literal           (h2x-literal! (first args) context)
     ::h2x/extract           (h2x-extract! args context)
+    ::h2x/timestampdiff     (timestamp-diff! args context)
     ::h2x/distinct-count    (h2x-distinct-count! (first args) context)
     ::h2x/percentile-cont   (h2x-percentile-cont! args context)
     ::h2x/collate           (h2x-collate! args context)
@@ -1093,7 +1150,7 @@
 (defn format
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`.
 
-  Returns the standard `[sql & args]` shape if able to compile successfully; throws and exception on unsupported or
+  Returns the standard `[sql & args]` shape if able to compile successfully; throws an exception on unsupported or
   invalid forms."
   ([honeysql-form engine]
    (format honeysql-form engine nil))

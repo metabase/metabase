@@ -96,9 +96,9 @@
   [_query-type model built-query]
   (when-not (or (instance? IdentityQuery built-query)
                 (safe-syntax? built-query))
-    ;; TODO (Cam 2026-10-06) update this error message, `^:allow-raw-sql` isn't a thing anymore
     (throw (ex-info (str "A forbidden HoneySQL clause reached the app-DB compile step. Mark a deliberate subquery "
-                         "with ^:allow-subquery, a deliberate [:raw ...] splice with ^:allow-raw-sql, and use "
-                         "[:inline ...] only with a scalar literal.")
+                         "with ^:allow-subquery, use [:inline ...] only with a scalar literal, and use "
+                         "metabase.util.honey-sql-2/literal for a string literal. App-DB queries are compiled with "
+                         "Funny SQL, which does not support [:raw ...].")
                     {:type ::unmarked-nested-map, :model model, :query built-query})))
   built-query)

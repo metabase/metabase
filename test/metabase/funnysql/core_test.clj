@@ -96,20 +96,74 @@
       (is (= ["SELECT ? AS \"one_tenth\"" ratio]
              (funnysql/format {:select [[ratio :one_tenth]]} :postgres))))))
 
+(deftest ^:parallel non-integral-numbers-are-bound-test
+  (testing (str "a non-integral number is bound rather than spliced: Postgres and H2 read a decimal literal back as a "
+                "BigDecimal, and a Float spliced as `0.1` is not the value it holds (#9246)")
+    (are [n] (= ["SELECT ? AS \"x\"" n]
+                (funnysql/format {:select [[n :x]]} :postgres))
+      0.5
+      -0.5
+      (float 0.1)
+      0.1M
+      1.0E+20M
+      (/ 1 2))
+    (testing "including where one is negated"
+      (is (= ["?" -0.5]
+             (funnysql/format [:- 0.5] :postgres))))))
+
+(deftest ^:parallel integers-are-spliced-test
+  (testing "every integer type is spliced, including the ones whose rendering the number regex has to accept"
+    (are [n expected] (= [(str "WHERE \"field\" = " expected)]
+                         (funnysql/format {:where [:= :field n]} :postgres))
+      1                                   "1"
+      -5                                  "-5"
+      (int 7)                             "7"
+      (short 7)                           "7"
+      (byte -7)                           "-7"
+      12345678901234567890N               "12345678901234567890"
+      (biginteger -12345678901234567890N) "-12345678901234567890")))
+
+(deftest ^:parallel inline-number-test
+  (testing "`[:inline n]` splices any finite number, the non-integral ones that would otherwise be bound included"
+    (are [n expected] (= [expected]
+                         (funnysql/format [:inline n] :postgres))
+      1         "1"
+      -1        "-1"
+      0.5       "0.5"
+      -1.5      "-1.5"
+      1.0E20    "1.0E20"
+      1.0E-7    "1.0E-7"
+      1.0E+20M  "1.0E+20"
+      -1.25M    "-1.25"
+      (/ 1 2)   "0.5"
+      (float 2) "2.0"))
+  (testing "a sequence of numbers is spliced element by element"
+    (is (= ["(0.5, -1, 1.0E+20, true)"]
+           (funnysql/format [:inline [0.5 -1 1.0E+20M true]] :postgres)))
+    (is (= ["WHERE \"field\" IN (0.5, 1.5)"]
+           (funnysql/format {:where [:in :field [:inline [0.5 1.5]]]} :postgres)))))
+
 (deftest ^:parallel number-rejects-non-numeric-rendering-test
-  (testing "compiling a Number must fail closed instead of splicing whatever `(str n)` happens to produce"
-    (testing "a hostile Number implementation's toString is not guaranteed to be numeric SQL syntax"
-      (let [evil (proxy [Number] []
-                   (toString [] "1); DROP TABLE users; --")
-                   (intValue [] (int 1))
-                   (longValue [] (long 1))
-                   (floatValue [] (float 1))
-                   (doubleValue [] (double 1)))]
-        (is (thrown? Exception
-                     (funnysql/format {:where [:= :field evil]} :postgres)))))
+  (testing "splicing a Number must fail closed instead of splicing whatever `(str n)` happens to produce"
+    (let [evil (proxy [Number] []
+                 (toString [] "1); DROP TABLE users; --")
+                 (intValue [] (int 1))
+                 (longValue [] (long 1))
+                 (floatValue [] (float 1))
+                 (doubleValue [] (double 1)))]
+      (testing "a hostile Number implementation's toString is not guaranteed to be numeric SQL syntax"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid number"
+             (funnysql/format [:inline evil] :postgres))))
+      (testing "an unknown Number type isn't an integer, so in a value position it is bound and its toString never reaches the SQL"
+        (is (= ["WHERE \"field\" = ?" evil]
+               (funnysql/format {:where [:= :field evil]} :postgres)))))
     (testing "Double's non-finite values don't render as valid numeric SQL literals either"
-      (are [n] (thrown? Exception
-                        (funnysql/format {:where [:= :field n]} :postgres))
+      (are [n] (thrown-with-msg?
+                clojure.lang.ExceptionInfo
+                #"Invalid number"
+                (funnysql/format [:inline n] :postgres))
         Double/NaN
         Double/POSITIVE_INFINITY
         Double/NEGATIVE_INFINITY))))
@@ -224,6 +278,20 @@
         (keyword "X) OR SELECT * FROM another_table; --")
         :2
         "2"))))
+
+(deftest ^:parallel cast-type-name-dashes-test
+  (testing "a keyword type name spells its spaces as dashes"
+    (are [type-name expected] (= [(str "CAST(\"x\" AS " expected ")")]
+                                 (funnysql/format [:cast :x type-name] :postgres))
+      :timestamp-with-time-zone "timestamp with time zone"
+      :double-precision         "double precision"
+      [:character-varying 32]   "character varying(32)"))
+  (testing "a string type name is used exactly as given, so a dash inside a quoted argument survives"
+    (are [type-name] (= [(str "CAST(\"x\" AS " type-name ")")]
+                        (funnysql/format [:cast :x type-name] :postgres)
+                        (funnysql/format (h2x/cast type-name :x) :postgres))
+      "DateTime64(3, 'America/Port-au-Prince')"
+      "Nullable(DateTime64(3, 'America/Port-au-Prince'))")))
 
 (deftest ^:parallel case-test
   (is (= ["WHERE \"field\" = CASE WHEN \"other\" > 1 THEN ? ELSE ? END" "big" "small"]
@@ -656,8 +724,10 @@
 (deftest ^:parallel percent-keyword-rejects-unknown-function-test
   (testing "the `:%function` shorthand must not let an arbitrary, attacker-derived function name reach the SQL --
             an unrecognized name must be rejected, not passed through raw"
-    (are [k] (thrown? Exception
-                      (funnysql/format {:where [:= :field k]} :postgres))
+    (are [k] (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Function :.* is not currently supported"
+              (funnysql/format {:where [:= :field k]} :postgres))
       (keyword "%'; DROP TABLE users; --")
       (keyword "%count); DROP TABLE users; --"))))
 
@@ -697,6 +767,26 @@
     ;; should escape single quotes
     "foo' OR 1 = 1; --"
     "WHERE \"field\" = 'foo'' OR 1 = 1; --'"))
+
+(deftest ^:parallel h2x-literal-escaping-on-every-engine-test
+  (testing "single quotes are doubled on every engine, whether the literal started out as a string or a keyword"
+    (are [engine s expected] (= [expected]
+                                (funnysql/format [::h2x/literal s] engine))
+      :postgres "it's"                        "'it''s'"
+      :h2       "it's"                        "'it''s'"
+      :mysql    "it's"                        "'it''s'"
+      :h2       "foo' OR 1 = 1; --"           "'foo'' OR 1 = 1; --'"
+      :mysql    "foo' OR 1 = 1; --"           "'foo'' OR 1 = 1; --'"
+      ;; `h2x/literal` takes a keyword too, and keeps its namespace
+      :postgres (keyword "it's")              "'it''s'"
+      :h2       (keyword "it's")              "'it''s'"
+      :mysql    (keyword "it's")              "'it''s'"
+      :postgres :provider/password            "'provider/password'"
+      :h2       (keyword "a'b" "c'd")         "'a''b/c''d'"))
+  (testing "`h2x/literal` builds the same form"
+    (are [engine] (= ["'it''s'"]
+                     (funnysql/format (h2x/literal (keyword "it's")) engine))
+      :postgres :h2 :mysql)))
 
 (deftest ^:parallel h2x-literal-backslash-injection-test
   (testing "on MySQL, backslashes must be escaped too, not just quotes"
@@ -780,6 +870,21 @@
          #"Invalid unit"
          (funnysql/format {:where [:= :field [::h2x/postgres-interval 2 :raw]]} :postgres)))))
 
+(deftest ^:parallel h2x-interval-non-integral-amount-test
+  (testing (str "a non-integral amount is spliced too: bound, its `?` would land inside the quoted Postgres literal, "
+                "where JDBC ignores it")
+    (are [form engine expected] (= [expected]
+                                   (funnysql/format form engine))
+      [::h2x/postgres-interval (/ 1 2) :day]   :postgres "INTERVAL '0.5 day'"
+      [::h2x/postgres-interval 0.5 :day]       :postgres "INTERVAL '0.5 day'"
+      [::h2x/postgres-interval 1.5M :hour]     :postgres "INTERVAL '1.5 hour'"
+      [::h2x/postgres-interval -2 :day]        :postgres "INTERVAL '-2 day'"
+      [::h2x/mysql-interval (/ 1 2) :second]   :mysql    "INTERVAL 0.5 second"
+      [::h2x/mysql-interval 0.25 :second]      :mysql    "INTERVAL 0.25 second"))
+  (testing "including the forms `h2x/add-interval-honeysql-form` builds"
+    (is (= ["date_add(`x`, INTERVAL 0.5 second)"]
+           (funnysql/format (h2x/add-interval-honeysql-form :mysql :x 500 :millisecond) :mysql)))))
+
 (deftest ^:parallel h2x-mysql-interval-test
   (is (= ["WHERE `field` = INTERVAL 2 day"]
          (funnysql/format {:where [:= :field [::h2x/mysql-interval 2 :day]]} :mysql)))
@@ -794,12 +899,24 @@
          #"Invalid unit"
          (funnysql/format {:where [:= :field [::h2x/mysql-interval 2 :raw]]} :postgres)))))
 
-(deftest ^:parallel validate-identifier-test
+(deftest ^:parallel validate-identifier-valid-test
   (testing "valid identifiers"
-    (are [identifier] (some? (funnysql/format {:select [identifier]} :postgres))
-      :field
-      :field_x
-      :field-y))
+    (are [identifier engine expected] (= [(str "SELECT " expected)]
+                                         (funnysql/format {:select [identifier]} engine))
+      :field          :postgres "\"field\""
+      :field_x        :postgres "\"field_x\""
+      :field-y        :postgres "\"field-y\""
+      :_field         :postgres "\"_field\""
+      :field?         :postgres "\"field?\""
+      :t.field        :postgres "\"t\".\"field\""
+      :t/field        :postgres "\"t\".\"field\""
+      :s.t.field      :postgres "\"s\".\"t\".\"field\""
+      :field          :h2       "\"FIELD\""
+      :t.field        :h2       "\"T\".\"FIELD\""
+      :field          :mysql    "`field`"
+      :t.field        :mysql    "`t`.`field`")))
+
+(deftest ^:parallel validate-identifier-invalid-test
   (testing "invalid identifiers"
     (are [identifier] (thrown-with-msg?
                        clojure.lang.ExceptionInfo
@@ -808,7 +925,43 @@
       :2field
       (keyword "field()")
       (keyword "field;")
-      (keyword "\" OR 1 = 1; --"))))
+      (keyword "\" OR 1 = 1; --")))
+  (testing "invalid identifiers are rejected on every engine, whichever quote character it uses"
+    (are [engine identifier] (thrown-with-msg?
+                              clojure.lang.ExceptionInfo
+                              #"Invalid identifier"
+                              (funnysql/format {:select [identifier]} engine))
+      :h2    (keyword "\" OR 1 = 1; --")
+      :h2    (keyword "field;")
+      :mysql (keyword "` OR 1 = 1; --")
+      :mysql (keyword "field;")
+      :mysql (keyword "t.` OR 1 = 1; --"))))
+
+(deftest ^:parallel validate-identifier-outside-of-select-test
+  (testing "invalid identifiers (and aliases) are rejected in every identifier position, not just `:select`"
+    (are [form] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Invalid (identifier|alias)"
+                 (funnysql/format form :postgres))
+      {:select [:*], :from [(keyword "t; --")]}
+      {:select [:*], :from [[:t (keyword "a; --")]]}
+      {:select [:*], :from [:t], :join [(keyword "u; --") [:= :t.id :u.id]]}
+      {:select [:*], :from [:t], :where [:= (keyword "a; --") 1]}
+      {:select [:*], :from [:t], :group-by [(keyword "a; --")]}
+      {:select [:*], :from [:t], :order-by [[(keyword "a; --") :desc]]}
+      {:update (keyword "t; --"), :set {:a 1}}
+      {:update :t, :set {(keyword "a; --") 1}}
+      {:delete-from (keyword "t; --")}
+      {:insert-into (keyword "t; --"), :values [{:a 1}]}
+      {:insert-into :t, :values [{(keyword "a; --") 1}]}
+      {:insert-into :t, :columns [(keyword "a; --")], :values [[1]]}
+      {:insert-into :t, :values [{:a 1}], :on-conflict [(keyword "a; --")], :do-update-set {:a 2}}
+      {:select [:*], :from [:t], :returning [(keyword "a; --")]}
+      {:with [[(keyword "cte; --") ^:allow-subquery {:select [:id], :from [:t]}]], :select [:*], :from [:cte]}
+      {:create-table [(keyword "t; --")], :with-columns [[:a :text]]}
+      {:create-table [:t], :with-columns [[(keyword "a; --") :text]]}
+      {:drop-table [(keyword "t; --")]}
+      [::h2x/identifier :field ["a" "b; --"]])))
 
 (deftest ^:parallel h2x-current-datetime-form-test
   (are [engine expected] (= [expected]
@@ -919,7 +1072,31 @@
 (deftest ^:parallel timestamp-diff-test
   (is (= ["timestampdiff(second, \"col_a\", \"col_b\")"]
          (funnysql/format [:timestampdiff :second :col_a :col_b]
-                          :postgres))))
+                          :postgres)
+         (funnysql/format [::h2x/timestampdiff :second :col_a :col_b]
+                          :postgres)))
+  (testing "the unit is spliced, so it has to be validated"
+    (are [unit] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Invalid unit"
+                 (funnysql/format [:timestampdiff unit :col_a :col_b] :mysql))
+      "second, `col_a`, `col_b`) OR 1 = 1; --"
+      (keyword "second, x) OR 1 = 1; --")
+      "micro second"
+      1
+      nil)))
+
+(deftest ^:parallel h2x-timestamp-diff-test
+  (testing (str "metabase.util.honey-sql-2 is shared by Funny SQL (the app DB) and Honey SQL (warehouses, pgvector), "
+                "so its helpers have to produce working SQL under both")
+    (testing "calculate-interval-honeysql-form for MySQL needs `TIMESTAMPDIFF`'s unit to be a bare keyword"
+      (let [form {:select [[(h2x/calculate-interval-honeysql-form :mysql :end_time :start_time)]]}]
+        (is (= ["SELECT timestampdiff(microsecond, `start_time`, `end_time`)"]
+               (funnysql/format form :mysql)))))
+    (testing "a string type name passed to cast keeps its spelling"
+      (let [form {:select [[(h2x/cast "DateTime64(3, 'America/Port-au-Prince')" :x)]]}]
+        (is (= ["SELECT CAST(\"x\" AS DateTime64(3, 'America/Port-au-Prince'))"]
+               (funnysql/format form :postgres)))))))
 
 (deftest ^:parallel date-part-test
   (is (= ["date_part(?, \"started_at\")" "year"]
@@ -1012,7 +1189,7 @@
            (funnysql/format {:insert-into [[:a [:id]] ^:allow-subquery {:select [:id] :from [:b]}]} :postgres)))))
 
 (deftest ^:parallel unknown-function-is-rejected-test
-  (testing "a function that isn't whitelisted in `-fn-call!` must throw rather than being spliced into the SQL"
+  (testing "a function that isn't whitelisted in `fn-call!` must throw rather than being spliced into the SQL"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Function :nope-not-a-real-function is not currently supported"
@@ -1066,6 +1243,32 @@
          (funnysql/format {:create-table [:t]
                            :with-columns [[:archived :boolean [:default]]]}
                           :h2)))))
+
+(deftest ^:parallel create-table-default-is-never-a-parameter-test
+  (testing "DDL takes no parameters, so a column default has to be written into the SQL text"
+    (are [default expected] (= [(str "CREATE TABLE \"t\" (\"c\" text DEFAULT " expected ")")]
+                               (funnysql/format {:create-table [:t]
+                                                 :with-columns [[:c :text [:default default]]]}
+                                                :postgres))
+      nil                  "NULL"
+      true                 "true"
+      1                    "1"
+      ;; spliced here even though a non-integral number is bound everywhere else
+      0.5                  "0.5"
+      (/ 1 4)              "0.25"
+      (h2x/literal "x")    "'x'"
+      :%current-timestamp  "current_timestamp"))
+  (testing "anything that would compile to a `?` throws instead of producing a CREATE TABLE the database rejects"
+    (are [default] (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"\QA column default cannot be a parameter; use h2x/literal for a string default\E"
+                    (funnysql/format {:create-table [:t]
+                                      :with-columns [[:c :text [:default default]]]}
+                                     :postgres
+                                     {:params {:p "x"}}))
+      "x"
+      [:lower "x"]
+      [:param :p])))
 
 (deftest ^:parallel create-table-unknown-column-option-test
   (testing "an unrecognized column option should throw a clear error rather than falling off the end of a `case`"
@@ -1167,6 +1370,18 @@
   (testing "an alias is still validated"
     (is (thrown? clojure.lang.ExceptionInfo
                  (funnysql/format {:select [[:x (keyword "y\" FROM users; --")]]} :postgres)))))
+
+(deftest ^:parallel qualified-alias-test
+  (testing "an alias names a single thing, so a qualified one throws rather than compiling to `AS \"a\".\"b\"`"
+    (are [alias] (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"Invalid alias: an alias cannot be qualified"
+                  (funnysql/format {:select [[:x alias]]} :postgres))
+      :a/b
+      (h2x/identifier :field-alias "a" "b")))
+  (testing "a single-part `h2x/identifier` alias is fine"
+    (is (= ["SELECT \"x\" AS \"a\""]
+           (funnysql/format {:select [[:x (h2x/identifier :field-alias "a")]]} :postgres)))))
 
 (deftest ^:parallel over-alias-inside-over-form-test
   (testing "Honey SQL's alias-inside-`:over` form should fail loudly rather than silently dropping the alias"
@@ -1277,9 +1492,26 @@
     (are [x expected] (= expected
                          (funnysql/format x :postgres))
       [:- 1]        ["-1"]
+      [:- -1]       ["1"]
       [:+ 1]        ["1"]
       [:- [:- 1 2]] ["-(1 - 2)"]
-      [:+ [:- 1 2]] ["1 - 2"]))
+      [:+ [:- 1 2]] ["1 - 2"]
+      [:- :x]       ["-(\"x\")"]))
+  (testing "negating something that compiles to a negative number must not emit `--`, which starts a SQL comment"
+    (are [x expected] (= expected
+                         (funnysql/format x :postgres {:params {:p -1}}))
+      {:select [[[:- [:inline -1]] :x]] :from [:t]} ["SELECT -(-1) AS \"x\" FROM \"t\""]
+      [:- [:- -1]]                                 ["-(1)"]
+      [:- [:- [:inline -1]]]                       ["-(-(-1))"]
+      [:- [:param :p]]                             ["-(?)" -1]
+      [:- 1 [:inline -1]]                          ["1 - -1"])
+    (are [x] (not (str/includes? (first (funnysql/format x :postgres {:params {:p -1}}))
+                                 "--"))
+      [:- [:inline -1]]
+      [:- [:inline -1.5]]
+      [:- [:- [:inline -1]]]
+      [:- [:abs -1]]
+      [:- [:param :p]]))
   (testing "other operators should error"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

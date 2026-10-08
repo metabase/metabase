@@ -98,6 +98,24 @@
   {:pre [(some-fn keyword? string?) (re-matches #"^[a-zA-Z0-9]+$" (name unit))]}
   [::extract unit expr])
 
+;; register the `::timestampdiff` function with HoneySQL. MySQL's `TIMESTAMPDIFF` takes its unit as a bare keyword, which
+;; no plain Honey SQL form produces short of `:raw` -- a keyword unit comes out as a quoted identifier, `` `microsecond` ``.
+;; Funny SQL ([[metabase.funnysql.core]]) compiles this form to the same SQL.
+(defn- format-timestampdiff
+  "(sql/format-expr [::timestampdiff :microsecond :a :b])
+   => [\"timestampdiff(microsecond, a, b)\"]"
+  [_tag [unit x y]]
+  (when-not (and ((some-fn keyword? string?) unit)
+                 (re-matches #"^[a-zA-Z0-9]+$" (name unit)))
+    (throw (ex-info "Invalid unit" {:unit unit})))
+  (let [[x-sql & x-args] (sql/format-expr x {:nested true})
+        [y-sql & y-args] (sql/format-expr y {:nested true})]
+    (into [(clojure.core/format "timestampdiff(%s, %s, %s)" (name unit) x-sql y-sql)]
+          cat
+          [x-args y-args])))
+
+(sql/register-fn! ::timestampdiff #'format-timestampdiff)
+
 ;; register the function `::distinct-count` with HoneySQL
 (defn- format-distinct-count
   "(sql/format-expr [::h2x/distinct-count :x])
@@ -723,7 +741,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff :microsecond start-form end-form])
+  [::timestampdiff :microsecond start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

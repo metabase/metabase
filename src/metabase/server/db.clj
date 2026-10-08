@@ -33,10 +33,10 @@
                                 [:user.locale :user-locale]
                                 [:auth_identity.provider :auth-provider]]
                        :where  (into [:and
-                                      [:= :session.key_hashed ^:allow-raw-sql (Object.)] ; force a `?` placeholder
+                                      [:= :session.key_hashed (Object.)] ; force a `?` placeholder
                                       [:= :session.anti_csrf_token (case session-type
                                                                      :normal         nil
-                                                                     :full-app-embed ^:allow-raw-sql (Object.))]]
+                                                                     :full-app-embed (Object.))]]
                                      cat
                                      [(session/live-session-conditions
                                        {:db-type                 db-type
