@@ -30,9 +30,6 @@ const bunModule = (name) => {
 // --- transform ---------------------------------------------------------------
 const swc = require("@swc/core");
 const cacheDir = abs("node_modules/.cache/node-test-spike");
-// Every file evaluates the project's modules again, and without this V8 parses
-// and compiles the same source each time.
-if (process.env.NT_COMPILE_CACHE === "1") require("node:module").enableCompileCache?.(path.join(cacheDir, "v8-compile-cache"));
 fs.mkdirSync(cacheDir, { recursive: true });
 const crypto = require("node:crypto");
 // Keyed on content, not mtime, so the cache survives a fresh checkout. TRANSFORM_VERSION
@@ -302,7 +299,9 @@ const createDom = () => new JSDOM("<!DOCTYPE html><html><head></head><body></bod
 // isolated per file. Packages stay loaded, so the few that bind to the window
 // when they load are loaded again for each file.
 const FRESH_WINDOW = process.env.NT_ISOLATE_ALL === "1" && process.env.NT_FRESH_WINDOW !== "0";
-const WINDOW_BOUND_PACKAGES = process.env.NT_EVICT_PACKAGES ?? (FRESH_WINDOW ? "@testing-library|jest-canvas-mock|@emotion" : "");
+// Of Testing Library only user-event is on the list. The rest binds one thing
+// to the window, `screen`, which is pointed at each new document instead.
+const WINDOW_BOUND_PACKAGES = process.env.NT_EVICT_PACKAGES ?? (FRESH_WINDOW ? "@testing-library/user-event|jest-canvas-mock|@emotion" : "");
 const windowBoundPattern = WINDOW_BOUND_PACKAGES ? new RegExp(`/node_modules/(${WINDOW_BOUND_PACKAGES})/`) : null;
 let dom = createDom();
 let win = dom.window;
@@ -526,12 +525,15 @@ const packageHooks = { beforeAll: [], afterAll: [], beforeEach: [], afterEach: [
 // for the rest of the file. Under jest it lands elsewhere. Each test starts
 // with the value the file was given.
 let actEnvironmentForFile;
+const packageHookOwners = new WeakMap();
 const registeredFromPackage = () => {
   const frames = (new Error().stack ?? "").split("\n").slice(3, 6);
-  return frames.length > 0 && frames[0].includes("/node_modules/");
+  return frames.length > 0 && frames[0].includes("/node_modules/") ? frames[0] : null;
 };
 const hook = (kind) => (fn) => {
-  if (!process.env.NT_NO_PACKAGE_HOOKS && registeredFromPackage()) {
+  const owner = process.env.NT_NO_PACKAGE_HOOKS ? null : registeredFromPackage();
+  if (owner) {
+    packageHookOwners.set(fn, owner);
     if (process.env.NT_DEBUG_PACKAGE_HOOKS) console.error(`[package-hook] ${kind} ${(new Error().stack ?? "").split("\n").slice(2, 5).map((l) => l.trim().replace(/.*node_modules\//, "nm/").slice(0, 90)).join(" <- ")}`);
     packageHooks[kind].push(fn);
   }
@@ -902,6 +904,16 @@ const releaseEvicted = (evicted) => {
     if (survivor.children?.some((child) => evicted.has(child))) survivor.children = survivor.children.filter((child) => !evicted.has(child));
   }
 };
+// Testing Library builds `screen` from document.body when it loads. The package
+// stays loaded, so its queries are bound again to the body of each new window.
+const repointScreen = () => {
+  if (process.env.NT_NO_SCREEN_REPOINT) return;
+  for (const file of Object.keys(require.cache)) {
+    if (!file.endsWith("/@testing-library/dom/dist/screen.js")) continue;
+    const library = require(path.join(path.dirname(file), "index.js"));
+    Object.assign(library.screen, library.getQueriesForElement(globalThis.document.body, library.queries));
+  }
+};
 const evictProjectModules = () => {
   if (process.env.NT_DEBUG_EVICT) {
     for (const file of Object.keys(require.cache)) {
@@ -1060,6 +1072,7 @@ const fileCleanup = async (isolated) => {
     win = dom.window;
     installWindowGlobals(true);
     globalThis.__nodeTestSpike.remirror();
+    repointScreen();
     if (!process.env.NT_FRESH_WINDOW_KEEP) try { previous.window.close(); } catch {}
   }
   if (windowBoundPattern) {
@@ -1072,7 +1085,8 @@ const fileCleanup = async (isolated) => {
       delete require.cache[cachedFile];
     }
     releaseEvicted(evicted);
-    for (const kind of Object.keys(packageHooks)) packageHooks[kind].length = 0;
+    // A package that is loaded again registers its hooks again.
+    for (const kind of Object.keys(packageHooks)) packageHooks[kind] = packageHooks[kind].filter((fn) => !pattern.test(packageHookOwners.get(fn) ?? ""));
     if (process.env.NT_DEBUG_EVICT_PACKAGES) console.error(`[evict-packages] ${evicted.size}`);
   }
   globalThis.__nodeTestSpike.measureEnd?.(isolated);
