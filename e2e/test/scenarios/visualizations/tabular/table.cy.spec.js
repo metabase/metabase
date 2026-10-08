@@ -191,6 +191,9 @@ describe("scenarios > visualizations > table", () => {
     cy.findByTestId("sidebar-left").findByText("Done").click();
 
     headerCells().eq(3).should("contain.text", "TOTAL");
+    H.tableHeaderColumn("TOTAL")
+      .parents('[aria-roledescription="sortable"]')
+      .should("exist");
     H.tableHeaderColumn("TOTAL").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", { horizontal: -220 });
     headerCells().eq(1).should("contain.text", "TOTAL");
@@ -429,6 +432,7 @@ describe("scenarios > visualizations > table", () => {
     cy.get("[data-testid=cell-data]")
       .contains("Product ID")
       .trigger("mouseout");
+    H.hovercard().should("not.exist");
 
     H.tableHeaderClick("Product ID");
     cy.findByTestId("click-actions-view").should("be.visible");
@@ -1040,7 +1044,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
               }
             });
 
-          // Sort again (descending) to verify heights update on subsequent sorts
+          // Sort again (ascending) to verify heights update on subsequent sorts
           H.tableHeaderClick("Rating");
           H.tableHeaderColumn("Rating")
             .closest("[role=columnheader]")
@@ -1208,6 +1212,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findAllByRole("row")
       .first()
       .find("[data-column-id=ID]")
+      .findByTestId("cell-data")
       .should("have.text", "2000");
 
     H.tableInteractiveBody()
