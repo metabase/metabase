@@ -42,6 +42,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -3456,6 +3457,51 @@
           (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
 
+(deftest table-user-settings-migration-keeps-hidden-tables-hidden-test
+  (testing "v64.2026-09-11T00:00:05-06: the backfill and the reset leave the visibility_type users see unchanged, with
+           or without a settings row"
+    (impl/test-migrations ["v64.2026-09-11T00:00:00" "v64.2026-09-11T00:00:06"] [migrate!]
+      (let [db-id           (t2/insert-returning-pk! :metabase_database {:name       "Table User Settings Test DB"
+                                                                         :engine     "h2"
+                                                                         :created_at :%now
+                                                                         :updated_at :%now
+                                                                         :details    "{}"})
+            insert-table!   (fn [table-name published? visibility-type data-layer]
+                              (t2/insert-returning-pk! :metabase_table {:active          true
+                                                                        :db_id           db-id
+                                                                        :name            table-name
+                                                                        :is_published    published?
+                                                                        :visibility_type visibility-type
+                                                                        :data_layer      data-layer
+                                                                        :created_at      :%now
+                                                                        :updated_at      :%now}))
+            hidden          (insert-table! "hidden" true "hidden" "hidden")
+            technical       (insert-table! "technical" true "technical" "internal")
+            cruft           (insert-table! "cruft" true "cruft" "internal")
+            visible         (insert-table! "visible" true nil "internal")
+            unpublished     (insert-table! "unpublished" false "hidden" "hidden")
+            user-visibility (fn [table-id]
+                              (t2/select-one-fn :v [:metabase_table
+                                                    [(warehouse-schema-overlay/table-user-visibility-type :metabase_table) :v]]
+                                                {:where [:= :metabase_table.id table-id]}))]
+        (migrate!)
+        (testing "the backfill moves a published table's hidden or technical visibility into its settings row"
+          (doseq [[table-id visibility-type] [[hidden "hidden"] [technical "technical"]]]
+            (is (=? {:visibility_type nil :data_layer "internal"}
+                    (t2/select-one [:metabase_table :visibility_type :data_layer] :id table-id)))
+            (is (=? {:visibility_type visibility-type :visibility_type_set true}
+                    (t2/select-one :metabase_table_user_settings :table_id table-id)))))
+        (testing "sync's cruft stays on metabase_table and is not recorded as the user's"
+          (is (= "cruft" (t2/select-one-fn :visibility_type :metabase_table :id cruft)))
+          (is (=? {:visibility_type nil :visibility_type_set false}
+                  (t2/select-one :metabase_table_user_settings :table_id cruft))))
+        (testing "an unpublished table gets no settings row and keeps its own visibility_type"
+          (is (nil? (t2/select-one :metabase_table_user_settings :table_id unpublished)))
+          (is (= "hidden" (t2/select-one-fn :visibility_type :metabase_table :id unpublished))))
+        (testing "the visibility_type users see is unchanged by the migration"
+          (is (= {hidden "hidden" technical "technical" cruft "cruft" visible nil unpublished "hidden"}
+                 (into {} (map (juxt identity user-visibility)) [hidden technical cruft visible unpublished]))))))))
+
 (deftest glossary-entity-id-backfill-test
   (testing "v64.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
     (impl/test-migrations ["v64.2026-09-11T12:00:00" "v64.2026-09-11T12:00:03"] [migrate!]
@@ -3603,3 +3649,41 @@
         (migrate!)
         (is (= #{implicit-id} (t2/select-pks-set :action)))
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
+
+(deftest add-library-dashboards-section-test
+  (testing "v65.2026-10-06T16:00:00 through v65.2026-10-06T16:00:02: an existing Library gets a Dashboards section with its permissions"
+    (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
+      (let [library-id    (insert-legacy-library-collection! {:name      "Library"
+                                                              :slug      "library"
+                                                              :type      "library"
+                                                              :entity_id "librarylibrarylibrary"})
+            read-group    (t2/insert-returning-pk! :permissions_group {:name (mt/random-name) :entity_id (u/generate-nano-id)})
+            write-group   (t2/insert-returning-pk! :permissions_group {:name (mt/random-name) :entity_id (u/generate-nano-id)})
+            analyst-group (t2/select-one-pk :permissions_group :magic_group_type "data-analyst")
+            library-perms (fn [group-id object perm-value]
+                            {:group_id      group-id
+                             :object        object
+                             :perm_type     "perms/collection-access"
+                             :perm_value    perm-value
+                             :collection_id library-id})]
+        (t2/insert! :permissions [(library-perms read-group (format "/collection/%d/read/" library-id) "read")
+                                  (library-perms write-group (format "/collection/%d/" library-id) "read-and-write")
+                                  (library-perms analyst-group (format "/collection/%d/read/" library-id) "read")])
+        (migrate!)
+        (let [{dashboards-id :id :as dashboards} (t2/select-one :collection :entity_id "librarylibrarydashbrd")]
+          (is (=? {:name     "Dashboards"
+                   :type     "library-dashboards"
+                   :location (str "/" library-id "/")}
+                  dashboards))
+          (is (= #{[read-group (format "/collection/%d/read/" dashboards-id) "read"]
+                   [write-group (format "/collection/%d/" dashboards-id) "read-and-write"]
+                   [analyst-group (format "/collection/%d/" dashboards-id) "read-and-write"]}
+                 (into #{}
+                       (map (juxt :group_id :object :perm_value))
+                       (t2/select :permissions :collection_id dashboards-id)))))))))
+
+(deftest add-library-dashboards-section-without-library-test
+  (testing "v65.2026-10-06T16:00:00: no Dashboards section is created without a Library"
+    (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
+      (migrate!)
+      (is (not (t2/exists? :collection :entity_id "librarylibrarydashbrd"))))))

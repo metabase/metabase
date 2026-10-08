@@ -6,5 +6,4 @@ details:
 name: Email Channel
 type: channel/email
 serdes/meta:
-- id: Email Channel
-  model: Channel
+- model: Channel

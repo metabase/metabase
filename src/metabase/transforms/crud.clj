@@ -209,7 +209,7 @@
                                           {:status-code 400}))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/target-table-exists? new)))
-                                 403
+                                 409
                                  (deferred-tru "A table with that name already exists.")))
                     (transforms.db/update-transform! id (dissoc body :tag_ids))
                     ;; Update tag associations if provided

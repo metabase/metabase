@@ -24,6 +24,7 @@ import {
 const SECTION_TYPE: Record<LibrarySection, CollectionType | null> = {
   data: "library-data",
   metrics: "library-metrics",
+  dashboards: "library-dashboards",
   snippets: null,
 };
 
@@ -58,6 +59,24 @@ function metricItem(
     data: createMockCollectionItem({
       id,
       model: "metric",
+      collection_id: opts.collectionId ?? null,
+      can_write: true,
+    }),
+  };
+}
+
+function dashboardItem(
+  id: number,
+  opts: { collectionId?: number | null } = {},
+): TreeItem {
+  return {
+    id: `dashboard:${id}`,
+    name: `Dashboard ${id}`,
+    icon: "dashboard",
+    model: "dashboard",
+    data: createMockCollectionItem({
+      id,
+      model: "dashboard",
       collection_id: opts.collectionId ?? null,
       can_write: true,
     }),
@@ -154,9 +173,11 @@ describe("library-bulk-selection.utils", () => {
     it("derives the section from model and collection type/namespace", () => {
       expect(getItemSection(tableItem(1))).toBe("data");
       expect(getItemSection(metricItem(1))).toBe("metrics");
+      expect(getItemSection(dashboardItem(1))).toBe("dashboards");
       expect(getItemSection(snippetItem(1))).toBe("snippets");
       expect(getItemSection(subCollection(2, "data"))).toBe("data");
       expect(getItemSection(subCollection(3, "metrics"))).toBe("metrics");
+      expect(getItemSection(subCollection(5, "dashboards"))).toBe("dashboards");
       expect(getItemSection(subCollection(4, "snippets"))).toBe("snippets");
       expect(getItemSection(emptyState())).toBeNull();
     });
@@ -266,6 +287,21 @@ describe("library-bulk-selection.utils", () => {
           section: "data",
           entityId: 5,
           sourceCollectionId: 10,
+          canWrite: true,
+        },
+      ]);
+    });
+
+    it("reads dashboard rows into the dashboards section", () => {
+      expect(
+        deriveSelectedItems([dashboardItem(7, { collectionId: 12 })]),
+      ).toEqual([
+        {
+          key: "dashboard:7",
+          model: "dashboard",
+          section: "dashboards",
+          entityId: 7,
+          sourceCollectionId: 12,
           canWrite: true,
         },
       ]);

@@ -216,8 +216,10 @@
                     {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
                     {:id "anthropic/claude-fable-5-1"          :display_name "Claude Fable 5.1"}
                     {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
                     {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
                     {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
                     {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
@@ -479,11 +481,23 @@
 
 (defn mini-model
   "The fastest and cheapest model `type-name` serves — what short utility calls such as conversation titles run on
-  when no model has been picked for them. Returns nil for the types that have no cheaper tier to fall back to: the
-  ones whose connection names the single model it serves rather than picking from a catalog, and the managed
-  provider, which serves one benchmarked model."
+  when no model has been picked for them and the connection's listing includes it. Returns nil for the types that
+  have no cheaper tier to fall back to: the ones whose connection names the single model it serves rather than
+  picking from a catalog, and the managed provider, which serves one benchmarked model."
   [type-name]
   (:mini-model (provider-type type-name)))
+
+(defn served-mini-model
+  "The `:config` entry recording `type-name`'s [[mini-model]] when `listed-models` includes it, and nil when it does
+  not."
+  [type-name listed-models]
+  (let [model (mini-model type-name)]
+    {:mini-model (when (some #(= model (:id %)) listed-models) model)}))
+
+(defn connection-mini-model
+  "The [[mini-model]] `conn`'s listing included when it was last saved, or nil."
+  [conn]
+  (get-in conn [:config :mini-model]))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 

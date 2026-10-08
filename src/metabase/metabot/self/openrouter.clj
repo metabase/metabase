@@ -75,6 +75,9 @@
    "deepseek/deepseek-v4-pro"        {:display-name "DeepSeek V4 Pro 0423"    :context-window 1048576 :reasoning :renderable}
    "deepseek/deepseek-v4-pro-0813"   {:display-name "DeepSeek V4 Pro 0813"    :context-window 1048575 :reasoning :renderable}
    "deepseek/deepseek-v4-flash-0731" {:display-name "DeepSeek V4 Flash 0731"  :context-window 1048576 :reasoning :renderable}
+   ;; Gemma 4 (`google/gemma-4-31b-it`, `google/gemma-4-26b-a4b-it`) is deliberately not listed:
+   ;; through OpenRouter both 31B and 26B failed Metabot smoke tests with results changing between backing hosts.
+   ;; See https://linear.app/metabase/issue/BOT-1932 for details
    "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144 :reasoning :renderable}
    ;; probed 2026-09-08: OpenRouter honors `reasoning {:enabled false}` for kimi-k3 even though the
    ;; native Moonshot API cannot turn k3's thinking off — a title-shaped forced tool call under the

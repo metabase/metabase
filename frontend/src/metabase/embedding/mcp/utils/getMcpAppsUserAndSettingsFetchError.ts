@@ -1,5 +1,3 @@
-/* eslint-disable metabase/no-literal-metabase-strings */
-
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -35,6 +33,6 @@ export const getMcpAppsUserAndSettingsFetchErrorMessage = (
     .with(
       "network",
       () =>
-        t`Could not connect to Metabase. Make sure this MCP client is enabled in AI settings and that Metabase is reachable.`,
+        t`Could not connect to the server. Ask your MCP client to show this again.`,
     )
     .exhaustive();
