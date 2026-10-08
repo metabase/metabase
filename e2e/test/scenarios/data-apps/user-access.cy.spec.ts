@@ -374,6 +374,12 @@ describe("scenarios > data apps > user access (EMB-2328)", () => {
           ALLOWED_HOST,
         );
       });
+      cy.request(`/api/apps/${SYNCED_APP_SLUG}/bundle`).then((res) => {
+        expect(
+          String(res.headers["x-metabase-data-app-allowed-hosts"]),
+        ).to.contain(ALLOWED_HOST);
+      });
+
       cy.signOut();
     });
 
