@@ -55,7 +55,7 @@ Access tokens are scoped to limit what tools a client can use:
 | Scope | Tools it grants |
 | ----- | --------------- |
 | `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
-| `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write`, `transform_write` |
+| `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
@@ -102,10 +102,9 @@ by reconnecting and leaving the permission ticked on the consent screen.
 
 Generated from the v2 registry (`deftool`). The scope named here is what the registry checks before the tool
 runs; some handlers check a further scope once they know what the call does - `agent:sql:run` when a source
-resolves to native SQL (`question_write`, `transform_write`), and `agent:query:run` for the execution an
-alert or subscription defers (`alert_write`, `subscription_write`). Those refusals carry the same 403
-`insufficient_scope` challenge. `tools/list` shows every tool whatever the token holds, and a token missing
-the scope may not call it.
+resolves to native SQL (`question_write`), and `agent:query:run` for the execution an alert or subscription defers
+(`alert_write`, `subscription_write`). Those refusals carry the same 403 `insufficient_scope` challenge. `tools/list`
+shows every tool whatever the token holds, and a token missing the scope may not call it.
 
 | Tool | Scope | Description |
 | ---- | ----- | ----------- |
@@ -132,7 +131,6 @@ the scope may not call it.
 | `search` | `agent:content:read` | Find content across the Metabase instance by relevance. |
 | `segment_write` | `agent:content:write` | Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries' filters. |
 | `subscription_write` | `agent:delivery:write` | Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. |
-| `transform_write` | `agent:content:write` | Create or update a transform: a saved query that Metabase runs to materialize its results into a real table in your warehouse, which questions and other transforms can then query. |
 | `visualize_query` | `agent:query:run` | Visualize a query as an interactive chart or table, rendered inline in the conversation. |
 
 `execute_query` returns `row_limit` rows per call (default 100, max 2000) — a page size, not a bound on the result.

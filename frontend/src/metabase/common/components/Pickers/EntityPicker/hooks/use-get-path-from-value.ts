@@ -42,11 +42,13 @@ const getDefaultPath = async ({
   options,
   libraryCollection,
   namespaces,
+  models,
   dispatch,
 }: {
   options: EntityPickerOptions;
   libraryCollection?: LibraryCollection;
   namespaces: CollectionNamespace[];
+  models: OmniPickerCollectionItem["model"][];
   dispatch: DispatchFn;
 }): Promise<OmniPickerItem[]> => {
   if (libraryCollection && options.hasLibrary) {
@@ -57,8 +59,11 @@ const getDefaultPath = async ({
     ).unwrap();
 
     if (libraryChildrenResponse) {
+      // The Dashboards section only holds dashboards, so skip it unless we're picking them
       const firstChildCollection = libraryChildrenResponse.data.find(
-        (item) => item.model === "collection",
+        (item) =>
+          item.model === "collection" &&
+          (item.type !== "library-dashboards" || models.includes("dashboard")),
       );
       // we might also want to check if this collection has any relevant models
       if (firstChildCollection) {
@@ -114,12 +119,16 @@ export function useGetPathFromValue({
     setIsLoadingPath(true);
 
     if (!value) {
-      getDefaultPath({ options, libraryCollection, namespaces, dispatch }).then(
-        (path) => {
-          setPath(path);
-          setIsLoadingPath(false);
-        },
-      );
+      getDefaultPath({
+        options,
+        libraryCollection,
+        namespaces,
+        models,
+        dispatch,
+      }).then((path) => {
+        setPath(path);
+        setIsLoadingPath(false);
+      });
       return;
     }
 
