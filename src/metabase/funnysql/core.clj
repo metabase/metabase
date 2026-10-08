@@ -10,7 +10,9 @@
    [flatland.ordered.set :as ordered-set]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.time DateTimeException ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -78,14 +80,13 @@
   "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
   item in `xs`."
   [xs x-fn separator-fn]
-  (when xs
-    (assert (coll? xs)) ; maps are ok here, we can iterate over the pairs
-    (when (seq xs)
-      (loop [[x & more] xs]
-        (x-fn x)
-        (when (seq more)
-          (separator-fn)
-          (recur more))))))
+  {:pre [(or (nil? xs) (coll? xs))]} ; maps are ok here, we can iterate over the pairs
+  (when (seq xs)
+    (loop [[x & more] xs]
+      (x-fn x)
+      (when (seq more)
+        (separator-fn)
+        (recur more)))))
 
 (defn- ->sequence
   "Normalize a clause value that is allowed to be either a single item or a sequence of them. Honey SQL accepts
@@ -168,7 +169,7 @@
 (defn- with! [sql ctes context]
   (append-sql! context sql)
   (letfn [(cte! [[identifier subquery & options]]
-            (let [[identifier {:keys [columns]}] (if (sequential? identifier)
+            (let [[identifier {:keys [columns]}] (if (vector? identifier)
                                                    identifier
                                                    [identifier])]
               (check-identifier-form identifier)
@@ -291,7 +292,7 @@
                                 x
                                 [x])]
     (append-sql! context "INSERT INTO ")
-    (let [[identifier columns] (if (sequential? identifier)
+    (let [[identifier columns] (if (vector? identifier)
                                  identifier
                                  [identifier])]
       (check-identifier-form identifier)
@@ -357,6 +358,10 @@
 
 (defn- join!
   [join-type joins context]
+  ;; `joins` alternates `<thing-to-join> <condition>`. A missing condition would otherwise compile to `ON NULL`, which
+  ;; the database happily runs, silently returning no rows.
+  (when-not (even? (count joins))
+    (throw (ex-info "Every join needs a condition: expected [<thing-to-join> <condition> ...]" {:joins joins})))
   ;; don't spit out anything if `joins` is empty
   (when (seq joins)
     (let [join-type-sql (case join-type
@@ -377,10 +382,13 @@
   "Compile a `WHERE`/`HAVING` condition, dropping the clause entirely when there isn't one. Honey SQL ignores a nil or
   empty clause value and callers rely on that -- the `dashboard` search spec declares `:where []` to mean \"no extra
   filter\". Emitting it anyway is not merely untidy: `[]` compiles to `()`, which H2 reads as an empty ROW
-  (`Data conversion error converting \"ROW to BOOLEAN\"`), and `WHERE NULL` would silently match no rows at all."
+  (`Data conversion error converting \"ROW to BOOLEAN\"`), and `WHERE NULL` would silently match no rows at all.
+
+  Only `nil` and `[]` mean \"no condition\". Dropping a `WHERE` fails open -- the query matches every row -- so any
+  other empty value, like `{}`, `#{}` or `()`, is compiled like any other condition rather than silently disappearing."
   [sql condition context]
   (when-not (or (nil? condition)
-                (and (coll? condition) (empty? condition)))
+                (and (vector? condition) (empty? condition)))
     (append-sql! context sql)
     (compile! condition context)))
 
@@ -877,9 +885,15 @@
     (throw (ex-info (str "`:over` only supports [<expression> <window>]; put the alias outside instead, e.g. "
                          "[[:over [<expression> <window>]] <alias>]")
                     {:args args})))
+  ;; likewise don't silently drop anything else in the window -- [[map!]] would happily compile e.g. a `:where`, so
+  ;; anything other than `:partition-by` and `:order-by` has to be rejected up front
+  (let [unsupported-keys (remove #{:order-by :partition-by} (keys m))]
+    (when (seq unsupported-keys)
+      (throw (ex-info "`:over` only supports :partition-by and :order-by in the window"
+                      {:window m, :unsupported-keys (vec unsupported-keys)}))))
   (compile! expr context)
   (append-sql! context " OVER (")
-  (when-let [m (not-empty (select-keys m [:order-by :partition-by]))]
+  (when (seq m)
     (map! m context))
   (append-sql! context ")"))
 
@@ -980,14 +994,17 @@
   (append-sql! context (name collation)))
 
 (defn- h2x-at-time-zone! [[expr zone] context]
-  ;; support stuff like `America/New_York`, `Etc/GMT+5`, or `America/Indiana/Indianapolis`
-  (when-not (re-matches #"^[A-Za-z0-9_+\-]+(?:/[A-Za-z0-9_+\-]+){0,2}$" (name zone))
-    (throw (ex-info "Invalid time zone" {:time-zone zone})))
-  (append-sql! context "(")
-  (compile! expr context)
-  (append-sql! context " AT TIME ZONE '")
-  (append-sql! context (name zone))
-  (append-sql! context "')"))
+  ;; `ZoneId/of` only accepts a known region like `America/New_York` or `Etc/GMT+5`, or an offset like `+05:00`, so
+  ;; its ID can't contain a `'` and is safe to splice into the literal below
+  (let [^ZoneId zone-id (try
+                          (ZoneId/of (name zone))
+                          (catch DateTimeException e
+                            (throw (ex-info "Invalid time zone" {:time-zone zone} e))))]
+    (append-sql! context "(")
+    (compile! expr context)
+    (append-sql! context " AT TIME ZONE '")
+    (append-sql! context (.getId zone-id))
+    (append-sql! context "')")))
 
 (defn- h2x-interval! [engine [amount unit] context]
   (when-not (number? amount)

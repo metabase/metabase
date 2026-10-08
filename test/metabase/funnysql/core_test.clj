@@ -17,10 +17,13 @@
               @result))]
     (are [xs expected] (= expected
                           (interpose-fn* xs))
+      nil        []
       []         []
       [:a]       [:a]
       [:a :b]    [:a "-" :b]
-      [:a :b :c] [:a "-" :b "-" :c])))
+      [:a :b :c] [:a "-" :b "-" :c])
+    (testing "anything other than nil or a collection is a bug"
+      (is (thrown? AssertionError (interpose-fn* :a))))))
 
 (deftest ^:parallel sequences-test
   (testing "Support compiling different types of sequences"
@@ -434,6 +437,15 @@
                                       [:= :t.id :f.table_id]]}
                             :postgres)))))
 
+(deftest ^:parallel join-missing-condition-test
+  (testing "a join without a condition throws instead of compiling to `ON NULL`, which silently returns no rows"
+    (are [joins] (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"Every join needs a condition"
+                  (funnysql/format {:select [:*] :from [:a] :join joins} :postgres))
+      [:b]
+      [:b [:= :a.id :b.a_id] :c])))
+
 (deftest ^:parallel empty-join-test
   (testing "Handle `nil`/empty joins; we still spit out an extra space because of the way things work but that's ok I guess"
     (is (= ["SELECT 1 AS \"v\" "]
@@ -476,6 +488,18 @@
                            :select         [:id]
                            :from           [:parents]}
                           :postgres))))
+
+(deftest ^:parallel non-vector-identifier-with-options-test
+  (testing "as everywhere else, only a vector is `[<identifier> <options>]` -- any other sequence is not an identifier"
+    (are [form] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Expected an identifier"
+                 (funnysql/format form :postgres))
+      {:with   [[(list :cte {:columns [:a]}) ^:allow-subquery {:select [:a] :from [:t]}]]
+       :select [:*]
+       :from   [:cte]}
+      {:insert-into (list :t [:a])
+       :values      [[1]]})))
 
 (deftest ^:parallel with-materialized-test
   (is (= ["WITH \"cte\" AS MATERIALIZED (SELECT \"id\" FROM \"t\") SELECT \"id\" FROM \"cte\""]
@@ -845,12 +869,16 @@
     "UTC"
     "America/New_York"
     "Etc/GMT+5"
-    "America/Indiana/Indianapolis")
-  (testing "Valid time zone"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid time zone"
-         (funnysql/format {:where [:= :field (h2x/at-time-zone :x "UTC') OR 1 = 1; --")]} :postgres)))))
+    "America/Indiana/Indianapolis"
+    "+05:00")
+  (testing "Invalid time zone"
+    (are [zone] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Invalid time zone"
+                 (funnysql/format {:where [:= :field (h2x/at-time-zone :x zone)]} :postgres))
+      "UTC') OR 1 = 1; --"
+      ;; well-formed, but not a real zone
+      "America/Atlantis")))
 
 (deftest ^:parallel h2x-typed-test
   (is (= ["WHERE \"field\" = \"x\""]
@@ -1111,6 +1139,12 @@
       {:select :id, :from :t, :where nil}
       {:select :id, :from :t, :having []}
       {:select :id, :from :t, :having nil}))
+  (testing "only nil and `[]` mean no condition -- dropping a `WHERE` fails open, so other empty values are kept"
+    (are [condition] (str/includes? (first (funnysql/format {:select :id, :from :t, :where condition} :postgres))
+                                    "WHERE")
+      {}
+      #{}
+      ()))
   (testing "a real condition is still compiled"
     (is (= ["SELECT \"id\" FROM \"t\" WHERE \"a\" = 1"]
            (funnysql/format {:select :id, :from :t, :where [:= :a 1]} :postgres)))))
@@ -1390,6 +1424,15 @@
          #"put the alias outside"
          (funnysql/format {:select [[[:over [[:row_number] {:order-by [[:id :desc]]} :rn]]]]
                            :from   [:query_execution]}
+                          :postgres)))))
+
+(deftest ^:parallel over-unsupported-window-keys-test
+  (testing "anything in the window besides `:partition-by` and `:order-by` throws rather than being silently dropped"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"`:over` only supports :partition-by and :order-by"
+         (funnysql/format {:select [[[:over [[:row_number] {:partition-by [:a], :where [:= :a 1]}]] :rn]]
+                           :from   [:t]}
                           :postgres)))))
 
 (deftest ^:parallel nest-test
