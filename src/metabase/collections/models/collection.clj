@@ -886,7 +886,8 @@
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
    [:permission-level {:optional true} [:enum :read :write]]
-   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
+   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]
+   [:root-namespace {:optional true} [:maybe [:or :keyword :string]]]])
 
 (def ^:private UserScope
   [:map {:closed true}
@@ -899,24 +900,26 @@
    :include-trash-collection? false
    :effective-child-of nil
    :archive-operation-id nil
-   :permission-level :read})
+   :permission-level :read
+   :root-namespace nil})
 
-(def ^:private ^{:arglists '([user-scope read-or-write])} can-access-root-collection?
-  "Cached function to determine whether the current user can access the root collection"
+(def ^:private ^{:arglists '([user-scope read-or-write root-namespace])} can-access-root-collection?
+  "Cached function to determine whether the current user can access the root collection of `root-namespace`"
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write]]
+   ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write root-namespace]]
                          ;; If this is running in the context of a request, cache it for the duration of that request.
                          ;; Otherwise, don't cache the results at all.)
                          (if-let [req-id *request-id*]
-                           [req-id current-user-id read-or-write]
-                           [(random-uuid) current-user-id read-or-write]))}
+                           [req-id current-user-id read-or-write (some-> root-namespace name)]
+                           [(random-uuid) current-user-id read-or-write (some-> root-namespace name)]))}
    (fn can-access-root-collection?*
-     [{:keys [current-user-id is-superuser?]} read-or-write]
+     [{:keys [current-user-id is-superuser?]} read-or-write root-namespace]
      (or is-superuser?
-         (collections.db/user-has-root-collection-permission?
-          current-user-id
-          (cond-> ["/collection/root/"]
-            (= :read read-or-write) (conj "/collection/root/read/")))))
+         (let [root (assoc root-collection :namespace root-namespace)]
+           (collections.db/user-has-root-collection-permission?
+            current-user-id
+            (cond-> [(perms/collection-readwrite-path root)]
+              (= :read read-or-write) (conj (perms/collection-read-path root)))))))
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
 
@@ -930,7 +933,7 @@
   ([user-scope visibility-config]
    (and
     ;; we have permission for it.
-    (can-access-root-collection? user-scope (:permission-level visibility-config))
+    (can-access-root-collection? user-scope (:permission-level visibility-config) (:root-namespace visibility-config))
     ;; we're not *only* looking for archived items
     (not= :only (:include-archived-items visibility-config))
     ;; we're not looking for a particular `archive_operation_id`

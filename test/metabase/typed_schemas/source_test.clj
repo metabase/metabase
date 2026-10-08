@@ -143,4 +143,11 @@
       (testing "an action in a collection the user cannot read is left out"
         (mt/with-non-admin-groups-no-collection-perms hidden-coll-id
           (mt/with-current-user (mt/user->id :rasta)
-            (is (not (contains? (action-ids #{(mt/id)}) hidden)))))))))
+            (is (not (contains? (action-ids #{(mt/id)}) hidden))))))
+      (testing "an action in the data actions root follows that root's permissions, not the default root's"
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
+            (is (not (contains? (action-ids #{(mt/id)}) standalone)))
+            (mt/with-non-admin-groups-no-root-collection-perms
+              (mt/with-all-users-permission "/collection/namespace/data-actions/root/read/"
+                (is (contains? (action-ids #{(mt/id)}) standalone))))))))))

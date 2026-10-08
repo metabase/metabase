@@ -65,7 +65,8 @@
                                  [:= :model_id nil]
                                  [:= :type "query"]
                                  [:= :archived false]
-                                 (collection/visible-collection-filter-clause :collection_id)
+                                 (collection/visible-collection-filter-clause :collection_id
+                                                                              {:root-namespace collection/data-actions-ns})
                                  (when (seq excluded-collection-ids)
                                    [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])
                                  (when database-ids
