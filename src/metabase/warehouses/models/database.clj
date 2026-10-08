@@ -781,3 +781,15 @@
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (hydrate-router-user-attribute k databases))
+
+(defenterprise hydrate-router-anonymous-access-granted
+  "OSS implementation. Hydrates the router's anonymous-access grant on the databases."
+  metabase-enterprise.database-routing.models
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_anonymous_access_granted nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_anonymous_access_granted]
+  "Batch hydrate the router's anonymous-access grant for the given `Database`."
+  [_model k databases]
+  (hydrate-router-anonymous-access-granted k databases))

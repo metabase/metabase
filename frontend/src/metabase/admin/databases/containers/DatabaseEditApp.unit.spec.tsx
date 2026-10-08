@@ -11,6 +11,7 @@ import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockDatabaseUsageInfo,
   createMockEngines,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -21,13 +22,7 @@ const setup = ({ database }: { database: Database }) => {
   setupEnginesEndpoint({});
   setupDatabaseEndpoints(database);
   setupEnginesEndpoint(createMockEngines());
-  setupDatabaseUsageInfoEndpoint(database, {
-    question: 0,
-    dataset: 0,
-    metric: 0,
-    segment: 0,
-    transform: 0,
-  });
+  setupDatabaseUsageInfoEndpoint(database, createMockDatabaseUsageInfo());
   fetchMock.get(`path:/api/database/${database.id}/settings-available`, {
     settings: {},
   });

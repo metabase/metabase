@@ -311,7 +311,7 @@
       include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
-      true                         (t2/hydrate :router_user_attribute)
+      true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
@@ -457,7 +457,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         (t2/hydrate :router_user_attribute)
+    true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
@@ -504,21 +504,43 @@
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
 
+(mr/def ::usage-info
+  [:map {:closed true}
+   [:question
+    {:description "Saved questions on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:dataset
+    {:description "Models on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:metric
+    {:description "Metrics on this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:segment
+    {:description "Segments on this database's tables."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:transform
+    {:description "Transforms reading from or writing to this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:anonymously_reachable
+    {:description (str "Whether anything on this database can be reached by anonymous traffic: an unarchived card"
+                       " that carries a public link or is published as a guest embed, one that a dashboard anonymous"
+                       " traffic can itself open holds, or one that a document with a public link owns. The answer"
+                       " under-reports -- a card reached only through a JSON-encoded reference (a parameter mapping,"
+                       " a parameter value source, a click-behaviour target, a link card, or a prose-mirror card"
+                       " embed) does not count, so true is certain and false is not a guarantee.")}
+    :boolean]])
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/usage_info"
-  "Get usage info for a database.
-  Returns a map with keys are models and values are the number of entities that use this database."
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :get "/:id/usage_info" :- ::usage-info
+  "Get usage info for a database: how many entities of each model use it, and whether anonymous traffic can reach it."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
-  (first (warehouses-rest.db/database-usage-counts id)))
+  (assoc (first (warehouses-rest.db/database-usage-counts id))
+         :anonymously_reachable (warehouses-rest.db/anonymously-reachable? id)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

@@ -42,17 +42,18 @@
   [:merge
    ::database.update
    [:map {:closed true}
-    [:id                          ::lib.schema.id/database]
-    [:features                    {:optional true} [:maybe [:set :keyword]]]
-    [:can-manage                  {:optional true} [:maybe :boolean]]
-    [:can_upload                  {:optional true} [:maybe :boolean]]
-    [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
-    [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
-    [:router_user_attribute       {:optional true} [:maybe :string]]
-    [:schedules                   {:optional true} [:maybe [:map {:closed true}
-                                                            [:metadata_sync      :metabase.util.cron/ScheduleMap]
-                                                            [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
-    [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]]])
+    [:id                              ::lib.schema.id/database]
+    [:features                        {:optional true} [:maybe [:set :keyword]]]
+    [:can-manage                      {:optional true} [:maybe :boolean]]
+    [:can_upload                      {:optional true} [:maybe :boolean]]
+    [:tables                          {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
+    [:native_permissions              {:optional true} [:maybe [:enum :write :none]]]
+    [:router_user_attribute           {:optional true} [:maybe :string]]
+    [:router_anonymous_access_granted {:optional true} [:maybe :boolean]]
+    [:schedules                       {:optional true} [:maybe [:map {:closed true}
+                                                                [:metadata_sync      :metabase.util.cron/ScheduleMap]
+                                                                [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
+    [:transforms_permissions          {:optional true} [:maybe [:enum :write :none]]]]])
 
 (mr/def ::database.update
   "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."

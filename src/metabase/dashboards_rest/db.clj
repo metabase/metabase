@@ -114,14 +114,42 @@
                     [:= :c.archived false]]}
      paged? (merge {:limit limit :offset offset}))))
 
+(defn- dashcard-ids-subquery
+  "Subquery for the ids of the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/DashboardCard)]
+                    :where  [:= :dashboard_id [:auto/param dashboard-id]]})
+
+(defn- dashcard-card-ids-subquery
+  "Subquery for the Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  ^:allow-subquery {:select [:card_id]
+                    :from   [(t2/table-name :model/DashboardCard)]
+                    :where  [:= :dashboard_id [:auto/param dashboard-id]]})
+
+(defn- series-card-ids-subquery
+  "Subquery for the Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  ^:allow-subquery {:select [:card_id]
+                    :from   [(t2/table-name :model/DashboardCardSeries)]
+                    :where  [:in :dashboardcard_id (dashcard-ids-subquery dashboard-id)]})
+
 (mu/defn dashboard-series-card-ids
   "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                    {:where [:in :dashboardcard_id
-                             ^:allow-subquery {:select [:id]
-                                               :from   [(t2/table-name :model/DashboardCard)]
-                                               :where  [:= :dashboard_id dashboard-id]}]}))
+                    {:where [:in :dashboardcard_id (dashcard-ids-subquery dashboard-id)]}))
+
+(mu/defn dashboard-card-database-ids :- [:sequential [:maybe ::lib.schema.id/database]]
+  "The ids of the Databases queried by the Cards of the Dashboard with `dashboard-id`, including the Cards added to its
+  DashboardCards as series. One entry per Card, so ids repeat; empty for a Dashboard with no Cards."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  ;; `select-fn-vec` gives nil rather than an empty vector when nothing matches
+  (vec (t2/select-fn-vec :database_id :model/Card
+                         {:where [:or
+                                  [:in :id (dashcard-card-ids-subquery dashboard-id)]
+                                  [:in :id (series-card-ids-subquery dashboard-id)]]})))
 
 (mu/defn dashboard-action-ids
   "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."

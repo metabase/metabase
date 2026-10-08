@@ -25,7 +25,7 @@
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/discourage-dynamic-vars                          323
+                                :metabase/discourage-dynamic-vars                          324
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          23
                                 :metabase/namespace-name                                   3

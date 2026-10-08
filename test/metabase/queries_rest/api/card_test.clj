@@ -32,6 +32,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-sharing.test-util :as public-sharing.test-util]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -3321,6 +3322,39 @@
       (testing "Cannot share a Card that doesn't exist"
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
+
+(deftest share-card-on-routed-database-test
+  (testing "POST /api/card/:id/public_link"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-premium-features #{:database-routing}
+        (testing "a Card on a routed database that does not allow anonymous access cannot be shared"
+          (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Card          card {}]
+            (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                   (mt/user-http-request :crowberto :post 400 (format "card/%d/public_link" (u/the-id card)))))
+            (is (not (t2/exists? :model/Card :id (u/the-id card), :public_uuid [:not= nil])))))
+        (testing "once an admin allows anonymous access it can"
+          (mt/with-temp [:model/DatabaseRouter _ {:database_id              (mt/id)
+                                                  :user_attribute           "db_name"
+                                                  :anonymous_access_granted true}
+                         :model/Card          card {}]
+            (is (=? {:uuid string?}
+                    (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))))))
+        (testing "an already-shared Card still returns its existing link, so a dead one stays deletable"
+          (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Card          card (shared-card)]
+            (is (= (:public_uuid card)
+                   (:uuid (mt/user-http-request :crowberto :post 200
+                                                (format "card/%d/public_link" (u/the-id card))))))))
+        (testing "a Card on a database that is not a router can"
+          (mt/with-temp [:model/Card card {}]
+            (is (=? {:uuid string?}
+                    (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card))))))))
+      (testing "without the database-routing feature nothing is refused: there is no routing to break"
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Card          card {}]
+          (is (=? {:uuid string?}
+                  (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card))))))))))
 
 (deftest share-already-shared-card-test
   (testing "POST /api/card/:id/public_link"

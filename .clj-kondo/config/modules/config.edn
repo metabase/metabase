@@ -2014,11 +2014,14 @@
            metabase.public-sharing.init
            metabase.public-sharing.validation}
    :uses #{api
+           database-routing
+           lib.schema
            settings
            util}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Dashboard
+                    :model/Database
                     :model/Document}}
 
   public-sharing.rest
@@ -2030,6 +2033,7 @@
            api
            dashboards
            dashboards.rest
+           database-routing
            documents
            events
            lib
@@ -3334,7 +3338,11 @@
            warehouses.secrets}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Table}}
 
@@ -3812,6 +3820,7 @@
            models
            premium-features
            query-processor
+           request
            settings
            util
            warehouses

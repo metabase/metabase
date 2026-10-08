@@ -20,10 +20,12 @@ import {
 import * as Urls from "metabase/urls";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
-import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
+import ContentRemovalConfirmation, {
+  DELETED_ENTITY_TYPES,
+} from "../ContentRemovalConfirmation";
 
 const entityTypesCount = (usageInfo: DatabaseUsageInfo) => {
-  return Object.values(usageInfo).filter((value) => value > 0).length;
+  return DELETED_ENTITY_TYPES.filter((type) => usageInfo[type] > 0).length;
 };
 
 const hasContentInDatabase = (usageInfo: DatabaseUsageInfo) => {

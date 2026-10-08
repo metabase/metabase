@@ -10,7 +10,10 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockDatabaseUsageInfo,
+} from "metabase-types/api/mocks";
 
 import { DatabaseConnectionInfoSection } from "./DatabaseConnectionInfoSection";
 
@@ -32,13 +35,7 @@ function setup({
   });
   setupDatabaseEndpoints(database);
   setupDatabaseDismissSpinnerEndpoint(database);
-  setupDatabaseUsageInfoEndpoint(database, {
-    question: 0,
-    dataset: 0,
-    metric: 0,
-    segment: 0,
-    transform: 0,
-  });
+  setupDatabaseUsageInfoEndpoint(database, createMockDatabaseUsageInfo());
 
   mockEndpointsCb?.(database);
 

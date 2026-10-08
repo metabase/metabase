@@ -8,8 +8,10 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :as routes.common]
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.database-routing.core :as database-routing]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -159,18 +161,31 @@
 
 (defn error-response
   "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
-  it -- to what public and embedded endpoints are allowed to return: the status and error type, and a generic message
-  in place of the original unless the error type is EXPLICITLY allowed to be shown in embeds. Nothing about the query
-  itself gets through.
+  it -- to what public and embedded endpoints are allowed to return: the status, the error type, and a generic message
+  in place of the original unless the error type is EXPLICITLY allowed to be shown in embeds or an exception wrote a
+  message for this request's viewer ([[metabase.api.routes.common/message-for-viewer]]), which is returned marked
+  curated. Nothing about the query itself gets through. An already-reduced `error` is returned unchanged.
 
   [[metabase.api-routes.routes]] applies this to every error written by a streaming response under the public and
   embedding routes."
   [{error-type :error_type, :as error}]
-  (merge
-   {:status :failed}
-   (select-keys error [:status :error :error_type])
-   (when-not (qp.error-type/show-in-embeds? error-type)
-     {:error (tru "An error occurred while running the query.")})))
+  ;; A streaming query endpoint reduces its failure twice: here, through `transform-qp-result`, and again at the
+  ;; route. The reduced shape keeps only the status, error type and message, so the second pass has nothing left to
+  ;; decide from and would replace a message the first pass deliberately kept. The marker is metadata, so no client
+  ;; ever sees it, and a reduced map that lost it only loses a diagnosis.
+  (if (::reduced (meta error))
+    error
+    (vary-meta
+     (merge
+      {:status :failed}
+      (select-keys error [:status :error :error_type])
+      (when-not (qp.error-type/show-in-embeds? error-type)
+        (if-let [message (routes.common/message-for-viewer [error])]
+          ;; a dashboard card renders its own generic text over any error not marked curated, which is the very thing
+          ;; an admin diagnosing their own public dashboard needs to see past
+          {:error message, :error_is_curated true}
+          {:error (tru "An error occurred while running the query.")})))
+     assoc ::reduced true)))
 
 (defmethod transform-qp-result :failed
   [results]
@@ -931,7 +946,28 @@
 ;; TODO - a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
 ;;`/dashboard` vs `/card`
 
+;;; A public link has no Metabase account behind it, so there are no user attributes to route by: public query
+;;; execution uses the router (primary) database, where that database grants anonymous access. See
+;;; [[metabase.database-routing.core/with-database-routing-off-if-granted]] for what is decided and on what.
+;;;
+;;; Wrap the routes, not the execution helpers: those helpers are shared with guest embedding, which is gated
+;;; separately, and the route is the one place no endpoint can forget -- queries, export formats, parameter values,
+;;; parameter search, remapping, pivot queries and map tiles all pass through it, and the parameter paths have no
+;;; shared helper to wrap.
+
+(defn- enforce-anonymous-database-routing
+  "Ring middleware that runs a public request with database routing resolved for anonymous access (see above)."
+  [handler]
+  (fn [request respond raise]
+    (database-routing/with-database-routing-off-if-granted
+      (handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +anonymous-database-routing
+  (routes.common/wrap-middleware-for-open-api-spec-generation enforce-anonymous-database-routing))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/public` routes. Enforces public-sharing-enabled check via middleware, in addition to
-  per-endpoint checks."
-  (api.macros/ns-handler *ns* public-sharing.validation/+public-sharing-enabled))
+  per-endpoint checks, and resolves database routing for anonymous access (see above)."
+  (api.macros/ns-handler *ns*
+                         public-sharing.validation/+public-sharing-enabled
+                         +anonymous-database-routing))

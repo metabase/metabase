@@ -35,6 +35,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.public-sharing.test-util :as public-sharing.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -2707,6 +2708,69 @@
     (testing "Test that we get a 404 if the Dashboard doesn't exist"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE)))))))
+
+(deftest share-dashboard-on-routed-database-test
+  (testing "POST /api/dashboard/:id/public_link"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-premium-features #{:database-routing}
+        (testing "a Dashboard with a Card on a routed database that does not allow anonymous access cannot be shared"
+          (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Dashboard     dashboard  {}
+                         :model/Card          card       {}
+                         :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                          :card_id      (u/the-id card)}]
+            (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                   (mt/user-http-request :crowberto :post 400
+                                         (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+            (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
+        (testing "a Card reaching the routed database only as a series on one of its DashboardCards refuses too"
+          (mt/with-temp [:model/DatabaseRouter      _         {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Database            other     {}
+                         :model/Dashboard           dashboard {}
+                         :model/Card                main      {:database_id (u/the-id other)}
+                         :model/DashboardCard       dashcard  {:dashboard_id (u/the-id dashboard)
+                                                               :card_id      (u/the-id main)}
+                         :model/Card                series    {}
+                         :model/DashboardCardSeries _         {:dashboardcard_id (u/the-id dashcard)
+                                                               :card_id          (u/the-id series)}]
+            (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                   (mt/user-http-request :crowberto :post 400
+                                         (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+        (testing "an already-shared Dashboard still returns its existing link, so a dead one stays deletable"
+          (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Dashboard     dashboard  (shared-dashboard)
+                         :model/Card          card       {}
+                         :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                          :card_id      (u/the-id card)}]
+            (is (= (:public_uuid dashboard)
+                   (:uuid (mt/user-http-request :crowberto :post 200
+                                                (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
+        (testing "once an admin allows anonymous access it can"
+          (mt/with-temp [:model/DatabaseRouter _         {:database_id              (mt/id)
+                                                          :user_attribute           "db_name"
+                                                          :anonymous_access_granted true}
+                         :model/Dashboard     dashboard  {}
+                         :model/Card          card       {}
+                         :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                          :card_id      (u/the-id card)}]
+            (is (=? {:uuid string?}
+                    (mt/user-http-request :crowberto :post 200
+                                          (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+        (testing "an empty Dashboard on a routed database queries nothing, so it can"
+          (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Dashboard     dashboard {}]
+            (is (=? {:uuid string?}
+                    (mt/user-http-request :crowberto :post 200
+                                          (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
+      (testing "without the database-routing feature nothing is refused: there is no routing to break"
+        (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Dashboard     dashboard  {}
+                       :model/Card          card       {}
+                       :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                        :card_id      (u/the-id card)}]
+          (is (=? {:uuid string?}
+                  (mt/user-http-request :crowberto :post 200
+                                        (format "dashboard/%d/public_link" (u/the-id dashboard))))))))))
 
 (deftest delete-public-link-test
   (testing "DELETE /api/dashboard/:id/public_link"

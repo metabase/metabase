@@ -47,6 +47,7 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
@@ -94,11 +95,12 @@
     (mt/object-defaults :model/Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version :default_schema
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled :uploads_schema_name])
-    {:engine                (u/qualified-name (:engine db))
-     :settings              {}
-     :features              (map u/qualified-name (driver.u/features driver db))
-     :initial_sync_status   "complete"
-     :router_user_attribute nil})))
+    {:engine                          (u/qualified-name (:engine db))
+     :settings                        {}
+     :features                        (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status             "complete"
+     :router_user_attribute           nil
+     :router_anonymous_access_granted nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -262,10 +264,11 @@
     [:model/Database {db-id :id}      {}
      :model/Table    {table-id-1 :id} {:db_id db-id}
      :model/Table    {table-id-2 :id} {:db_id db-id}
-     ;; question
+     ;; question, shared with a public link
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
-                                       :type        :question}
+                                       :type        :question
+                                       :public_uuid (str (random-uuid))}
      ;; dataset
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
@@ -275,11 +278,12 @@
                                        :type        :model
                                        :archived    true}
 
-     ;; metric
+     ;; metric, archived with a public link that therefore no longer resolves
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
                                        :type        :metric
-                                       :archived    true}
+                                       :archived    true
+                                       :public_uuid (str (random-uuid))}
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-1
                                        :type        :metric}
@@ -309,17 +313,223 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
     (testing "return the correct usage info"
-      (is (= {:question  1
-              :dataset   2
-              :metric    3
-              :segment   1
-              :transform 2}
+      (is (= {:question              1
+              :dataset               2
+              :metric                3
+              :segment               1
+              :transform             2
+              :anonymously_reachable true}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
       (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
+
+(defn- usage-info-anonymously-reachable? [db-id]
+  (:anonymously_reachable (mt/user-http-request :crowberto :get 200
+                                                (format "database/%d/usage_info" db-id))))
+
+(deftest get-database-usage-info-unshared-cards-are-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :question}]
+    (testing "a database whose cards are neither shared nor published is not reachable anonymously"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-public-links-on-another-database-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Database {other-db-id :id} {}
+     :model/Table    {table-id :id}    {:db_id other-db-id}
+     :model/Card     _                 {:database_id other-db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :public_uuid (str (random-uuid))}]
+    (testing "a public link on another database does not make this one reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-public-dashboard-reaches-database-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "a public dashboard holding a card on this database makes it reachable"
+      (is (true? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-public-dashboard-series-reaches-database-test
+  (mt/with-temp
+    [:model/Database            {db-id :id}        {}
+     :model/Table               {table-id :id}     {:db_id db-id}
+     :model/Card                {series-id :id}    {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard           {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard       {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id nil}
+     :model/DashboardCardSeries _                  {:dashboardcard_id dashcard-id, :card_id series-id}]
+    (testing "a card reached only as a series of a public dashboard's card makes this database reachable"
+      (is (true? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-public-dashboard-on-another-database-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Database      {other-db-id :id}  {}
+     :model/Table         {table-id :id}     {:db_id other-db-id}
+     :model/Card          {card-id :id}      {:database_id other-db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "a public dashboard holding no card on this database leaves it unreachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-public-document-reaches-database-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Document {document-id :id} {:public_uuid (str (random-uuid))}
+     :model/Card     _                 {:database_id db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :document_id document-id}]
+    (testing "a card owned by a public document makes this database reachable"
+      (is (true? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-unshared-document-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Document {document-id :id} {}
+     :model/Card     _                 {:database_id db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :document_id document-id}]
+    (testing "a card owned by a document with no public link leaves this database unreachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-archived-public-document-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Document {document-id :id} {:public_uuid (str (random-uuid)), :archived true}
+     :model/Card     _                 {:database_id db-id
+                                        :table_id    table-id
+                                        :type        :question
+                                        :document_id document-id}]
+    (testing "an archived document's public link no longer resolves, so it does not make this database reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-archived-public-card-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id
+                                     :table_id    table-id
+                                     :type        :question
+                                     :archived    true
+                                     :public_uuid (str (random-uuid))}]
+    (testing "an archived card's public link no longer resolves, so it does not make this database reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-archived-public-dashboard-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid)), :archived true}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "an archived dashboard's public link no longer resolves, so it does not make this database reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-archived-card-in-public-dashboard-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id
+                                              :table_id    table-id
+                                              :type        :question
+                                              :archived    true}
+     :model/Dashboard     {dashboard-id :id} {:public_uuid (str (random-uuid))}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "an archived card in a public dashboard does not make this database reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-embedded-card-reaches-database-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id      db-id
+                                     :table_id         table-id
+                                     :type             :question
+                                     :enable_embedding true}]
+    (testing "a card published as a guest embed makes this database reachable"
+      (is (true? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-embedded-dashboard-reaches-database-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "a dashboard published as a guest embed holding a card on this database makes it reachable"
+      (is (true? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-embedded-dashboard-series-reaches-database-test
+  (mt/with-temp
+    [:model/Database            {db-id :id}        {}
+     :model/Table               {table-id :id}     {:db_id db-id}
+     :model/Card                {series-id :id}    {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard           {dashboard-id :id} {:enable_embedding true}
+     :model/DashboardCard       {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id nil}
+     :model/DashboardCardSeries _                  {:dashboardcard_id dashcard-id, :card_id series-id}]
+    (testing "a card reached only as a series of a published dashboard's card makes this database reachable"
+      (is (true? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-embedded-dashboard-on-another-database-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Database      {other-db-id :id}  {}
+     :model/Table         {table-id :id}     {:db_id other-db-id}
+     :model/Card          {card-id :id}      {:database_id other-db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "a published dashboard holding no card on this database leaves it unreachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-archived-embedded-card-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id      db-id
+                                     :table_id         table-id
+                                     :type             :question
+                                     :archived         true
+                                     :enable_embedding true}]
+    (testing "an archived card's guest embed no longer resolves, so it does not make this database reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-archived-embedded-dashboard-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id, :table_id table-id, :type :question}
+     :model/Dashboard     {dashboard-id :id} {:enable_embedding true, :archived true}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "an archived dashboard's guest embed no longer resolves, so it does not make this database reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
+
+(deftest get-database-usage-info-archived-card-in-embedded-dashboard-is-not-reachable-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}        {}
+     :model/Table         {table-id :id}     {:db_id db-id}
+     :model/Card          {card-id :id}      {:database_id db-id
+                                              :table_id    table-id
+                                              :type        :question
+                                              :archived    true}
+     :model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+     :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
+    (testing "an archived card in a published dashboard does not make this database reachable"
+      (is (false? (usage-info-anonymously-reachable? db-id))))))
 
 (defn- find-in-clauses
   "Walk a HoneySQL map and return any [:in ...] clauses where the value is a collection."
@@ -340,7 +550,7 @@
     @results))
 
 (deftest get-database-usage-info-no-large-in-test
-  (testing "usage_info query should not use IN clauses with more than 100 items (GHY-2413)"
+  (testing "usage_info queries should not use IN clauses with more than 100 items (GHY-2413)"
     (mt/with-temp
       [:model/Database {db-id :id} {}
        :model/Table    _           {:db_id db-id}]
@@ -352,17 +562,21 @@
           (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))
         (doseq [q @queries]
           (is (empty? (find-in-clauses q))
-              "usage_info should not generate IN clauses with inline collections"))))))
+              "the usage counts should not generate IN clauses with inline collections")))
+      ;; reachability runs through `t2/exists?` rather than `mdb/query`, so the redef above cannot see it
+      (is (empty? (find-in-clauses (#'warehouses-rest.db/anonymously-reachable-query db-id)))
+          "reachability should not generate IN clauses with inline collections"))))
 
 (deftest get-database-usage-info-test-2
   (mt/with-temp
     [:model/Database {db-id :id} {}]
     (testing "should work with DB that has no tables"
-      (is (= {:question  0
-              :dataset   0
-              :metric    0
-              :segment   0
-              :transform 0}
+      (is (= {:question              0
+              :dataset               0
+              :metric                0
+              :segment               0
+              :transform             0
+              :anonymously_reachable false}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]
@@ -900,7 +1114,8 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error
+                          :router_user_attribute :router_anonymous_access_granted)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1225,7 +1440,8 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute
+                                  :router_anonymous_access_granted :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details :write_data_details :admin_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]

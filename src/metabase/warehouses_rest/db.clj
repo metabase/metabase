@@ -333,6 +333,75 @@
                              [:= :database_id database-id]
                              [:= :type type-str]]})
 
+(def ^:private anonymously-published-clause
+  "Honey SQL for a Card or Dashboard anonymous traffic can open: it carries a public link, or it is published as a
+  guest embed."
+  [:or
+   [:not= :public_uuid nil]
+   [:= :enable_embedding true]])
+
+(def ^:private anonymous-dashboard-id-subquery
+  "Subquery for the ids of the Dashboards an anonymous visitor can open."
+  ;; an archived Dashboard neither resolves by its public link nor renders as a guest embed
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/Dashboard)]
+                    :where  [:and
+                             [:= :archived false]
+                             anonymously-published-clause]})
+
+(defn- anonymous-dashcard-subquery
+  "Subquery for `column` of the DashboardCards of every Dashboard an anonymous visitor can open."
+  [column]
+  ^:allow-subquery {:select [column]
+                    :from   [(t2/table-name :model/DashboardCard)]
+                    :where  [:in :dashboard_id anonymous-dashboard-id-subquery]})
+
+(def ^:private anonymous-series-card-id-subquery
+  "Subquery for the ids of the Cards added as series to the DashboardCards of every Dashboard an anonymous visitor can
+  open."
+  ^:allow-subquery {:select [:card_id]
+                    :from   [(t2/table-name :model/DashboardCardSeries)]
+                    :where  [:in :dashboardcard_id (anonymous-dashcard-subquery :id)]})
+
+(def ^:private public-document-id-subquery
+  "Subquery for the ids of the Documents an anonymous visitor can open by public link. Documents carry no
+  `enable_embedding`, so a public link is the only way anonymous traffic reaches one."
+  ;; an archived Document's public link no longer resolves
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/Document)]
+                    :where  [:and
+                             [:= :archived false]
+                             [:not= :public_uuid nil]]})
+
+(defn- anonymously-reachable-query
+  "Honey SQL selecting the Cards on the Database with `database-id` that anonymous traffic reaches. Four paths count,
+  and the Dashboard and Document ones ask nothing of the Card beyond being unarchived and on the Database.
+
+  Not covered: a Card a Dashboard or Document reaches only through a JSON-encoded reference -- parameter mappings,
+  parameter value sources, click-behaviour targets, link cards, and prose-mirror Card embeds. The answer therefore
+  under-reports: a Card this selects really is reachable, but one it misses may be reachable too."
+  [database-id]
+  ;; an archived Card's public link no longer resolves, nor does its guest embed render, and nor does the Card render
+  ;; inside a Dashboard or Document that anonymous traffic can open
+  {:where [:and
+           [:= :database_id [:auto/param database-id]]
+           [:= :archived false]
+           [:or
+            ;; the Card carries a public link, or is itself published as a guest embed
+            anonymously-published-clause
+            ;; a Dashboard anonymous traffic can open holds the Card through a DashboardCard
+            [:in :id (anonymous-dashcard-subquery :card_id)]
+            ;; the same Dashboard holds it as a series of one of those DashboardCards
+            [:in :id anonymous-series-card-id-subquery]
+            ;; a Document with a public link owns the Card
+            [:in :document_id public-document-id-subquery]]]})
+
+(mu/defn anonymously-reachable? :- :boolean
+  "Whether any Card on the Database with `database-id` can be reached by anonymous traffic.
+  [[anonymously-reachable-query]] records which paths count and which are not covered."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Card (anonymously-reachable-query database-id)))
+
 (mu/defn database-usage-counts
   "A single row with the count of Questions (`:question`), Models (`:dataset`), Metrics (`:metric`), Segments
   (`:segment`), and Transforms (`:transform`) that use the Database with `database-id`."

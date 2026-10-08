@@ -53,6 +53,39 @@ export const hasDbRoutingEnabled = (
 };
 
 /**
+ * Whether this database refuses anonymous traffic: routing is on, and no admin
+ * has allowed anonymous access to the router database. An anonymous visitor has
+ * no user attribute to route by, so a public link on such a database could never
+ * return data and the API refuses to create one.
+ */
+export const refusesAnonymousAccess = (
+  database: Pick<
+    Database,
+    "router_user_attribute" | "router_anonymous_access_granted"
+  >,
+) => {
+  return (
+    hasDbRoutingEnabled(database) && !database.router_anonymous_access_granted
+  );
+};
+
+/**
+ * The ids of the databases a dashboard's cards query, including the cards added
+ * to its dashcards as series.
+ */
+export const getDashboardDatabaseIds = (
+  dashboard: Pick<Dashboard, "dashcards">,
+): DatabaseId[] => {
+  return (dashboard.dashcards ?? [])
+    .flatMap((dashcard) => [
+      dashcard.card,
+      ...("series" in dashcard ? (dashcard.series ?? []) : []),
+    ])
+    .map((card) => card?.database_id)
+    .filter((databaseId): databaseId is DatabaseId => databaseId != null);
+};
+
+/**
  * Check if a question uses a database with routing enabled
  */
 export const questionUsesRoutingEnabledDatabase = (
@@ -74,28 +107,9 @@ export const dashboardUsesRoutingEnabledDatabases = (
   dashboard: Pick<Dashboard, "dashcards">,
   databases: Pick<Database, "id" | "router_user_attribute">[],
 ) => {
-  if (!dashboard.dashcards) {
-    return false;
-  }
-
-  return dashboard.dashcards.some((dashcard) => {
-    // Check the main card
-    if (
-      dashcard.card &&
-      questionUsesRoutingEnabledDatabase(dashcard.card, databases)
-    ) {
-      return true;
-    }
-
-    // Check series cards (for questions with multiple series) - only available on QuestionDashboardCard
-    if ("series" in dashcard && dashcard.series) {
-      return dashcard.series.some((seriesCard: Card) =>
-        questionUsesRoutingEnabledDatabase(seriesCard, databases),
-      );
-    }
-
-    return false;
-  });
+  return getDashboardDatabaseIds(dashboard).some((database_id) =>
+    questionUsesRoutingEnabledDatabase({ database_id }, databases),
+  );
 };
 
 export function hasTableEditingEnabled(database: Pick<Database, "settings">) {

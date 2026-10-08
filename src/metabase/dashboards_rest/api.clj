@@ -1203,19 +1203,23 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
-        uuid (or existing-public-uuid
-                 (u/prog1 (str (random-uuid))
-                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
-                   (t2/with-transaction [_conn]
-                     (dashboards-rest.db/update-dashboard! dashboard-id
-                                                           {:public_uuid       <>
-                                                            :made_public_by_id api/*current-user-id*})
-                     (events/publish-event! :event/dashboard-public-link-created
-                                            {:object    (dashboards-rest.db/dashboard dashboard-id)
-                                             :object-id dashboard-id
-                                             :user-id   api/*current-user-id*}))))]
-    {:uuid uuid}))
+  (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)]
+    ;; an already-shared Dashboard returns its existing link, as the docstring promises -- and so stays deletable
+    ;; when routing has since made it dead. Only a link that would be newly minted can be refused.
+    (when-not existing-public-uuid
+      (public-sharing.validation/check-public-link-allowed!
+       (dashboards-rest.db/dashboard-card-database-ids dashboard-id)))
+    {:uuid (or existing-public-uuid
+               (u/prog1 (str (random-uuid))
+                 ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                 (t2/with-transaction [_conn]
+                   (dashboards-rest.db/update-dashboard! dashboard-id
+                                                         {:public_uuid       <>
+                                                          :made_public_by_id api/*current-user-id*})
+                   (events/publish-event! :event/dashboard-public-link-created
+                                          {:object    (dashboards-rest.db/dashboard dashboard-id)
+                                           :object-id dashboard-id
+                                           :user-id   api/*current-user-id*}))))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

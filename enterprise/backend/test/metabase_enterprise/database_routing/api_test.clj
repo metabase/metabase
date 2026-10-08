@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
@@ -308,3 +309,70 @@
                    (mt/user-http-request :rasta :delete 403 (str "database/" dest)))))
           (is (t2/exists? :model/Database :id regular-db-id))
           (is (t2/exists? :model/Database :id dest)))))))
+
+(defn- grant [db-id]
+  (t2/select-one-fn :anonymous_access_granted :model/DatabaseRouter :database_id db-id))
+
+(deftest anonymous-access-grant-defaults-to-ungranted-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo"})
+      (is (false? (grant db-id))))))
+
+(deftest anonymous-access-grant-is-set-on-enable-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo" :anonymous_access_granted true})
+      (is (true? (grant db-id))))))
+
+(deftest anonymous-access-grant-can-be-changed-on-an-existing-router-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
+    (testing "granting"
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo" :anonymous_access_granted true})
+      (is (true? (grant db-id))))
+    (testing "revoking"
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo" :anonymous_access_granted false})
+      (is (false? (grant db-id))))))
+
+(deftest changing-the-user-attribute-alone-leaves-the-anonymous-access-grant-alone-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                          {:user_attribute "bar"})
+    (is (= "bar" (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id db-id)))
+    (is (true? (grant db-id)))))
+
+(deftest disabling-routing-discards-the-anonymous-access-grant-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo" :anonymous_access_granted true}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute nil})
+      (testing "re-enabling routing starts ungranted again"
+        (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                              {:user_attribute "foo"})
+        (is (false? (grant db-id)))))))
+
+(deftest router-databases-have-an-anonymous-access-grant-on-the-get-api-test
+  (mt/with-temp [:model/Database {granted-id :id} {}
+                 :model/DatabaseRouter _ {:database_id granted-id :user_attribute "foo" :anonymous_access_granted true}
+                 :model/Database {ungranted-id :id} {}
+                 :model/DatabaseRouter _ {:database_id ungranted-id :user_attribute "bar"}
+                 :model/Database {plain-id :id} {}]
+    (testing "GET /api/database/:id"
+      (is (true? (:router_anonymous_access_granted
+                  (mt/user-http-request :crowberto :get 200 (str "database/" granted-id)))))
+      (is (false? (:router_anonymous_access_granted
+                   (mt/user-http-request :crowberto :get 200 (str "database/" ungranted-id))))))
+    (testing "GET /api/database"
+      (let [by-id (m/index-by :id (:data (mt/user-http-request :crowberto :get 200 "database/")))]
+        (is (true? (get-in by-id [granted-id :router_anonymous_access_granted])))
+        (is (false? (get-in by-id [ungranted-id :router_anonymous_access_granted])))
+        (testing "a database that is not a router reports no grant"
+          (is (contains? by-id plain-id))
+          (is (nil? (get-in by-id [plain-id :router_anonymous_access_granted]))))))))
