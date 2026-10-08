@@ -139,7 +139,6 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
-    :model/ApiKey
     :model/ApiKeyUsageLog
     :model/CacheConfig
     :model/CardFavorite
@@ -156,10 +155,6 @@
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
-    :model/MetabotConversation
-    :model/MetabotGroupLimit
-    :model/MetabotInstanceLimit
-    :model/MetabotMessage
     :model/MetabotPermissions
     :model/PremiumFeaturesCache
     :model/PythonLibrary
@@ -207,6 +202,11 @@
     (is (contains? copy-models model)
         (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
   (is (apply distinct? (map t2/table-name copy/entities))))
+
+(deftest ^:parallel entities-and-models-to-exclude-do-not-overlap-test
+  (is (= #{}
+         (set (filter models-to-exclude copy/entities)))
+      (format "%s and %s should not overlap" `copy/entities `models-to-exclude)))
 
 (def ^:private foreign-key-coverage-exceptions
   "Known exceptions to foreign-key coverage."
