@@ -166,6 +166,7 @@
  qp.timezone/system-timezone-id
  qp.util.transformations.nest-breakouts/finest-temporal-breakout-index
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
+ qp.util.transformations.nest-breakouts/nest-pivot-joins
  qp.util/default-query->remark
  qp.util/query->remark
  qp.wrap-value-literals/wrap-value-literals-in-mbql5
@@ -176,6 +177,8 @@
  setting/defsetting
  sync-util/name-for-logging
  sync-util/reducible-sync-tables
+ system/ensure-readable-path!
+ system/ensure-writable-path!
  system/site-uuid
  upload.db/current-database)
 

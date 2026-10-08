@@ -16,7 +16,7 @@
    {:key conn-key :type type :name conn-key :config config}))
 
 (def ^:private configured-anthropic
-  (connection "anthropic" "anthropic" {:api-key "sk-ant-test"}))
+  (connection "anthropic" "anthropic" {:api-key "sk-ant-test" :mini-model "claude-haiku-4-5-20251001"}))
 
 (def ^:private configured-google
   (connection "google" "google" {:oauth-access-token "ya29.test" :project-id "my-project"}))
@@ -200,7 +200,8 @@
                        (connection "zai" "zai")
                        (connection "openrouter" "openrouter")
                        (connection "mistral" "mistral")
-                       (connection "moonshot" "moonshot")]
+                       (connection "moonshot" "moonshot")
+                       (connection "xai" "xai")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -208,9 +209,7 @@
                "openai/gpt-4o"                              false
                "bedrock/anthropic.claude-opus-4-8"          true
                "bedrock/anthropic.claude-haiku-4-5"         false
-               ;; requests reasoning (encrypted replay), but the mantle never
-               ;; streams summaries, so nothing renders — see bedrock/reasoning-model?
-               "bedrock/openai.gpt-5.5"                     false
+               "bedrock/openai.gpt-5.5"                     true
                "azure/anthropic/claude-opus-5"              true
                "azure/anthropic/claude-haiku-4-5"           false
                "azure/openai/gpt-5.4"                       true
@@ -239,7 +238,9 @@
                "moonshot/kimi-k3"                           true
                "moonshot/kimi-k2.6"                         true
                ;; thinking-capable but excluded from supported-models — see moonshot/reasoning-model?
-               "moonshot/kimi-k2.7-code"                    false}]
+               "moonshot/kimi-k2.7-code"                    false
+               "xai/grok-4.7"                               true
+               "xai/grok-4.3"                               true}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
@@ -455,10 +456,10 @@
              (metabot.settings/llm-metabot-provider! "metabase/")))))))
 
 (deftest llm-mini-model-defaults-to-the-metabot-connections-mini-model-test
-  (testing "with nothing stored, quick tasks run on the fastest model of the connection Metabot uses"
+  (testing "with nothing stored, quick tasks run on the cheaper model the connection Metabot uses was listed as serving"
     (mt/with-temporary-raw-setting-values [llm-mini-model nil]
       (with-connections [configured-anthropic
-                         (connection "openai" "openai" {:api-key "sk-openai"})]
+                         (connection "openai" "openai" {:api-key "sk-openai" :mini-model "gpt-5.4-mini"})]
         (with-selected-model "anthropic/claude-sonnet-4-6"
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
         (testing "including a second connection of the same type, which keeps its own key"
@@ -467,6 +468,11 @@
 
 (deftest llm-mini-model-falls-back-to-the-metabot-model-test
   (mt/with-temporary-raw-setting-values [llm-mini-model nil]
+    (testing "a connection whose listing left out the cheaper model its type is known for falls through to the model
+              Metabot itself uses, rather than to a guess the account cannot serve"
+      (with-connections [(connection "anthropic" "anthropic" {:api-key "sk-ant-test"})]
+        (with-selected-model "anthropic/claude-sonnet-4-6"
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model))))))
     (testing "provider types with no mini model fall through to the model Metabot itself uses"
       (with-connections [(connection "azure" "azure" {:api-key  "azure-key"
                                                       :base-url "https://my-resource.services.ai.azure.com/openai"})]
@@ -478,6 +484,14 @@
                                                         :endpoint-id        "1234567890123456789"})]
         (with-selected-model "google/endpoints/1234567890123456789"
           (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-mini-model))))))
+    (testing "so does a Bedrock connection that names its model, while one without a model ID keeps its mini model"
+      (with-connections [(connection "bedrock" "bedrock" {:model-id   "eu.anthropic.claude-sonnet-4-6"
+                                                          :mini-model "anthropic.claude-haiku-4-5"})]
+        (with-selected-model "bedrock/eu.anthropic.claude-sonnet-4-6"
+          (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-mini-model)))))
+      (with-connections [(connection "bedrock" "bedrock" {:mini-model "anthropic.claude-haiku-4-5"})]
+        (with-selected-model "bedrock/anthropic.claude-opus-4-8"
+          (is (= "bedrock/anthropic.claude-haiku-4-5" (metabot.settings/llm-mini-model))))))
     (testing "so does a model reference naming a connection that does not exist"
       (with-connections []
         (with-selected-model "gone/some-model"
@@ -491,6 +505,46 @@
       (testing "and clearing it returns to the derived mini model"
         (mt/with-temporary-setting-values [llm-mini-model nil]
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
+
+(deftest retired-model-reads-as-its-successor-test
+  (testing "a saved retired OpenRouter id reads as the model now serving it, so the admin picker shows it selected"
+    (with-connections [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+      (with-selected-model "openrouter/qwen/qwen3.8-max"
+        (mt/with-temp-env-var-value! [mb-llm-mini-model nil]
+          (mt/with-temporary-raw-setting-values [llm-mini-model "openrouter/qwen/qwen3.8-max"]
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-metabot-provider)))
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/explicit-mini-model)))
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-mini-model)))
+            (is (true? (metabot.settings/llm-metabot-supports-reasoning?)))
+            (testing "including through the settings API the picker loads"
+              (let [values (into {}
+                                 (map (juxt :key :value))
+                                 (mt/user-http-request :crowberto :get 200 "setting"))]
+                (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-metabot-provider")))
+                (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-mini-model")))))))))))
+
+(deftest retired-model-is-stored-as-its-successor-test
+  (testing "writing a retired OpenRouter id stores the model now serving it, so saved values converge"
+    (with-connections [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil
+                                    mb-llm-mini-model       nil]
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (metabot.settings/llm-metabot-provider! "openrouter/qwen/qwen3.8-max")
+          (metabot.settings/llm-mini-model! "openrouter/qwen/qwen3.8-max")
+          (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-metabot-provider)))
+          (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-mini-model))))))))
+
+(deftest retired-model-written-before-its-connection-test
+  (testing (str "a retired id written before its connection exists is stored as given, and reads as its successor "
+                "once the connection appears")
+    (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil]
+      (mt/discard-setting-changes [llm-metabot-provider]
+        ;; `my-openrouter` rather than `openrouter`: no environment variable can synthesize a connection under this key
+        (with-connections []
+          (metabot.settings/llm-metabot-provider! "my-openrouter/qwen/qwen3.8-max")
+          (is (= "my-openrouter/qwen/qwen3.8-max" (setting/get-value-of-type :string :llm-metabot-provider))))
+        (with-connections [(connection "my-openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+          (is (= "my-openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-metabot-provider))))))))
 
 (deftest explicit-mini-model-reports-only-what-was-set-test
   (testing "the explicit reading is nil while the model is derived, so callers can tell a choice from a fallback"

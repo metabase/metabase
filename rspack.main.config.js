@@ -30,9 +30,7 @@ const {
 const {
   DropStylesEntryScriptPlugin,
 } = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
-const {
-  RESOLVE_ALIASES,
-} = require("./frontend/build/shared/rspack/resolve-aliases");
+const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
@@ -197,9 +195,7 @@ const config = {
   // we override it for dev mode below
   devtool: "source-map",
 
-  externals: {
-    canvg: "canvg",
-  },
+  ...resolveConfig,
 
   // output to "dist"
   output: {
@@ -242,6 +238,9 @@ const config = {
         test: /\.(svg|png)$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
       },
       {
         test: /\.css$/,
@@ -285,16 +284,6 @@ const config = {
         ],
       },
     ],
-  },
-  resolve: {
-    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
-    alias: RESOLVE_ALIASES,
-    fallback: {
-      buffer: require.resolve("buffer/"),
-      url: require.resolve("url/"),
-      events: require.resolve("events/"),
-      querystring: require.resolve("querystring-es3"),
-    },
   },
   optimization: {
     runtimeChunk: "single",

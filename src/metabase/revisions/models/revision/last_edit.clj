@@ -13,6 +13,7 @@
    [medley.core :as m]
    [metabase.dashboards.schema]
    [metabase.revisions.db :as revisions.db]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -20,23 +21,7 @@
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
-;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
-(def ^:private LastEditInfo
-  "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
-  [:map
-   [:timestamp  [:maybe :any]]
-   [:id         [:maybe ms/PositiveInt]]
-   [:first_name [:maybe :string]]
-   [:last_name  [:maybe :string]]
-   [:email      [:maybe :string]]])
-
-(def MaybeAnnotated
-  "Spec for an item annotated with last-edit-info. Items are cards or dashboards. Optional because we may not always
-  have revision history for all cards/dashboards."
-  [:map
-   [:last-edit-info {:optional true} LastEditInfo]])
-
-(mu/defn with-last-edit-info :- [:maybe [:sequential MaybeAnnotated]]
+(mu/defn with-last-edit-info :- [:maybe [:sequential ::revisions.schema/maybe-annotated]]
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
@@ -60,7 +45,7 @@
                  (m/assoc-some item :last-edit-info (-> item :id id->updated-info)))
                items))))))
 
-(mu/defn edit-information-for-user :- LastEditInfo
+(mu/defn edit-information-for-user :- ::revisions.schema/last-edit-info
   "Construct the `:last-edit-info` map given a user. Useful for editing routes. Most edit info information comes from
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
@@ -71,10 +56,10 @@
 
 (def ^:private CollectionLastEditInfo
   "Schema for the map of bulk last-item-info. A map of two keys, `:card` and `:dashboard`, each of which is a map from
-  id to a LastEditInfo.:Schema"
+  id to a `::revisions.schema/last-edit-info`."
   [:map
-   [:card      {:optional true} [:map-of :int LastEditInfo]]
-   [:dashboard {:optional true} [:map-of :int LastEditInfo]]])
+   [:card      {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]
+   [:dashboard {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]])
 
 (def ^:private FetchLastEditedInfoArgs
   [:map {:closed true}

@@ -1,6 +1,6 @@
 import { c } from "ttag";
 
-import { useSetting } from "metabase/settings";
+import { useListEnginesQuery } from "metabase/api";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
@@ -12,7 +12,7 @@ export const ExistingDatabaseHeader = ({
 }: {
   database: Database;
 }) => {
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
   const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
   const driverName = engineKey
     ? engines[engineKey]?.["driver-name"]

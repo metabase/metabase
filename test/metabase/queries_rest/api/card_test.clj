@@ -2547,6 +2547,16 @@
                  (cond-> response
                    (string? response) (-> u/strip-bom str/split-lines)))))))))
 
+(deftest csv-download-pivot-results-on-non-pivot-card-test
+  (testing "pivot_results is ignored on non-pivot cards (#81323)"
+    (with-temp-native-card [_ card]
+      (let [response (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" (u/the-id card))
+                                           {:pivot_results true})]
+        (is (= ["COUNT(*)"
+                "75"]
+               (cond-> response
+                 (string? response) (-> u/strip-bom str/split-lines))))))))
+
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card [_ card]
@@ -3179,6 +3189,18 @@
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-1 card-2])))))
+
+(deftest bulk-move-moves-model-actions-test
+  (testing "bulk-moving models moves their actions too"
+    (mt/with-temp [:model/Collection old-collection {}
+                   :model/Collection new-collection {}
+                   :model/Card       model-1        {:type :model :collection_id (u/the-id old-collection)}
+                   :model/Card       model-2        {:type :model :collection_id (u/the-id old-collection)}
+                   :model/Action     action-1       {:type :query :name "One" :model_id (u/the-id model-1)}
+                   :model/Action     action-2       {:type :query :name "Two" :model_id (u/the-id model-2)}]
+      (POST-card-collections! :crowberto 200 new-collection [model-1 model-2])
+      (is (= #{(u/the-id new-collection)}
+             (t2/select-fn-set :collection_id :model/Action :id [:in [(u/the-id action-1) (u/the-id action-2)]]))))))
 
 (deftest test-that-we-can-bulk-remove-some-cards-from-a-collection
   (mt/with-temp [:model/Collection  collection {}

@@ -53,7 +53,7 @@
 (defn- collectable-models
   []
   (set/union (archived-directly-models)
-             #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))
+             #{:model/Action :model/Pulse :model/NativeQuerySnippet :model/Timeline}))
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
@@ -75,12 +75,17 @@
   "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
+(def ^:constant library-dashboards-collection-type
+  "The value of the `:type` field for collections that only allow dashboards and their questions."
+  "library-dashboards")
+
 (def library-collection-types
   "All library `:type` values — collections users curate as the canonical place to find content.
    Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
   #{library-collection-type
     library-data-collection-type
-    library-metrics-collection-type})
+    library-metrics-collection-type
+    library-dashboards-collection-type})
 
 (def ^:constant tenant-specific-root-collection-type
   "The value of the `:type` field for root collections that belong to a single tenant"
@@ -93,6 +98,10 @@
 (def snippets-ns
   "Namespace for snippets"
   :snippets)
+
+(def data-apps-ns
+  "Namespace for the resource collections of data apps"
+  :data-apps)
 
 (defn- trash-collection* []
   (collections.db/collection-of-type trash-collection-type))
@@ -161,6 +170,11 @@
   "Is this the Metrics collection?"
   [collection]
   (= (:type collection) library-metrics-collection-type))
+
+(defn- is-library-dashboards-collection?
+  "Is this the Dashboards collection?"
+  [collection]
+  (= (:type collection) library-dashboards-collection-type))
 
 (defn remote-synced-collection
   "Get the remote-synced collection if it exists."
@@ -237,17 +251,46 @@
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
 
+(def library-dashboards-entity-id
+  "The entity_id for the Library's Dashboards collection."
+  "librarylibrarydashbrd")
+
 (def ^:private library-entity-id?
   "Returns true if the given entity ID is one of the hard-coded Library keys."
   #{library-entity-id
     library-data-entity-id
-    library-metrics-entity-id})
+    library-metrics-entity-id
+    library-dashboards-entity-id})
+
+(defn- grant-library-collection-permissions!
+  "Gives All Users read and Data Analysts read-write access to the Library `collection`."
+  [collection]
+  (collections.db/delete-permissions-for-collection! (:id collection))
+  (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+  (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
+
+(defn- insert-library-dashboards-collection!
+  "Inserts the Dashboards collection under `library` and returns it."
+  [library]
+  (u/prog1 (collections.db/insert-collection! {:name             "Dashboards"
+                                               :type             library-dashboards-collection-type
+                                               :location         (str "/" (:id library) "/")
+                                               :entity_id        library-dashboards-entity-id
+                                               :is_remote_synced (boolean (:is_remote_synced library))})
+    (grant-library-collection-permissions! <>)))
+
+(defn ensure-library-dashboards-collection!
+  "Creates the Library's Dashboards collection when the Library exists without one, returning the created collection."
+  []
+  (when-let [library (collections.db/collection-with-entity-id library-entity-id)]
+    (when-not (collections.db/collection-with-entity-id library-dashboards-entity-id)
+      (insert-library-dashboards-collection! library))))
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
-    (throw (ex-info "Library already exists" {})))
+    (throw (ex-info "Semantic layer already exists" {})))
   (let [library       (collections.db/insert-collection! {:name      "Library"
                                                           :type      library-collection-type
                                                           :location  "/"
@@ -261,10 +304,8 @@
                                                           :type      library-metrics-collection-type
                                                           :location  base-location
                                                           :entity_id library-metrics-entity-id})]
-    (doseq [col [library data metrics]]
-      (collections.db/delete-permissions-for-collection! (:id col))
-      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
-      (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
+    (run! grant-library-collection-permissions! [library data metrics])
+    (insert-library-dashboards-collection! library)
     library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
@@ -278,13 +319,13 @@
    :authority_level mi/transform-keyword})
 
 (defn library-root-collection?
-  "Is this one of the immutable system-created Library collections (root, data, or metrics)?
+  "Is this one of the immutable system-created Library collections (root, data, metrics, or dashboards)?
   Returns false for user-created subcollections that inherit a library type."
   [collection]
   (library-entity-id? (:entity_id collection)))
 
 (defn maybe-localize-system-collection-name
-  "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  "If the collection is a system-defined collection (Trash, Library, Data, Metrics, or Dashboards), translate the `name`.
   Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
@@ -300,7 +341,10 @@
     (assoc :name (tru "Data"))
 
     (and (is-library-metrics-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Metrics"))))
+    (assoc :name (tru "Metrics"))
+
+    (and (is-library-dashboards-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Dashboards"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -1693,6 +1737,7 @@
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids true)
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
@@ -1760,6 +1805,7 @@
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 
@@ -2071,7 +2117,8 @@
     (collections.db/delete-dashboards-in-collections! affected-collection-ids)
     (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
     (collections.db/delete-pulses-in-collections! affected-collection-ids)
-    (collections.db/delete-timelines-in-collections! affected-collection-ids))
+    (collections.db/delete-timelines-in-collections! affected-collection-ids)
+    (collections.db/delete-actions-in-collections! affected-collection-ids))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
@@ -2158,13 +2205,15 @@
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id skip-archived)]
                                {["Timeline" timeline-id] {"Collection" id}}))
+        actions     (into {} (for [action-id (collections.db/action-ids-in-collection id skip-archived)]
+                               {["Action" action-id] {"Collection" id}}))
         tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id skip-archived)]
                                {["Table" table-id] {"Collection" id}}))
         ;; Transforms don't have an archived column, so we don't filter by skip-archived
         transforms  (when config/ee-available?
                       (into {} (for [transform-id (collections.db/transform-ids-in-collection id)]
                                  {["Transform" transform-id] {"Collection" id}})))]
-    (merge child-colls dashboards cards documents timelines tables transforms)))
+    (merge child-colls dashboards cards documents timelines actions tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [path      (get collections (:entity_id coll))
@@ -2246,9 +2295,13 @@
   {:arglists '([model])}
   t2.protocols/dispatch-value)
 
+(def default-allowed-namespaces
+  "The Collection namespaces most models may go in: the default namespace and the ones that hold the same content."
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
+
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics :shared-tenant-collection :tenant-specific})
+  default-allowed-namespaces)
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
@@ -2494,9 +2547,13 @@
   "Return true if the given collection ID corresponds to a collection in the library."
   [collection-id]
   (when collection-id
-    (pos-int? (collections.db/collection-count-of-types collection-id [library-collection-type
-                                                                       library-data-collection-type
-                                                                       library-metrics-collection-type]))))
+    (pos-int? (collections.db/collection-count-of-types collection-id (vec library-collection-types)))))
+
+(defn library-dashboards-collection?
+  "Return true if the collection with `collection-id` only holds dashboards and their questions."
+  [collection-id]
+  (when collection-id
+    (pos-int? (collections.db/collection-count-of-types collection-id [library-dashboards-collection-type]))))
 
 (defn collections-in-namespace
   "Return all collections in the given namespace."

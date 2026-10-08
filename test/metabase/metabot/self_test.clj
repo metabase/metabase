@@ -16,11 +16,13 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
@@ -44,10 +46,12 @@
 (def ^:private supported-models-by-provider-type
   {"anthropic"  #'self.claude/supported-models
    "bedrock"    #'bedrock/supported-models
+   "deepseek"   #'deepseek/supported-models
    "mistral"    #'mistral/supported-models
    "moonshot"   #'moonshot/supported-models
    "openai"     #'openai/supported-models
    "openrouter" #'openrouter/supported-models
+   "xai"        #'xai/supported-models
    "zai"        #'zai/supported-models})
 
 (deftest ^:parallel registry-models-are-listable-test
@@ -58,7 +62,10 @@
     (doseq [[provider-type supported] supported-models-by-provider-type]
       (testing provider-type
         (is (contains? @supported (llm.provider/default-model provider-type)))
-        (is (contains? @supported (llm.provider/mini-model provider-type)))))))
+        (is (contains? @supported (llm.provider/mini-model provider-type)))
+        (testing "and a retired model reads as one the picker offers"
+          (doseq [successor (vals (:retired-models (llm.provider/provider-type provider-type)))]
+            (is (contains? @supported successor))))))))
 
 (deftest parse-provider-model-test
   (llm.tu/with-default-connections
@@ -77,8 +84,10 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
-      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
-              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "deepseek" :model "deepseek-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-flash")))
+      (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
+              (#'self/parse-provider-model "xai/grok-4.7")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "resolves the provider type, not the admin's name for the connection"
@@ -516,6 +525,19 @@
                   {:type :reasoning-delta :id "r1" :delta "c"}
                   {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
 
+(deftest ^:parallel aisdk-xf-orphan-chunk-test
+  (testing "a group that does not open with its start chunk fails with an error naming the chunk"
+    (doseq [[mode xf] [["aisdk-xf" (self.core/aisdk-xf)]
+                       ["lite-aisdk-xf" (self.core/lite-aisdk-xf)]]]
+      (testing mode
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Model stream sent a :tool-input-delta chunk for \"call-1\" without its start chunk"
+             (into [] xf
+                   [{:type :start :messageId "msg-1"}
+                    {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{}"}
+                    {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])))))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
@@ -632,6 +654,19 @@
                      :error      {:message (str "Tool `analyze_chart` does not exist. "
                                                 "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
               result)))))
+
+(deftest ^:parallel tool-executor-xf-stream-error-test
+  (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
+    (let [running  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+          cut-off  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
+          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+        (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
+                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+        (testing "and a warning names the call that never ran"
+          (is (=? [{:level :warn :message #".*call-2.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 
@@ -1393,6 +1428,58 @@
             (is (re-find #"content policy violation" (ex-message e))
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
             (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
+
+(deftest call-llm-structured-text-reply-test
+  (llm.tu/with-default-connections
+    (let [schema {:type                 "object"
+                  :properties           {"title" {:type "string"}
+                                         "tags"  {:type "array" :items {:type "string"}}
+                                         "score" {:type "number" :minimum 0 :maximum 1}}
+                  :required             ["title"]
+                  :additionalProperties false}
+          answer {:title "Q2 revenue" :tags ["revenue"] :score 0.5}
+          reply  (fn [text] {:type :text :id "t1" :text text})
+          fenced (fn [json-text] (str "Here you go:\n```json\n" json-text "\n```"))
+          call!  (fn [& parts]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            (cons {:type :start :id "m1"} parts)))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a model that answers in text instead of calling the tool has its JSON used"
+        (are [text] (= answer (call! (reply text)))
+          (json/encode answer)
+          (fenced (json/encode answer))))
+      (testing "the last fenced code block that matches the schema is used"
+        (are [text] (= answer (call! (reply text)))
+          (str (fenced (json/encode {:title "Draft"})) "\n" (fenced (json/encode answer)))
+          (str (fenced (json/encode answer)) "\n" (fenced (json/encode {:title 42})))))
+      (testing "a line break the model left unescaped inside a string doesn't stop the JSON from being used"
+        (are [text] (= {:title "Q2 revenue\nby region"} (call! (reply text)))
+          "{\"title\": \"Q2 revenue\nby region\"}"
+          (fenced "{\"title\": \"Q2 revenue\nby region\"}")))
+      (testing "a text reply without JSON matching the schema still fails"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          "Q2 revenue"
+          "{\"title\": \"Q2 revenue\""
+          (json/encode {:tags ["revenue"]})
+          (json/encode {:title "Q2 revenue" :note "x"})
+          (json/encode {:title 42})
+          (json/encode {:title "Q2 revenue" :tags [1]})
+          (json/encode {:title "Q2 revenue" :score 2})))
+      (testing "JSON followed by anything but whitespace is not used, in the whole reply or in a fence"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          (str (json/encode answer) " Hope that helps!")
+          (str (json/encode answer) (json/encode {:title "Other"}))
+          (fenced (str (json/encode answer) " Hope that helps!"))
+          (fenced (str (json/encode answer) (json/encode {:title "Other"})))))
+      (testing "a tool call is used as is, whatever text comes with it"
+        (is (= {:title "From the tool"}
+               (call! (reply (json/encode answer))
+                      {:type      :tool-input
+                       :id        "c1"
+                       :function  "structured_output"
+                       :arguments {:title "From the tool"}})))))))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
@@ -2258,6 +2345,63 @@
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
 
+(defn- provider-api-error!
+  "What an adapter throws when `provider` answers with an HTTP error `status` and a JSON `body`."
+  [provider status body]
+  (mt/with-log-level [metabase.metabot.self.core :fatal]
+    (caught #(self.core/rethrow-api-error! provider
+                                           (constantly "API error")
+                                           (ex-info "clj-http error"
+                                                    {:status  status
+                                                     :headers {"content-type" "application/json"}
+                                                     :body    (json/encode body)})))))
+
+(def ^:private anthropic-credit-balance-body
+  {:type  "error"
+   :error {:type    "invalid_request_error"
+           :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
+
+(deftest byok-provider-error-test
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+    (testing "classifies the failures that the customer can fix on their side"
+      (are [code provider status body]
+           (= code (:error-code (mt/as-admin (self/byok-provider-error (provider-api-error! provider status body)))))
+        "ai_provider_billing"    "anthropic"  400 anthropic-credit-balance-body
+        "ai_provider_billing"    "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                           :message "You have reached your specified API usage limits."}}
+        "ai_provider_billing"    "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
+        "ai_provider_billing"    "anthropic"  429 {:error {:type    "rate_limit_error"
+                                                           :message "You have reached your API usage limits."
+                                                           :details {:error_code "enforced_spend_limit_reached"}}}
+        "ai_provider_billing"    "openai"     429 {:error {:type    "insufficient_quota"
+                                                           :code    "insufficient_quota"
+                                                           :message "You exceeded your current quota."}}
+        "ai_provider_billing"    "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
+        "ai_provider_rate_limit" "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
+        "ai_provider_rate_limit" "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
+        "ai_provider_auth"       "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
+        "ai_provider_auth"       "anthropic"  403 {:error {:type    "permission_error"
+                                                           :message "Your API key does not have permission to use the specified resource."}}
+        nil                      "openai"     403 {:error {:type    "request_forbidden"
+                                                           :code    "unsupported_country_region_territory"
+                                                           :message "Country, region, or territory not supported"}}
+        nil                      "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                           :message "max_tokens: Input should be greater than 0"}}
+        nil                      "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}))
+    (testing "admins are told which provider failed, everyone else is not"
+      (doseq [status [402 429 401]]
+        (let [e (provider-api-error! "anthropic" status {})]
+          (is (str/includes? (:message (mt/as-admin (self/byok-provider-error e)))
+                             "Anthropic"))
+          (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
+                                              (self/byok-provider-error e)))
+                                  "Anthropic"))))))
+    (testing "the managed provider keeps the generic error, since its failures are Metabase's to fix"
+      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+        (is (nil? (mt/as-admin
+                    (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))))))
+
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"
     (let [models (self/known-models "anthropic")]
@@ -2286,7 +2430,7 @@
                           #"Unrecognized supported-models entry"
                           (#'self/normalize-known-model "anthropic" "some-model" {:context-window 200000}))))
   (testing "every provider that publishes an allow-list names every model in it"
-    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "zai"]]
+    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "xai" "zai"]]
       (let [models (self/known-models provider)]
         (is (seq models) provider)
         (is (every? (comp string? :display-name val) models) provider)))))

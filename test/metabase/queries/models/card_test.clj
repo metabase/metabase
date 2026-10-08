@@ -115,7 +115,7 @@
   [database-id]
   {:database database-id
    :type :query
-   :query {:source-table 1}})
+   :query {:source-table (mt/id :venues)}})
 
 (deftest database-id-test
   (mt/with-temp [:model/Card {:keys [id]} {:name          "some name"
@@ -179,16 +179,14 @@
 (deftest disable-implicit-actions-if-needed-test-3
   (mt/with-actions-enabled
     (testing "unhappy paths\n"
-      (testing "only disable implicit actions, not http and query"
+      (testing "only disable implicit actions, not query"
         (mt/with-actions [{model-id :id}           {:type :model, :dataset_query (mt/mbql-query users)}
                           {implicit-id :action-id} {:type :implicit}
-                          {http-id :action-id}     {:type :http}
                           {query-id :action-id}    {:type :query}]
           ;; make sure we have thing exists to start with
-          (is (= 3 (t2/count :model/Action :id [:in [implicit-id http-id query-id]])))
+          (is (= 2 (t2/count :model/Action :id [:in [implicit-id query-id]])))
           (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (not (t2/exists? :model/Action :id implicit-id)))
-          (is (t2/exists? :model/Action :id http-id))
           (is (t2/exists? :model/Action :id query-id)))))))
 
 (deftest disable-implicit-actions-if-needed-test-4
@@ -769,21 +767,6 @@
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
 
-(deftest ^:parallel descendants-model-actions-test
-  (testing "GHY-4722: a model's actions are its descendants, though the model doesn't reference them"
-    (mt/with-temp [:model/Card   {model-id :id}    {:type          :model
-                                                    :dataset_query {:database (mt/id)
-                                                                    :type     :query
-                                                                    :query    {:source-table (mt/id :venues)}}}
-                   :model/Action {action-id :id}   {:type :implicit :name "Live" :model_id model-id}
-                   :model/Action {archived-id :id} {:type :implicit :name "Archived" :model_id model-id :archived true}]
-      (is (= {["Action" action-id]   {"Card" model-id}
-              ["Action" archived-id] {"Card" model-id}}
-             (serdes/descendants "Card" model-id {})))
-      (testing "with :skip-archived, archived actions are left out"
-        (is (= {["Action" action-id] {"Card" model-id}}
-               (serdes/descendants "Card" model-id {:skip-archived true})))))))
-
 (defn- action-events-during!
   "The set of `[topic action-id archived?]` for the action events `thunk` publishes."
   [thunk]
@@ -801,7 +784,8 @@
   (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
                  :model/Action {implicit :id} {:type :implicit :name "Create" :model_id model-id}
                  :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
-                 :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
+                 :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true
+                                               :archived_directly true}]
     ;; the implicit_action row is what marks an action implicit to the queries that retire them
     (t2/insert! :model/ImplicitAction {:action_id implicit :kind "row/create"})
     (f {:model-id model-id :implicit implicit :query query :archived archived})))
@@ -821,7 +805,7 @@
         (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))))
 
 (deftest model-becoming-question-publishes-action-events-test
-  (testing "GHY-4722: update-card! announces the actions it archives and deletes when a model becomes a question"
+  (testing "update-card! announces the actions it archives and deletes when a model becomes a question"
     (do-with-model-actions!
      (fn [{:keys [model-id implicit query]}]
        (is (= #{[:event/action-update query true]
@@ -834,6 +818,57 @@
      (fn [{:keys [model-id implicit]}]
        (is (= #{[:event/action-delete implicit false]}
               (action-events-during! #(update-model! model-id {:dataset_query (filtered-venues-query)}))))))))
+
+(deftest model-move-publishes-action-events-test
+  (testing "update-card! announces the unarchived actions that move with a model to another collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (do-with-model-actions!
+       (fn [{:keys [model-id implicit query]}]
+         (is (= #{[:event/action-update implicit false]
+                  [:event/action-update query false]}
+                (action-events-during! #(update-model! model-id {:collection_id coll-id})))))))))
+
+(deftest question-move-publishes-action-events-test
+  (testing "update-card! announces the actions that move with a question"
+    (mt/with-temp [:model/Collection {coll-id :id}     {}
+                   :model/Card       {question-id :id} {:type :question :dataset_query (mt/mbql-query venues)}
+                   :model/Action     {action-id :id}   {:type :query :name "On a question" :model_id question-id}]
+      (is (= #{[:event/action-update action-id false]}
+             (action-events-during! #(update-model! question-id {:collection_id coll-id})))))))
+
+(deftest model-archive-cascades-to-actions-test
+  (testing "archiving a model archives its actions, and unarchiving it restores only those"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query archived]}]
+       (let [archived-state #(t2/select-pk->fn (juxt :archived :archived_directly) :model/Action :model_id model-id)]
+         (is (= #{[:event/action-update implicit true]
+                  [:event/action-update query true]}
+                (action-events-during! #(update-model! model-id {:archived true}))))
+         (is (= {implicit [true false], query [true false], archived [true true]} (archived-state)))
+         (is (= #{[:event/action-update implicit false]
+                  [:event/action-update query false]}
+                (action-events-during! #(update-model! model-id {:archived false}))))
+         (is (= {implicit [false false], query [false false], archived [true true]} (archived-state))))))))
+
+(deftest model-actions-follow-model-collection-test
+  (testing "the actions of a model are kept in the model's collection"
+    (mt/with-temp [:model/Collection {coll-1 :id} {}
+                   :model/Collection {coll-2 :id} {}
+                   :model/Card       {model-id :id} {:type :model :collection_id coll-1 :dataset_query (mt/mbql-query venues)}
+                   :model/Card       {other-id :id} {:type :model :collection_id coll-2 :dataset_query (mt/mbql-query venues)}
+                   :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
+      (let [action-collection #(t2/select-one-fn :collection_id :model/Action :id action-id)]
+        (testing "an inserted action takes its model's collection"
+          (is (= coll-1 (action-collection))))
+        (testing "moving the model moves its actions"
+          (t2/update! :model/Card model-id {:collection_id coll-2})
+          (is (= coll-2 (action-collection)))
+          (t2/update! :model/Card model-id {:collection_id nil})
+          (is (nil? (action-collection))))
+        (testing "attaching an action to another model moves it to that model's collection"
+          (t2/update! :model/Card model-id {:collection_id coll-1})
+          (t2/update! :model/Action action-id {:model_id other-id})
+          (is (= coll-2 (action-collection))))))))
 
 (deftest model-changes-outside-update-card-publish-no-action-events-test
   (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"
@@ -963,6 +998,7 @@
    column must project all of these — see [[metabase.queries.card-schema/schema-upgrade-triggers]]."
   {:id                 1
    :type               :question
+   :entity_id          "cardcardcardcardcard1"
    :database_id        1
    :dataset_query      {}
    :result_metadata    nil

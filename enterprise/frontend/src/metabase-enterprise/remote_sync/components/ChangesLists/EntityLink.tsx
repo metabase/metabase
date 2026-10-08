@@ -15,8 +15,8 @@ interface EntityLinkProps {
 }
 
 function getEntityUrl(entity: RemoteSyncEntity): string | null {
-  // An action URL needs the parent model id, which dirty entries do not carry.
-  if (entity.model === "action") {
+  // Action and transform test URLs need the parent entity id, which dirty entries do not carry.
+  if (entity.model === "action" || entity.model === "transformtest") {
     return null;
   }
   return modelToUrl(entity);

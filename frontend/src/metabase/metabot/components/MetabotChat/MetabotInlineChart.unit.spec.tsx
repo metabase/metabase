@@ -84,6 +84,7 @@ function setup(
       value={{ ...value, ...valueOverrides }}
       readonly={readonly}
       conversationId="convo-1"
+      size="md"
     />,
   );
 }
@@ -269,6 +270,7 @@ describe("MetabotInlineChart", () => {
               value={value}
               readonly={false}
               conversationId="convo-1"
+              size="md"
             />
           }
         />,
