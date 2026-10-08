@@ -3766,14 +3766,13 @@
 
   enterprise/data-sensitivity
   {:team "Graphy"
-   :api  #{metabase-enterprise.data-sensitivity.api metabase-enterprise.data-sensitivity.init}
+   :api  #{metabase-enterprise.data-sensitivity.api}
    :uses #{api
            database-routing
            driver
            lib.schema
            metabot
            request
-           settings
            util
            util.config
            warehouse-schema-overlay

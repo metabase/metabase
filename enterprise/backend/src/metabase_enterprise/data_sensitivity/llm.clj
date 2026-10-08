@@ -1,14 +1,14 @@
 (ns metabase-enterprise.data-sensitivity.llm
   "The single LLM interaction of the data-sensitivity classifier: category and semantic-type enums, the system
   prompt, the user message rendered from a [[metabase-enterprise.data-sensitivity.context]] packet, the structured
-  response schema, the call, and response parsing. [[classify-packet]] chunks wide tables into concurrent calls and
-  merges the parsed entries by field name. Every call from this module holds one of
-  [[settings/data-sensitivity-max-concurrent-llm-calls]] permits shared by the whole instance. Nothing here catches exceptions: gate failures, malformed responses, and transport
+  response schema, the call, and response parsing. [[classify-packet]] splits wide tables into chunks and merges the
+  parsed entries by field name. Every call runs on one instance-wide pool of [[pool-size]] threads, so that is the
+  limit on LLM calls in flight. Nothing here catches exceptions: gate failures, malformed responses, and transport
   errors propagate to the caller."
   (:require
    [clojure.string :as str]
+   [com.climate.claypoole :as cp]
    [metabase-enterprise.data-sensitivity.context :as context]
-   [metabase-enterprise.data-sensitivity.settings :as settings]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -17,7 +17,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.util.concurrent Callable ExecutionException Executors Future Semaphore)))
+   (java.util.concurrent Callable ExecutionException ExecutorService Future)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,12 +76,19 @@
 (def ^:private data-block-delimiter-re
   (re-pattern (str "(?i)</?\\s*(?:" (str/join "|" data-block-tags) ")\\s*>")))
 
+(defn- strip-delimiters
+  "Remove [[data-block-tags]] delimiters from `s` until none remain, so a nested tag such as `<ta<table>ble>` cannot
+  rebuild one."
+  [s]
+  (let [stripped (str/replace s data-block-delimiter-re "")]
+    (if (= stripped s) s (recur stripped))))
+
 (defn- data-block
   "Fence untrusted `content` in `<tag>…</tag>`, stripping any of the [[data-block-tags]] delimiters from the content
   first so no field name, description, or sampled value can close its block or forge a neighbour's."
   [tag content]
   (str "<" tag ">\n"
-       (str/replace (str content) data-block-delimiter-re "")
+       (strip-delimiters (str content))
        "\n</" tag ">"))
 
 (def system-prompt
@@ -121,7 +128,7 @@
       (str/join ", " parts))))
 
 (defn- quoted [s]
-  (str "\"" (str/replace (str s) "\"" "'") "\""))
+  (str "\"" (-> (str s) (str/replace "\"" "'") (str/replace #"\s+" " ")) "\""))
 
 (defn- human-set-marker [{:keys [human_set]} k]
   (when (contains? human_set k) " [human-set]"))
@@ -187,37 +194,18 @@
   [field-count]
   (min 8192 (+ 512 (* 120 field-count))))
 
-(defonce ^:private permits
-  (atom nil))
-
-(defn- call-permits
-  "The instance-wide semaphore bounding LLM calls from this module, sized by
-  [[settings/data-sensitivity-max-concurrent-llm-calls]]. A permit is held through the provider adapter's own retries
-  and backoff. A changed setting replaces the semaphore; calls holding a permit of the old one release it there."
-  ^Semaphore []
-  (let [n (settings/data-sensitivity-max-concurrent-llm-calls)]
-    (:semaphore (swap! permits (fn [current]
-                                 (if (= n (:size current))
-                                   current
-                                   {:size n :semaphore (Semaphore. n true)}))))))
-
 (defn- call! [model packet fields]
-  (let [^Semaphore permit (call-permits)]
-    (.acquire permit)
-    (try
-      (metabot.self/call-llm-structured-with-trace
-       model
-       [{:role "system" :content system-prompt}
-        {:role "user"   :content (user-message packet fields)}]
-       response-schema
-       temperature
-       (max-tokens (count fields))
-       {:request-id          (str (random-uuid))
-        :source              "data_sensitivity_classification"
-        :tag                 "data-sensitivity"
-        :required-permission :permission/metabot-other-tools})
-      (finally
-        (.release permit)))))
+  (metabot.self/call-llm-structured-with-trace
+   model
+   [{:role "system" :content system-prompt}
+    {:role "user"   :content (user-message packet fields)}]
+   response-schema
+   temperature
+   (max-tokens (count fields))
+   {:request-id          (str (random-uuid))
+    :source              "data_sensitivity_classification"
+    :tag                 "data-sensitivity"
+    :required-permission :permission/metabot-other-tools}))
 
 (defn usage-from-parts
   "Token usage of one call, from the `:usage` part of its trace."
@@ -307,28 +295,29 @@
   "Fields per LLM call. Wider tables are split into independent calls that each repeat the table block."
   60)
 
-(def default-chunk-parallelism
-  "Chunks of one table classified concurrently, still bounded by [[settings/data-sensitivity-max-concurrent-llm-calls]]."
-  4)
+(def pool-size
+  "Threads in the chunk pool: the instance-wide limit on LLM calls in flight from this module."
+  3)
 
-(defn- run-chunks
-  "Apply `f` to every chunk with at most `parallelism` in flight, returning the results in chunk order. Runs on the
-  caller's thread when there is one chunk. The first failure is rethrown as `f` threw it, and chunks still running
-  are interrupted. Workers run under the caller's dynamic bindings."
-  [chunks parallelism f]
-  (if (<= (count chunks) 1)
-    (mapv f chunks)
-    (let [executor (Executors/newFixedThreadPool (min parallelism (count chunks)))]
-      (try
-        (let [futures (mapv (fn [chunk] (.submit executor ^Callable (bound-fn* #(f chunk)))) chunks)]
-          (mapv (fn [^Future fut]
-                  (try
-                    (.get fut)
-                    (catch ExecutionException e
-                      (throw (.getCause e)))))
-                futures))
-        (finally
-          (.shutdownNow executor))))))
+(defonce ^:private ^ExecutorService pool
+  (cp/threadpool pool-size {:name "data-sensitivity-llm" :daemon true}))
+
+(defn- map-chunks
+  "Apply `f` to every chunk on [[pool]] and return the results in chunk order. Tasks run under the caller's dynamic
+  bindings: the Metabot permission binding and the current user. The first failure in chunk order is rethrown as `f`
+  threw it, and the other chunks are cancelled. Only chunk calls run on the pool; a task never submits to it, so the
+  pool cannot deadlock."
+  [chunks f]
+  (let [futures (mapv (fn [chunk] (.submit pool ^Callable (bound-fn* #(f chunk)))) chunks)]
+    (try
+      (mapv (fn [^Future fut]
+              (try
+                (.get fut)
+                (catch ExecutionException e
+                  (throw (.getCause e)))))
+            futures)
+      (finally
+        (run! #(.cancel ^Future % true) futures)))))
 
 (mr/def ::classification
   [:map
@@ -342,19 +331,18 @@
 
 (mr/def ::classify-options
   [:map {:closed true}
-   [:model             {:optional true} [:maybe :string]]
-   [:chunk-size        {:optional true} [:maybe pos-int?]]
-   [:chunk-parallelism {:optional true} [:maybe pos-int?]]])
+   [:model      {:optional true} [:maybe :string]]
+   [:chunk-size {:optional true} [:maybe pos-int?]]])
 
 (mu/defn classify-packet :- ::classification
-  "Classify every field of `packet` in chunks of `chunk-size`, `chunk-parallelism` at a time, merging parsed entries
-  by field name. `model` defaults to the mini model. A packet with no fields makes no call."
+  "Classify every field of `packet` in chunks of `chunk-size` on the shared pool, merging parsed entries by field
+  name. The first chunk failure fails the packet. `model` defaults to the mini model. A packet with no fields makes
+  no call."
   [packet :- ::context/packet
-   & {:keys [model chunk-size chunk-parallelism]} :- [:maybe ::classify-options]]
+   & {:keys [model chunk-size]} :- [:maybe ::classify-options]]
   (let [model  (or model (metabot.settings/llm-mini-model))
         chunks (vec (partition-all (or chunk-size default-chunk-size) (:fields packet)))
-        calls  (run-chunks chunks
-                           (or chunk-parallelism default-chunk-parallelism)
+        calls  (map-chunks chunks
                            (fn [fields]
                              (let [{:keys [result parts]} (call! model packet fields)]
                                (assoc (parse-response fields result) :usage (usage-from-parts parts)))))]

@@ -22,7 +22,7 @@
   "Defaults for [[table-packet]] options."
   {:include-values?   true
    :sample-rows       10
-   :truncation        120
+   :truncation        500
    :sample-values-cap 8
    :cached-values-cap 15})
 
@@ -142,7 +142,7 @@
   (into {} (keep (fn [[field-id {:keys [values]}]]
                    (when (seq values)
                      [field-id (distinct-strings cap truncation values)])))
-        (field-values/batched-get-latest-full-field-values field-ids)))
+        (field-values/batched-latest-full-field-values field-ids)))
 
 (defn- conj-rff [_metadata]
   (fn
@@ -194,16 +194,21 @@
      :cached_values   (get cached id)
      :sample_values   (get sampled id)}))
 
+(defn with-defaults
+  "`opts` over [[default-options]]. A nil option takes its default."
+  [opts]
+  (merge default-options (u/remove-nils opts)))
+
 (mu/defn table-packet :- ::packet
-  "Build the classification packet for `table`. Hidden and sensitive fields are included; retired and inactive
-  fields are not. The row sample runs through the query processor, so callers that act on behalf of a user should
-  wrap this in `request/as-admin` and `database-routing/with-database-routing-off`."
-  [table :- (ms/InstanceOf :model/Table)
+  "Build the classification packet for `table` of `database`. Hidden and sensitive fields are included; retired and
+  inactive fields are not. The row sample runs through the query processor, so callers that act on behalf of a user
+  should wrap this in `request/as-admin` and `database-routing/with-database-routing-off`."
+  [database :- (ms/InstanceOf :model/Database)
+   table    :- (ms/InstanceOf :model/Table)
    & {:as opts} :- [:maybe ::options]]
   (let [{:keys [include-values? sample-rows truncation cached-values-cap] :as opts}
-        (merge default-options opts)
+        (with-defaults opts)
 
-        database  (db/database (:db_id table))
         fields    (db/active-fields (:id table))
         field-ids (map :id fields)
         cached    (when include-values?

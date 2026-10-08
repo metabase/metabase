@@ -403,6 +403,11 @@
       (log/errorf "Error fetching field values: %s" (ex-message e))
       nil)))
 
+(defn- group-by-field-id-latest-first
+  "Map of field-id -> its FieldValues in `fvs`, most recently updated first."
+  [fvs]
+  (update-vals (group-by :field_id fvs) #(sort-by :updated_at u/reverse-compare %)))
+
 (defn- delete-duplicates-and-return-latest!
   "Takes a list of field values, return a map of field-id -> latest FieldValues.
 
@@ -412,8 +417,7 @@
 
   It assumes that all rows are of the same type. Rows could be from multiple field-ids."
   [fvs]
-  (let [fvs-grouped-by-field-id (update-vals (group-by :field_id fvs)
-                                             #(sort-by :updated_at u/reverse-compare %))
+  (let [fvs-grouped-by-field-id (group-by-field-id-latest-first fvs)
         to-delete-fv-ids        (->> (vals fvs-grouped-by-field-id)
                                      (mapcat rest)
                                      (map :id))]
@@ -453,6 +457,16 @@
      (mapcat (fn [batch]
                (warehouse-schema.db/full-field-values-for-fields batch))
              (partition-all *fv-select-batch-size* field-ids)))))
+
+(defn batched-latest-full-field-values
+  "Like [[batched-get-latest-full-field-values]], but never deletes: shadowed duplicate rows stay in the database.
+  For read-only callers."
+  [field-ids]
+  (when (seq field-ids)
+    (update-vals (group-by-field-id-latest-first
+                  (mapcat warehouse-schema.db/full-field-values-for-fields
+                          (partition-all *fv-select-batch-size* field-ids)))
+                 first)))
 
 (defn persist-field-values!
   "Persist raw distinct values for a single field. Caller passes raw values fetched from the

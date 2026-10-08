@@ -26,15 +26,18 @@
   (t2/select-one :model/Database :id database-id))
 
 (mu/defn active-fields
-  "The active, non-retired Fields of `table-id`, ordered by position then id. Hidden and sensitive fields are
-  included."
+  "The active, non-retired, top-level Fields of `table-id`, ordered by position then id. Hidden and sensitive fields
+  are included. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and
+  `parent_id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field
              {:from     [(warehouse-schema-overlay/field-query)]
               :where    [:and
                          [:= :table_id table-id]
                          [:= :active true]
-                         [:not= :visibility_type "retired"]]
+                         [:not= :visibility_type "retired"]
+                         [:= :nfc_path nil]
+                         [:= :parent_id nil]]
               :order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn user-settings-by-field

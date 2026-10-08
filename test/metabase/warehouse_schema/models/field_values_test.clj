@@ -244,6 +244,23 @@
         (testing "and older values are implicitly deleted"
           (is (= 1 (count (t2/select :model/FieldValues :field_id field-id-1 :type :full)))))))))
 
+(deftest batched-latest-full-field-values-test
+  (let [before (t/zoned-date-time)
+        later  (t/plus before (t/millis 2))]
+    (mt/with-temp [:model/Database    {database-id :id} {}
+                   :model/Table       {table-id :id}    {:db_id database-id}
+                   :model/Field       {field-id-1 :id}  {:table_id table-id}
+                   :model/Field       {field-id-2 :id}  {:table_id table-id}
+                   :model/FieldValues _ {:field_id field-id-1 :type :full :values ["a" "b"] :created_at before :updated_at before}
+                   :model/FieldValues _ {:field_id field-id-1 :type :full :values ["c" "d"] :created_at before :updated_at later}]
+      (testing "returns the most recently updated full FieldValues of each field"
+        (is (=? {field-id-1 {:values ["c" "d"]}}
+                (field-values/batched-latest-full-field-values [field-id-1 field-id-2]))))
+      (testing "keeps the shadowed duplicate rows"
+        (is (= 2 (count (t2/select :model/FieldValues :field_id field-id-1 :type :full)))))
+      (testing "no field ids gives nil"
+        (is (nil? (field-values/batched-latest-full-field-values [])))))))
+
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
     (testing "create a full Fieldvalues if it does not exist"

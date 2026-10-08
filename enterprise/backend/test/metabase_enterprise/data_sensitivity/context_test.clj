@@ -8,6 +8,9 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
+(defn- table-packet [table & {:as opts}]
+  (context/table-packet (t2/select-one :model/Database :id (:db_id table)) table opts))
+
 (defn- people-table []
   (t2/select-one :model/Table :id (mt/id :people)))
 
@@ -15,7 +18,7 @@
   (some #(when (= field-name (:name %)) %) (:fields packet)))
 
 (defn- schema-only-packet [table]
-  (context/table-packet table :include-values? false))
+  (table-packet table :include-values? false))
 
 (deftest field-selection-test
   (mt/with-temp [:model/Field hidden  {:table_id (mt/id :people) :name "hidden_f" :base_type :type/Text
@@ -34,6 +37,30 @@
       (testing "fields are ordered by position then id"
         (is (= (sort-by (juxt :position :id) (:fields packet))
                (:fields packet)))))))
+
+(deftest json-child-fields-excluded-test
+  (mt/with-temp [:model/Field sql-parent  {:table_id (mt/id :people) :name "payload" :base_type :type/JSON
+                                           :position 100}
+                 :model/Field sql-child   {:table_id (mt/id :people) :name "payload → user → email"
+                                           :base_type :type/Text :nfc_path ["payload" "user" "email"] :position 101}
+                 :model/Field mongo-child {:table_id (mt/id :people) :name "email" :base_type :type/Text
+                                           :parent_id (:id sql-parent) :nfc_path ["payload" "email"] :position 102}]
+    (let [sampled-ids (atom nil)
+          packet      (with-redefs [driver/table-rows-sample
+                                    (fn [_driver _table sample-fields _rff _opts]
+                                      (reset! sampled-ids (set (map :id sample-fields)))
+                                      [])]
+                        (table-packet (people-table)))
+          ids         (into #{} (map :id) (:fields packet))]
+      (testing "the JSON parent column is classified as one field"
+        (is (contains? ids (:id sql-parent))))
+      (testing "child fields with nfc_path only or with parent_id are excluded from the packet"
+        (is (not (contains? ids (:id sql-child))))
+        (is (not (contains? ids (:id mongo-child)))))
+      (testing "the row sample selects the parent and no child paths"
+        (is (contains? @sampled-ids (:id sql-parent)))
+        (is (not (contains? @sampled-ids (:id sql-child))))
+        (is (not (contains? @sampled-ids (:id mongo-child))))))))
 
 (deftest table-block-test
   (let [table  (people-table)
@@ -93,7 +120,7 @@
                  :model/FieldValues _ {:field_id field-id :type :full
                                        :values (into ["dup" "dup" nil] (map #(str "v" %) (range 20)))}]
     (with-redefs [driver/table-rows-sample (fn [& _] [])]
-      (let [entry (field-by-name (context/table-packet (people-table) :cached-values-cap 5) "cached_f")]
+      (let [entry (field-by-name (table-packet (people-table) :cached-values-cap 5) "cached_f")]
         (testing "cached values are distinct, non-nil, and capped"
           (is (= ["dup" "v0" "v1" "v2" "v3"] (:cached_values entry))))
         (testing "an empty row sample yields empty sample values, not an error"
@@ -107,7 +134,7 @@
                     (reset! sampled-ids (map :id sample-fields))
                     (vec (for [i (range 12)]
                            (vec (repeat (count sample-fields) (when (odd? i) (str "value-" (quot i 2))))))))]
-      (let [packet (context/table-packet table :sample-values-cap 4 :truncation 7)]
+      (let [packet (table-packet table :sample-values-cap 4 :truncation 7)]
         (testing "the sampler receives the packet's fields in packet order"
           (is (= (map :id (:fields packet)) @sampled-ids)))
         (testing "every field gets the transposed column, nils dropped, distinct, capped, truncated"
@@ -117,7 +144,7 @@
 
 (deftest real-sample-test
   (testing "the row sample runs through the query processor against the test warehouse"
-    (let [packet (context/table-packet (people-table) :sample-rows 5)
+    (let [packet (table-packet (people-table) :sample-rows 5)
           email  (field-by-name packet (t2/select-one-fn :name :model/Field :id (mt/id :people :email)))]
       (is (nil? (get-in packet [:sample :error])))
       (is (<= 1 (count (:sample_values email)) 5))
@@ -129,7 +156,7 @@
     (let [table   (people-table)
           with    (with-redefs [driver/table-rows-sample
                                 (fn [_ _ fields _ _] [(vec (repeat (count fields) "sampled-marker"))])]
-                    (context/table-packet table))
+                    (table-packet table))
           without (with-redefs [driver/table-rows-sample (fn [& _] (throw (ex-info "must not sample" {})))]
                     (schema-only-packet table))]
       (testing "with values on, cached and sampled values reach the packet"
@@ -145,10 +172,32 @@
   (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :people) :name "cached_f" :base_type :type/Text}
                  :model/FieldValues _ {:field_id field-id :type :full :values ["cached-marker"]}]
     (with-redefs [driver/table-rows-sample (fn [& _] (throw (ex-info "warehouse unreachable" {})))]
-      (let [packet (context/table-packet (people-table))]
+      (let [packet (table-packet (people-table))]
         (testing "a failing row sample is recorded and the packet still builds"
           (is (= "warehouse unreachable" (get-in packet [:sample :error])))
           (is (pos? (count (:fields packet))))
           (is (every? #(nil? (:sample_values %)) (:fields packet))))
         (testing "cached values are unaffected by the sample failure"
           (is (= ["cached-marker"] (:cached_values (field-by-name packet "cached_f")))))))))
+
+(deftest nil-option-uses-default-test
+  (let [sample-opts (atom nil)]
+    (with-redefs [driver/table-rows-sample (fn [_ _ _ _ opts] (reset! sample-opts opts) [])]
+      (let [packet (table-packet (people-table) :include-values? nil :sample-rows nil :truncation nil
+                                 :sample-values-cap nil :cached-values-cap nil)]
+        (testing "an explicit nil option takes its default"
+          (is (= {:rows 10 :truncation 500 :error nil} (:sample packet)))
+          (is (= {:limit 10 :truncation-size 500} @sample-opts)))))))
+
+(deftest cached-values-read-only-test
+  (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :people) :name "cached_f" :base_type :type/Text}
+                 :model/FieldValues _ {:field_id field-id :type :full :values ["older"]
+                                       :updated_at #t "2020-01-01T00:00:00Z"}
+                 :model/FieldValues _ {:field_id field-id :type :full :values ["newer"]
+                                       :updated_at #t "2021-01-01T00:00:00Z"}]
+    (with-redefs [driver/table-rows-sample (fn [& _] [])]
+      (let [entry (field-by-name (table-packet (people-table)) "cached_f")]
+        (testing "the most recently updated FieldValues row is used"
+          (is (= ["newer"] (:cached_values entry))))
+        (testing "shadowed duplicate FieldValues rows are left in place"
+          (is (= 2 (t2/count :model/FieldValues :field_id field-id :type :full))))))))

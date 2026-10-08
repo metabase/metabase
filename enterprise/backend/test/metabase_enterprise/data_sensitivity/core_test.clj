@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.llm :as llm]
+   [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.scope :as scope]
@@ -12,8 +14,13 @@
    [metabase.metabot.usage :as usage]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
+
+(set! *warn-on-reflection* true)
 
 (defn- people-table []
   (t2/select-one :model/Table :id (mt/id :people)))
@@ -147,6 +154,33 @@
       (testing "a dry run marks no field committed"
         (is (not-any? :committed (:fields result)))))))
 
+(deftest classify-table-nested-fields-test
+  (mt/with-temp [:model/Table {table-id :id :as table} {:db_id (mt/id) :name "mongo_like" :active true}
+                 :model/Field {user-id :id}  {:table_id table-id :name "user" :base_type :type/Dictionary}
+                 :model/Field {owner-id :id} {:table_id table-id :name "owner" :base_type :type/Dictionary}
+                 :model/Field user-email     {:table_id table-id :name "email" :base_type :type/Text
+                                              :parent_id user-id :nfc_path ["user" "email"]}
+                 :model/Field owner-email    {:table_id table-id :name "email" :base_type :type/Text
+                                              :parent_id owner-id :nfc_path ["owner" "email"]}]
+    (let [result (do-with-llm! (canned-llm (constantly {:data_sensitivity "PII"}))
+                               #(core/classify-table! table :include-values? false))]
+      (testing "same-named children under different parents are excluded, so the parents classify without collision"
+        (is (= #{user-id owner-id} (into #{} (map :field_id) (:fields result))))
+        (is (every? #(= :new (:status %)) (:fields result)))
+        (is (not-any? #{(:id user-email) (:id owner-email)} (map :field_id (:fields result))))))))
+
+(deftest classify-table-duplicate-names-test
+  (testing "a packet with two fields of the same name fails before the model is called"
+    (let [called? (atom false)]
+      (mt/with-dynamic-fn-redefs [context/table-packet (fn [_database table & _]
+                                                         {:table  {:id (:id table)}
+                                                          :fields [{:name "email"} {:name "email"}]
+                                                          :sample {:rows 0 :truncation 0 :error nil}})]
+        (do-with-llm! (fn [& _] (reset! called? true) {:result {:fields []} :parts []})
+                      #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"duplicate names: .*email"
+                                             (core/classify-table! (people-table) :include-values? false)))))
+      (is (false? @called?)))))
+
 (deftest classify-table-usage-test
   (testing "requests and usage total over chunks"
     (let [result (do-with-llm! (canned-llm (constantly {}))
@@ -193,17 +227,19 @@
                                             #(core/classify-table! (people-table) :include-values? false)))))))))
 
 (deftest classify-table-permission-bypass-test
-  (testing "the LLM call runs with all Metabot permissions granted regardless of the user's groups"
-    (let [seen (atom nil)]
+  (testing "every chunk call runs as the current user with all Metabot permissions granted regardless of the user's groups"
+    (let [seen (atom [])]
       (mt/with-dynamic-fn-redefs [scope/resolve-user-permissions (constantly (assoc scope/all-yes-permissions :permission/metabot :no))]
         (do-with-llm! (fn [& args]
-                        (reset! seen scope/*current-user-metabot-permissions*)
+                        (swap! seen conj [scope/*current-user-metabot-permissions* api/*current-user-id*])
                         (apply (canned-llm (constantly {})) args))
                       #(mt/with-current-user (mt/user->id :rasta)
                          (is (= :permission-denied (metabot/llm-call-unavailable-reason core/required-permission)))
                          (is (nil? (core/unavailable-reason)))
-                         (is (pos? (count (:fields (core/classify-table! (people-table) :include-values? false)))))
-                         (is (= scope/all-yes-permissions @seen))))))))
+                         (is (pos? (count (:fields (core/classify-table! (people-table) :include-values? false
+                                                                         :chunk-size 2)))))
+                         (is (< 1 (count @seen)))
+                         (is (every? #{[scope/all-yes-permissions (mt/user->id :rasta)]} @seen))))))))
 
 (deftest unavailable-reason-test
   (mt/with-dynamic-fn-redefs [usage/check-usage-limits! (constantly nil)]
@@ -242,7 +278,7 @@
   (let [tables (active-tables nil)]
     (testing "every active table is classified in schema/name order and totals are merged"
       (let [result (do-with-llm! (canned-llm (constantly {}))
-                                 #(core/classify-database! (mt/db) :include-values? false :parallelism 3))]
+                                 #(core/classify-database! (mt/db) :include-values? false))]
         (is (= (map :id tables) (map :table_id (:tables result))))
         (is (= 0 (:failed result)))
         (is (= (count tables) (:requests result)))
@@ -271,7 +307,7 @@
                                  #(core/classify-database! (mt/db) :include-values? false :schema "no_such_schema"))]
         (is (= [] (:tables result)))
         (is (= 0 (:requests result)))))
-    (testing "a table whose classification throws for a reason other tables need not share becomes an error entry and the run completes"
+    (testing "a table whose classification throws becomes an error entry and the run completes"
       (let [failing (t2/select-one-fn :name :model/Table :id (mt/id :reviews))
             result  (do-with-llm! (failing-llm #{failing} (ex-info "boom" {:error-code "structured-output-invalid"}))
                                   #(core/classify-database! (mt/db) :include-values? false))]
@@ -287,122 +323,74 @@
   (ex-info "Your credit balance is too low" {:api-error true :status 400 :provider "anthropic"
                                              :error-code :provider-api-error}))
 
-(deftest fatal-error-test
-  (testing "provider rejections retries never cover, a missing provider, and the usage limit are fatal"
-    (is (core/fatal-error? provider-rejection))
-    (is (core/fatal-error? (ex-info "x" {:api-error true :status 401})))
-    (is (core/fatal-error? (ex-info "x" {:api-error true :status-code 400 :error-code :llm-not-configured})))
-    (is (core/fatal-error? (ex-info "x" {:api-error true :error-code :api-key-missing})))
-    (is (core/fatal-error? (ex-info "x" {:type :metabot/usage-limit-reached}))))
-  (testing "rate limits, server errors, timeouts, and non-provider failures are not"
-    (is (not (core/fatal-error? (ex-info "x" {:api-error true :status 429}))))
-    (is (not (core/fatal-error? (ex-info "x" {:api-error true :status 500}))))
-    (is (not (core/fatal-error? (ex-info "x" {:api-error true :error-code :provider-request-failed}))))
-    (is (not (core/fatal-error? (ex-info "x" {:status 400}))))
-    (is (not (core/fatal-error? (RuntimeException. "x"))))))
+(defn- do-counting-database-selects
+  "Run `thunk` and return the number of `:model/Database` rows it selected with `t2/select-one`."
+  [thunk]
+  (let [n          (atom 0)
+        select-one (dynamic-redefs/original-fn #'t2/select-one)]
+    (mt/with-dynamic-fn-redefs [t2/select-one (fn [model & args]
+                                                (when (= :model/Database model)
+                                                  (swap! n inc))
+                                                (apply select-one model args))]
+      (thunk))
+    @n))
 
-(deftest classify-database-fatal-error-test
-  (let [tables        (active-tables nil)
-        names         (mapv :name tables)
-        [ok failing]  names
-        skipped-names (drop 2 names)]
-    (testing "a fatal failure stops the run; earlier successes are kept and tables not yet started are skipped"
-      (let [result   (do-with-llm! (failing-llm #{failing} provider-rejection)
-                                   #(core/classify-database! (mt/db) :include-values? false :parallelism 1))
-            by-name  (into {} (map (juxt :table_name identity)) (:tables result))]
-        (is (= names (map :table_name (:tables result))) "every table is reported, in order")
-        (is (nil? (:error (get by-name ok))))
-        (is (=? {:error "Your credit balance is too low" :error_code "provider-api-error"} (get by-name failing)))
-        (doseq [skipped skipped-names]
-          (is (=? {:error      (str "Skipped after table " failing " failed: Your credit balance is too low")
-                   :error_code "skipped"}
-                  (get by-name skipped))))
-        (is (= (dec (count tables)) (:failed result)))
-        (is (= 1 (:requests result)))
-        (is (= (count (t2/select :model/Field {:where [:and [:= :active true]
-                                                       [:not= :visibility_type "retired"]
-                                                       [:= :table_id (:id (first tables))]]}))
-               (get-in result [:counts :fields])))))
-    (testing "a non-fatal failure in the same position does not stop the run"
-      (let [result (do-with-llm! (failing-llm #{failing} (ex-info "later" {:api-error true :status 429}))
-                                 #(core/classify-database! (mt/db) :include-values? false :parallelism 1))]
+(deftest database-selected-once-test
+  (let [database (mt/db)
+        table    (people-table)]
+    (testing "a database run uses the Database it is given and selects none"
+      (is (= 0 (do-counting-database-selects
+                #(do-with-llm! (canned-llm (constantly {}))
+                               (fn [] (core/classify-database! database :include-values? false)))))))
+    (testing "a table run selects its Database once"
+      (is (= 1 (do-counting-database-selects
+                #(do-with-llm! (canned-llm (constantly {}))
+                               (fn [] (core/classify-table! table :include-values? false)))))))))
+
+(deftest classify-database-log-and-continue-test
+  (let [tables (active-tables nil)
+        names  (mapv :name tables)]
+    (testing "a provider rejection fails only its table; the tables after it are classified"
+      (let [failing (second names)
+            result  (do-with-llm! (failing-llm #{failing} provider-rejection)
+                                  #(core/classify-database! (mt/db) :include-values? false))]
+        (is (= (map :id tables) (map :table_id (:tables result))))
         (is (= 1 (:failed result)))
+        (is (=? {:table_name failing :error "Your credit balance is too low" :error_code "provider-api-error"}
+                (second (:tables result))))
         (is (= (dec (count tables)) (:requests result)))))
-    (testing "when no table succeeded the fatal exception is rethrown"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"credit balance is too low"
-                            (do-with-llm! (failing-llm (set names) provider-rejection)
-                                          #(core/classify-database! (mt/db) :include-values? false :parallelism 2)))))
-    (testing "when no table succeeded but none failed fatally the errors are returned"
-      (let [result (do-with-llm! (failing-llm (set names) (ex-info "later" {:api-error true :status 429}))
-                                 #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
+    (testing "a provider rejection on every table gives one error entry per table"
+      (let [result (do-with-llm! (failing-llm (set names) (ex-info "Unauthorized" {:api-error true :status 401
+                                                                                   :error-code :provider-api-error}))
+                                 #(core/classify-database! (mt/db) :include-values? false))]
         (is (= (count tables) (:failed result)))
-        (is (every? #(= "later" (:error %)) (:tables result)))))))
+        (is (= (map :id tables) (map :table_id (:tables result))))
+        (is (every? #(= {:error "Unauthorized" :error_code "provider-api-error"} (select-keys % [:error :error_code]))
+                    (:tables result)))
+        (is (= 0 (:requests result)))))))
 
-(defn- table-in-message
-  "The name of the table a user message renders."
-  [messages]
-  (second (re-find #"(?m)^name: (\S+)$" (:content (last messages)))))
-
-(defn- rate-limit [& {:as headers}]
-  (ex-info "Rate limited" {:api-error true :status 429 :provider "anthropic" :error-code :provider-api-error
-                           :headers headers}))
-
-(defn- flaky-llm
-  "A canned LLM that throws `(ex-fn table-name attempt)` when it returns an exception, counting attempts per table in
-  `attempts`."
-  [attempts ex-fn]
-  (fn [& [_model messages :as args]]
-    (let [table   (table-in-message messages)
-          attempt (get (swap! attempts update table (fnil inc 0)) table)]
-      (if-let [ex (ex-fn table attempt)]
-        (throw ex)
-        (apply (canned-llm (constantly {})) args)))))
-
-(deftest rate-limited-test
-  (is (core/rate-limited? (rate-limit)))
-  (is (core/rate-limited? (ex-info "x" {:api-error true :status 529})))
-  (is (not (core/rate-limited? (ex-info "x" {:api-error true :status 500}))))
-  (is (not (core/rate-limited? (ex-info "x" {:status 429}))))
-  (is (not (core/fatal-error? (rate-limit)))))
-
-(deftest retry-after-ms-test
-  (is (= 7000 (#'core/retry-after-ms (rate-limit "retry-after" "7"))))
-  (is (= 60000 (#'core/retry-after-ms (rate-limit "retry-after" "600"))) "capped at a minute")
-  (is (nil? (#'core/retry-after-ms (rate-limit "retry-after" "Wed, 21 Oct 2015 07:28:00 GMT"))))
-  (is (nil? (#'core/retry-after-ms (rate-limit)))))
-
-(deftest classify-database-rate-limit-requeue-test
-  (let [tables    (active-tables nil)
-        [a b c d] (map :name tables)]
-    (testing "a table rate limited once is retried after the run and succeeds"
-      (let [attempts (atom {})
-            result   (do-with-llm! (flaky-llm attempts (fn [table attempt] (when (and (= table a) (= attempt 1)) (rate-limit))))
-                                   #(core/classify-database! (mt/db) :include-values? false :requeue-delay-ms 0))]
-        (is (= 2 (get @attempts a)))
-        (is (= 0 (:failed result)))
-        (is (= 0 (:rate_limited result)))
-        (is (= (count tables) (:requests result)))
-        (is (= (map :id tables) (map :table_id (:tables result))) "the requeued result keeps its place")))
-    (testing "a table rate limited again is reported as rate_limited without stopping the run"
-      (let [attempts (atom {})
-            result   (do-with-llm! (flaky-llm attempts (fn [table _] (when (= table a) (rate-limit))))
-                                   #(core/classify-database! (mt/db) :include-values? false :requeue-delay-ms 0))]
-        (is (= 2 (get @attempts a)))
-        (is (= 1 (:failed result)))
-        (is (= 1 (:rate_limited result)))
-        (is (=? {:table_name a :error "Rate limited" :error_code "rate_limited"}
-                (first (:tables result))))
-        (is (= (dec (count tables)) (:requests result)))))
-    (testing "nothing is requeued after a fatal failure"
-      (let [attempts (atom {})
-            result   (do-with-llm! (flaky-llm attempts (fn [table _] (condp = table b (rate-limit) c provider-rejection nil)))
-                                   #(core/classify-database! (mt/db) :include-values? false :parallelism 1
-                                                             :requeue-delay-ms 0))]
-        (is (= 1 (get @attempts b)))
-        (is (nil? (get @attempts d)) "tables after the fatal failure never start")
-        (is (nil? (:error (first (:tables result)))))
-        (is (=? {:table_name b :error_code "rate_limited"} (second (:tables result))))
-        (is (=? {:table_name c :error_code "provider-api-error"} (nth (:tables result) 2)))))))
+(deftest concurrent-database-runs-test
+  (testing "two concurrent database runs never have more LLM calls in flight than the pool size"
+    (let [latch     (CountDownLatch. ^long llm/pool-size)
+          in-flight (atom 0)
+          peak      (atom 0)
+          llm       (fn [& args]
+                      (swap! peak max (swap! in-flight inc))
+                      (try
+                        (.countDown latch)
+                        (.await latch 5 TimeUnit/SECONDS)
+                        (Thread/sleep 5)
+                        (apply (canned-llm (constantly {})) args)
+                        (finally
+                          (swap! in-flight dec))))
+          results   (do-with-llm! llm
+                                  (fn []
+                                    (let [runs (doall (repeatedly 2 #(future (core/classify-database! (mt/db) :include-values? false
+                                                                                                      :chunk-size 2))))]
+                                      (mapv #(deref % 60000 nil) runs))))]
+      (is (every? #(= 0 (:failed %)) results))
+      (is (every? #(< (count (:tables %)) (:requests %)) results) "tables span more than one chunk")
+      (is (= llm/pool-size @peak)))))
 
 (defn- values-rendered?
   "Whether any recorded user message rendered sampled or cached values."
@@ -419,7 +407,7 @@
     (testing "a database that connects is tested once per run and sampled"
       (let [messages (atom [])
             result   (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (fn [& _] (swap! connects inc) true)]
-                       (do-with-llm! (recording-llm messages) #(core/classify-database! (mt/db) :parallelism 2)))]
+                       (do-with-llm! (recording-llm messages) #(core/classify-database! (mt/db))))]
         (is (= 1 @connects))
         (is (nil? (:sample_error result)))
         (is (values-rendered? @messages))))
@@ -427,7 +415,7 @@
       (let [messages (atom [])
             result   (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details?
                                                  (fn [& _] (throw (ex-info "Timed out after 10.0 s" {})))]
-                       (do-with-llm! (recording-llm messages) #(core/classify-database! (mt/db) :parallelism 2)))]
+                       (do-with-llm! (recording-llm messages) #(core/classify-database! (mt/db))))]
         (is (= "Timed out after 10.0 s" (:sample_error result)))
         (is (= 0 (:failed result)))
         (is (every? #(nil? (:sample_error %)) (:tables result)))
@@ -446,32 +434,6 @@
       (is (= 0 @connects)))
     (testing "an H2 database is allowed to be tested, as sync does"
       (is (nil? (#'core/connection-error (mt/db)))))))
-
-(deftest classify-database-worker-pool-test
-  (let [tables       (active-tables nil)
-        [slow _ next] (map :name tables)
-        next-started (promise)
-        in-flight    (atom 0)
-        peak         (atom 0)
-        table-of     (fn [messages]
-                       (some #(when (str/includes? (:content (last messages)) (str "name: " % "\n")) %)
-                             (map :name tables)))
-        llm          (fn [& [_model messages :as args]]
-                       (let [table (table-of messages)]
-                         (swap! peak max (swap! in-flight inc))
-                         (try
-                           (when (= table next) (deliver next-started true))
-                           (when (= table slow)
-                             (is (true? (deref next-started 5000 :timeout))
-                                 "the third table starts while the first is still running"))
-                           (apply (canned-llm (constantly {})) args)
-                           (finally (swap! in-flight dec)))))
-        result       (do-with-llm! llm #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
-    (testing "a free worker takes the next table without waiting for the slowest one"
-      (is (= 0 (:failed result)))
-      (is (= (count tables) (:requests result))))
-    (testing "no more than parallelism tables are in flight"
-      (is (<= @peak 2)))))
 
 (defn- labels-by-name [table-id]
   (t2/select-fn->fn :name :data_sensitivity :model/Field :table_id table-id))
@@ -547,11 +509,11 @@
                  :model/Field    _  {:table_id (:id a) :name "ds_a_field" :base_type :type/Text}
                  :model/Field    _  {:table_id (:id b) :name "ds_b_field" :base_type :type/Text}
                  :model/Field    _  {:table_id (:id c) :name "ds_c_field" :base_type :type/Text}]
-    (testing "tables committed before a fatal failure stay written; the failed and skipped tables write nothing"
+    (testing "each table commits on its own; a failed table writes nothing and the tables around it stay written"
       (let [result (do-with-llm! (failing-llm #{"ds_b"} provider-rejection)
-                                 #(core/classify-database! db :include-values? false :parallelism 1 :commit? true))]
-        (is (= [nil "provider-api-error" "skipped"] (map :error_code (:tables result))))
+                                 #(core/classify-database! db :include-values? false :commit? true))]
+        (is (= [nil "provider-api-error" nil] (map :error_code (:tables result))))
         (is (= {"ds_a_field" :PUBLIC} (labels-by-name (:id a))))
         (is (= {"ds_b_field" nil} (labels-by-name (:id b))))
-        (is (= {"ds_c_field" nil} (labels-by-name (:id c))))
-        (is (= 1 (get-in result [:counts :committed])) "committed is summed over the tables")))))
+        (is (= {"ds_c_field" :PUBLIC} (labels-by-name (:id c))))
+        (is (= 2 (get-in result [:counts :committed])) "committed is summed over the tables")))))

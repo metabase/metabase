@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.core-test :as core-test]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
@@ -72,7 +73,12 @@
                   body))
           (is (not (contains? body :trace)) "the body is the authored message, not a stack trace"))
         (is (=? {:reason "metabot-disabled"}
-                (mt/user-http-request :crowberto :post 400 (database-url (mt/id)))))))))
+                (mt/user-http-request :crowberto :post 400 (database-url (mt/id)))))))
+    (testing "a reason without an authored message is still a 400 that names the reason"
+      (mt/with-dynamic-fn-redefs [core/unavailable-reason (constantly :new-reason)]
+        (is (=? {:message "AI classification is not available: new-reason."
+                 :reason  "new-reason"}
+                (mt/user-http-request :crowberto :post 400 (table-url (mt/id :people)))))))))
 
 (defn- throwing-llm
   "A stand-in LLM that throws `ex` for every table whose name is in `failing-names`, or for every table when nil."
@@ -91,14 +97,22 @@
 
 (deftest provider-error-test
   (mt/with-premium-features #{:data-sensitivity}
-    (testing "a provider rejection is a 502 carrying the vendor message and nothing else from the response"
-      (doseq [url [(table-url (mt/id :people)) (database-url (mt/id))]]
-        (let [body (core-test/do-with-llm! (throwing-llm nil provider-rejection)
-                                           #(mt/user-http-request :crowberto :post 502 url))]
-          (is (= {:message    "Your credit balance is too low"
-                  :reason     "provider-error"
-                  :error-code "provider-error"}
-                 body)))))
+    (testing "a provider rejection of a table run is a 502 carrying the vendor message and nothing else from the response"
+      (let [body (core-test/do-with-llm! (throwing-llm nil provider-rejection)
+                                         #(mt/user-http-request :crowberto :post 502 (table-url (mt/id :people))))]
+        (is (= {:message    "Your credit balance is too low"
+                :reason     "provider-error"
+                :error-code "provider-error"}
+               body))))
+    (testing "a database run whose provider rejects every call is a 200 with one error entry per table"
+      (let [tables   (t2/select :model/Table :db_id (mt/id) :active true)
+            response (core-test/do-with-llm! (throwing-llm nil (ex-info "Unauthorized" {:api-error true :status 401
+                                                                                        :provider "anthropic"
+                                                                                        :error-code :provider-api-error}))
+                                             #(mt/user-http-request :crowberto :post 200 (database-url (mt/id))))]
+        (is (= (count tables) (:failed response) (count (:tables response))))
+        (is (every? #(= {:error "Unauthorized" :error_code "provider-api-error"} (select-keys % [:error :error_code]))
+                    (:tables response)))))
     (testing "a partial database run stays a 200 with error entries"
       (let [tables   (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:schema :asc] [:name :asc]]})
             failing  (:name (last tables))

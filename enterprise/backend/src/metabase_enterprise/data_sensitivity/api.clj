@@ -1,8 +1,9 @@
 (ns metabase-enterprise.data-sensitivity.api
   "`/api/ee/data-sensitivity` routes. Both endpoints run the LLM data-sensitivity classifier and return the diff. A
-  dry run by default; `?commit=true` also writes the proposed labels and requires a superuser. The caller needs
-  write access to the database; the Metabot instance gates (enabled, provider configured, usage limit) are reported
-  as a 400 before any work starts."
+  dry run is the default and writes nothing. `?commit=true` requires a superuser, runs the classifier again, and
+  writes the labels of that new run, not those of an earlier dry run: the model output can change between runs, so
+  the written labels can differ from what a dry run showed. The caller needs write access to the database; the
+  Metabot instance gates (enabled, provider configured, usage limit) are reported as a 400 before any work starts."
   (:require
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.db :as db]
@@ -18,7 +19,8 @@
   (case reason
     :metabot-disabled (tru "Metabot is disabled. Enable Metabot to classify data sensitivity.")
     :no-llm           (tru "No AI provider is configured for Metabot.")
-    :usage-limit      (tru "The AI usage limit has been reached.")))
+    :usage-limit      (tru "The AI usage limit has been reached.")
+    (tru "AI classification is not available: {0}." (name reason))))
 
 (defn- unavailable-ex [reason]
   (ex-info (unavailable-message reason) {:status-code 400 :reason reason :error-code reason}))
@@ -36,9 +38,9 @@
     (api/check-superuser)))
 
 (defn- classify
-  "Run `thunk` and translate a failure the classifier could not work around. A provider rejection becomes a 502
-  carrying the vendor's message so the caller sees why instead of a stack trace; a usage limit reached mid-run
-  becomes the same 400 the pre-flight reports."
+  "Run `thunk` and translate a failure of a single-table run. A provider rejection becomes a 502 carrying the
+  vendor's message so the caller sees why instead of a stack trace; a usage limit reached mid-run becomes the same
+  400 the pre-flight reports."
   [thunk]
   (try
     (thunk)
@@ -58,8 +60,10 @@
 
 (api.macros/defendpoint :post "/table/:id" :- ::core/table-result
   "Classify every active field of the active table with the LLM and diff the proposal against the current
-  `data_sensitivity` labels. With `commit`, write the proposed label of every new or differing field that no human
-  labeled; semantic types are never written."
+  `data_sensitivity` labels. A dry run is the default and writes nothing. With `commit`, classify again and write the
+  proposed label of every new or differing field that no human labeled; semantic types are never written. Commit
+  does not apply an earlier dry run: the model output can change between runs, so the written labels can differ from
+  what a dry run showed."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [commit]} :- CommitParams]
@@ -71,10 +75,12 @@
 
 (api.macros/defendpoint :post "/database/:id" :- ::core/database-result
   "Classify every active table of the database, or only those in `schema` when given, with the LLM and diff the
-  proposals against the current `data_sensitivity` labels. With `commit`, write the proposed label of every new or
-  differing field that no human labeled, table by table; semantic types are never written. A `schema` with no active
-  tables is a 404. Synchronous: the whole scan runs within the request, so classify a large database one schema at a
-  time."
+  proposals against the current `data_sensitivity` labels. A dry run is the default and writes nothing. With
+  `commit`, classify again and write the proposed label of every new or differing field that no human labeled, table
+  by table; semantic types are never written. Commit does not apply an earlier dry run: the model output can change
+  between runs, so the written labels can differ from what a dry run showed. A table that fails is an error entry in
+  a 200 response and the run continues. A `schema` with no active tables is a 404. Synchronous: the whole scan runs
+  within the request, so classify a large database one schema at a time."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [commit]} :- CommitParams
@@ -85,7 +91,7 @@
       (api/check-404 (db/active-schema? id schema)))
     (check-commit! commit)
     (check-available!)
-    (classify #(core/classify-database! database :schema schema :commit? commit))))
+    (core/classify-database! database :schema schema :commit? commit)))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the data-sensitivity API."
