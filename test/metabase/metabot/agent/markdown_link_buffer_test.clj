@@ -51,6 +51,11 @@
            (recur new-state more (conj outputs output)))
          [outputs (mlb/flush-state state) @registry])))))
 
+(defn- resolve-parts
+  "Run parts through a fresh `resolve-xf` with no queries or charts."
+  [parts]
+  (into [] (mlb/resolve-xf {} {} (atom {})) parts))
+
 ;;; State machine / buffering tests
 
 (deftest ^:parallel nested-bracket-handling-test
@@ -289,22 +294,25 @@
       (is (= "metabase://query/q1" (first (vals @registry)))))))
 
 (deftest ^:parallel resolve-xf-flushes-held-text-where-the-text-ends-test
-  (let [resolve-parts #(into [] (mlb/resolve-xf {} {} (atom {})) %)]
-    (testing "text held for a possible link comes out before the tool call that follows it"
-      (is (=? [{:type :text :id "t1" :text "Let me check the "}
-               {:type :text :id "t1" :text "[Orders"}
-               {:type :tool-input :id "call-1"}
-               {:type :tool-output :id "call-1"}]
-              (resolve-parts [{:type :text :id "t1" :text "Let me check the [Orders"}
-                              {:type :tool-input :id "call-1" :function "search" :arguments {}}
-                              {:type :tool-output :id "call-1" :result {:output "Found ORDERS"}}]))))
-    (testing "a usage part between two chunks of a link doesn't split it"
-      (is (=? [{:type :text :text "See "}
-               {:type :usage}
-               {:type :text :text "[My Link](http://example.com)"}]
-              (resolve-parts [{:type :text :id "t1" :text "See [My "}
-                              {:type :usage :usage {:promptTokens 1}}
-                              {:type :text :id "t1" :text "Link](http://example.com)"}]))))))
+  (testing "text held for a possible link comes out before the tool call that follows it"
+    (is (=? [{:type :text :id "t1" :text "Let me check the "}
+             {:type :text :id "t1" :text "[Orders"}
+             {:type :tool-input :id "call-1"}
+             {:type :tool-output :id "call-1"}]
+            (resolve-parts [{:type :text :id "t1" :text "Let me check the [Orders"}
+                            {:type :tool-input :id "call-1" :function "search" :arguments {}}
+                            {:type :tool-output :id "call-1" :result {:output "Found ORDERS"}}])))))
+
+(deftest ^:parallel resolve-xf-holds-text-across-parts-that-do-not-end-it-test
+  (doseq [part [{:type :usage :usage {:promptTokens 1}}
+                {:type :reasoning :id "r1" :text "Thinking"}]]
+    (testing (str "a " (name (:type part)) " part between two chunks of a link doesn't split it")
+      (is (= [{:type :text :id "t1" :text "See "}
+              part
+              {:type :text :id "t1" :text "[My Model](/model/1)"}]
+             (resolve-parts [{:type :text :id "t1" :text "See [My "}
+                             part
+                             {:type :text :id "t1" :text "Model](metabase://model/1)"}]))))))
 
 (deftest ^:parallel with-context-test
   (testing "updates state for subsequent link resolution"
