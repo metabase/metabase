@@ -26,6 +26,7 @@
    [metabase.slackbot.query :as slackbot.query]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str])
@@ -248,6 +249,10 @@
       (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
          "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} code)
       (:message error)
+
+      ;; Not the web copy in `:message`: in Slack, the user continues in a new thread, not a new chat.
+      (= code "ai_provider_context_full")
+      (tru "This conversation has reached its maximum length and can''t continue. Please start a new thread.")
 
       (provider-config-error-codes code)
       "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."

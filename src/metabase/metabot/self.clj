@@ -366,6 +366,25 @@
       (or (= status 401) (= "permission_error" error-type))
       :auth)))
 
+(defn- context-overflow?
+  "True when a provider API error's ex-data is a 400 that the adapter flagged with `:context-overflow? true`."
+  [{:keys [status context-overflow?]}]
+  ;; The adapter sets the flag from its own estimate: the BOT-2158 live test found that OpenRouter's overflow 400
+  ;; carries no structured type (no `error.metadata.error_type`).
+  (and (= status 400)
+       (true? context-overflow?)))
+
+(defn context-overflow-error
+  "A user-facing `{:message :error-code}` for a request too long for the model's context window, or nil.
+
+  Returns the map when the provider rejected the request because the conversation does not fit the window.
+  Unlike [[byok-provider-error]], this is not limited to BYOK: the conversation is full, not the account."
+  [e]
+  (let [data (ex-data e)]
+    (when (and (:api-error data) (context-overflow? data))
+      {:error-code "ai_provider_context_full"
+       :message    (tru "This conversation has reached its maximum length and can''t continue. Please start a new chat.")})))
+
 (defn byok-provider-error
   "A user-facing `{:message :error-code}` for a provider failure that the customer can fix on their side, or nil.
   Always nil on the managed provider, where these failures are Metabase's to fix. Only admins are told which

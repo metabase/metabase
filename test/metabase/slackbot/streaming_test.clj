@@ -396,6 +396,13 @@
       (let [text (dm-error-part-appended-text!
                   {:type :error :error {:message "Ask your administrator to check the AI provider." :error-code code}})]
         (is (str/includes? text "Ask your administrator to check the AI provider.") code))))
+  (testing "a full conversation gets Slack copy that asks for a new thread, not the web copy"
+    (let [text (dm-error-part-appended-text!
+                {:type :error :error {:message    "This conversation has reached its maximum length and can't continue. Please start a new chat."
+                                      :error-code "ai_provider_context_full"}})]
+      (is (str/includes? text "This conversation has reached its maximum length and can't continue. Please start a new thread."))
+      (is (not (str/includes? text "new chat")))
+      (is (not (str/includes? text "Something went wrong")))))
   (testing "an unrecognized error keeps the generic copy and leaks nothing from the provider"
     (let [text (dm-error-part-appended-text!
                 {:type :error :error {:message "upstream rejected key sk-ant-oops"}})]

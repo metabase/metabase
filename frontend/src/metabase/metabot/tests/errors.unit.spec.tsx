@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 
 import {
@@ -150,6 +150,37 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       ["agent", /The AI provider rejected the request because of a billing/],
     ]);
+  });
+
+  it("should show the full-chat notice for ai_provider_context_full errors", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "error",
+          errorText:
+            "This conversation has reached its maximum length and can't continue. Please start a new chat.",
+        },
+        {
+          type: "finish",
+          finishReason: "error",
+          messageMetadata: { errorCode: "ai_provider_context_full" },
+        },
+      ],
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", /This conversation has reached its maximum length/],
+    ]);
+    const notice = await screen.findByTestId("metabot-long-chat-notice");
+    expect(notice).toHaveTextContent(/This chat has reached the/);
+    expect(
+      within(notice).getByTestId("metabot-long-chat-new-chat"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
   });
 
   it("should mask streamed errors with a generic message", async () => {

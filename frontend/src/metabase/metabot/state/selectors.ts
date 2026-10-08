@@ -6,6 +6,7 @@ import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import {
+  CONTEXT_FULL_ERROR_CODE,
   CONTEXT_WINDOW_WARNING_PERCENT,
   FIXED_METABOT_IDS,
   METABOT_REQUEST_IDS,
@@ -256,10 +257,21 @@ export const getContextUsagePercent = createSelector(
   getContextWindowPercentUsage,
 );
 
+const isContextFullError = (message: MetabotMessage | undefined) =>
+  message?.status.type === "errored" &&
+  message.status.error.type === CONTEXT_FULL_ERROR_CODE;
+
 export const getLongChatNotice = createSelector(
-  [getContextUsage, getContextUsagePercent],
-  (contextUsage, percentUsage): MetabotLongChatNoticeVariant | undefined => {
-    if (isContextWindowFull(contextUsage)) {
+  [getMessages, getContextUsage, getContextUsagePercent],
+  (
+    messages,
+    contextUsage,
+    percentUsage,
+  ): MetabotLongChatNoticeVariant | undefined => {
+    if (
+      isContextWindowFull(contextUsage) ||
+      isContextFullError(messages.at(-1))
+    ) {
       return "full";
     }
     return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT
