@@ -7,13 +7,14 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.generate :as data-apps.generate]
+   [metabase-enterprise.data-apps.group-access :as data-app.group-access]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
-   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -95,9 +96,7 @@
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
    [:resource_collection_id ms/PositiveInt]
-   [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids       [:sequential ms/PositiveInt]]
-   [:has_user_permission_warnings {:optional true} :boolean]
    [:bundle_hash     [:maybe :string]]
    [:created_at      :any]
    [:updated_at      :any]])
@@ -132,22 +131,14 @@
    [:configured :boolean]
    [:url [:maybe :string]]])
 
-(def ^:private PermissionWarningsRequest
-  [:map {:closed true}
-   [:user_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
-
-(def ^:private MissingTable
-  [:map {:closed true}
-   [:id ms/PositiveInt]
-   [:name ms/NonBlankString]
-   [:schema [:maybe :string]]
-   [:database_id ms/PositiveInt]
-   [:database_name ms/NonBlankString]])
-
-(def ^:private PermissionWarning
-  [:map {:closed true}
-   [:user_id ms/PositiveInt]
-   [:missing_tables [:sequential MissingTable]]])
+(def ^:private AddGroupsRequest
+  [:map {:closed true
+         :decode/api (fn [body]
+                       (when (map? body)
+                         (api/check-400 (every? #{:group_ids} (keys body))
+                                        (tru "Only group_ids can be specified.")))
+                       body)}
+   [:group_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -204,13 +195,6 @@
     (assoc app :outdated (data-app.config/outdated? app))
     (select-keys app [:name :display_name])))
 
-(defn- data-app-list-response
-  [warning-group-ids app]
-  (cond-> (data-app-response app)
-    api/*is-superuser?*
-    (assoc :has_user_permission_warnings
-           (contains? warning-group-ids (:permission_group_id app)))))
-
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
    resource collection, which every app has."
@@ -223,7 +207,7 @@
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
    `:error-code \"data-app-outdated\"`, so the client can show what to do. Applied where the
    contract is served: the bundle for everyone, and the metadata for non-superusers, who have no
-   other use for it. Superusers still read it, to badge the app and manage its users."
+   other use for it. Superusers still read it, to badge the app and manage its groups."
   [app]
   (when (data-app.config/outdated? app)
     (throw (ex-info (tru (str "This app was built for version {0} of data apps. Migrate it to the current "
@@ -237,13 +221,10 @@
    available, and otherwise listed only to superusers, who see it badged."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (let [apps (->> (data-apps.db/data-apps available)
-                  (remove #(and (or available (not api/*is-superuser?*))
-                                (data-app.config/outdated? %)))
-                  (mapv api/read-check))
-        warning-group-ids (when api/*is-superuser?*
-                            (data-app.user-access/groups-with-permission-warnings apps))]
-    (mapv (partial data-app-list-response warning-group-ids) apps)))
+  (->> (data-app.access/readable-apps {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} available)
+       (remove #(and (or available (not api/*is-superuser?*))
+                     (data-app.config/outdated? %)))
+       (mapv data-app-response)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
@@ -295,7 +276,7 @@
       (data-app-response app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, and the collection and permission group it owns."
+  "Delete a data app, its bundle, its collection, and its group assignments."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (write-check-data-app slug)]
     (check-editable! app)
@@ -304,21 +285,6 @@
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
-
-(api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
-  :- [:sequential PermissionWarning]
-  "Return warnings for users who cannot access every table used by a data app."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
-   _query-params
-   {user-ids :user_ids} :- PermissionWarningsRequest]
-  (let [app   (write-check-data-app slug)
-        users (data-apps.db/users-for-permission-warnings user-ids)]
-    (api/check-404 (= (count users) (count user-ids)))
-    (api/check-400 (every? :is_active users)
-                   (tru "Deactivated users cannot be added to data apps."))
-    (api/check-400 (every? (comp nil? :tenant_id) users)
-                   (tru "Tenant users cannot be added to data apps."))
-    (data-app.user-access/permission-warnings (:table_ids app) users)))
 
 (api.macros/defendpoint :post "/generate/app" :- ::data-apps.schema/app-files
   "A new data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
@@ -363,6 +329,51 @@
             [:actions {:optional true} [:maybe [:sequential ::data-apps.schema/action]]]]]
   (api/check-superuser)
   (data-apps.generate/resources body))
+
+(def ^:private GroupPermissionWarning
+  [:map
+   [:group_id ms/PositiveInt]
+   [:missing_tables
+    [:sequential
+     [:map
+      [:id ms/PositiveInt]
+      [:name :string]
+      [:schema [:maybe :string]]
+      [:database_id ms/PositiveInt]
+      [:database_name :string]]]]])
+
+(api.macros/defendpoint :get ["/:slug/group-permission-warnings" :slug slug-regex]
+  :- [:sequential GroupPermissionWarning]
+  "Return missing table access for groups already assigned to this app."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app-by-slug slug))))
+
+(def ^:private AssignedGroup
+  [:map
+   [:id ms/PositiveInt]
+   [:name :string]
+   [:member_count ms/IntGreaterThanOrEqualToZero]])
+
+(api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+  "List the groups assigned to a data app."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
+
+(api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+  "Assign a batch of internal groups atomically."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
+   _query-params
+   {group-ids :group_ids} :- AddGroupsRequest]
+  (api/check-superuser)
+  (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-ids))
+
+(api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
+  "Remove a group's assignment and collection access."
+  [{:keys [slug group-id]} :- [:map {:closed true} [:slug ms/NonBlankString] [:group-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))
 
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
 ;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide

@@ -11,6 +11,7 @@ import type {
   CollectionPermissionsGraph,
   DataApp,
   Group,
+  GroupInfo,
   RemoteSyncTask,
   WritebackAction,
 } from "metabase-types/api";
@@ -47,7 +48,6 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   bundle_path: "dist/index.js",
   enabled: true,
   resource_collection_id: 1,
-  permission_group_id: null,
   table_ids: [],
   allowed_hosts: [],
   bundle_hash: "e2e-bundle-hash",
@@ -77,6 +77,33 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   const slug = appName;
   const displayName = options.displayName ?? appName;
   const allowedHosts = options.allowedHosts ?? [];
+
+  // the entrypoint checks for app access before serving its HTML
+  // we need to have a real app in the database - mocking the endpoint isn't enough
+  cy.request({
+    url: `/api/apps/${slug}`,
+    failOnStatusCode: false,
+  }).then(({ status }) => {
+    if (status === 200) {
+      return;
+    }
+
+    expect(status).to.equal(404);
+
+    cy.log("register the data app");
+    cy.request("POST", "/api/apps", {
+      name: slug,
+      display_name: displayName,
+      bundle_path: "dist/index.js",
+      allowed_hosts: allowedHosts,
+      bundle: "",
+    });
+
+    cy.log("assign the data app to all users group");
+    cy.request("POST", `/api/apps/${slug}/groups`, {
+      group_ids: [USER_GROUPS.ALL_USERS_GROUP],
+    });
+  });
 
   // Prelude runs in the sandbox realm before the bundle's factory, so the app
   // can read the injected config as a global (see MockDataAppOptions.testEnv).
@@ -596,10 +623,9 @@ export function pullExampleDataApps({
   configureGitAndPullChanges("read-write");
 }
 
-/** A data app whose resources loaded: it has its collection and its permission group. */
+/** A data app whose resources loaded into its collection. */
 export type SyncedDataApp = DataApp & {
   resource_collection_id: number;
-  permission_group_id: number;
 };
 
 /** The host app's checked-in `data_app.yaml`, as serialization reads it. */
@@ -617,8 +643,7 @@ serdes/meta:
 `;
 
 const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
-  typeof app.resource_collection_id === "number" &&
-  typeof app.permission_group_id === "number";
+  typeof app.resource_collection_id === "number";
 
 /**
  * Writes the app's manifest into the sync repository as `data_apps/<slug>`, makes
@@ -737,6 +762,21 @@ export function buildDataAppHostApp() {
     failOnNonZeroExit: false,
     timeout: 180_000,
   });
+}
+
+/** Create a group and assign it to a data app by slug. */
+export function assignTestGroupToDataApp(slug: string) {
+  cy.request<GroupInfo>("POST", "/api/permissions/group", {
+    name: `Data app test group: ${slug}`,
+  })
+    .its("body")
+    .as("dataAppTestGroup");
+
+  cy.get<GroupInfo>("@dataAppTestGroup").then(({ id }) =>
+    cy.request("POST", `/api/apps/${slug}/groups`, { group_ids: [id] }),
+  );
+
+  return cy.get<GroupInfo>("@dataAppTestGroup").its("id");
 }
 
 const DATA_APP_DEV_HOST_APP_DIR =

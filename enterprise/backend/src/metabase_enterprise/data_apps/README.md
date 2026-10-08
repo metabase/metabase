@@ -14,9 +14,9 @@ themselves, cached in the app DB so serving never reads a repository.
 
 The model's hooks hold its invariants: every write is normalized and validated against the column
 schemas in `schema.clj`, `bundle_hash` always matches `bundle`, an inserted app gets the collection
-and permission group it owns (see Permissions), and a deleted one loses them. Its default fields
-leave the bundle out, so listing apps never drags bundles out of the DB; `db.clj`'s
-`data-app-bundle` reads it explicitly.
+it owns (see Permissions), and deleting an app deletes its collection and group assignments while
+preserving the assigned permission groups. Its default fields leave the bundle out, so listing apps
+never drags bundles out of the DB; `db.clj`'s `data-app-bundle` reads it explicitly.
 
 An app with a lower `version` than this Metabase serves is outdated — badged for admins, hidden
 from everyone else, and a 409 to open.
@@ -44,13 +44,13 @@ Collections of the `data-apps` namespace are written under `collections/data_app
 
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
 `display_name`, `path` the `bundle_path`, and `collection` the entity ID of the app's resource
-collection, which the app depends on and so loads after. The bundle travels as a serdes *resource
-file*: the entity carries it in `:serdes/resources` on export, the storage writers put it next to
+collection, which the app depends on and so loads after. The bundle travels as a serdes _resource
+file_: the entity carries it in `:serdes/resources` on export, the storage writers put it next to
 the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path
 must stay inside the entity's directory.
 
-`enabled` is admin-owned and never leaves the instance; the permission group and `table_ids` are
-server-managed; `bundle_hash` is recomputed from the bundle on import.
+`enabled` is admin-owned and never leaves the instance; group assignments also stay local to the
+instance. `table_ids` are server-managed, and `bundle_hash` is recomputed from the bundle on import.
 A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
 An import matches an app by `entity_id` and reasserts the app's resources; a manifest whose slug an app
@@ -109,49 +109,56 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-Each app owns two server-managed resources, created with the app and reasserted on
-every import: a **collection** holding the copies the app is served from (saved questions, actions,
-table-sourced metrics) and a **permissions group** its users belong to. The collection is a root
-collection of the `data-apps` namespace, created as the app's row is inserted unless an import names
-one (`models/data_app.clj`), and can never be swapped for another; `resources.clj` keeps its name and
-permissions in step and brings it out of the trash. Deleting the app deletes both, and the
-collection's own hooks delete what it holds.
+Each app owns a resource collection, created with the app in the `data-apps` namespace. The collection
+is never swapped for another; `resources.clj` keeps its name and permissions in step and restores it from the trash.
+Administrators assign existing internal permission groups through `/api/apps/:slug/groups`. Assignments live in
+`data_app_group_assignment` and stay local to the instance. Repository sync preserves them while the app row exists.
 
-The group is set database-level `view-data :blocked` on every database, so it grants **no data
-access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
-admins is revoked from the collection before the app group gets read access. Deleting an app deletes
-both resources and everything in the collection.
+Admins reuse existing permission groups through `/api/apps/:slug/groups`. Assignments are stored in
+`data_app_group_assignment`: an app can have multiple groups, and a group can be assigned to multiple apps.
 
-**Viewing an app** requires read access to its resource collection. You have to be a member in
-the app's group or be an admin.
+Membership in any assigned group grants app access. Administrators can access every app. The list API hides
+unassigned apps from other users, and metadata, bundle, and HTML entry-point requests check the same assignment.
+Collection access alone does not grant app access.
 
-**A viewer sees an app's data only through access they already hold.** The app group grants no
-view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no
-data from it — their own groups' permissions and sandboxes apply unchanged. Because the group grants
-nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
+Every app owns a collection from insertion. If its collection is deleted separately, resource reconciliation recreates it.
 
-**Managing is superuser-only** — enabling, disabling, deleting, and repo status.
+Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
+access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
+collection and assignments, but preserves the assigned groups.
+
+**A viewer sees an app's data only through access they already hold.** Assignment changes never change
+View Data permissions; the viewer's other groups and sandboxes continue to determine data access.
+
+**Managing is superuser-only** — assignments, enabling, disabling, deleting, and repo status.
 Exporting an app's resources also needs a superuser.
+
+The Data Apps feature is required for all app API endpoints, including group listing and removal.
 
 ## Namespace map
 
-| Namespace             | Responsibility                                                                                      |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
-| `core.clj`            | What other modules ask: resource file problems and table dependencies.                             |
-| `config.clj`          | The serialized layout and data app contract version constants.                                     |
-| `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
-| `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
-| `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
-| `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
-| `generate.clj`        | The facade over what Metabase generates for an app's author: its files, its schema, its collection's files. |
-| `generate/app.clj`    | A new app's `data_app.yaml` and collection file, each at its path with its YAML.                    |
-| `generate/resources.clj` | The files of an app's collection: built queries, action copies, metric copies, each with its YAML. |
-| `generate/schemas.clj` | The TypeScript schema of the root libraries' tables and metrics and the model-less query actions.  |
-| `generate/schemas/`   | The schema's stages: data access (`source`), entities (`table`, `metric`, `action`, `common`), rendering (`render`, `javascript`). |
-| `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
-| `resource_validation.clj` | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
-| `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |
-| `db.clj`              | The module's application-database queries.                                                          |
-| `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
-| `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
+| Namespace                              | Responsibility                                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `apps.clj`                             | Creating apps; the connected repository's URL.                                                  |
+| `core.clj`                             | Public access checks, resource file problems, and table dependencies.                           |
+| `config.clj`                           | The serialized layout and data app contract version constants.                                  |
+| `schema.clj`                           | Column schemas, with the normalization and validation every write goes through.                 |
+| `api.clj`                              | The `/api/apps` endpoints, bundle serving, ETag handling.                                       |
+| `resources.clj`                        | Lifecycle of the app-owned collection and derived collection permissions.                       |
+| `models/data_app.clj`                  | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.           |
+| `generate.clj`                         | The facade over what Metabase generates for an app's author: its files, its schema, its collection's files. |
+| `generate/app.clj`                     | A new app's `data_app.yaml` and collection file, each at its path with its YAML.                |
+| `generate/resources.clj`               | The files of an app's collection: built queries, action copies, metric copies, each with its YAML. |
+| `generate/schemas.clj`                 | The TypeScript schema of the root libraries' tables and metrics and the model-less query actions. |
+| `generate/schemas/`                    | The schema's stages: data access (`source`), entities (`table`, `metric`, `action`, `common`), rendering (`render`, `javascript`). |
+| `query_definition.clj`                 | The closed schema of a `defineQuery` definition the serialization accepts.                      |
+| `resource_validation.clj`              | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
+| `resource_tables.clj`                  | The tables an app's resources read, recorded on the app after an import.                        |
+| `access.clj`                           | App access through assigned groups.                                                             |
+| `group_access.clj`                     | Assignment management and collection grant reconciliation.                                      |
+| `models/data_app_group_assignment.clj` | App-to-group assignments.                                                                       |
+| `db.clj`                               | The module's application-database queries.                                                      |
+| `csp.clj`                              | `allowed_hosts` lookup for the core CSP middleware.                                             |
+| `init.clj`                             | Loads the above so endpoints, models, and hooks register.                                       |
+
+`group_access.clj` manages assignments. `models/data_app_group_assignment.clj` defines the local association model.

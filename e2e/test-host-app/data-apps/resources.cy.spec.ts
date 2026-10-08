@@ -152,7 +152,9 @@ describe("Embedding SDK: data-app resources (queries)", () => {
         expect(card.collection_id).to.eq(app.resource_collection_id);
         expect(card.name).to.eq("Orders");
 
-        H.addUserToGroup(app.permission_group_id, USERS.normal.email);
+        H.assignTestGroupToDataApp(app.name).then((groupId) => {
+          H.addUserToGroup(groupId, USERS.normal.email);
+        });
 
         cy.signInAsNormalUser();
         cy.request(`/api/card/${question}`)
@@ -208,7 +210,9 @@ describe("Embedding SDK: data-app resources (queries)", () => {
           const [copy] = metrics;
           expect(copy.id, "a copy, not the source metric").not.to.eq(metric.id);
 
-          H.addUserToGroup(app.permission_group_id, USERS.normal.email);
+          H.assignTestGroupToDataApp(app.name).then((groupId) => {
+            H.addUserToGroup(groupId, USERS.normal.email);
+          });
 
           cy.signInAsNormalUser();
           cy.request(`/api/card/${copy.id}`).its("status").should("eq", 200);
