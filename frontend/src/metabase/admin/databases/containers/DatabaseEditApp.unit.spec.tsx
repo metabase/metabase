@@ -18,6 +18,7 @@ import {
 import { DatabaseEditApp } from "./DatabaseEditApp";
 
 const setup = ({ database }: { database: Database }) => {
+  setupEnginesEndpoint({});
   setupDatabaseEndpoints(database);
   setupEnginesEndpoint(createMockEngines());
   setupDatabaseUsageInfoEndpoint(database, {
@@ -51,7 +52,7 @@ describe("DatabaseEditApp", () => {
       await screen.findByTestId("database-connection-info-section"),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId("database-model-features-section"),
+      screen.getByTestId("database-data-actions-section"),
     ).toBeInTheDocument();
     expect(
       screen.getByTestId("database-danger-zone-section"),
@@ -67,7 +68,7 @@ describe("DatabaseEditApp", () => {
       await screen.findByTestId("database-connection-info-section"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId("database-model-features-section"),
+      screen.queryByTestId("database-data-actions-section"),
     ).not.toBeInTheDocument();
     expect(
       screen.getByTestId("database-danger-zone-section"),

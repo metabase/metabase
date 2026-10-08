@@ -1,12 +1,9 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Flex, Group, Icon } from "metabase/ui";
+import { Flex, Group, Icon, Text } from "metabase/ui";
 
-import styles from "./EditBar.module.css";
-
-type Props = {
+type EditBarProps = {
   title: string;
   center?: ReactNode;
   buttons: ReactNode;
@@ -22,20 +19,29 @@ export function EditBar({
   admin = false,
   className,
   "data-testid": dataTestId,
-}: Props) {
-  const isBrand = !admin;
+}: EditBarProps) {
+  // The admin bar is purple in both themes, so its text stays white instead of following the inverse token
+  const textColor = admin ? "white" : "text-primary-inverse";
 
   return (
-    <FullWidthContainer
-      className={cx(styles.root, { [styles.brand]: isBrand }, className)}
+    <Flex
+      component={FullWidthContainer}
+      className={className}
+      align="center"
+      justify="space-between"
+      pos="relative"
+      py="sm"
+      bg={admin ? "admin-navbar" : "core-brand"}
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
-        <Icon name="pencil" size={12} className={styles.editIcon} />
-        <span className={styles.title}>{title}</span>
+        <Icon name="pencil" size={12} c={textColor} />
+        <Text component="span" c={textColor} fw="bold" lh="md">
+          {title}
+        </Text>
       </Group>
       {center && <div>{center}</div>}
       <Flex gap="md">{buttons}</Flex>
-    </FullWidthContainer>
+    </Flex>
   );
 }

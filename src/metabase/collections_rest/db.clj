@@ -29,6 +29,15 @@
                        :from            [:report_card]
                        :where           [:= :archived false]}))
 
+(mu/defn unarchived-action-collection-ids
+  "The distinct `:collection_id`s of the unarchived Actions."
+  []
+  (t2/query {:select-distinct [:collection_id]
+             :from            [:action]
+             :where           [:and
+                               [:= :archived false]
+                               [:not= :collection_id nil]]}))
+
 (mu/defn published-table-collection-ids
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []

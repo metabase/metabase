@@ -14,12 +14,5 @@ position: 3
 database_position: 3
 has_field_values: auto-list
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: REVIEWS
-  model: Table
-- id: RATING
-  model: Field
+- model: Field
 database_indexed: false

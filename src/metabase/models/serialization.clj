@@ -58,6 +58,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -587,6 +588,28 @@
   [entity]
   (:serdes/meta entity))
 
+(defmulti ingested-path
+  "The abstract path of `ingested`, an entity read from a file, computed from its own keys."
+  {:arglists '([model-name ingested])}
+  (fn [model-name _ingested] model-name))
+
+(defmethod ingested-path :default [model-name ingested]
+  [(infer-self-path model-name ingested)])
+
+(defn restore-path
+  "`ingested` with its `:serdes/meta` path computed by [[ingested-path]] when its file stores only the model."
+  [ingested]
+  (let [{:keys [model] :as self} (last (:serdes/meta ingested))]
+    (cond-> ingested
+      (and self (not (contains? self :id))) (assoc :serdes/meta (ingested-path model ingested)))))
+
+(defn storable
+  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities."
+  [entity]
+  (let [model (-> entity :serdes/meta last :model)]
+    (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
+        (assoc :serdes/meta [{:model model}]))))
+
 (defmulti resource-paths
   "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
   {:arglists '([ingested])}
@@ -842,7 +865,7 @@
   (resolve/export-fk (export-resolver) id model))
 
 (defmacro ^:private fk-elide
-  "If a call to `*export-fk*` inside of this fails, do not export the whole data structure"
+  "Returns nil when an FK target no longer exists; rethrows other failures."
   [& body]
   `(try
      ~@body
@@ -1009,20 +1032,25 @@
   (resolve/import-field-fk (import-resolver) field-id))
 
 (defn field->path
-  "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
+  "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field, with one
+  Field segment per name for a nested Field.
   This is useful for writing [[deserialization-dependencies]] implementations."
-  [[db-name schema table-name field-name]]
-  (filterv some? [{:model "Database" :id db-name}
-                  (when schema {:model "Schema" :id schema})
-                  {:model "Table" :id table-name}
-                  {:model "Field" :id field-name}]))
+  [[db-name schema table-name & field-names]]
+  (into (table->path [db-name schema table-name])
+        (map (fn [field-name] {:model "Field" :id field-name}))
+        field-names))
+
+(defn table-path->table-ref
+  "The `[db-name schema table-name]` reference of the Table at `table-path`, with a nil schema for a schemaless Table."
+  [table-path]
+  (let [id-of (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
+    [(id-of "Database") (id-of "Schema") (id-of "Table")]))
 
 (defn field-path->field-ref
   "The `[db-name schema table-name & field-names]` reference of the Field at `field-path`, nested Fields included."
   [field-path]
-  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)
-        id-of               (fn [model] (some #(when (= model (:model %)) (:id %)) table-path))]
-    (into [(id-of "Database") (id-of "Schema") (id-of "Table")] (map :id) fields)))
+  (let [[table-path fields] (split-with #(not= "Field" (:model %)) field-path)]
+    (into (table-path->table-ref table-path) (map :id) fields)))
 
 ;;; ## MBQL Fields
 
@@ -1279,7 +1307,7 @@
       import-mbql-update-refs
       import-mbql-update-maps))
 
-(defn- stale-card-tag-rename
+(defn card-template-tag-rename
   "New name for a card template tag whose `#<id>-slug` name embeds a different id than its (already
   remapped) `:card-id`: the id is swapped, the slug is kept verbatim. Nil when they already agree or
   the name doesn't embed an id."
@@ -1299,7 +1327,7 @@
      x
      (into {}
            (keep (fn [{tag-name :name, :as tag}]
-                   (when-let [new-name (stale-card-tag-rename tag)]
+                   (when-let [new-name (card-template-tag-rename tag)]
                      [tag-name new-name])))
            (lib/all-template-tags x)))
     x))
@@ -1676,6 +1704,20 @@
                                   :else cols)]
                [k updated-cols]))))))
 
+(defn- timeline-setting-ids
+  "The ids stored under a `:timeline.*` visualization setting. Settings saved before these keys were validated can
+  hold anything, so a non-sequential value counts as no ids rather than throwing mid-export."
+  [ids]
+  (when (sequential? ids) ids))
+
+(defn- export-fks [ids model]
+  (u/keepv #(when (pos-int? %) (fk-elide (*export-fk* % model))) (timeline-setting-ids ids)))
+
+(defn- export-timeline-events [settings]
+  (-> settings
+      (m/update-existing :timeline.selected_timeline_ids export-fks :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids export-fks :model/TimelineEvent)))
+
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
   [settings]
@@ -1686,6 +1728,7 @@
         export-viz-click-behavior
         export-visualizer-settings
         export-pivot-table
+        export-timeline-events
         (update :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
@@ -1766,6 +1809,18 @@
   (binding [resolve/*import-resolver* resolve.default/lenient-import-resolver]
     (import-visualizer-settings settings)))
 
+(defn- timeline-event-ref? [event-ref]
+  (and (vector? event-ref) (= 2 (count event-ref)) (every? entity-id? event-ref)))
+
+(defn- import-fks [refs ref? model]
+  (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) (timeline-setting-ids refs)))
+
+(defn- import-timeline-events [settings]
+  (-> settings
+      ;; Keep explicit empty selections: removing the key would restore collection defaults.
+      (m/update-existing :timeline.selected_timeline_ids import-fks entity-id? :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids import-fks timeline-event-ref? :model/TimelineEvent)))
+
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
@@ -1777,6 +1832,7 @@
         import-viz-click-behavior
         import-visualizer-settings
         import-pivot-table
+        import-timeline-events
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
@@ -1802,6 +1858,18 @@
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
 
+(defn- timeline-events-deps
+  [allow-int-ids? settings]
+  (let [selected-ids (timeline-setting-ids (:timeline.selected_timeline_ids settings))
+        excluded-ids (timeline-setting-ids (:timeline.excluded_timeline_event_ids settings))
+        timeline-ids (concat
+                      (filter #(or (raw-ref-id? allow-int-ids? %) (entity-id? %)) selected-ids)
+                      (if allow-int-ids?
+                        (mapcat models.db/timeline-ids-of-events
+                                (partition-all query-batch-size (filter pos-int? excluded-ids)))
+                        (map first (filter timeline-event-ref? excluded-ids))))]
+    (into #{} (map (fn [id] [{:model "Timeline" :id id}])) timeline-ids)))
+
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
@@ -1818,7 +1886,8 @@
         click-behavior-deps       (viz-click-behavior-deps viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps
+                  (timeline-events-deps allow-int-ids? viz)])
          (filter some?)
          (reduce set/union #{}))))
 

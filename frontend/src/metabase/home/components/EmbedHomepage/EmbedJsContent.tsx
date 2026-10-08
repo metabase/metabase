@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import styled from "@emotion/styled";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -7,6 +5,8 @@ import embedJsExampleImage from "assets/img/embed-js-example.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
+
+import S from "./EmbedHomepage.module.css";
 
 type EmbedJsContentProps = {
   embedJsDocsUrl: string;
@@ -48,9 +48,13 @@ export const EmbedJsContent = ({
         {t`A JavaScript library built on top of Metabase’s modular embedding SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
       </Text>
       {showImage && (
-        <EmbedJsImage
+        <Box
+          component="img"
+          className={S.border}
           src={embedJsExampleImage}
           alt="Modular embedding example"
+          w="100%"
+          mb="lg"
         />
       )}
       <Group gap="lg">
@@ -65,10 +69,3 @@ export const EmbedJsContent = ({
     </Box>
   );
 };
-
-const EmbedJsImage = styled.img`
-  width: 100%;
-  margin-bottom: 1rem;
-  border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.colors["border-neutral"]};
-`;

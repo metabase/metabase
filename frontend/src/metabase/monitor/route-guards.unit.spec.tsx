@@ -11,6 +11,7 @@ import {
 import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
+  CanAccessApiKeyUsage,
   CanAccessMonitor,
 } from "./route-guards";
 
@@ -228,6 +229,73 @@ describe("monitor route-guards", () => {
 
       expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
       expect(screen.queryByText("ai auditing page")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("CanAccessApiKeyUsage", () => {
+    interface SetupOpts {
+      currentUser?: ReturnType<typeof createMockUser>;
+    }
+
+    const setup = ({ currentUser }: SetupOpts = {}) => {
+      return renderWithProviders(
+        <>
+          <Route element={<CanAccessApiKeyUsage />}>
+            <Route
+              path="/monitor/api-key-usage"
+              element={<div>api key usage page</div>}
+            />
+          </Route>
+          <Route path="/unauthorized" element={<div>unauthorized</div>} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser,
+            settings: createMockSettingsState({ "has-user-setup": true }),
+          }),
+          withRouter: true,
+          initialRoute: "/monitor/api-key-usage",
+        },
+      );
+    };
+
+    it("renders the page for superusers", async () => {
+      setup({ currentUser: createMockUser({ is_superuser: true }) });
+
+      expect(await screen.findByText("api key usage page")).toBeInTheDocument();
+    });
+
+    it("redirects a non-admin with monitoring permission to unauthorized without redirect-back", async () => {
+      const { router } = setup({
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: false,
+          permissions: { can_access_monitoring: true },
+        }),
+      });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
+      expect(screen.queryByText("api key usage page")).not.toBeInTheDocument();
+    });
+
+    it("redirects an analyst to unauthorized without redirect-back", async () => {
+      const { router } = setup({
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: true,
+        }),
+      });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
+      expect(screen.queryByText("api key usage page")).not.toBeInTheDocument();
     });
   });
 });

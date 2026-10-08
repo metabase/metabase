@@ -32,7 +32,7 @@
                                 :unresolved-symbol                                                   2
                                 :unused-binding                                                      6
                                 :unused-private-var                                                  2}
- :discouraged-namespace-counts {:clojure.tools.logging 5
+ :discouraged-namespace-counts {:clojure.tools.logging 2
                                 :toucan2.core          1}
  :discouraged-var-counts       {:clojure.core/pr                            1
                                 :clojure.core/print                         1

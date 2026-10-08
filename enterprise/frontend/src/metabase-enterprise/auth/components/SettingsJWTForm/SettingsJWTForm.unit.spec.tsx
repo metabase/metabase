@@ -598,15 +598,15 @@ describe("SettingsJWTForm", () => {
   });
 
   describe("user provisioning", () => {
-    it("sits at the top of the page", async () => {
+    it("sits right below the server settings", async () => {
       await setup();
 
       const cardTitles = screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
-        "User provisioning",
         "Server settings",
+        "User provisioning",
         "User attribute configuration",
         "Group mapping",
       ]);

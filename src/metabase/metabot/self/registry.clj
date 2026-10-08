@@ -14,6 +14,7 @@
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
@@ -60,8 +61,9 @@
     :stream           - the adapter entry point, returning an AISDK stream.
     :list-models      - the provider's model listing, and the credential round trip behind Connect.
     :supported-models - the allow-list a listing is intersected with. Absent for a provider that serves
-                        whatever the operator loaded (vLLM), names its own deployment (Azure), or has a
-                        catalog fixed in `metabase.llm.provider` (Google, and the managed connection).
+                        whatever the operator loaded (vLLM, Ollama), names its own deployment (Azure), or
+                        has a catalog fixed in `metabase.llm.provider` (Google, and the managed
+                        connection).
     :context-window   - model -> its input context window in tokens.
     :reasoning?       - resolved model ref -> whether it streams its reasoning back to us.
     :fast-mode?       - resolved model ref -> whether it can be served in Anthropic fast mode.
@@ -71,8 +73,9 @@
   every request. A second copy in this table would read as authoritative while changing nothing.
 
   The two capability fns take the whole resolved ref rather than a model string because they do not all
-  answer from the model: vLLM answers from what its connect-time probe recorded on the *connection*, and
-  fast mode depends on whether the call is proxied. The adapters that do answer from the model name keep a
+  answer from the model: vLLM answers from what its connect-time probe recorded on the *connection*,
+  Ollama needs the credentials as well as the model because only its own server can say, and fast mode
+  depends on whether the call is proxied. The adapters that do answer from the model name keep a
   small fn of their own so the table holds one shape rather than a per-provider argument list."
   {"anthropic"  {:stream           #'claude/claude
                  :list-models      #'claude/list-models
@@ -107,6 +110,9 @@
                  :supported-models #'moonshot/supported-models
                  :context-window   #'moonshot/context-window-tokens
                  :reasoning?       #'moonshot/streams-reasoning?}
+   "ollama"     {:stream           #'ollama/ollama
+                 :list-models      #'ollama/list-models
+                 :reasoning?       #'ollama/streams-reasoning?}
    "openai"     {:stream           #'openai/openai
                  :list-models      #'openai/list-models
                  :supported-models #'openai/supported-models
