@@ -1,5 +1,9 @@
+import { nanoid } from "@reduxjs/toolkit";
+import yaml from "js-yaml";
+
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
+import { NANOID_LENGTH } from "metabase-types/api";
 import type {
   Collection,
   CollectionId,
@@ -11,7 +15,7 @@ import type {
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { createTestNativeQuery } from "./api";
+import { createApiKey, createTestNativeQuery } from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
@@ -292,6 +296,206 @@ export function createDataAppScoreboardAction({
   );
 }
 
+/**
+ * The dev host app is a real vite data app with the published SDK installed, so
+ * its CLI and build are the ones an author actually runs.
+ */
+export const dataAppHostAppRoot = () =>
+  `${Cypress.config("projectRoot")}/${DATA_APP_DEV_HOST_APP_DIR}`;
+
+/**
+ * Clears what the resource specs write into the host app. They drive the same
+ * checked-in directory, so each has to start from a clean tree.
+ */
+export function resetDataAppHostAppSources() {
+  const appRoot = dataAppHostAppRoot();
+
+  return cy.task("removeDataAppPaths", {
+    paths: [
+      `${appRoot}/queries`,
+      `${appRoot}/actions`,
+      `${appRoot}/collections`,
+    ],
+  });
+}
+
+/** A new entity ID, as `representations generate-entity-id` makes one for an author. */
+export const newEntityId = () => nanoid(NANOID_LENGTH);
+
+/**
+ * A table as serialized YAML references it: database, schema, and table name.
+ * The schema is null for a database without schemas.
+ */
+export type PortableTable = [
+  database: string,
+  schema: string | null,
+  table: string,
+];
+
+type ResourceEntity = Record<string, unknown>;
+
+/** The slug serialization labels an entity with, from its name: lowercase, every other character an underscore. */
+const slugOf = (name: string) =>
+  name.toLowerCase().replace(/[^\p{L}\p{N}_.]/gu, "_");
+
+const serdesMeta = (model: string, entityId: string, name: string) => [
+  { id: entityId, label: slugOf(name), model },
+];
+
+/** The app's collection: a root collection of the `data-apps` namespace. */
+const resourceCollection = (
+  entityId: string,
+  name: string,
+): ResourceEntity => ({
+  name,
+  namespace: "data-apps",
+  entity_id: entityId,
+  "serdes/meta": serdesMeta("Collection", entityId, name),
+});
+
+/**
+ * A card in the app's collection, as an author writes it: a saved question from a
+ * query definition, or a copy of a metric from the repository. `stage`
+ * holds the clauses besides the source table.
+ */
+const resourceCard = ({
+  entityId,
+  name,
+  type,
+  collection,
+  table,
+  stage = {},
+}: {
+  entityId: string;
+  name: string;
+  type: "question" | "metric";
+  collection: string;
+  table: PortableTable;
+  stage?: ResourceEntity;
+}): ResourceEntity => ({
+  name,
+  type,
+  display: type === "metric" ? "scalar" : "table",
+  entity_id: entityId,
+  collection_id: collection,
+  dataset_query: {
+    "lib/type": "mbql/query",
+    database: table[0],
+    stages: [
+      { "lib/type": "mbql.stage/mbql", "source-table": table, ...stage },
+    ],
+  },
+  visualization_settings: {},
+  "serdes/meta": serdesMeta("Card", entityId, name),
+});
+
+/**
+ * The YAML an author writes for an app's collection, in the Metabase
+ * representation format: plain data for `writeDataAppResources`, read from
+ * nothing and written nowhere by itself.
+ */
+export const dataAppRepresentations = {
+  collection: resourceCollection,
+  card: resourceCard,
+};
+
+const fileName = (entity: ResourceEntity) =>
+  `${slugOf(String(entity.name))}_${String(entity.entity_id)}.yaml`;
+
+/**
+ * Writes the files of an app's collection as YAML under `collections/data_apps/`
+ * of `root`, as serialization lays them out: the collection's own file beside
+ * a directory of its name that holds the cards and actions. `root` is the
+ * repository the app lives in, or the app itself when it stands alone, as the
+ * CLI reads them. Replaces what was there for that collection.
+ */
+export function writeDataAppResources(
+  root: string,
+  {
+    collection,
+    cards = [],
+    actions = [],
+  }: {
+    collection: ResourceEntity;
+    cards?: ResourceEntity[];
+    actions?: ResourceEntity[];
+  },
+) {
+  const collectionsDir = `${root}/collections/data_apps`;
+  const stem = slugOf(String(collection.name));
+  const collectionDir = `${collectionsDir}/${stem}`;
+
+  cy.task("removeDataAppPaths", {
+    paths: [`${collectionsDir}/${stem}.yaml`, collectionDir],
+  });
+
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${collectionsDir}/${stem}.yaml`]: yaml.dump(collection),
+      ...Object.fromEntries(
+        [...cards, ...actions].map((entity) => [
+          `${collectionDir}/${fileName(entity)}`,
+          yaml.dump(entity),
+        ]),
+      ),
+    },
+  });
+}
+
+/** Declares one `defineQuery` per entry, as an app author would, with the ID of its saved question. */
+export function declareDataAppQueries(
+  appRoot: string,
+  declarations: Array<{
+    name: string;
+    tableId: number;
+    savedQuestionEntityId: string;
+    metricId?: number;
+  }>,
+) {
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${appRoot}/queries/orders.query.ts`]: [
+        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+        ...declarations.map(
+          ({ name, tableId, savedQuestionEntityId, metricId }) => {
+            const clauses =
+              metricId === undefined
+                ? ""
+                : `, aggregations: [{ type: "metric", id: ${metricId} }]`;
+            return `export const ${name} = defineQuery({ savedQuestionEntityId: "${savedQuestionEntityId}", source: { type: "table", id: ${tableId} }${clauses} });`;
+          },
+        ),
+      ].join("\n"),
+    },
+  });
+}
+
+/**
+ * Runs the data app CLI the host app has installed, the one an author runs:
+ * `embedding-sdk-react data-apps <command>`. `check-resources` never calls Metabase; `print-resources`
+ * reaches it through `env` (see `dataAppCliEnv`).
+ */
+export function runDataAppCli(command: string, env?: Record<string, string>) {
+  return cy.exec(
+    `cd "${dataAppHostAppRoot()}" && ./node_modules/.bin/embedding-sdk-react data-apps ${command}`,
+    { failOnNonZeroExit: false, timeout: 60_000, env },
+  );
+}
+
+/**
+ * The instance and an admin API key a data-app command reaches Metabase with,
+ * as the environment variables `.env.local` would otherwise hold.
+ */
+export function dataAppCliEnv() {
+  return createApiKey(
+    `data-app-cli-e2e-${Date.now()}`,
+    USER_GROUPS.ADMIN_GROUP,
+  ).then(({ body }) => ({
+    DATA_APP_MB_URL: String(Cypress.config("baseUrl")),
+    DATA_APP_MB_API_KEY: body.unmasked_key,
+  }));
+}
+
 export const copySyncedDataAppsFixture = () =>
   cy.task("copyDirectory", {
     source: `${Cypress.config("projectRoot")}/e2e/support/assets/example_synced_data_apps`,
@@ -300,8 +504,8 @@ export const copySyncedDataAppsFixture = () =>
 
 /**
  * Pulls `example_synced_data_apps` through a real remote-sync import, so a spec
- * gets real app rows, each with its resource collection and permission group:
- * `good` and `second-app`.
+ * gets real app rows, each with its resource collection and permission group.
+ * Both `good` and `second-app` are served.
  */
 export function pullExampleDataApps() {
   setupGitSync();
@@ -311,7 +515,18 @@ export function pullExampleDataApps() {
   configureGitAndPullChanges("read-write");
 }
 
-/** Puts a user in the app's own permission group, as granting app access does. */
+/**
+ * Runs the host app's own production build. The SDK's `metabase-resource-check`
+ * plugin runs on `buildStart`, so this is what refuses to bundle an app whose
+ * collection files don't back its definitions.
+ */
+export function buildDataAppHostApp() {
+  return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {
+    failOnNonZeroExit: false,
+    timeout: 180_000,
+  });
+}
+
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 

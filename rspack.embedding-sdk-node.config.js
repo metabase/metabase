@@ -3,6 +3,7 @@
 // Node-targeted builds for the SDK package: the `npx` CLI and the data-app dev
 // preset (`@metabase/embedding-sdk-react/data-app-dev/config`). Both run
 // in Node (not the browser), so they can't go through the browser rspack bundle.
+const fs = require("fs");
 const path = require("path");
 
 const rspack = require("@rspack/core");
@@ -69,10 +70,18 @@ const cliConfig = {
     library: { type: "commonjs2" },
   },
   resolve: sharedResolve,
-  externals: ["esbuild", "typescript"],
+  externals: ["esbuild"],
   module: sharedModule,
   plugins: [
     new rspack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
+    {
+      // npm sets a bin's executable bit when it installs a packed package, but not when the
+      // package is linked (`file:`), where the bin link points at this file itself.
+      apply: (compiler) =>
+        compiler.hooks.afterEmit.tap("ExecutableCli", () =>
+          fs.chmodSync(path.join(SDK_DIST_PATH, "cli.js"), 0o755),
+        ),
+    },
   ],
   optimization: { minimize: true, minimizer },
 };
@@ -99,7 +108,6 @@ const dataAppDevConfig = {
     "vite-plugin-svgr",
     "vite-plugin-css-injected-by-js",
     "esbuild",
-    "typescript",
   ],
   externalsType: "module",
   output: {
