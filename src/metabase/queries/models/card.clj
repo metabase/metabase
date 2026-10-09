@@ -1590,6 +1590,30 @@
 (defmethod serdes/deserialization-dependencies "Card" [card]
   (card-deps false card))
 
+;; The export does not write these columns; the before-update hook derives them from `dataset_query`, and runs only
+;; when the load writes a column.
+(def ^:private serdes-derived-columns [:database_id :table_id :query_type])
+
+(defn- adjust-serdes-changes
+  "The `:adjust-changes` function of the Card [[serdes/load-update!]]: `changes` plus `:dataset_query` of the
+  normalized file `row` when a column that [[populate-query-fields]] derives from that query differs from the stored
+  Card `local`. The option passes no stored row, so the method closes this function over `local`."
+  [local changes row]
+  (let [query    (not-empty (:dataset_query row))
+        derived  (when query
+                   (select-keys (populate-query-fields {:dataset_query query} true) serdes-derived-columns))
+        form     #(if (keyword? %) (u/qualified-name %) %)
+        drifted? (some (fn [[k v]] (not= (form v) (form (get local k)))) derived)]
+    ;; the write of `dataset_query` runs the before-update hook, which derives the drifted columns again
+    (cond-> changes
+      drifted? (assoc :dataset_query query))))
+
+(defmethod serdes/load-update! "Card" [model-name ingested local]
+  ;; `local` is the after-select row: the schema decision of a load (no write-back of an old `card_schema`) needs the
+  ;; upgraded read form.
+  (serdes/update-changed-columns! model-name ingested local local
+                                  {:adjust-changes (partial adjust-serdes-changes local)}))
+
 (defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (queries.db/card id)
         query              (not-empty (:dataset_query card))
