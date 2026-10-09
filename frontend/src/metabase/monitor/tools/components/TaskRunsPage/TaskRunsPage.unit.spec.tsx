@@ -11,6 +11,7 @@ import {
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
+import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ListTaskRunsResponse } from "metabase-types/api";
@@ -70,21 +71,22 @@ const selectRange = async (label: string) => {
 
 describe("TaskRunsPage", () => {
   it("should display formatted datetime for started_at and ended_at", async () => {
+    const startedAt = "2023-03-04T01:45:26.005475-08:00";
+    const endedAt = "2023-03-04T01:46:26.518597-08:00";
     await setup({
       taskRunsResponse: createMockTaskRunsResponse({
-        data: [
-          createMockTaskRun({
-            started_at: "2023-03-04T01:45:26.005475-08:00",
-            ended_at: "2023-03-04T01:46:26.518597-08:00",
-          }),
-        ],
+        data: [createMockTaskRun({ started_at: startedAt, ended_at: endedAt })],
       }),
     });
 
     const startedAtElement = await screen.findByTestId("started-at");
     const endedAtElement = screen.getByTestId("ended-at");
-    expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
-    expect(endedAtElement).toHaveTextContent("March 4, 2023, 1:46 AM");
+    expect(startedAtElement).toHaveTextContent(
+      dayjs(startedAt).format("MMMM D, YYYY, h:mm A"),
+    );
+    expect(endedAtElement).toHaveTextContent(
+      dayjs(endedAt).format("MMMM D, YYYY, h:mm A"),
+    );
   });
 
   it("should show raw ISO timestamp in tooltip on hover", async () => {
