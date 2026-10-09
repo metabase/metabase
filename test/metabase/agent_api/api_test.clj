@@ -726,6 +726,18 @@
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
 
+(deftest create-question-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "The 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+    (mt/with-temp [:model/Card {secret-id :id} {:collection_id (:id (collection/user->personal-collection
+                                                                     (mt/user->id :crowberto)))
+                                                :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+      (let [q    {:database (mt/id) :type :query :query {:source-table (str "card__" secret-id)}}
+            body (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                       {:name  "Should Not Save"
+                                        :query (u/encode-base64 (json/encode q))})]
+        (is (= "You cannot save this Question because you do not have permissions to run its query."
+               body))))))
+
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 
 (deftest construct-native-query-test
@@ -1466,9 +1478,9 @@
                                                 :visualization_settings
                                                 {:timeline.selected_timeline_ids [(:id timeline)]}}]
         (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
-        (is (= "You don't have permissions to do that."
-               (:cause (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
-                                             {:dashcards [{:action "add" :card_id card-id}]}))))
+        (is (re-find #"You don't have permissions to do that\."
+                     (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                           {:dashcards [{:action "add" :card_id card-id}]})))
         (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
         (testing "a user who can read the timeline can add it"
           (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)

@@ -52,7 +52,7 @@
       (let [response (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
                                            {:collection_id target-id})]
         ;; Verify error response contains dependency information
-        (is (str/includes? (:message response) "content that is not remote synced")
+        (is (str/includes? response "content that is not remote synced")
             "Error message should mention content that is not remote synced"))
       ;; Verify the transaction was rolled back - dashboard should not be moved
       (let [unchanged-dash (t2/select-one :model/Dashboard :id dash-id)]
@@ -149,7 +149,7 @@
       (let [response (mt/user-http-request :crowberto :post 400 (format "dashboard/%d/copy" dash-id)
                                            {:collection_id target-id})]
         ;; Verify error response contains dependency information
-        (is (str/includes? (:message response) "content that is not remote synced")
+        (is (str/includes? response "content that is not remote synced")
             "Error message should mention content that is not remote synced"))
       ;; Verify no dashboard was created
       (is (= 1 (t2/count :model/Dashboard :name "Dashboard to Copy"))
@@ -196,6 +196,6 @@
                                                          :size_x  4
                                                          :size_y  4}]
                                             :tabs      []})]
-        (is (= "Uses content that is not remote synced." (:message response))))
+        (is (= "Uses content that is not remote synced." response)))
       (testing "dashcard was not added - transaction rolled back"
         (is (zero? (t2/count :model/DashboardCard :dashboard_id dash-id)))))))

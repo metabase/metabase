@@ -852,7 +852,7 @@
           #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
-            (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
+            (is (= "You cannot save this Question because you do not have permissions to run its query."
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
         (testing "Card in a different Collection for which we do not have perms"
           ;; allowing `with-temp` here since we need it to make Collections
@@ -860,7 +860,7 @@
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
-            (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
+            (is (= "You cannot save this Question because you do not have permissions to run its query."
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"

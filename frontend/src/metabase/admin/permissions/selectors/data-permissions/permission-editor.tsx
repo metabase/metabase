@@ -3,6 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import {
   getSpecialGroupType,
@@ -15,7 +16,6 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getPlan, getSetting, getTokenFeature } from "metabase/settings";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   Group,
   GroupsPermissions,
@@ -88,7 +88,7 @@ export const getLoadingDatabaseTablesError = (
     return undefined;
   }
   const { error } = selectDatabaseTablesMetadata(state, params.databaseId);
-  return error ? getResponseErrorMessage(error) : undefined;
+  return error ? findErrorMessage(error) : undefined;
 };
 
 type RouteParamsSelectorParameters = {

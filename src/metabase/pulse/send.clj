@@ -121,7 +121,8 @@
              {:status-code     502
               :error-code      :notification/delivery-failed
               :notification-id (:id pulse)
-              :failed-handlers failed-handlers})))
+              :failed-handlers failed-handlers
+              :response/keys   #{:failed-handlers}})))
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard async?]

@@ -8,6 +8,7 @@
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.async :as async.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -41,9 +42,9 @@
    (.write os ba offset len)))
 
 (defn- format-exception [e]
-  (cond-> (Throwable->map e)
-    ;; `:data` is the ex-data, which for QP exceptions routinely carries the whole query; drop it along with the
-    ;; stacktrace and cause chain, as the (non-streaming) exception middleware does.
+  (cond-> (api-error/throwable->map e)
+    ;; `:data` is the client-facing part of the ex-data; drop it along with the stacktrace and cause chain, as the
+    ;; (non-streaming) exception middleware does.
     (server.settings/hide-stacktraces) (dissoc :via :trace :data)))
 
 ;; Implemented by the output stream handed to a streaming response body, so that [[write-error!]] -- called from the

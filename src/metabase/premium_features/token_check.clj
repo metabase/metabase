@@ -627,7 +627,9 @@
       (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
-                        {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+                        {:status-code   400
+                         :error-details "Token should be 64 hexadecimal characters."
+                         :response/keys #{:error-details}})))
       ;; validate against the store, not a cached verdict — the token may be the same string with a
       ;; renewed subscription behind it
       (clear-cache!)
@@ -639,7 +641,8 @@
                            ;; probably more appropriate.
                            :status-code (if (:canonical? decoded)
                                           400
-                                          503)}))))
+                                          503)
+                           :response/keys #{:error-details}}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
@@ -737,7 +740,7 @@
   [feature-name]
   (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                 feature-name)
-           {:status-code 402 :status "error-premium-feature-not-available"}))
+           {:status-code 402 :status "error-premium-feature-not-available" :response/keys #{:status}}))
 
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.

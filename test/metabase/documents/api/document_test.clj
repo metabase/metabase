@@ -2396,7 +2396,7 @@
                                                   {:name "Doc with bad reference"
                                                    :collection_id remote-synced-id
                                                    :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-               (is (= "Uses content that is not remote synced." (:message response))
+               (is (= "Uses content that is not remote synced." response)
                    "Should report non-remote-synced dependencies")))))))))
 
 (deftest create-document-in-remote-synced-with-remote-synced-smartlink-test
@@ -2471,7 +2471,7 @@
            (let [response (mt/user-http-request :crowberto
                                                 :put 400 (format "document/%s" doc-id)
                                                 {:document (prose-mirror-with-smartlink "Bad link" card-id)})]
-             (is (= "Uses content that is not remote synced." (:message response))))))))))
+             (is (= "Uses content that is not remote synced." response)))))))))
 
 (deftest update-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "PUT /api/document/:id - updating document in remote-synced collection to add remote-synced reference"
@@ -2574,7 +2574,7 @@
            (let [response (mt/user-http-request :crowberto
                                                 :put 400 (format "document/%s" doc-id)
                                                 {:collection_id remote-synced-id})]
-             (is (= "Uses content that is not remote synced." (:message response)))
+             (is (= "Uses content that is not remote synced." response))
              ;; Verify document was NOT moved
              (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
                  "Document should remain in regular collection"))))))))
@@ -2603,7 +2603,7 @@
                                                 :put 400 (format "document/%s" doc-id)
                                                 {:document (prose-mirror-with-smartlink "Bad" regular-card-id)
                                                  :collection_id remote-synced-id})]
-             (is (= "Uses content that is not remote synced." (:message response)))))
+             (is (= "Uses content that is not remote synced." response))))
          (testing "Does not throw when moving to a regular collection"
            (mt/user-http-request :crowberto
                                  :put 200 (format "document/%s" doc-id)

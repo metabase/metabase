@@ -4,6 +4,7 @@ import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useActionButtonLabel } from "metabase/common/hooks/use-action-button-label";
 import {
@@ -26,7 +27,6 @@ import {
   ScrollArea,
   Title,
 } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import {
   type NotificationAuthMethods,
   type NotificationAuthType,
@@ -227,8 +227,7 @@ export const WebhookForm = ({
         },
         (e) => {
           setTestButtonLabel(t`Test failed`);
-          const message =
-            typeof e === "string" ? e : getResponseErrorMessage(e);
+          const message = findErrorMessage(e);
 
           setFieldError("url", message);
         },

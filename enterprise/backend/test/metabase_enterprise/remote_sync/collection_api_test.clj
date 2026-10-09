@@ -1,7 +1,6 @@
 (ns ^:synchronized metabase-enterprise.remote-sync.collection-api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.collection-api-test]}}}}}}
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [diehard.core :as dh]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -68,7 +67,7 @@
                                     :dataset_query (mt/mbql-query nil {:source-table (str "card__" up-card-id)})}]
         (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id regular-collection))
                                              {:parent_id (:id remote-parent)})]
-          (is (str/includes? (str response) "remote-synced"))
+          (is (= "Uses content that is not remote synced." response))
           (is (nil? (t2/select-one-fn :parent_id :model/Collection :id (:id regular-collection))))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
 

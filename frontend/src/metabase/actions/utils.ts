@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasActionsEnabled } from "metabase/common/utils/database";
 import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
@@ -209,7 +210,7 @@ export function getActionExecutionMessage(
 
 export function getActionErrorMessage(error: unknown) {
   return (
-    Errors.getResponseErrorMessage(error) ??
+    findErrorMessage(error) ??
     t`Something went wrong while executing the action`
   );
 }
