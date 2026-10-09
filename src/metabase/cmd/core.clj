@@ -187,6 +187,23 @@
   (classloader/require 'metabase.cmd.command-dox)
   ((resolve 'metabase.cmd.command-dox/generate-dox!)))
 
+(def ^:private doc-generators
+  "The commands that `all-documentation` runs, in order.
+  Commands that load only their own namespaces run first. The two settings generators load every Metabase namespace,
+  so they run last and cannot change the output of the others."
+  [#'mcp-tools-documentation
+   #'ai-providers-documentation
+   #'api-documentation
+   #'command-documentation
+   #'config-template
+   #'environment-variables-documentation])
+
+(defn ^:command all-documentation
+  "Runs every documentation command in one process."
+  []
+  (doseq [generator doc-generators]
+    (generator)))
+
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
   ([]

@@ -19,18 +19,24 @@
        seq
        (map (fn [[_ v]] v))))
 
+(def ^:private metabase-namespaces-loaded
+  "Loads every non-test Metabase namespace on the classpath when first dereferenced. Both settings generators use it,
+  so `all-documentation` scans the classpath only once."
+  (delay
+    (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
+            :when (and
+                   (str/includes? (name ns-symb) "metabase")
+                   (not (str/includes? (name ns-symb) "test")))]
+      ;; documentation generation deliberately loads every discovered Metabase namespace
+      #_{:clj-kondo/ignore [:metabase/modules]}
+      (require ns-symb))))
+
 (defn get-settings
   "Loads all (or a set of) of the Metabase namespaces, which loads all of the defsettings,
   which are registered in an atom in the settings namespace. Once settings are registered,
   this function derefs that atom and puts the settings into a sorted map for processing."
   ([]
-   (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-           :when (and
-                  (str/includes? (name ns-symb) "metabase")
-                  (not (str/includes? (name ns-symb) "test")))]
-     ;; documentation generation deliberately loads every discovered Metabase namespace
-     #_{:clj-kondo/ignore [:metabase/modules]}
-     (require ns-symb))
+   @metabase-namespaces-loaded
    (prep-settings @setting/registered-settings))
   ;; Or supply a set of namespaces to load
   ;; Primarily used for testing
