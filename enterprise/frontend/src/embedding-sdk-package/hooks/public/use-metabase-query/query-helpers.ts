@@ -9,11 +9,11 @@ import type {
   AggregationResultColumnName,
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
+  FilterForOperator,
   FilterLiteralValue,
   FilterOperator,
-  MetabaseDimensionFilterForOperator,
+  MetabaseOrderByDirection,
   NamedBreakout,
-  OrderByDirection,
   UnaryFilterOperatorForDimension,
   ValueFilterOperatorForDimension,
 } from "./types";
@@ -31,7 +31,7 @@ export function filter<
   dimension: TDimension,
   operator: TOperator,
   value: unknown,
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter<
   const TDimension,
@@ -40,7 +40,7 @@ export function filter<
   dimension: TDimension,
   operator: TOperator,
   values: readonly [unknown, unknown],
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter<
   const TDimension,
@@ -48,13 +48,13 @@ export function filter<
 >(
   dimension: TDimension,
   operator: TOperator,
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter(
   dimension: unknown,
   operator: FilterOperator,
   value?: unknown,
-): MetabaseDimensionFilterForOperator<unknown, FilterOperator> {
+): FilterForOperator<unknown, FilterOperator> {
   if (operator === "between") {
     // The `between` overload takes a `[min, max]` tuple, but the implementation
     // signature shared by all overloads widens `value` to `unknown`.
@@ -114,28 +114,28 @@ export function breakout<TDimension extends object>(
 
 export function orderBy<const TName extends string>(
   breakout: NamedBreakout<unknown, TName>,
-  direction?: OrderByDirection,
-): { type: "column"; name: TName; direction?: OrderByDirection };
+  direction?: MetabaseOrderByDirection,
+): { type: "column"; name: TName; direction?: MetabaseOrderByDirection };
 
 export function orderBy<
   TAggregation extends { columns?: readonly SchemaColumn[] },
 >(
   aggregation: TAggregation,
-  direction?: OrderByDirection,
+  direction?: MetabaseOrderByDirection,
 ): {
   type: "column";
   name: AggregationResultColumnName<TAggregation>;
-  direction?: OrderByDirection;
+  direction?: MetabaseOrderByDirection;
 };
 
 export function orderBy<const TDimension>(
   dimension: TDimension,
-  direction?: OrderByDirection,
-): TDimension & { direction?: OrderByDirection };
+  direction?: MetabaseOrderByDirection,
+): TDimension & { direction?: MetabaseOrderByDirection };
 
 export function orderBy<TDimension>(
   dimension: TDimension,
-  direction?: OrderByDirection,
+  direction?: MetabaseOrderByDirection,
 ) {
   if (isNamedBreakout(dimension)) {
     return {

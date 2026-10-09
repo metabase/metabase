@@ -15,13 +15,13 @@ export { useMetabaseQuery } from "./use-metabase-query";
 export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
   DefinedQuery,
-  LocalFieldReference,
+  MetabaseLocalFieldReference,
   MetabaseBreakout,
   MetabaseDynamicColumn,
   MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
-  OrderByDirection,
+  MetabaseOrderByDirection,
   UseMetabaseQueryResult,
 } from "./types";
 export type { UseMetabaseQueryObjectResult } from "./use-metabase-query-object";
