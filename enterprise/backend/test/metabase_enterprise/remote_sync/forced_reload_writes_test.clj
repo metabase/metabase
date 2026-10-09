@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.cost-test-util :as cost]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.db :as models.db]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -150,6 +152,14 @@
            (is (= 1 (get-in (t2/select-one-fn :dataset_query :model/Card card-id) [:stages 0 :filters 0 3]))
                "the load writes the repo query")))))))
 
+(defn- venues-query
+  "An MBQL query of the venues table, with a filter on its price when `filter?`, and a count when `count?`."
+  [& {:keys [filter? count?]}]
+  (let [mp (mt/metadata-provider)]
+    (cond-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+      filter? (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1))
+      count?  (lib/aggregate (lib/count)))))
+
 (defn- do-with-synced-cards!
   "Insert one Card for each attribute map of `cards` into a remote-synced collection, then call `f` with their ids.
   Sets `remote-sync-type` to `:read-write` and `remote-sync-transforms` to false for the duration, and deletes the
@@ -190,8 +200,8 @@
   (testing "A forced pull of unchanged metrics writes no Card row, although each import makes new :lib/uuid values in
             the dimension mapping targets"
     (do-with-synced-cards!
-     [{:name "Metric with stored dimensions" :type :metric :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-      {:name "Old metric" :type :metric :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+     [{:name "Metric with stored dimensions" :type :metric :dataset_query (venues-query :count? true)}
+      {:name "Old metric" :type :metric :dataset_query (venues-query :count? true)}]
      (fn [[stored-id old-id]]
        ;; two metrics from before dimensions: an old card_schema, and no stored dimensions
        (t2/query {:update :report_card
@@ -227,8 +237,8 @@
 
 (deftest forced-reload-of-unchanged-mbql-model-keeps-column-types-test
   (testing "A forced pull of an unchanged MBQL model writes no Card row, and the model keeps its inferred column types"
-    (doseq [[label query] [["whole table" (mt/mbql-query venues)]
-                           ["with a filter" (mt/mbql-query venues {:filter [:> $price 1]})]]]
+    (doseq [[label query] [["whole table" (venues-query)]
+                           ["with a filter" (venues-query :filter? true)]]]
       (testing label
         (do-with-synced-cards!
          [{:name "Model" :type :model :dataset_query query}]
@@ -245,7 +255,7 @@
     ;; query equals the stored query, so Toucan drops it from the changes, and the hook stores the file columns as
     ;; they are, as on master.
     (do-with-synced-cards!
-     [{:name "Model" :type :model :dataset_query (mt/mbql-query venues {:filter [:> $price 1]})}]
+     [{:name "Model" :type :model :dataset_query (venues-query :filter? true)}]
      (fn [[model-id]]
        (let [tree      (rs.test/synced-tree)
              entity-id (t2/select-one-fn :entity_id :model/Card model-id)
@@ -258,7 +268,7 @@
 (deftest forced-reload-of-question-that-the-file-makes-a-model-keeps-column-types-test
   (testing "A forced pull whose file makes a stored question an MBQL model stores inferred column types"
     (do-with-synced-cards!
-     [{:name "Model" :type :model :dataset_query (mt/mbql-query venues {:filter [:> $price 1]})}]
+     [{:name "Model" :type :model :dataset_query (venues-query :filter? true)}]
      (fn [[card-id]]
        (let [src (rs.test/versioned-source :trees {"v0" (rs.test/synced-tree)} :current "v0")]
          ;; the target instance holds the card as a question
