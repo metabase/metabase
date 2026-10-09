@@ -114,6 +114,13 @@
   :default    false
   :export?    false)
 
+(defsetting metabot-sql-execution-enabled?
+  (deferred-tru "Whether Metabot can also run SQL queries it wrote, for questions a notebook query can''t express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.")
+  :type       :boolean
+  :visibility :internal
+  :default    true
+  :export?    false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider
