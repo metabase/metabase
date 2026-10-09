@@ -43,6 +43,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -722,7 +723,7 @@
                           :json-unfolding    false
                           :visibility-type   :normal
                           :nfc-path          [:json_val "int_turn_string"]}}
-                       (sql-jdbc.sync/describe-nested-field-columns
+                       (sql-jdbc.tx/describe-nested-field-columns
                         driver/*driver*
                         database
                         (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))

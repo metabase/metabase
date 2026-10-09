@@ -757,19 +757,25 @@
                                                        (:schema table) (assoc :schema-names [(:schema table)])))
     (describe-table-fields driver conn table nil)))
 
-(defn- table->unfold-json-fields
-  "Given a table return a list of json fields that need to unfold."
-  [driver conn database table]
+(defn- unfold-json-fields-xf
+  "Keeps the JSON fields of `table` that don't have JSON unfolding disabled."
+  [table]
   (let [fields-with-json-unfolding-disabled
         (->> (driver.db/json-field-names-with-unfolding-disabled (u/the-id table))
              ;; in a delay so we'll query only if there's at least one json field
              (delay))]
-    (into #{}
-          (comp
-           (filter #(isa? (:base-type %) :type/JSON))
-           (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
-           (describe-table-fields-xf driver table))
-          (table-fields-for-json-unfolding driver conn database table))))
+    (comp
+     (filter #(isa? (:base-type %) :type/JSON))
+     (remove #(contains? @fields-with-json-unfolding-disabled (:name %))))))
+
+(defn- table->unfold-json-fields
+  "Given a table return a list of json fields that need to unfold."
+  [driver conn database table]
+  (into #{}
+        (comp
+         (unfold-json-fields-xf table)
+         (describe-table-fields-xf driver table))
+        (table-fields-for-json-unfolding driver conn database table)))
 
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
@@ -840,6 +846,8 @@
 
 ;; The name's nested field columns but what the people wanted (issue #708)
 ;; was JSON so what they're getting is JSON.
+;; default impl of the deprecated multimethod itself, kept until the method is removed
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync.interface/describe-nested-field-columns :sql-jdbc
   [driver database table]
   (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)
@@ -858,3 +866,35 @@
     (if (empty? unfold-json-fields)
       #{}
       (describe-json-fields driver jdbc-spec table unfold-json-fields pks))))
+
+;; checks for overrides of the deprecated method so they keep being called; remove when it's deleted
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defn- overrides-describe-nested-field-columns?
+  "Whether `driver` has its own implementation of the deprecated
+  [[sql-jdbc.sync.interface/describe-nested-field-columns]]. The `:sql-jdbc` implementation of
+  [[sql-jdbc.sync.interface/describe-nested-field-columns-for-fields]] shadows the `::driver/driver` fallback for every
+  `:sql-jdbc` driver, so it has to defer to such an override itself."
+  [driver]
+  (not (identical? (get-method sql-jdbc.sync.interface/describe-nested-field-columns driver)
+                   (get-method sql-jdbc.sync.interface/describe-nested-field-columns :sql-jdbc))))
+
+(defmethod sql-jdbc.sync.interface/describe-nested-field-columns-for-fields :sql-jdbc
+  [driver database table fields]
+  (if (overrides-describe-nested-field-columns? driver)
+    ;; the driver only implements the deprecated method; remove when it's deleted
+    #_{:clj-kondo/ignore [:deprecated-var]}
+    (sql-jdbc.sync.interface/describe-nested-field-columns driver database table)
+    ;; `fields` is the column list sync just read, so for drivers with `describe-fields` it already leaves out columns
+    ;; the connection user can't read (#83790), and tables without JSON columns need no query here at all
+    (let [unfold-json-fields (into #{} (unfold-json-fields-xf table) fields)]
+      (if (empty? unfold-json-fields)
+        #{}
+        (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+              pks       (sql-jdbc.execute/do-with-connection-with-options
+                         driver
+                         jdbc-spec
+                         nil
+                         (fn [^Connection conn]
+                           ;; `nil` db name: see the deprecated `describe-nested-field-columns` impl above
+                           (get-table-pks driver conn nil table)))]
+          (describe-json-fields driver jdbc-spec table unfold-json-fields pks))))))

@@ -59,6 +59,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
@@ -787,7 +788,7 @@
                       :json-unfolding    false,
                       :visibility-type   :normal,
                       :nfc-path          [:trivial_json "a"]}}
-                   (sql-jdbc.sync/describe-nested-field-columns
+                   (sql-jdbc.tx/describe-nested-field-columns
                     :postgres
                     database
                     {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
@@ -812,7 +813,7 @@
                       :json-unfolding    false,
                       :visibility-type   :normal,
                       :nfc-path          [:trivial_json "a"]}}
-                   (sql-jdbc.sync/describe-nested-field-columns
+                   (sql-jdbc.tx/describe-nested-field-columns
                     :postgres
                     database
                     {:schema "AAAH_#" :name "dESCribe_json_table_%" :id (mt/id "dESCribe_json_table_%")})))))))))
@@ -1764,7 +1765,7 @@
                         :json-unfolding    false
                         :visibility-type   :normal
                         :nfc-path          [:json_val "int_turn_string"]}}
-                     (sql-jdbc.sync/describe-nested-field-columns
+                     (sql-jdbc.tx/describe-nested-field-columns
                       :postgres
                       database
                       (t2/select-one :model/Table :db_id (mt/id) :name "json_table")))))))))))

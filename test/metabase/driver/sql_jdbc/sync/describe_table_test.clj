@@ -23,6 +23,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -407,10 +408,48 @@
                     :json-unfolding false
                     :visibility-type :normal
                     :nfc-path [:json_bit "title"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
+                 (sql-jdbc.tx/describe-nested-field-columns
                   driver/*driver*
                   (mt/db)
                   {:name "json" :id (mt/id "json")}))))))))
+
+(deftest describe-nested-field-columns-for-fields-uses-given-fields-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (mt/dataset json
+      (when-not (mysql/mariadb? (mt/db))
+        (let [table  {:name "json" :id (mt/id "json")}
+              fields (sql-jdbc.tx/table-fields driver/*driver* (mt/db) table)]
+          (testing "the given fields are used as is, without listing the table's columns again"
+            (mt/with-dynamic-fn-redefs [sql-jdbc.describe-table/table->unfold-json-fields
+                                        (fn [& _] (throw (ex-info "listed the table's columns again" {})))
+                                        sql-jdbc.describe-table/table-fields-for-json-unfolding
+                                        (fn [& _] (throw (ex-info "listed the table's columns again" {})))]
+              (is (contains? (into #{} (map :name)
+                                   (sql-jdbc.sync/describe-nested-field-columns-for-fields
+                                    driver/*driver* (mt/db) table fields))
+                             "json_bit → title"))))
+          (testing "JSON columns missing from the given fields, e.g. ones the sync user can't read (#83790), are not sampled"
+            (is (= #{}
+                   (sql-jdbc.sync/describe-nested-field-columns-for-fields
+                    driver/*driver* (mt/db) table
+                    (into #{} (remove #(isa? (:base-type %) :type/JSON)) fields))))))))))
+
+(driver/register! ::overrides-deprecated-nested-field-columns, :parent :sql-jdbc, :abstract? true)
+(driver/register! ::non-jdbc-overrides-deprecated-nested-field-columns, :abstract? true)
+
+;; drivers that still override the deprecated method, to check it keeps being called
+#_{:clj-kondo/ignore [:deprecated-var]}
+(doseq [driver [::overrides-deprecated-nested-field-columns ::non-jdbc-overrides-deprecated-nested-field-columns]]
+  (defmethod sql-jdbc.sync.interface/describe-nested-field-columns driver
+    [driver _database _table]
+    #{driver}))
+
+(deftest ^:parallel describe-nested-field-columns-for-fields-deprecated-override-test
+  (testing "drivers that only override the deprecated describe-nested-field-columns still have their override called"
+    (doseq [driver [::overrides-deprecated-nested-field-columns ::non-jdbc-overrides-deprecated-nested-field-columns]]
+      (testing driver
+        (is (= #{driver}
+               (sql-jdbc.sync/describe-nested-field-columns-for-fields driver nil {:id 1, :name "t"} #{})))))))
 
 (deftest json-columns-with-values-are-not-object-test
   (testing "able sync a db with jsonb columns where value is an array or a string #44459"
@@ -422,7 +461,7 @@
                       {:field-name "string_col" :base-type :type/JSON}]
                      [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
         (testing "there should be no nested fields"
-          (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
+          (is (= #{} (sql-jdbc.tx/describe-nested-field-columns
                       driver/*driver*
                       (mt/db)
                       {:name "json_table" :id (mt/id "json_table")}))))
@@ -455,12 +494,12 @@
         (testing "limit if huge. limit it and yell warning (#23635)"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count
-                  (sql-jdbc.sync/describe-nested-field-columns
+                  (sql-jdbc.tx/describe-nested-field-columns
                    driver/*driver*
                    (mt/db)
                    {:name "big_json_table" :id (mt/id "big_json_table")}))))
           (mt/with-log-messages-for-level [messages :warn]
-            (sql-jdbc.sync/describe-nested-field-columns
+            (sql-jdbc.tx/describe-nested-field-columns
              driver/*driver*
              (mt/db)
              {:name "big_json_table" :id (mt/id "big_json_table")})
@@ -474,7 +513,7 @@
       (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing, but big"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
-                 (count (sql-jdbc.sync/describe-nested-field-columns
+                 (count (sql-jdbc.tx/describe-nested-field-columns
                          driver/*driver*
                          (mt/db)
                          {:name "big_json" :id (mt/id "big_json")})))))))))
@@ -564,7 +603,7 @@
                     :json-unfolding    false
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "myint"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
+                 (sql-jdbc.tx/describe-nested-field-columns
                   driver/*driver*
                   (mt/db)
                   (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
@@ -617,7 +656,7 @@
                        :json-unfolding    false
                        :visibility-type   :normal
                        :nfc-path          [:json_col "int_turn_string"]}]
-                     (into [] (sql-jdbc.sync/describe-nested-field-columns
+                     (into [] (sql-jdbc.tx/describe-nested-field-columns
                                driver/*driver*
                                (mt/db)
                                (t2/select-one :model/Table :db_id (mt/id) :name "json_with_pk")))))
@@ -629,7 +668,7 @@
                          :json-unfolding    false
                          :visibility-type   :normal
                          :nfc-path          [:json_col "int_turn_string"]}]
-                       (into [] (sql-jdbc.sync/describe-nested-field-columns
+                       (into [] (sql-jdbc.tx/describe-nested-field-columns
                                  driver/*driver*
                                  (mt/db)
                                  (t2/select-one :model/Table :db_id (mt/id) :name "json_without_pk")))))))))))))
