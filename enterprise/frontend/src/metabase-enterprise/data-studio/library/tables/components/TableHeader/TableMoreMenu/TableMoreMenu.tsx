@@ -5,21 +5,15 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionId } from "metabase-types/api";
 
 import type { TableModalState, TableModalTable } from "../../TableModal";
 
 export type TableMoreMenuProps = {
   table: TableModalTable;
   onOpenModal: (modal: TableModalState) => void;
-  onMoved?: (collectionIds: CollectionId[]) => void;
 };
 
-export function TableMoreMenu({
-  table,
-  onOpenModal,
-  onMoved,
-}: TableMoreMenuProps) {
+export function TableMoreMenu({ table, onOpenModal }: TableMoreMenuProps) {
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -60,7 +54,7 @@ export function TableMoreMenu({
               <Menu.Item
                 leftSection={<Icon name="move" />}
                 onClick={(event) => {
-                  onOpenModal({ type: "move", table, onMoved });
+                  onOpenModal({ type: "move", table });
                   event.preventDefault();
                   event.stopPropagation();
                 }}

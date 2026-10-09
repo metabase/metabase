@@ -1,5 +1,6 @@
 import type { Row } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
 import {
@@ -14,12 +15,10 @@ import type {
   LibrarySectionType,
   TreeItem,
 } from "metabase/data-studio/common/types";
-import {
-  createEmptyStateItem,
-  isEmptyStateData,
-} from "metabase/data-studio/common/utils";
+import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   Collection,
@@ -84,7 +83,6 @@ export function useLibraryCollectionTree(
   const getIcon = useGetIcon();
   const models = SECTION_ITEM_MODELS[sectionType];
 
-  // 1. Fetch top-level items
   const {
     data: topLevelItems,
     isLoading,
@@ -101,53 +99,65 @@ export function useLibraryCollectionTree(
 
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  // 2. Lazy-loaded subcollection items
-  const [loadedCollections, setLoadedCollections] = useState<
-    Map<CollectionId, CollectionItem[]>
-  >(new Map());
-  const loadingIds = useRef(new Set<string>());
+  const [expandedCollectionIds, setExpandedCollectionIds] = useState<
+    CollectionId[]
+  >([]);
 
   useEffect(() => {
-    setLoadedCollections(new Map());
-    loadingIds.current = new Set();
+    setExpandedCollectionIds([]);
   }, [collection]);
 
-  const loadCollectionItems = useCallback(
-    async (collectionId: CollectionId) => {
-      const key = String(collectionId);
-      if (loadingIds.current.has(key)) {
-        return;
-      }
-      loadingIds.current.add(key);
+  const getItemsRequest = useCallback(
+    (collectionId: CollectionId) => ({
+      id: collectionId,
+      models,
+      archived: false,
+    }),
+    [models],
+  );
 
-      const result = await dispatch(
+  useEffect(() => {
+    const subscriptions = expandedCollectionIds.map((collectionId) =>
+      dispatch(
         collectionApi.endpoints.listCollectionItems.initiate(
-          {
-            id: collectionId,
-            models,
-            archived: false,
-          },
-          { forceRefetch: true },
+          getItemsRequest(collectionId),
         ),
-      );
-      const items = (result.data?.data ?? []).filter((item) => !item.archived);
-      setLoadedCollections((prev) => new Map([...prev, [collectionId, items]]));
-    },
-    [dispatch, models],
+      ),
+    );
+    return () => {
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
+    };
+  }, [dispatch, expandedCollectionIds, getItemsRequest]);
+
+  const expandedCollectionItems = useSelector(
+    (state: State) =>
+      expandedCollectionIds.map(
+        (collectionId) =>
+          collectionApi.endpoints.listCollectionItems.select(
+            getItemsRequest(collectionId),
+          )(state).data,
+      ),
+    shallowEqual,
   );
 
-  const refreshCollections = useCallback(
-    async (collectionIds: CollectionId[]) => {
-      for (const id of collectionIds) {
-        const key = String(id);
-        loadingIds.current.delete(key);
-      }
-      await Promise.all(collectionIds.map(loadCollectionItems));
-    },
-    [loadCollectionItems],
+  const loadedCollections = useMemo(
+    () =>
+      new Map(
+        expandedCollectionIds.flatMap((collectionId, index) => {
+          const response = expandedCollectionItems[index];
+          return response
+            ? [
+                [
+                  collectionId,
+                  response.data.filter((item) => !item.archived),
+                ] as const,
+              ]
+            : [];
+        }),
+      ),
+    [expandedCollectionIds, expandedCollectionItems],
   );
 
-  // 3. Build tree
   const tree = useMemo((): TreeItem[] => {
     if (isLoading || !topLevelItems || !collection) {
       return [];
@@ -189,28 +199,31 @@ export function useLibraryCollectionTree(
     isRemoteSyncReadOnly,
   ]);
 
-  // 4. Watch rows for expanded-but-empty collections → trigger fetch
-  const watchRows = useCallback(
-    (rows: Row<TreeItem>[]) => {
-      for (const row of rows) {
-        const { original } = row;
-        if (
-          row.getIsExpanded() &&
-          row.getCanExpand() &&
-          original.model === "collection" &&
-          original.children?.length === 0 &&
-          !isEmptyStateData(original.data) &&
-          "id" in original.data
-        ) {
-          // Unjustified type cast. FIXME
-          loadCollectionItems(original.data.id as number);
-        }
-      }
-    },
-    [loadCollectionItems],
-  );
+  const watchRows = useCallback((rows: Row<TreeItem>[]) => {
+    const collectionIdsToLoad = rows.flatMap((row) => {
+      const { original } = row;
+      const isExpandedWithoutChildren =
+        row.getIsExpanded() &&
+        row.getCanExpand() &&
+        original.model === "collection" &&
+        original.children?.length === 0;
+      return isExpandedWithoutChildren &&
+        original.data.model === "collection" &&
+        original.data.id != null
+        ? [original.data.id]
+        : [];
+    });
+    if (collectionIdsToLoad.length === 0) {
+      return;
+    }
+    setExpandedCollectionIds((previousIds) => {
+      const newIds = collectionIdsToLoad.filter(
+        (collectionId) => !previousIds.includes(collectionId),
+      );
+      return newIds.length > 0 ? [...previousIds, ...newIds] : previousIds;
+    });
+  }, []);
 
-  // 5. isChildrenLoading for the spinner
   const isChildrenLoading = useCallback(
     (row: Row<TreeItem>): boolean =>
       row.getIsExpanded() &&
@@ -225,7 +238,6 @@ export function useLibraryCollectionTree(
     error,
     watchRows,
     isChildrenLoading,
-    refreshCollections,
   };
 }
 

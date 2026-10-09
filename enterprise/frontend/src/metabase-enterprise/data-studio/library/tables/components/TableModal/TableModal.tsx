@@ -14,13 +14,17 @@ export type TableModalTable =
   | Pick<CollectionItem, "id" | "database_id" | "collection_id">
   | Pick<Table, "id" | "db_id" | "collection_id">;
 
-export type TableModalState =
-  | {
-      type: "move";
-      table: TableModalTable;
-      onMoved?: (collectionIds: CollectionId[]) => void;
-    }
-  | { type: "unpublish"; table: TableModalTable };
+export type MoveTableModalState = {
+  type: "move";
+  table: TableModalTable;
+};
+
+export type UnpublishTableModalState = {
+  type: "unpublish";
+  table: TableModalTable;
+};
+
+export type TableModalState = MoveTableModalState | UnpublishTableModalState;
 
 type TableModalProps = {
   modal: TableModalState | undefined;
@@ -33,8 +37,8 @@ export function TableModal({ modal, onClose }: TableModalProps) {
   }
 
   return match(modal)
-    .with({ type: "move" }, (moveModal) => (
-      <MoveTableModal modal={moveModal} onClose={onClose} />
+    .with({ type: "move" }, ({ table }) => (
+      <MoveTableModal table={table} onClose={onClose} />
     ))
     .with({ type: "unpublish" }, ({ table }) => (
       <UnpublishTableModal table={table} onClose={onClose} />
@@ -43,14 +47,11 @@ export function TableModal({ modal, onClose }: TableModalProps) {
 }
 
 type MoveTableModalProps = {
-  modal: Extract<TableModalState, { type: "move" }>;
+  table: TableModalTable;
   onClose: () => void;
 };
 
-function MoveTableModal({
-  modal: { table, onMoved },
-  onClose,
-}: MoveTableModalProps) {
+function MoveTableModal({ table, onClose }: MoveTableModalProps) {
   const dispatch = useDispatch();
   const setCollection = useSetCollection();
 
@@ -67,11 +68,6 @@ function MoveTableModal({
         { type: "collection", id: `${newCollection.id}-items` },
       ]),
     );
-    const affectedIds: CollectionId[] = [newCollection.id];
-    if (sourceCollectionId != null) {
-      affectedIds.push(sourceCollectionId);
-    }
-    onMoved?.(affectedIds);
     onClose();
   };
 

@@ -3,11 +3,7 @@ import type {
   SelectedItem,
 } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 
-import {
-  getAffectedCollectionIds,
-  selectedItemToArchivable,
-  selectedItemToMovable,
-} from "./utils";
+import { selectedItemToArchivable, selectedItemToMovable } from "./utils";
 
 function item(
   model: SelectedItem["model"],
@@ -30,17 +26,6 @@ function item(
     canWrite: true,
   };
 }
-
-describe("getAffectedCollectionIds", () => {
-  it("unions sources and destination, de-duplicated and excluding null", () => {
-    expect(
-      getAffectedCollectionIds(
-        [item("table", 1, 10), item("metric", 2, 11), item("snippet", 3, null)],
-        99,
-      ).sort(),
-    ).toEqual([10, 11, 99]);
-  });
-});
 
 describe("selectedItemToMovable", () => {
   it("maps each model to the matching movable model, by id", () => {

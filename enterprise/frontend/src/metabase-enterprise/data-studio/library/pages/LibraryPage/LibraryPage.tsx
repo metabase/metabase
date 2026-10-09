@@ -18,7 +18,6 @@ import {
   TableModal,
   type TableModalState,
 } from "metabase-enterprise/data-studio/library/tables/components/TableModal";
-import type { CollectionId } from "metabase-types/api";
 
 import { ActionCell } from "./ActionCell";
 import { CreateLibraryDashboardModal } from "./CreateLibraryDashboardModal";
@@ -92,7 +91,6 @@ function LibraryPageContent() {
     error: tablesError,
     watchRows: watchTableRows,
     isChildrenLoading: isTableChildrenLoading,
-    refreshCollections: refreshTableCollections,
   } = useLibraryCollectionTree(tableCollection, "data");
   const {
     tree: metricsTree,
@@ -100,7 +98,6 @@ function LibraryPageContent() {
     error: metricsError,
     watchRows: watchMetricRows,
     isChildrenLoading: isMetricChildrenLoading,
-    refreshCollections: refreshMetricCollections,
   } = useLibraryCollectionTree(
     metricCollection,
     "metrics",
@@ -112,7 +109,6 @@ function LibraryPageContent() {
     error: dashboardsError,
     watchRows: watchDashboardRows,
     isChildrenLoading: isDashboardChildrenLoading,
-    refreshCollections: refreshDashboardCollections,
   } = useLibraryCollectionTree(dashboardCollection, "dashboards");
   const {
     tree: searchTree,
@@ -151,32 +147,15 @@ function LibraryPageContent() {
     [openPublishTableModal, openCreateDashboardModal],
   );
 
-  const refreshSection = useCallback(
-    (section: LibrarySection, collectionIds: CollectionId[]) => {
-      if (section === "data") {
-        refreshTableCollections(collectionIds);
-      } else if (section === "metrics") {
-        refreshMetricCollections(collectionIds);
-      } else if (section === "dashboards") {
-        refreshDashboardCollections(collectionIds);
-      }
-    },
-    [
-      refreshTableCollections,
-      refreshMetricCollections,
-      refreshDashboardCollections,
-    ],
-  );
   const renderRowMenu = useCallback(
     (item: TreeItem) => (
       <ActionCell
         treeItem={item}
-        refreshSection={refreshSection}
         onOpenCollectionModal={setCollectionModal}
         onOpenTableModal={setTableModal}
       />
     ),
-    [refreshSection],
+    [],
   );
   const handleRowsChange = useCallback(
     (rows: Row<TreeItem>[]) => {
@@ -236,7 +215,6 @@ function LibraryPageContent() {
       onRowsChange={handleRowsChange}
       onSearchQueryChange={setSearchQuery}
       getTrashMessage={getTrashMessage}
-      onBulkActionComplete={refreshSection}
     >
       <PublishTableModal
         opened={showPublishTableModal}

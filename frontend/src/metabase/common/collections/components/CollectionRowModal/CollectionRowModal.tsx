@@ -6,26 +6,30 @@ import { useInvalidateCollectionItems } from "metabase/common/collections/hooks"
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_LIBRARY, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import { EditCollectionModal } from "./EditCollectionModal";
 
+export type EditCollectionModalState = {
+  type: "edit";
+  collection: Collection;
+};
+
+export type CollectionPermissionsModalState = {
+  type: "permissions";
+  collection: Collection;
+};
+
+export type ArchiveCollectionModalState = {
+  type: "archive";
+  collection: Collection;
+  customArchiveMessage?: string;
+};
+
 export type CollectionRowModalState =
-  | {
-      type: "edit";
-      collection: Collection;
-      onSave?: (details: {
-        previousParentId: CollectionId | null;
-        newParentId: CollectionId | null;
-      }) => void;
-    }
-  | { type: "permissions"; collection: Collection }
-  | {
-      type: "archive";
-      collection: Collection;
-      customArchiveMessage?: string;
-      onArchiveSuccess?: () => void;
-    };
+  | EditCollectionModalState
+  | CollectionPermissionsModalState
+  | ArchiveCollectionModalState;
 
 type CollectionRowModalProps = {
   modal: CollectionRowModalState | undefined;
@@ -41,18 +45,18 @@ export function CollectionRowModal({
   }
 
   return match(modal)
-    .with({ type: "edit" }, ({ collection, onSave }) => (
-      <EditCollectionModal
-        collection={collection}
-        onSave={onSave}
-        onClose={onClose}
-      />
+    .with({ type: "edit" }, ({ collection }) => (
+      <EditCollectionModal collection={collection} onClose={onClose} />
     ))
     .with({ type: "permissions" }, ({ collection }) => (
       <PermissionsModal collection={collection} onClose={onClose} />
     ))
-    .with({ type: "archive" }, (archiveModal) => (
-      <ArchiveCollectionModal modal={archiveModal} onClose={onClose} />
+    .with({ type: "archive" }, ({ collection, customArchiveMessage }) => (
+      <ArchiveCollectionModal
+        collection={collection}
+        customArchiveMessage={customArchiveMessage}
+        onClose={onClose}
+      />
     ))
     .exhaustive();
 }
@@ -84,12 +88,14 @@ function PermissionsModal({ collection, onClose }: PermissionsModalProps) {
 }
 
 type ArchiveCollectionModalProps = {
-  modal: Extract<CollectionRowModalState, { type: "archive" }>;
+  collection: Collection;
+  customArchiveMessage?: string;
   onClose: () => void;
 };
 
 function ArchiveCollectionModal({
-  modal: { collection, customArchiveMessage, onArchiveSuccess },
+  collection,
+  customArchiveMessage,
   onClose,
 }: ArchiveCollectionModalProps) {
   const [updateCollection] = useUpdateCollectionMutation();
@@ -102,7 +108,6 @@ function ArchiveCollectionModal({
       await updateCollection({ id: collection.id, archived: true }).unwrap();
       sendSuccessToast(t`"${collection.name}" has been archived`);
       invalidateCollectionItems(collection);
-      onArchiveSuccess?.();
     } catch {
       sendErrorToast(t`"${collection.name}" could not be archived`);
     }

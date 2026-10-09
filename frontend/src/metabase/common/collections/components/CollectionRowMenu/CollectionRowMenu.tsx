@@ -25,16 +25,12 @@ import { UnarchiveCollectionButton } from "../UnarchiveCollectionButton";
 type CollectionRowMenuProps = {
   collection: Collection;
   onOpenModal: (modal: CollectionRowModalState) => void;
-  onSave?: Extract<CollectionRowModalState, { type: "edit" }>["onSave"];
-  onArchiveSuccess?: () => void;
   customArchiveMessage?: string;
 };
 
 export function CollectionRowMenu({
   collection,
   onOpenModal,
-  onSave,
-  onArchiveSuccess,
   customArchiveMessage,
 }: CollectionRowMenuProps) {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -83,7 +79,7 @@ export function CollectionRowMenu({
           {!isRoot && (
             <Menu.Item
               leftSection={<Icon name="pencil" />}
-              onClick={() => onOpenModal({ type: "edit", collection, onSave })}
+              onClick={() => onOpenModal({ type: "edit", collection })}
             >
               {isFolder ? t`Edit folder details` : t`Edit collection details`}
             </Menu.Item>
@@ -104,7 +100,6 @@ export function CollectionRowMenu({
                   type: "archive",
                   collection,
                   customArchiveMessage,
-                  onArchiveSuccess,
                 })
               }
               c="feedback-negative"

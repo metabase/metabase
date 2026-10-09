@@ -37,7 +37,6 @@ interface SetupOptions {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
   collection?: Partial<Collection>;
   isAdmin?: boolean;
-  onArchiveSuccess?: () => void;
   customArchiveMessage?: string;
 }
 
@@ -45,7 +44,6 @@ const setup = ({
   remoteSyncType,
   collection,
   isAdmin = true,
-  onArchiveSuccess,
   customArchiveMessage,
 }: SetupOptions = {}) => {
   const state = createMockState({
@@ -66,7 +64,6 @@ const setup = ({
     <CollectionRowMenuWithModal
       collection={createMockCollection(collection)}
       customArchiveMessage={customArchiveMessage}
-      onArchiveSuccess={onArchiveSuccess}
     />,
     {
       storeInitialState: state,
@@ -130,12 +127,10 @@ describe("CollectionRowMenu", () => {
 
   it("archives a collection after confirmation", async () => {
     const collection = createMockCollection({ id: 1, name: "Archived soon" });
-    const onArchiveSuccess = jest.fn();
     setupUpdateCollectionEndpoint(collection);
     setup({
       collection,
       customArchiveMessage: "Custom archive warning",
-      onArchiveSuccess,
     });
 
     await openMenu();
@@ -147,7 +142,9 @@ describe("CollectionRowMenu", () => {
     expect(screen.getByText("Custom archive warning")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
-    await waitFor(() => expect(onArchiveSuccess).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("update-collection-1")).toBe(true),
+    );
     const request = fetchMock.callHistory.lastCall(
       "update-collection-1",
     )?.request;

@@ -62,7 +62,6 @@ jest.mock("metabase/common/components/Pickers", () => ({
 type SetupOpts = {
   table?: TableMoreMenuProps["table"];
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
-  onMoved?: TableMoreMenuProps["onMoved"];
 };
 
 const dataCollection = createMockCollection({
@@ -81,7 +80,7 @@ const destinationCollection = createMockCollection({
   location: "/6464/10/",
 });
 
-const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
+const setup = ({ table, remoteSyncType }: SetupOpts = {}) => {
   const tableData =
     table ??
     createMockTable({
@@ -168,10 +167,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
   setupTableEndpoints(createMockTable({ id: tableData.id }));
 
   renderWithProviders(
-    <Route
-      path="/"
-      element={<TableMoreMenuWithModal table={tableData} onMoved={onMoved} />}
-    />,
+    <Route path="/" element={<TableMoreMenuWithModal table={tableData} />} />,
     {
       withRouter: true,
       storeInitialState: state,
@@ -253,7 +249,6 @@ describe("TableMoreMenu", () => {
   });
 
   it("moves a table to another Library Data collection", async () => {
-    const onMoved = jest.fn();
     const table = createMockCollectionItem({
       id: 42,
       model: "table",
@@ -263,7 +258,7 @@ describe("TableMoreMenu", () => {
       collection_id: dataCollection.id as number,
     });
 
-    setup({ table, onMoved });
+    setup({ table });
     await userEvent.click(
       screen.getByRole("button", { name: "Show table options" }),
     );
@@ -273,7 +268,9 @@ describe("TableMoreMenu", () => {
       await screen.findByRole("button", { name: "Destination" }),
     );
 
-    await waitFor(() => expect(onMoved).toHaveBeenCalledWith([11, 10]));
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("table-42-put")).toBe(true),
+    );
     const request = fetchMock.callHistory.lastCall("table-42-put")?.request;
     expect(await request?.json()).toEqual({ collection_id: 11 });
     expect(screen.queryByTestId("entity-picker-modal")).not.toBeInTheDocument();

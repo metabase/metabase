@@ -1,64 +1,32 @@
-import { useCallback } from "react";
-import _ from "underscore";
-
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import { getArchiveLibraryCollectionsMessage } from "../utils";
 
 type LibraryCollectionRowMenuProps = {
   childCount: number;
   collection: Collection;
-  refreshCollections: (collectionIds: CollectionId[]) => void;
   onOpenModal: (modal: CollectionRowModalState) => void;
 };
 
-export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
-  const { childCount, collection, refreshCollections, onOpenModal } = props;
+export function LibraryCollectionRowMenu({
+  childCount,
+  collection,
+  onOpenModal,
+}: LibraryCollectionRowMenuProps) {
   const isLibraryDataCollection =
     collection.type === "library-data" && !collection.is_library_root;
-
-  const onArchiveSuccess = useCallback(() => {
-    const parentId = getParentCollectionId(collection);
-
-    if (parentId == null) {
-      return;
-    }
-
-    refreshCollections([parentId]);
-  }, [collection, refreshCollections]);
 
   return (
     <CollectionRowMenu
       collection={collection}
       onOpenModal={onOpenModal}
-      onSave={(details) => {
-        refreshCollections(getAffectedCollectionIds(details));
-      }}
       customArchiveMessage={
         isLibraryDataCollection && childCount > 0
           ? getArchiveLibraryCollectionsMessage(1)
           : undefined
       }
-      onArchiveSuccess={onArchiveSuccess}
     />
   );
 }
-
-const getAffectedCollectionIds = ({
-  previousParentId,
-  newParentId,
-}: {
-  previousParentId: CollectionId | null;
-  newParentId: CollectionId | null;
-}) => _.uniq([previousParentId, newParentId]).filter(_.isNumber);
-
-const getParentCollectionId = (collection: Collection) => {
-  const parentId =
-    "collection_id" in collection
-      ? collection.collection_id
-      : collection.parent_id;
-
-  return typeof parentId === "number" ? parentId : null;
-};
