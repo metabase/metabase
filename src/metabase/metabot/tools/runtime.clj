@@ -187,41 +187,6 @@
                            ". Tool errors may only carry authored text; log the exception instead.")
                       {:where where})))))
 
-(defn- assert-tool-naming!
-  "Check that only recovery steps name tools, and only the ones they declare in `:uses`.
-
-  A `:message` that names a tool is a message written for one profile: the runtime cannot drop a
-  message the way it drops a step, so it would reach profiles where that tool does not exist. Dev
-  and test only."
-  [{:keys [message recovery]} tool-names]
-  (doseq [tool-name tool-names
-          :when     (tools.error/names-a-tool? message tool-name)]
-    (throw (ex-info (str "A recoverable error's :message names the tool `" tool-name
-                         "`. Only recovery steps name tools, so that a profile without the tool "
-                         "loses the advice instead of the whole message.")
-                    {:tool-name tool-name})))
-  (doseq [{:keys [uses text]} recovery
-          tool-name           tool-names
-          :when               (and (tools.error/names-a-tool? text tool-name)
-                                   (not (contains? uses tool-name)))]
-    (throw (ex-info (str "A recovery step names the tool `" tool-name "` without declaring it in "
-                         ":uses, so it would survive into a profile that has no such tool.")
-                    {:uses uses :tool-name tool-name}))))
-
-(def ^:private composed-message-codes
-  "Codes whose `:message` was composed from text already filtered for this profile, so
-  [[assert-tool-naming!]]'s rule about messages naming tools does not apply.
-
-  That rule exists because the runtime can drop a recovery step but not a message, so a message
-  naming a tool would reach a profile without it. `tools.core/all-items-failed` is the one error
-  whose message is not authored but assembled: it is the batched call's own per-item failure text,
-  each item's steps already dropped for the tools this profile lacks. Checking it would fail on
-  advice this profile asked for.
-
-  A set rather than a flag because the condition is a property of how an error is built, and the
-  only place that knows is the thing that built it."
-  #{:metabase.metabot.tools.core/all-items-failed})
-
 (def ^:private max-output-length
   "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
   so that a pathological payload cannot spend the turn's context on one failure."
@@ -247,11 +212,12 @@
                                                             tool-names)
                  (unrecoverable-output code))]
     (when (or config/is-dev? config/is-test?)
-      (assert-authored! output (str class " " code))
-      (when (= class :recoverable)
-        (assert-tool-naming! {:message (when-not (contains? composed-message-codes code) message)
-                              :recovery recovery}
-                             tool-names)))
+      ;; Only the authored-text check runs here. Whether a declaration's message names a tool is a
+      ;; property of the declaration, not of this call, so it is checked once over the whole catalog
+      ;; in `metabase.metabot.tools.error-test` rather than on every render — which also means this
+      ;; path needs no exemption for `tools.core/all-items-failed`, whose message is not authored at
+      ;; all but assembled from text each item already had filtered for this profile.
+      (assert-authored! output (str class " " code)))
     {:output (cond-> output
                (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}

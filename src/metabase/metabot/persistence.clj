@@ -47,7 +47,7 @@
   "The stored `:output` value for a v2 tool part. A map result is trimmed to
   `:output` (the LLM-facing text adapters read on history replay) plus the
   `persisted-structured-output-keys` subset of structured output, canonicalized
-  to `:structured_output`; everything else (`:resources`, `:data-parts`,
+  to `:structured_output`; everything else (`:data-parts`,
   `:reactions`, …) is dropped — that's where the bulk of the bloat lives. A
   non-map result (a tool that returned a bare string/scalar) is stored as-is —
   the v2 part schema types `:output` as any JSON value — so readers must

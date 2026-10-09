@@ -30,21 +30,31 @@
   actually publishes."
   @#'read-resource/uri-arg)
 
+(def ^:private read-ctx
+  "A profile that has `search`, so the recovery steps naming it survive."
+  {:tool-names #{"read_resource" "search"}})
+
 (defn- read-uris
-  "Read some URIs the way a consumer does: `tools/call` picks the batched path because the tool
-  implements `BatchedTool`.
+  "Read some URIs the way `POST /v1/read-resource` does: through `with-batched-entries`, with one
+  item per URI.
 
-  Returns `{:output … :resources …}`, so the assertions below stay about what a reader gets rather
-  than about how the tool is invoked. `:tool-names` holds a profile that has `search`, so the
-  recovery steps that name it survive.
+  That consumer rather than the agent loop because the tests below are about what each URI produced,
+  and most of them read a single URI — which through `tools/call` is `all-items-failed` the moment
+  it misses, with no per-item list to assert on. The agent loop's path has its own test.
 
-  `:all-items-failed :compose` is the Agent API's stance, and the right one for the tests below:
-  they are about what each URI produced, and most read a single URI, which would otherwise be
-  `all-items-failed` the moment it misses. The agent loop's opposite default has its own test."
+  The item shape is the endpoint's, repeated here rather than shared: the endpoint builds its own
+  published response and should not export it for a test to lean on, and five lines of mirror is
+  cheaper than making every assertion below reach into an entry."
   [{:keys [uris]}]
-  (tools/call read-resource/read-resource-tool {:uris (vec uris)}
-              {:tool-names       #{"read_resource" "search"}
-               :all-items-failed :compose}))
+  (tools/with-batched-entries read-resource/read-resource-tool {:uris (vec uris)} read-ctx nil
+    (fn [entries]
+      {:resources (mapv (fn [{:keys [item output failed? structured-output]}]
+                          (cond-> {:uri (:uri item)}
+                            failed?       (assoc :error output)
+                            (not failed?) (assoc :content {:structured-output structured-output})))
+                        entries)
+       :output    (tools/render-text
+                   (:output (tools/compose read-resource/read-resource-tool entries read-ctx)))})))
 
 (deftest ^:parallel scalar-uris-arg-test
   (testing "a scalar `uris` is rejected with guidance on how to repair the call"
@@ -671,7 +681,9 @@
 (defn- read-title
   "The chain-of-thought title `read-resource` derives from what it read."
   [& uris]
-  (-> (read-uris {:uris (vec uris)})
+  ;; The agent loop's path, not the endpoint's: the title is a `:data-parts` entry on the composed
+  ;; result, which is what `tools/call` returns and the endpoint drops.
+  (-> (tools/call read-resource/read-resource-tool {:uris (vec uris)} read-ctx)
       :data-parts first :data :title))
 
 (deftest read-resource-title-test
@@ -721,11 +733,23 @@
       (testing "a navigation list names what's being browsed"
         (is (= "databases" (read-title "metabase://databases")))
         (is (= "recent items" (read-title "metabase://user/recent-items"))))
-      (testing "a missing entity -> no title"
-        (is (nil? (read-title "metabase://dashboard/99999"))))
-      (testing "an unreadable entity never leaks its name"
+      (testing "a read that found nothing has no title because it is a failed call, not a call
+               with an empty title"
+        (is (= :metabase.metabot.tools.core/all-items-failed
+               (:code (test-util/tool-failure read-resource/read-resource-tool
+                                              {:uris ["metabase://dashboard/99999"]}
+                                              (:tool-names read-ctx))))))
+      (testing "an unreadable entity never leaks its name — same code, so the title cannot carry it
+               and neither can the error"
         (with-redefs [mi/can-read? (constantly false)]
-          (is (nil? (read-title (str "metabase://dashboard/" dash-id)))))))))
+          (let [{:keys [code text]} (test-util/tool-failure read-resource/read-resource-tool
+                                                            {:uris [(str "metabase://dashboard/" dash-id)]}
+                                                            (:tool-names read-ctx))]
+            (is (= :metabase.metabot.tools.core/all-items-failed code))
+            (is (not (str/includes? text "Sales Overview"))))))
+      (testing "one readable entity beside an unreadable one still titles the readable one"
+        (is (= (str "[Sales Overview](metabase://dashboard/" dash-id ")")
+               (read-title (str "metabase://dashboard/" dash-id) "metabase://dashboard/99999")))))))
 
 ;; ===== Permission coverage — every branch =====
 ;;
