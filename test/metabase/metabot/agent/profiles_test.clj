@@ -6,7 +6,8 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli :as mu]))
 
 (deftest get-profile-test
   (letfn [(tool-names [profile]
@@ -190,6 +191,7 @@
 
 (deftest register-profile-validation-test
   (let [base {:name            :scratch
+              :required-permission :permission/metabot
               :prompt-template "internal.selmer"
               :max-iterations  10
               :tools           [#'tools/read-resource-tool]}]
@@ -204,7 +206,38 @@
     (testing "rejects :skills? false combined with :always-on-skills"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"disables skills but lists"
                             (#'profiles/register-profile!
-                             (assoc base :skills? false :always-on-skills [:read-resource])))))))
+                             (assoc base :skills? false :always-on-skills [:read-resource])))))
+    (testing "rejects a missing or unknown :required-permission"
+      (doseq [profile [(dissoc base :required-permission)
+                       (assoc base :required-permission nil)
+                       (assoc base :required-permission :permission/metabot-no-such-thing)]]
+        (testing "with the dev/test schema check"
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (#'profiles/register-profile! profile))))
+        (testing "with the explicit check that also runs in prod"
+          (mu/disable-enforcement
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing or unknown :required-permission"
+                                  (#'profiles/register-profile! profile)))))))
+    (is (not (profiles/profile-registered? :scratch))
+        "no failed registration leaves a profile behind")))
+
+(deftest ^:parallel profile-required-permission-test
+  (testing "each profile gate equals the gate of the old side table in metabase.metabot.agent.core.
+            Profiles absent from that table had only the base :permission/metabot check."
+    (let [old-side-table {:sql                       :permission/metabot-sql-generation
+                          :nlq                       :permission/metabot-nlq
+                          :document-generate-content :permission/metabot-other-tools
+                          :explorations              :permission/metabot-nlq}]
+      (doseq [profile-id (keys @@#'profiles/*profiles)]
+        (testing profile-id
+          (is (= (get old-side-table profile-id :permission/metabot)
+                 (profiles/required-permission profile-id)))))
+      (is (every? profiles/profile-registered? (keys old-side-table))
+          "every profile of the old side table is still registered"))))
+
+(deftest ^:parallel required-permission-unknown-profile-test
+  (testing "an unknown profile-id has no gate, so the agent reaches its \"Unknown profile\" error"
+    (is (nil? (profiles/required-permission :no-such-profile)))))
 
 (deftest explorations-profile-disables-skills-test
   (binding [scope/*current-user-scope* api-scope/unrestricted]

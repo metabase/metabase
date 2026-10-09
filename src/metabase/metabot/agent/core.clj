@@ -462,19 +462,13 @@
 
 ;;; Main loop
 
-(def ^:private profile-id->required-permission
-  "Map from profile-id to the metabot permission that must be `:yes` for a user
-  to use that profile. Profiles not listed here have no profile-level permission gate."
-  {:sql                       :permission/metabot-sql-generation
-   :nlq                       :permission/metabot-nlq
-   :document-generate-content :permission/metabot-other-tools
-   :explorations              :permission/metabot-nlq})
-
 (defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the
-  requested profile."
+  requested profile. The profile registration declares its `:required-permission`.
+  For an unknown profile-id, only the base check applies here, and [[init-agent]] then
+  throws the \"Unknown profile\" error."
   [profile-id perms]
-  (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
+  (when-let [missing (scope/missing-permission perms (profiles/required-permission profile-id))]
     (throw (ex-info (if (= missing :permission/metabot)
                       "You do not have permission to use the AI assistant."
                       (format "You do not have permission to use the %s assistant." (name profile-id)))
@@ -519,8 +513,7 @@
                             :request-id          (str (random-uuid))
                             :source              "metabot_agent"
                             :tag                 "agent"
-                            :required-permission (or (profile-id->required-permission profile-id)
-                                                     :permission/metabot)}
+                            :required-permission (:required-permission profile)}
                            tracking-opts)}))
 
 (defn- initial-loop-state
