@@ -28,6 +28,12 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
+      - name: Require HEAD digest
+        if: inputs.digest == ''
+        run: |
+          echo "::error::inputs.digest is empty and required to test the current commit's Docker image"
+          exit 1
+
       - uses: actions/checkout@v7
         with:
           sparse-checkout: |
