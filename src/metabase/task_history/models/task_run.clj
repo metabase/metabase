@@ -64,25 +64,28 @@
    :status      mi/transform-keyword})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *run-id*
-  "The ID of the current task run. Set by [[with-task-run]]."
+(def ^:dynamic *run*
+  "The current task run, set by [[with-task-run]] and [[with-restored-run-id]]: its `:id`, and `:auto-complete?`, true
+  when [[with-task-run]] completes the run after its body."
   nil)
 
 (defn current-run-id
-  "Returns the current task run ID, or nil if not inside a [[with-task-run]] block."
+  "Returns the current task run ID, or nil when neither [[with-task-run]] nor [[with-restored-run-id]] set a run."
   []
-  *run-id*)
+  (:id *run*))
 
 (defn with-run-id-meta
-  "Given a map, returns the map with `*run-id*` attached to metadata.
+  "Given a map, returns the map with the current run ID attached to metadata.
    Used for propagation of run context across threads (e.g., async notification dispatch)."
   [m]
-  (vary-meta m assoc ::run-id *run-id*))
+  (vary-meta m assoc ::run-id (current-run-id)))
 
 (defmacro with-restored-run-id
-  "Given a map presumably containing metadata from [[with-run-id-meta]], restores `*run-id*` and executes body."
+  "Given a map presumably containing metadata from [[with-run-id-meta]], restores the current run and executes body.
+  The restored run is not completed by a [[with-task-run]] on this thread, so [[task-run-work-done!]] completes it."
   [m & body]
-  `(binding [*run-id* (::run-id (meta ~m))]
+  `(binding [*run* (when-let [run-id# (::run-id (meta ~m))]
+                     {:id run-id# :auto-complete? false})]
      ~@body))
 
 (mr/def ::TaskRunInfo
@@ -117,6 +120,16 @@
                         :failed)]
     (task-history.db/finish-started-task-run! run-id status (t/instant))))
 
+(mu/defn task-run-work-done!
+  "Call when one piece of work in the run `run-id` ends, for example one notification send.
+
+  Inside a [[with-task-run]] with `:auto-complete`, that macro completes the run after all of its work, so this does
+  nothing. A completion here would fix the run status before the rest of the work ran. Otherwise (`:auto-complete
+  false`, the work runs on other threads) this completes the run."
+  [run-id :- ms/PositiveInt]
+  (when-not (and (= run-id (:id *run*)) (:auto-complete? *run*))
+    (complete-task-run! run-id)))
+
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.
    `run-info` should contain :run_type, :entity_type, :entity_id.
@@ -125,19 +138,19 @@
    creating a new task run (prevents nesting).
 
    For async flows (e.g., async notifications), use :auto-complete false and
-   call [[complete-task-run!]] manually when all async work is done."
+   call [[task-run-work-done!]] when each piece of async work is done."
   {:style/indent 1}
   [run-info & body]
-  `(if (or *run-id* (nil? ~run-info))
+  `(if (or *run* (nil? ~run-info))
      (do ~@body)
      (let [info#          ~run-info
-           auto-complete# (get info# :auto-complete true)
+           auto-complete# (boolean (get info# :auto-complete true))
            run-id#        (create-task-run! info#)]
-       (binding [*run-id* run-id#]
+       (binding [*run* {:id run-id# :auto-complete? auto-complete#}]
          (if auto-complete#
            (try
              ~@body
              (finally
                (complete-task-run! run-id#)))
-           ;; Async: caller is responsible for calling complete-task-run!
+           ;; Async: each piece of work calls task-run-work-done!
            (do ~@body))))))

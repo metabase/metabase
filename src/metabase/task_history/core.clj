@@ -13,6 +13,7 @@
  [metabase.task-history.models.task-run
   complete-task-run!
   current-run-id
+  task-run-work-done!
   with-restored-run-id
   with-run-id-meta
   with-task-run])

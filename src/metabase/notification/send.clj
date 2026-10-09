@@ -290,7 +290,7 @@
           (when-let [total-time (since-trigger-ms notification-info)]
             (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
           (when-let [run-id (task-history/current-run-id)]
-            (task-history/complete-task-run! run-id))))
+            (task-history/task-run-work-done! run-id))))
       nil)))
 
 (defn- cron->next-execution-times
