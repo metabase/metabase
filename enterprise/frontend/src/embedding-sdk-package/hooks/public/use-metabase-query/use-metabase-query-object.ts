@@ -97,6 +97,12 @@ function useMetabaseQueryObjectImpl(
     resolveQueryObject,
   ]);
 
+  useEffect(() => {
+    if (error) {
+      console.error(error);
+    }
+  }, [error]);
+
   if (!isEnabled) {
     return { query: null, error: null, isLoading: false };
   }

@@ -95,6 +95,7 @@ export type WaterfallVisualizationSettings = Pick<
 export type TableVisualizationSettings = Pick<
   VisualizationSettings,
   | "table.columns"
+  | "table.pivot"
   | "table.column_formatting"
   | "pivot_table.column_split"
   | "pivot_table.collapsed_rows"
