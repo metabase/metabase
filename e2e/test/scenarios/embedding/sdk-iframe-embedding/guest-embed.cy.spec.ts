@@ -25,36 +25,7 @@ function guestEmbedSuite() {
     });
   });
 
-  it("shows a static question", () => {
-    cy.get("@questionId").then(async (questionId) => {
-      const token = await getSignedJwtForResource({
-        // Unjustified type cast. FIXME
-        resourceId: questionId as unknown as number,
-        resourceType: "question",
-      });
-
-      const frame = H.loadSdkIframeEmbedTestPage({
-        metabaseConfig: { isGuest: true },
-        elements: [
-          {
-            component: "metabase-question",
-            attributes: {
-              token,
-            },
-          },
-        ],
-      });
-
-      cy.wait("@getCardQuery");
-
-      frame.within(() => {
-        cy.findByText("Product ID").should("be.visible");
-        cy.findByText("Max of Quantity").should("be.visible");
-      });
-    });
-  });
-
-  it("allows to download a static question as CSV", () => {
+  it("shows a static question and allows to download it as CSV", () => {
     cy.get("@questionId").then(async (questionId) => {
       const token = await getSignedJwtForResource({
         // Unjustified type cast. FIXME
@@ -78,6 +49,9 @@ function guestEmbedSuite() {
       cy.wait("@getCardQuery");
 
       frame.within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
+
         H.downloadAndAssert({
           isDashboard: false,
           isEmbed: true,
