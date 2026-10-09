@@ -4,11 +4,13 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.core-test :as core-test]
+   [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase-enterprise.data-sensitivity.runner :as runner]
    [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
@@ -141,9 +143,49 @@
            (let [run (start! db {:attributes [:semantic_type]})]
              (wait-ended (:id run))
              (is (= #{:semantic_type} (set (map :attribute (suggestions (:id run))))))))
-         (testing "descriptions are not supported yet"
-           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported"
-                                 (start! db {:attributes [:description]})))))))))
+         (testing "an attribute outside the run attributes is refused"
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                                 (start! db {:attributes [:display_name]})))))))))
+
+(deftest description-suggestion-test
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (:id db) :name "ds_descriptions" :active true}
+                 :model/Field    _     {:table_id (:id table) :name "ds_none" :base_type :type/Text}
+                 :model/Field    _     {:table_id (:id table) :name "ds_comment" :base_type :type/Text
+                                        :description "old comment"}
+                 :model/Field    _     {:table_id (:id table) :name "ds_same" :base_type :type/Text
+                                        :description "Same text"}
+                 :model/Field    human {:table_id (:id table) :name "ds_human" :base_type :type/Text}
+                 :model/Field    clear {:table_id (:id table) :name "ds_cleared" :base_type :type/Text
+                                        :description "comment a person cleared"}]
+    (field-user-settings/upsert-user-settings human {:description "Written by a person"})
+    (field-user-settings/upsert-user-settings clear {:description nil})
+    (let [messages (atom [])
+          llm      (fn [& [_model msgs :as args]]
+                     (swap! messages conj msgs)
+                     (apply (core-test/canned-llm
+                             {"ds_none"    {:description "Customer email address."}
+                              "ds_comment" {:description "Shipping note."}
+                              "ds_same"    {:description "Same text"}
+                              "ds_human"   {:description "Another text."}
+                              "ds_cleared" {:description "Another text."}})
+                            args))]
+      (core-test/do-with-llm!
+       llm
+       (fn []
+         (let [run (start! db {:attributes [:description]})]
+           (is (=? {:status :succeeded :attributes [:description]} (wait-ended (:id run))))
+           (testing "a description is suggested only where it is new or differs, never over a human-set one"
+             (is (= #{["ds_none" :description :none nil "Customer email address."]
+                      ["ds_comment" :description :deterministic "old comment" "Shipping note."]}
+                    (set (for [s (suggestions (:id run))]
+                           [(t2/select-one-fn :name :model/Field :id (:field_id s))
+                            (:attribute s) (:source s) (:current_value s) (:proposed_value s)])))))
+           (testing "the call asks only for descriptions and shows the cleared description as human-set"
+             (let [[system user] (map :content (first @messages))]
+               (is (= (llm/system-prompt-for #{:description}) system))
+               (is (str/includes? user "- ds_cleared (type/Text, VARCHAR; description: none [human-set])"))
+               (is (str/includes? user "- ds_human (type/Text, VARCHAR; description: \"Written by a person\" [human-set])"))))))))))
 
 (deftest cancel-via-run-row-test
   (testing "a cancel written to the run row from elsewhere stops the run within one chunk call"
@@ -311,8 +353,8 @@
             (is (= 2 (count @seen)))
             (is (every? #{[(mt/user->id :crowberto) scope/all-yes-permissions]} @seen)))))))))
 
-(deftest sensitivity-only-prompt-parity-test
-  (testing "a sensitivity-only run sends the same messages as the synchronous classifier"
+(deftest default-attributes-prompt-parity-test
+  (testing "a run with the default attributes sends the same messages as the synchronous classifier"
     (let [table    (t2/select-one :model/Table :id (mt/id :people))
           messages (atom [])
           llm      (fn [& [_model msgs :as args]]
@@ -325,7 +367,7 @@
           classic  (capture #(core/classify-table! table))
           run-id   (atom nil)
           run      (capture (fn []
-                              (let [run (runner/start-run! (mt/db) {:table_ids [(:id table)] :attributes [:data_sensitivity]}
+                              (let [run (runner/start-run! (mt/db) {:table_ids [(:id table)]}
                                                            (mt/user->id :crowberto))]
                                 (reset! run-id (:id run))
                                 (wait-ended (:id run)))))]
@@ -335,3 +377,30 @@
         (is (= classic run))
         (finally
           (t2/delete! :model/MetadataGenerationRun :id @run-id))))))
+
+(deftest sensitivity-only-prompt-test
+  (testing "a sensitivity-only run sends the same data with a smaller system prompt"
+    (let [table    (t2/select-one :model/Table :id (mt/id :people))
+          calls    (atom [])
+          llm      (fn [& [_model msgs schema :as args]]
+                     (swap! calls conj {:messages (mapv :content msgs) :schema schema})
+                     (apply (core-test/canned-llm (constantly {})) args))
+          run-ids  (atom [])
+          capture  (fn [attributes]
+                     (reset! calls [])
+                     (core-test/do-with-llm!
+                      llm
+                      (fn []
+                        (let [run (start! (mt/db) {:table_ids [(:id table)] :attributes attributes})]
+                          (swap! run-ids conj (:id run))
+                          (wait-ended (:id run)))))
+                     @calls)]
+      (try
+        (let [default (capture [:data_sensitivity :semantic_type])
+              only    (capture [:data_sensitivity])]
+          (is (= (map (comp second :messages) default) (map (comp second :messages) only)))
+          (is (every? #(= (llm/system-prompt-for #{:data_sensitivity}) (first (:messages %))) only))
+          (is (every? #(= (llm/response-schema-for #{:data_sensitivity}) (:schema %)) only))
+          (is (< (count (first (:messages (first only)))) (count (first (:messages (first default)))))))
+        (finally
+          (t2/delete! :model/MetadataGenerationRun :id [:in @run-ids]))))))

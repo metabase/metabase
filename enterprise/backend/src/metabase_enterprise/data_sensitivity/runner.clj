@@ -13,6 +13,7 @@
   Each node heartbeats the runs it owns ([[heartbeat-tick!]]); [[reap-orphaned-runs!]] fails an active run whose
   heartbeat is stale, for example after its node died."
   (:require
+   [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [com.climate.claypoole.impl :as cp.impl]
    [metabase-enterprise.data-sensitivity.context :as context]
@@ -38,8 +39,8 @@
 (set! *warn-on-reflection* true)
 
 (def supported-attributes
-  "The attributes a run can generate now. `:description` is added by TSP-160."
-  #{:data_sensitivity :semantic_type})
+  "The attributes a run can generate."
+  (set llm/all-attributes))
 
 (def default-attributes
   "The attributes of a run that names none."
@@ -173,21 +174,32 @@
     (some? current-value)            :deterministic
     :else                            :none))
 
+(defn- new-description
+  "The description proposed in `entry` when it differs from the current `description`, else nil."
+  [description entry]
+  (let [proposed (:description entry)]
+    (when (and proposed (not= (some-> description str/trim) proposed))
+      proposed)))
+
 (defn- confidence [s]
   (#{:high :medium :low} (some-> s keyword)))
 
 (mu/defn table-suggestions :- [:sequential ::suggestion/new-suggestion]
   "The suggestion rows of one classified table for the `attributes` of run `run-id`: a `data_sensitivity` row for every
-  field whose proposed label is new or differs from the current one, and a `semantic_type` row for every field whose
-  proposed type differs from the current one. A human-set current value is a suggestion too, with source `:human`."
+  field whose proposed label is new or differs from the current one, a `semantic_type` row for every field whose
+  proposed type differs from the current one, and a `description` row for every field whose proposed description
+  differs from the current one. A human-set current value is a suggestion too, with source `:human`; the parse never
+  proposes a description for a human-set description."
   [run-id         :- ms/PositiveInt
    attributes     :- [:set ::run/attribute]
    packet         :- ::context/packet
    entries        :- [:map-of :string ::llm/entry]]
   (vec
    (for [field (:fields packet)
-         :let  [{:keys [status current proposed semantic_changed]}
-                (core/diff-field field (get entries (:name field)))
+         :let  [entry (get entries (:name field))
+                {:keys [status current proposed semantic_changed]}
+                (core/diff-field field entry)
+                description (new-description (:description field) entry)
                 base {:run_id     run-id
                       :table_id   (get-in packet [:table :id])
                       :field_id   (:id field)
@@ -206,7 +218,14 @@
                                    :attribute      :semantic_type
                                    :source         (source field :semantic_type (:semantic_type current))
                                    :current_value  (some-> (:semantic_type current) u/qualified-name)
-                                   :proposed_value (u/qualified-name (:semantic_type proposed)))))]
+                                   :proposed_value (u/qualified-name (:semantic_type proposed))))
+
+                      (and (attributes :description) description)
+                      (conj (assoc base
+                                   :attribute      :description
+                                   :source         (source field :description (not-empty (:description field)))
+                                   :current_value  (:description field)
+                                   :proposed_value description)))]
      suggestion)))
 
 ;;; Worker
@@ -214,12 +233,12 @@
 (defn- classify-table
   "Build the packet of `table`, submit its chunk calls with all Metabot permissions granted, and wait for them while
   checking for a stop. Cancels the chunks not finished on any exit."
-  [ctx database table packet-opts]
+  [{:keys [attributes] :as ctx} database table packet-opts]
   (let [packet (database-routing/with-database-routing-off
                  (context/table-packet database table packet-opts))]
     (core/assert-unique-names! table (:fields packet))
     (check-stop! ctx)
-    (let [submitted (metabot/do-with-all-metabot-permissions #(llm/submit-packet packet))]
+    (let [submitted (metabot/do-with-all-metabot-permissions #(llm/submit-packet packet :attributes attributes))]
       (try
         (await-chunks! ctx submitted)
         {:packet packet :classification (llm/collect-packet submitted)}

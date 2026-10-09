@@ -22,6 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]))
 
@@ -99,8 +100,17 @@
              [:truncation :int]
              [:error      [:maybe :string]]]]])
 
+(defn- human-set?
+  "Whether a person set column `k` in `user-settings`. A column sync also writes has a `<col>_set` flag, which is true
+  for a cleared value too; any other column is set when its value is not nil. The same rule as
+  [[warehouse-schema-overlay/field-query]]."
+  [user-settings k]
+  (if-let [flag (warehouse-schema-overlay/field-user-settings-flags k)]
+    (true? (get user-settings flag))
+    (some? (get user-settings k))))
+
 (defn- human-set-keys [user-settings]
-  (into #{} (filter #(some? (get user-settings %))) field/field-user-settings))
+  (into #{} (filter #(human-set? user-settings %)) field/field-user-settings))
 
 (defn- fk-targets
   "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields`."
@@ -229,12 +239,12 @@
     "this database uses database routing"))
 
 (defn- field-entry
-  "The packet entry for `field`, with its non-nil user-settings values taking precedence over the Field row.
-  `:human_set` names the columns a user has set."
+  "The packet entry for `field`, with the user-settings values a person set taking precedence over the Field row, a
+  cleared value included. `:human_set` names the columns a user has set."
   [{:keys [id] :as field} {:keys [user-settings fk-targets cached sampled]}]
   (let [settings  (get user-settings id)
         human-set (human-set-keys settings)
-        field     (merge field (u/select-keys-when settings :non-nil field/field-user-settings))]
+        field     (merge field (select-keys settings human-set))]
     {:id              id
      :name            (:name field)
      :display_name    (:display_name field)
