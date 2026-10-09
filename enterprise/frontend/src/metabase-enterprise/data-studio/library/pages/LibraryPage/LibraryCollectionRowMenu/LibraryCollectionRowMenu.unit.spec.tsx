@@ -2,10 +2,6 @@ import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupUpdateCollectionEndpoint,
-} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -38,20 +34,11 @@ function setup({
     id: 1,
     name: "Library Data Collection",
     type: "library-data",
-    parent_id: 22,
   }),
   childCount = 0,
 }: Partial<Parameters<typeof LibraryCollectionRowMenu>[0]> = {}) {
-  const parentCollection = createMockCollection({
-    id: 22,
-    name: "Data",
-    type: "library-data",
-  });
-
   setupEnterpriseOnlyPlugin("library");
   setupEnterpriseOnlyPlugin("remote_sync");
-  setupUpdateCollectionEndpoint(collection);
-  setupCollectionByIdEndpoint({ collections: [parentCollection] });
 
   renderWithProviders(
     <LibraryCollectionRowMenuWithModal

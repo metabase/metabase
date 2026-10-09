@@ -40,14 +40,11 @@ export const RootSnippetsCollectionMenu = ({
           </ActionIcon>
         </Tooltip>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
         {canChangePermissions && (
           <Menu.Item
             leftSection={<FixedSizeIcon name="lock" />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenModal({ type: "permissions", collection });
-            }}
+            onClick={() => onOpenModal({ type: "permissions", collection })}
           >
             {t`Change permissions`}
           </Menu.Item>

@@ -29,7 +29,6 @@ const itemParentCollection = createMockCollection({
 
 function setup(collection: Collection | CollectionItem) {
   const onClose = jest.fn();
-  const onSave = jest.fn();
 
   // Unjustified type cast. FIXME
   setupUpdateCollectionEndpoint(collection as Collection);
@@ -38,17 +37,13 @@ function setup(collection: Collection | CollectionItem) {
   });
 
   renderWithProviders(
-    <EditCollectionModal
-      collection={collection}
-      onClose={onClose}
-      onSave={onSave}
-    />,
+    <EditCollectionModal collection={collection} onClose={onClose} />,
     {
       storeInitialState: createMockState({}),
     },
   );
 
-  return { onClose, onSave };
+  return { onClose };
 }
 
 describe("EditCollectionModal", () => {
@@ -59,7 +54,7 @@ describe("EditCollectionModal", () => {
       description: "Original description",
       parent_id: parentCollection.id,
     });
-    const { onClose, onSave } = setup(collection);
+    const { onClose } = setup(collection);
 
     await userEvent.clear(screen.getByLabelText("Name"));
     await userEvent.type(screen.getByLabelText("Name"), "Updated name");
@@ -71,10 +66,6 @@ describe("EditCollectionModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(onSave).toHaveBeenCalledWith({
-      previousParentId: parentCollection.id,
-      newParentId: parentCollection.id,
-    });
     const request = fetchMock.callHistory.lastCall(
       "update-collection-1",
     )?.request;
@@ -93,17 +84,13 @@ describe("EditCollectionModal", () => {
       // Unjustified type cast. FIXME
       collection_id: itemParentCollection.id as number,
     });
-    const { onSave } = setup(collectionItem);
+    const { onClose } = setup(collectionItem);
 
     await userEvent.clear(screen.getByLabelText("Name"));
     await userEvent.type(screen.getByLabelText("Name"), "Updated item name");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalled());
-    expect(onSave).toHaveBeenCalledWith({
-      previousParentId: itemParentCollection.id,
-      newParentId: itemParentCollection.id,
-    });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
     const request = fetchMock.callHistory.lastCall(
       "update-collection-2",
     )?.request;

@@ -30,8 +30,20 @@ export function UnarchiveCollectionButton({
         addUndo({
           message: t`"${collection.name}" has been unarchived`,
           action: async () => {
-            await updateCollection({ id: collection.id, archived: true });
-            invalidateCollectionItems(collection);
+            const { error } = await updateCollection({
+              id: collection.id,
+              archived: true,
+            });
+            if (error) {
+              void dispatch(
+                addUndo({
+                  message: t`"${collection.name}" could not be archived`,
+                  icon: "warning",
+                }),
+              );
+            } else {
+              invalidateCollectionItems(collection);
+            }
           },
         }),
       );

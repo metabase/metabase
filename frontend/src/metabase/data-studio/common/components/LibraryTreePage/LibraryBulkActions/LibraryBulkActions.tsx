@@ -36,7 +36,6 @@ type LibraryBulkActionsProps = {
   selectionSection: LibrarySection | null;
   isAllTables: boolean;
   defaultCollectionId: CollectionId | undefined;
-  onActionComplete: () => void;
   getTrashMessage?: (
     section: LibrarySection,
     count: number,
@@ -49,7 +48,6 @@ export function LibraryBulkActions({
   selectionSection,
   isAllTables,
   defaultCollectionId,
-  onActionComplete,
   getTrashMessage,
   onClear,
 }: LibraryBulkActionsProps) {
@@ -87,7 +85,7 @@ export function LibraryBulkActions({
     } else {
       sendSuccessToast(toast.success);
     }
-    onActionComplete();
+    onClear();
   };
 
   const handleMove = async (destinationId: RegularCollectionId | null) => {
@@ -112,7 +110,7 @@ export function LibraryBulkActions({
 
   const handleUnpublished = () => {
     setAction(undefined);
-    onActionComplete();
+    onClear();
   };
 
   const handleTrash = () =>

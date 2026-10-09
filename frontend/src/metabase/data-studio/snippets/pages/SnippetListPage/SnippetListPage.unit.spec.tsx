@@ -158,4 +158,16 @@ describe("SnippetListPage", () => {
 
     expect(screen.getByText("Orders filter")).toBeInTheDocument();
   });
+
+  it("keeps the root row expanded when clicking inside the root options menu", async () => {
+    setup({});
+
+    expect(await screen.findByText("Orders filter")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Snippet collection options" }),
+    );
+    await userEvent.click(await screen.findByRole("menu"));
+
+    expect(screen.getByText("Orders filter")).toBeInTheDocument();
+  });
 });

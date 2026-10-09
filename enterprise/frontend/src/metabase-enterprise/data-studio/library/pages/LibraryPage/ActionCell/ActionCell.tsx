@@ -1,5 +1,4 @@
 import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
-import { getItemSection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollectionData,
@@ -33,7 +32,7 @@ export function ActionCell({
     return <TableMoreMenu table={data} onOpenModal={onOpenTableModal} />;
   }
 
-  if (!isCollectionData(data) || data.model !== "collection") {
+  if (!isCollectionData(data)) {
     return null;
   }
 
@@ -41,7 +40,7 @@ export function ActionCell({
     PLUGIN_LIBRARY.isLibrarySubCollectionType(data.type) &&
     !data.is_library_root;
 
-  if (isLibraryCollection && getItemSection(treeItem) != null) {
+  if (isLibraryCollection) {
     return (
       <LibraryCollectionRowMenu
         childCount={children?.length ?? 0}

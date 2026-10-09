@@ -273,6 +273,10 @@ describe("TableMoreMenu", () => {
     );
     const request = fetchMock.callHistory.lastCall("table-42-put")?.request;
     expect(await request?.json()).toEqual({ collection_id: 11 });
-    expect(screen.queryByTestId("entity-picker-modal")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Destination" }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

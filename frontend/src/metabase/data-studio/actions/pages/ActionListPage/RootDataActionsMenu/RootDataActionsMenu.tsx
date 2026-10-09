@@ -39,14 +39,11 @@ export function RootDataActionsMenu({
           </ActionIcon>
         </Tooltip>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
         {canChangePermissions && (
           <Menu.Item
             leftSection={<FixedSizeIcon name="lock" />}
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenModal({ type: "permissions", collection });
-            }}
+            onClick={() => onOpenModal({ type: "permissions", collection })}
           >
             {t`Change permissions`}
           </Menu.Item>

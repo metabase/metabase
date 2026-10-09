@@ -1,5 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
@@ -74,6 +74,17 @@ const SECTION_ITEM_MODELS: Record<LibrarySectionType, CollectionItemModel[]> = {
   actions: ["action", "collection"],
 };
 
+const NO_ITEMS: CollectionItem[] = [];
+
+const getCollectionItemsRequest = (
+  collectionId: CollectionId,
+  models: CollectionItemModel[],
+) => ({
+  id: collectionId,
+  models,
+  archived: false,
+});
+
 export function useLibraryCollectionTree(
   collection: Collection | undefined,
   sectionType: LibrarySectionType,
@@ -89,13 +100,7 @@ export function useLibraryCollectionTree(
     isLoading,
     error,
   } = useListCollectionItemsQuery(
-    collection
-      ? {
-          id: collection.id,
-          models,
-          archived: false,
-        }
-      : skipToken,
+    collection ? getCollectionItemsRequest(collection.id, models) : skipToken,
   );
 
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -104,41 +109,61 @@ export function useLibraryCollectionTree(
   const [expandedCollectionIds, setExpandedCollectionIds] = useState<
     CollectionId[]
   >([]);
-
-  useEffect(() => {
-    setExpandedCollectionIds([]);
-  }, [collection]);
-
-  const getItemsRequest = useCallback(
-    (collectionId: CollectionId) => ({
-      id: collectionId,
-      models,
-      archived: false,
-    }),
-    [models],
+  const subscriptionsRef = useRef(
+    new Map<CollectionId, { unsubscribe: () => void }>(),
   );
 
+  const sectionCollectionId = collection?.id;
   useEffect(() => {
-    const subscriptions = expandedCollectionIds.map((collectionId) =>
-      dispatch(
-        collectionApi.endpoints.listCollectionItems.initiate(
-          getItemsRequest(collectionId),
-        ),
-      ),
-    );
+    setExpandedCollectionIds((ids) => (ids.length > 0 ? [] : ids));
+  }, [sectionCollectionId, models]);
+
+  useEffect(() => {
+    const subscriptions = subscriptionsRef.current;
+    expandedCollectionIds.forEach((collectionId) => {
+      if (!subscriptions.has(collectionId)) {
+        subscriptions.set(
+          collectionId,
+          dispatch(
+            collectionApi.endpoints.listCollectionItems.initiate(
+              getCollectionItemsRequest(collectionId, models),
+            ),
+          ),
+        );
+      }
+    });
+    subscriptions.forEach((subscription, collectionId) => {
+      if (!expandedCollectionIds.includes(collectionId)) {
+        subscription.unsubscribe();
+        subscriptions.delete(collectionId);
+      }
+    });
+  }, [dispatch, expandedCollectionIds, models]);
+
+  useEffect(() => {
+    const subscriptions = subscriptionsRef.current;
     return () => {
       subscriptions.forEach((subscription) => subscription.unsubscribe());
+      subscriptions.clear();
     };
-  }, [dispatch, expandedCollectionIds, getItemsRequest]);
+  }, []);
+
+  const expandedCollectionSelectors = useMemo(
+    () =>
+      expandedCollectionIds.map((collectionId) =>
+        collectionApi.endpoints.listCollectionItems.select(
+          getCollectionItemsRequest(collectionId, models),
+        ),
+      ),
+    [expandedCollectionIds, models],
+  );
 
   const expandedCollectionItems = useSelector(
     (state: State) =>
-      expandedCollectionIds.map(
-        (collectionId) =>
-          collectionApi.endpoints.listCollectionItems.select(
-            getItemsRequest(collectionId),
-          )(state).data,
-      ),
+      expandedCollectionSelectors.map((selectCollectionItems) => {
+        const { data, isError } = selectCollectionItems(state);
+        return data?.data ?? (isError ? NO_ITEMS : undefined);
+      }),
     shallowEqual,
   );
 
@@ -146,15 +171,8 @@ export function useLibraryCollectionTree(
     () =>
       new Map(
         expandedCollectionIds.flatMap((collectionId, index) => {
-          const response = expandedCollectionItems[index];
-          return response
-            ? [
-                [
-                  collectionId,
-                  response.data.filter((item) => !item.archived),
-                ] as const,
-              ]
-            : [];
+          const items = expandedCollectionItems[index];
+          return items ? [[collectionId, items] as const] : [];
         }),
       ),
     [expandedCollectionIds, expandedCollectionItems],
@@ -203,30 +221,38 @@ export function useLibraryCollectionTree(
   ]);
 
   // 4. Watch rows for expanded-but-empty collections → subscribe to their items
-  const watchRows = useCallback((rows: Row<TreeItem>[]) => {
-    const collectionIdsToLoad = rows.flatMap((row) => {
-      const { original } = row;
-      const isExpandedWithoutChildren =
-        row.getIsExpanded() &&
-        row.getCanExpand() &&
-        original.model === "collection" &&
-        original.children?.length === 0;
-      return isExpandedWithoutChildren &&
-        original.data.model === "collection" &&
-        original.data.id != null
-        ? [original.data.id]
-        : [];
-    });
-    if (collectionIdsToLoad.length === 0) {
-      return;
-    }
-    setExpandedCollectionIds((previousIds) => {
-      const newIds = collectionIdsToLoad.filter(
-        (collectionId) => !previousIds.includes(collectionId),
-      );
-      return newIds.length > 0 ? [...previousIds, ...newIds] : previousIds;
-    });
-  }, []);
+  const sectionRowId = tree[0]?.id;
+  const watchRows = useCallback(
+    (rows: Row<TreeItem>[]) => {
+      const collectionIdsToLoad = rows.flatMap((row) => {
+        const { original } = row;
+        const isExpandedWithoutChildren =
+          row.getIsExpanded() &&
+          row.getCanExpand() &&
+          original.model === "collection" &&
+          original.children?.length === 0;
+        const isInSection =
+          sectionRowId !== undefined &&
+          row.getParentRows()[0]?.id === sectionRowId;
+        return isExpandedWithoutChildren &&
+          isInSection &&
+          original.data.model === "collection" &&
+          original.data.id !== undefined
+          ? [original.data.id]
+          : [];
+      });
+      if (collectionIdsToLoad.length === 0) {
+        return;
+      }
+      setExpandedCollectionIds((previousIds) => {
+        const newIds = collectionIdsToLoad.filter(
+          (collectionId) => !previousIds.includes(collectionId),
+        );
+        return newIds.length > 0 ? [...previousIds, ...newIds] : previousIds;
+      });
+    },
+    [sectionRowId],
+  );
 
   // 5. isChildrenLoading for the spinner
   const isChildrenLoading = useCallback(

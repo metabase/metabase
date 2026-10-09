@@ -113,4 +113,24 @@ describe("ActionListPage", () => {
       screen.getByRole("menuitem", { name: /View archived actions/ }),
     ).toBeInTheDocument();
   });
+
+  it("keeps the root row expanded when clicking inside the root options menu", async () => {
+    setup({
+      actions: [
+        createMockQueryAction({
+          id: 1,
+          name: "Refund order",
+          collection_id: null,
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Refund order")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Data action options" }),
+    );
+    await userEvent.click(await screen.findByRole("menu"));
+
+    expect(screen.getByText("Refund order")).toBeInTheDocument();
+  });
 });

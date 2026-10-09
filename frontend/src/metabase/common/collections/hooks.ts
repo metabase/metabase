@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 
 import {
   actionApi,
-  collectionApi,
   skipToken,
   snippetApi,
   transformApi,
@@ -144,9 +143,6 @@ export function useInvalidateCollectionItems() {
         dispatch(transformApi.util.invalidateTags([listTag("transform")]));
       } else if (collection.namespace === "data-actions") {
         dispatch(actionApi.util.invalidateTags([listTag("action")]));
-        dispatch(collectionApi.util.invalidateTags([listTag("collection")]));
-      } else {
-        dispatch(collectionApi.util.invalidateTags([listTag("collection")]));
       }
     },
     [dispatch],

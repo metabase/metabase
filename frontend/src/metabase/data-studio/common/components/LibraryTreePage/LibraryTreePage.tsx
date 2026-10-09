@@ -173,7 +173,6 @@ export function LibraryTreePage({
               ? defaultMoveCollectionIds?.[selectionSection]
               : undefined
           }
-          onActionComplete={clearSelection}
           getTrashMessage={getTrashMessage}
           onClear={clearSelection}
         />

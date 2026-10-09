@@ -22,19 +22,11 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Button, Group, Modal, Stack } from "metabase/ui";
-import type {
-  Collection,
-  CollectionId,
-  CollectionItem,
-} from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 type EditCollectionModalProps = {
   collection: Collection | CollectionItem;
   onClose: () => void;
-  onSave?: (details: {
-    previousParentId: CollectionId | null;
-    newParentId: CollectionId | null;
-  }) => void;
 };
 
 const isCollectionItem = (
@@ -44,7 +36,7 @@ const isCollectionItem = (
 };
 
 export function EditCollectionModal(props: EditCollectionModalProps) {
-  const { collection, onClose, onSave } = props;
+  const { collection, onClose } = props;
   const [updateCollection] = useUpdateCollectionMutation();
   const initialValues = useMemo<CollectionFormValues>(() => {
     const parentId = isCollectionItem(collection)
@@ -65,13 +57,9 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
         description: values.description ?? undefined,
         parent_id: values.parent_id,
       }).unwrap();
-      onSave?.({
-        previousParentId: initialValues.parent_id,
-        newParentId: values.parent_id,
-      });
       onClose();
     },
-    [collection.id, initialValues.parent_id, updateCollection, onSave, onClose],
+    [collection.id, updateCollection, onClose],
   );
 
   const shouldDisableItem = useCallback(

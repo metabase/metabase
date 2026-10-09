@@ -1,12 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { type ComponentProps, useState } from "react";
+import { useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupUpdateCollectionEndpoint } from "__support__/server-mocks";
+import {
+  setupCollectionByIdEndpoint,
+  setupUpdateCollectionEndpoint,
+  setupUpdateCollectionEndpointWithError,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Collection, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
@@ -21,13 +25,26 @@ import {
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 
-function CollectionRowMenuWithModal(
-  props: Omit<ComponentProps<typeof CollectionRowMenu>, "onOpenModal">,
-) {
+type CollectionRowMenusWithModalProps = {
+  collections: Collection[];
+  customArchiveMessage?: string;
+};
+
+function CollectionRowMenusWithModal({
+  collections,
+  customArchiveMessage,
+}: CollectionRowMenusWithModalProps) {
   const [modal, setModal] = useState<CollectionRowModalState>();
   return (
     <>
-      <CollectionRowMenu {...props} onOpenModal={setModal} />
+      {collections.map((collection) => (
+        <CollectionRowMenu
+          key={collection.id}
+          collection={collection}
+          customArchiveMessage={customArchiveMessage}
+          onOpenModal={setModal}
+        />
+      ))}
       <CollectionRowModal modal={modal} onClose={() => setModal(undefined)} />
     </>
   );
@@ -36,6 +53,7 @@ function CollectionRowMenuWithModal(
 interface SetupOptions {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
   collection?: Partial<Collection>;
+  otherCollection?: Partial<Collection>;
   isAdmin?: boolean;
   customArchiveMessage?: string;
 }
@@ -43,6 +61,7 @@ interface SetupOptions {
 const setup = ({
   remoteSyncType,
   collection,
+  otherCollection,
   isAdmin = true,
   customArchiveMessage,
 }: SetupOptions = {}) => {
@@ -61,12 +80,16 @@ const setup = ({
   setupEnterpriseOnlyPlugin("remote_sync");
 
   return renderWithProviders(
-    <CollectionRowMenuWithModal
-      collection={createMockCollection(collection)}
+    <CollectionRowMenusWithModal
+      collections={[
+        createMockCollection(collection),
+        ...(otherCollection ? [createMockCollection(otherCollection)] : []),
+      ]}
       customArchiveMessage={customArchiveMessage}
     />,
     {
       storeInitialState: state,
+      withUndos: true,
     },
   );
 };
@@ -171,6 +194,66 @@ describe("CollectionRowMenu", () => {
       "update-collection-1",
     )?.request;
     expect(await request?.json()).toEqual({ archived: false });
+  });
+
+  it("keeps a modal opened for another collection when an earlier edit finishes", async () => {
+    const collection = createMockCollection({ id: 1, name: "First" });
+    let finishUpdate: (collection: Collection) => void = () => undefined;
+    setupUpdateCollectionEndpoint(
+      collection,
+      new Promise((resolve) => {
+        finishUpdate = resolve;
+      }),
+    );
+    setupCollectionByIdEndpoint({
+      collections: [
+        createMockCollection({ id: "root", name: "Our analytics" }),
+      ],
+    });
+    setup({ collection, otherCollection: { id: 2, name: "Second" } });
+
+    const [firstMenu, secondMenu] = screen.getAllByRole("button", {
+      name: "Collection options",
+    });
+    await userEvent.click(firstMenu);
+    await userEvent.click(getMenuItem(/Edit collection details/));
+    await userEvent.type(screen.getByLabelText("Name"), " renamed");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(secondMenu);
+    await userEvent.click(getMenuItem(/Archive/));
+    expect(screen.getByText('Archive "Second"?')).toBeInTheDocument();
+
+    await act(async () => {
+      finishUpdate(collection);
+      await fetchMock.callHistory.flush(true);
+    });
+
+    expect(screen.getByText('Archive "Second"?')).toBeInTheDocument();
+  });
+
+  it("reports a failed undo of an unarchive", async () => {
+    const collection = createMockCollection({
+      id: 1,
+      name: "Archived collection",
+      archived: true,
+    });
+    setupUpdateCollectionEndpoint(collection);
+    setup({ collection });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Unarchive collection" }),
+    );
+    expect(
+      await screen.findByText('"Archived collection" has been unarchived'),
+    ).toBeInTheDocument();
+    fetchMock.removeRoute(`update-collection-${collection.id}`);
+    setupUpdateCollectionEndpointWithError(collection.id);
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(
+      await screen.findByText('"Archived collection" could not be archived'),
+    ).toBeInTheDocument();
   });
 });
 

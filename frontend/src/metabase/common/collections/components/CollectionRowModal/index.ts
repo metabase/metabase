@@ -1,7 +1,2 @@
-export type {
-  ArchiveCollectionModalState,
-  CollectionPermissionsModalState,
-  CollectionRowModalState,
-  EditCollectionModalState,
-} from "./CollectionRowModal";
+export type { CollectionRowModalState } from "./CollectionRowModal";
 export { CollectionRowModal } from "./CollectionRowModal";

@@ -1,3 +1,4 @@
+import { useLatest } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -10,17 +11,17 @@ import type { Collection } from "metabase-types/api";
 
 import { EditCollectionModal } from "./EditCollectionModal";
 
-export type EditCollectionModalState = {
+type EditCollectionModalState = {
   type: "edit";
   collection: Collection;
 };
 
-export type CollectionPermissionsModalState = {
+type CollectionPermissionsModalState = {
   type: "permissions";
   collection: Collection;
 };
 
-export type ArchiveCollectionModalState = {
+type ArchiveCollectionModalState = {
   type: "archive";
   collection: Collection;
   customArchiveMessage?: string;
@@ -40,22 +41,30 @@ export function CollectionRowModal({
   modal,
   onClose,
 }: CollectionRowModalProps) {
-  if (modal == null) {
+  const currentModalRef = useLatest(modal);
+
+  if (modal === undefined) {
     return null;
   }
 
+  const handleClose = () => {
+    if (currentModalRef.current === modal) {
+      onClose();
+    }
+  };
+
   return match(modal)
     .with({ type: "edit" }, ({ collection }) => (
-      <EditCollectionModal collection={collection} onClose={onClose} />
+      <EditCollectionModal collection={collection} onClose={handleClose} />
     ))
     .with({ type: "permissions" }, ({ collection }) => (
-      <PermissionsModal collection={collection} onClose={onClose} />
+      <PermissionsModal collection={collection} onClose={handleClose} />
     ))
     .with({ type: "archive" }, ({ collection, customArchiveMessage }) => (
       <ArchiveCollectionModal
         collection={collection}
         customArchiveMessage={customArchiveMessage}
-        onClose={onClose}
+        onClose={handleClose}
       />
     ))
     .exhaustive();
@@ -104,12 +113,15 @@ function ArchiveCollectionModal({
 
   const handleArchive = async () => {
     onClose();
+    const request = updateCollection({ id: collection.id, archived: true });
     try {
-      await updateCollection({ id: collection.id, archived: true }).unwrap();
+      await request.unwrap();
       sendSuccessToast(t`"${collection.name}" has been archived`);
       invalidateCollectionItems(collection);
     } catch {
       sendErrorToast(t`"${collection.name}" could not be archived`);
+    } finally {
+      request.reset();
     }
   };
 
