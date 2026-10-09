@@ -62,7 +62,7 @@ describe("getTicksOptions", () => {
 });
 
 describe("year tick grids", () => {
-  const utc = (value: string) => dayjs.utc(value);
+  const utc = (value: string | number) => dayjs.utc(value);
   const model = (
     unit: TimeSeriesXAxisModel["interval"]["unit"],
     first: string,
@@ -88,7 +88,7 @@ describe("year tick grids", () => {
     dates: string[],
   ) => dates.filter((date) => options.canRender(utc(date)));
 
-  it("asks ECharts for every year and starts a two-year grid at the first year in range", () => {
+  it("starts a two-year grid at the first year in range", () => {
     // Monthly data from March 2019: yearly ticks (2020–2026) do not fit in
     // four slots, so ticks come every two years from January 2020.
     const options = getTicksOptions(
@@ -96,9 +96,6 @@ describe("year tick grids", () => {
       layout(300),
     );
 
-    expect(options.maxInterval).toBe(
-      getTimeSeriesIntervalDuration({ unit: "year", count: 1 }),
-    );
     expect(options.minInterval).toBeUndefined();
     expect(
       rendered(options, [
@@ -133,9 +130,6 @@ describe("year tick grids", () => {
       layout(300),
     );
 
-    expect(options.maxInterval).toBe(
-      getTimeSeriesIntervalDuration({ unit: "day", count: 1 }),
-    );
     expect(
       rendered(options, [
         "2026-01-20",
@@ -156,9 +150,6 @@ describe("year tick grids", () => {
       layout(180),
     );
 
-    expect(options.maxInterval).toBe(
-      getTimeSeriesIntervalDuration({ unit: "month", count: 1 }),
-    );
     expect(
       rendered(options, [
         "2026-02-01",
@@ -187,27 +178,44 @@ describe("year tick grids", () => {
     ).toEqual(["2025-04-01", "2025-10-01", "2026-04-01"]);
   });
 
-  it("starts sub-day grids at the first hour in range", () => {
+  it("keeps sub-day grids on round clock values", () => {
+    // Hourly data from 01:00 on a three-hour grid: 03:00, 06:00… rather than
+    // 01:00, 04:00…, and 22:00 is not labeled.
     const options = getTicksOptions(
       model("hour", "2026-03-01T01:00:00Z", "2026-03-01T22:00:00Z"),
       layout(560),
     );
 
-    expect(options.maxInterval).toBe(
-      getTimeSeriesIntervalDuration({ unit: "hour", count: 1 }),
-    );
     expect(
       rendered(options, [
         "2026-03-01T00:00:00Z",
         "2026-03-01T01:00:00Z",
         "2026-03-01T03:00:00Z",
         "2026-03-01T04:00:00Z",
+        "2026-03-01T06:00:00Z",
+        "2026-03-01T21:00:00Z",
         "2026-03-01T22:00:00Z",
       ]),
     ).toEqual([
-      "2026-03-01T01:00:00Z",
-      "2026-03-01T04:00:00Z",
-      "2026-03-01T22:00:00Z",
+      "2026-03-01T03:00:00Z",
+      "2026-03-01T06:00:00Z",
+      "2026-03-01T21:00:00Z",
+    ]);
+  });
+
+  it("hands ECharts the exact tick dates", () => {
+    const options = getTicksOptions(
+      model("month", "2019-03-01", "2026-04-01"),
+      layout(300),
+    );
+
+    expect(
+      options.customValues?.map((value) => utc(value).toISOString()),
+    ).toEqual([
+      "2020-01-01T00:00:00.000Z",
+      "2022-01-01T00:00:00.000Z",
+      "2024-01-01T00:00:00.000Z",
+      "2026-01-01T00:00:00.000Z",
     ]);
   });
 });
@@ -277,7 +285,7 @@ describe("waterfall Total tick", () => {
     ).toEqual(["2025-01-01", "2025-03-01", "2025-08-01"]);
   });
 
-  it("labels a Total that is not on the grid's unit", () => {
+  it("labels a Total that is not on the grid's unit by emitting its tick", () => {
     // Daily data with a two-year grid: the Total sits a day after the last
     // point and is labeled, while the year boundary three months before it
     // gives way.
@@ -294,5 +302,6 @@ describe("waterfall Total tick", () => {
         "2026-04-03",
       ]),
     ).toEqual(["2024-01-01", "2026-04-02"]);
+    expect(options.customValues).toContain(utc("2026-04-02").valueOf());
   });
 });

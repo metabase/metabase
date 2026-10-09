@@ -4,14 +4,15 @@ import type { ContinuousDomain } from "../../../shared/types/scale";
 import type { ChartLayout } from "../layout/types";
 import type {
   TimeSeriesAxisFormatter,
-  TimeSeriesInterval,
   TimeSeriesXAxisModel,
   WaterfallXAxisModel,
 } from "../model/types";
 import {
   computeTimeseriesTicksInterval,
   getFormatter,
+  getGridTickDates,
   getLargestInterval,
+  getTickGrid,
   getTimeSeriesIntervalDuration,
 } from "../utils/timeseries";
 
@@ -40,8 +41,6 @@ export const getTicksOptions = (
     totalEChartsValue == null ? null : dayjs.utc(totalEChartsValue);
 
   let formatter: TimeSeriesAxisFormatter = xAxisModel.formatter;
-  let minInterval: number | undefined;
-  let maxInterval: number | undefined;
 
   // Unjustified type cast. FIXME
   const xDomain = range.map((day) => {
@@ -76,113 +75,47 @@ export const getTicksOptions = (
     return date.isAfter(paddedMin) && date.isBefore(paddedMax);
   };
 
+  const grid = getTickGrid(largestInterval, interval.unit, isSingleItem);
+
+  if (grid == null) {
+    // ECharts picks the ticks: millisecond data, or a single quarterly point.
+    return {
+      formatter,
+      minInterval: getTimeSeriesIntervalDuration(largestInterval),
+      customValues: undefined,
+      canRender: isWithinRange,
+      xDomainPadded,
+    };
+  }
+
   // ECharts anchors multi-unit tick grids (every 2 years, every 3 hours…) at
   // the axis extent, so the first boundaries inside the range can go unlabeled
-  // while the data has already started. Ask ECharts for a tick at every single
-  // unit instead and apply the grid here, starting from the first boundary of
-  // its unit inside the padded axis. A waterfall drops the grid tick closer
-  // than one step to the Total so the Total label has room.
-  const grid = getTickGrid(largestInterval, interval.unit, isSingleItem);
-  let isGridTick: (date: Dayjs) => boolean = () => true;
-
-  if (grid != null) {
-    const paddedMinDate = xAxisModel.fromEChartsAxisValue(xDomainPadded[0]);
-    const weekday = range[0].day();
-    const isBoundary = (date: Dayjs) =>
-      isUnitBoundary(date, grid.unit, weekday);
-    const anchor = findFirstBoundary(paddedMinDate, grid.unit, isBoundary);
-    const hasRoomBeforeTotal = (date: Dayjs) =>
-      totalDate == null || totalDate.diff(date, grid.unit, true) >= grid.step;
-    isGridTick = (date: Dayjs) =>
-      isBoundary(date) &&
-      Math.round(date.diff(anchor, grid.unit, true)) % grid.step === 0 &&
-      hasRoomBeforeTotal(date);
-    maxInterval = getTimeSeriesIntervalDuration({
-      count: 1,
-      unit: grid.ticksUnit,
-    });
+  // while the data has already started. Hand ECharts the exact tick dates
+  // instead: the grid from the first boundary inside the padded axis, and a
+  // waterfall's Total, which replaces the grid tick closer than one step to it
+  // so the Total label has room.
+  const weekday = range[0].day();
+  const hasRoomBeforeTotal = (date: Dayjs) =>
+    totalDate == null || totalDate.diff(date, grid.unit, true) >= grid.step;
+  const ticks = getGridTickDates(
+    grid,
+    xAxisModel.fromEChartsAxisValue(xDomainPadded[0]),
+    xAxisModel.fromEChartsAxisValue(xDomainPadded[1]),
+    weekday,
+    false,
+  ).filter(hasRoomBeforeTotal);
+  if (totalDate != null && isWithinRange(totalDate)) {
+    ticks.push(totalDate);
   }
 
-  // A waterfall's Total is labeled even when the grid would skip it.
-  const isTotalTick = (date: Dayjs) =>
-    totalDate != null && date.isSame(totalDate, interval.unit);
-
-  const canRender = (date: Dayjs) =>
-    isWithinRange(date) && (isGridTick(date) || isTotalTick(date));
-
-  if (!maxInterval) {
-    minInterval = getTimeSeriesIntervalDuration(largestInterval);
-  }
+  const customValues = ticks.map((date) => date.valueOf());
+  const tickValues = new Set(customValues);
 
   return {
     formatter,
-    minInterval,
-    maxInterval,
-    canRender,
+    minInterval: undefined,
+    customValues,
+    canRender: (date: Dayjs) => tickValues.has(date.valueOf()),
     xDomainPadded,
   };
 };
-
-interface TickGrid {
-  unit: TimeSeriesInterval["unit"];
-  step: number;
-  // The unit ECharts emits ticks at. Weeks and months use days because ECharts
-  // has no weekly ticks and a fixed month interval in milliseconds skips short
-  // months; quarters use months for the same reason.
-  ticksUnit: TimeSeriesInterval["unit"];
-}
-
-// Quarter grids over finer data step three months from the first month in
-// range rather than from a calendar quarter; quarterly data starts on quarter
-// boundaries anyway, so its labels stay calendar quarters.
-function getTickGrid(
-  { unit, count }: TimeSeriesInterval,
-  dataUnit: TimeSeriesInterval["unit"],
-  isSingleItem: boolean,
-): TickGrid | null {
-  switch (unit) {
-    case "week":
-    case "month":
-      return { unit, step: count, ticksUnit: "day" };
-    case "quarter":
-      // With a single point ECharts picks the quarter tick itself.
-      if (isSingleItem) {
-        return null;
-      }
-      return dataUnit === "quarter"
-        ? { unit, step: count, ticksUnit: "month" }
-        : { unit: "month", step: 3 * count, ticksUnit: "month" };
-    case "year":
-    case "day":
-    case "hour":
-    case "minute":
-    case "second":
-      return { unit, step: count, ticksUnit: unit };
-    default:
-      return null;
-  }
-}
-
-function isUnitBoundary(
-  date: Dayjs,
-  unit: TimeSeriesInterval["unit"],
-  weekday: number,
-) {
-  if (unit === "week") {
-    return date.day() === weekday && date.startOf("day").isSame(date);
-  }
-  return date.startOf(unit).isSame(date);
-}
-
-function findFirstBoundary(
-  paddedMin: Dayjs,
-  unit: TimeSeriesInterval["unit"],
-  isBoundary: (date: Dayjs) => boolean,
-) {
-  const step = unit === "week" ? "day" : unit;
-  let boundary = paddedMin.startOf(step);
-  while (!boundary.isAfter(paddedMin) || !isBoundary(boundary)) {
-    boundary = boundary.add(1, step);
-  }
-  return boundary;
-}

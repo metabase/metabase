@@ -293,7 +293,7 @@ export const buildTimeSeriesDimensionAxis = (
   chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): XAXisOption => {
-  const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
+  const { formatter, minInterval, customValues, canRender, xDomainPadded } =
     getTicksOptions(xAxisModel, chartLayout);
 
   return {
@@ -304,6 +304,7 @@ export const buildTimeSeriesDimensionAxis = (
         ? CHART_STYLE.timelineEvents.height
         : renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
+      customValues,
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
         if (canRender(value)) {
@@ -317,7 +318,6 @@ export const buildTimeSeriesDimensionAxis = (
     min: xDomainPadded[0],
     max: xDomainPadded[1],
     minInterval,
-    maxInterval,
   };
 };
 

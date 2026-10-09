@@ -192,32 +192,124 @@ export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
   return dayjs(0).add(interval.count, interval.unit).valueOf();
 }
 
-// Counts the ticks the axis will label (see getTicksOptions): boundaries of
-// the grid's unit inside the domain, every `step` of them starting from the
-// first one. Weeks start on the first data point's weekday rather than on
-// calendar weeks, and quarters are counted as three-month steps.
+export interface TickGrid {
+  unit: TimeSeriesInterval["unit"];
+  step: number;
+}
+
+const SUB_DAY_UNITS = new Set<TimeSeriesInterval["unit"]>([
+  "hour",
+  "minute",
+  "second",
+]);
+
+/**
+ * The grid of labeled ticks for a tick interval: every `step` boundaries of
+ * `unit`, starting from the first boundary in range (see getGridTickDates).
+ * Quarter grids over finer data step three months from the first month in
+ * range rather than from a calendar quarter; quarterly data starts on quarter
+ * boundaries anyway, so its labels stay calendar quarters. `null` leaves the
+ * ticks to ECharts.
+ */
+export function getTickGrid(
+  { unit, count }: TimeSeriesInterval,
+  dataUnit: TimeSeriesInterval["unit"],
+  isSingleItem: boolean,
+): TickGrid | null {
+  switch (unit) {
+    case "quarter":
+      // With a single point ECharts picks the quarter tick itself.
+      if (isSingleItem) {
+        return null;
+      }
+      return dataUnit === "quarter"
+        ? { unit, step: count }
+        : { unit: "month", step: 3 * count };
+    case "year":
+    case "month":
+    case "week":
+    case "day":
+    case "hour":
+    case "minute":
+    case "second":
+      return { unit, step: count };
+    default:
+      return null;
+  }
+}
+
+// Sub-day grids stay on round clock values (03:00, 06:00… for a 3-hour grid),
+// as every step of those units divides its parent unit evenly.
+function isGridBoundary(
+  date: Dayjs,
+  { unit, step }: TickGrid,
+  weekday: number,
+) {
+  if (unit === "week") {
+    return date.day() === weekday && date.startOf("day").isSame(date);
+  }
+  if (!date.startOf(unit).isSame(date)) {
+    return false;
+  }
+  return SUB_DAY_UNITS.has(unit) ? date.get(unit) % step === 0 : true;
+}
+
+function findFirstBoundary(
+  from: Dayjs,
+  grid: TickGrid,
+  weekday: number,
+  inclusive: boolean,
+) {
+  const step = grid.unit === "week" ? "day" : grid.unit;
+  let boundary = from.startOf(step);
+  while (
+    (inclusive ? boundary.isBefore(from) : !boundary.isAfter(from)) ||
+    !isGridBoundary(boundary, grid, weekday)
+  ) {
+    boundary = boundary.add(1, step);
+  }
+  return boundary;
+}
+
+/**
+ * The dates the axis labels for `grid` between `start` and `end`: the first
+ * boundary in range, then every `step` units from it. Weeks start on
+ * `weekday`, the first data point's weekday, rather than on calendar weeks.
+ */
+export function getGridTickDates(
+  grid: TickGrid,
+  start: Dayjs,
+  end: Dayjs,
+  weekday: number,
+  inclusive: boolean,
+): Dayjs[] {
+  const anchor = findFirstBoundary(start, grid, weekday, inclusive);
+  const ticks: Dayjs[] = [];
+  for (let index = 0; ; index++) {
+    const tick = anchor.add(index * grid.step, grid.unit);
+    if (inclusive ? tick.isAfter(end) : !tick.isBefore(end)) {
+      return ticks;
+    }
+    ticks.push(tick);
+  }
+}
+
+// Counts the ticks the axis will label (see getTicksOptions).
 export function expectedTickCount(
   interval: TimeSeriesInterval,
   xDomain: ContinuousDomain,
+  dataUnit: TimeSeriesInterval["unit"] = interval.unit,
 ): number {
-  const { unit, count } = interval;
-  if (unit === "ms") {
-    return Math.floor((xDomain[1] - xDomain[0]) / count) + 1;
+  if (interval.unit === "ms") {
+    return Math.floor((xDomain[1] - xDomain[0]) / interval.count) + 1;
   }
-
-  const [gridUnit, step] =
-    unit === "quarter"
-      ? (["month", 3 * count] as const)
-      : ([unit, count] as const);
+  const grid = getTickGrid(interval, dataUnit, false);
+  if (grid == null) {
+    return 0;
+  }
   const start = dayjs.utc(xDomain[0]);
   const end = dayjs.utc(xDomain[1]);
-  const first =
-    gridUnit === "week" || start.startOf(gridUnit).isSame(start)
-      ? start
-      : start.startOf(gridUnit).add(1, gridUnit);
-  const boundariesCount = Math.floor(end.diff(first, gridUnit, true));
-
-  return boundariesCount < 0 ? 0 : Math.floor(boundariesCount / step) + 1;
+  return getGridTickDates(grid, start, end, start.day(), true).length;
 }
 
 /// Get the appropriate tick interval option from the TIMESERIES_INTERVALS above based on the xAxis bucketing
@@ -254,7 +346,11 @@ export function computeTimeseriesTicksInterval(
       interval.unit,
       getFormatter(formatter, xInterval.unit, interval.unit),
     );
-    const intervalTicksCount = expectedTickCount(interval, xDomain);
+    const intervalTicksCount = expectedTickCount(
+      interval,
+      xDomain,
+      xInterval.unit,
+    );
 
     if (intervalTicksCount > maxTickCount) {
       continue;
