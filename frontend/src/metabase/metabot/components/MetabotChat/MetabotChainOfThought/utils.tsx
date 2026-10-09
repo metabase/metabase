@@ -225,25 +225,24 @@ const exactSeconds = (durationMs: number | undefined): number | null =>
 
 const formatDuration = (totalSeconds: number): string => {
   const minutes = Math.floor(totalSeconds / 60);
-  const minutesLabel = ngettext(
-    msgid`${minutes} minute`,
-    `${minutes} minutes`,
-    minutes,
-  );
-
   const seconds = totalSeconds % 60;
-  const secondsLabel = ngettext(
-    msgid`${seconds} second`,
-    `${seconds} seconds`,
-    seconds,
-  );
 
   if (minutes === 0) {
-    return secondsLabel;
+    return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
   } else if (seconds === 0) {
-    return minutesLabel;
+    return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
+  } else if (seconds === 1) {
+    return ngettext(
+      msgid`${minutes} minute ${seconds} second`,
+      `${minutes} minutes ${seconds} second`,
+      minutes,
+    );
   } else {
-    return `${minutesLabel} ${secondsLabel}`;
+    return ngettext(
+      msgid`${minutes} minute ${seconds} seconds`,
+      `${minutes} minutes ${seconds} seconds`,
+      minutes,
+    );
   }
 };
 
