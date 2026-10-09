@@ -98,7 +98,7 @@
     "dayjs": "^1.11.18",
     "detect-package-manager": "^3.0.2",
     "diff": "^5.2.2",
-    "dompurify": "^3.4.14",
+    "dompurify": "^3.4.16",
     "echarts": "6.1.0",
     "events": "^3.3.0",
     "eventsource-parser": "^3.0.6",

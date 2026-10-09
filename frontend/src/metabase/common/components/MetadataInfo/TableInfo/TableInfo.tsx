@@ -16,12 +16,11 @@ import {
   fetchTableForeignKeys,
   fetchTableMetadata,
 } from "metabase/redux/tables";
-import { Loader, Stack } from "metabase/ui";
+import { Center, Loader, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { NormalizedTable, TableId } from "metabase-types/api";
 
-import { Description, EmptyDescription } from "../MetadataInfo";
-import { AbsoluteContainer, Fade } from "../MetadataInfo.styled";
+import { Description, EmptyDescription, Fade } from "../MetadataInfo";
 
 import { ColumnCount } from "./ColumnCount";
 import { type ConnectedTable, ConnectedTables } from "./ConnectedTables";
@@ -143,9 +142,9 @@ export function TableInfoInner({
       )}
       <Stack className={CS.overflowHidden} pos="relative" gap="sm" fz="sm">
         <Fade visible={!hasFetchedMetadata}>
-          <AbsoluteContainer>
+          <Center pos="absolute" inset={0}>
             <Loader size="md" color="core-brand" />
-          </AbsoluteContainer>
+          </Center>
         </Fade>
         <Fade visible={hasFetchedMetadata}>
           {table && <ColumnCount fieldCount={fieldCount} />}

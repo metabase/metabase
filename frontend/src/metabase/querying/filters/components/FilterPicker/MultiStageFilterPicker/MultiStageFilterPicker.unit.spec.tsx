@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { MultiStageFilterPicker } from "./MultiStageFilterPicker";
 
@@ -40,7 +40,13 @@ describe("MultiStageFilterPicker", () => {
           {
             source: { type: "table", id: ORDERS_ID },
             aggregations: [{ type: "operator", operator: "count", args: [] }],
-            breakouts: [{ type: "column", name: "CATEGORY" }],
+            breakouts: [
+              {
+                type: "column",
+                name: "CATEGORY",
+                sourceFieldId: ORDERS.PRODUCT_ID,
+              },
+            ],
           },
         ],
       }),
@@ -63,7 +69,13 @@ describe("MultiStageFilterPicker", () => {
           {
             source: { type: "table", id: ORDERS_ID },
             aggregations: [{ type: "operator", operator: "count", args: [] }],
-            breakouts: [{ type: "column", name: "CATEGORY" }],
+            breakouts: [
+              {
+                type: "column",
+                name: "CATEGORY",
+                sourceFieldId: ORDERS.PRODUCT_ID,
+              },
+            ],
           },
         ],
       }),

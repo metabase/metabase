@@ -993,16 +993,15 @@
           (is (=? {:type :metric :name "question-test not a question"}
                   (t2/select-one [:model/Card :type :name] :id card-id))))))))
 
-;; not ^:parallel: with-redefs
 (deftest update-save-check-uses-the-stored-card-type-test
   (testing "GHY-4327: the save check sees the stored card's type, not the caller's omitted card_type"
     (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (orders-query)}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [seen     (atom ::unset)
-              original queries/check-card-can-be-saved!]
-          (with-redefs [queries/check-card-can-be-saved! (fn [query card-type]
-                                                           (reset! seen card-type)
-                                                           (original query card-type))]
+              original (mt/original-fn #'queries/check-card-can-be-saved!)]
+          (mt/with-dynamic-fn-redefs [queries/check-card-can-be-saved! (fn [query card-type]
+                                                                         (reset! seen card-type)
+                                                                         (original query card-type))]
             (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                     {:method "update" :id card-id :name "renamed"})]
               (is (not (:isError result)) (-> result :content first :text))))

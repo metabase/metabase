@@ -1,12 +1,19 @@
+import cx from "classnames";
+
 import {
   type PartialGroup,
   type PartialTenant,
   type PartialUser,
   prepareInitials,
 } from "metabase/common/utils/user";
+import { Center } from "metabase/ui";
 
-import type { AvatarProps } from "./UserAvatar.styled";
-import { Avatar as StyledAvatar } from "./UserAvatar.styled";
+import S from "./UserAvatar.module.css";
+
+interface AvatarProps {
+  bg?: string;
+  className?: string;
+}
 
 interface UserAvatarProps extends AvatarProps {
   user: PartialUser;
@@ -22,7 +29,18 @@ interface TenantProps extends AvatarProps {
 
 export function UserAvatar({
   user,
-  ...props
+  bg,
+  className,
 }: UserAvatarProps | GroupProps | TenantProps) {
-  return <StyledAvatar {...props}>{prepareInitials(user) || "?"}</StyledAvatar>;
+  return (
+    <Center
+      className={cx(S.avatar, className)}
+      c="text-primary-inverse"
+      fw={900}
+      lh={1}
+      style={bg ? { backgroundColor: bg } : undefined}
+    >
+      {prepareInitials(user) || "?"}
+    </Center>
+  );
 }

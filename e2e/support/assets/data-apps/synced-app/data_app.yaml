@@ -2,8 +2,9 @@ version: 1
 name: Synced App
 slug: synced-app
 path: ./dist/index.js
-entity_id: 4vxutiAe703DZgttXwORO
+collection: syncedAppCollection01
+entity_id: syncedAppEntityId0001
 serdes/meta:
 - model: DataApp
-  id: 4vxutiAe703DZgttXwORO
+  id: syncedAppEntityId0001
   label: synced-app

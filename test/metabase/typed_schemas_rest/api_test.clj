@@ -12,6 +12,12 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
+(deftest only-a-superuser-generates-the-schema-test
+  (testing "the schema is what an app's author builds from, and only an admin works with an app's repository"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "typed-schemas/v1/typescript")))
+    (is (string? (mt/user-http-request :crowberto :get 200 "typed-schemas/v1/typescript")))))
+
 (defn- without-generated-at
   [typescript]
   (str/replace typescript #"generatedAt: \"[^\"]+\"" "generatedAt: \"<generated-at>\""))
@@ -83,7 +89,7 @@
                    :model/QueryAction _ {:action_id     (:id standalone)
                                          :dataset_query (lib/native-query (mt/metadata-provider)
                                                                           "UPDATE orders SET discount = 0")}
-                   :model/Collection copies {:name "Data App: orders"}
+                   :model/Collection copies {:name "Data App: orders", :namespace "data-apps"}
                    :model/Action copy {:name "Copied order", :type :query, :collection_id (:id copies)}
                    :model/QueryAction _ {:action_id     (:id copy)
                                          :dataset_query (lib/native-query (mt/metadata-provider)

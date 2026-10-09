@@ -131,8 +131,7 @@
    :source     (name (or source :db))
    :usable     (llm.provider/config-complete? type config)
    :env_vars   (vec env-vars)
-   ;; the config keys the environment owns; the form disables exactly these inputs
-   :env_fields (mapv name env-fields)
+   :env_fields (mapv name (sort env-fields))
    :config     (or (:config (llm.provider/redact conn)) {})})
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
@@ -201,9 +200,15 @@
                    {:models (or config-models (vec (:models listed)))}))
           (catch clojure.lang.ExceptionInfo e
             (if (provider-client-error? e)
-              ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model not
-              ;; served in given region" errors.
-              {:models (or config-models []) :error (.getMessage e)}
+              (do
+                ;; the admin gets only the message; the parse error behind a model list that was not JSON is what
+                ;; tells an operator what actually came back. Only that error: any other carries the provider's
+                ;; response in its ex-data, which `rethrow-api-error!` keeps out of the log on purpose
+                (when (= :malformed-model-catalog (:error-code (ex-data e)))
+                  (log/warn e "Listing models was refused for LLM provider connection" {:connection conn-key :type type}))
+                ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model
+                ;; not served in given region" errors.
+                {:models (or config-models []) :error (.getMessage e)})
               (throw e))))))))
 
 (def ^:private models-cache-ttl-ms
@@ -446,22 +451,32 @@
                                       (not= llm.provider/managed-connection-key conn-key))
                                   (tru "The {0} connection key is reserved for the Metabase AI service."
                                        (pr-str llm.provider/managed-connection-key)))
-          config   (without-blank-values (update-keys config keyword))
-          conn     {:key    conn-key
-                    :type   type
-                    :name   (or (not-empty name) (str (:label provider-type)))
-                    :config config}]
-      (llm.provider/validate-config! type config)
-      (let [{:keys [connection-info] :as listed} (verify-credentials! conn config model)
+          submitted (without-blank-values (update-keys config keyword))
+          conn      {:key    conn-key
+                     :type   type
+                     :name   (or (not-empty name) (str (:label provider-type)))
+                     :config submitted}
+          env-config (llm.provider/env-overlay-config conn-key type)
+          ;; what this connection will run on the moment it exists, which a variable already naming one of
+          ;; its fields has a say in
+          effective (llm.provider/effective-config conn env-config)]
+      (llm.provider/assert-credentials-not-captured! conn submitted env-config)
+      ;; a secret the environment supplies may only go where the environment points, as on update
+      (llm.provider/assert-base-url-change-authorized! type env-config effective submitted (keys env-config))
+      (llm.provider/validate-config! type effective)
+      (let [{:keys [connection-info] :as listed} (verify-credentials! conn effective model)
             conn              (update conn :config with-connection-info connection-info)
             had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
-        (when-not had-usable-model?
-          ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
-          ;; the probe exercised, so connecting one leaves the instance working rather than model-less
-          (select-model-for-new-connection! conn (or model (:probed-model connection-info))))
-        (seed-models-cache! conn listed)
-        (connection-response (assoc conn :source :db))))))
+        ;; read back rather than go on what was submitted: the environment has a say in this connection, and
+        ;; the model Metabot is pointed at, the cached listing and the answer all have to be about what it runs on
+        (let [live (llm.provider/connection conn-key)]
+          (when-not had-usable-model?
+            ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
+            ;; the probe exercised, so connecting one leaves the instance working rather than model-less
+            (select-model-for-new-connection! live (or model (:probed-model connection-info))))
+          (seed-models-cache! live listed)
+          (connection-response live))))))
 
 (api.macros/defendpoint :put "/providers/:key"
   :- connection-response-schema
@@ -482,24 +497,27 @@
         existing   (nth stored idx)
         live       (llm.provider/connection conn-key)
         _          (check-not-env-connection! live)
-        ;; fields the environment owns are not the client's to edit — the form disables them, and what it echoes
-        ;; back for them is the mask of the env value, which must not end up stored
-        env-config (select-keys (:config live) (:env-fields live))
+        ;; fields the environment supplies are not the client's to edit — the form disables them, and what it
+        ;; echoes back for them is the mask of the env value, which must not end up stored
+        conn-type  (:type existing)
+        env-config (llm.provider/env-overlay-config conn-key conn-type)
+        client-cfg (apply dissoc config (:env-fields live))
         merged     (cond-> existing
                      (some? config)     (assoc :config (without-blank-values
                                                         (llm.provider/merge-config
-                                                         (:type existing)
-                                                         (:config existing)
-                                                         (apply dissoc config (:env-fields live)))))
+                                                         conn-type (:config existing) client-cfg)))
                      (not-empty name)   (assoc :name name))
-        ;; what the connection will actually run on: the stored config with the environment layered back over it
-        effective  (merge (:config merged) env-config)]
+        ;; what the connection will actually run on, which is not everything it merged
+        effective  (llm.provider/effective-config merged env-config)]
     ;; Before validation probes the new URL with the effective credentials, require proof that the caller holds every
     ;; secret that would travel there. Omitted and masked secrets were merged from storage; env-owned ones cannot be
     ;; re-supplied through this API at all.
-    (llm.provider/assert-base-url-change-authorized! (:type merged) (:config live) effective config
+    (llm.provider/assert-base-url-change-authorized! conn-type (:config live) effective client-cfg
                                                      (:env-fields live))
-    (llm.provider/validate-config! (:type merged) effective)
+    ;; and before the completeness check, which would otherwise report a credential the environment has moved this
+    ;; connection away from as one the admin never entered
+    (llm.provider/assert-credentials-not-captured! merged client-cfg env-config)
+    (llm.provider/validate-config! conn-type effective)
     (let [{:keys [connection-info] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
           merged                   (update merged :config with-connection-info connection-info)

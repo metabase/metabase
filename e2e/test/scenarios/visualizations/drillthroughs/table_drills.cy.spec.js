@@ -272,6 +272,84 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         resultText: "July 31, 2025",
       });
     });
+
+    describe("issue 43075", () => {
+      const questionDetails = {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      };
+
+      beforeEach(() => {
+        cy.viewport(1000, 300);
+
+        H.createQuestion(questionDetails, { visitQuestion: true });
+      });
+
+      it("the breakout popover should fit within the window (metabase#43075)", () => {
+        cy.findAllByTestId("cell-data").contains("54").click();
+        H.popover().findByText("Break out by…").click();
+        H.popover().findByText("Category").click();
+        H.popover().findByText("Vendor").should("exist");
+
+        cy.document().should((doc) => {
+          expect(doc.documentElement.scrollHeight).to.be.lte(
+            doc.documentElement.offsetHeight,
+          );
+        });
+      });
+    });
+  });
+
+  describe("issue 12368", () => {
+    const questionDetails = {
+      type: "question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ],
+      },
+      visualization_settings: {
+        "table.pivot": true,
+        "table.pivot_column": "CATEGORY",
+        "table.cell_column": "count",
+        column_settings: {
+          [`["ref",["field",${PRODUCTS.VENDOR},null]]`]: {
+            column_title: "Vendor2",
+          },
+        },
+      },
+    };
+
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+    });
+
+    it("should clear pivot settings when doing underlying records drill from a pivot table (metabase#12368)", () => {
+      cy.log("drill thru from a pivot table");
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      cy.findAllByTestId("cell-data").contains("1").first().click();
+      H.popover().findByText("See this Product").click();
+
+      cy.log(
+        "pivot flag should be cleared but other viz settings are preserved",
+      );
+      H.tableInteractive().within(() => {
+        cy.findByText("Ean").should("be.visible");
+        cy.findByText("Vendor2").should("be.visible");
+      });
+      H.openVizSettingsSidebar();
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.button("Add or remove columns").should("be.visible");
+        cy.findByText("Pivot column").should("not.exist");
+        cy.findByText("Cell column").should("not.exist");
+      });
+    });
   });
 
   describe("native query", () => {

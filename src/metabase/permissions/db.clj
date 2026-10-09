@@ -347,6 +347,15 @@
   [group-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in group-ids]))
 
+(mu/defn groups-by-ids
+  "The ID, name, and magic type of the requested groups, ordered by name."
+  [group-ids :- [:set ms/PositiveInt]]
+  (if (seq group-ids)
+    (t2/select [:model/PermissionsGroup :id :name :magic_group_type]
+               :id [:in group-ids]
+               {:order-by [:%lower.name]})
+    []))
+
 (mu/defn group-members
   "The active Users in the PermissionsGroups with `group-ids`. When `include-group-manager?` is true each row also
   carries the membership's `:is_group_manager` flag."
@@ -568,7 +577,7 @@
 (mu/defn library-collection-ids
   "The IDs of the library Collections."
   []
-  (t2/select-pks-set :model/Collection :type [:in ["library" "library-data" "library-metrics"]]))
+  (t2/select-pks-set :model/Collection :type [:in ["library" "library-data" "library-metrics" "library-dashboards"]]))
 
 (mu/defn namespace-clause
   "Honey SQL clause to filter `namespace-keyword` by `namespace-val`, also matching the audit-app and tenant
@@ -729,9 +738,12 @@
   (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
 
 (mu/defn table-location
-  "The ID, Database ID, and schema of the Table with `table-id`."
+  "The ID, Database ID, schema, and data source of the Table with `table-id`.
+
+  `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
+  see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
