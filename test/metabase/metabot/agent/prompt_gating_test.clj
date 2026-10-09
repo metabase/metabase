@@ -11,11 +11,13 @@
   ["create_sql_query"])
 
 (defn- render-internal-template
-  "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]]).
-  The prompt builder reads only tool names, so a name->nil map stands in for the real name->var one."
+  "Render internal.selmer for `perms`, the scopes they grant, and `active-tool-names` (default
+  [[active-sql-tool-names]]). The prompt builder reads only tool names, so a name->nil map stands in for the real
+  name->var one."
   ([perms] (render-internal-template perms active-sql-tool-names))
   ([perms active-tool-names]
-   (binding [scope/*current-user-metabot-permissions* perms]
+   (binding [scope/*current-user-metabot-permissions* perms
+             scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
      (prompts/build-system-message-content
       {:prompt-template "internal.selmer"}
       {:current_time "2026-03-25T12:00:00Z"}
@@ -321,3 +323,74 @@
     (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
       (is (re-find #"# You can see results only by running a query" rendered))
       (is (not (re-find #"you cannot see query results" rendered))))))
+
+(deftest prompt-gates-sql-execution-guidance-test
+  (let [tools ["construct_notebook_query" "create_sql_query" "run_query"]]
+    (testing "with SQL execution off the model is told run_query runs notebook queries only"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+        (let [rendered (render-internal-template all-yes-perms tools)]
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query` and run it" rendered))))))
+    (testing "with SQL execution on the model is told to prefer the notebook and run SQL for shapes it can't express"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (let [rendered (render-internal-template all-yes-perms tools)]
+          (is (re-find #"Prefer a notebook query" rendered))
+          (is (re-find #"write SQL with `create_sql_query` and run it with `run_query`" rendered))
+          (is (not (re-find #"notebook queries only" rendered)))
+          (is (re-find #"A count or total of 0 is a real answer" rendered)))))
+    (testing "without the SQL tools the setting does not tell the model to write SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query`" rendered))))))
+    (testing "without Metabot's SQL generation permission the setting does not tell the model to run SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (let [rendered (render-internal-template no-sql-perms tools)]
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query`" rendered))))))
+    (testing "without the agent:sql:run scope the setting does not tell the model to run SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                  scope/*current-user-scope*               #{"agent:query:*" "agent:sql:create"}]
+          (let [rendered (prompts/build-system-message-content
+                          {:prompt-template "internal.selmer"} {} (zipmap tools (repeat nil)) [])]
+            (is (re-find #"`run_query` runs notebook queries only" rendered))
+            (is (not (re-find #"write SQL with `create_sql_query`" rendered)))))))))
+
+(deftest every-results-template-follows-sql-execution-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"
+                    "slackbot.selmer"
+                    "sql-querying-only.selmer"]
+          [sql-on? expected] [[true #"write SQL with `create_sql_query` and run it"]
+                              [false #"`run_query` runs notebook queries only"]]]
+    (testing (str template ", SQL execution " (if sql-on? "on" "off"))
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
+        (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
+          (is (re-find expected (prompts/build-system-message-content
+                                 {:prompt-template template}
+                                 {}
+                                 (zipmap ["construct_notebook_query" "create_sql_query" "run_query"] (repeat nil))
+                                 []))))))))
+
+(deftest no-template-says-results-are-hidden-when-run-query-is-active-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"
+                    "slackbot.selmer"
+                    "sql-querying-only.selmer"]
+          [tools hidden?] [[["construct_notebook_query" "create_sql_query" "run_query"] false]
+                           [["construct_notebook_query" "create_sql_query"] true]]]
+    (testing (str template (if hidden? " without run_query" " with run_query"))
+      (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
+        (is (= hidden?
+               (some? (re-find #"(?i)cannot (see (the actual |query )?results|execute queries)"
+                               (prompts/build-system-message-content {:prompt-template template}
+                                                                     {}
+                                                                     (zipmap tools (repeat nil))
+                                                                     [])))))))))
