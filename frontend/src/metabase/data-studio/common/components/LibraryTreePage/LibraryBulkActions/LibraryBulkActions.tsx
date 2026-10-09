@@ -24,7 +24,6 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
 import {
-  getAffectedCollectionIds,
   runLibraryItemUpdates,
   selectedItemToArchivable,
   selectedItemToMovable,
@@ -37,10 +36,6 @@ type LibraryBulkActionsProps = {
   selectionSection: LibrarySection | null;
   isAllTables: boolean;
   defaultCollectionId: CollectionId | undefined;
-  onActionComplete: (
-    section: LibrarySection,
-    affectedCollectionIds: CollectionId[],
-  ) => void;
   getTrashMessage?: (
     section: LibrarySection,
     count: number,
@@ -53,7 +48,6 @@ export function LibraryBulkActions({
   selectionSection,
   isAllTables,
   defaultCollectionId,
-  onActionComplete,
   getTrashMessage,
   onClear,
 }: LibraryBulkActionsProps) {
@@ -83,24 +77,15 @@ export function LibraryBulkActions({
 
   const runBulkAction = async (
     applyToItem: (item: SelectedItem) => Promise<unknown>,
-    destinationId: CollectionId | null,
     toast: { success: string; error: (failedCount: number) => string },
   ) => {
-    const section = selectionSection;
-    if (section == null) {
-      return;
-    }
-    const { failedCount, affectedCollectionIds } = await runLibraryItemUpdates(
-      selectedItems,
-      applyToItem,
-      destinationId,
-    );
+    const failedCount = await runLibraryItemUpdates(selectedItems, applyToItem);
     if (failedCount > 0) {
       sendErrorToast(toast.error(failedCount));
     } else {
       sendSuccessToast(toast.success);
     }
-    onActionComplete(section, affectedCollectionIds);
+    onClear();
   };
 
   const handleMove = async (destinationId: RegularCollectionId | null) => {
@@ -112,7 +97,6 @@ export function LibraryBulkActions({
             { id: destinationId ?? "root" },
             { notify: false },
           ),
-        destinationId,
         {
           success: t`Moved`,
           error: (failedCount) =>
@@ -125,18 +109,14 @@ export function LibraryBulkActions({
   };
 
   const handleUnpublished = () => {
-    const section = selectionSection;
     setAction(undefined);
-    if (section != null) {
-      onActionComplete(section, getAffectedCollectionIds(selectedItems, null));
-    }
+    onClear();
   };
 
   const handleTrash = () =>
     runBulkAction(
       (item) =>
         setArchive(selectedItemToArchivable(item), true, { notify: false }),
-      null,
       {
         success: t`Moved to trash`,
         error: (failedCount) =>

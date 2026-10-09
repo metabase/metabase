@@ -4,13 +4,20 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
-import type { CollectionId } from "metabase-types/api";
+import {
+  TableModal,
+  type TableModalState,
+} from "metabase-enterprise/data-studio/library/tables/components/TableModal";
 
 import { ActionCell } from "./ActionCell";
 import { CreateLibraryDashboardModal } from "./CreateLibraryDashboardModal";
@@ -48,6 +55,9 @@ export function LibraryPage() {
 
 function LibraryPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionModal, setCollectionModal] =
+    useState<CollectionRowModalState>();
+  const [tableModal, setTableModal] = useState<TableModalState>();
   const [
     showPublishTableModal,
     { open: openPublishTableModal, close: closePublishTableModal },
@@ -81,7 +91,6 @@ function LibraryPageContent() {
     error: tablesError,
     watchRows: watchTableRows,
     isChildrenLoading: isTableChildrenLoading,
-    refreshCollections: refreshTableCollections,
   } = useLibraryCollectionTree(tableCollection, "data");
   const {
     tree: metricsTree,
@@ -89,7 +98,6 @@ function LibraryPageContent() {
     error: metricsError,
     watchRows: watchMetricRows,
     isChildrenLoading: isMetricChildrenLoading,
-    refreshCollections: refreshMetricCollections,
   } = useLibraryCollectionTree(
     metricCollection,
     "metrics",
@@ -101,7 +109,6 @@ function LibraryPageContent() {
     error: dashboardsError,
     watchRows: watchDashboardRows,
     isChildrenLoading: isDashboardChildrenLoading,
-    refreshCollections: refreshDashboardCollections,
   } = useLibraryCollectionTree(dashboardCollection, "dashboards");
   const {
     tree: searchTree,
@@ -140,27 +147,15 @@ function LibraryPageContent() {
     [openPublishTableModal, openCreateDashboardModal],
   );
 
-  const refreshSection = useCallback(
-    (section: LibrarySection, collectionIds: CollectionId[]) => {
-      if (section === "data") {
-        refreshTableCollections(collectionIds);
-      } else if (section === "metrics") {
-        refreshMetricCollections(collectionIds);
-      } else if (section === "dashboards") {
-        refreshDashboardCollections(collectionIds);
-      }
-    },
-    [
-      refreshTableCollections,
-      refreshMetricCollections,
-      refreshDashboardCollections,
-    ],
-  );
   const renderRowMenu = useCallback(
     (item: TreeItem) => (
-      <ActionCell treeItem={item} refreshSection={refreshSection} />
+      <ActionCell
+        treeItem={item}
+        onOpenCollectionModal={setCollectionModal}
+        onOpenTableModal={setTableModal}
+      />
     ),
-    [refreshSection],
+    [],
   );
   const handleRowsChange = useCallback(
     (rows: Row<TreeItem>[]) => {
@@ -220,7 +215,6 @@ function LibraryPageContent() {
       onRowsChange={handleRowsChange}
       onSearchQueryChange={setSearchQuery}
       getTrashMessage={getTrashMessage}
-      onBulkActionComplete={refreshSection}
     >
       <PublishTableModal
         opened={showPublishTableModal}
@@ -234,6 +228,11 @@ function LibraryPageContent() {
           onClose={closeCreateDashboardModal}
         />
       )}
+      <CollectionRowModal
+        modal={collectionModal}
+        onClose={() => setCollectionModal(undefined)}
+      />
+      <TableModal modal={tableModal} onClose={() => setTableModal(undefined)} />
     </LibraryTreePage>
   );
 }

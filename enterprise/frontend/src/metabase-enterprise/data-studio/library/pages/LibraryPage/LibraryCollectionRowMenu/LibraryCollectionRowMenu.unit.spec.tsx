@@ -1,47 +1,49 @@
 import userEvent from "@testing-library/user-event";
+import { type ComponentProps, useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupUpdateCollectionEndpoint,
-} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import {
   createMockCollection,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { LibraryCollectionRowMenu } from ".";
+import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
+
+function LibraryCollectionRowMenuWithModal(
+  props: Omit<ComponentProps<typeof LibraryCollectionRowMenu>, "onOpenModal">,
+) {
+  const [modal, setModal] = useState<CollectionRowModalState>();
+  return (
+    <>
+      <LibraryCollectionRowMenu {...props} onOpenModal={setModal} />
+      <CollectionRowModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
 
 function setup({
   collection = createMockCollection({
     id: 1,
     name: "Library Data Collection",
     type: "library-data",
-    parent_id: 22,
   }),
   childCount = 0,
 }: Partial<Parameters<typeof LibraryCollectionRowMenu>[0]> = {}) {
-  const refreshCollections = jest.fn();
-  const parentCollection = createMockCollection({
-    id: 22,
-    name: "Data",
-    type: "library-data",
-  });
-
   setupEnterpriseOnlyPlugin("library");
   setupEnterpriseOnlyPlugin("remote_sync");
-  setupUpdateCollectionEndpoint(collection);
-  setupCollectionByIdEndpoint({ collections: [parentCollection] });
 
   renderWithProviders(
-    <LibraryCollectionRowMenu
+    <LibraryCollectionRowMenuWithModal
       childCount={childCount}
       collection={collection}
-      refreshCollections={refreshCollections}
     />,
     {
       storeInitialState: createMockState({
@@ -55,28 +57,9 @@ function setup({
       }),
     },
   );
-
-  return { refreshCollections };
 }
 
 describe("LibraryCollectionRowMenu", () => {
-  it("refreshes the parent collection after saving", async () => {
-    const { refreshCollections } = setup();
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Collection options" }),
-    );
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: /Edit collection details/ }),
-    );
-    await userEvent.type(screen.getByLabelText("Name"), " Updated");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(refreshCollections).toHaveBeenCalledWith([22]);
-    });
-  });
-
   it("shows a table unpublish warning when archiving a non-empty Library Data collection", async () => {
     setup({ childCount: 1 });
 

@@ -10,6 +10,7 @@ import {
 import type {
   Card,
   Collection,
+  CollectionId,
   CollectionItem,
   Dashboard,
   DashboardQuestionCandidate,
@@ -453,9 +454,20 @@ export function setupCreateCollectionEndpoint(
   });
 }
 
-export function setupUpdateCollectionEndpoint(collection: Collection) {
-  fetchMock.put(`path:/api/collection/${collection.id}`, collection, {
+export function setupUpdateCollectionEndpoint(
+  collection: Collection,
+  response: Collection | Promise<Collection> = collection,
+) {
+  fetchMock.put(`path:/api/collection/${collection.id}`, response, {
     name: `update-collection-${collection.id}`,
+  });
+}
+
+export function setupUpdateCollectionEndpointWithError(
+  collectionId: CollectionId,
+) {
+  fetchMock.put(`path:/api/collection/${collectionId}`, 500, {
+    name: `update-collection-${collectionId}`,
   });
 }
 

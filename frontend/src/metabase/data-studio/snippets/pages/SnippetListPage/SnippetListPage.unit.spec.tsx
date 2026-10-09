@@ -2,7 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
+  setupGroupsEndpoint,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -131,5 +133,41 @@ describe("SnippetListPage", () => {
     expect(
       screen.queryByRole("button", { name: /New/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the root row expanded when clicking inside the permissions modal it opened", async () => {
+    setupGroupsEndpoint([]);
+    setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
+    setup({
+      isEnterprise: true,
+      user: { ...NATIVE_WRITE_USER, is_superuser: true },
+    });
+
+    expect(await screen.findByText("Orders filter")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Snippet collection options" }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Change permissions/ }),
+    );
+    await userEvent.click(
+      await within(screen.getByRole("dialog")).findByRole("heading", {
+        name: /Permissions for/,
+      }),
+    );
+
+    expect(screen.getByText("Orders filter")).toBeInTheDocument();
+  });
+
+  it("keeps the root row expanded when clicking inside the root options menu", async () => {
+    setup({});
+
+    expect(await screen.findByText("Orders filter")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Snippet collection options" }),
+    );
+    await userEvent.click(await screen.findByRole("menu"));
+
+    expect(screen.getByText("Orders filter")).toBeInTheDocument();
   });
 });
