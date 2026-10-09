@@ -191,7 +191,7 @@ A paid item in a list or table gets a short parenthetical instead: "(Pro and Ent
 
 ## Generated pages
 
-These are rebuilt from source every weeknight. Don't edit or review them. Change the source instead.
+These are generated from source, most of them every weeknight. Don't edit or review them. Change the source instead.
 
 - `docs/configuring-metabase/environment-variables.md` and `config-template.md`
 - `docs/installation-and-operation/commands.md`

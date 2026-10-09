@@ -41,7 +41,7 @@ This skill covers clarity, style, and formatting. Accuracy is a separate check, 
 - **Update the links to the old page.** A stale link in `docs/` fails the link check, and a stale `useDocsUrl("old-section/old-page")` in the frontend fails `bun run lint-docs-links`.
 
   ```sh
-  grep -rn "old-section/old-page" docs/ frontend/src enterprise/frontend/src
+  grep -rn "old-page" docs/ frontend/src enterprise/frontend/src
   ```
 
 ## On any page

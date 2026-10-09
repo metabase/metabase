@@ -26,3 +26,4 @@ knowledge_base:
       - ".claude/skills/typescript-review/SKILL.md"
       - ".claude/skills/e2e-test-review/SKILL.md"
       - ".claude/skills/docs-review/SKILL.md"
+      - ".claude/skills/_shared/metabase-style-guide.md"
