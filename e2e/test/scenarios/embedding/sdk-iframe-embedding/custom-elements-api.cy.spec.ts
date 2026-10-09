@@ -25,6 +25,40 @@ const clickEmbeddedTableCell = (value: string, rowsCount: number) => {
   tableRoot().findByText(value).should("be.visible").click({ force: true });
 };
 
+const LIMITED_ORDERS_QUESTION_DETAILS = {
+  name: "Limited Orders",
+  query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
+};
+
+const LIMITED_ORDERS_DASHBOARD_NAME = "Limited Orders dashboard";
+
+const assertDrills = (drills: boolean) => {
+  clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
+  if (!drills) {
+    H.getSimpleEmbedIframeContent()
+      .findByText(/Filter by this value/)
+      .should("not.exist");
+    return;
+  }
+
+  H.getSimpleEmbedIframeContent()
+    .findByText(/Filter by this value/)
+    .should("be.visible");
+
+  H.getSimpleEmbedIframeContent()
+    .findByTestId("click-actions-filter-section")
+    .find("button")
+    .first()
+    .click();
+
+  H.getSimpleEmbedIframeContent()
+    .findByTestId("table-root")
+    .findByText("29.8")
+    .should("be.visible");
+  H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+};
+
 describe("scenarios > embedding > sdk iframe embedding > custom elements api", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
@@ -111,85 +145,47 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         .should("have.css", "color", "rgb(18, 52, 86)");
     });
 
-    it("should show title when with-title is passed with no value", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("Orders in a dashboard")
-        .should("be.visible");
-    });
-
-    it("should show title when with-title is 'true'", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="true" />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("Orders in a dashboard")
-        .should("be.visible");
-    });
-
-    it("should hide title when with-title is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="false" />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("Orders in a dashboard")
-        .should("not.exist");
-    });
-
-    it("should enable drill-through when drills is true", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: {
-          name: "Limited Orders",
-          query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
+    (
+      [
+        {
+          attributes: "with-title drills",
+          withTitle: true,
+          drills: true,
         },
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitCustomHtmlPage(`
-        ${H.getNewEmbedScriptTag()}
-        ${H.getNewEmbedConfigurationScript()}
-        <metabase-dashboard dashboard-id="${dashboard_id}" drills />
-        `);
-
-        cy.wait("@getDashCardQuery");
-
-        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
-
-        H.getSimpleEmbedIframeContent()
-          .findByText(/Filter by this value/)
-          .should("be.visible");
-      });
-    });
-
-    it("should disable drill-through when drills is false", () => {
-      H.createQuestionAndDashboard({
-        questionDetails: {
-          name: "Limited Orders",
-          query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
+        {
+          attributes: 'with-title="true" drills="false"',
+          withTitle: true,
+          drills: false,
         },
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitCustomHtmlPage(`
-        ${H.getNewEmbedScriptTag()}
-        ${H.getNewEmbedConfigurationScript()}
-        <metabase-dashboard dashboard-id="${dashboard_id}" drills="false" />
-        `);
+        {
+          attributes: 'with-title="false" drills="true"',
+          withTitle: false,
+          drills: true,
+        },
+      ] as const
+    ).forEach(({ attributes, withTitle, drills }) => {
+      it(`should apply \`${attributes}\``, () => {
+        H.createQuestionAndDashboard({
+          questionDetails: LIMITED_ORDERS_QUESTION_DETAILS,
+          dashboardDetails: { name: LIMITED_ORDERS_DASHBOARD_NAME },
+        }).then(({ body: { dashboard_id } }) => {
+          H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag()}
+          ${H.getNewEmbedConfigurationScript()}
+          <metabase-dashboard dashboard-id="${dashboard_id}" ${attributes} />
+          `);
 
-        cy.wait("@getDashCardQuery");
+          cy.wait("@getDashCardQuery");
 
-        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+          H.getSimpleEmbedIframeContent()
+            .findByText(LIMITED_ORDERS_QUESTION_DETAILS.name)
+            .should("be.visible");
+          H.getSimpleEmbedIframeContent()
+            .findByText(LIMITED_ORDERS_DASHBOARD_NAME)
+            .should(withTitle ? "be.visible" : "not.exist");
 
-        H.getSimpleEmbedIframeContent()
-          .findByText(/Filter by this value/)
-          .should("not.exist");
+          assertDrills(drills);
+        });
       });
     });
   });
@@ -234,81 +230,65 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         .should("exist", { timeout: 10000 });
     });
 
-    it("should show title when with-title is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title />
-      `);
+    (
+      [
+        {
+          attributes: "with-title drills with-downloads",
+          withTitle: true,
+          drills: true,
+          withDownloads: true,
+        },
+        {
+          attributes: 'with-title="true" drills="false"',
+          withTitle: true,
+          drills: false,
+          withDownloads: undefined,
+        },
+        {
+          attributes: 'with-title="false" drills="true" with-downloads="false"',
+          withTitle: false,
+          drills: true,
+          withDownloads: false,
+        },
+      ] as const
+    ).forEach(({ attributes, withTitle, drills, withDownloads }) => {
+      it(`should apply \`${attributes}\``, () => {
+        H.createQuestion(LIMITED_ORDERS_QUESTION_DETAILS).then(
+          ({ body: { id: questionId } }) => {
+            H.visitCustomHtmlPage(`
+            ${H.getNewEmbedScriptTag()}
+            ${H.getNewEmbedConfigurationScript()}
+            <metabase-question question-id="${questionId}" ${attributes} />
+            `);
 
-      H.getSimpleEmbedIframeContent().findByText("Orders").should("be.visible");
-    });
+            cy.wait("@getCardQuery");
 
-    it("should hide title when with-title is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title="false" />
-      `);
+            H.getSimpleEmbedIframeContent()
+              .findByTestId("table-root")
+              .should(
+                "have.attr",
+                "data-rows-count",
+                String(LIMITED_ORDERS_ROW_COUNT),
+              );
+            H.getSimpleEmbedIframeContent()
+              .findByText(LIMITED_ORDERS_QUESTION_DETAILS.name)
+              .should(withTitle ? "be.visible" : "not.exist");
 
-      H.getSimpleEmbedIframeContent().findByText("Orders").should("not.exist");
-    });
+            if (drills) {
+              H.getSimpleEmbedIframeContent()
+                .findByTestId("interactive-question-result-toolbar")
+                .should("be.visible")
+                .findByLabelText("download icon")
+                .should(withDownloads ? "be.visible" : "not.exist");
+            } else {
+              H.getSimpleEmbedIframeContent()
+                .findByTestId("interactive-question-result-toolbar")
+                .should("not.exist");
+            }
 
-    it("should hide download button when with-downloads is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads="false" />
-      `);
-
-      cy.wait("@getCardQuery");
-
-      H.getSimpleEmbedIframeContent()
-        .findByTestId("interactive-question-result-toolbar")
-        .should("be.visible")
-        .findByLabelText("download icon")
-        .should("not.exist");
-    });
-
-    it("should enable drill-through when drills is true", () => {
-      H.createQuestion({
-        name: "Limited Orders",
-        query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
-      }).then(({ body: { id: questionId } }) => {
-        H.visitCustomHtmlPage(`
-        ${H.getNewEmbedScriptTag()}
-        ${H.getNewEmbedConfigurationScript()}
-        <metabase-question question-id="${questionId}" drills />
-        `);
-
-        cy.wait("@getCardQuery");
-
-        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
-
-        H.getSimpleEmbedIframeContent()
-          .findByText(/Filter by this value/)
-          .should("be.visible");
-      });
-    });
-
-    it("should disable drill-through when drills is false", () => {
-      H.createQuestion({
-        name: "Limited Orders",
-        query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
-      }).then(({ body: { id: questionId } }) => {
-        H.visitCustomHtmlPage(`
-        ${H.getNewEmbedScriptTag()}
-        ${H.getNewEmbedConfigurationScript()}
-        <metabase-question question-id="${questionId}" drills="false" />
-        `);
-
-        cy.wait("@getCardQuery");
-
-        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
-
-        H.getSimpleEmbedIframeContent()
-          .findByText(/Filter by this value/)
-          .should("not.exist");
+            assertDrills(drills);
+          },
+        );
       });
     });
 
