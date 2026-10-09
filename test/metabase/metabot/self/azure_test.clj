@@ -268,7 +268,7 @@
 ;;; Context windows
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel context-window-tokens-test
+(deftest ^:parallel gpt-context-window-tokens-test
   (testing "a deployment named gpt-5.6 gets no window"
     (is (nil? (azure/context-window-tokens "openai/gpt-5.6"))))
   (testing "gpt-5.6 is not a family prefix for custom names"
