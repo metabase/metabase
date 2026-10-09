@@ -1,0 +1,3 @@
+;; Kondo ignore ratchets apply only to master; this release branch opts out.
+;; The test and fixer recognize this explicit opt-out.
+{:disabled true}
