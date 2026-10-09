@@ -172,19 +172,11 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *transaction-depth* 0)
 
-(declare live-transaction-depth)
-
-(defn in-transaction?
-  "Whether we are currently in a transaction.
-  A thread that outlived the transaction it started in is not."
-  []
-  (pos? (live-transaction-depth)))
-
-;; Accumulate 0-arity thunks to run just before / just after the outermost transaction commits. Each is
-;; bound to a fresh atom when the outermost transaction starts (see [[do-with-transaction]]) and shared by
-;; the whole nested-transaction tree; nil outside any transaction.
-;; The after-commit atom holds `::committed` or `::rolled-back` once the transaction has ended, see
-;; [[pending-callbacks]].
+;; Thunks to run just before and just after the outermost transaction commits.
+;; Each var is bound to a fresh atom when the outermost transaction starts, see [[do-with-transaction]].
+;; The whole nested-transaction tree shares that atom, and both vars are nil outside any transaction.
+;; When the transaction ends, the after-commit atom holds `::committed` or `::rolled-back` in place of its thunks.
+;; Read its value through [[pending-callbacks]].
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -210,6 +202,12 @@
   (if (inherited-transaction-ended?)
     0
     *transaction-depth*))
+
+(defn in-transaction?
+  "Whether we are currently in a transaction.
+  A thread that outlived the transaction it started in is not."
+  []
+  (pos? (live-transaction-depth)))
 
 ;; Holds an atom set to true when a rollback fails and leaves behind writes that should have been discarded. The atom
 ;; is shared across the transaction tree so that the outermost scope cannot commit those writes, even if an
