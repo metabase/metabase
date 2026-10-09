@@ -4,8 +4,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
+   [metabase.models.db :as models.db]
    [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -415,3 +419,90 @@
     (is (= {} (serdes/import-visualization-settings {:column_settings nil}))))
   (testing "a column_settings map is still imported"
     (is (contains? (serdes/import-visualization-settings {:column_settings {}}) :column_settings))))
+
+(deftest ^:parallel same-stored-value?-test
+  (let [same? #'serdes/same-stored-value?]
+    (testing "equal values"
+      (is (same? 1 1))
+      (is (same? {:a 1} {:a 1}))
+      (is (same? nil nil))
+      (is (not (same? 1 2))))
+    (testing "timestamps compare by instant"
+      (let [offset (java.time.OffsetDateTime/parse "2024-08-28T09:46:18.671622Z")
+            zoned  (java.time.ZonedDateTime/parse "2024-08-28T11:46:18.671622+02:00[Europe/Berlin]")]
+        (is (same? offset zoned))
+        (is (same? offset (.toInstant offset)))
+        (is (not (same? offset (.plusNanos zoned 1000))))
+        (testing "a timestamp is not the same as a value that is not a timestamp"
+          (is (not (same? offset "2024-08-28T09:46:18.671622Z")))
+          (is (not (same? offset nil))))
+        (testing "a LocalDateTime is not recognized, so it compares as changed"
+          (is (not (same? (.toLocalDateTime offset) (.toLocalDateTime zoned)))))))
+    (testing "a stored keyword is the same as its name"
+      (is (same? :line "line"))
+      (is (same? :type/Text "type/Text"))
+      (is (not (same? :line "table")))
+      (is (not (same? "line" :line)) "only a stored keyword against an incoming string"))
+    (testing "MBQL 5 queries compare without :lib/metadata and without the :lib/uuid values no aggregation ref uses"
+      (let [query (fn [count-uuid filter-uuid ref-uuid]
+                    {:lib/type     :mbql/query
+                     :lib/metadata ::metadata-provider
+                     :database     1
+                     :stages       [{:lib/type     :mbql.stage/mbql
+                                     :source-table 2
+                                     :aggregation  [[:count {:lib/uuid count-uuid}]]
+                                     :filters      [[:> {:lib/uuid filter-uuid} [:field {:lib/uuid (fake-uuid 9)} 3] 1]]
+                                     :order-by     [[:asc {:lib/uuid ref-uuid} [:aggregation {} count-uuid]]]}]})]
+        (is (same? (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3))
+                   (dissoc (query (fake-uuid 1) (fake-uuid 4) (fake-uuid 5)) :lib/metadata))
+            "new uuids that no aggregation ref uses do not count")
+        (is (not (same? (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3))
+                        (query (fake-uuid 6) (fake-uuid 2) (fake-uuid 3))))
+            "a new uuid for an aggregation that a ref uses counts, so the query compares as changed")
+        (is (not (same? (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3))
+                        (assoc-in (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3)) [:stages 0 :source-table] 7)))
+            "a real change counts")
+        (testing "maps that are not MBQL 5 queries compare by equality"
+          (is (not (same? {:a {:lib/uuid (fake-uuid 1)}} {:a {:lib/uuid (fake-uuid 2)}}))))))))
+
+(deftest ^:parallel drop-unchanged-columns-test
+  (let [drop-unchanged #'serdes/drop-unchanged-columns
+        baseline       {:id         1
+                        :name       "Card"
+                        :display    :line
+                        :created_at (java.time.OffsetDateTime/parse "2024-08-28T09:46:18Z")}]
+    (testing "keeps only the columns whose value changed"
+      (is (= {:name "New name"}
+             (drop-unchanged baseline {:name       "New name"
+                                       :display    "line"
+                                       :created_at (java.time.ZonedDateTime/parse "2024-08-28T09:46:18Z")}))))
+    (testing "returns an empty map when nothing changed"
+      (is (= {} (drop-unchanged baseline {:name "Card" :display "line"}))))
+    (testing "keeps a column that the baseline does not have"
+      (is (= {:bundle "bytes"} (drop-unchanged baseline {:name "Card" :bundle "bytes"}))))
+    (testing "keeps a column that changes to nil"
+      (is (= {:display nil} (drop-unchanged baseline {:display nil}))))))
+
+(deftest update-changed-columns!-adjust-changes-test
+  (let [writes   (atom [])
+        adjusted (atom [])
+        update!  (fn [opts]
+                   (reset! writes [])
+                   (mt/with-dynamic-fn-redefs [models.db/update-entity! (fn [id entity] (swap! writes conj [id (:row entity)]))
+                                               models.db/entity-by-pk   (fn [_model _pk id] {:id id})]
+                     (serdes/update-changed-columns! "Collection"
+                                                     {:name "Shared" :description "new"}
+                                                     {:id 7}
+                                                     {:id 7 :name "Shared" :description "old"}
+                                                     opts))
+                   @writes)]
+    (testing "the default writes the changed columns as they are"
+      (is (= [[7 {:description "new"}]] (update! {}))))
+    (testing ":adjust-changes gets the changed columns and the normalized file row, and its result is the write"
+      (is (= [[7 {:description "new" :name "Shared"}]]
+             (update! {:adjust-changes (fn [changes row]
+                                         (swap! adjusted conj [changes row])
+                                         (assoc changes :name (:name row)))})))
+      (is (= [[{:description "new"} {:name "Shared" :description "new"}]] @adjusted)))
+    (testing "an empty result sends no write"
+      (is (= [] (update! {:adjust-changes (constantly {})}))))))
