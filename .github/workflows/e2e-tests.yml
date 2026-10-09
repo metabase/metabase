@@ -28,7 +28,7 @@ jobs:
       test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
   e2e-snapshots:
-    name: Generate default E2E snapshots
+    name: Generate E2E snapshots
     needs: gate
     if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -42,6 +42,18 @@ jobs:
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: false
+          openldap: false
+          mocksaml: false
+          postgres: true
+          mysql: true
+          mongo: true
 
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
@@ -78,12 +90,12 @@ jobs:
 
       - uses: ./.github/actions/resolve-job-id
 
-      - name: Generate default database snapshots
+      - name: Generate database snapshots
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot --spec e2e/snapshot-creators/default.cy.snap.js
+        run: node e2e/runner/run_cypress_ci.js snapshot
 
-      - name: Upload default snapshots
+      - name: Upload snapshots
         uses: actions/upload-artifact@v7
         with:
           name: e2e-snapshots-ee-${{ github.event.pull_request.head.sha || github.sha }}

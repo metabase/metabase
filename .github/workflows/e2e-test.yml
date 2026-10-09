@@ -189,8 +189,8 @@ jobs:
       # steps below. DEV-1999.
       - uses: ./.github/actions/resolve-job-id
 
-      - name: Download default snapshots
-        id: default-snapshots
+      - name: Download database snapshots
+        id: snapshots
         if: ${{ inputs.snapshots-artifact != '' && inputs.edition == 'ee' }}
         uses: actions/download-artifact@v8
         continue-on-error: true
@@ -198,17 +198,40 @@ jobs:
           name: ${{ inputs.snapshots-artifact }}
           path: e2e
 
-      - name: Generate database snapshots
-        env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-          SNAPSHOT_SPEC: ${{ steps.default-snapshots.outcome == 'success' && 'e2e/snapshot-creators/qa-db.cy.snap.js' || '' }}
+      - name: Create writable_db in QA databases
+        if: ${{ steps.snapshots.outcome == 'success' }}
+        working-directory: e2e/test/scenarios
         shell: bash
         run: |
-          if [ -n "$SNAPSHOT_SPEC" ]; then
-            node e2e/runner/run_cypress_ci.js snapshot --spec "$SNAPSHOT_SPEC"
-          else
-            node e2e/runner/run_cypress_ci.js snapshot
+          set -euo pipefail
+          psql_sample() {
+            docker compose exec -T -e PGPASSWORD=metasample123 postgres-sample \
+              psql -h 127.0.0.1 -U metabase -d sample -v ON_ERROR_STOP=1 "$@"
+          }
+          mysql_root() {
+            docker compose exec -T -e MYSQL_PWD=metasample123 mysql-sample \
+              mysql -h 127.0.0.1 -uroot "$@"
+          }
+          for attempt in $(seq 1 60); do
+            if psql_sample -c "SELECT 1" >/dev/null 2>&1 && mysql_root -e "SELECT 1" >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$attempt" = 60 ]; then
+              echo "::error::QA Postgres or MySQL did not accept connections"
+              exit 1
+            fi
+            sleep 2
+          done
+          if ! psql_sample -tAc "SELECT 1 FROM pg_database WHERE datname = 'writable_db'" | grep -q 1; then
+            psql_sample -c "CREATE DATABASE writable_db"
           fi
+          mysql_root -e "CREATE DATABASE IF NOT EXISTS writable_db"
+
+      - name: Generate database snapshots
+        if: ${{ steps.snapshots.outcome != 'success' }}
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         id: split-e2e
