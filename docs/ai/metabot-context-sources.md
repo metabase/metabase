@@ -1,121 +1,111 @@
 ---
-title: Helping Metabot understand your data
-summary: How to give Metabot the context it needs, including descriptions, metadata, and admin settings, so it can find and understand your data.
+title: Configure Metabot context
+summary: The metadata, content, and settings that change what Metabot can find and how it uses it.
 ---
 
-# Helping Metabot understand your data
+# Configure Metabot context
 
-Metabot is only as good as the context it can find. Most of this context is controlled by you, like descriptions, metadata, and a few admin settings. This guide walks through how to provide context in a way that actually makes a difference.
+Metabot answers questions using the metadata and content in your Metabase. This page lists what you can change to improve its answers, and what each change does.
 
-## Where Metabot looks depends on where you're talking to it
+## What Metabot searches depends on where people use it
 
-The two places you meet Metabot work differently:
+| Where                                                       | What Metabot searches                                                                                                                                                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Chat sidebar](./metabot.md#the-metabot-chat-sidebar)       | Tables, models, metrics, questions, and dashboards the person has permission to see, plus their recently viewed items.                                                                          |
+| [AI exploration](./metabot.md#ai-exploration)               | The [Library](#publish-tables-and-metrics-to-the-library), if you have one. Otherwise, the [collection for natural language querying](#without-a-library-point-ai-exploration-at-a-collection). |
+| [SQL generation](./metabot.md#metabot-in-the-native-editor) | Tables in the database selected in the SQL editor.                                                                                                                                              |
 
-- **The AI chat sidebar.** Metabot can search everything you have permission to see, which means questions, models, metrics, dashboards, and tables.
-- **Natural-language querying** (admin settings under **AI exploration**). Metabot only considers content that has been curated for it: entities published to the Library (if you have Library access) or content in a collection an admin picks (on plans without Library retrieval).
+Metabot also sees the item the person has open, any items they @-mention, and your [glossary](#define-company-terms-in-the-glossary). Metabot can only see what the person asking has [permission](../permissions/data.md) to see.
 
-This distinction is important to understand, because Metabot ends up seeing different types of context depending on where and how it is invoked.
+## Add descriptions to tables, columns, models, and metrics
 
-## Write descriptions that explain what things mean
+Metabot reads an item's description when it looks at that item, and search matches questions against descriptions.
 
-Meaningful descriptions are the most impactful piece of context. Metabot reads descriptions when someone has an item open and when it looks up an item. When it searches, descriptions are part of what search matches your question against.
+- Say what the item means to your business and which questions it answers. Metabot already knows column types.
+- Start with columns that are easy to misread: codes, flags, anything called `status`, and anything with an internal encoding.
 
-Write descriptions that say what a table, model, metric, or column *means to the business* and which questions it answers. Metabot already knows the column types; what it doesn't know is your encoding and task.
+Admins and data analysts can edit table and column descriptions in [Data Studio](../data-modeling/metadata/managing-tables.md).
 
-Prioritize columns whose names are generic or could be misunderstood: codes, flags, anything called `status`, anything with an internal encoding. One short but clear paragraph can make all the difference.
+## Define company terms in the glossary
 
-Keep each description to a single paragraph. Line breaks in field descriptions can garble how the surrounding metadata is presented to the model.
+Add acronyms, product names, and terms with a company-specific meaning to the [glossary](../data-modeling/semantic-layer/glossary.md) in **Data Studio > Glossary**.
 
-## Add glossary terms for your company's vocabulary
+- Metabot gets the glossary with every message, in every place people use Metabot.
+- Metabot only gets the 100 most recently updated terms.
+- Keep definitions short, since they're sent with every message.
 
-[The glossary](../exploration-and-organization/data-model-reference.md#glossary) (in **Data Studio** > **Glossary**) is the way to teach Metabot words: acronyms, product names, and any term whose meaning at your company isn't the dictionary one. Metabot sees the glossary with every question, no matter where you use it.
+## Define measures and segments for calculations people get wrong
 
-Adding and editing terms requires a data analyst or admin role, but anyone can read them.
+If people calculate "net revenue" or filter for "active customers" in slightly different ways, define the calculation once as a [measure](../data-modeling/semantic-layer/measures.md) or [segment](../data-modeling/semantic-layer/segments.md) on the table.
 
-Two things to know:
+When Metabot looks at a table or model, it sees its measures and segments and is instructed to use them instead of writing its own. Metabot can't search for measures and segments directly, so they only help once Metabot has found the table.
 
-- Metabot only sees your 100 most recently updated terms. If you have more, the oldest-edited ones are quietly left out. Keep the list focused.
-- Definitions have no length limit, but every definition is included with every question everyone asks. Keep them short.
+## Build metrics and models for common questions
 
-## Define measures and segments for the numbers people get wrong
+When more than one source could answer a question, Metabot prefers a [metric](../data-modeling/semantic-layer/metrics.md), then a [model](../data-modeling/models/models.md), then a saved question, and finally a raw table. Building metrics and models for your most common questions steers Metabot toward them.
 
-If people keep computing "active customer" or "net revenue" slightly differently, define it once as a [measure](../data-studio/measures.md) or [segment](../data-modeling/segments.md) in the table's metadata. This is stronger than a description: Metabot is explicitly told to use your measures and segments instead of inventing its own aggregations and filters. Descriptions, in contrast, are merely hints.
+## Hide tables and columns nobody should query
 
-There's an important distinction here between measures and segments, which live on tables and models, and [metrics](../data-modeling/metrics.md). When someone has a table open, Metabot sees that table's measures and segments, but not metrics built on it.
+- **Tables**: In **Data Studio > Connected data**, set the table's [visibility layer](../data-modeling/metadata/managing-tables.md#visibility-layer) to **Hidden**. Metabot can't find or use hidden tables. Hidden tables also disappear from the query builder and stop syncing.
+- **Columns**: Set the column's [visibility](../data-modeling/metadata/metadata-editing.md#field-visibility) to **Do not include**. Metabot never sees these columns. They also disappear from the query builder.
 
-## Hide what nobody should be querying
+Neither setting is a permission: people can still query hidden tables and columns with SQL. To control what data Metabot can get to, use [data permissions](../permissions/data.md).
 
-Removing clutter helps as much as adding context.
+## Show Metabot real values for columns people filter on
 
-- **Hide tables** people shouldn't query (in [**Data Studio**](../data-studio/overview.md), set the table's visibility to hidden). A hidden table disappears from Metabot's search entirely.
-- **Mark sensitive columns as Sensitive.** Sensitive and retired fields are excluded from every column listing Metabot sees.
-- **Data permissions apply to Metabot too.** Metabot can never describe a table or read content that the person asking doesn't have permission to see. If you want to limit what Metabot can look at for a group, consider setting [data permissions](../permissions/introduction.md).
+Metabot can only look up a column's values if the column's [Filtering](../data-modeling/metadata/metadata-editing.md#filtering) setting is **A list of all values**. With **Search box** or **Plain input box**, Metabot only gets summary statistics, so it has to guess what values like `churned` or `EMEA` look like in your data.
 
-## Curate your best content, then consider requiring it
+Use **A list of all values** for columns that people filter on by name, like statuses, categories, and region codes. This setting also changes the filter widget people see.
 
-Metabot's search results flag which items are curated, meaning they are verified, in an official collection, published to the Library, or from an authoritative table. Metabot prefers curated items when picking what to use, so verifying your canonical models and metrics, or moving them into official collections, nudges Metabot in the right direction.
+## Restrict Metabot to curated content
 
-Admins can go further with the **Only use verified or curated content** toggle in **Admin settings** > **AI** > **Metabot**. This is a hard filter, not a preference: with it on, uncurated content won't show up in Metabot's searches at all.
+{% include plans-blockquote.html feature="Verified or curated content" %}
 
-Turn it on only once enough content is actually curated. If nothing qualifies, Metabot's searches come back empty, and it will seem like Metabot suddenly can't find anything.
+In **Admin > AI**, on the **Internal** tab, turn on **Only use verified or curated content**. Metabot's search results, recently viewed items, and suggested prompts then only include content that's:
 
-## Use custom instructions for house style, not facts
+- [Verified](../exploration-and-organization/content-verification.md).
+- In an [official collection](../exploration-and-organization/collections.md#official-collections).
+- Published to the [Library](../data-modeling/semantic-layer/library.md). Published tables only count if their visibility layer is **Final**.
 
-Admins can add custom instructions in [**Admin settings** > **AI**](./settings.md#configure-metabot). There are separate instruction settings for the chat sidebar and for natural-language querying (and another one for SQL generation). Whatever you write there is included with every conversation on that surface.
+Turn this on only once you've curated enough content. If nothing qualifies, Metabot's searches come back empty. See [Verified or curated content](./settings.md#verified-or-curated-content).
 
-Because instructions are always present and never filtered by relevance, they're the right place for things that are always true:
+## Publish tables and metrics to the Library
 
-- Tone and formatting preferences.
-- Defaults: "Always break results out by fiscal quarter; our fiscal year starts in February."
-- Steering: "Prefer the models in the Finance collection over raw tables."
+{% include plans-blockquote.html feature="Publishing tables to the Library" %}
 
-They're the wrong place for facts about specific tables or columns, however. Descriptions are the right choice for that, since these facts travel with the entity instead of taxing every conversation.
+If your Metabase has a [Library](../data-modeling/semantic-layer/library.md), AI exploration searches it first, matching questions against each item's name and description.
 
-Keep custom instructions brief: when they become long enough to compete with the actual question, they make answers worse instead of better.
+- [Publish tables](../data-modeling/semantic-layer/published-tables.md) in **Data Studio > Semantic layer**.
+- Move metrics into the **Library > Metrics** collection.
+- Add descriptions to everything you publish.
 
-## Let Metabot see real values for the columns that matter
+The Library only holds tables, metrics, and SQL snippets. You can't add models or questions to it.
 
-When someone asks "show me churned customers," Metabot writes a better filter if it knows the status column's actual values. Whether it can see them depends on the field's **Filtering on this field** setting in Data Studio:
+AI exploration can still look at tables outside the Library, but it starts with what's in the Library. If nothing in the Library matches a question well, Metabot asks the person to clarify instead of guessing.
 
-- **A list of all values** (or the automatic default): Metabot can look up real sample values.
-- **Search box** or **Plain input box**: Metabot only gets summary statistics, never the values themselves.
+## Without a Library, point AI exploration at a collection
 
-For any column whose specific values people filter on, like status columns, categories, region codes. Make sure the setting is a list of all values.
+In **Admin > AI**, on the **Internal** tab, set **Collection for natural language querying** to a collection with your best models and metrics. AI exploration then only searches that collection and its subcollections. People can still @-mention items outside it. See [Collection for natural language querying](./settings.md#collection-for-natural-language-querying).
 
-## For natural-language querying, publish to the Library first
+## Use system prompts for conventions, not facts
 
-If your plan includes the [Library](../data-studio/library.md), natural-language querying (AI exploration) *only considers entities published to it*. This means an unpublished table is invisible to natural-language querying no matter how well it's described. In this case, make sure to:
+{% include plans-blockquote.html feature="AI system prompts" is_plural=true %}
 
-1. **Publish the right entities.** Publish tables and move the models and metrics you want available into the Library collection (or a collection inside it). Plain saved questions can't be published, but you can build a model instead.
-2. **Then make them findable.** Retrieval matches against each entity's name and description, so the description advice above applies double here.
+In **Admin > AI > System prompts**, you can write separate instructions for **AI chat**, **Natural language queries**, and **SQL generation**. Metabot gets the matching prompt with every message.
 
-If the Library is thin or entities are poorly described, the visible symptom is Metabot asking clarifying questions instead of answering. That means that it found matches, but it wasn't confident about them.
+- **Good for**: tone, formatting, and conventions that always apply, like "Our fiscal year starts on February 1."
+- **Not for**: facts about specific tables or columns. Put those in descriptions, which Metabot only reads when it uses that item.
 
-### Add synonyms, example questions, and usage instructions
+Keep system prompts short. See [AI system prompts](./system-prompts.md).
 
-Published entities can carry extra AI context, currently only possible to set by an admin through the API:
+## Open the item before asking about it
 
-- **Synonyms** and **example questions** change whether the entity gets found. Add the words and phrasings people actually use ("MRR", "how much did we make last month?").
-- **Usage instructions** change how Metabot uses the entity once found ("always filter out internal test accounts").
+When a table, model, or question is open, Metabot sees its columns and their descriptions, its measures and segments, and the tables it joins to. Opening the right item first is the most direct way to point Metabot at the right data.
 
-### Without the Library, pick a collection instead
+In the chat sidebar, Metabot also sees recently viewed items, so viewing a relevant table or question first helps. AI exploration ignores recently viewed items.
 
-On plans without the Library (including open source), natural-language querying falls back to searching a single collection. Set **Collection for natural language querying** in **Admin settings** > **AI** > **Metabot** to a collection containing your curated models and metrics, so Metabot searches a well-tended garden instead of nothing in particular.
+## Some changes don't affect Metabot
 
-## Tips for people asking questions
-
-A few habits get better results when asking Metabot questions, independent of any other changes:
-
-- **Open the thing you're asking about before you ask.** When you have a table or model open, Metabot sees all of its columns and their descriptions, its measures and segments, and even the related tables it joins to. It's the cheapest way to give Metabot exactly the right context.
-- **Dashboards are the exception.** Opening a dashboard tells Metabot almost nothing by itself, other than the name and description. Metabot can look inside on request, but if your question is really about one chart, open that chart.
-- **In the chat sidebar, your recent activity helps.** Metabot can see your most recently viewed items, so clicking through the relevant table or question first gives it a head start. This doesn't apply to natural-language querying, which deliberately ignores recent activity and sticks to curated content.
-
-## What doesn't help (so you don't waste time on it)
-
-A few perfectly reasonably things don't actually help:
-
-- **Caveats and points of interest.** These metadata fields on tables and columns are never shown to Metabot. Put anything Metabot needs into the description instead.
-- **Table display names.** Renaming a table's display name helps Metabot's search *find* the table, but the model then works with the raw database name. Column display names, on the other hand, do reach the model. That's why renaming a cryptic column helps quite a bit.
-- **Semantic types.** Marking a column as an email address or a URL improves the Metabase UI, but Metabot isn't told about it. If the semantic meaning matters, say it in the description.
-- **Verifying a card to get it into the Library.** Verification and the Library are separate systems. Verification is a curation signal for search; only publishing puts something in the Library.
-
+- **Table display names**: Metabot works with the table's name in the database, not the display name you set. However, column display names do reach Metabot.
+- **Why this table is interesting** and **Things to be aware of about this table** in [Data Reference](../exploration-and-organization/data-model-reference.md): Metabot never sees these, put that information in the description instead.
+- **Verification doesn't add content to the Library.** Verified items count as curated content, but only publishing or moving an item puts it in the Library.
