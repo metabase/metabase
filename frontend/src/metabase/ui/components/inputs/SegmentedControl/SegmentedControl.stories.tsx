@@ -1,6 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 import { Fragment, useEffect, useRef } from "react";
 
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import {
   Box,
   Icon,
@@ -214,6 +215,9 @@ const OverviewTemplate: StoryFn = () => (
 
 export const Overview = {
   render: OverviewTemplate,
+  // The tooltip fades in over 200ms (Tooltip config); wait well past that
+  // before Loki captures, with margin for slow CI runners.
+  decorators: [createWaitForResizeToStopDecorator(500)],
   parameters: {
     pseudo: {
       hover: [labelSelectorFor("hover")],

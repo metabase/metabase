@@ -2,10 +2,12 @@ import { type FocusEvent, type KeyboardEvent, useState } from "react";
 
 import { isFocusVisible } from "metabase/utils/dom";
 
-type TooltipItem<Value extends string> = {
-  value: Value;
-  withTooltip?: boolean;
-};
+import type { SegmentedControlItem } from "./index";
+
+type TooltipItem<Value extends string> = Pick<
+  SegmentedControlItem<Value>,
+  "value" | "withTooltip"
+>;
 
 export function useItemTooltip<Value extends string>(
   data: readonly TooltipItem<Value>[],

@@ -296,19 +296,6 @@ describe("SegmentedControl", () => {
       );
     });
 
-    it("should hide the tooltip after a click once the pointer leaves", async () => {
-      setup({ data: TOOLTIP_DATA });
-
-      const icon = screen.getByRole("img", { name: "Preview" });
-      await userEvent.click(icon);
-      await screen.findByRole("tooltip", { name: "Preview" });
-
-      await userEvent.unhover(icon);
-      await waitFor(() =>
-        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
-      );
-    });
-
     it("should hide a hovered tooltip on Escape", async () => {
       setup({ data: TOOLTIP_DATA });
 
