@@ -324,7 +324,7 @@ describe("ReviewModal", () => {
 
     const rows = await screen.findAllByTestId("metadata-generation-suggestion");
     await userEvent.click(
-      within(rows[2]).getByRole("button", { name: "Use AI proposal" }),
+      within(rows[2]).getByRole("button", { name: /Use AI proposal/ }),
     );
 
     expect(await getLastEditBody(3)).toEqual({ value: null });
@@ -368,13 +368,13 @@ describe("ReviewModal", () => {
     );
 
     expect(
-      await screen.findByRole("option", { name: "Currency" }),
+      await screen.findByRole("option", { name: /Currency/ }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("option", { name: "Entity Key" }),
+      screen.queryByRole("option", { name: /Entity Key/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("option", { name: "No semantic type" }),
+      screen.queryByRole("option", { name: /No semantic type/ }),
     ).not.toBeInTheDocument();
   });
 
