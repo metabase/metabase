@@ -480,7 +480,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // unbookmark it
       H.queryBuilderHeader().icon("bookmark_filled").click();
-      cy.findByTestId("sidebar-toggle").click();
+      H.openNavigationSidebar();
       H.navigationSidebar().findByText("Collections").should("be.visible");
       H.navigationSidebar().findByText("Orders").should("not.exist");
 

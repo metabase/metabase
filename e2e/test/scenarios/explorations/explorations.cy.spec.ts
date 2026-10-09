@@ -632,6 +632,7 @@ describe("scenarios > explorations", () => {
           filterToggle().should("have.attr", "aria-pressed", "false");
 
           cy.reload();
+          H.collapseNavigationSidebar();
           cy.findAllByRole("treeitem", { timeout: 15000 })
             .first()
             .should("be.visible");
@@ -707,6 +708,7 @@ describe("scenarios > explorations", () => {
 
           cy.log("Hidden state is persisted server-side across a reload");
           cy.reload();
+          H.collapseNavigationSidebar();
           cy.findAllByRole("treeitem").should("have.length", 1);
 
           cy.log("Show hidden items + the group Show action restore the pages");

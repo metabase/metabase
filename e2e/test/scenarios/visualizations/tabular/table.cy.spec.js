@@ -911,6 +911,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
       // Ensure resizing did not permanently changed the row height
       cy.reload();
+      H.collapseNavigationSidebar();
       H.assertRowHeight(0, wrappedRowInitialHeight);
 
       // Disable text wrapping from dashcard settings
