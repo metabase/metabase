@@ -51,6 +51,8 @@ export const DataSensitivityPicker = ({
     <Stack gap="xs">
       <Select
         comboboxProps={{
+          withinPortal: true,
+          keepMounted: false,
           middlewares: {
             flip: true,
             size: {
