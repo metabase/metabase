@@ -1,3 +1,8 @@
+export const STATIC_CARTESIAN_CHART_SIZE = {
+  width: 540,
+  height: 360,
+} as const;
+
 export const getChartHeight = ({
   fitWithinBounds,
   height,

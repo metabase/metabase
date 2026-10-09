@@ -21,7 +21,6 @@ import {
 } from "metabase/ui";
 import { is403Error } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type { ClickActionsMode, OnBrush } from "metabase/visualizations/types";
 import { type HighlightedObject, isCartesianChart } from "metabase/viz-core";
 import type {
@@ -53,6 +52,8 @@ import {
   composeChartsForGroup,
   resolveHighlightForSeries,
 } from "./utils";
+
+const LEGEND_ITEM_FONT_SIZE = "0.928em";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;

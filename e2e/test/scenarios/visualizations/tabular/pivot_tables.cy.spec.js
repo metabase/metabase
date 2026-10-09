@@ -406,8 +406,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
     openColumnSettings("Product → Category");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").should("not.be.visible");
+    H.popover().findByText("Show totals").should("not.exist");
 
     // turn off subtotals for User -> Source
     openColumnSettings("User → Source");
@@ -657,8 +656,9 @@ WHERE NOT (
     assertOnPivotSettings();
     openColumnSettings("Count");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Sort order/).should("not.be.visible");
+    H.popover()
+      .findByText(/Sort order/)
+      .should("not.exist");
   });
 
   it("should allow sorting fields", () => {

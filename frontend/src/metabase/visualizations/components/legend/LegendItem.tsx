@@ -2,14 +2,11 @@ import cx from "classnames";
 import { memo } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Ellipsified } from "metabase/ui";
+import { Box, Ellipsified, Flex, rem } from "metabase/ui";
 
-import {
-  LegendItemLabel,
-  LegendItemRoot,
-  LegendItemTitle,
-} from "./LegendItem.styled";
+import S from "./Legend.module.css";
 import { LegendItemDot } from "./LegendItemDot";
+import { LEGEND_SIZES, type LegendSize } from "./layout";
 
 export interface LegendItemData {
   key: string;
@@ -20,11 +17,9 @@ export interface LegendItemData {
 
 interface LegendItemProps {
   item: LegendItemData;
-  dotSize?: string;
+  size?: LegendSize;
   index: number;
   isMuted?: boolean;
-  isVertical?: boolean;
-  isInsidePopover?: boolean;
   isReversed?: boolean;
   onHoverChange?: (data?: { index: number; element: Element }) => void;
   onSelectSeries?: (
@@ -37,16 +32,16 @@ interface LegendItemProps {
 
 const LegendItemInner = ({
   item,
-  dotSize = "8px",
+  size = "sm",
   index,
   isMuted,
-  isVertical,
-  isInsidePopover,
   isReversed,
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
 }: LegendItemProps) => {
+  const { dotSize, dotGap, typography } = LEGEND_SIZES[size];
+
   const handleDotClick = (event: React.MouseEvent) => {
     onToggleSeriesVisibility?.(event, index);
   };
@@ -64,31 +59,38 @@ const LegendItemInner = ({
   };
 
   return (
-    <LegendItemRoot isVertical={!!isVertical} data-testid="legend-item">
-      <LegendItemLabel
-        isMuted={!!isMuted}
+    <Flex align="center" miw={0} data-testid="legend-item">
+      <Flex
+        className={cx(S.itemLabel, {
+          [S.hoverableLabel]: onHoverChange != null,
+        })}
+        align="center"
+        w="100%"
+        opacity={isMuted ? 0.4 : 1}
         onMouseEnter={onHoverChange && handleItemMouseEnter}
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         <LegendItemDot
           color={item.color}
-          size={dotSize}
+          size={rem(dotSize)}
           isVisible={item.visible ?? true}
           onClick={onToggleSeriesVisibility && handleDotClick}
         />
-        <LegendItemTitle
-          className={cx(
-            DashboardS.fullscreenNormalText,
-            DashboardS.DashboardChartLegend,
-          )}
-          dotSize={dotSize}
-          isInsidePopover={isInsidePopover}
+        <Box
+          className={cx(DashboardS.fullscreenNormalText, S.itemTitle, {
+            [S.clickableTitle]: onSelectSeries != null,
+          })}
+          c="text-primary"
+          fz={typography}
+          lh={typography}
+          ml={dotGap}
+          miw={0}
           onClick={onSelectSeries && handleItemClick}
         >
           <Ellipsified>{item.name}</Ellipsified>
-        </LegendItemTitle>
-      </LegendItemLabel>
-    </LegendItemRoot>
+        </Box>
+      </Flex>
+    </Flex>
   );
 };
 

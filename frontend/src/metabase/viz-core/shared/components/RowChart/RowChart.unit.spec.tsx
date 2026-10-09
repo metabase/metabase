@@ -22,7 +22,17 @@ const testFont: ChartFont = {
 const theme: RowChartTheme = {
   axis: { color: "gray", ticks: testFont, label: testFont },
   dataLabels: testFont,
-  goal: { lineStroke: "gray", label: testFont },
+  goal: {
+    lineStroke: "gray",
+    lineShadowStroke: "white",
+    label: testFont,
+    marker: {
+      iconColor: "gray",
+      backgroundColor: "white",
+      hoverBackgroundColor: "gray",
+      shadowColor: "gray",
+    },
+  },
   grid: {
     color: "gray",
   },
@@ -255,9 +265,32 @@ describe("RowChart", () => {
       expect(goalLine).toBeFalsy();
     });
 
-    it("should render goal line when specified", () => {
-      const { goalLine } = setup({ goal: { label: "Goal label", value: 100 } });
-      expect(goalLine?.textContent).toBe("Goal label");
+    it("should call onGoalHover when hovering the goal marker", async () => {
+      const goal = { label: "Goal label", value: 100 };
+      const onGoalHover = jest.fn();
+      setup({ goal, onGoalHover });
+
+      await userEvent.hover(screen.getByTestId("goal-line-marker"));
+      expect(onGoalHover).toHaveBeenLastCalledWith(
+        expect.objectContaining({ target: expect.anything() }),
+        expect.objectContaining(goal),
+      );
+
+      await userEvent.unhover(screen.getByTestId("goal-line-marker"));
+      expect(onGoalHover).toHaveBeenLastCalledWith(
+        expect.objectContaining({ target: expect.anything() }),
+        null,
+      );
+    });
+
+    it("should show the goal label instead of the marker on static rendering", () => {
+      const { goalLine } = setup({
+        goal: { label: "Goal label", value: 100 },
+        isStatic: true,
+      });
+
+      expect(goalLine).toHaveTextContent("Goal label");
+      expect(screen.queryByTestId("goal-line-marker")).not.toBeInTheDocument();
     });
   });
 

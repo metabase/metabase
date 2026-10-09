@@ -798,7 +798,10 @@ describe("scenarios > visualizations > bar chart", () => {
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
         // Verify this axis tick exists twice which verifies there are two y-axes
-        H.echartsContainer().findAllByText("3.0k").should("have.length", 2);
+        H.echartsContainer()
+          .findAllByText("21.0k")
+          .should("have.length", 2)
+          .and("be.visible");
       });
 
     cy.findAllByTestId("dashcard")
@@ -1094,7 +1097,7 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
@@ -1108,6 +1111,9 @@ describe("scenarios > visualizations > bar chart", () => {
     // Create a bar chart showing count of orders by month for the last 12 months
     H.visitQuestionAdhoc({
       display: "bar",
+      visualization_settings: {
+        "graph.x_axis.axis_enabled": "compact",
+      },
       dataset_query: {
         type: "query",
         query: {
@@ -1147,7 +1153,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
     // Use a smaller viewport to ensure labels need to rotate
-    cy.viewport(940, 800);
+    cy.viewport(820, 800);
 
     const query = `
       SELECT * FROM (

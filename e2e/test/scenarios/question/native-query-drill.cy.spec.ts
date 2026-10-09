@@ -389,9 +389,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestionAndDashboard({
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
-      H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 150, right: 300 }),
-      );
+      H.getDashboardCard().within(() => H.applyBrushToPoints(2, 5));
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
     });
@@ -400,9 +398,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestionAndDashboard({
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
-      H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 320 }),
-      );
+      H.getDashboardCard().within(() => H.applyBrushToPoints(1, 6));
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(6);
     });

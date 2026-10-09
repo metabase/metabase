@@ -99,7 +99,7 @@ describe("scenarios > visualizations > combo", () => {
     });
 
     // First circle of stacked area series
-    H.cartesianChartCircleWithColor("#98D9D9").eq(0).trigger("mousemove");
+    H.cartesianChartCircleWithColor("#98D9D9").eq(0).realHover();
 
     // Check the tooltip shows only stacked areas series
     H.assertEChartsTooltip({

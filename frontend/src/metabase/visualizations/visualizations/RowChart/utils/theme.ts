@@ -33,12 +33,19 @@ export const useRowChartTheme = (
         },
       },
       goal: {
-        lineStroke: color("text-secondary"),
+        lineStroke: color("icon-primary"),
+        lineShadowStroke: color("background_surface-primary"),
         label: {
           size: cartesian.goalLine.label.fontSize,
           weight: 400,
           color: color("text-secondary"),
           family: fontFamily,
+        },
+        marker: {
+          iconColor: color("icon-primary"),
+          backgroundColor: color("background_surface-primary"),
+          hoverBackgroundColor: color("background_surface-primary-hover"),
+          shadowColor: color("shadow-default"),
         },
       },
       dataLabels: {

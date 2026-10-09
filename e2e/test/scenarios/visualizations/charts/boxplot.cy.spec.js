@@ -176,8 +176,27 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findByLabelText("Goal label").clear().type("Target");
     });
 
-    H.echartsContainer().findByText("Target").should("exist");
     H.goalLine().should("exist");
+    H.goalLineMarker().should("be.visible");
+  });
+
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      ...singleSeriesQuestion,
+      visualization_settings: {
+        ...singleSeriesQuestion.visualization_settings,
+        "graph.show_goal": true,
+        "graph.goal_value": 100,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    H.goalLineMarker().trigger("mousemove");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("100").should("be.visible");
+    });
   });
 
   it("should render in dashboard and support drill-through on boxes and outliers", () => {
@@ -470,10 +489,10 @@ describe("scenarios > visualizations > boxplot", () => {
     H.leftSidebar().findByText("Axes").click();
 
     // Default: pinned to zero, y-axis should include 0
-    H.echartsContainer().findByText("$0").should("be.visible");
+    H.echartsContainer().findByText("$0.00").should("be.visible");
     H.leftSidebar().findByText("Unpin from zero").click();
 
     // After unpinning, 0 should not be visible (y-axis starts higher since prices are ~$40-80)
-    H.echartsContainer().findByText("$0").should("not.exist");
+    H.echartsContainer().findByText("$0.00").should("not.exist");
   });
 });
