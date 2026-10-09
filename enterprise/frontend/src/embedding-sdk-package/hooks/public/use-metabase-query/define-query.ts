@@ -4,6 +4,7 @@ import type {
   DefinedQuery,
   MetabaseQueryOptions,
   RequireAggregationsForBreakouts,
+  RequireGroupedOrderByNames,
 } from "./types";
 
 type SavedQuestionBinding = {
@@ -24,7 +25,8 @@ export function defineQuery<
     (TQuery extends SavedQuestionBinding ? unknown : SavedQuestionBinding) &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
-        ? RequireAggregationsForBreakouts<TQuery>
+        ? RequireAggregationsForBreakouts<TQuery> &
+            RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
 ): TQuery & DefinedQuery {

@@ -473,42 +473,23 @@
               (lib/order-bys query))))))
 
 (deftest ^:parallel test-query-order-by-with-temporal-bucket-test-with-duplicate-column
-  (testing "test-query adds order-by with temporal bucketing when selecting the first column"
-    (let [query (lib.query.test-spec/test-query
+  (let [date  {:type :column :name "DATE"}
+        query (fn [breakouts order-by]
+                (lib.query.test-spec/test-query
                  meta/metadata-provider
-                 {:stages [{:source    {:type :table
-                                        :id   (meta/id :checkins)}
-                            :breakouts [{:type :column
-                                         :name "DATE"
-                                         :unit :month}
-                                        {:type :column
-                                         :name "DATE"
-                                         :unit :year}]
-                            :order-bys [{:type         :column
-                                         :name         "DATE"
-                                         :unit         :month
-                                         :direction    :desc}]}]})]
-      (is (=? [[:desc {}
-                [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
-              (lib/order-bys query)))))
-  (testing "test-query adds order-by with temporal bucketing when selecting the second column"
-    (let [query (lib.query.test-spec/test-query
-                 meta/metadata-provider
-                 {:stages [{:source    {:type :table
-                                        :id   (meta/id :checkins)}
-                            :breakouts [{:type :column
-                                         :name "DATE"
-                                         :unit :month}
-                                        {:type :column
-                                         :name "DATE"
-                                         :unit :year}]
-                            :order-bys [{:type         :column
-                                         :name         "DATE"
-                                         :unit         :year
-                                         :direction     :desc}]}]})]
-      (is (=? [[:desc {}
-                [:field {:temporal-unit :year} (meta/id :checkins :date)]]]
-              (lib/order-bys query))))))
+                 {:stages [{:source    {:type :table :id (meta/id :checkins)}
+                            :breakouts breakouts
+                            :order-bys [(assoc order-by :direction :desc)]}]}))]
+    (testing "a field broken out twice can't be ordered by, whatever unit the order-by asks for"
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Multiple columns found"
+                            (query [(assoc date :unit :month) (assoc date :unit :year)]
+                                   (assoc date :unit :year)))))
+    (testing "named apart, each breakout is ordered by by its name"
+      (doseq [[column-name unit] [["month" :month] ["year" :year]]]
+        (is (=? [[:desc {} [:field {:temporal-unit unit :name column-name} (meta/id :checkins :date)]]]
+                (lib/order-bys (query [{:type :breakout :name "month" :column (assoc date :unit :month)}
+                                       {:type :breakout :name "year" :column (assoc date :unit :year)}]
+                                      {:type :column :name column-name}))))))))
 
 (deftest ^:parallel test-query-order-by-with-binning-test
   (testing "test-query adds order-by with binning"
@@ -1333,7 +1314,7 @@
              1)))))
 
 (deftest ^:parallel test-query-joined-result-column-through-card-test
-  (testing "a saved card stores the second joined ID as ID_2, and that name picks it"
+  (testing "a saved card stores the second joined ID as ID_2, and that name is refused as ambiguous"
     (let [card-query (lib.query.test-spec/test-query
                       meta/metadata-provider
                       {:stages [{:source       {:type :table :id (meta/id :orders)}
@@ -1345,15 +1326,15 @@
                       meta/metadata-provider 1 card-query
                       {:result-metadata (mapv #(assoc % :name (:lib/deduplicated-name %))
                                               (lib/returned-columns card-query))})
-          query      (lib.query.test-spec/test-query
-                      mp
-                      {:stages [{:source {:type :card :id 1}}
-                                {:filters [{:type     :operator
-                                            :operator :<
-                                            :args     [{:type :column :name "ID_2"}
-                                                       {:type :literal :value 10}]}]}]})]
-      (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
-              (lib/filters query 1))))))
+          query      #(lib.query.test-spec/test-query
+                       mp
+                       {:stages [{:source {:type :card :id 1}}
+                                 {:filters [{:type     :operator
+                                             :operator :<
+                                             :args     [{:type :column :name "ID_2"}
+                                                        {:type :literal :value 10}]}]}]})]
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Ambiguous column"
+                            (query))))))
 
 (def ^:private two-fks-to-products-provider
   "ORDERS with USER_ID as a second FK into PRODUCTS."
@@ -1447,3 +1428,132 @@
                                              :args [{:type :column :name "TOTAL"} {:type :literal :value 1}]}}]
                      :aggregations [{:type :operator :operator :count}]
                      :breakouts    [{:type :column :name "TOTAL"}]}]})))))
+
+(def ^:private metadata-provider-with-measure
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:measures [{:id         1
+                :name       "Revenue"
+                :table-id   (meta/id :venues)
+                :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))}]}))
+
+(deftest ^:parallel test-query-names-saved-aggregation-test
+  (testing "measure or metric is named by wrapping it as `{:name .. :value ..}`, as an operator aggregation can be"
+    (let [measure-query (lib.query.test-spec/test-query
+                         metadata-provider-with-measure
+                         {:stages [{:source       {:type :table :id (meta/id :venues)}
+                                    :aggregations [{:name "revenue" :value {:type :measure :id 1}}
+                                                   {:type :operator :operator :sum
+                                                    :args [{:type :column :name "PRICE"}]}]}]})
+          metric-query  (lib.query.test-spec/test-query
+                         lib.tu/metadata-provider-with-metric
+                         {:stages [{:source       {:type :table :id (meta/id :checkins)}
+                                    :aggregations [{:name "visits" :value {:type :metric :id 1}}]}]})]
+      (is (=? [[:measure {:name "revenue"} 1] [:sum {} some?]]
+              (lib/aggregations measure-query)))
+      (is (= ["revenue" "sum"] (map :name (lib/returned-columns measure-query))))
+      (is (=? [[:metric {:name "visits"} 1]] (lib/aggregations metric-query)))
+      (is (= ["visits"] (map :name (lib/returned-columns metric-query)))))))
+
+(deftest ^:parallel test-query-ignores-saved-aggregation-own-name-test
+  (testing "measure's own `:name`, as a generated schema carries it, is not its result column's name"
+    (let [query (lib.query.test-spec/test-query
+                 metadata-provider-with-measure
+                 {:stages [{:source       {:type :table :id (meta/id :venues)}
+                            :aggregations [{:type :measure :id 1 :name "Revenue"}]}]})]
+      (is (= ["sum"] (map :name (lib/returned-columns query)))))))
+
+(deftest ^:parallel test-query-aggregation-of-earlier-aggregation-test
+  (testing "aggregation can refer to an earlier aggregation of its stage"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source       {:type :table :id (meta/id :venues)}
+                            :aggregations [{:type :operator :operator :count}
+                                           {:type     :operator
+                                            :operator :/
+                                            :args     [{:type :column :name "count"}
+                                                       {:type :literal :value 2}]}]}]})]
+      (is (=? [[:count {}] [:/ {} [:aggregation {} string?] 2]]
+              (lib/aggregations query))))))
+
+(deftest ^:parallel test-query-names-breakouts-test
+  (testing "breakout of type `:breakout` gives its result column its `:name`, and a later stage finds it by that name"
+    (let [created-at {:type :column :name "CREATED_AT"}
+          query      (lib.query.test-spec/test-query
+                      meta/metadata-provider
+                      {:stages [{:source       {:type :table :id (meta/id :orders)}
+                                 :breakouts    [{:type :breakout :name "created_month" :column (assoc created-at :unit :month)}
+                                                {:type :breakout :name "created_year" :column (assoc created-at :unit :year)}]
+                                 :aggregations [{:type :operator :operator :count}]}
+                                {:filters [{:type     :operator
+                                            :operator :>
+                                            :args     [{:type :column :name "count"} {:type :literal :value 1}]}]
+                                 :breakouts [{:type :column :name "created_year"}]}]})]
+      (is (=? [[:field {:name "created_month" :temporal-unit :month} (meta/id :orders :created-at)]
+               [:field {:name "created_year" :temporal-unit :year} (meta/id :orders :created-at)]]
+              (lib/breakouts query 0)))
+      (is (= ["created_month" "created_year" "count"]
+             (map :name (lib/returned-columns query 0))))
+      (is (=? [[:field {} "created_year"]]
+              (lib/breakouts query 1))))))
+
+(def ^:private two-ids-stage
+  {:source {:type :table :id (meta/id :orders)}
+   :fields [{:type :column :name "ID" :field-id (meta/id :orders :id)}
+            {:type            :column
+             :name            "ID"
+             :field-id        (meta/id :products :id)
+             :source-field-id (meta/id :orders :product-id)}]})
+
+(deftest ^:parallel test-query-refuses-ambiguous-column-in-later-stage-test
+  (testing "name of a column only a deduplication suffix tells apart from another one of the previous stage is ambiguous"
+    (doseq [[label mp first-stage]
+            [["after a table query" meta/metadata-provider two-ids-stage]
+             ["on a saved question"
+              (lib.tu/metadata-provider-with-card-from-query
+               meta/metadata-provider 1 (lib.query.test-spec/test-query meta/metadata-provider {:stages [two-ids-stage]}))
+              {:source {:type :card :id 1}}]]
+            column [{:type :column :name "ID"}
+                    {:type :column :name "ID_2"}]]
+      (testing (str label " " (pr-str column))
+        (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Ambiguous column"
+                              (lib.query.test-spec/test-query
+                               mp
+                               {:stages [first-stage
+                                         {:filters [{:type     :operator
+                                                     :operator :>
+                                                     :args     [column {:type :literal :value 1}]}]}]})))))))
+
+(deftest ^:parallel test-query-finds-later-stage-column-by-field-id-test
+  (testing "field ID finds its column of the previous stage although another one shares its name"
+    (is (=? [[:> {} [:field {} "PRODUCTS__via__PRODUCT_ID__ID"] 1]]
+            (lib/filters (lib.query.test-spec/test-query
+                          meta/metadata-provider
+                          {:stages [two-ids-stage
+                                    {:filters [{:type     :operator
+                                                :operator :>
+                                                :args     [{:type :column :field-id (meta/id :products :id)}
+                                                           {:type :literal :value 1}]}]}]})
+                         -1)))))
+
+(deftest ^:parallel test-query-refuses-bucketed-column-of-previous-stage-test
+  (testing "previous stage's column bucketed two ways is ambiguous, whatever unit the spec asks for"
+    (let [created-at {:type :column :name "CREATED_AT"}]
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Ambiguous column"
+                            (lib.query.test-spec/test-query
+                             meta/metadata-provider
+                             {:stages [{:source       {:type :table :id (meta/id :orders)}
+                                        :breakouts    [(assoc created-at :unit :month) (assoc created-at :unit :year)]
+                                        :aggregations [{:type :operator :operator :count}]}
+                                       {:order-bys [(assoc created-at :unit :year)]}]}))))))
+
+(deftest ^:parallel test-query-finds-table-column-among-joinable-ones-test
+  (testing "in a table stage, the table's own column is found, not an implicitly joinable one of the same name"
+    (doseq [column [{:type :column :name "ID"}
+                    {:type :column :name "ID" :field-id (meta/id :orders :id)}]]
+      (is (=? [[:field {} (meta/id :orders :id)]]
+              (lib/fields (lib.query.test-spec/test-query
+                           meta/metadata-provider
+                           {:stages [{:source {:type :table :id (meta/id :orders)}
+                                      :fields [column]}]})))))))

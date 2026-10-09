@@ -1,14 +1,19 @@
-import { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import {
+  isNamedBreakout,
+  isUnaryOperator,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 
 import type { SchemaColumn } from "../data-schema";
 
 import type {
+  AggregationResultColumnName,
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
+  FilterForOperator,
   FilterLiteralValue,
   FilterOperator,
-  MetabaseDimensionFilterForOperator,
-  OrderByDirection,
+  MetabaseOrderByDirection,
+  NamedBreakout,
   UnaryFilterOperatorForDimension,
   ValueFilterOperatorForDimension,
 } from "./types";
@@ -26,7 +31,7 @@ export function filter<
   dimension: TDimension,
   operator: TOperator,
   value: unknown,
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter<
   const TDimension,
@@ -35,7 +40,7 @@ export function filter<
   dimension: TDimension,
   operator: TOperator,
   values: readonly [unknown, unknown],
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter<
   const TDimension,
@@ -43,13 +48,13 @@ export function filter<
 >(
   dimension: TDimension,
   operator: TOperator,
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter(
   dimension: unknown,
   operator: FilterOperator,
   value?: unknown,
-): MetabaseDimensionFilterForOperator<unknown, FilterOperator> {
+): FilterForOperator<unknown, FilterOperator> {
   if (operator === "between") {
     // The `between` overload takes a `[min, max]` tuple, but the implementation
     // signature shared by all overloads widens `value` to `unknown`.
@@ -77,6 +82,14 @@ export function breakout<const TDimension extends object>(
   dimension: TDimension,
 ): TDimension;
 
+export function breakout<
+  const TDimension extends object,
+  const TName extends string,
+>(
+  dimension: TDimension,
+  options: BreakoutOptionsArgument<TDimension> & { name: TName },
+): NamedBreakout<TDimension & BreakoutOptionsArgument<TDimension>, TName>;
+
 export function breakout<const TDimension extends object>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
@@ -84,42 +97,54 @@ export function breakout<const TDimension extends object>(
 
 export function breakout<TDimension extends object>(
   dimension: TDimension,
-  options?: BreakoutOptionsArgument<TDimension>,
+  options?: BreakoutOptionsArgument<TDimension> & { name?: string },
 ) {
-  return {
+  const column = {
     ...dimension,
     ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
     ...(options?.binning !== undefined
       ? { binning: options.binning }
       : undefined),
   };
+
+  return options?.name !== undefined
+    ? { type: "breakout", name: options.name, column }
+    : column;
 }
+
+export function orderBy<const TName extends string>(
+  breakout: NamedBreakout<unknown, TName>,
+  direction?: MetabaseOrderByDirection,
+): { type: "column"; name: TName; direction?: MetabaseOrderByDirection };
 
 export function orderBy<
   TAggregation extends { columns?: readonly SchemaColumn[] },
 >(
   aggregation: TAggregation,
-  direction?: OrderByDirection,
-): SchemaColumn & { type: "column"; direction?: OrderByDirection };
+  direction?: MetabaseOrderByDirection,
+): {
+  type: "column";
+  name: AggregationResultColumnName<TAggregation>;
+  direction?: MetabaseOrderByDirection;
+};
 
 export function orderBy<const TDimension>(
   dimension: TDimension,
-  direction?: OrderByDirection,
-): TDimension & { direction?: OrderByDirection };
-
-export function orderBy<const TDimension>(
-  dimension: TDimension,
-  direction: OrderByDirection | undefined,
-  options: BreakoutOptionsArgument<TDimension>,
-): TDimension & {
-  direction?: OrderByDirection;
-} & BreakoutOptionsArgument<TDimension>;
+  direction?: MetabaseOrderByDirection,
+): TDimension & { direction?: MetabaseOrderByDirection };
 
 export function orderBy<TDimension>(
   dimension: TDimension,
-  direction?: OrderByDirection,
-  options?: BreakoutOptionsArgument<TDimension>,
+  direction?: MetabaseOrderByDirection,
 ) {
+  if (isNamedBreakout(dimension)) {
+    return {
+      type: "column",
+      name: dimension.name,
+      ...(direction ? { direction } : undefined),
+    };
+  }
+
   const aggregationColumn = getAggregationResultColumn(dimension);
 
   if (aggregationColumn) {
@@ -139,10 +164,6 @@ export function orderBy<TDimension>(
   return {
     ...orderableDimension,
     ...(direction ? { direction } : undefined),
-    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
-    ...(options?.binning !== undefined
-      ? { binning: options.binning }
-      : undefined),
   };
 }
 

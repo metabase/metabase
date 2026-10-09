@@ -66,8 +66,17 @@
    ::test-temporal-bucket-spec
    ::test-binning-bucket-spec])
 
+(mr/def ::test-breakout-with-name-spec
+  [:map {:closed true}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :breakout]]
+   [:name string?]
+   [:column [:ref ::test-column-with-binning-spec]]])
+
 (mr/def ::test-breakout-spec
-  [:ref ::test-column-with-binning-spec])
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::test-column-with-binning-spec]]
+   [:breakout [:ref ::test-breakout-with-name-spec]]])
 
 (mr/def ::test-order-by-spec
   [:merge
@@ -139,10 +148,18 @@
    [:left [:ref ::test-join-source-spec]]
    [:right [:ref ::test-join-source-spec]]])
 
+(mr/def ::test-named-aggregation-spec
+  [:map {:closed true}
+   [:name string?]
+   [:value [:or
+            [:ref ::test-expression-spec]
+            [:ref ::test-measure-spec]
+            [:ref ::test-metric-spec]]]])
+
 (mr/def ::test-aggregation-spec
   [:or
    [:ref ::test-expression-spec]
-   [:ref ::test-named-expression-spec]
+   [:ref ::test-named-aggregation-spec]
    [:ref ::test-measure-spec]
    [:ref ::test-metric-spec]])
 

@@ -9,6 +9,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -472,3 +473,44 @@
             [2.0 0 36791.99]
             [3.0 0 454525.88]]
            (mt/formatted-rows [1.0 int 2.0] (qp/process-query query))))))
+
+(deftest ^:parallel named-breakouts-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (testing "breakouts named with `:name` come back under those names, and a later stage reads them by name"
+      (let [mp         (mt/metadata-provider)
+            created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            named      (fn [column column-name]
+                         (lib.options/update-options (lib/ref column) assoc :name column-name))
+            query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/breakout (named (lib/with-temporal-bucket created-at :month) "created_month"))
+                           (lib/breakout (named (lib/with-temporal-bucket created-at :year) "created_year"))
+                           (lib/aggregate (lib/count))
+                           lib/append-stage)
+            by-name    (fn [column-name]
+                         (first (filter #(= column-name (:name %)) (lib/visible-columns query))))
+            query      (-> query
+                           (lib/breakout (by-name "created_year"))
+                           (lib/aggregate (lib/sum (by-name "count"))))
+            unnamed    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/breakout (lib/with-temporal-bucket created-at :year))
+                           (lib/aggregate (lib/count)))]
+        (is (= ["created_year" "sum"]
+               (map :name (mt/cols (qp/process-query query)))))
+        (testing "the yearly totals equal those of the same query without names"
+          (is (= (mt/formatted-rows [str int] (qp/process-query unnamed))
+                 (mt/formatted-rows [str int] (qp/process-query query)))))))))
+
+(deftest ^:parallel named-implicitly-joined-breakouts-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :left-join)
+    (testing "breakouts on implicitly joined fields of the same name come back under their names"
+      (let [mp        (mt/metadata-provider)
+            joined-id (fn [table fk]
+                        (assoc (lib.metadata/field mp (mt/id table :id)) :fk-field-id (mt/id :checkins fk)))
+            named     (fn [column column-name]
+                        (lib.options/update-options (lib/ref column) assoc :name column-name))
+            query     (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                          (lib/breakout (named (joined-id :users :user_id) "user_id"))
+                          (lib/breakout (named (joined-id :venues :venue_id) "venue_id"))
+                          (lib/aggregate (lib/count)))]
+        (is (= ["user_id" "venue_id" "count"]
+               (map :name (mt/cols (qp/process-query query)))))))))

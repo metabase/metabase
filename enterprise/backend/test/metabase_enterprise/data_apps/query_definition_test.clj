@@ -69,3 +69,17 @@
                  (assoc-in query-definition [:stages 0 :aggregations]
                            [{:name "count" :value {:type :operator :operator :count :args []}}])]]
     (is (not (mr/validate ::query-definition/query-definition query)))))
+
+(deftest ^:parallel named-saved-aggregation-test
+  (testing "measure or metric named with `aggregations.measure` / `aggregations.metric`"
+    (doseq [saved [{:type :measure :id 1} {:type :metric :id 1}]]
+      (is (nil? (mr/explain ::query-definition/query-definition
+                            (assoc-in query-definition [:stages 0 :aggregations]
+                                      [{:name "revenue" :value saved}])))))))
+
+(deftest ^:parallel named-breakout-test
+  (testing "breakout named with `breakout(field, { name })`"
+    (is (nil? (mr/explain ::query-definition/query-definition
+                          (assoc-in query-definition [:stages 0 :breakouts]
+                                    [{:type :breakout :name "created_month"
+                                      :column {:type :column :name "DATE" :unit :month}}]))))))
