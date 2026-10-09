@@ -168,11 +168,14 @@ type SavedAggregation<TType extends "measure" | "metric"> = {
 const namedSavedAggregation = <TAggregation, TName extends string>(
   aggregation: TAggregation & { columns?: readonly SchemaColumn[] },
   name: TName,
-): NamedSavedAggregation<TAggregation, TName> => ({
-  name,
-  value: aggregation,
-  columns: [{ ...aggregation.columns?.[0], name }],
-});
+): NamedSavedAggregation<TAggregation, TName> =>
+  // The column type is the wrapped aggregation's first column with the new
+  // name, a conditional type TS can't check the spread against.
+  ({
+    name,
+    value: aggregation,
+    columns: [{ ...aggregation.columns?.[0], name }],
+  }) as unknown as NamedSavedAggregation<TAggregation, TName>;
 
 export function measure<const TMeasure extends SavedAggregation<"measure">>(
   measure: TMeasure,

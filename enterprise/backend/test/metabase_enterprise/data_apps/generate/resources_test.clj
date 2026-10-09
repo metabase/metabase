@@ -534,7 +534,7 @@
 
 (deftest refuses-aggregations-sharing-column-name-test
   (testing "aggregations named alike would be read as one by a later stage or a result row, so the author names them"
-    (is (=? {:queries [{:error "Aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Give the aggregations unique names."}]}
+    (is (=? {:queries [{:error "Aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."}]}
             (generate! :crowberto 200
                        {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                                 :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]}]})]})))))
@@ -564,3 +564,11 @@
           (let [{[file] :queries} (generate! :crowberto 200 (body {:name "revenue" :value measure :columns [{:name "revenue"}]}))]
             (is (=? [["measure" {:name "revenue"} some?] ["sum" {} some?]]
                     (get-in (file-entity file) [:dataset_query :stages 0 :aggregation])))))))))
+
+(deftest refuses-order-by-on-shared-column-name-test
+  (testing "order-by naming a column two aggregations share gets the same refusal, not Lib's ambiguity error"
+    (is (=? {:queries [{:error #"Aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\"\..*"}]}
+            (generate! :crowberto 200
+                       {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]
+                                                                :order-bys    [{:type "column" :name "sum"}]}]})]})))))

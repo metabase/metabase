@@ -132,7 +132,8 @@ function validateResultColumnClauses(
   });
 
   input.aggregations?.forEach((aggregation) => {
-    if (isMeasureReference(aggregation) || isMetricReference(aggregation)) {
+    const unwrapped = unwrapNamedAggregation(aggregation);
+    if (isMeasureReference(unwrapped) || isMetricReference(unwrapped)) {
       throw new Error(
         `${label} aggregations cannot use Measures or Metrics, which belong to a table source.`,
       );
@@ -568,7 +569,7 @@ export function validateUniqueAggregationNames(query: Lib.Query) {
 
   if (conflicts.length > 0) {
     throw new Error(
-      `Aggregations need unique column names: ${conflicts.join("; ")}. Give the aggregations unique names.`,
+      `Aggregations need unique column names: ${conflicts.join("; ")}. Name them apart with the \`name\` option of an aggregation helper, or with \`aggregations.measure\` or \`aggregations.metric\` for a measure or metric.`,
     );
   }
 }

@@ -194,13 +194,21 @@ type DimensionAggregation<TDimension> =
   | FieldAggregation<FieldAggregationOperator, TDimension>
   | FieldAggregationSchema<FieldAggregationOperator, TDimension>;
 
+type FirstSchemaColumn<TAggregation> = TAggregation extends {
+  columns?: readonly [infer TColumn, ...unknown[]];
+}
+  ? TColumn
+  : SchemaColumn;
+
 export type NamedSavedAggregation<
   TAggregation = unknown,
   TName extends string = string,
 > = {
   name: TName;
   value: TAggregation;
-  columns: readonly [SchemaColumn & { name: TName }];
+  columns: readonly [
+    Omit<FirstSchemaColumn<TAggregation>, "name"> & { name: TName },
+  ];
 };
 
 type AnyAggregation<TTable = unknown> =

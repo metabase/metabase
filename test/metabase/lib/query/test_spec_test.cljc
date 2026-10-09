@@ -1482,3 +1482,16 @@
                  {:stages [{:source       {:type :table :id (meta/id :venues)}
                             :aggregations [{:type :measure :id 1 :name "Revenue"}]}]})]
       (is (= ["sum"] (map :name (lib/returned-columns query)))))))
+
+(deftest ^:parallel test-query-aggregation-of-earlier-aggregation-test
+  (testing "aggregation can refer to an earlier aggregation of its stage"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source       {:type :table :id (meta/id :venues)}
+                            :aggregations [{:type :operator :operator :count}
+                                           {:type     :operator
+                                            :operator :/
+                                            :args     [{:type :column :name "count"}
+                                                       {:type :literal :value 2}]}]}]})]
+      (is (=? [[:count {}] [:/ {} [:aggregation {} string?] 2]]
+              (lib/aggregations query))))))

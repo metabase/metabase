@@ -169,7 +169,7 @@ function ValidTypeFixtures() {
     }),
   );
 
-  const namedMeasureValue: RowValue | undefined =
+  const namedMeasureValue: number | null | undefined =
     namedMeasureResult.data?.rows[0]?.revenue;
 
   void namedMeasureValue;

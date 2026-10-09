@@ -139,17 +139,23 @@ function resolveQueryFromLoadedMetadata(
   const provider = selectMetadataProviderUnfiltered(state, databaseId);
   const sourceStage = toStageSpec(input);
 
-  const query = Lib.createTestQuery(provider, {
-    // The dynamic clauses run as their own stage rather than merging into the
-    // source stage. Merged, they would apply before the static aggregation on
-    // a table source but after it on the published card — the same app would
-    // return different numbers in the dev preview and in production.
-    stages: dynamicQuery
-      ? [sourceStage, toResultColumnStageSpec(dynamicQuery)]
-      : [sourceStage],
-  } satisfies TestQuerySpec);
+  // The dynamic clauses run as their own stage rather than merging into the
+  // source stage. Merged, they would apply before the static aggregation on
+  // a table source but after it on the published card — the same app would
+  // return different numbers in the dev preview and in production.
+  const dynamicStage = dynamicQuery && toResultColumnStageSpec(dynamicQuery);
 
-  validateUniqueAggregationNames(query);
+  validateUniqueAggregationNames(
+    Lib.createTestQuery(provider, {
+      stages: dynamicStage
+        ? [withoutOrderBys(sourceStage), withoutOrderBys(dynamicStage)]
+        : [withoutOrderBys(sourceStage)],
+    } satisfies TestQuerySpec),
+  );
+
+  const query = Lib.createTestQuery(provider, {
+    stages: dynamicStage ? [sourceStage, dynamicStage] : [sourceStage],
+  } satisfies TestQuerySpec);
 
   const datasetQuery = Lib.toJsQuery(query);
 
@@ -158,6 +164,13 @@ function resolveQueryFromLoadedMetadata(
   // so the query comes back without `:database`, which `/api/dataset` rejects.
   // The source itself carries the id, so set it explicitly.
   return { ...datasetQuery, database: databaseId };
+}
+
+function withoutOrderBys<TStage extends TestStageSpec>({
+  orderBys: _orderBys,
+  ...stage
+}: TStage) {
+  return stage;
 }
 
 function toStageSpec(input: QueryInput): TestStageWithSourceSpec {

@@ -317,7 +317,7 @@
                      (if-let [aggregation (saved-aggregation query saved-spec)]
                        (lib.ref/ref aggregation)
                        (throw (ex-info "No saved aggregation found" {:aggregation-spec saved-spec})))
-                     (->> (lib.aggregation/aggregable-columns query stage-number)
+                     (->> (lib.aggregation/aggregable-columns query stage-number nil)
                           (expression-spec->expression-clause query stage-number aggregation-spec)))]
     (lib.aggregation/aggregate query stage-number
                                (cond-> clause

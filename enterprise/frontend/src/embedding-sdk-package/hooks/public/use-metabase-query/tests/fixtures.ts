@@ -106,7 +106,7 @@ export const TEST_SCHEMA = {
           id: 21,
           tableId: 1,
           name: "Revenue",
-          columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
+          columns: [{ name: "count", displayName: "Count", jsType: "number" }],
         },
       },
     },

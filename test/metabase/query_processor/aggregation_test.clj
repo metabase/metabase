@@ -682,5 +682,5 @@
                                    (:name (lib/aggregation-column query aggregation))))]
         (testing "the case is one where names collide"
           (is (not= column-names (distinct column-names))))
-        (is (= (map (lib/unique-name-generator) column-names)
+        (is (= (map (lib/non-truncating-unique-name-generator) column-names)
                (map :name (mt/cols (qp/process-query query)))))))))

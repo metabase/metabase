@@ -102,23 +102,22 @@
             (tru "Could not serialize {0}." label)))))
 
 (defn- check-unique-aggregation-names
-  "Throws naming the aggregations of `query` whose result column shares its name with another column, since a later
-  stage, or a result row keyed by column name, would read the wrong one."
+  "Throws naming the aggregations of `query` whose result column shares its name with another column."
   [query]
   (let [columns   (concat (for [breakout (lib/breakouts query)]
-                            {:name         (:name (lib/breakout-column query breakout))
-                             :display-name (:display-name (lib/display-info query breakout))})
+                            {:name   (:name (lib/breakout-column query breakout))
+                             :clause breakout})
                           (for [aggregation (lib/aggregations query)]
                             {:name         (:name (lib/aggregation-column query aggregation))
-                             :display-name (:display-name (lib/display-info query aggregation))
+                             :clause       aggregation
                              :aggregation? true}))
         conflicts (for [[column-name same-name] (group-by :name columns)
                         :when (and (> (count same-name) 1) (some :aggregation? same-name))]
                     (tru "{0} share the column name \"{1}\""
-                         (str/join ", " (map :display-name same-name))
+                         (str/join ", " (map #(lib/display-name query (:clause %)) same-name))
                          column-name))]
     (when (seq conflicts)
-      (fail (tru "Aggregations need unique column names: {0}. Give the aggregations unique names."
+      (fail (tru "Aggregations need unique column names: {0}. Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
                  (str/join "; " conflicts))))))
 
 (mu/defn- build-query :- ::lib.schema/query
@@ -127,10 +126,11 @@
   (let [table (data-apps.db/table table-id)]
     (when-not table
       (fail (tru "Table {0} does not exist." (str table-id))))
-    (let [query (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)]
+    (let [mp    (lib-be/application-database-metadata-provider (:db_id table))
+          _     (check-unique-aggregation-names (lib/test-query mp (update-in query-definition [:stages 0] dissoc :order-bys)))
+          query (lib/test-query mp query-definition)]
       (when-not (mr/validate ::lib.schema/query query)
         (fail (tru "The definition does not build a valid query.")))
-      (check-unique-aggregation-names query)
       (doseq [read-id (sort (into (:table (lib/all-referenced-entity-ids-recursive query))
                                   (keep :table-id)
                                   (lib/returned-columns query -1 query {:include-remaps? true})))]

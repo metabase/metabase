@@ -673,7 +673,7 @@ describe("resolveDatasetQuery aggregation column names", () => {
         aggregations: [count(), distinct(orders.fields.status)],
       }),
     ).rejects.toThrow(
-      'Aggregations need unique column names: Count, Distinct values of Status share the column name "count". Give the aggregations unique names.',
+      'Aggregations need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
     );
   });
 
@@ -735,6 +735,17 @@ describe("resolveDatasetQuery aggregation column names", () => {
       ["measure", expect.objectContaining({ name: "revenue" }), 21],
       ["count", expect.anything()],
     ]);
+  });
+
+  it("refuses an orderBy on a column two aggregations share with the same message", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count(), distinct(orders.fields.status)],
+        breakouts: [breakout(orders.fields.createdAt, { unit: "month" })],
+        orderBys: [{ type: "column", name: "count" }],
+      }),
+    ).rejects.toThrow('share the column name "count"');
   });
 
   it("refuses dynamic aggregations that share a column name", async () => {

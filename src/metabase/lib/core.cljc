@@ -547,9 +547,8 @@
    (lib.aggregation/aggregation-ref a-query stage-number agg-index)))
 
 (mu/defn aggregation-column :- ::lib.metadata.calculation/column-metadata-with-source
-  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, as [[aggregations-metadata]]
-  does for every aggregation of the stage. Its `:name` is the name the result column gets before the stage
-  deduplicates its column names: two `sum` aggregations come back from the query processor as `sum` and `sum_2`.
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, named before the stage
+  deduplicates its column names.
 
   **Code Health:** Healthy."
   ([a-query            :- ::lib.schema/query
