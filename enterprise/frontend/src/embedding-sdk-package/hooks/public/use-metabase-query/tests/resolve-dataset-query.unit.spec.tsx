@@ -673,7 +673,7 @@ describe("resolveDatasetQuery aggregation column names", () => {
         aggregations: [count(), distinct(orders.fields.status)],
       }),
     ).rejects.toThrow(
-      'Aggregations need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
+      'Aggregations and named breakouts need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
     );
   });
 
@@ -746,6 +746,52 @@ describe("resolveDatasetQuery aggregation column names", () => {
         orderBys: [{ type: "column", name: "count" }],
       }),
     ).rejects.toThrow('share the column name "count"');
+  });
+
+  it("refuses named breakouts that share a column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count()],
+        breakouts: [
+          {
+            type: "breakout",
+            name: "period",
+            column: { ...orders.fields.createdAt, unit: "month" },
+          },
+          {
+            type: "breakout",
+            name: "period",
+            column: { ...orders.fields.createdAt, unit: "year" },
+          },
+        ],
+      }),
+    ).rejects.toThrow('share the column name "period"');
+  });
+
+  it("refuses a named breakout that shares an aggregation's column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count()],
+        breakouts: [
+          { type: "breakout", name: "count", column: orders.fields.status },
+        ],
+      }),
+    ).rejects.toThrow('share the column name "count"');
+  });
+
+  it("accepts a field broken out twice without names", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [count()],
+      breakouts: [
+        breakout(orders.fields.createdAt, { unit: "month" }),
+        breakout(orders.fields.createdAt, { unit: "year" }),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].breakout).toHaveLength(2);
   });
 
   it("refuses dynamic aggregations that share a column name", async () => {

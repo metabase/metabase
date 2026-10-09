@@ -157,9 +157,14 @@
    stage-number        :- :int
    columns             :- [:sequential ::lib.schema.metadata/column]
    breakout-spec       :- ::lib.schema.test-spec/test-breakout-spec]
-  (->> (find-column query stage-number columns breakout-spec)
-       (apply-binning query stage-number breakout-spec)
-       (lib.breakout/breakout query stage-number)))
+  (let [named?      (= :breakout (keyword (:type breakout-spec)))
+        column-spec (if named? (:column breakout-spec) breakout-spec)
+        column      (->> (find-column query stage-number columns column-spec)
+                         (apply-binning query stage-number column-spec))]
+    (lib.breakout/breakout query stage-number
+                           (cond-> column
+                             named? (-> lib.ref/ref
+                                        (lib.options/update-options assoc :name (:name breakout-spec)))))))
 
 (mu/defn- append-breakouts :- ::lib.schema/query
   [query          :- ::lib.schema/query

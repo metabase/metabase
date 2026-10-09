@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
@@ -837,3 +838,27 @@
                               (= :source/table-defaults (:lib/source %)))
                         (lib/breakoutable-columns query))]
       (is (= 1 (count cols))))))
+
+(deftest ^:parallel named-breakout-column-name-test
+  (testing "breakout ref with `:name` gives its result column that name, as an aggregation's `:name` does"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          named      (fn [column column-name]
+                       (lib.options/update-options (lib/ref column) assoc :name column-name))
+          query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/breakout (named (lib/with-temporal-bucket created-at :month) "created_month"))
+                         (lib/breakout (named (lib/with-temporal-bucket created-at :year) "created_year"))
+                         (lib/aggregate (lib/count)))]
+      (is (= ["created_month" "created_year" "count"]
+             (map :name (lib/returned-columns query))))
+      (testing "next stage sees the columns by those names"
+        (is (= ["created_month" "created_year" "count"]
+               (map :name (lib/visible-columns (lib/append-stage query)))))))))
+
+(deftest ^:parallel unnamed-breakout-column-name-test
+  (testing "breakout ref without `:name` keeps the field's name, deduplicated"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/breakout (lib/with-temporal-bucket created-at :year)))]
+      (is (= ["CREATED_AT" "CREATED_AT_2"]
+             (map :name (lib/returned-columns query)))))))

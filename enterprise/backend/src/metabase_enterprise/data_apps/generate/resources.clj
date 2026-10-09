@@ -101,23 +101,26 @@
             (tru "Could not serialize {0}: {1}" label cause)
             (tru "Could not serialize {0}." label)))))
 
-(defn- check-unique-aggregation-names
-  "Throws naming the aggregations of `query` whose result column shares its name with another column."
+(defn- check-unique-column-names
+  "Throws naming the aggregations and named breakouts of `query` whose result column shares its name with another
+  column."
   [query]
-  (let [columns   (concat (for [breakout (lib/breakouts query)]
-                            {:name   (:name (lib/breakout-column query breakout))
-                             :clause breakout})
+  (let [columns   (concat (for [breakout (lib/breakouts query)
+                                :let [breakout-name (:name (lib/options breakout))]]
+                            {:name   (or breakout-name (:name (lib/breakout-column query breakout)))
+                             :clause breakout
+                             :named? (some? breakout-name)})
                           (for [aggregation (lib/aggregations query)]
                             {:name         (:name (lib/aggregation-column query aggregation))
                              :clause       aggregation
                              :aggregation? true}))
         conflicts (for [[column-name same-name] (group-by :name columns)
-                        :when (and (> (count same-name) 1) (some :aggregation? same-name))]
+                        :when (and (> (count same-name) 1) (some (some-fn :aggregation? :named?) same-name))]
                     (tru "{0} share the column name \"{1}\""
                          (str/join ", " (map #(lib/display-name query (:clause %)) same-name))
                          column-name))]
     (when (seq conflicts)
-      (fail (tru "Aggregations need unique column names: {0}. Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
+      (fail (tru "Aggregations and named breakouts need unique column names: {0}. Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
                  (str/join "; " conflicts))))))
 
 (mu/defn- build-query :- ::lib.schema/query
@@ -127,7 +130,7 @@
     (when-not table
       (fail (tru "Table {0} does not exist." (str table-id))))
     (let [mp    (lib-be/application-database-metadata-provider (:db_id table))
-          _     (check-unique-aggregation-names (lib/test-query mp (update-in query-definition [:stages 0] dissoc :order-bys)))
+          _     (check-unique-column-names (lib/test-query mp (update-in query-definition [:stages 0] dissoc :order-bys)))
           query (lib/test-query mp query-definition)]
       (when-not (mr/validate ::lib.schema/query query)
         (fail (tru "The definition does not build a valid query.")))
