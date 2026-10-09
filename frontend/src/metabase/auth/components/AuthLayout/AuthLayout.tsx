@@ -4,9 +4,7 @@ import { LighthouseIllustration } from "metabase/common/components/LighthouseIll
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { Box, Flex, rem } from "metabase/ui";
-
-import S from "./AuthLayout.module.css";
+import { Box, Card, Stack } from "metabase/ui";
 
 interface AuthLayoutProps {
   children?: ReactNode;
@@ -28,37 +26,39 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
         ) : (
           <Box
             data-testid="login-page-illustration"
-            className={S.illustration}
             pos="absolute"
             top={0}
             left={0}
             w="100%"
             h="100%"
+            bgsz="100% auto"
+            bgr="no-repeat"
+            bgp="right bottom"
             style={{ backgroundImage: `url("${loginPageIllustration.src}")` }}
           />
         ))}
-      <Flex
-        direction="column"
+      <Stack
+        gap={0}
         justify="center"
         align="center"
         pos="relative"
         pt="xl"
         px="lg"
-        pb={rem(48)}
+        pb="3rem"
         mih="100vh"
       >
         <LogoIcon height={65} />
-        <Box
-          className={S.card}
-          w={{ base: "100%", sm: rem(494) }}
+        <Card
+          w={{ base: "100%", sm: "30.875rem" }}
           mt="xl"
           py="xxxl"
-          px={{ base: "xl", sm: rem(56) }}
+          px={{ base: "xl", sm: "3.5rem" }}
           bg="background_page-primary"
+          shadow="sm"
         >
           {children}
-        </Box>
-      </Flex>
+        </Card>
+      </Stack>
     </Box>
   );
 };
