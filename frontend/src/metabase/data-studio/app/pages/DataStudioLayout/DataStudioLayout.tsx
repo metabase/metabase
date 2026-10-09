@@ -7,7 +7,7 @@ import {
   canAccessDataModel as canAccessDataModelSelector,
   useUserKeyValue,
 } from "metabase/current-user";
-import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
+import { useDataStudioSettings } from "metabase/data-studio/settings/hooks/use-data-studio-settings";
 import {
   AreaLayout,
   AreaTab,

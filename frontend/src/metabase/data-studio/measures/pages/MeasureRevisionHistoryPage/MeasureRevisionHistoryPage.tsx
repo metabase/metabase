@@ -6,9 +6,9 @@ import { Stack } from "metabase/ui";
 import type { Measure } from "metabase-types/api";
 
 import { MeasureHeader } from "../../components/MeasureHeader";
-import { MeasureRevisionHistory } from "../../components/MeasureRevisionHistory";
 import type { MeasureTabUrls } from "../../types";
 
+import { MeasureRevisionHistory } from "./MeasureRevisionHistory";
 import S from "./MeasureRevisionHistoryPage.module.css";
 
 type MeasureRevisionHistoryPageProps = {

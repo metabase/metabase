@@ -3,7 +3,7 @@ import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
-import { useDataModelMeasurePage } from "../../hooks";
+import { useDataModelMeasurePage } from "../../hooks/use-data-model-measure-page";
 import { MeasureDetailPage } from "../MeasureDetailPage";
 
 type DataModelMeasureDetailPageParams = {

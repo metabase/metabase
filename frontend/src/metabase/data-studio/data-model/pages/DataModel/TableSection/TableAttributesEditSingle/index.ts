@@ -1,0 +1,1 @@
+export { TableAttributesEditSingle } from "./TableAttributesEditSingle";

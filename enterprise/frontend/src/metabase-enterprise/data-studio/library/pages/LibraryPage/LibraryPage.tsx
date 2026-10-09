@@ -5,13 +5,11 @@ import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import {
-  LibraryTreePage,
-  useErrorHandling,
-} from "metabase/data-studio/common/components/LibraryTreePage";
+import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
+import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
+import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
 import type { CollectionId } from "metabase-types/api";
 
 import { ActionCell } from "./ActionCell";

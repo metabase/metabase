@@ -27,9 +27,8 @@ import {
 } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { LibraryBulkActions } from "../LibraryBulkActions";
-
-import { useLibraryTreeTableInstance } from "./use-library-tree-table-instance";
+import { LibraryBulkActions } from "./LibraryBulkActions";
+import { useLibraryTreeTableInstance } from "./hooks";
 
 type LibraryTreePageProps = {
   title: string;

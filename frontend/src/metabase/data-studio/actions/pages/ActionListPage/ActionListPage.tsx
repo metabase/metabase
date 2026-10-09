@@ -3,10 +3,8 @@ import { t } from "ttag";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import {
-  LibraryTreePage,
-  useErrorHandling,
-} from "metabase/data-studio/common/components/LibraryTreePage";
+import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
+import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   filterTreeByName,

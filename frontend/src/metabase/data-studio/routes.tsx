@@ -65,25 +65,25 @@ const gitSyncSectionLayout = () =>
   ).then(({ GitSyncSectionLayout }) => ({ Component: GitSyncSectionLayout }));
 
 const dependenciesUpsellPage = () =>
-  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
-    ({ DependenciesUpsellPage }) => ({
-      Component: DependenciesUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/DependenciesUpsellPage"
+  ).then(({ DependenciesUpsellPage }) => ({
+    Component: DependenciesUpsellPage,
+  }));
 
 const libraryUpsellPage = () =>
-  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
-    ({ LibraryUpsellPage }) => ({
-      Component: LibraryUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/LibraryUpsellPage"
+  ).then(({ LibraryUpsellPage }) => ({
+    Component: LibraryUpsellPage,
+  }));
 
 const schemaViewerUpsellPage = () =>
-  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
-    ({ SchemaViewerUpsellPage }) => ({
-      Component: SchemaViewerUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/SchemaViewerUpsellPage"
+  ).then(({ SchemaViewerUpsellPage }) => ({
+    Component: SchemaViewerUpsellPage,
+  }));
 
 export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (
