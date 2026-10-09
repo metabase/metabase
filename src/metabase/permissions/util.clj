@@ -351,6 +351,15 @@
   ;; ee version becomes available
   false)
 
+(defenterprise row-restricted-by-routing?
+  "Whether database routing sends the current user from router `db-or-id` to a Destination Database. In OSS this is
+  always false. The EE implementation ignores feature availability, so a restriction never disappears just because a
+  license check is momentarily unavailable. May throw when the user cannot be routed, which callers should treat as a
+  denial."
+  metabase-enterprise.database-routing.common
+  [_db-or-id]
+  false)
+
 (defn sandboxed-or-impersonated-user?
   "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
   false. Will throw an error if [[api/*current-user-id*]] is not bound."
