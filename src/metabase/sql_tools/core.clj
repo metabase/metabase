@@ -236,3 +236,24 @@
   "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
   [driver sql stmt-type]
   (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
+
+(mu/defn read-only-select? :- :boolean
+  "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, that neither writes nor locks
+  anywhere in its tree: no `SELECT ... INTO`, no `FOR UPDATE` or `FOR SHARE`, no locking table hint, no data-modifying
+  CTE body, and no sequence advanced. Comments and a trailing semicolon are allowed. SQL that does not parse in
+  `driver`'s dialect is not read-only, and neither is SQL holding a literal list too large to parse whole."
+  [driver :- :keyword
+   sql    :- :string]
+  (true? (:allowed-stmt-type? (is-single-stmt-of-type? driver sql "read-only"))))
+
+(mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
+  "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
+  The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
+  `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`, `:large-literal-list` and `:unparseable`.
+  For `:statement-word`, `:detail` is the word."
+  [driver :- :keyword
+   sql    :- :string]
+  (let [{:keys [allowed-stmt-type? reason reason-detail]} (is-single-stmt-of-type? driver sql "read-only")]
+    (when-not (true? allowed-stmt-type?)
+      {:reason (keyword (or reason "unparseable"))
+       :detail reason-detail})))
