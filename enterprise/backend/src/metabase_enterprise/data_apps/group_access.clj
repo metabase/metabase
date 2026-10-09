@@ -56,12 +56,24 @@
       {:permissions (group-by (juxt :group_id :db_id :perm_type)
                               (data-apps.db/permissions-for-warnings group-ids database-ids table-ids))})))
 
+(defn- table-details
+  [table-ids]
+  (->> (t2/hydrate (data-apps.db/active-tables (set table-ids)) :db)
+       (map (fn [{:keys [id schema db] table-name :display_name database-id :db_id}]
+              {:id id
+               :name table-name
+               :schema schema
+               :database_id database-id
+               :database_name (:name db)}))
+       (sort-by (juxt :database_name :schema :name))
+       vec))
+
 (defn permission-warnings
   "Missing table access for assigned groups, including access inherited from All Users."
   [{app-id :id table-ids :table_ids}]
   (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))]
     (if (and (seq assigned-ids) (seq table-ids))
-      (let [tables       (data-apps.db/table-details table-ids)
+      (let [tables       (table-details table-ids)
             all-users-id (:id (perms/all-users-group))
             access       (group-table-access (conj (set assigned-ids) all-users-id) tables)]
         (into []
