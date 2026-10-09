@@ -270,7 +270,7 @@ export function FunnelNormal({
               <Box>
                 <Ellipsified>{formatPercent(info.percent)}</Ellipsified>
               </Box>
-              <Box mt="1em" style={{ fontSize: dashboardFontSize }}>
+              <Box mt="1em" fz={dashboardFontSize}>
                 <Ellipsified>{formatMetric(info.value)}</Ellipsified>
               </Box>
             </StepInfo>
@@ -287,7 +287,7 @@ type StepHeadProps = {
 };
 
 const StepHead = ({ fontSize, children }: StepHeadProps) => (
-  <Box ta="right" p="0.5em" miw={0} style={{ fontSize }}>
+  <Box ta="right" p="0.5em" miw={0} fz={fontSize}>
     {children}
   </Box>
 );
