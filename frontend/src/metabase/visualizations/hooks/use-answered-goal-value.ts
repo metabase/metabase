@@ -54,10 +54,6 @@ export function useAnsweredGoalValue({
   return getAnsweredGoalValue(data, answered, value);
 }
 
-/**
- * Resolves `value` against `answered`, the result of re-running the query for
- * the references `data` can't answer.
- */
 export function getAnsweredGoalValue(
   data: DatasetData,
   answered: GoalDataResolution,

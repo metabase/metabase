@@ -114,7 +114,6 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
 
       expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
       expect(screen.getByText("Jan")).toBeInTheDocument();
-      // the answered goal would stretch the y-axis up to it
       expect(screen.queryByText("250")).not.toBeInTheDocument();
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });

@@ -12,7 +12,6 @@ export type ResolvedGoalData =
   | {
       status: "resolved";
       data: DatasetData;
-      // one per goal value, in order - a value that can't resolve has an error
       results: GoalValueResult[];
     };
 
