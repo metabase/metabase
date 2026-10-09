@@ -190,6 +190,27 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
 
+(defn- pending-callbacks
+  "Return `cbs`, the value of the after-commit callbacks atom, if they are still waiting to run, else nil.
+  Once the transaction has ended the atom holds `::committed` or `::rolled-back`, so read its value through this."
+  [cbs]
+  (when (vector? cbs)
+    cbs))
+
+(defn- inherited-transaction-ended?
+  "Whether this thread still has the bindings of a transaction that has since ended."
+  []
+  (when-let [callbacks *after-commit-callbacks*]
+    (nil? (pending-callbacks @callbacks))))
+
+(defn- live-transaction-depth
+  "Return the depth of the transaction this thread is in.
+  A thread that inherited a transaction which has since ended is not in one, so its depth is 0."
+  []
+  (if (inherited-transaction-ended?)
+    0
+    *transaction-depth*))
+
 ;; Holds an atom set to true when a rollback fails and leaves behind writes that should have been discarded. The atom
 ;; is shared across the transaction tree so that the outermost scope cannot commit those writes, even if an
 ;; intermediate scope catches the rollback error.
@@ -263,7 +284,8 @@
 (defn transaction-state
   "Returns the current per-transaction [[*transaction-state*]] atom, or nil if not in a transaction."
   []
-  *transaction-state*)
+  (when-not (inherited-transaction-ended?)
+    *transaction-state*))
 
 (defn do-before-commit
   "Run `thunk` just before the current outermost transaction commits — while the transaction is still
@@ -271,24 +293,10 @@
   transaction back. Outside a transaction, runs `thunk` immediately. Mirror of [[do-after-commit]] for
   work that must land *inside* the committing transaction."
   [thunk]
-  (if-let [callbacks *before-commit-callbacks*]
+  ;; A thread that outlived its transaction still has the callbacks bound, but they have already run.
+  (if-let [callbacks (when-not (inherited-transaction-ended?) *before-commit-callbacks*)]
     (do (swap! callbacks conj thunk) nil)
     (thunk)))
-
-(defn- pending-callbacks
-  "Return `cbs`, the value of the after-commit callbacks atom, if they are still waiting to run, else nil.
-  Once the transaction has ended the atom holds `::committed` or `::rolled-back`, so read its value through this."
-  [cbs]
-  (when (vector? cbs)
-    cbs))
-
-(defn- live-transaction-depth
-  "Return the depth of the transaction this thread is in.
-  A thread that inherited a transaction which has since ended is not in one, so its depth is 0."
-  []
-  (if (some-> *after-commit-callbacks* deref pending-callbacks)
-    *transaction-depth*
-    0))
 
 (defn- run-after-commit-callback! [thunk]
   ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work

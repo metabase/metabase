@@ -295,16 +295,23 @@
           (is (= [:body :rolled-back]
                  (late-transaction-events outer-rolls-back? #(throw (ex-info "Roll back" {}))))))))))
 
-(deftest in-transaction?-is-false-once-the-transaction-ends-test
-  (doseq [[outer-end rolls-back?] {"committed" false, "rolled back" true}]
-    (testing (str "after the transaction " outer-end)
-      (let [[inside? in-late-fn?] (do-transaction-ending
-                                   nil rolls-back?
-                                   (fn []
-                                     [(mdb.connection/in-transaction?)
-                                      (bound-fn [] (mdb.connection/in-transaction?))]))]
-        (is (= {:inside true, :afterwards false}
-               {:inside inside?, :afterwards (in-late-fn?)}))))))
+(deftest caller-that-outlived-its-transaction-is-outside-it-test
+  (letfn [(transaction-view []
+            {:in-transaction?    (mdb.connection/in-transaction?)
+             :transaction-state? (some? (mdb.connection/transaction-state))
+             :before-commit-ran? (let [ran? (atom false)]
+                                   (mdb.connection/do-before-commit (fn [] (reset! ran? true)))
+                                   @ran?)})]
+    (doseq [[outer-end rolls-back?] {"committed" false, "rolled back" true}]
+      (testing (str "after the transaction " outer-end)
+        (let [[inside view-afterwards] (do-transaction-ending
+                                        nil rolls-back?
+                                        (fn []
+                                          [(transaction-view) (bound-fn [] (transaction-view))]))]
+          (is (= {:inside     {:in-transaction? true, :transaction-state? true, :before-commit-ran? false}
+                  :afterwards {:in-transaction? false, :transaction-state? false, :before-commit-ran? true}}
+                 {:inside     inside
+                  :afterwards (view-afterwards)})))))))
 
 (deftest nested-transaction-rolling-back-after-the-outer-commit-test
   ;; The nested scope opens while there are still callbacks to count, and rolls back after they have run.
