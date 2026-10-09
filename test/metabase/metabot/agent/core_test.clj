@@ -975,11 +975,14 @@
                        :data       (ex-data credit-error)
                        :error-code "provider_error"}}]
              (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6")))))
-    (testing "everyone but an admin gets a generic message rather than the provider's own text"
-      (is (=? [{:error {:error-code "provider_error"
-                        :message    "The AI provider could not complete the request. Please try again."}}]
-              (mt/with-current-user (mt/user->id :rasta)
-                (error-parts "metabase/anthropic/claude-sonnet-4-6")))))
+    (testing "everyone but an admin gets a generic message rather than the provider's own text, and none of the
+              provider's response either"
+      (let [parts (mt/with-current-user (mt/user->id :rasta)
+                    (error-parts "metabase/anthropic/claude-sonnet-4-6"))]
+        (is (=? [{:error {:error-code "provider_error"
+                          :message    "The AI provider could not complete the request. Please try again."}}]
+                parts))
+        (is (not (contains? (:error (first parts)) :data)))))
     (testing "a managed selection that fell back to the customer's own key explains the failure as theirs"
       (mt/with-premium-features #{:ai-controls}
         (llm.health/record-failure! "metabase" "service unavailable" true)

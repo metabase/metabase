@@ -575,7 +575,7 @@
                           "provider_error" (tru "The AI provider could not complete the request. Please try again.")
                           "prompt_blocked" (tru "The AI provider declined to answer this message. Try rephrasing it.")
                           nil))]
-    (assoc-in part [:error :message] message)
+    (update part :error #(-> % (assoc :message message) (dissoc :data)))
     part))
 
 (defn- accumulate-usage-xf
