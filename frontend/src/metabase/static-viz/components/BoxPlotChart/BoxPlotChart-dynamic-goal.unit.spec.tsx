@@ -30,7 +30,6 @@ const ROWS = [
 ];
 
 const GOAL_LABEL = "Target";
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 describe("static box plot with a dynamic goal", () => {
   it("draws the goal line at the value answered by the dataset", () => {
@@ -45,15 +44,18 @@ describe("static box plot with a dynamic goal", () => {
     expect(svg).toContain(">250<");
   });
 
-  it("throws for a reference the dataset has not answered", () => {
-    expect(() => toSvg(createSeries())).toThrow(GOAL_ERROR);
-  });
+  it.each([
+    ["has not answered", undefined],
+    ["reports as failed", createMockFailedReferencedEntitiesResults()],
+  ])(
+    "draws the goal line at 0 for a reference the dataset %s",
+    (_name, referencedEntities) => {
+      const svg = toSvg(createSeries(referencedEntities));
 
-  it("throws for a reference whose query failed", () => {
-    expect(() =>
-      toSvg(createSeries(createMockFailedReferencedEntitiesResults())),
-    ).toThrow(GOAL_ERROR);
-  });
+      expect(svg).toContain(GOAL_LABEL);
+      expect(svg).not.toContain(">250<");
+    },
+  );
 });
 
 function createSeries(

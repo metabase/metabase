@@ -7,13 +7,7 @@ import {
   getSegmentsRange,
   getValue,
 } from "metabase/visualizations/visualizations/Gauge/utils";
-import {
-  type GoalData,
-  getGoalSegmentBounds,
-  getUnresolvedGoalMessage,
-  hasUnresolvedGoalValues,
-  resolveGoalSegments,
-} from "metabase/viz-core";
+import { type GoalData, resolveGoalSegments } from "metabase/viz-core";
 import { truncateText } from "metabase/viz-core";
 
 import Gauge from "./Gauge";
@@ -58,10 +52,6 @@ export default function GaugeContainer({
     settings.column_settings &&
     populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
   const goalSegments = settings["gauge.segments"];
-  if (hasUnresolvedGoalValues(data, getGoalSegmentBounds(goalSegments))) {
-    throw new Error(getUnresolvedGoalMessage("segments"));
-  }
-
   const segments = resolveGoalSegments(data, goalSegments, getColor)
     .map(fixSwappedMinMax)
     .sort(gaugeSorter);

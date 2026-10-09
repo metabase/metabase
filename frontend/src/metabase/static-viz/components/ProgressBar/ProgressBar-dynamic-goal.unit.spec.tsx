@@ -18,7 +18,6 @@ import {
 import { StaticVisualization } from "../StaticVisualization";
 
 const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 const SETTINGS: VisualizationSettings = {
   "progress.goal": { type: "card", id: 9, column: "goal" },
 };
@@ -69,15 +68,13 @@ describe("static progress chart with a dynamic goal", () => {
     expect(root).toHaveTextContent("Goal 250");
   });
 
-  it("throws for a reference the dataset has not answered", () => {
-    expect(() => setup()).toThrow(GOAL_ERROR);
-  });
-
-  it("throws for a reference whose query failed", () => {
-    expect(() =>
-      setup({
-        referencedEntities: createMockFailedReferencedEntitiesResults(),
-      }),
-    ).toThrow(GOAL_ERROR);
-  });
+  it.each([
+    ["has not answered", undefined],
+    ["reports as failed", createMockFailedReferencedEntitiesResults()],
+  ])(
+    "measures progress against a goal of 0 for a reference the dataset %s",
+    (_name, referencedEntities) => {
+      expect(setup({ referencedEntities })).toHaveTextContent("Goal 0");
+    },
+  );
 });

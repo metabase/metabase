@@ -157,76 +157,50 @@ describe("GaugeContainer", () => {
   });
 
   describe("unresolvable segments", () => {
-    it("throws for a reference nothing has answered yet", () => {
-      expect(() =>
-        setup({
-          segments: [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "goal" },
-              color: GREEN,
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
+    const ANSWERED_WITHOUT_GOAL: GoalData = {
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: { status: "completed", data: { cols: [GOAL_COL], rows: [[250]] } },
+        },
+      },
+    };
 
-    it("throws for a reference whose query failed", () => {
-      expect(() =>
-        setup({
-          data: {
-            ...DATA,
-            referenced_entities: createMockFailedReferencedEntitiesResults(),
-          },
-          segments: [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "goal" },
-              color: GREEN,
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
+    it.each<[string, GoalData, GoalSegment["max"]]>([
+      [
+        "a reference nothing has answered yet",
+        DATA,
+        { type: "card", id: 9, column: "goal" },
+      ],
+      [
+        "a reference whose query failed",
+        {
+          ...DATA,
+          referenced_entities: createMockFailedReferencedEntitiesResults(),
+        },
+        { type: "card", id: 9, column: "goal" },
+      ],
+      [
+        "a referenced column that does not exist",
+        ANSWERED_WITHOUT_GOAL,
+        { type: "card", id: 9, column: "missing" },
+      ],
+      ["a self-column reference that does not exist", DATA, "missing"],
+      [
+        "a self-column reference that is not a number",
+        { cols: [COUNT_COL, GOAL_COL], rows: [[10, null]] },
+        "goal",
+      ],
+    ])("drops a segment bound to %s", (_name, data, max) => {
+      const root = setup({
+        data,
+        segments: [
+          { min: 0, max: 50, color: GREEN },
+          { min: 50, max, color: RED },
+        ],
+      });
 
-    it("throws for a referenced column that does not exist", () => {
-      expect(() =>
-        setup({
-          data: {
-            ...DATA,
-            referenced_entities: {
-              card: {
-                9: {
-                  status: "completed",
-                  data: { cols: [GOAL_COL], rows: [[250]] },
-                },
-              },
-            },
-          },
-          segments: [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "missing" },
-              color: GREEN,
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("throws for a self-column reference that does not exist", () => {
-      expect(() =>
-        setup({ segments: [{ min: 0, max: "missing", color: GREEN }] }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("throws for a self-column reference that is not a number", () => {
-      expect(() =>
-        setup({
-          data: { cols: [COUNT_COL, GOAL_COL], rows: [[10, null]] },
-          segments: [{ min: 0, max: "goal", color: GREEN }],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+      expect(getSegmentFills(root)).toEqual([GREEN]);
     });
   });
 });

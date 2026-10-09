@@ -34,7 +34,6 @@ const ROWS = [
 const MAX_COUNT = 30;
 const GOAL = 250;
 const GOAL_LABEL = "Target";
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 const SETTINGS: VisualizationSettings = {
   "graph.dimensions": ["category"],
   "graph.metrics": ["count"],
@@ -119,15 +118,20 @@ describe("static row chart with a dynamic goal", () => {
     expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(barX + barWidth / 2, 0);
   });
 
-  it("throws for a reference the dataset has not answered", () => {
-    expect(() => setup()).toThrow(GOAL_ERROR);
-  });
+  it.each([
+    ["has not answered", undefined],
+    ["reports as failed", createMockFailedReferencedEntitiesResults()],
+  ])(
+    "draws the goal line at 0 for a reference the dataset %s",
+    (_name, referencedEntities) => {
+      const root = setup({ referencedEntities });
+      const [goalLine] = getRowChartSymbols(root, "goal line");
 
-  it("throws for a reference whose query failed", () => {
-    expect(() =>
-      setup({
-        referencedEntities: createMockFailedReferencedEntitiesResults(),
-      }),
-    ).toThrow(GOAL_ERROR);
-  });
+      expect(goalLine).toHaveTextContent(GOAL_LABEL);
+      expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+        getExpectedRowChartGoalX(root, 0, MAX_COUNT),
+        0,
+      );
+    },
+  );
 });
