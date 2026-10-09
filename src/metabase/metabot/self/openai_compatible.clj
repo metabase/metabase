@@ -1,9 +1,9 @@
 (ns metabase.metabot.self.openai-compatible
   "Adapter for any server that implements OpenAI's Chat Completions API with tool calling.
 
-  It is vLLM's adapter under its own name and messages: the same request body, stream translation, timeouts and
-  connect-time checks (see [[vllm/server]]). The connection names its model, so connecting checks that model
-  whether or not the server lists it, and reads the server's `/models` only for a context window."
+  It is vLLM's adapter under its own name and messages: the same request body less its `temperature`, stream
+  translation, timeouts and connect-time checks (see [[vllm/server]]). The connection names its model, so connecting
+  checks that model whether or not the server lists it, and reads the server's `/models` only for a context window."
   (:require
    [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -31,7 +31,10 @@
     :connection-test-timeout #(tru "The server did not answer the connection test within {0}ms. A server this slow to answer a short prompt can''t run Metabot." %)
     :request-timeout         #(tru "The server did not respond within {0}ms. Check that it is not overloaded." %)
     :stopped-responding      #(tru "The server stopped responding after {0}ms. Try again, or use a faster model." %)
-    :interrupted             #(tru "The connection to the server was interrupted before the response finished.")}))
+    :interrupted             #(tru "The connection to the server was interrupted before the response finished.")}
+   ;; a server that fixes the temperature per model rejects any other value: Moonshot takes only 1, and Claude 4.7
+   ;; and later reject anything below 1 through Anthropic's compatibility layer
+   {:temperature? false}))
 
 (def ^:private provider (:provider server))
 

@@ -106,22 +106,42 @@
                (ex-message e)))
         (is (= 400 (:status-code (ex-data e))))))))
 
+(defn- sent-chat-request
+  "The HTTP request that `stream`, an adapter's stream fn, sends for a one-message chat turn on [[credentials]]."
+  [stream]
+  (let [captured (atom nil)]
+    (mt/with-dynamic-fn-redefs [self.core/sse-reducible (fn [_] (reify clojure.lang.IReduceInit
+                                                                  (reduce [_ _rf init] init)))
+                                debug/capture-stream    (fn [r _] r)
+                                http/request            (fn [req] (reset! captured req) {:body nil})]
+      (into [] (stream {:model       "gpt-oss-120b"
+                        :input       [{:role :user :content "hi"}]
+                        :credentials credentials})))
+    @captured))
+
 (deftest chat-request-test
-  (testing "a chat turn goes to the connection's server, with its key and vLLM's request body and timeout"
-    (let [captured (atom nil)]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible (fn [_] (reify clojure.lang.IReduceInit
-                                                                    (reduce [_ _rf init] init)))
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] (reset! captured req) {:body nil})]
-        (into [] (openai-compatible/openai-compatible {:model       "gpt-oss-120b"
-                                                       :input       [{:role :user :content "hi"}]
-                                                       :credentials credentials})))
+  (testing "a chat turn goes to the connection's server, with its key and vLLM's timeout"
+    (let [request (sent-chat-request openai-compatible/openai-compatible)]
       (is (=? {:url            "https://inference.internal/v1/chat/completions"
                :headers        {"Authorization" "Bearer sk-test"}
                :socket-timeout (llm.settings/llm-vllm-request-timeout-ms)}
-              @captured))
-      (is (=? {:model "gpt-oss-120b" :temperature 0.3}
-              (json/decode+kw (:body @captured)))))))
+              request))
+      (is (=? {:model "gpt-oss-120b"}
+              (json/decode+kw (:body request)))))))
+
+(deftest requests-carry-no-temperature-test
+  (testing "a chat turn sends no temperature, where vLLM's sends one"
+    (is (not (contains? (json/decode+kw (:body (sent-chat-request openai-compatible/openai-compatible)))
+                        :temperature)))
+    (is (contains? (json/decode+kw (:body (sent-chat-request vllm/vllm)))
+                   :temperature)))
+  (testing "nor do the two calls of the connect check"
+    (let [requests (atom [])]
+      (connect! no-model-list (fn [request]
+                                (swap! requests conj request)
+                                tool-call))
+      (is (= 2 (count @requests)))
+      (is (not-any? #(contains? % :temperature) @requests)))))
 
 (deftest chat-usage-test
   (testing "a streamed reply counts its usage once, with reasoning tokens the server reports separately as output"

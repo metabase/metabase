@@ -63,18 +63,22 @@
 
 (def ^:private Server
   [:map {:closed true}
-   [:provider adapter/Provider]
-   [:copy     Copy]])
+   [:provider     adapter/Provider]
+   [:copy         Copy]
+   [:temperature? :boolean]])
 
 (mu/defn server :- Server
   "Describe a kind of server the code below talks to.
 
   `spec` builds its adapter descriptor, with an `:auth` that needs a base URL but not a key, and `copy` holds the
-  messages its errors use. vLLM is one kind; [[metabase.metabot.self.openai-compatible]] is another."
-  [spec :- adapter/ProviderSpec
-   copy :- Copy]
-  {:provider (adapter/provider (assoc spec :auth (base-url-auth (:base-url-missing copy))))
-   :copy     copy})
+  messages its errors use. `:temperature?` says whether its requests carry a `temperature` at all. vLLM is one kind;
+  [[metabase.metabot.self.openai-compatible]] is another."
+  [spec                   :- adapter/ProviderSpec
+   copy                   :- Copy
+   {:keys [temperature?]} :- [:map {:closed true} [:temperature? :boolean]]]
+  {:provider     (adapter/provider (assoc spec :auth (base-url-auth (:base-url-missing copy))))
+   :copy         copy
+   :temperature? temperature?})
 
 (def ^:private vllm-server
   (server
@@ -97,7 +101,8 @@
     :connection-test-timeout #(tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot." %)
     :request-timeout         #(tru "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout." %)
     :stopped-responding      #(tru "The vLLM server stopped responding after {0}ms. Raise the vLLM request timeout, or serve a faster model." %)
-    :interrupted             #(tru "The connection to the vLLM server was interrupted before the response finished.")}))
+    :interrupted             #(tru "The connection to the vLLM server was interrupted before the response finished.")}
+   {:temperature? true}))
 
 (def ^:private provider (:provider vllm-server))
 
@@ -235,18 +240,18 @@
   "Run one non-streaming Chat Completions turn against `model` and return the first choice. The
   `finish_reason` is part of the return value because a generation truncated at
   [[adapter/probe-max-tokens]] and a server that will not call tools both produce empty `tool_calls`."
-  [provider req model tool-choice messages]
+  [{:keys [provider temperature?]} req model tool-choice messages]
   (let [res (adapter/request! provider
                               (assoc req
                                      :method  :post
                                      :path    "/chat/completions"
                                      :as      :json
-                                     :body    (json/encode {:model       model
-                                                            :messages    messages
-                                                            :tools       [adapter/probe-tool]
-                                                            :tool_choice tool-choice
-                                                            :temperature 0
-                                                            :max_tokens  adapter/probe-max-tokens}))
+                                     :body    (json/encode (cond-> {:model       model
+                                                                    :messages    messages
+                                                                    :tools       [adapter/probe-tool]
+                                                                    :tool_choice tool-choice
+                                                                    :max_tokens  adapter/probe-max-tokens}
+                                                             temperature? (assoc :temperature 0))))
                               (probe-timeouts))]
     (get-in res [:body :choices 0])))
 
@@ -262,8 +267,8 @@
   `content` as prose and Metabot chats without ever acting.
 
   Returns whether the model emitted reasoning, the only signal anywhere that it is a reasoning model."
-  [{:keys [provider copy]} req model]
-  (let [{:keys [message finish_reason]} (probe-chat! provider req model "auto" adapter/probe-messages)
+  [{:keys [copy] :as server} req model]
+  (let [{:keys [message finish_reason]} (probe-chat! server req model "auto" adapter/probe-messages)
         content    (str (:content message))
         ;; `reasoning` since vLLM 0.26; `reasoning_content` is the deprecated spelling older builds
         ;; and other OpenAI-compatible servers still use.
@@ -309,8 +314,8 @@
 (defn- check-structured-output!
   "Check that guided decoding works. A different failure from [[check-tool-calling!]]: a model whose
   grammar the server cannot compile chats fine but breaks titling and the whole `sql` profile."
-  [{:keys [provider copy]} req model]
-  (let [{:keys [message finish_reason]} (probe-chat! provider req model "required" forced-tool-call-messages)]
+  [{:keys [copy] :as server} req model]
+  (let [{:keys [message finish_reason]} (probe-chat! server req model "required" forced-tool-call-messages)]
     (when (empty? (:tool_calls message))
       (throw (preflight-ex
               (if (= "length" finish_reason)
@@ -597,7 +602,7 @@
   request, and throws without a base URL.
   `:ai-proxy?` is not supported and throws when true.
   Reads the served context window first, through [[served-max-model-len]]'s cache, to size `max_tokens`."
-  [{:keys [provider copy]}              :- Server
+  [{:keys [provider copy temperature?]} :- Server
    {:keys [model credentials] :as opts} :- core/LLMRequestOpts]
   (when (str/blank? model)
     (throw (ex-info ((:model-missing copy))
@@ -606,7 +611,8 @@
   (let [timeout-ms (llm/llm-vllm-request-timeout-ms)]
     (adapter/stream! provider opts
                      {:path             "/chat/completions"
-                      :body             (vllm-request-body opts (served-max-model-len provider opts))
+                      :body             (cond-> (vllm-request-body opts (served-max-model-len provider opts))
+                                          (not temperature?) (dissoc :temperature))
                       :request-options  (inference-timeouts)
                       :wrap-stream      #(adapter/io-guarded % (fn [e] (stream-io-ex copy e timeout-ms)))
                       ;; clj-http raises an `IOException` only when there is no response at all, so the
