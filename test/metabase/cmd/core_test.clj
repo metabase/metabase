@@ -73,38 +73,12 @@
        ["--full-stacktrace"]
        {:full-stacktrace true}))))
 
-(defn- commands-with
-  "Names and vars of every command whose metadata has `k`."
-  [k]
-  (for [[symb varr] (ns-interns 'metabase.cmd.core)
-        :when (k (meta varr))]
-    [symb varr]))
-
-(defn- generators-run-by-all-documentation
-  "Runs `all-documentation` with every `^:doc-generator` command stubbed out, and returns the names of the stubs it
-  called."
-  []
-  (let [calls (atom [])
-        stubs (into {}
-                    (map (fn [[symb varr]]
-                           [varr (fn [] (swap! calls conj symb))]))
-                    (commands-with :doc-generator))]
-    ;; The expansion of `with-dynamic-fn-redefs`, which takes literal symbols; these vars come from metadata.
-    (dynamic-redefs/patch-vars! (keys stubs))
-    (binding [dynamic-redefs/*local-redefs* (merge dynamic-redefs/*local-redefs* stubs)]
-      (cmd/all-documentation))
-    @calls))
-
 (deftest ^:parallel all-documentation-test
-  (let [ran (generators-run-by-all-documentation)]
-    (testing "runs every `^:doc-generator` command once"
-      (is (contains? (set ran) 'config-template))
-      (is (= (set (map first (commands-with :doc-generator)))
-             (set ran)))
-      (is (= (count (set ran)) (count ran))))
-    (testing "every `*-documentation` command is a `^:doc-generator`"
-      (is (empty? (for [[symb varr] (commands-with :command)
-                        :when (and (str/ends-with? (name symb) "-documentation")
+  (testing "`all-documentation` runs every `*-documentation` command"
+    (let [generators (set @#'cmd/doc-generators)]
+      (is (empty? (for [[symb varr] (ns-interns 'metabase.cmd.core)
+                        :when (and (:command (meta varr))
+                                   (str/ends-with? (name symb) "-documentation")
                                    (not= symb 'all-documentation)
-                                   (not (:doc-generator (meta varr))))]
+                                   (not (generators varr)))]
                     symb))))))

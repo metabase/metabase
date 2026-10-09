@@ -71,10 +71,6 @@ scan_project_tests() { # scan_project_tests <function> <dependency-root>
   sed -n "/(defn- $1 /,/^(defn/p" mage/src/mage/project_tests.clj | mage_aliases "$2"
 }
 
-scan_mage_file() { # scan_mage_file <file> <dependency-root>
-  mage_aliases "$2" < "$1"
-}
-
 # Check each scan separately. One scan still finding commands would otherwise conceal that another has
 # stopped matching, which silently drops everything it used to cover.
 require_scan() { # require_scan <what> <result>
@@ -85,7 +81,7 @@ require_scan() { # require_scan <what> <result>
 workflow_checks=$( { scan ee; scan oss; } || true)
 clojure_checks=$(scan_project_tests run-clojure-checks! . || true)
 migration_checks=$(scan_project_tests run-migration-checks! bin/lint-migrations-file || true)
-docs_checks=$(scan_mage_file mage/src/mage/generate_docs.clj . || true)
+docs_checks=$(mage_aliases . < mage/src/mage/generate_docs.clj || true)
 require_scan ".github/" "$workflow_checks"
 require_scan "run-clojure-checks! (mage/src/mage/project_tests.clj)" "$clojure_checks"
 require_scan "run-migration-checks! (mage/src/mage/project_tests.clj)" "$migration_checks"

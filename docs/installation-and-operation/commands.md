@@ -21,6 +21,10 @@ Metabase will print out the help text for available commands.
 
 Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the models each one offers. This is written to a file called `docs/ai/providers.md`.
 
+## `all-documentation`
+
+Runs every documentation command in one process.
+
 ## `api-documentation`
 
 Generate an HTML file and a JSON file for Scalar docs for the Metabase API.

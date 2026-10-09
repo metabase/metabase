@@ -383,7 +383,7 @@
    :task (task! (cursive-resolve-as/do-it))}
 
   generate-docs
-  {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM, at the same time as the other suites."
+  {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
    :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
               ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
               ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
@@ -397,9 +397,7 @@
                          "embedding-sdk"
                          "embedding-eajs"]]]
    :requires [[mage.generate-docs :as generate-docs]]
-   :task (task! (if-let [suite (first (:arguments parsed))]
-                  (generate-docs/run! suite)
-                  (generate-docs/run!)))}
+   :task (task! (generate-docs/run! (first (:arguments parsed))))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"

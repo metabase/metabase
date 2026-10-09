@@ -37,14 +37,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Generate documentation
-        id: generate_docs
         # This reusable workflow always runs from master, so every target branch needs the `generate-docs` task.
-        env:
-          TARGET_BRANCH: ${{ inputs.target_branch }}
-        run: |
-          git checkout "$TARGET_BRANCH"
-          echo "Generating documentation from branch: $TARGET_BRANCH"
-          ./bin/mage generate-docs
+        run: ./bin/mage generate-docs
 
       - name: Check for changes
         id: check_changes

@@ -57,7 +57,7 @@ To regenerate one group of pages, pass its suite name. For example:
 | `embedding-sdk`   | The embedding SDK API reference. It builds the SDK package first, so it's the slowest.         |
 | `embedding-eajs`  | The modular embedding (EAJS) reference                                                         |
 
-The `backend` suite runs all of its generators in one JVM, so it's faster than running each `clojure -M:ee:doc` command separately. It also runs at the same time as the other suites, so their output is mixed together. If any suite fails, the last line of output lists it.
+The `backend` suite runs all of its generators in one JVM, so it's faster than running each `clojure -M:ee:doc` command separately. If any suite fails, the last line of output lists it.
 
 ## Updating API docs
 

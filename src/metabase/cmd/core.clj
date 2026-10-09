@@ -59,13 +59,6 @@
   [iref options]
   (:options (cli/parse-opts options (:arg-spec (meta iref)))))
 
-(defn- load-metabase-namespaces!
-  "Loads every Metabase namespace before a documentation command reads a registry.
-  The command then sees the same settings, MCP tools, and AI providers alone and in `all-documentation`."
-  []
-  (classloader/require 'metabase.cmd.common)
-  ((resolve 'metabase.cmd.common/load-metabase-namespaces!)))
-
 ;; Command implementations
 
 (defn ^:command migrate
@@ -147,10 +140,9 @@
   (println "Language:"        (System/getProperty "user.language"))
   (println "File encoding:"   (System/getProperty "file.encoding")))
 
-(defn ^:command ^:doc-generator api-documentation
+(defn ^:command api-documentation
   "Generate an HTML file and a JSON file for Scalar docs for the Metabase API."
   []
-  (load-metabase-namespaces!)
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
@@ -160,7 +152,7 @@
   (classloader/require 'metabase.api-routes.cmd)
   ((resolve 'metabase.api-routes.cmd/generate-openapi-spec!)))
 
-(defn ^:command ^:doc-generator environment-variables-documentation
+(defn ^:command environment-variables-documentation
   "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
   The command only includes environment variables registered as defsettings.
   For a full list of environment variables, see https://www.metabase.com/docs/latest/configuring-metabase/environment-variables."
@@ -168,47 +160,48 @@
   (classloader/require 'metabase.cmd.env-var-dox)
   ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
 
-(defn ^:command ^:doc-generator config-template
+(defn ^:command config-template
   "Generates a markdown file with some documentation and an example configuration file in YAML. The YAML template includes Metabase settings and their defaults.
    Metabase will save the template as `docs/configuring-metabase/config-template.md`."
   []
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
 
-(defn ^:command ^:doc-generator ai-providers-documentation
+(defn ^:command ai-providers-documentation
   "Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the
   models each one offers. This is written to a file called `docs/ai/providers.md`."
   []
-  (load-metabase-namespaces!)
   (classloader/require 'metabase.cmd.ai-provider-dox)
   ((resolve 'metabase.cmd.ai-provider-dox/generate-dox!)))
 
-(defn ^:command ^:doc-generator mcp-tools-documentation
+(defn ^:command mcp-tools-documentation
   "Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients."
   []
-  (load-metabase-namespaces!)
   (classloader/require 'metabase.cmd.mcp-tools-dox)
   ((resolve 'metabase.cmd.mcp-tools-dox/generate-dox!)))
 
-(defn ^:command ^:doc-generator command-documentation
+(defn ^:command command-documentation
   "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
   `docs/installation-and-operation/commands.md`."
   []
   (classloader/require 'metabase.cmd.command-dox)
   ((resolve 'metabase.cmd.command-dox/generate-dox!)))
 
-(defn- doc-generators
-  "The vars of every `^:doc-generator` command, sorted by name."
-  []
-  (->> (ns-interns 'metabase.cmd.core)
-       (filter (comp :doc-generator meta val))
-       (sort-by key)
-       (map val)))
+(def ^:private doc-generators
+  "The commands that `all-documentation` runs, in order.
+  The two settings generators load every Metabase namespace, so they run last. Each command before them then sees only
+  what its own namespaces load, the same as when it runs alone."
+  [#'mcp-tools-documentation
+   #'ai-providers-documentation
+   #'api-documentation
+   #'command-documentation
+   #'config-template
+   #'environment-variables-documentation])
 
 (defn ^:command all-documentation
   "Runs every documentation command in one process."
   []
-  (doseq [generator (doc-generators)]
+  (doseq [generator doc-generators]
     (generator)))
 
 (defn ^:command driver-methods
