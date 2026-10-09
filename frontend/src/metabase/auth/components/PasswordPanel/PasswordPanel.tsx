@@ -9,7 +9,7 @@ import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { login } from "metabase/redux/auth";
 import { useSetting } from "metabase/settings";
-import { Box, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { LoginData } from "metabase-types/api";
 
 import { getExternalAuthProviders } from "../../selectors";
@@ -79,16 +79,12 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
         hasSessionCookies={hasSessionCookies}
         onSubmit={handleSubmit}
       />
-      <Stack align="center" gap="lg" mt="xl">
-        <Box>
-          <AuthTextLink to="/auth/forgot_password">
-            {t`I seem to have forgotten my password`}
-          </AuthTextLink>
-        </Box>
+      <Stack align="center" mt="xl">
+        <AuthTextLink to="/auth/forgot_password">
+          {t`I seem to have forgotten my password`}
+        </AuthTextLink>
         {providers.map((provider) => (
-          <Box key={provider.name}>
-            <provider.Button redirectUrl={redirectUrl} />
-          </Box>
+          <provider.Button key={provider.name} redirectUrl={redirectUrl} />
         ))}
       </Stack>
     </div>

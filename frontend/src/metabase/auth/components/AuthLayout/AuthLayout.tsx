@@ -14,12 +14,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
   const loginPageIllustration = useSelector(getLoginPageIllustration);
 
   return (
-    <Box
-      data-testid="login-page"
-      pos="relative"
-      mih="100vh"
-      bg="background_page-secondary"
-    >
+    <Box data-testid="login-page" pos="relative" bg="background_page-secondary">
       {loginPageIllustration &&
         (loginPageIllustration.isDefault ? (
           <LighthouseIllustration />
@@ -27,10 +22,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
           <Box
             data-testid="login-page-illustration"
             pos="absolute"
-            top={0}
-            left={0}
-            w="100%"
-            h="100%"
+            inset={0}
             bgsz="100% auto"
             bgr="no-repeat"
             bgp="right bottom"
@@ -38,7 +30,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
           />
         ))}
       <Stack
-        gap={0}
+        gap="xl"
         justify="center"
         align="center"
         pos="relative"
@@ -50,10 +42,9 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
         <LogoIcon height={65} />
         <Card
           w={{ base: "100%", sm: "30.875rem" }}
-          mt="xl"
           py="xxxl"
           px={{ base: "xl", sm: "3.5rem" }}
-          bg="background_page-primary"
+          radius="xs"
           shadow="sm"
         >
           {children}
