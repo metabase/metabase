@@ -36,10 +36,11 @@
   ;; `provider-client-error?` needs a numeric status to render this under the field; without one the
   ;; admin gets a 500.
   (ex-info (tru "No Ollama base URL is set. Give the address of your server, or https://ollama.com/v1 for Ollama Cloud.")
-           {:api-error   true
-            :status-code 400
-            :field       :base-url
-            :error-code  :base-url-missing}))
+           {:api-error     true
+            :status-code   400
+            :field         :base-url
+            :error-code    :base-url-missing
+            :response/keys #{:field}}))
 
 (mu/defn base-url :- :string
   "The address to call.

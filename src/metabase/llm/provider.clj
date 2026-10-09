@@ -946,10 +946,11 @@
     (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
                          (get (connection-env-vars type-name) :base-url "The environment")
                          (get (connection-env-vars type-name) field "the matching environment variable"))
-                    {:status-code 400
-                     :api-error   true
-                     :error-code  :llm-credentials-must-come-from-env
-                     :field       field}))))
+                    {:status-code   400
+                     :api-error     true
+                     :error-code    :llm-credentials-must-come-from-env
+                     :field         field
+                     :response/keys #{:field}}))))
 
 (defn env-overlay-config
   "What the environment supplies for a connection of `type-name` stored under `conn-key`, or nil where it

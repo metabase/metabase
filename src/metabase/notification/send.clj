@@ -169,7 +169,9 @@
   ;; the API returns the message and the ex-data to the user, and a raw reason can name the mail host or a webhook URL
   (let [failures (:failed-handlers (ex-data e))]
     (ex-info (tru "Failed to deliver to {0}" (str/join ", " (distinct (map handler->channel-name failures))))
-             (assoc (ex-data e) :failed-handlers (mapv #(dissoc % :message) failures))
+             (assoc (ex-data e)
+                    :failed-handlers (mapv #(dissoc % :message) failures)
+                    :response/keys   #{:failed-handlers})
              e)))
 
 (defn- hydrate-notification
