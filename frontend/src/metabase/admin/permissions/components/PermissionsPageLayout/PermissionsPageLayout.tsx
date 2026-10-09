@@ -1,32 +1,26 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import {
-  CloseSidebarButton,
-  FullHeightContainer,
-  PermissionPageContent,
-  PermissionPageRoot,
-  PermissionPageSidebar,
-  TabsContainer,
-  ToolbarButtonsContainer,
-} from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
+import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
 import {
+  Flex,
   Group,
+  Icon,
   Button as NewButton,
   Modal as NewModal,
   Text,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import {
   clearSaveError as clearPermissionsSaveError,
@@ -61,14 +55,6 @@ type PermissionsPageLayoutProps = {
   helpContent?: ReactNode;
   canShowSplitPermsModal?: boolean;
 };
-
-const CloseSidebarButtonWithDefault = ({
-  name = "close",
-  ...props
-}: {
-  name?: IconName;
-  [key: string]: unknown;
-}) => <CloseSidebarButton aria-label={t`Close`} name={name} {...props} />;
 
 export function PermissionsPageLayout({
   children,
@@ -115,8 +101,8 @@ export function PermissionsPageLayout({
   };
 
   return (
-    <PermissionPageRoot>
-      <PermissionPageContent>
+    <Flex className={CS.overflowHidden} h="100%">
+      <Flex className={CS.overflowHidden} direction="column" flex={1}>
         {isDirty && (
           <PermissionsEditBar
             diff={diff}
@@ -139,13 +125,10 @@ export function PermissionsPageLayout({
           closeButtonText={null}
         />
 
-        <TabsContainer>
+        <Flex className={S.borderBottom} justify="space-between" align="center">
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
-          <ToolbarButtonsContainer
-            className={
-              isEmbeddingHubPermissions() ? S.hubToolbarButtons : undefined
-            }
-          >
+          {/* The hub's wider right padding lines the toolbar up with its app switcher (CONTENT_PADDING_X minus the button's own padding) */}
+          <Flex pl="lg" pr={isEmbeddingHubPermissions() ? "2.75rem" : "lg"}>
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}
@@ -153,17 +136,34 @@ export function PermissionsPageLayout({
                 onClick={handleToggleHelpReference}
               />
             )}
-          </ToolbarButtonsContainer>
-        </TabsContainer>
+          </Flex>
+        </Flex>
 
-        <FullHeightContainer>{children}</FullHeightContainer>
-      </PermissionPageContent>
+        <Flex className={CS.overflowHidden} h="100%">
+          {children}
+        </Flex>
+      </Flex>
 
       {isHelpReferenceOpen && (
-        <PermissionPageSidebar aria-label={t`Permissions help reference`}>
-          <CloseSidebarButtonWithDefault onClick={handleToggleHelpReference} />
+        <Flex
+          component="aside"
+          className={cx(S.borderLeft, CS.overflowAuto)}
+          direction="column"
+          pos="relative"
+          maw="20rem"
+          aria-label={t`Permissions help reference`}
+        >
+          <Icon
+            className={cx(S.closeButton, CS.cursorPointer)}
+            name="close"
+            pos="absolute"
+            top="1.75rem"
+            right="1.5rem"
+            aria-label={c("A verb, not a noun").t`Close`}
+            onClick={handleToggleHelpReference}
+          />
           {helpContent}
-        </PermissionPageSidebar>
+        </Flex>
       )}
       <NewModal
         title="Someone just changed permissions"
@@ -186,6 +186,6 @@ export function PermissionsPageLayout({
         isOpen={showSplitPermsModal}
         onClose={handleDimissSplitPermsModal}
       />
-    </PermissionPageRoot>
+    </Flex>
   );
 }
