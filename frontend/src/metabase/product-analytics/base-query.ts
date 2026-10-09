@@ -1,3 +1,5 @@
+import type { DatePickerValue } from "metabase/querying/common/types";
+import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -39,7 +41,7 @@ export type BuiltBaseQuery = {
 };
 
 /**
- * Lib query on pa_events_resolved: relative date filter, named 0/1 flag
+ * Lib query on pa_events_resolved: optional date filter, named 0/1 flag
  * expressions, and an explicit field list so compiled aliases stay stable.
  *
  * Flags are `case(filter, 1, 0)` rather than raw boolean expressions — Lib
@@ -49,7 +51,7 @@ export type BuiltBaseQuery = {
 export const buildBaseQuery = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
-  rangeDays: number,
+  dateFilter: DatePickerValue | undefined,
 ): BuiltBaseQuery => {
   const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, tableId);
   if (!tableMetadata) {
@@ -59,18 +61,13 @@ export const buildBaseQuery = (
   let query = Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
 
   const createdAt = findColumn(query, "created_at");
-  query = Lib.filter(
-    query,
-    STAGE,
-    Lib.relativeDateFilterClause({
-      column: createdAt,
-      value: -rangeDays,
-      unit: "day",
-      offsetValue: null,
-      offsetUnit: null,
-      options: {},
-    }),
-  );
+  if (dateFilter !== undefined) {
+    query = Lib.filter(
+      query,
+      STAGE,
+      getDateFilterClause(createdAt, dateFilter),
+    );
+  }
 
   const urlPath = findColumn(query, "url_path");
   const eventName = findColumn(query, "event_name");

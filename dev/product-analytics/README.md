@@ -61,8 +61,8 @@ Optionally mark the table as events:
 mb table update <table-id> --body '{"entity_type":"entity/EventTable"}'
 ```
 
-Open `/product-analytics/debug` on the running app (webpack on 8080) to
-compile and run the five analyses.
+Open `/event-analysis/debug` on the running app (webpack on 8080) to
+compile and run the five analyses. New → Event analysis opens the start page.
 
 `bun dev-ee` does **not** include the `:drivers` alias, so ClickHouse comes
 from `plugins/clickhouse.metabase-driver.jar`. Leave that JAR in place.

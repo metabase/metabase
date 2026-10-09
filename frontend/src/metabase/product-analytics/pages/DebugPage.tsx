@@ -17,6 +17,8 @@ import type { Dataset } from "metabase-types/api";
 import { defaultSpec } from "../defaults";
 import type { AnalysisKind } from "../spec/types";
 import { useAnalysisQuery } from "../use-analysis-query";
+import { DEFAULT_DATE_FILTER } from "../use-analysis-state";
+import { usePrototypeTable } from "../use-prototype-table";
 
 const KINDS: AnalysisKind[] = [
   "funnel",
@@ -82,7 +84,13 @@ const ResultTable = ({ dataset }: { dataset: Dataset }) => {
 export const ProductAnalyticsDebugPage = () => {
   const [kind, setKind] = useState<AnalysisKind>("funnel");
   const spec = useMemo(() => defaultSpec(kind), [kind]);
-  const { sql, dataset, warnings, isLoading, error } = useAnalysisQuery(spec);
+  const prototype = usePrototypeTable();
+  const { sql, dataset, warnings, isLoading, error } = useAnalysisQuery({
+    spec,
+    tableId: prototype.tableId,
+    dateFilter: DEFAULT_DATE_FILTER,
+  });
+  const pageError = prototype.error ?? error;
 
   return (
     <Box p="xl" maw={1200} mx="auto">
@@ -117,9 +125,9 @@ export const ProductAnalyticsDebugPage = () => {
           </Alert>
         ))}
 
-        {error && <Alert color="error">{error}</Alert>}
+        {pageError && <Alert color="error">{pageError}</Alert>}
 
-        {isLoading && (
+        {(isLoading || prototype.isLoading) && (
           <Box ta="center" py="xl">
             <Loader />
           </Box>
