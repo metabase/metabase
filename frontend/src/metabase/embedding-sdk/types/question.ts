@@ -99,10 +99,8 @@ export type TableVisualizationSettings = Pick<
   | "pivot_table.column_split"
   | "pivot_table.collapsed_rows"
   | "column_settings"
-> & {
-  /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
-  "table.pivot"?: boolean;
-};
+  | "table.pivot"
+>;
 
 /**
  * Settings for pie and donut charts. Use these to pin slice/value result
