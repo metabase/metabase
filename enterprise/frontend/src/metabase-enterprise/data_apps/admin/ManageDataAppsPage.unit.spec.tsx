@@ -80,11 +80,8 @@ describe("ManageDataAppsPage", () => {
       ).toHaveAttribute("href", "/admin/settings/remote-sync");
       expect(
         screen.getByText(
-          /npx skills add metabase\/agent-skills\/skills\/metabase-data-app-setup\/v1/,
+          /npx skills add metabase\/agent-skills\/skills\/metabase-data-apps\/v1/,
         ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/--skill metabase-data-app-setup/),
       ).toBeInTheDocument();
     });
   });
