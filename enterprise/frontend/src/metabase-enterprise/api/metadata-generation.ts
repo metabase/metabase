@@ -166,7 +166,10 @@ export const metadataGenerationApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { run_id }) =>
         invalidateTags(error, [idTag("metadata-generation-run", run_id)]),
-      onQueryStarted: async (request, { dispatch, getState, queryFulfilled }) => {
+      onQueryStarted: async (
+        request,
+        { dispatch, getState, queryFulfilled },
+      ) => {
         const patches = metadataGenerationApi.util
           .selectCachedArgsForQuery(
             getState(),
