@@ -731,6 +731,22 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+(deftest ^:parallel pivot-dataset-error-response-test
+  (mt/dataset test-data
+    (testing "POST /api/dataset/pivot"
+      (testing "a failed query returns the usual formatted error response, not an empty body"
+        (doseq [[cause query] {"an out-of-range pivot row index"
+                               (assoc (qp.pivot.test-util/pivot-query) :pivot_rows [0 1 2 3])
+
+                               "a reference to a nonexistent column"
+                               (assoc-in (qp.pivot.test-util/pivot-query) [:query :filter]
+                                         [:= [:field Integer/MAX_VALUE nil] 1])}]
+          (testing cause
+            (let [{:keys [body]} (mt/user-http-request-full-response :crowberto :post "dataset/pivot" query)]
+              (is (=? {:status "failed"
+                       :error  string?}
+                      body)))))))))
+
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data

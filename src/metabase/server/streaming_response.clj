@@ -46,7 +46,22 @@
 
 (defn- format-exception [e]
   (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
-    (server.settings/hide-stacktraces) (dissoc :via :trace)))
+    ;; `:data` is the ex-data, which for QP exceptions routinely carries the whole query; drop it along with the
+    ;; stacktrace and cause chain, as the (non-streaming) exception middleware does.
+    (server.settings/hide-stacktraces) (dissoc :via :trace :data)))
+
+;; Implemented by the output stream handed to a streaming response body, so that [[write-error!]] -- called from the
+;; body with nothing but that stream -- can find the response's `:error-response-fn`. A function applied to any error
+;; body (a formatted error map, or the `Throwable->map` of an exception) right before it is written to the client;
+;; whatever it returns is what gets written. See [[with-error-response-fn]].
+(definterface ErrorResponseFnProvider
+  (errorResponseFn []))
+
+(defn- error-response-fn
+  "The `:error-response-fn` carried by `os`, if it is the output stream handed to a streaming response body."
+  [os]
+  (when (instance? ErrorResponseFnProvider os)
+    (.errorResponseFn ^ErrorResponseFnProvider os)))
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
@@ -63,16 +78,19 @@
     (with-open [os os]
       (log/trace (u/pprint-to-str (list 'write-error! obj)))
       (try
-        (let [obj (-> (if (not= :api export-format)
-                        (walk/prewalk
-                         (fn [x]
-                           (if (map? x)
-                             (apply dissoc x [:json_query :preprocessed])
-                             x))
-                         obj)
-                        obj)
-                      (dissoc :export-format)
-                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
+        (let [response-fn (error-response-fn os)
+              obj         (cond-> obj
+                            response-fn response-fn)
+              obj         (-> (if (not= :api export-format)
+                                (walk/prewalk
+                                 (fn [x]
+                                   (if (map? x)
+                                     (apply dissoc x [:json_query :preprocessed])
+                                     x))
+                                 obj)
+                                obj)
+                              (dissoc :export-format)
+                              (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
             (json/encode-to obj writer {})))
         (catch EofException _)
@@ -145,9 +163,11 @@
 
 (defn- delay-output-stream
   "An OutputStream proxy that fetches the actual output stream by dereffing a delay (or other dereffable) before first
-  use."
-  [dlay]
-  (proxy [OutputStream] []
+  use. It also carries the response's `error-response-fn` (possibly nil) for [[write-error!]]."
+  [dlay error-response-fn]
+  (proxy [OutputStream ErrorResponseFnProvider] []
+    (errorResponseFn []
+      error-response-fn)
     (close []
       (.close ^OutputStream @dlay))
     (flush []
@@ -244,7 +264,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as _options} finished-chan]
+   f {:keys [content-type status headers], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)]
     (try
       (.setStatus response (or status 202))
@@ -259,7 +279,7 @@
                       gzip? (assoc "Content-Encoding" "gzip"))]
         (#'servlet/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
-              delay-os            (delay-output-stream output-stream-delay)]
+              delay-os            (delay-output-stream output-stream-delay (:error-response-fn options))]
           (start-async-cancel-loop! request finished-chan canceled-chan)
           (do-f-async async-context f delay-os finished-chan canceled-chan)))
       (catch Throwable e
@@ -335,9 +355,35 @@
   Current options:
 
   *  `:content-type` -- string content type to return in the results. This is required!
-  *  `:headers` -- other headers to include in the API response."
+  *  `:headers` -- other headers to include in the API response.
+  *  `:error-response-fn` -- optional function applied to any error body right before [[write-error!]] writes it to the
+     client. Usually added after the fact with [[with-error-response-fn]]."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
   `(-streaming-response (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))
+
+(defn with-error-response-fn
+  "Make a streaming `response` pass any error its body writes -- a formatted error map, or the `Throwable->map` of an
+  exception -- through `error-response-fn` first, writing whatever that returns instead.
+
+  For route middleware sanitizing errors for public and embedded endpoints: their `try`/`catch` around the handler
+  cannot see these errors, because a streaming response body runs after the handler has returned.
+
+  `response` may be a [[StreamingResponse]] or a Ring response map whose `:body` is one; anything else is returned
+  unchanged."
+  [response error-response-fn]
+  (cond
+    (instance? StreamingResponse response)
+    (let [^StreamingResponse response response]
+      (->StreamingResponse (.f response)
+                           (assoc (.options response) :error-response-fn error-response-fn)
+                           (.donechan response)))
+
+    (and (map? response)
+         (instance? StreamingResponse (:body response)))
+    (update response :body with-error-response-fn error-response-fn)
+
+    :else
+    response))
