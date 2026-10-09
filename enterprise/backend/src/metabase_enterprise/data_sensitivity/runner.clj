@@ -359,6 +359,42 @@
       (swap! local-runs (fn [m] (cond-> m (contains? m run-id) (assoc-in [run-id :future] f))))
       f)))
 
+;;; Estimate
+
+(def ^:private per-field-cost
+  "Total tokens and USD per field for an attribute set, from the Haiku 4.5 bench on the synthetic app schema (TSP-160,
+  336 fields). Attribute sets with no bench row use the all-three row, the highest."
+  {#{:data_sensitivity :semantic_type}              {:tokens 433 :cost_usd 0.00067}
+   #{:data_sensitivity}                             {:tokens 369 :cost_usd 0.00058}
+   #{:description}                                  {:tokens 312 :cost_usd 0.00059}
+   #{:data_sensitivity :semantic_type :description} {:tokens 493 :cost_usd 0.00079}})
+
+(mr/def ::estimate
+  [:map {:closed true}
+   [:table_count        ms/IntGreaterThanOrEqualToZero]
+   [:field_count        ms/IntGreaterThanOrEqualToZero]
+   [:total_tokens       ms/IntGreaterThanOrEqualToZero]
+   [:cost_usd           number?]
+   [:unavailable_reason [:maybe :keyword]]])
+
+(mu/defn estimate :- ::estimate
+  "The size of a run that [[start-run!]] would start for `request`: tables, fields, and about how many tokens and USD
+  it uses. `:unavailable_reason` is why a start would fail now, or nil. Throws a 400 for the same scope and attribute
+  errors as [[start-run!]]."
+  [database :- (ms/InstanceOf :model/Database)
+   request  :- ::start-request]
+  (let [attributes  (vec (distinct (or (:attributes request) default-attributes)))
+        _           (check-attributes! attributes)
+        tables      (scope-tables (:id database) (request-scope request))
+        field-count (db/active-field-count (mapv :id tables))
+        ratio       (or (per-field-cost (set attributes))
+                        (per-field-cost (set llm/all-attributes)))]
+    {:table_count        (count tables)
+     :field_count        field-count
+     :total_tokens       (* field-count (:tokens ratio))
+     :cost_usd           (* field-count (:cost_usd ratio))
+     :unavailable_reason (core/unavailable-reason)}))
+
 ;;; Public API
 
 (defn- conflict [database-id]

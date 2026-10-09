@@ -21,6 +21,7 @@ export * from "./insight";
 export * from "./llm";
 export * from "./logger";
 export * from "./measure";
+export * from "./metadata-generation";
 export * from "./metric";
 export * from "./metabot";
 export * from "./modelIndexes";

@@ -15,6 +15,7 @@ export * from "./erd";
 export * from "./gdrive";
 export * from "./library";
 export * from "./metabot";
+export * from "./metadata-generation";
 export * from "./multi-factor-auth";
 export * from "./remote-sync";
 export * from "./oidc";

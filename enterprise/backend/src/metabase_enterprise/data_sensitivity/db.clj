@@ -43,6 +43,20 @@
                          [:= :parent_id nil]]
               :order-by [[:position :asc] [:id :asc]]}))
 
+(mu/defn active-field-count :- ms/IntGreaterThanOrEqualToZero
+  "The number of fields [[active-fields]] returns over the tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/count :model/Field
+              {:from  [(warehouse-schema-overlay/field-query)]
+               :where [:and
+                       [:in :table_id table-ids]
+                       [:= :active true]
+                       [:not= :visibility_type "retired"]
+                       [:= :nfc_path nil]
+                       [:= :parent_id nil]]})
+    0))
+
 (mu/defn user-settings-by-field
   "A map of field id to its FieldUserSettings row, for the ids in `field-ids` that have one."
   [field-ids :- [:sequential ::lib.schema.id/field]]

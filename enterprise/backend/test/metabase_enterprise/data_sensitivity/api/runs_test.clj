@@ -109,3 +109,38 @@
             (let [run (mt/user-http-request :crowberto :post 200 "ee/data-sensitivity/runs" {:database_id (:id db)})]
               (wait-ended (:id run))
               (mt/user-http-request :crowberto :post 400 (str "ee/data-sensitivity/runs/" (:id run) "/retry-failed"))))))))))
+
+(deftest estimate-api-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-temp-tables
+     4
+     (fn [db tables]
+       (core-test/do-with-llm!
+        (core-test/canned-llm (constantly {}))
+        (fn []
+          (testing "the whole database with the default attributes"
+            (is (=? {:table_count        4
+                     :field_count        4
+                     :total_tokens       (* 4 433)
+                     :cost_usd           #(< 0.002 % 0.003)
+                     :unavailable_reason nil}
+                    (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
+                                          :database-id (:id db)))))
+          (testing "a schema and an attribute set"
+            (is (=? {:table_count 2 :field_count 2 :total_tokens (* 2 369)}
+                    (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
+                                          :database-id (:id db) :schemas "S0" :attributes "data_sensitivity"))))
+          (testing "tables"
+            (is (=? {:table_count 2 :field_count 2}
+                    (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
+                                          :database-id (:id db) :table-ids (:id (first tables))
+                                          :table-ids (:id (second tables))))))
+          (testing "an attribute set with no bench row uses the highest ratio"
+            (is (=? {:total_tokens (* 4 493)}
+                    (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
+                                          :database-id (:id db) :attributes "semantic_type"))))
+          (testing "an unknown schema is a 400"
+            (mt/user-http-request :crowberto :get 400 "ee/data-sensitivity/runs/estimate"
+                                  :database-id (:id db) :schemas "nope"))
+          (testing "requires a superuser"
+            (mt/user-http-request :rasta :get 403 "ee/data-sensitivity/runs/estimate" :database-id (:id db)))))))))

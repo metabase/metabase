@@ -24,7 +24,7 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_METADATA_GENERATION } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
   Box,
@@ -37,6 +37,7 @@ import {
   rem,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type { DatabaseId, FieldId, TableId } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
 import { RouterTablePicker, TableSection } from "../../components";
@@ -166,6 +167,13 @@ function DataModelContent() {
     metadataTableId != null &&
     !hasSelectedMoreThanOneTable &&
     !showBulkTableEdit;
+  const databaseDetailsId = getDatabaseDetailsId({
+    databaseId,
+    databaseExists,
+    fieldId,
+    hasSelectedItems,
+    tableId: metadataTableId,
+  });
 
   return (
     <Flex
@@ -209,6 +217,13 @@ function DataModelContent() {
               <LoadingAndErrorWrapper error={t`Not found.`} />
             </Stack>
           )}
+
+        {databaseDetailsId != null && (
+          <DatabaseDetailsSection
+            databaseId={databaseDetailsId}
+            scrollToPanel={scrollToPanel}
+          />
+        )}
 
         {showBulkTableEdit && (
           <Stack
@@ -390,5 +405,65 @@ function DataModelContent() {
         />
       )}
     </Flex>
+  );
+}
+
+function getDatabaseDetailsId({
+  databaseId,
+  databaseExists,
+  fieldId,
+  hasSelectedItems,
+  tableId,
+}: {
+  databaseId: DatabaseId | undefined;
+  databaseExists: boolean | undefined;
+  fieldId: FieldId | undefined;
+  hasSelectedItems: boolean;
+  tableId: TableId | undefined;
+}): DatabaseId | null {
+  const isDatabaseOnly =
+    databaseExists === true &&
+    tableId == null &&
+    fieldId == null &&
+    !hasSelectedItems;
+  return PLUGIN_METADATA_GENERATION.isEnabled &&
+    databaseId != null &&
+    isDatabaseOnly
+    ? databaseId
+    : null;
+}
+
+function DatabaseDetailsSection({
+  databaseId,
+  scrollToPanel,
+}: {
+  databaseId: DatabaseId;
+  scrollToPanel: (el: HTMLDivElement | null) => void;
+}) {
+  return (
+    <Stack
+      className={S.column}
+      flex={COLUMN_CONFIG.table.flex}
+      h="100%"
+      maw={COLUMN_CONFIG.table.max}
+      miw={COLUMN_CONFIG.table.min}
+      ref={scrollToPanel}
+      gap={0}
+    >
+      <Group
+        justify="space-between"
+        w="100%"
+        data-testid="database-section-header"
+        py="xl"
+        bg="background_page-secondary"
+        className={S.header}
+        px="xl"
+      >
+        <DataStudioBreadcrumbs>{t`Database details`}</DataStudioBreadcrumbs>
+      </Group>
+      <ScrollArea flex={1} px="xl" type="hover">
+        <PLUGIN_METADATA_GENERATION.DatabasePane databaseId={databaseId} />
+      </ScrollArea>
+    </Stack>
   );
 }

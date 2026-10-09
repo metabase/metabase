@@ -33,6 +33,23 @@
   (api/check-404 (db/database database-id))
   (db/latest-runs database-id))
 
+(api.macros/defendpoint :get "/runs/estimate" :- ::runner/estimate
+  "The size of the run that `POST /runs` would start with the same parameters: tables, fields, and about how many
+  tokens and USD it uses, from bench ratios. Query params are kebab-case: `database-id`, `table-ids`. `unavailable_reason` is why a start would fail now, or nil."
+  [_route-params
+   {:keys [database-id schemas table-ids attributes]}
+   :- [:map {:closed true}
+       [:database-id ms/PositiveInt]
+       [:schemas     {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
+       [:table-ids   {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:attributes  {:optional true} [:maybe (ms/QueryVectorOf ::run/attribute)]]]]
+  (api/check-superuser)
+  (let [database (api/check-404 (db/database database-id))]
+    (runner/estimate database (cond-> {}
+                                (seq schemas)    (assoc :schemas schemas)
+                                (seq table-ids)  (assoc :table_ids table-ids)
+                                (seq attributes) (assoc :attributes attributes)))))
+
 (api.macros/defendpoint :get "/runs/:id" :- ::run/metadata-generation-run
   "A metadata generation run: status, table progress, per-table errors and token usage."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
