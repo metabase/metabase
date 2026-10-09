@@ -7,7 +7,8 @@
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -214,11 +215,8 @@
 
   Takes a settings map containing :remote-sync-url, :remote-sync-token, :remote-sync-type, :remote-sync-branch, and
   :remote-sync-auto-import keys. If the URL is blank, clears all git sync settings (url, token, and branch).
-  Otherwise, validates the settings by connecting to the repository, then updates the settings.
-
-  Writes each setting in its own transaction: one transaction held across several setting writes can deadlock with
-  a concurrent multi-setting save (`setting/set-many!`), which takes the settings rows and the settings marker row
-  in the opposite order. A failure between two writes leaves the earlier one written.
+  Otherwise, validates the settings by connecting to the repository, then updates the settings in one transaction: a
+  failure writes none of them.
 
   If the token is obfuscated (matches the existing token), preserves the existing token value rather than
   overwriting it.
@@ -238,8 +236,14 @@
                         (= remote-sync-token (setting/obfuscate-value current-token)))
                   current-token
                   remote-sync-token)))))
-    (doseq [[k v] writes]
-      (setting/set! k v))))
+    (try
+      (t2/with-transaction [_conn]
+        (doseq [[k v] writes]
+          (setting/set! k v)))
+      (catch Throwable e
+        ;; each write updated the settings cache, and the rollback does not undo that
+        (setting/restore-cache!)
+        (throw e)))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.
