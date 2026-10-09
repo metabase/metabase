@@ -45,18 +45,7 @@ function CreateCollectionModal({
           return;
         }
 
-        let visitUrl = Urls.collection(collection);
-
-        if (
-          PLUGIN_LIBRARY.isLibraryCollectionType(collection.type) ||
-          collection.namespace === "snippets"
-        ) {
-          visitUrl = Urls.dataStudioLibrary({
-            expandedIds: getCollectionPathAsArray(collection),
-          });
-        }
-
-        navigate(visitUrl);
+        navigate(getCreatedCollectionUrl(collection));
       }
     },
     [createCollection, onCreate, onClose, shouldNavigateOnCreate, navigate],
@@ -82,3 +71,16 @@ function CreateCollectionModal({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CreateCollectionModal;
+
+export function getCreatedCollectionUrl(collection: Collection): string {
+  if (
+    PLUGIN_LIBRARY.isLibraryCollectionType(collection.type) ||
+    collection.namespace === "snippets" ||
+    collection.namespace === "data-actions"
+  ) {
+    return Urls.dataStudioLibrary({
+      expandedIds: getCollectionPathAsArray(collection),
+    });
+  }
+  return Urls.collection(collection);
+}

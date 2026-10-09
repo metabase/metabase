@@ -131,6 +131,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover().findByText("AK").click();
       H.popover().button("Add filter").click();
 
+      H.chartPathWithFillColor("#509EE3").should("have.length", 49);
+
       H.applyFilterButton().click();
       H.applyFilterToast().should("not.exist");
 

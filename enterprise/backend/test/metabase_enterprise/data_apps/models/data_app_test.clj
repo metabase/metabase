@@ -40,11 +40,11 @@
 
 (deftest insert-creates-the-resources-the-app-owns-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [{:keys [resource_collection_id permission_group_id]} (t2/select-one :model/DataApp (insert-app!))]
+    (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp (insert-app!))]
       (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
               (t2/select-one :model/Collection :id resource_collection_id))
           "the collection is the app's own, in the data-apps namespace")
-      (is (t2/exists? :model/PermissionsGroup :id permission_group_id :is_data_app_group true)))))
+      (is (not (t2/exists? :model/DataAppGroupAssignment :data_app_id id))))))
 
 (deftest insert-publishes-the-creation-of-the-collection-test
   (testing "the collection is created the way any collection is, so what listens to collection events (remote sync,
@@ -85,13 +85,12 @@
           (t2/update! :model/DataApp id {:resource_collection_id other-id})
           (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp id))))))))
 
-(deftest delete-removes-the-resources-the-app-owns-test
+(deftest delete-removes-the-resource-collection-the-app-owns-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [id (insert-app!)
-          {:keys [resource_collection_id permission_group_id]} (t2/select-one :model/DataApp id)]
+          {:keys [resource_collection_id]} (t2/select-one :model/DataApp id)]
       (t2/delete! :model/DataApp id)
-      (is (not (t2/exists? :model/Collection :id resource_collection_id)))
-      (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))
+      (is (not (t2/exists? :model/Collection :id resource_collection_id))))))
 
 (deftest writes-are-normalized-and-validated-against-the-schema-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -148,8 +147,8 @@
       (is (mi/can-read? :model/DataApp 1))
       (is (mi/can-write? :model/DataApp 1))
       (is (mi/can-create? :model/DataApp {}))))
-  (testing "any signed-in user can read (view), but write/create stay superuser-only"
+  (testing "an unassigned user cannot read, write, or create"
     (binding [api/*is-superuser?* false]
-      (is (mi/can-read? :model/DataApp 1))
+      (is (not (mi/can-read? :model/DataApp 1)))
       (is (not (mi/can-write? :model/DataApp 1)))
       (is (not (mi/can-create? :model/DataApp {}))))))

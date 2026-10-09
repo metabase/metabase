@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.data-apps.core :as data-apps]
+   [metabase.premium-features.core :as premium-features]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]))
@@ -37,9 +39,9 @@
   (testing "the /embed/apps/:name entrypoint is served only with :data-apps; without it it
             responds nil so routing falls through to the generic embed handler — exactly as if data
             apps did not exist"
-    ;; Stub the raw shell so the test needs no built frontend HTML; the feature gate lives in
-    ;; `index/data-app` itself, which is what we're exercising here.
-    (with-redefs [index/data-app-shell (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))]
+    ;; Stub authorization and HTML rendering to isolate the feature gate.
+    (with-redefs [data-apps/check-data-app-access! (constantly nil)
+                  index/data-app-shell (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))]
       (let [request {:uri "/embed/apps/sales" :metabase-user-id (mt/user->id :rasta)}]
         ;; `enable-data-apps?` also requires the EE code to be present (`config/ee-available?`), so the
         ;; served path exists only on EE; on OSS the entrypoint always falls through.
@@ -123,3 +125,14 @@
           (let [response (get-static-asset 200 {"if-modified-since" held})]
             (is (= 200 (:status response)))
             (is (not (str/blank? (body-text (:body response)))))))))))
+
+(deftest data-app-entrypoint-raises-access-errors-test
+  (let [error (ex-info "Access denied" {:status-code 403})
+        callbacks (atom [])]
+    (with-redefs [premium-features/enable-data-apps? (constantly true)
+                  data-apps/check-data-app-access! (fn [_request] (throw error))
+                  index/data-app-shell (fn [& _args] (swap! callbacks conj :shell))]
+      (index/data-app {:metabase-user-id 1}
+                      (fn [response] (swap! callbacks conj [:respond response]))
+                      (fn [error] (swap! callbacks conj [:raise error]))))
+    (is (= [[:raise error]] @callbacks))))

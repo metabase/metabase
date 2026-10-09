@@ -459,7 +459,7 @@
   "Run `thunk` and return the Snowplow `security_advisory_notification_sent` results as {channel result}."
   [thunk]
   (let [events (atom [])]
-    (with-redefs [analytics/track-event! (fn [_schema data & _] (swap! events conj data))]
+    (mt/with-dynamic-fn-redefs [analytics/track-event! (fn [_schema data & _] (swap! events conj data))]
       (thunk))
     (into {} (for [{:keys [event event_detail result]} @events
                    :when (= "security_advisory_notification_sent" event)]

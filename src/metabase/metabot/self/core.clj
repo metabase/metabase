@@ -160,7 +160,8 @@
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
-   [:probed-model    {:optional true} [:maybe :string]]])
+   [:probed-model    {:optional true} [:maybe :string]]
+   [:mini-model      {:optional true} [:maybe :string]]])
 
 (def ^:private AzureCredentials
   "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
@@ -168,7 +169,8 @@
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-family    {:optional true} [:maybe :string]]
-   [:deployment-name {:optional true} [:maybe :string]]])
+   [:deployment-name {:optional true} [:maybe :string]]
+   [:mini-model      {:optional true} [:maybe :string]]])
 
 (def ^:private BedrockCredentials
   [:map {:closed true}
@@ -176,7 +178,8 @@
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
    [:region            {:optional true} [:maybe :string]]
-   [:model-id          {:optional true} [:maybe :string]]])
+   [:model-id          {:optional true} [:maybe :string]]
+   [:mini-model        {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
   [:map {:closed true}
@@ -188,7 +191,8 @@
    [:base-url            {:optional true} [:maybe :string]]
    [:endpoint-id         {:optional true} [:maybe :string]]
    ;; recorded by the connect-time probe, not entered by the admin
-   [:probed-model        {:optional true} [:maybe :string]]])
+   [:probed-model        {:optional true} [:maybe :string]]
+   [:mini-model          {:optional true} [:maybe :string]]])
 
 (def LLMCredentials
   "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
@@ -273,6 +277,26 @@
    [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
+
+(def chat-max-output-tokens
+  "The output-token cap for Metabot chat, sent when the caller passes no `:max-tokens` — only the agent loop does.
+
+  Sized for Metabot's chat rather than for any model: production chat output has a p99.9 of about 7,300 tokens, so
+  32000 truncates only a runaway generation, and it is at or below every catalog model's documented maximum, the
+  lowest being Claude Opus 4.1's 32,000
+  (https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-1.html).
+
+  A constant rather than a setting: the output distribution is the same on every instance, telemetry records no
+  finish reason so a lowered value would truncate tool calls invisibly, and some surfaces deliberately send no cap
+  (see the OpenAI builder, and Google Model Garden endpoints, which reach the vLLM builder with no context window)
+  or send it only when it fits the context window (see the vLLM builder), so one global knob would mislead.
+
+  Where a provider counts the cap against the context window, the cap also takes room from the prompt. Mistral
+  (https://docs.mistral.ai/api/endpoint/chat) and Moonshot (https://platform.kimi.ai/docs/api/chat) reject a
+  request whose prompt plus cap exceeds the window, and both send this cap on every request: on a 262,144-token
+  window a prompt over 230,144 tokens fails while the context meter shows about 88%. The agent loop resends the
+  full history and does not compact it, so a long enough conversation reaches this limit."
+  32000)
 
 (defn mkid
   "Generate a random id"
@@ -613,18 +637,47 @@
         context-window-tokens (assoc :contextWindowTokens context-window-tokens)
         promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
 
-(defn- completion-finish-reason
-  "The wire `finishReason` for a completed turn. A provider `tool-calls` stop collapses to
-  `stop`: a turn that ends on a terminal tool call is a normal completion, not an incomplete
-  one. A loop stopped at max iterations surfaces as `tool-calls` instead, so the client can
-  offer to continue."
-  [finish-reason error? loop-finish-reason]
+(defn- last-part-value
+  "The last non-nil `k` among the `part-type` parts of `parts`."
+  [parts part-type k]
+  (last (keep #(when (= part-type (:type %)) (k %)) parts)))
+
+(defn incomplete-finish-reason
+  "Why a turn stopped early — `\"length\"`, `\"content-filter\"` or `\"tool-calls\"` — or nil when it ran
+  to a normal stop.
+
+  A provider `length` or `content-filter` outranks a loop that stopped at `:max-iterations`, which is
+  what surfaces as `\"tool-calls\"`. A provider `tool-calls` is not incomplete on its own: a turn ending
+  on a terminal tool call is a normal completion."
+  [finish-reason loop-finish-reason]
   (cond
     (= finish-reason "length")             "length"
-    error?                                 "error"
     (= finish-reason "content-filter")     "content-filter"
-    (= loop-finish-reason :max-iterations) "tool-calls"
-    :else                                  "stop"))
+    (= loop-finish-reason :max-iterations) "tool-calls"))
+
+(defn parts->incomplete-finish-reason
+  "[[incomplete-finish-reason]] for a finished turn's `parts`.
+
+  Takes the provider reason from the last `:usage` part carrying one and the loop reason from the last
+  `:finish` part carrying one, so a turn read back from storage reports what the live SSE stream did."
+  [parts]
+  (incomplete-finish-reason (last-part-value parts :usage :finish-reason)
+                            (last-part-value parts :finish :finish-reason)))
+
+(defn parts->raw-finish-reason
+  "The provider's own stop reason for a finished turn, before translation to a [[finish-reasons]]
+  value, or nil. Taken from the last `:usage` part carrying one."
+  [parts]
+  (last-part-value parts :usage :raw-finish-reason))
+
+(defn- completion-finish-reason
+  "The wire `finishReason` for a completed turn: an [[incomplete-finish-reason]], `\"error\"` or `\"stop\"`.
+  A `length` truncation outranks an in-turn error; every other error outranks an incomplete reason."
+  [finish-reason error? loop-finish-reason]
+  (cond
+    (= finish-reason "length") "length"
+    error?                     "error"
+    :else                      (or (incomplete-finish-reason finish-reason loop-finish-reason) "stop")))
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output

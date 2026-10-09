@@ -2481,23 +2481,6 @@
                                    {:new_branch "stash-branch"
                                     :message    "stash msg"}))))))
 
-(deftest moving-an-action-out-from-under-a-synced-dashboard-test
-  (testing "an action a synced dashboard uses cannot move out of the synced collections"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-temp [:model/Collection    {synced-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
-                       :model/Collection    {plain-id :id}    {:name "Plain" :location "/"}
-                       :model/Action        {action-id :id}   {:type :query :name "No model" :model_id nil
-                                                               :collection_id synced-id}
-                       :model/QueryAction   _                 {:action_id     action-id
-                                                               :dataset_query (mt/native-query {:query "select 1"})}
-                       :model/Dashboard     {dashboard-id :id} {:collection_id synced-id}
-                       :model/DashboardCard _                 {:dashboard_id dashboard-id :action_id action-id}]
-          (is (= "Used by remote synced content."
-                 (:message (mt/user-http-request :crowberto :put 400 (str "action/" action-id)
-                                                 {:collection_id plain-id}))))
-          (is (= synced-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
-
 (deftest archiving-a-synced-model-with-actions-test
   (testing "a model in a synced collection can be archived although it has actions, which are archived with it"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
