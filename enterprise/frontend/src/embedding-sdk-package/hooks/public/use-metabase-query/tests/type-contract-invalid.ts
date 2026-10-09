@@ -5,6 +5,7 @@ import {
   aggregations,
   breakout,
   count,
+  filter,
   orderBy,
   sum,
   useMetabaseQuery,
@@ -167,6 +168,16 @@ defineQuery({
   orderBys: [{ type: "column", name: "sum" }],
 });
 
+const plainOrdersQuery = defineQuery({ source: groupedOrders });
+const pickedOrdersQuery = defineQuery({
+  source: groupedOrders,
+  fields: [groupedOrders.fields.id, groupedOrders.fields.createdAt],
+});
+const aggregatedOrdersQuery = defineQuery({
+  source: groupedOrders,
+  aggregations: [count(), groupedTotal],
+});
+
 function InvalidTypeFixtures() {
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
@@ -311,6 +322,54 @@ function InvalidTypeFixtures() {
     // @ts-expect-error a grouping dynamic stage orders by its own breakouts and aggregations
     orderBys: [{ type: "column", name: "total" }],
   });
+
+  useMetabaseQuery(plainOrdersQuery, {
+    // @ts-expect-error a string column takes no numeric comparison
+    filters: [filter({ type: "column", name: "STATUS" }, ">", 1)],
+  });
+
+  useMetabaseQuery(pickedOrdersQuery, {
+    // @ts-expect-error the static query's fields leave out STATUS
+    filters: [filter({ type: "column", name: "STATUS" }, "not-null")],
+  });
+
+  useMetabaseQuery(aggregatedOrdersQuery, {
+    // @ts-expect-error a number column takes no string operator
+    filters: [filter({ type: "column", name: "total" }, "contains", "x")],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    // @ts-expect-error a named breakout's column takes its name, not its field's
+    filters: [filter({ type: "column", name: "CREATED_AT" }, "not-null")],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    // @ts-expect-error a date column takes no string operator
+    filters: [
+      filter({ type: "column", name: "created_month" }, "contains", "x"),
+    ],
+  });
+
+  // @ts-expect-error `unit` buckets a date, so a string column doesn't take it
+  useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [count()],
+    breakouts: [breakout({ type: "column", name: "STATUS" }, { unit: "year" })],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [
+      // @ts-expect-error a sum takes a number column
+      aggregations.sum({ type: "column", name: "STATUS" }),
+    ],
+  });
+
+  const regroupedResult = useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [count()],
+    breakouts: [{ type: "column", name: "created_month" }],
+  });
+
+  // @ts-expect-error grouping in the dynamic stage drops the other static columns
+  void regroupedResult.data?.rows[0]?.STATUS;
 
   return null;
 }

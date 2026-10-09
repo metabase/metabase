@@ -135,6 +135,16 @@ defineQuery({
   ],
 });
 
+const plainOrdersQuery = defineQuery({ source: groupedOrders });
+const pickedOrdersQuery = defineQuery({
+  source: groupedOrders,
+  fields: [groupedOrders.fields.id, groupedOrders.fields.createdAt],
+});
+const aggregatedOrdersQuery = defineQuery({
+  source: groupedOrders,
+  aggregations: [count(), groupedTotal],
+});
+
 function ValidTypeFixtures() {
   // A definition types `execute` and `result` on its own, no generics written.
   const createOrder = useDataAppAction(CreateOrder);
@@ -340,6 +350,66 @@ function ValidTypeFixtures() {
     breakouts: [{ ...groupedOrders.fields.status }],
     orderBys: [{ type: "column", name: "count" }],
   });
+
+  useMetabaseQuery(plainOrdersQuery, {
+    filters: [filter({ type: "column", name: "STATUS" }, "contains", "p")],
+  });
+
+  useMetabaseQuery(pickedOrdersQuery, {
+    filters: [
+      filter({ type: "column", name: "CREATED_AT" }, "time-interval", "x"),
+    ],
+  });
+
+  useMetabaseQuery(aggregatedOrdersQuery, {
+    filters: [filter({ type: "column", name: "total" }, ">", 1)],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    filters: [
+      filter({ type: "column", name: "created_month" }, "not-null"),
+      filter({ type: "column", name: "STATUS" }, "=", "paid"),
+    ],
+  });
+
+  const regroupedPlainResult = useMetabaseQuery(plainOrdersQuery, {
+    aggregations: [count()],
+    breakouts: [{ type: "column", name: "STATUS" }],
+  });
+
+  const regroupedStatus: string | null | undefined =
+    regroupedPlainResult.data?.rows[0]?.STATUS;
+  const regroupedCount: number | null | undefined =
+    regroupedPlainResult.data?.rows[0]?.count;
+
+  void [regroupedStatus, regroupedCount];
+
+  const regroupedResult = useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [
+      aggregations.sum({ type: "column", name: "total" }),
+      aggregations.max({ type: "column", name: "total" }),
+      aggregations.distinct(
+        { type: "column", name: "STATUS" },
+        { name: "statuses" },
+      ),
+    ],
+    breakouts: [
+      { type: "column", name: "created_month" },
+      breakout(
+        { type: "column", name: "created_month" },
+        { unit: "year", name: "created_year" },
+      ),
+    ],
+  });
+
+  const regroupedMonth: string | Date | null | undefined =
+    regroupedResult.data?.rows[0]?.created_month;
+  const regroupedYear: string | Date | null | undefined =
+    regroupedResult.data?.rows[0]?.created_year;
+  const regroupedSum: number | null | undefined =
+    regroupedResult.data?.rows[0]?.sum;
+
+  void [regroupedMonth, regroupedYear, regroupedSum];
 
   return null;
 }

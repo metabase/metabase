@@ -351,6 +351,7 @@ export type MetabaseBreakoutObjectForDimension<TDimension> =
   | ([NonDateBucketDimension<TDimension>] extends [never]
       ? never
       : NonDateBucketDimension<TDimension> & {
+          unit?: never;
           binning?: BinningOptions;
         });
 
@@ -361,7 +362,7 @@ export type NamedBreakout<TColumn = unknown, TName extends string = string> = {
 };
 
 type BreakoutForDimension<TDimension> =
-  | TDimension
+  | (TDimension & { unit?: never; binning?: never })
   | MetabaseBreakoutObjectForDimension<TDimension>
   | NamedBreakout<TDimension | MetabaseBreakoutObjectForDimension<TDimension>>;
 
@@ -632,7 +633,45 @@ export type MetabaseDynamicColumn<TEntity = unknown, TQuery = unknown> = [
   QueryResultColumn<TEntity, TQuery>,
 ] extends [never]
   ? SchemaColumn & { type: "column" }
-  : QueryResultColumn<TEntity, TQuery>;
+  :
+      | QueryResultColumn<TEntity, TQuery>
+      | ColumnNameReference<QueryResultColumn<TEntity, TQuery>>;
+
+/** A result column referenced by its name alone, typed by the column's `jsType`. */
+type ColumnNameReference<TColumn> = TColumn extends SchemaColumn
+  ? { type: "column"; name: TColumn["name"] } & (TColumn extends {
+      jsType: infer TJavaScriptType;
+    }
+      ? { jsType?: TJavaScriptType }
+      : unknown)
+  : never;
+
+type TypedDimensionAggregation<TDimension> =
+  | CountAggregation
+  | CountAggregationSchema
+  | FieldAggregation<
+      "sum" | "avg" | "median",
+      NumericAggregationDimension<TDimension>
+    >
+  | FieldAggregation<"min" | "max", OrderableAggregationDimension<TDimension>>
+  | FieldAggregation<"distinct", TDimension>;
+
+type ColumnByName<TColumns, TColumn> = TColumn extends { name: infer TName }
+  ? [Extract<TColumns, { name: TName }>] extends [never]
+    ? TColumn
+    : Extract<TColumns, { name: TName }>
+  : TColumn;
+
+type DynamicBreakoutColumn<TColumns, TBreakout> =
+  TBreakout extends NamedBreakout<infer TColumn, infer TName>
+    ? Omit<ColumnByName<TColumns, TColumn>, "name"> & { name: TName }
+    : ColumnByName<TColumns, TBreakout>;
+
+type DynamicBreakoutColumns<TColumns, TDynamic> = TDynamic extends {
+  breakouts?: infer TBreakouts;
+}
+  ? DynamicBreakoutColumn<TColumns, TupleElement<NonNullable<TBreakouts>>>
+  : never;
 
 /**
  * Clauses layered on top of a static query — the part a UI changes at runtime.
@@ -644,7 +683,7 @@ export type MetabaseDynamicQuery<
   TQuery = unknown,
 > = StageClauses<
   MetabaseDynamicColumn<TEntity, TQuery>,
-  DimensionAggregation<MetabaseDynamicColumn<TEntity, TQuery>>,
+  TypedDimensionAggregation<MetabaseDynamicColumn<TEntity, TQuery>>,
   never
 >;
 
@@ -659,7 +698,8 @@ type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
 type InferResultSchema<TEntity, TQuery, TDynamic> =
   ReshapesResultColumns<TDynamic> extends true
     ? RowsFromColumns<
-        QueryBreakoutColumns<TDynamic> | QueryAggregationColumns<TDynamic>
+        | DynamicBreakoutColumns<QueryResultColumn<TEntity, TQuery>, TDynamic>
+        | QueryAggregationColumns<TDynamic>
       >
     : InferQuerySchema<TEntity, TQuery>;
 
@@ -699,8 +739,12 @@ export type UseMetabaseQuery = <
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
   dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<TEntity, TQuery>
+    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
       ? RequireAggregationsForBreakouts<TDynamic> &
-          RequireDynamicOrderByNames<TEntity, TQuery, TDynamic>
-      : MetabaseDynamicQuery<TEntity, TQuery>),
+          RequireDynamicOrderByNames<
+            QueryEntity<TEntity, TQuery>,
+            TQuery,
+            TDynamic
+          >
+      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;

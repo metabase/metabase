@@ -35,7 +35,7 @@ export function count(
   };
 }
 
-export const sum = <TDimension, const TName extends string = "sum">(
+export const sum = <const TDimension, const TName extends string = "sum">(
   dimension: NumericAggregationDimension<TDimension>,
   options?: AggregationOptions<TName>,
 ): FieldAggregationSchema<
@@ -45,7 +45,7 @@ export const sum = <TDimension, const TName extends string = "sum">(
   NoInfer<TName>
 > => fieldAggregation("sum", "Sum", dimension, options);
 
-export const avg = <TDimension, const TName extends string = "avg">(
+export const avg = <const TDimension, const TName extends string = "avg">(
   dimension: NumericAggregationDimension<TDimension>,
   options?: AggregationOptions<TName>,
 ): FieldAggregationSchema<
@@ -55,7 +55,7 @@ export const avg = <TDimension, const TName extends string = "avg">(
   NoInfer<TName>
 > => fieldAggregation("avg", "Average", dimension, options);
 
-export const median = <TDimension, const TName extends string = "median">(
+export const median = <const TDimension, const TName extends string = "median">(
   dimension: NumericAggregationDimension<TDimension>,
   options?: AggregationOptions<TName>,
 ): FieldAggregationSchema<
@@ -65,13 +65,16 @@ export const median = <TDimension, const TName extends string = "median">(
   NoInfer<TName>
 > => fieldAggregation("median", "Median", dimension, options);
 
-export const distinct = <TDimension, const TName extends string = "count">(
+export const distinct = <
+  const TDimension,
+  const TName extends string = "count",
+>(
   dimension: TDimension,
   options?: AggregationOptions<TName>,
 ): FieldAggregationSchema<"distinct", TDimension, "number", NoInfer<TName>> =>
   fieldAggregation("distinct", "Distinct values", dimension, options);
 
-export const min = <TDimension, const TName extends string = "min">(
+export const min = <const TDimension, const TName extends string = "min">(
   dimension: OrderableAggregationDimension<TDimension>,
   options?: AggregationOptions<TName>,
 ): FieldAggregationSchema<
@@ -81,7 +84,7 @@ export const min = <TDimension, const TName extends string = "min">(
   NoInfer<TName>
 > => fieldAggregation("min", "Minimum", dimension, options);
 
-export const max = <TDimension, const TName extends string = "max">(
+export const max = <const TDimension, const TName extends string = "max">(
   dimension: OrderableAggregationDimension<TDimension>,
   options?: AggregationOptions<TName>,
 ): FieldAggregationSchema<
