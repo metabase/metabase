@@ -405,12 +405,13 @@
 ;;; Estimate
 
 (def ^:private per-field-cost
-  "Total tokens and USD per field for an attribute set, from the Haiku 4.5 bench on the synthetic app schema (TSP-160,
-  336 fields). Attribute sets with no bench row use the all-three row, the highest."
-  {#{:data_sensitivity :semantic_type}              {:tokens 433 :cost_usd 0.00067}
-   #{:data_sensitivity}                             {:tokens 369 :cost_usd 0.00058}
-   #{:description}                                  {:tokens 312 :cost_usd 0.00059}
-   #{:data_sensitivity :semantic_type :description} {:tokens 493 :cost_usd 0.00079}})
+  "Total tokens and USD per field for an attribute set: medians of the Haiku 4.5 bench on the whole synthetic database
+  (TSP-164, 75 tables, 1,380 fields, 3 runs each). Attribute sets with no bench row use the all-three row, the
+  highest."
+  {#{:data_sensitivity :semantic_type}              {:tokens 281 :cost_usd 0.00059}
+   #{:data_sensitivity}                             {:tokens 253 :cost_usd 0.00051}
+   #{:description}                                  {:tokens 245 :cost_usd 0.00054}
+   #{:data_sensitivity :semantic_type :description} {:tokens 324 :cost_usd 0.00070}})
 
 (mr/def ::estimate
   [:map {:closed true}

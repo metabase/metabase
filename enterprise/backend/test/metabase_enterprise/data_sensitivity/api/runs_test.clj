@@ -121,13 +121,13 @@
           (testing "the whole database with the default attributes"
             (is (=? {:table_count        4
                      :field_count        4
-                     :total_tokens       (* 4 433)
+                     :total_tokens       (* 4 281)
                      :cost_usd           #(< 0.002 % 0.003)
                      :unavailable_reason nil}
                     (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
                                           :database-id (:id db)))))
           (testing "a schema and an attribute set"
-            (is (=? {:table_count 2 :field_count 2 :total_tokens (* 2 369)}
+            (is (=? {:table_count 2 :field_count 2 :total_tokens (* 2 253)}
                     (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
                                           :database-id (:id db) :schemas "S0" :attributes "data_sensitivity"))))
           (testing "tables"
@@ -136,7 +136,7 @@
                                           :database-id (:id db) :table-ids (:id (first tables))
                                           :table-ids (:id (second tables))))))
           (testing "an attribute set with no bench row uses the highest ratio"
-            (is (=? {:total_tokens (* 4 493)}
+            (is (=? {:total_tokens (* 4 324)}
                     (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
                                           :database-id (:id db) :attributes "semantic_type"))))
           (testing "an unknown schema is a 400"
