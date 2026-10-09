@@ -401,9 +401,11 @@ describe("AgentMessage", () => {
         { onRetry: jest.fn() },
       );
 
-      const alert = screen.getByTestId("metabot-chat-message-turn-alert");
       expect(
-        within(alert).queryByTestId("metabot-chat-message-retry"),
+        screen.getByTestId("metabot-chat-message-turn-alert"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-chat-message-retry"),
       ).not.toBeInTheDocument();
     });
 

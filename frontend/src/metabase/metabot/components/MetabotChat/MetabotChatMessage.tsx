@@ -387,6 +387,10 @@ const MessageActions = ({
   );
 };
 
+const UNRETRIABLE_ERROR_TYPES = new Set<string | undefined>(
+  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
+);
+
 export const AgentMessage = ({
   message,
   debug,
@@ -411,6 +415,9 @@ export const AgentMessage = ({
   const messageId = message.externalId ?? "";
   const isFailed =
     message.status.type === "errored" || message.status.type === "aborted";
+  const isUnretriable =
+    message.status.type === "errored" &&
+    UNRETRIABLE_ERROR_TYPES.has(message.status.error.type);
   const canActOnMessage = !readonly && !!messageId;
 
   const visibleParts = debug
@@ -431,7 +438,7 @@ export const AgentMessage = ({
       isForking={isForking}
       submittedFeedback={submittedFeedback}
       setFeedbackMessage={setFeedbackMessage}
-      onRetry={onRetry}
+      onRetry={isUnretriable ? undefined : onRetry}
       onFork={onFork}
       extraActions={extraActions}
     />
@@ -486,10 +493,6 @@ export const AgentMessage = ({
     </>
   );
 };
-
-const UNRETRIABLE_ERROR_TYPES = new Set<string | undefined>(
-  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
-);
 
 const AgentErroredTurnAlert = ({
   error,
