@@ -250,6 +250,31 @@
       (assoc-in [:middleware :disable-remaps?] true)
       preprocess-query))
 
+(defn- original-table-fields-including-sensitive
+  "The Fields of the original Table that a sandbox for it may return. This includes `:sensitive` (\"Do not include\")
+  Fields: they are never selected by default, but the query being sandboxed can still reference them, e.g. in a join
+  condition, so the sandbox has to keep exposing them (#74173)."
+  [metadata-providerable original-table-id]
+  (lib.metadata/active-fields metadata-providerable original-table-id {:include-sensitive? true}))
+
+(defn- align-native-sandbox-columns-with-original-table
+  "The columns returned by a native sandbox come from its SQL, so match them up with the original Table's Fields by
+  name and use those Fields' IDs. Don't trust IDs from the sandbox Card's saved metadata: if they're stale or wrong
+  (e.g. a model column mapped to a same-named Field in another Table), [[project-only-columns-from-original-table]]
+  drops the column, and refs to it in the sandboxed query get resolved to a same-named column somewhere else (#74173)."
+  [metadata-providerable sandbox-query original-table-id]
+  (if-not (lib/native-only-query? sandbox-query)
+    sandbox-query
+    (let [table-cols (m/index-by #(lib.field.util/parent-qualified-name metadata-providerable %)
+                                 (original-table-fields-including-sensitive metadata-providerable original-table-id))]
+      (letfn [(update-col [col]
+                (if-let [table-col (get table-cols (:name col))]
+                  (assoc col :id (:id table-col), :table-id (:table-id table-col))
+                  col))
+              (update-cols [cols]
+                (mapv update-col cols))]
+        (lib/update-query-stage sandbox-query -1 m/update-existing-in [:lib/stage-metadata :columns] update-cols)))))
+
 (defn- project-only-columns-from-original-table
   "A sandbox query is only allowed to return columns returned by the original table. If the sandbox query returns
   anything else, log a warning telling people this is officially unsupported, then add a new stage to the query with
@@ -259,7 +284,7 @@
   just have to work around them going forward."
   [metadata-providerable sandbox-query original-table-id]
   (let [sandbox-cols       (lib/returned-columns sandbox-query)
-        table-cols         (lib.metadata/fields metadata-providerable original-table-id)
+        table-cols         (original-table-fields-including-sensitive metadata-providerable original-table-id)
         ;; `dissoc nil` guards against the rare case of a table-col without `:id` shadowing the name lookup for
         ;; sandbox cols (e.g. native) that also have no `:id`.
         table-by-id        (dissoc (m/index-by :id table-cols) nil)
@@ -339,7 +364,7 @@
                                   (keep (fn [{col-name :name id :id}]
                                           (when (and id (contains? unresolved-names col-name))
                                             id)))
-                                  (lib.metadata/fields sandbox-query original-table-id)))]
+                                  (original-table-fields-including-sensitive sandbox-query original-table-id)))]
     (into direct-ids name-resolved-ids)))
 
 (defn- filter-stage-fields-to-sandbox
@@ -365,6 +390,7 @@
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
   (let [sandbox-query      (sandbox->query query sandbox)
+        sandbox-query      (align-native-sandbox-columns-with-original-table query sandbox-query source-table)
         sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
         new-source-stages  (mapv (fn [stage]
                                    (-> stage
@@ -377,7 +403,11 @@
                                                  (fn [cols]
                                                    (merge-original-table-metadata
                                                     cols
-                                                    (lib/returned-columns query (lib.metadata/table query source-table)))))
+                                                    ;; include `:sensitive` columns, see [[original-table-fields]]
+                                                    (lib/returned-columns query
+                                                                          -1
+                                                                          (lib.metadata/table query source-table)
+                                                                          {:include-sensitive-fields? true}))))
         is-stage-in-join?  (->> path          ; [:stages 0 :joins 0 :stages 0]
                                 (drop-last 3) ; [:stages 0 :joins]
                                 last
