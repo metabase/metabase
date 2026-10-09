@@ -56,14 +56,15 @@
                      :model/User tenant-user {:tenant_id (:id tenant)}
                      :model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
                                          :bundle (.getBytes "BUNDLE" "UTF-8")}
-                     :model/PermissionsGroup tenant-group {:is_tenant_group true}
+                     :model/PermissionsGroup tenant-group {}
                      :model/PermissionsGroup group {}]
         (resources/ensure-resources! app)
         (group-access/add-groups! app [(:id group)])
         (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
         ;; A stale assignment must not admit tenant users.
-        (perms/add-user-to-group! (:id tenant-user) (:id tenant-group))
         (t2/insert! :model/DataAppGroupAssignment {:data_app_id (:id app) :permission_group_id (:id tenant-group)})
+        (t2/update! :model/PermissionsGroup (:id tenant-group) {:is_tenant_group true})
+        (perms/add-user-to-group! (:id tenant-user) (:id tenant-group))
         (doseq [[user-id admin? allowed?] [[(mt/user->id :crowberto) true true]
                                            [(mt/user->id :rasta) false true]
                                            [(mt/user->id :lucky) false false]
@@ -91,7 +92,6 @@
       (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))
       (doseq [ids [[(:id finches) (:id (perms/admin-group))]
                    [(:id finches) (:id tenant)]
-                   [(:id finches) (:id finches)]
                    []
                    (vec (range 1 102))]]
         (mt/user-http-request :crowberto :post 400 "apps/birds/groups" {:group_ids ids})
@@ -100,7 +100,9 @@
       (is (=? [{:id (:id finches) :name "Finches" :member_count 0}
                {:id (:id owls) :name "Owls" :member_count 0}]
               (mt/user-http-request :crowberto :post 200 "apps/birds/groups"
-                                    {:group_ids [(:id finches) (:id owls)]})))
+                                    {:group_ids [(:id finches) (:id finches) (:id owls)]})))
+      (is (= #{(:id finches) (:id owls)}
+             (t2/select-fn-set :permission_group_id :model/DataAppGroupAssignment :data_app_id (:id app))))
       (mt/user-http-request :crowberto :post 400 "apps/birds/groups" {:group_ids [(:id finches)]})
       (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id finches)))
       (is (= [(:id owls)] (mapv :id (mt/user-http-request :crowberto :get 200 "apps/birds/groups"))))
@@ -109,15 +111,20 @@
                                   [:delete (str "groups/" (:id owls)) nil]]]
         (apply mt/user-http-request :rasta method 403 (str "apps/birds/" path) (when body [body]))))))
 
-(deftest group-api-rejects-unknown-fields-test
+(deftest group-api-ignores-unknown-fields-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                   :model/PermissionsGroup group {}]
-      (mt/user-http-request :crowberto :post 400 "apps/birds/groups"
-                            {:group_ids [(:id group)] :user_ids [(mt/user->id :rasta)]})
-      (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
-      (is (= (:resource_collection_id app)
-             (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))
+                   :model/PermissionsGroup group {}
+                   :model/PermissionsGroup ignored-group {}]
+      (is (=? [{:id (:id group)}]
+              (mt/user-http-request :crowberto :post 200 "apps/birds/groups"
+                                    {:group_ids [(:id group)]
+                                     :user_ids [(mt/user->id :rasta)]
+                                     :permission_group_ids [(:id ignored-group)]})))
+      (is (= [(:id group)]
+             (t2/select-fn-vec :permission_group_id :model/DataAppGroupAssignment :data_app_id (:id app))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (not (mi/can-read? app)))))))
 
 (deftest assignment-does-not-recreate-deleted-collection-test
   (mt/with-premium-features #{:data-apps}
@@ -254,7 +261,9 @@
       (resources/ensure-resources! app)
       (let [admin-id (:id (perms/admin-group))
             permissions (t2/select :model/Permissions :group_id admin-id)]
-        (t2/insert! :model/DataAppGroupAssignment {:data_app_id (:id app) :permission_group_id admin-id})
+        ;; Insert a legacy assignment without the model hooks that now reject it.
+        (t2/query {:insert-into (t2/table-name :model/DataAppGroupAssignment)
+                   :values [{:data_app_id (:id app) :permission_group_id admin-id}]})
         (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" admin-id))
         (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))
         (is (= permissions (t2/select :model/Permissions :group_id admin-id)))))))

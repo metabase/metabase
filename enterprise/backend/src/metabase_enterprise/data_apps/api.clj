@@ -132,13 +132,8 @@
    [:url [:maybe :string]]])
 
 (def ^:private AddGroupsRequest
-  [:map {:closed true
-         :decode/api (fn [body]
-                       (when (map? body)
-                         (api/check-400 (every? #{:group_ids} (keys body))
-                                        (tru "Only group_ids can be specified.")))
-                       body)}
-   [:group_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
+  [:map {:closed true}
+   [:group_ids [:sequential {:min 1 :max 100} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
