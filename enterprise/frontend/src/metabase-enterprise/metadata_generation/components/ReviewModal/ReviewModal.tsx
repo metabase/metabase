@@ -433,18 +433,22 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
                 <Tooltip
                   label={t`Accepts or clears every suggestion of this table, except those that would replace a value a person set.`}
                 >
-                  <Checkbox
-                    aria-label={t`Accept the suggestions of this table`}
-                    checked={tableCheckbox.checked}
-                    indeterminate={tableCheckbox.indeterminate}
-                    disabled={tableCheckbox.disabled || isDeciding}
-                    onChange={() =>
-                      decide({
-                        decision: tableCheckbox.checked ? "unaccept" : "accept",
-                        table_ids: [table.table_id],
-                      })
-                    }
-                  />
+                  <Box component="span" display="inline-flex">
+                    <Checkbox
+                      aria-label={t`Accept the suggestions of this table`}
+                      checked={tableCheckbox.checked}
+                      indeterminate={tableCheckbox.indeterminate}
+                      disabled={tableCheckbox.disabled || isDeciding}
+                      onChange={() =>
+                        decide({
+                          decision: tableCheckbox.checked
+                            ? "unaccept"
+                            : "accept",
+                          table_ids: [table.table_id],
+                        })
+                      }
+                    />
+                  </Box>
                 </Tooltip>
               </th>
               <th>{t`Field`}</th>
