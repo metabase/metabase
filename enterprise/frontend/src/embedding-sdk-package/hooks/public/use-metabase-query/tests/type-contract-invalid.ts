@@ -2,6 +2,7 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import {
+  aggregations,
   breakout,
   count,
   orderBy,
@@ -121,6 +122,50 @@ breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
 
 // @ts-expect-error A bucketed orderBy takes the bucketed breakout instead of options
 orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", { unit: "month" });
+
+const groupedOrders = TEST_SCHEMA.tables.orders;
+const groupedCreatedMonth = breakout(groupedOrders.fields.createdAt, {
+  unit: "month",
+  name: "created_month",
+});
+const groupedTotal = aggregations.sum(groupedOrders.fields.amount, {
+  name: "total",
+});
+const groupedQuery = {
+  source: groupedOrders,
+  aggregations: [
+    count(),
+    groupedTotal,
+    aggregations.max(groupedOrders.fields.amount),
+  ],
+  breakouts: [groupedCreatedMonth, groupedOrders.fields.status],
+} as const;
+
+defineQuery({
+  ...groupedQuery,
+  orderBys: [
+    // @ts-expect-error a grouped stage orders only by its breakout and aggregation names
+    { type: "column", name: "AMOUNT" },
+    // @ts-expect-error a named breakout's column takes its name, not its field's
+    { type: "column", name: "CREATED_AT" },
+    // @ts-expect-error a named aggregation's column takes its name, not its operator's
+    { type: "column", name: "sum" },
+  ],
+});
+
+defineQuery({
+  source: groupedOrders,
+  aggregations: [
+    {
+      type: "operator",
+      operator: "sum",
+      args: [groupedOrders.fields.amount],
+      name: "total",
+    },
+  ],
+  // @ts-expect-error a named aggregation's column takes its name, not its operator's
+  orderBys: [{ type: "column", name: "sum" }],
+});
 
 function InvalidTypeFixtures() {
   const staticQuery = defineQuery({
@@ -252,6 +297,20 @@ function InvalidTypeFixtures() {
 
   // @ts-expect-error grouping in the dynamic stage drops the source columns
   void groupedDynamicResult.data?.rows[0]?.AMOUNT;
+
+  const groupedStaticQuery = defineQuery(groupedQuery);
+
+  useMetabaseQuery(groupedStaticQuery, {
+    // @ts-expect-error a dynamic stage orders by the static query's result columns
+    orderBys: [{ type: "column", name: "AMOUNT" }],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [count()],
+    breakouts: [{ ...groupedOrders.fields.status }],
+    // @ts-expect-error a grouping dynamic stage orders by its own breakouts and aggregations
+    orderBys: [{ type: "column", name: "total" }],
+  });
 
   return null;
 }

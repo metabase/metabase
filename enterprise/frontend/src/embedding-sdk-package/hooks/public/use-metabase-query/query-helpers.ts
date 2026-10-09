@@ -6,6 +6,7 @@ import {
 import type { SchemaColumn } from "../data-schema";
 
 import type {
+  AggregationResultColumnName,
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
   FilterLiteralValue,
@@ -121,7 +122,11 @@ export function orderBy<
 >(
   aggregation: TAggregation,
   direction?: OrderByDirection,
-): SchemaColumn & { type: "column"; direction?: OrderByDirection };
+): {
+  type: "column";
+  name: AggregationResultColumnName<TAggregation>;
+  direction?: OrderByDirection;
+};
 
 export function orderBy<const TDimension>(
   dimension: TDimension,

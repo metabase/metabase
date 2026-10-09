@@ -67,6 +67,74 @@ const _validHookResultCard = {
   query: hookResult.query,
 } satisfies MetabaseCard;
 
+const groupedOrders = TEST_SCHEMA.tables.orders;
+const groupedCreatedMonth = breakout(groupedOrders.fields.createdAt, {
+  unit: "month",
+  name: "created_month",
+});
+const groupedTotal = aggregations.sum(groupedOrders.fields.amount, {
+  name: "total",
+});
+const groupedQuery = {
+  source: groupedOrders,
+  aggregations: [
+    count(),
+    groupedTotal,
+    aggregations.max(groupedOrders.fields.amount),
+  ],
+  breakouts: [groupedCreatedMonth, groupedOrders.fields.status],
+} as const;
+
+defineQuery({
+  ...groupedQuery,
+  orderBys: [
+    orderBy(groupedCreatedMonth, "desc"),
+    orderBy(groupedTotal, "desc"),
+    orderBy(count()),
+    orderBy(groupedOrders.fields.status),
+    { type: "column", name: "created_month" },
+    { type: "column", name: "STATUS" },
+    { type: "column", name: "total" },
+    { type: "column", name: "count" },
+    { type: "column", name: "max" },
+  ],
+});
+
+defineQuery({
+  source: groupedOrders,
+  aggregations: [aggregations.distinct(groupedOrders.fields.status)],
+  orderBys: [{ type: "column", name: "count" }],
+});
+
+defineQuery({
+  source: groupedOrders,
+  aggregations: [
+    { type: "operator", operator: "sum", args: [groupedOrders.fields.amount] },
+    {
+      type: "operator",
+      operator: "avg",
+      args: [groupedOrders.fields.amount],
+      name: "average",
+    },
+  ],
+  orderBys: [
+    { type: "column", name: "sum" },
+    { type: "column", name: "average" },
+  ],
+});
+
+defineQuery({
+  source: groupedOrders,
+  aggregations: [
+    groupedOrders.measures.revenue,
+    aggregations.measure(groupedOrders.measures.revenue, { name: "revenue" }),
+  ],
+  orderBys: [
+    { type: "column", name: "count" },
+    { type: "column", name: "revenue" },
+  ],
+});
+
 function ValidTypeFixtures() {
   // A definition types `execute` and `result` on its own, no generics written.
   const createOrder = useDataAppAction(CreateOrder);
@@ -257,6 +325,21 @@ function ValidTypeFixtures() {
   void filteredStatus;
 
   useMetabaseQueryObject(staticQuery, { limit: 10 });
+
+  const groupedStaticQuery = defineQuery(groupedQuery);
+
+  useMetabaseQuery(groupedStaticQuery, {
+    orderBys: [
+      orderBy(groupedCreatedMonth, "asc"),
+      { type: "column", name: "total" },
+    ],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [count()],
+    breakouts: [{ ...groupedOrders.fields.status }],
+    orderBys: [{ type: "column", name: "count" }],
+  });
 
   return null;
 }

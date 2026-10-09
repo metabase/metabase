@@ -462,6 +462,73 @@ export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
 export type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
 
+export type AggregationResultColumnName<TAggregation> = TAggregation extends {
+  columns: readonly [{ name: infer TName }, ...unknown[]];
+}
+  ? TName
+  : TAggregation extends { type: "operator"; operator: infer TOperator }
+    ? TAggregation extends { name: infer TName extends string }
+      ? TName
+      : TOperator extends "distinct"
+        ? "count"
+        : TOperator
+    : string;
+
+type ColumnName<TColumn> = TColumn extends { name: infer TName }
+  ? TName
+  : never;
+
+type GroupedColumnNames<TQuery> =
+  | ColumnName<QueryBreakoutColumns<TQuery>>
+  | (TQuery extends { aggregations?: infer TAggregations }
+      ? AggregationResultColumnName<TupleElement<NonNullable<TAggregations>>>
+      : never);
+
+type IsGrouped<TQuery> = TQuery extends {
+  aggregations: readonly [unknown, ...unknown[]];
+}
+  ? true
+  : false;
+
+type OrderByWithColumnName<TOrderBy, TNames> = TOrderBy extends
+  | { tableId: unknown }
+  | { sourceFieldId: unknown }
+  ? TOrderBy
+  : TOrderBy extends { type: "column"; name: infer TName }
+    ? [TName] extends [TNames]
+      ? TOrderBy
+      : { orderByColumnNames: `${TNames & string}` }
+    : TOrderBy;
+
+/** Narrows the name-only order-bys of `TQuery` to `TNames`. */
+type RequireOrderByColumnNames<TQuery, TNames> = [TNames] extends [never]
+  ? unknown
+  : TQuery extends { orderBys: infer TOrderBys extends readonly unknown[] }
+    ? {
+        orderBys: {
+          [TIndex in keyof TOrderBys]: OrderByWithColumnName<
+            TOrderBys[TIndex],
+            TNames
+          >;
+        };
+      }
+    : unknown;
+
+/** Requires a grouped stage's name-only order-bys to name one of its breakout or aggregation columns. */
+export type RequireGroupedOrderByNames<TQuery> =
+  IsGrouped<TQuery> extends true
+    ? RequireOrderByColumnNames<TQuery, GroupedColumnNames<TQuery>>
+    : unknown;
+
+/** Requires a dynamic stage's name-only order-bys to name its own grouped columns, or else the static query's result columns. */
+export type RequireDynamicOrderByNames<TEntity, TQuery, TDynamic> =
+  IsGrouped<TDynamic> extends true
+    ? RequireGroupedOrderByNames<TDynamic>
+    : RequireOrderByColumnNames<
+        TDynamic,
+        ColumnName<QueryResultColumn<TEntity, TQuery>>
+      >;
+
 export type MetabaseQueryOptions<
   TEntity = unknown,
   _TSchema = unknown,
@@ -627,11 +694,13 @@ export type UseMetabaseQuery = <
     DefinedQuery &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
-        ? RequireAggregationsForBreakouts<TQuery>
+        ? RequireAggregationsForBreakouts<TQuery> &
+            RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
   dynamicQuery?: TDynamic &
     (TDynamic extends MetabaseDynamicQuery<TEntity, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic>
+      ? RequireAggregationsForBreakouts<TDynamic> &
+          RequireDynamicOrderByNames<TEntity, TQuery, TDynamic>
       : MetabaseDynamicQuery<TEntity, TQuery>),
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;
