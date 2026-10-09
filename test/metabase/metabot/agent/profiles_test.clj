@@ -180,6 +180,17 @@
             (is (not (contains? tools "create_sql_query")))
             (is (not (contains? tools "construct_notebook_query")))))))))
 
+(deftest internal-sql-profile-needs-only-the-sql-permission-test
+  (testing "a user with Metabot's SQL permission and no NLQ permission can write SQL and run it"
+    (let [perms (assoc scope/perm-type-defaults
+                       :permission/metabot                :yes
+                       :permission/metabot-sql-generation :yes)]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (binding [scope/*current-user-metabot-permissions* perms
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
+          (is (=? {"create_sql_query" some?, "run_query" some?}
+                  (profiles/get-tools-for-profile :internal-sql ["permission:write_sql_queries"]))))))))
+
 (deftest nlq-data-discovery-fallback-test
   (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
     (binding [scope/*current-user-scope* api-scope/unrestricted]

@@ -139,13 +139,17 @@
 
 ;; :internal without the notebook query builder, so SQL is the only way to a value: the model writes it with
 ;; create_sql_query and reads it with run_query. It measures how well the model answers in SQL alone. The SQL tools
-;; keep their own gates, the write_sql_queries capability and the SQL execution setting, so the profile grants
-;; nothing :internal doesn't.
+;; keep their own gates, the write_sql_queries capability and the SQL execution setting.
+;; Its run_query needs the scope Metabot's SQL permission grants, not the NLQ one, so a user with only the SQL
+;; permission can read what they run. That is the one thing the profile grants that :internal doesn't.
 (register-profile!
  {:name            :internal-sql
   :prompt-template "internal.selmer"
   :max-iterations  15
-  :tools           (into [] (remove #{#'tools/construct-notebook-query-tool}) internal-tools)})
+  :tools           (into []
+                         (comp (remove #{#'tools/construct-notebook-query-tool})
+                               (replace {#'tools/run-query-tool #'tools/run-sql-query-tool}))
+                         internal-tools)})
 
 ;; SQL responses are rendered from tool results in the native port, so this
 ;; profile must always end with a tool call rather than free-form assistant text.
