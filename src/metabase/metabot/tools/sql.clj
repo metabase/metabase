@@ -81,6 +81,13 @@
    [:sql_query :string]
    [:title :string]])
 
+(defn- sql-results-readable?
+  "Whether the model can read a SQL query's results in this session: it offers `run_query`, and Metabot may run SQL
+   for the current user."
+  []
+  (and (shared/tool-offered? "run_query")
+       (scope/sql-execution-allowed?)))
+
 (mu/defn ^{:tool-name    "create_sql_query"
            :scope        scope/agent-sql-create
            :capabilities #{:permission-write-sql-queries}}
@@ -96,7 +103,7 @@
           {:keys [query-id query]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id)]
+              instr       (instructions/query-created-instructions-for query-id (sql-results-readable?))]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr

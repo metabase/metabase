@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -36,6 +37,27 @@
               (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
+
+(deftest create-sql-query-says-whether-its-results-can-be-read-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (doseq [[situation tool-names sql-on? readable?]
+                [["run_query offered and SQL execution on"  #{"create_sql_query" "run_query"} true  true]
+                 ["run_query offered and SQL execution off" #{"create_sql_query" "run_query"} false false]
+                 ["no run_query in the session"             #{"create_sql_query"}             true  false]]]
+          (testing situation
+            (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
+              (binding [shared/*memory-atom*                     (atom {:tool-names tool-names, :state {}})
+                        scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                        scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                  scope/all-yes-permissions)]
+                (let [instructions (:instructions (agent-sql/create-sql-query-tool {:database_id db-id
+                                                                                    :sql_query   "SELECT 1"
+                                                                                    :title       "Results"}))]
+                  (is (= [readable? (not readable?)]
+                         [(str/includes? instructions "Run the query with `run_query`")
+                          (str/includes? instructions "you cannot view the results directly yourself")])))))))))))
 
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
