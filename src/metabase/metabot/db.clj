@@ -287,6 +287,11 @@
    user-id :- ::lib.schema.id/user]
   (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id [:not= user-id]))
 
+(mu/defn slack-message?
+  "Whether any message in the MetabotConversation with `conversation-id` was sent through Slack."
+  [conversation-id :- :string]
+  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :channel_id [:not= nil]))
+
 (mu/defn message-by-external-id
   "The ID and conversation of the MetabotMessage with `external-id`, or nil."
   [external-id :- :string]
