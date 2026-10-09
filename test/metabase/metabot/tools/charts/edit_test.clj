@@ -155,11 +155,11 @@
                                    "aggregation"  [["count" {}]]
                                    "breakout"     [["field" {} category-field-fk]]}]}
           external-query (walk/keywordize-keys query-data)
-          construct-result (tools.construct/construct-notebook-query-tool
-                            {:query         external-query
-                             :title         "Counts by category"
-                             :description   "Counts by category."
-                             :visualization {:chart_type "bar"}})
+          construct-result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                                {:query         external-query
+                                                 :title         "Counts by category"
+                                                 :description   "Counts by category."
+                                                 :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])
           chart-id (get-in construct-result [:structured-output :chart-id])]
@@ -206,11 +206,11 @@
                                                        ["field" {}
                                                         [db-name "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})
+            result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                        {:query         external-query
+                                         :title         "Test chart"
+                                         :description   "Test chart description."
+                                         :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])]
         (testing "order-by inner clause is now an aggregation reference, not :sum"
           (let [first-ord (first (get-in query [:stages 0 :order-by]))
@@ -251,23 +251,21 @@
                                                        ["field" {}
                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})]
-        (testing "tool returns a clear, agent-targeted error rather than producing a chart"
-          ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
-          ;; `{:output <message>}` (no `:structured-output`). That's the LLM-visible signal.
-          (is (nil? (:structured-output result))
-              (str "expected no structured-output, got: " (pr-str result)))
-          (is (string? (:output result)))
-          (is (re-find #"Sample" (:output result))
-              (str "error message should mention the offending DB name; got: "
-                   (:output result)))
-          (is (re-find #"read_resource|Unknown database" (:output result))
-              (str "error message should hint at the recovery path; got: "
-                   (:output result))))))))
+            {:keys [class code text]}
+            (test-util/tool-failure tools.construct/construct-notebook-query-tool
+                                    {:query         external-query
+                                     :title         "Test chart"
+                                     :description   "Test chart description."
+                                     :visualization {:chart_type "bar"}}
+                                    #{"read_resource"})]
+        (testing "tool raises a declared, agent-targeted error rather than producing a chart"
+          (is (= :recoverable class))
+          (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-database code))
+          (is (re-find #"Sample" text)
+              (str "error message should mention the offending DB name; got: " text))
+          (testing "and the declaration's recovery step says where a database name comes from"
+            (is (re-find #"portable FK" text)
+                (str "error message should hint at the recovery path; got: " text))))))))
 
 (deftest construct-notebook-query-llm-uses-canonical-db-name-end-to-end-test
   (testing (str "Symmetric to the previous test: the LLM writes `database: Sample Database`\n"
@@ -285,11 +283,11 @@
                                      "breakout"     [["field" {}
                                                       [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})
+            result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                        {:query         external-query
+                                         :title         "Test chart"
+                                         :description   "Test chart description."
+                                         :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])]
         (testing "the chart was constructed successfully"
@@ -341,11 +339,11 @@
                                      "breakout"     [["field" {} category-field-fk]]}]}
             external-query (walk/keywordize-keys query-data)
 
-            construct-result (tools.construct/construct-notebook-query-tool
-                              {:query         external-query
-                               :title         "Test chart"
-                               :description   "Test chart description."
-                               :visualization {:chart_type "bar"}})
+            construct-result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                                  {:query         external-query
+                                                   :title         "Test chart"
+                                                   :description   "Test chart description."
+                                                   :visualization {:chart_type "bar"}})
             query (get-in construct-result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])
             field-opts (second breakout-field)]

@@ -101,6 +101,13 @@
   [tool-name ^Throwable e]
   (let [{:keys [agent-error? terminal-error?]} (ex-data e)]
     (cond
+      ;; Already a declared error: raised by a converted tool this one called, or by a shared
+      ;; converter such as `with-pipeline-errors`. A declared recoverable carries `:agent-error?`
+      ;; too, so without this it would be re-wrapped as a legacy agent error — losing its recovery
+      ;; steps and re-attributing it to this tool.
+      (contains? (ex-data e) tools.error/error-key)
+      (throw e)
+
       terminal-error?
       (tools.error/unrecoverable! ::terminal-error
                                   {:user-message (or (not-empty (ex-message e)) "Something went wrong")

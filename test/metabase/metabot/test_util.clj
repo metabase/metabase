@@ -5,6 +5,7 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -124,6 +125,27 @@
   ([tool arguments] (call-tool tool arguments #{"search"}))
   ([tool arguments tool-names]
    (tools.core/call (cond-> tool (var? tool) deref) arguments {:tool-names tool-names})))
+
+(defn tool-failure
+  "Call `tool` expecting it to fail, and return what the failure is: `{:class :code}`, plus `:text`
+  — the text a model in a profile holding `tool-names` would read — when it is recoverable.
+
+  The counterpart to [[call-tool]]. Throws when the call succeeds, so a test cannot pass by the
+  tool quietly working. This is the tool's own contract, not the agent boundary: the runtime's
+  rendering of an unrecoverable error, and its dev assertions, are
+  `metabase.metabot.tools.runtime-test`'s subject. Use [[tool-boundary-error]] for the boundary."
+  ([tool arguments] (tool-failure tool arguments #{"search"}))
+  ([tool arguments tool-names]
+   (let [outcome (try
+                   (call-tool tool arguments tool-names)
+                   (catch Throwable e e))]
+     (if-not (instance? Throwable outcome)
+       (throw (ex-info "expected this tool call to fail, but it returned a result"
+                       {:result outcome}))
+       (let [{:keys [class code] :as error} (tools.error/classify outcome)]
+         (cond-> {:class class :code code}
+           (= :recoverable class)
+           (assoc :text (tools.error/recoverable-text error tool-names))))))))
 
 (defn mock-llm-response
   "Create a mock LLM response (reducible) from high-level parts."

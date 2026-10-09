@@ -7,10 +7,13 @@
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.tools.error :as tools.error]
    ;; loaded for its declarations; the codes are read out of the catalog, not off the vars
-   [metabase.metabot.tools.recoverable.pipeline]))
+   [metabase.metabot.tools.recoverable.pipeline]
+   [metabase.metabot.tools.recovery-hints :as v1-hints]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,3 +79,76 @@
   (testing "a regex that stopped matching would make both tests above pass vacuously"
     (is (< 20 (count (pipeline-codes))))
     (is (contains? (pipeline-codes) :unknown-table))))
+
+;;; ===== Can one declaration serve both surfaces? =====
+
+;; The pipeline is shared by Metabot (portable FKs, `read_resource`) and MCP v2 (numeric ids,
+;; `browse_data`), and each surface keeps its own hint table today — `tools/recovery_hints.clj` and
+;; `mcp/v2/recovery_hints.clj`, the same error codes written twice. These tests establish what one
+;; shared declaration could and could not replace, before anything is moved.
+
+(tools.error/defrecoverable two-surface-error!
+  "A stand-in for a pipeline error declared with both surfaces' recovery steps."
+  {:payload [:map {:closed true} [:message :string]]}
+  [{:keys [message]}]
+  {:message  message
+   :recovery [{:uses #{"read_resource"}
+               :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables`, then "
+                          "retry with an exact portable FK.")}
+              {:uses #{"browse_data"}
+               :text (str "Call `browse_data` with action `list_tables`, then use a numeric table id "
+                          "as `source-table`.")}
+              {:uses #{}
+               :text "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`."}]})
+
+(defn- text-for!
+  "The text a caller holding `tool-names` reads for this error. Named with `!` because it goes
+  through the throwing constructor, which is the point — it reads the real declaration."
+  [tool-names]
+  (-> (try (two-surface-error! {:message "No table found."}) (catch Throwable e e))
+      tools.error/classify
+      (tools.error/recoverable-text tool-names)))
+
+(deftest ^:parallel one-declaration-can-carry-both-surfaces-vocabularies-test
+  (testing "`:uses` selects the right surface's step, so a single declaration can replace the two
+           per-surface hint tables for every step that names a tool"
+    (let [metabot (text-for! #{"read_resource" "search"})
+          mcp     (text-for! #{"browse_data" "search"})]
+      (testing "the pipeline's own sentence reaches both"
+        (is (str/includes? metabot "No table found."))
+        (is (str/includes? mcp "No table found.")))
+      (testing "each surface gets its own vocabulary and not the other's"
+        (is (str/includes? metabot "portable FK"))
+        (is (not (str/includes? metabot "browse_data")))
+        (is (str/includes? mcp "numeric table id"))
+        (is (not (str/includes? mcp "read_resource")))))))
+
+(deftest ^:parallel a-step-naming-no-tool-cannot-be-told-apart-by-surface-test
+  (testing "RECORDED, NOT SOLVED. `:uses` discriminates on which tools a caller has, which is not
+           the same question as which dialect it writes. A step that names no tool survives into
+           every surface — correct for advice about data the agent already holds, wrong for advice
+           about argument format.
+
+           Two of the declarations in this namespace have exactly that shape: `database-name-step`
+           and `first-stage-source-step` both say `portable FK`, both name no tool, and would
+           therefore reach an MCP v2 caller that writes numeric ids. Moving v2 onto these
+           declarations needs those two steps keyed on something else — a `:dialect` on the step,
+           or the dialect var the pipeline already binds."
+    (is (str/includes? (text-for! #{"browse_data"}) "portable FK")
+        "the dialect-specific, tool-free step reaches the numeric-id surface")))
+
+(deftest ^:parallel the-two-hint-tables-cover-the-same-codes-test
+  (testing "the per-surface hint tables answer the same set of codes, which is why one declaration
+           per code is the right shape for them. A code one table answers and the other does not
+           would mean the surfaces disagree about what is recoverable."
+    (let [codes [:uri-in-source-table :unknown-table :unknown-table-id :ambiguous-table
+                 :unknown-field :unknown-field-id :ambiguous-fk :no-fk-path
+                 :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
+                 :unknown-segment :unknown-segment-id :unknown-database
+                 :missing-source-in-first-stage]]
+      (doseq [code codes]
+        (testing code
+          (is (some? (v1-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))
+          (is (some? (v2-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))))
+      (testing "and every one of them is declared here"
+        (is (= #{} (set/difference (set codes) (declared-codes))))))))
