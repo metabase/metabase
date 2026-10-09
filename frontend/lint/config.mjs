@@ -283,6 +283,7 @@ const configs = [
       // Custom metabase rules
       "metabase/jtag-missing-key": "error",
       "metabase/no-unconditional-metabase-links-render": "error",
+      "metabase/bounded-route-gate": "error",
       "metabase/no-color-literals": "error",
       "metabase/valid-theme-tokens": "error",
       "metabase/no-literal-metabase-strings": "error",
