@@ -79,6 +79,20 @@ describe(
 
             asAdmin(() => {
               H.createImplicitActions({ modelId });
+
+              H.createQuestionAndDashboard({
+                questionDetails: {
+                  name: "Score detail",
+                  display: "object",
+                  database: WRITABLE_DB_ID,
+                  query: {
+                    "source-table": `card__${modelId}`,
+                  },
+                },
+                dashboardDetails: { name: "Test dashboard" },
+              }).then(({ body: { dashboard_id } }) => {
+                cy.wrap(dashboard_id).as("dashboardId");
+              });
             });
 
             asNormalUser(() => {
@@ -171,6 +185,17 @@ describe(
               deleteObjectModal().findByText("Delete forever").click();
               assertSuccessfullDeleteToast();
               assertUpdatedScoreNotInTable();
+
+              cy.log(
+                "As normal user: verify model actions are not shown in an object detail dashcard",
+              );
+              H.visitDashboard("@dashboardId");
+              H.getDashboardCard().within(() => {
+                objectDetailModal()
+                  .should("be.visible")
+                  .and("contain.text", "Amorous Aardvarks");
+                assertActionsDropdownNotExists();
+              });
             });
 
             asAdmin(() => {
