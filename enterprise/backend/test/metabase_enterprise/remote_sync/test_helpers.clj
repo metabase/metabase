@@ -507,9 +507,9 @@ width: fixed
   Card in a new Dashboard or Document, an Action on a new model, a Timeline in a new Collection and a dashcard that
   shows a new Card are deleted, and a Card or Dashboard that the test moved into a new Collection gets
   `collection_id` NULL. A Collection that the test moved under a new Collection keeps a `location` that names the
-  deleted Collection. Keeps the permission group of a deleted DataApp: the raw delete runs no hook. Reindexes search iff it deleted a row or the index holds a document of a new row. Throws, keeping the
-  Collection, when a Table is published into a new Collection (the foreign key of `metabase_table.collection_id`
-  blocks the delete).
+  deleted Collection. Keeps the permission group of a deleted DataApp: the raw delete runs no hook. Reindexes search
+  iff it deleted a row or the index holds a document of a new row. Throws, keeping the Collection, when a Table is
+  published into a new Collection (the foreign key of `metabase_table.collection_id` blocks the delete).
 
   Throws in a `^:parallel` test."
   [f]
