@@ -675,3 +675,23 @@
         (is (str/includes? doc "write SQL that reads it with create_sql_query"))
         (is (not (str/includes? doc "construct_notebook_query")))
         (is (not (str/includes? doc "notebook")))))))
+
+(deftest run-sql-query-tool-test
+  (let [sql-only (assoc scope/perm-type-defaults
+                        :permission/metabot                :yes
+                        :permission/metabot-sql-generation :yes)
+        run-as   (fn [perms query]
+                   (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                                      metabot-sql-execution-enabled?   true]
+                     (mt/with-current-user (mt/user->id :rasta)
+                       (binding [scope/*current-user-metabot-permissions* perms
+                                 scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)
+                                 shared/*memory-atom*                     (atom {:state {:queries {"q1" query}}})]
+                         (run-query/run-sql-query-tool {:query_id "q1"})))))]
+    (testing "a user with only Metabot's SQL permission runs a SQL query"
+      (is (=? {:structured-output {:returned 1}} (run-as sql-only (venues-sql)))))
+    (testing "the same user is refused a query that is not SQL"
+      (is (=? {:output #"You may only run SQL queries, and query q1 is not one\..*"}
+              (run-as sql-only (venues-count)))))
+    (testing "a user who also has the NLQ permission runs both"
+      (is (=? {:structured-output {:returned 1}} (run-as scope/all-yes-permissions (venues-count)))))))
