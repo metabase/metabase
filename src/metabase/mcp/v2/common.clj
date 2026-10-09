@@ -218,7 +218,6 @@
    :model/Pulse              (message/raw "Pulse")
    :model/Segment            (message/raw "Segment")
    :model/Table              (message/raw "Table")
-   :model/Transform          (message/raw "Transform")
    :alert                    (message/raw "alert")
    :collection               (message/raw "collection")
    :subscription             (message/raw "subscription")})
