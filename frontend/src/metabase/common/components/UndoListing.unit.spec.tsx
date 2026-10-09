@@ -94,6 +94,19 @@ describe("UndoListing", () => {
     });
   });
 
+  it("places the primary action after the extra action", async () => {
+    await setup(
+      makeUndo({
+        actions: [jest.fn()],
+        extraAction: { label: "See all", action: jest.fn() },
+      }),
+    );
+
+    expect(
+      screen.getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["See all", "Undo"]);
+  });
+
   describe("variants", () => {
     async function setupAdded(undo: Partial<Undo>) {
       jest.useFakeTimers();

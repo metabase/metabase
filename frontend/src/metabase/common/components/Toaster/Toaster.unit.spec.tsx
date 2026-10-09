@@ -38,6 +38,16 @@ describe("Toast", () => {
     );
   });
 
+  it("places the primary action after the secondary action", () => {
+    setup();
+
+    expect(
+      screen
+        .getAllByRole("button", { name: /Retry|Details/ })
+        .map((button) => button.textContent),
+    ).toEqual(["Details", "Retry"]);
+  });
+
   it.each<UndoVariant>(["negative", "warning"])(
     "renders the %s variant with working actions",
     async (variant) => {
