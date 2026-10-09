@@ -10,6 +10,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -148,3 +149,120 @@
                "the load writes the current card_schema")
            (is (= 1 (get-in (t2/select-one-fn :dataset_query :model/Card card-id) [:stages 0 :filters 0 3]))
                "the load writes the repo query")))))))
+
+(defn- do-with-synced-cards!
+  "Insert one Card for each attribute map of `cards` into a remote-synced collection, then call `f` with their ids.
+  Sets `remote-sync-type` to `:read-write` and `remote-sync-transforms` to false for the duration, and deletes the
+  content that it created afterwards."
+  [cards f]
+  (search.tu/with-index-disabled
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [coll (t2/insert-returning-pk! :model/Collection {:name "Synced cards" :is_remote_synced true :location "/"})]
+          (f (mapv #(t2/insert-returning-pk! :model/Card (merge {:collection_id          coll
+                                                                 :creator_id             (mt/user->id :rasta)
+                                                                 :display                :table
+                                                                 :visualization_settings {}}
+                                                                %))
+                   cards)))))))
+
+(defn- card-writes!
+  "Run a forced pull of `src` at `version`. Returns the column sets of the Card rows that the load sends to the app DB,
+  one for each update."
+  [src version]
+  (let [writes (atom [])]
+    (mt/with-dynamic-fn-redefs [models.db/update-entity!
+                                (let [real (mt/original-fn #'models.db/update-entity!)]
+                                  (fn [id {:keys [model row] :as entity}]
+                                    (when (= :model/Card model)
+                                      (swap! writes conj (set (keys row))))
+                                    (real id entity)))]
+      (is (= :success (:status (rs.test/import-at! src version :force? true))) "forced pull"))
+    @writes))
+
+(defn- stored-metric-row
+  "The stored `card_schema` and `dimension_mappings` of `card-id`, read without the after-select, which upgrades the
+  schema and computes the dimensions of a metric that stores none."
+  [card-id]
+  (t2/query-one {:select [:card_schema :dimension_mappings] :from [:report_card] :where [:= :id card-id]}))
+
+(deftest forced-reload-of-unchanged-metric-writes-nothing-test
+  (testing "A forced pull of unchanged metrics writes no Card row, although each import makes new :lib/uuid values in
+            the dimension mapping targets"
+    (do-with-synced-cards!
+     [{:name "Metric with stored dimensions" :type :metric :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+      {:name "Old metric" :type :metric :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+     (fn [[stored-id old-id]]
+       ;; two metrics from before dimensions: an old card_schema, and no stored dimensions
+       (t2/query {:update :report_card
+                  :set    {:card_schema 23 :dimensions nil :dimension_mappings nil}
+                  :where  [:in :id [stored-id old-id]]})
+       ;; store the dimensions that a read of the first one computes
+       (t2/update! :model/Card stored-id (select-keys (t2/select-one :model/Card stored-id)
+                                                      [:dimensions :dimension_mappings]))
+       (is (some? (:dimension_mappings (stored-metric-row stored-id))) "precondition: the metric stores its mappings")
+       (let [src (rs.test/versioned-source :trees {"v0" (rs.test/synced-tree)} :current "v0")]
+         (is (= [] (card-writes! src "v0")) "first forced pull")
+         (is (= [] (card-writes! src "v0")) "second forced pull")
+         (is (= 23 (:card_schema (stored-metric-row old-id)))
+             "the old metric keeps its stored card_schema"))))))
+
+(defn- typed-columns?
+  "True when each stored result column of `card-id` has a field id and a base type other than `:type/*`, as an inference
+  gives. The model overrides of a file alone have neither."
+  [card-id]
+  (let [cols (:result_metadata (t2/select-one :model/Card card-id))]
+    (boolean (and (seq cols)
+                  (every? #(and (:id %) (not= :type/* (keyword (:base_type %)))) cols)))))
+
+(defn- edit-card-file
+  "`tree` with `f` applied to the parsed file of the Card with `entity-id`."
+  [tree entity-id f]
+  (let [path (some (fn [[path content]]
+                     (when (= entity-id (:entity_id (yaml/parse-string content)))
+                       path))
+                   tree)]
+    (assert path (str "no file for card " entity-id))
+    (update tree path #(yaml/generate-string (f (yaml/parse-string %))))))
+
+(deftest forced-reload-of-unchanged-mbql-model-keeps-column-types-test
+  (testing "A forced pull of an unchanged MBQL model writes no Card row, and the model keeps its inferred column types"
+    (doseq [[label query] [["whole table" (mt/mbql-query venues)]
+                           ["with a filter" (mt/mbql-query venues {:filter [:> $price 1]})]]]
+      (testing label
+        (do-with-synced-cards!
+         [{:name "Model" :type :model :dataset_query query}]
+         (fn [[model-id]]
+           (is (typed-columns? model-id) "precondition: the model has inferred column types")
+           (let [src (rs.test/versioned-source :trees {"v0" (rs.test/synced-tree)} :current "v0")]
+             (is (= [] (card-writes! src "v0")))
+             (is (typed-columns? model-id)))))))))
+
+(deftest forced-reload-of-model-override-change-keeps-column-types-test
+  (testing "A forced pull that changes one column display name of an MBQL model writes the query with the columns, so
+            the before-update hook infers the column types with the new display name"
+    ;; The query has a filter. For a whole-table query, the write of the file query does not reach the hook: the file
+    ;; query equals the stored query, so Toucan drops it from the changes, and the hook stores the file columns as
+    ;; they are, as on master.
+    (do-with-synced-cards!
+     [{:name "Model" :type :model :dataset_query (mt/mbql-query venues {:filter [:> $price 1]})}]
+     (fn [[model-id]]
+       (let [tree      (rs.test/synced-tree)
+             entity-id (t2/select-one-fn :entity_id :model/Card model-id)
+             changed   (edit-card-file tree entity-id #(assoc-in % [:result_metadata 1 :display_name] "Changed name"))
+             src       (rs.test/versioned-source :trees {"v1" changed} :current "v1")]
+         (is (= [#{:dataset_query :result_metadata}] (card-writes! src "v1")))
+         (is (= "Changed name" (:display_name (second (t2/select-one-fn :result_metadata :model/Card model-id)))))
+         (is (typed-columns? model-id)))))))
+
+(deftest forced-reload-of-question-that-the-file-makes-a-model-keeps-column-types-test
+  (testing "A forced pull whose file makes a stored question an MBQL model stores inferred column types"
+    (do-with-synced-cards!
+     [{:name "Model" :type :model :dataset_query (mt/mbql-query venues {:filter [:> $price 1]})}]
+     (fn [[card-id]]
+       (let [src (rs.test/versioned-source :trees {"v0" (rs.test/synced-tree)} :current "v0")]
+         ;; the target instance holds the card as a question
+         (t2/query {:update :report_card :set {:type "question"} :where [:= :id card-id]})
+         (card-writes! src "v0")
+         (is (= :model (t2/select-one-fn :type :model/Card card-id)))
+         (is (typed-columns? card-id)))))))
