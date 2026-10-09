@@ -208,3 +208,55 @@
                  (when table-ids      [:table_id [:in table-ids]])
                  (when exclude-human? [:source [:not= :human]])
                  [{:status status :decided_by user-id :decided_at (mi/now)}])))
+
+;;; Apply
+
+(mu/defn accepted-table-ids :- [:set ::lib.schema.id/table]
+  "The ids of the tables that have accepted suggestions in run `run-id`, restricted to `table-ids` when it is non-nil."
+  [run-id    :- ms/PositiveInt
+   table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
+  (or (t2/select-fn-set :table_id :model/MetadataGenerationSuggestion
+                        {:where (cond-> [:and [:= :run_id run-id] [:= :status "accepted"]]
+                                  table-ids (conj [:in :table_id table-ids]))})
+      #{}))
+
+(mu/defn accepted-suggestions :- [:sequential (ms/InstanceOf :model/MetadataGenerationSuggestion)]
+  "The accepted suggestions of run `run-id` for `table-id`, ordered by id."
+  [run-id   :- ms/PositiveInt
+   table-id :- ::lib.schema.id/table]
+  (t2/select :model/MetadataGenerationSuggestion :run_id run-id :table_id table-id :status :accepted
+             {:order-by [[:id :asc]]}))
+
+(mu/defn active-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
+  "A map of field id to the active Field, with the values readers see and `:can_write` hydrated, for `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (into {}
+          (map (juxt :id identity))
+          (t2/hydrate (t2/select :model/Field :id [:in field-ids] :active true
+                                 {:from [(warehouse-schema-overlay/field-query)]})
+                      :can_write))
+    {}))
+
+(mu/defn internal-dimension-ids-by-field :- [:map-of ::lib.schema.id/field [:sequential ms/PositiveInt]]
+  "A map of field id to the ids of its internal Dimensions, for the ids in `field-ids` that have one."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (update-vals (group-by :field_id (t2/select [:model/Dimension :id :field_id]
+                                                :field_id [:in field-ids] :type :internal))
+                 #(mapv :id %))
+    {}))
+
+(mu/defn delete-dimensions!
+  "Delete the Dimensions with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (t2/delete! :model/Dimension :id [:in ids])))
+
+(mu/defn set-suggestion-status! :- :int
+  "Set `status` on the suggestions with `ids`. Returns the number of rows updated."
+  [ids    :- [:sequential ms/PositiveInt]
+   status :- ::suggestion/status]
+  (if (seq ids)
+    (t2/update! :model/MetadataGenerationSuggestion :id [:in ids] {:status status})
+    0))

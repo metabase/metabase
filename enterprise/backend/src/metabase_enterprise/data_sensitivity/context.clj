@@ -77,6 +77,7 @@
    [:fk_target       [:maybe :string]]
    [:fingerprint     [:maybe ::fingerprint]]
    [:human_set       [:set :keyword]]
+   [:ai_set          {:optional true} [:set :keyword]]
    [:current         [:map {:closed true}
                       [:data_sensitivity [:maybe :keyword]]
                       [:human_set       :boolean]]]
@@ -111,6 +112,28 @@
 
 (defn- human-set-keys [user-settings]
   (into #{} (filter #(human-set? user-settings %)) field/field-user-settings))
+
+(defn- ai-set-keys
+  "The columns whose readers see the accepted AI value in `user-settings`: an AI value is present and no person set the
+  column."
+  [user-settings human-set]
+  (into #{}
+        (keep (fn [[k ai-column]]
+                (when (and (some? (get user-settings ai-column)) (not (contains? human-set k)))
+                  k)))
+        warehouse-schema-overlay/field-ai-columns))
+
+(defn value-source
+  "The layer that gives the value readers see for column `k` of a field with `user-settings`, when that value is
+  `current-value`: `:human`, `:ai`, `:deterministic`, or `:none` when there is no value. The same rule as
+  [[warehouse-schema-overlay/field-query]]."
+  [user-settings k current-value]
+  (let [human-set (human-set-keys user-settings)]
+    (cond
+      (contains? human-set k)                            :human
+      (contains? (ai-set-keys user-settings human-set) k) :ai
+      (some? current-value)                              :deterministic
+      :else                                              :none)))
 
 (defn- fk-targets
   "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields`."
@@ -240,7 +263,8 @@
 
 (defn- field-entry
   "The packet entry for `field`, with the user-settings values a person set taking precedence over the Field row, a
-  cleared value included. `:human_set` names the columns a user has set."
+  cleared value included. `:human_set` names the columns a user has set, `:ai_set` the columns that show an accepted AI
+  value."
   [{:keys [id] :as field} {:keys [user-settings fk-targets cached sampled]}]
   (let [settings  (get user-settings id)
         human-set (human-set-keys settings)
@@ -258,6 +282,7 @@
      :fk_target       (some->> (:fk_target_field_id field) (get fk-targets))
      :fingerprint     (fingerprint-summary (:fingerprint field))
      :human_set       human-set
+     :ai_set          (ai-set-keys settings human-set)
      :current         {:data_sensitivity (:data_sensitivity field)
                        :human_set       (contains? human-set :data_sensitivity)}
      :cached_values   (get cached id)

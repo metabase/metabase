@@ -25,7 +25,7 @@
 (defn- statuses [ids]
   (into {} (map (juxt :id :status)) (t2/select :model/MetadataGenerationSuggestion :id [:in ids])))
 
-(defn- do-with-run
+(defn- do-with-run!
   "Two tables `A` (fields a1, a2) and `B` (field b1) with a run over them. `f` gets the run id, the table ids and a map
   of suggestion name to id: `a1-sem` and `a1-ds` on a1, `a2-human` (source human) on a2, `b1-sem` on b1."
   [f]
@@ -48,7 +48,7 @@
 
 (deftest superuser-required-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run
+    (do-with-run!
      (fn [run-id {:keys [a]} _]
        (mt/user-http-request :rasta :get 403 (url run-id "/tables"))
        (mt/user-http-request :rasta :get 403 (url run-id "/tables/" a "/suggestions"))
@@ -56,7 +56,7 @@
 
 (deftest run-tables-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run
+    (do-with-run!
      (fn [run-id {:keys [a b]} {:keys [b1-sem]}]
        (t2/update! :model/MetadataGenerationSuggestion b1-sem {:status :rejected})
        (is (= [{:table_id a :table_name "A" :schema "S" :total 3 :human_set_pending 1
@@ -69,7 +69,7 @@
 
 (deftest table-suggestions-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run
+    (do-with-run!
      (fn [run-id {:keys [a b]} {:keys [a1-sem a1-ds a2-human]}]
        (testing "suggestions of one table in field order, with the field name"
          (is (=? [{:id a1-ds    :field_name "a1" :attribute "data_sensitivity" :source "none" :status "pending"}
@@ -83,7 +83,7 @@
 (deftest decisions-test
   (mt/with-premium-features #{:data-sensitivity}
     (testing "per suggestion: accept includes a human-set suggestion"
-      (do-with-run
+      (do-with-run!
        (fn [run-id _ {:keys [a1-sem a2-human b1-sem] :as ids}]
          (is (= {:updated 2} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
                                                    {:decision "accept" :suggestion_ids [a1-sem a2-human]})))
@@ -92,7 +92,7 @@
          (is (=? {:decided_by (mt/user->id :crowberto) :decided_at some?}
                  (t2/select-one :model/MetadataGenerationSuggestion a1-sem))))))
     (testing "per table: accept leaves out human-set suggestions unless include_human_set"
-      (do-with-run
+      (do-with-run!
        (fn [run-id {:keys [a]} {:keys [a1-sem a1-ds a2-human b1-sem] :as ids}]
          (is (= {:updated 2} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
                                                    {:decision "accept" :table_ids [a]})))
@@ -101,7 +101,7 @@
                                                    {:decision "accept" :table_ids [a] :include_human_set true})))
          (is (= :accepted (get (statuses [a2-human]) a2-human))))))
     (testing "whole run: accept, then reject"
-      (do-with-run
+      (do-with-run!
        (fn [run-id _ {:keys [a2-human] :as ids}]
          (is (= {:updated 3} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
                                                    {:decision "accept" :all true})))
@@ -110,7 +110,7 @@
                                                    {:decision "reject" :all true})))
          (is (= #{:rejected} (set (vals (statuses (vals ids)))))))))
     (testing "stale and applied suggestions do not change"
-      (do-with-run
+      (do-with-run!
        (fn [run-id _ {:keys [a1-sem b1-sem]}]
          (t2/update! :model/MetadataGenerationSuggestion a1-sem {:status :stale})
          (t2/update! :model/MetadataGenerationSuggestion b1-sem {:status :applied})
@@ -119,7 +119,7 @@
 
 (deftest decisions-validation-test
   (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run
+    (do-with-run!
      (fn [run-id {:keys [a]} {:keys [a1-sem]}]
        (testing "exactly one selection"
          (mt/user-http-request :crowberto :post 400 (url run-id "/decisions") {:decision "accept"})

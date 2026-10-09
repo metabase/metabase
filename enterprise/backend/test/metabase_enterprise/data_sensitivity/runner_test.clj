@@ -145,7 +145,17 @@
              (is (= #{:semantic_type} (set (map :attribute (suggestions (:id run))))))))
          (testing "an attribute outside the run attributes is refused"
            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
-                                 (start! db {:attributes [:display_name]})))))))))
+                                 (start! db {:attributes [:display_name]}))))
+         (testing "an accepted AI value is recorded with source ai"
+           (field-user-settings/set-ai-values! (t2/select-one :model/Field :table_id (:id table) :name "ds_disagree")
+                                               {:semantic_type :type/Category})
+           (let [run (start! db {:attributes [:semantic_type]})]
+             (wait-ended (:id run))
+             (is (=? [{:source :ai :current_value "type/Category" :proposed_value "type/Email"}]
+                     (filter #(= :semantic_type (:attribute %))
+                             (t2/select :model/MetadataGenerationSuggestion :run_id (:id run)
+                                        :field_id (t2/select-one-pk :model/Field :table_id (:id table)
+                                                                    :name "ds_disagree"))))))))))))
 
 (deftest description-suggestion-test
   (mt/with-temp [:model/Database db    {}

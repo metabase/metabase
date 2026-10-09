@@ -171,6 +171,7 @@
 (defn- source [field k current-value]
   (cond
     (contains? (:human_set field) k) :human
+    (contains? (:ai_set field) k)    :ai
     (some? current-value)            :deterministic
     :else                            :none))
 

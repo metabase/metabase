@@ -3793,6 +3793,7 @@
    :uses #{api
            database-routing
            driver
+           events
            lib.schema
            metabot
            models
@@ -3806,6 +3807,7 @@
            warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Database
+                    :model/Dimension
                     :model/Field
                     :model/FieldUserSettings
                     :model/Table}}

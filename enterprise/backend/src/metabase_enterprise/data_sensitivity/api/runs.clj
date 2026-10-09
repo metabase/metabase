@@ -102,6 +102,18 @@
   (api/check-404 (db/run id))
   (review/decide! id body api/*current-user-id*))
 
+(api.macros/defendpoint :post "/runs/:id/apply" :- ::review/apply-result
+  "Write the accepted suggestions of the run as accepted AI values, for the tables in `table_ids`, else for every table.
+  Each table is one transaction. A suggestion over a value a person set clears that value. A suggestion whose field
+  changed after the run is marked `stale` and skipped. A suggestion that cannot be written stays accepted and is
+  listed in `failures`."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params
+   body :- [:maybe ::review/apply-request]]
+  (api/check-superuser)
+  (api/check-404 (db/run id))
+  (review/apply! id (or body {}) api/*current-user-id*))
+
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the metadata generation run API."
   (api.macros/ns-handler *ns* +auth))
