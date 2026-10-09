@@ -270,12 +270,12 @@
     (do (swap! callbacks conj thunk) nil)
     (thunk)))
 
-(def ^:private already-run-callbacks
-  "What the after-commit callbacks are replaced with once they have run."
-  ^::already-run? [])
-
-(defn- already-run? [callbacks]
-  (::already-run? (meta callbacks)))
+(defn- pending-callbacks
+  "Return the after-commit `callbacks` still waiting to run, or nil once they have run.
+  The atom then holds `::already-run`, so read its value through this."
+  [callbacks]
+  (when (vector? callbacks)
+    callbacks))
 
 (defn- run-after-commit-callback! [thunk]
   ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
@@ -301,14 +301,14 @@
   (if-let [callbacks *after-commit-callbacks*]
     ;; A thread started inside the transaction keeps this binding after the transaction ends.
     ;; Once the callbacks have run, a thunk added to them would never run.
-    (let [[before] (swap-vals! callbacks #(cond-> % (not (already-run? %)) (conj thunk)))]
-      (when (already-run? before)
+    (let [[before] (swap-vals! callbacks #(cond-> % (pending-callbacks %) (conj thunk)))]
+      (when-not (pending-callbacks before)
         (run-after-commit-callback! thunk))
       nil)
     (thunk)))
 
 (defn- run-after-commit-callbacks! [callbacks]
-  (run! run-after-commit-callback! (first (reset-vals! callbacks already-run-callbacks))))
+  (run! run-after-commit-callback! (first (reset-vals! callbacks ::already-run))))
 
 (defn- discard-callbacks-after!
   "Truncate the `callbacks` atom back to its first `n` entries, dropping any that a now-rolling-back
@@ -319,8 +319,9 @@
            (fn [cbs]
              ;; copy rather than return the subvec view, which would retain the discarded callbacks (and their
              ;; captured closures) through the backing array until the outer transaction finishes
-             ;; `empty` keeps the metadata that marks callbacks as already run.
-             (into (empty cbs) (subvec cbs 0 (min n (count cbs))))))))
+             (if (pending-callbacks cbs)
+               (into [] (subvec cbs 0 (min n (count cbs))))
+               cbs)))))
 
 (defn- do-transaction [^java.sql.Connection connection rollback-only? f]
   ;; Set when a connection rollback fails and leaves pending writes. Restoring autocommit would commit those writes,
@@ -343,7 +344,7 @@
     (letfn [(thunk []
               (let [savepoint      (set-savepoint! connection)
                     before-count   (some-> *before-commit-callbacks* deref count)
-                    after-count    (some-> *after-commit-callbacks* deref count)
+                    after-count    (some-> *after-commit-callbacks* deref pending-callbacks count)
                     state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
                                      @*transaction-state*)]
                 (letfn [(rollback! []
