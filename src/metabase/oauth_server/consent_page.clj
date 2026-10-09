@@ -91,8 +91,8 @@
    `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>}` maps, rendered
    in order.
 
-   A `:locked?` scope is ticked, disabled, and labelled as always granted; every other scope starts unticked and can be
-   ticked. A `:full-access?` scope carries the full-access warning in its own row.
+   Every scope starts ticked. A `:locked?` scope is also disabled and labelled as always granted; every other scope can
+   be unticked. A `:full-access?` scope carries the full-access warning in its own row.
 
    Shows the human description and the raw scope string: the description is readable, the raw string
    is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
@@ -104,8 +104,7 @@
      (for [{:keys [scope description full-access? locked?]} scopes]
        [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
         [:label
-         [:input (cond-> {:type "checkbox" :name "granted_scope" :value scope}
-                   locked? (assoc :checked true :disabled true))]
+         [:input {:type "checkbox" :name "granted_scope" :value scope :checked true :disabled locked?}]
          [:span.text
           (if full-access? [:strong description] [:span description])
           (when (not= description scope)
@@ -183,9 +182,9 @@
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow.
 
-   `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
-   requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) so a broad
-   grant (e.g. full account access) is never approved blindly."
+  `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
+  requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) which can be
+  unchecked, except for the MCP baseline, which cannot be unchecked."
   [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]

@@ -2278,15 +2278,15 @@
                   "agent:content:write" "agent:sql:run" "agent:delivery:write"
                   not-v2 oauth-server/full-access-scope]
                  (map :scope (consent-checkboxes body))))
-          (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts unticked"
+          (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts ticked (GHY-4826)"
             (is (= {"agent:resource:read"          [true true]
                     "agent:content:read"           [true true]
                     "agent:query:run"              [true true]
-                    "agent:content:write"          [false false]
-                    "agent:sql:run"                [false false]
-                    "agent:delivery:write"         [false false]
-                    not-v2                         [false false]
-                    oauth-server/full-access-scope [false false]}
+                    "agent:content:write"          [true false]
+                    "agent:sql:run"                [true false]
+                    "agent:delivery:write"         [true false]
+                    not-v2                         [true false]
+                    oauth-server/full-access-scope [true false]}
                    (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
 
 (deftest consent-scope-order-covers-v2-scopes-test
@@ -2364,11 +2364,11 @@
    "agent:content:read"  [true true]
    "agent:query:run"     [true true]})
 
-(deftest consent-page-does-not-pre-tick-held-scopes-test
-  (testing (str "GHY-4555: a step-up asks for held plus required scopes, and every non-baseline scope is offered "
-                "unticked even when the user already holds it on a live token of the same client. Pre-ticking a held "
-                "scope needs to know which connection is stepping up, which the consent page cannot tell (GHY-4627). "
-                "The baseline stays ticked and locked.")
+(deftest consent-page-ignores-held-scopes-test
+  (testing (str "GHY-4555: a step-up asks for held plus required scopes, and a scope the user already holds on a live "
+                "token of the same client is offered exactly like one they do not hold. Treating a held scope "
+                "differently needs to know which connection is stepping up, which the consent page cannot tell "
+                "(GHY-4627). Every requested scope starts ticked (GHY-4826); the baseline stays locked.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -2378,9 +2378,23 @@
           (insert-token! :model/OAuthAccessToken :crowberto client_id held)
           (insert-token! :model/OAuthRefreshToken :crowberto client_id held :expiry nil)
           (is (= (merge baseline-locked
-                        {"agent:content:write"  [false false]
-                         "agent:sql:run"        [false false]
-                         "agent:delivery:write" [false false]})
+                        {"agent:content:write"  [true false]
+                         "agent:sql:run"        [true false]
+                         "agent:delivery:write" [true false]})
+                 (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
+
+(deftest consent-page-pre-ticks-requested-scopes-test
+  (testing (str "GHY-4826: every scope the MCP client requests starts ticked on the consent page."
+                "The baseline stays disabled.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect            "https://example.com/callback"
+              {:keys [client_id]} (register-app-client! "MCP Client" redirect)]
+          (is (= (merge baseline-locked
+                        {"agent:content:write"  [true false]
+                         "agent:sql:run"        [true false]
+                         "agent:delivery:write" [true false]})
                  (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
 
 (defn- authorize-at!
@@ -2443,10 +2457,10 @@
               window-b (register-app-client! "Claude" claude-redirect)
               step-up  (str/join " " (conj (sort v2-baseline-scope-set) "agent:content:write" "agent:sql:run"))]
           (is (= held (access-token-scopes token-a)))
-          (is (= [false false] (get (checkbox-states (consent-page-at! :crowberto (:client_id window-b)
-                                                                       claude-redirect step-up))
-                                    "agent:content:write"))
-              "content:write is offered, unticked and tickable, so leaving it out narrows this authorization")
+          (is (= [true false] (get (checkbox-states (consent-page-at! :crowberto (:client_id window-b)
+                                                                      claude-redirect step-up))
+                                   "agent:content:write"))
+              "content:write is offered and can be unticked, so leaving it out narrows this authorization")
           (let [token-b (authorize-at! window-b claude-redirect step-up ["agent:sql:run"])]
             (is (= (conj v2-baseline-scope-set "agent:sql:run") (token-scope-set token-b))
                 "the new token carries only what was ticked")
