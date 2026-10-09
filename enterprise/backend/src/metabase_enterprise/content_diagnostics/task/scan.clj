@@ -1,5 +1,5 @@
 (ns metabase-enterprise.content-diagnostics.task.scan
-  "Quartz jobs that run the Content Diagnostics scan: daily on a schedule (stored durably), and once shortly
+  "Quartz job that runs the Content Diagnostics scan: daily on a schedule (stored durably), and once shortly
   after startup on an instance that has never scanned, so an upgrade doesn't leave the findings empty until
   the first scheduled run."
   (:require
@@ -12,11 +12,12 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util.log :as log])
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution)))
+   (org.quartz DisallowConcurrentExecution JobExecutionContext ObjectAlreadyExistsException TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,33 +51,10 @@
        (when enabled?
          (scan/scan!))))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc                         "Content Diagnostics - scan for problematic content."}
-  ContentDiagnosticsScan [_ctx]
-  (scan-when-enabled!))
-
-(defmethod task/init! ::ContentDiagnosticsScan [_]
-  (let [job     (jobs/build
-                 (jobs/of-type ContentDiagnosticsScan)
-                 (jobs/store-durably)
-                 (jobs/with-identity scan-job-key)
-                 (jobs/with-description "Content Diagnostics scan"))
-        trigger (triggers/build
-                 (triggers/with-identity scan-trigger-key)
-                 (triggers/for-job scan-job-key)
-                 (triggers/with-schedule
-                  (cron/schedule
-                   (cron/cron-schedule "0 0 4 * * ? *")
-                   (cron/with-misfire-handling-instruction-fire-and-proceed))))]
-    (task/schedule-task! job trigger)))
-
 ;;; ------------------------------------------------ Upgrade backfill -----------------------------------------
 
-;; Not the scan job's key: `task/schedule-task!` on an existing job replaces its first trigger when none matches
-;; the new trigger's key, which would swap out the daily cron trigger.
-(def ^:private backfill-job-key
-  (jobs/key "metabase.task.content-diagnostics-scan-backfill.job"))
-
+;; A second trigger on the scan job rather than a job of its own, so `DisallowConcurrentExecution` keeps the two
+;; runs from overlapping - each run's supersession would invalidate the other's findings.
 (def ^:private backfill-trigger-key
   (triggers/key "metabase.task.content-diagnostics-scan-backfill.trigger"))
 
@@ -95,36 +73,66 @@
   leaves no `task_history` row."
   []
   (cond
-    ;; findings first: it's one cheap query, while `scanned-before?` reads every `task_history` row for the scan
+    ;; cheapest first: the feature check is usually cached, and `scanned-before?` reads every `task_history` row
+    ;; for the scan
+    (not (premium-features/has-feature? :content-diagnostics))
+    (log/info "Skipping Content Diagnostics upgrade backfill: the :content-diagnostics feature is absent")
+
     (cd.db/any-findings?)
     (log/info "Skipping Content Diagnostics upgrade backfill: findings already exist")
 
     (scanned-before?)
     (log/info "Skipping Content Diagnostics upgrade backfill: a scan has already run")
 
-    (not (premium-features/has-feature? :content-diagnostics))
-    (log/info "Skipping Content Diagnostics upgrade backfill: the :content-diagnostics feature is absent")
-
     :else
     (scan-when-enabled! :upgrade-backfill)))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc                         "Content Diagnostics - first scan after an upgrade."}
-  ContentDiagnosticsScanBackfill [_ctx]
-  (backfill-scan!))
+;;; ---------------------------------------------------- Job --------------------------------------------------
 
-(defmethod task/init! ::ContentDiagnosticsScanBackfill [_]
-  ;; scheduled unconditionally - whether to scan is decided by the job body when it fires. The fixed trigger
-  ;; key makes it one firing across a cluster of nodes booting together.
+(defn- scan-for-trigger!
+  [^TriggerKey trigger-key]
+  (let [backfill?  (= backfill-trigger-key trigger-key)
+        ;; both triggers fire the one job, so its log context and span don't say which run this is
+        run-method (if backfill? "upgrade-backfill" "cron")]
+    (tracing/add-span-attrs! :tasks {:content-diagnostics/run-method run-method})
+    (log/with-context {:content-diagnostics/run-method run-method}
+      (if backfill?
+        (backfill-scan!)
+        (scan-when-enabled!)))))
+
+(task/defjob ^{DisallowConcurrentExecution true
+               :doc                         "Content Diagnostics - scan for problematic content."}
+  ContentDiagnosticsScan [ctx]
+  (scan-for-trigger! (.getKey (.getTrigger ^JobExecutionContext ctx))))
+
+(defn- backfill-trigger []
+  (triggers/build
+   (triggers/with-identity backfill-trigger-key)
+   (triggers/for-job scan-job-key)
+   (triggers/start-at (Date/from (.plusSeconds (Instant/now) (long backfill-startup-delay-seconds))))
+   (triggers/with-schedule
+    (simple/schedule
+     (simple/with-misfire-handling-instruction-fire-now)))))
+
+(defmethod task/init! ::ContentDiagnosticsScan [_]
   (let [job     (jobs/build
-                 (jobs/of-type ContentDiagnosticsScanBackfill)
-                 (jobs/with-identity backfill-job-key)
-                 (jobs/with-description "Content Diagnostics scan after an upgrade"))
+                 (jobs/of-type ContentDiagnosticsScan)
+                 (jobs/store-durably)
+                 (jobs/with-identity scan-job-key)
+                 (jobs/with-description "Content Diagnostics scan"))
         trigger (triggers/build
-                 (triggers/with-identity backfill-trigger-key)
-                 (triggers/for-job backfill-job-key)
-                 (triggers/start-at (Date/from (.plusSeconds (Instant/now) (long backfill-startup-delay-seconds))))
+                 (triggers/with-identity scan-trigger-key)
+                 (triggers/for-job scan-job-key)
                  (triggers/with-schedule
-                  (simple/schedule
-                   (simple/with-misfire-handling-instruction-fire-now))))]
-    (task/schedule-task! job trigger)))
+                  (cron/schedule
+                   (cron/cron-schedule "0 0 4 * * ? *")
+                   (cron/with-misfire-handling-instruction-fire-and-proceed))))]
+    (task/schedule-task! job trigger))
+  ;; added on its own: `task/schedule-task!` on the existing job would replace the cron trigger with it. A pending
+  ;; one is replaced, so in a rolling upgrade it fires 60s after the last node boots, once old nodes have usually
+  ;; drained.
+  (let [trigger (backfill-trigger)]
+    (try
+      (task/add-trigger! trigger)
+      (catch ObjectAlreadyExistsException _
+        (task/reschedule-trigger! trigger)))))

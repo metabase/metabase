@@ -339,14 +339,14 @@
 ;;; ------------------------------------------------ Upgrade backfill -----------------------------------------
 
 (defn- backfill-scans!
-  "Run the backfill job body under `features`, returning how many times it scanned."
+  "Run the scan job's body for the backfill trigger under `features`, returning how many times it scanned."
   [features]
   (let [scans (atom 0)]
     (mt/with-dynamic-fn-redefs [scan/scan! (fn []
                                              (swap! scans inc)
                                              {:scan_id "backfill-test-scan" :finding_count 0 :duration_ms 0})]
       (mt/with-premium-features features
-        (#'task.scan/backfill-scan!)))
+        (#'task.scan/scan-for-trigger! @#'task.scan/backfill-trigger-key)))
     @scans))
 
 (defn- never-scanned?
@@ -392,7 +392,9 @@
       (is (never-scanned?))
       (mt/with-dynamic-fn-redefs [scan/scan! (constantly {:scan_id "cron-scan" :finding_count 0 :duration_ms 0})]
         (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
-          (#'task.scan/scan-when-enabled!)))
+          (#'task.scan/scan-for-trigger! @#'task.scan/scan-trigger-key)))
+      (is (=? [{:task_details {:run-method "cron"}}]
+              (scan-task-history)))
       (is (zero? (backfill-scans! #{:content-diagnostics :advanced-permissions})))
       (is (= 1 (count (scan-task-history))))))
   (testing "an in-flight scan suppresses the backfill"
@@ -415,18 +417,28 @@
       (is (= 1 (backfill-scans! #{:content-diagnostics :advanced-permissions}))))))
 
 (deftest backfill-trigger-leaves-the-scheduled-scan-alone-test
-  (testing "scheduling the backfill, even repeatedly as nodes boot, keeps the daily trigger on the scan job"
+  (testing "the backfill is a second trigger on the scan job, and re-initializing as nodes boot keeps the daily one"
     (mt/with-temp-scheduler!
       (task/init! ::task.scan/ContentDiagnosticsScan)
-      (task/init! ::task.scan/ContentDiagnosticsScanBackfill)
-      (task/init! ::task.scan/ContentDiagnosticsScanBackfill)
-      (is (=? [{:key      "metabase.task.content-diagnostics-scan-backfill.job"
-                :triggers [{:key "metabase.task.content-diagnostics-scan-backfill.trigger"}]}
-               {:key      "metabase.task.content-diagnostics-scan.job"
-                :triggers [{:key           "metabase.task.content-diagnostics-scan.trigger"
-                            :cron-schedule "0 0 4 * * ? *"}]}]
-              (filter #(re-find #"content-diagnostics-scan" (:key %))
-                      (mt/scheduler-current-tasks)))))))
+      (task/init! ::task.scan/ContentDiagnosticsScan)
+      (let [scan-jobs (filter #(re-find #"content-diagnostics-scan" (:key %))
+                              (mt/scheduler-current-tasks))]
+        (is (= ["metabase.task.content-diagnostics-scan.job"]
+               (map :key scan-jobs)))
+        (is (=? [{:key "metabase.task.content-diagnostics-scan-backfill.trigger"}
+                 {:key           "metabase.task.content-diagnostics-scan.trigger"
+                  :cron-schedule "0 0 4 * * ? *"}]
+                (sort-by :key (:triggers (first scan-jobs))))))))
+  (testing "a node booting while the backfill is pending pushes it back, so it fires after the last boot"
+    (mt/with-temp-scheduler!
+      ;; the backfill is the scan job's one trigger without a cron `:schedule`
+      (let [backfill-start #(:start-time (m/find-first (comp nil? :schedule)
+                                                       (:triggers (task/job-info task.scan/scan-job-key))))]
+        (task/init! ::task.scan/ContentDiagnosticsScan)
+        (let [first-start (backfill-start)]
+          (with-redefs [task.scan/backfill-startup-delay-seconds 3600]
+            (task/init! ::task.scan/ContentDiagnosticsScan))
+          (is (pos? (compare (backfill-start) first-start))))))))
 
 (deftest api-latest-per-entity-and-hydration-test
   (testing "GET /stale returns the latest valid finding per entity, batch-hydrated"
