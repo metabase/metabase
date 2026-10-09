@@ -224,8 +224,7 @@
       (some temporal? values)))
 
 (mu/defn- desugar-multi-argument-equality :- ::clause
-  "Drivers compile `:=` and `:!=` clauses with more than 2 args to something like `IN` or `NOT IN` (#23101), with a
-  couple of exceptions:
+  "Returns `:=`/`:!=` clauses with more than one value unchanged, except:
 
   1. Temporal comparisons that the QP might optimize into ranges (see [[temporal-range-comparison?]]) get rewritten as
      compound filters, since you can't do range comparisons with `IN`:
@@ -236,7 +235,10 @@
   2. `nil` values get split out into their own clause, since `x IN (NULL)` never matches anything in SQL:
 
        [:= field nil x y]  -> [:or  [:=  field nil] [:=  field x y]]
-       [:!= field nil x y] -> [:and [:!= field nil] [:!= field x y]]"
+       [:!= field nil x y] -> [:and [:!= field nil] [:!= field x y]]
+
+  (These clauses were previously always desugared before v65/#23101, but this was changed to allow drivers the
+  opportunity to compile them to `IN`/`NOT IN` or equivalent for performance reasons.)"
   [expr :- ::clause]
   (match/replace expr
     [(op :guard #{:= :!=}) opts x a b & more]

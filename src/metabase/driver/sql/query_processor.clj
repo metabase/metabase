@@ -1897,8 +1897,8 @@
   "Compile a `:=` or `:!=` clause with more than one value, e.g. `[:= {} field 1 2 3]`, to `field IN (1, 2, 3)` (or
   `field NOT IN (1, 2, 3)`).
 
-  `nil` values have already been split out into their own clauses
-  by [[metabase.lib.filter.desugar/desugar-filter-clause]], since `field IN (NULL)` never matches anything."
+  `values` must not contain `nil`, since `field IN (NULL)` never matches anything; these should already have been
+  split out into their own clauses by [[metabase.lib.filter.desugar/desugar-filter-clause]]."
   [driver in-op compound-op field values]
   (let [clauses (for [;; values that can't be compared to a UUID field as UUIDs get compared against the field cast to
                       ;; text instead, see [[maybe-cast-uuid-for-equality]]
@@ -1923,8 +1923,9 @@
         [:= field-honeysql (->honeysql driver value)]))))
 
 (defn- or-field-is-null
-  "If any of the MBQL `args` compiled to `honeysql-clause` is a `:field` or `:expression`, return
-  `honeysql-clause OR <field> IS NULL`, so things like `x <> 1` include rows where `x` is `NULL`."
+  "If any of the MBQL `args` compiled to `honeysql-clause` is a `:field` or `:expression`, return `honeysql-clause OR
+  <field> IS NULL`, so things like `x <> 1` include rows where `x` is `NULL`. Otherwise returns `honeysql-clause`
+  unchanged."
   [driver args honeysql-clause]
   (if-let [field-arg (match/match-one args
                        [#{:field :expression} & _] &match)]

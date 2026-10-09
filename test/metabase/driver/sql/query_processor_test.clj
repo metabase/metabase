@@ -161,7 +161,8 @@
                (update :params vec))))))
 
 (deftest ^:parallel equals-multiple-values-with-nil-test
-  (testing "nil values in := and :!= with more than one value should get compiled separately, since x IN (NULL) never matches"
+  (testing (str "nil values in := and :!= with more than one value should get compiled separately, since x IN (NULL)"
+                " never matches")
     (lib.tu.macros/$ids venues
       (are [filter-clause expected] (= expected
                                        (filter->where :venues filter-clause))

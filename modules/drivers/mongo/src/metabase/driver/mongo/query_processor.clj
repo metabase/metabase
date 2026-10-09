@@ -1284,8 +1284,10 @@ function(bin) {
 (defn- filter-in-expr
   "Like [[filter-expr]], but for `:=` or `:!=` with more than one value, e.g. `[:= {} field 1 2 3]`, which compiles to
   something like `{field {$in [1 2 3]}}` (or `$nin` if `in?` is false)."
-  [query stage-number in? field values]
-  (let [field-rvalue  (->rvalue query stage-number field)
+  [query stage-number operator field values]
+  {:pre [(#{$eq $ne} operator)]}
+  (let [in?           (= operator $eq)
+        field-rvalue  (->rvalue query stage-number field)
         value-rvalues (mapv (partial ->rvalue query stage-number) values)]
     (if (every? identity (map (partial direct-comparison? field-rvalue) values value-rvalues))
       ;;    {field {$in [1 2 3]}}
@@ -1297,41 +1299,27 @@ function(bin) {
       (let [in-expr {$in [field-rvalue (mapv expr-value-rvalue values value-rvalues)]}]
         {$expr (if in? in-expr {$not [in-expr]})}))))
 
-(defmethod compile-filter :=
-  [query stage-number [_ _opts field value & more]]
-  (if (seq more)
-    (filter-in-expr query stage-number true field (cons value more))
-    (filter-expr query stage-number $eq field value)))
+(doseq [[op operator] {:=  $eq
+                       :!= $ne}]
+  (defmethod compile-filter op
+    [query stage-number [_ _opts field value & more]]
+    (if (seq more)
+      (filter-in-expr query stage-number operator field (cons value more))
+      (filter-expr query stage-number operator field value))))
 
-(defmethod compile-filter :!=
-  [query stage-number [_ _opts field value & more]]
-  (if (seq more)
-    (filter-in-expr query stage-number false field (cons value more))
-    (filter-expr query stage-number $ne field value)))
+(doseq [[op operator] {:< $lt
+                       :> $gt
+                       :<= $lte
+                       :>= $gte}]
+  (defmethod compile-filter op
+    [query stage-number [_ _opts field value]]
+    (filter-expr query stage-number operator field value)))
 
-(defmethod compile-filter :<
-  [query stage-number [_ _opts field value]]
-  (filter-expr query stage-number $lt field value))
-
-(defmethod compile-filter :>
-  [query stage-number [_ _opts field value]]
-  (filter-expr query stage-number $gt field value))
-
-(defmethod compile-filter :<=
-  [query stage-number [_ _opts field value]]
-  (filter-expr query stage-number $lte field value))
-
-(defmethod compile-filter :>=
-  [query stage-number [_ _opts field value]]
-  (filter-expr query stage-number $gte field value))
-
-(defmethod compile-filter :and
-  [query stage-number [_and _opts & args]]
-  {$and (mapv (partial compile-filter query stage-number) args)})
-
-(defmethod compile-filter :or
-  [query stage-number [_or _opts & args]]
-  {$or (mapv (partial compile-filter query stage-number) args)})
+(doseq [[op operator] {:and $and
+                       :or $or}]
+  (defmethod compile-filter op
+    [query stage-number [_op _opts & args]]
+    {operator (mapv (partial compile-filter query stage-number) args)}))
 
 ;;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's
 ;;; `negate-filter-clause` to negate everything, with the exception of the string filter clauses, which we will

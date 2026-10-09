@@ -1,4 +1,5 @@
 (ns metabase.driver.clickhouse-qp
+  ;; TODO (Cam 2026-10-09) fix these namespace names :(
   "CLickHouse driver: QueryProcessor-related definition"
   (:refer-clojure :exclude [some])
   (:require
@@ -417,57 +418,43 @@
   [field values]
   (some #(or (text-val? %) (uuid-comp? field %)) values))
 
-(defmethod sql.qp/->honeysql [:clickhouse :=]
-  [driver [_ _opts field value & more :as clause]]
-  (let [hsql-field (sql.qp/->honeysql driver field)
-        hsql-value (sql.qp/->honeysql driver value)]
-    (cond
-      (and (seq more)
-           (split-multiple-values? field (cons value more)))
-      (sql.qp/->honeysql driver (into [:or {}] (map #(vector := {} field %)) (cons value more)))
+(doseq [op [:= :!=]]
+  (defmethod sql.qp/->honeysql [:clickhouse op]
+    [driver [_op _opts field value & more :as clause]]
+    (let [parent-method (get-method sql.qp/->honeysql [:sql op])
+          hsql-field    (sql.qp/->honeysql driver field)
+          hsql-value    (sql.qp/->honeysql driver value)]
+      (cond
+        (and (seq more)
+             (split-multiple-values? field (cons value more)))
+        (sql.qp/->honeysql driver (into [(case op := :or :!= :and) {}] (map #(vector op {} field %)) (cons value more)))
 
-      (seq more)
-      ((get-method sql.qp/->honeysql [:sql :=]) driver clause)
+        (seq more)
+        (parent-method driver clause)
 
-      (text-val? value)
-      [:or
-       [:= hsql-field hsql-value]
-       [:= [:'empty hsql-field] 1]]
+        (text-val? value)
+        (case op
+          := [:or
+              [:= hsql-field hsql-value]
+              [:= [:'empty hsql-field] 1]]
+          :!= [:and
+               [:!= hsql-field hsql-value]
+               [:= [:'notEmpty hsql-field] 1]])
 
-      ;; UUID fields can be compared directly with strings in ClickHouse.
-      ;; If the string is not a valid UUID (ie due to is-empty desugaring),
-      ;; then direct comparison will cause an error, so just return false
-      (uuid-comp? field value)
-      (if (string/valid-uuid? hsql-value)
-        [:= hsql-field hsql-value]
-        false)
+        ;; UUID fields can be compared directly with strings in ClickHouse.
+        ;; If the string is not a valid UUID (ie due to is-empty desugaring),
+        ;; then direct comparison will cause an error, so just return false
+        (uuid-comp? field value)
+        (case op
+          := (if (string/valid-uuid? hsql-value)
+               [op hsql-field hsql-value]
+               false)
+          :!= (if (string/valid-uuid? hsql-value)
+                [:or [:!= hsql-field hsql-value]
+                 [:isNull hsql-field]]
+                true))
 
-      :else ((get-method sql.qp/->honeysql [:sql :=]) driver clause))))
-
-(defmethod sql.qp/->honeysql [:clickhouse :!=]
-  [driver [_ _opts field value & more :as clause]]
-  (let [hsql-field (sql.qp/->honeysql driver field)
-        hsql-value (sql.qp/->honeysql driver value)]
-    (cond
-      (and (seq more)
-           (split-multiple-values? field (cons value more)))
-      (sql.qp/->honeysql driver (into [:and {}] (map #(vector :!= {} field %)) (cons value more)))
-
-      (seq more)
-      ((get-method sql.qp/->honeysql [:sql :!=]) driver clause)
-
-      (text-val? value)
-      [:and
-       [:!= hsql-field hsql-value]
-       [:= [:'notEmpty hsql-field] 1]]
-
-      (uuid-comp? field value)
-      (if (string/valid-uuid? hsql-value)
-        [:or [:!= hsql-field hsql-value]
-         [:isNull hsql-field]]
-        true)
-
-      :else ((get-method sql.qp/->honeysql [:sql :!=]) driver clause))))
+        :else (parent-method driver clause)))))
 
 ;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)

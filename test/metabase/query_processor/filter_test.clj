@@ -708,13 +708,16 @@
         [:!= $price 1 2 nil]
         [:!= [:- $price 1] 0 1]))))
 
-(deftest ^:parallel equals-and-not-equals-with-extra-args-test-3
+(deftest ^:parallel equals-and-not-equals-with-extra-args-strings-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "strings"
       (is (= 2
              (count-with-filter-clause [:= $name "Red Medicine" "Stout Burgers & Beers" "Nope"])))
       (is (= 98
-             (count-with-filter-clause [:!= $name "Red Medicine" "Stout Burgers & Beers" "Nope"]))))
+             (count-with-filter-clause [:!= $name "Red Medicine" "Stout Burgers & Beers" "Nope"]))))))
+
+(deftest ^:parallel equals-and-not-equals-with-extra-args-columns-test
+  (mt/test-drivers (mt/normal-drivers)
     (testing "columns"
       (is (= 26
              (count-with-filter-clause [:= $price $category_id 1]))))))
