@@ -91,6 +91,7 @@
    "Comment"
    "CommentReaction"
    "ConnectionImpersonation"
+   "ContentDiagnosticsFinding"
    "ContentTranslation"
    "DashboardBookmark"
    "DataAppGroupAssignment"

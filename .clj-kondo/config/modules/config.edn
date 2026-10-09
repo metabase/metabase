@@ -916,6 +916,8 @@
            query-permissions
            query-processor
            search
+           settings
+           staleness
            util
            warehouse-schema-overlay}
    :model-exports #{:model/Document}
@@ -2893,11 +2895,14 @@
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
+                    :model/Document
                     :model/MetabotConversation
                     :model/MetabotMessage
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/SecurityAdvisory
+                    :model/Transform
+                    :model/TransformRun
                     :model/User}}
 
   tiles
@@ -2976,6 +2981,7 @@
            run-tracking
            search
            settings
+           staleness
            task
            task.history
            tracing
@@ -3720,6 +3726,35 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/content-diagnostics
+  {:team "Gadget"
+   :api  #{metabase-enterprise.content-diagnostics.api
+           metabase-enterprise.content-diagnostics.init}
+   :uses #{analytics.interface
+           api
+           app-db
+           collections
+           documents
+           events
+           lib.schema
+           models
+           permissions
+           premium-features
+           queries
+           request
+           settings
+           task
+           task.history
+           tracing
+           util
+           enterprise/staleness}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/TaskHistory
+                    :model/Transform
+                    :model/User}}
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.routes}
@@ -4457,8 +4492,7 @@
   enterprise/staleness
   {:team "UX West"
    :ns-prefix "metabase-enterprise.stale"
-   :api  #{metabase-enterprise.stale.api
-           metabase-enterprise.stale.init}
+   :api  #{metabase-enterprise.stale.api metabase-enterprise.stale.impl metabase-enterprise.stale.init}
    :uses #{analytics
            api
            collections
