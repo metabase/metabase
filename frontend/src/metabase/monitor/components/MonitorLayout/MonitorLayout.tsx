@@ -211,7 +211,7 @@ export function MonitorLayout() {
           {canAccessSessions && (
             <AreaTab
               label={t`Session management`}
-              icon="key"
+              icon="group"
               to={Urls.monitorSessions()}
               isSelected={activeSection === "session-management"}
               showLabel={isNavbarOpened}
