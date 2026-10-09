@@ -68,6 +68,12 @@
   []
   (get-in (current-memory) [:state :chart-configs] {}))
 
+(defn tool-offered?
+  "Whether the current agent session recorded its tools and offers the one named `tool-name`. Unlike
+  [[tool-available?]], a session that did not record its tools does not count as offering it."
+  [tool-name]
+  (contains? (:tool-names (current-memory)) tool-name))
+
 (defn tool-available?
   "Whether the current agent session offers the tool named `tool-name`. Without a session, or one that did not record
   its tools, every tool counts as offered."
