@@ -444,7 +444,15 @@
                   #"Every join needs a condition"
                   (funnysql/format {:select [:*] :from [:a] :join joins} :postgres))
       [:b]
-      [:b [:= :a.id :b.a_id] :c])))
+      [:b [:= :a.id :b.a_id] :c]))
+  (testing "likewise a `nil` condition, which is what a `(when ...)` around one gives you"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"A join condition cannot be nil"
+         (funnysql/format {:select [:*] :from [:a] :join [:b nil]} :postgres))))
+  (testing "`false` is a condition like any other"
+    (is (= ["SELECT * FROM \"a\" JOIN \"b\" ON false"]
+           (funnysql/format {:select [:*] :from [:a] :join [:b false]} :postgres)))))
 
 (deftest ^:parallel empty-join-test
   (testing "Handle `nil`/empty joins; we still spit out an extra space because of the way things work but that's ok I guess"

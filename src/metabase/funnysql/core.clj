@@ -354,12 +354,14 @@
   (append-sql! context "FROM ")
   (if (keyword? from)
     (identifier-with-optional-alias! from context)
-    (interpose-fn from #(identifier-with-optional-alias! % context) #(append-sql! context ", "))))
+    (interpose-fn from
+                  #(identifier-with-optional-alias! % context :check-lhs check-subquery-marked)
+                  #(append-sql! context ", "))))
 
 (defn- join!
   [join-type joins context]
-  ;; `joins` alternates `<thing-to-join> <condition>`. A missing condition would otherwise compile to `ON NULL`, which
-  ;; the database happily runs, silently returning no rows.
+  ;; `joins` alternates `<thing-to-join> <condition>`. A missing or `nil` condition -- what a `(when ...)` around one
+  ;; gives you -- would otherwise compile to `ON NULL`, which the database happily runs, silently returning no rows.
   (when-not (even? (count joins))
     (throw (ex-info "Every join needs a condition: expected [<thing-to-join> <condition> ...]" {:joins joins})))
   ;; don't spit out anything if `joins` is empty
@@ -370,6 +372,8 @@
                           :right "RIGHT JOIN "
                           :inner "INNER JOIN ")]
       (loop [[thing-to-join condition & more] joins]
+        (when (nil? condition)
+          (throw (ex-info "A join condition cannot be nil" {:thing-to-join thing-to-join})))
         (append-sql! context join-type-sql)
         (identifier-with-optional-alias! thing-to-join context)
         (append-sql! context " ON ")
