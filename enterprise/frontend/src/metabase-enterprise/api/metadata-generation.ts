@@ -1,13 +1,20 @@
 import type {
+  ApplyMetadataGenerationRunRequest,
+  GetMetadataGenerationSuggestionsRequest,
   ListMetadataGenerationRunsRequest,
+  MetadataGenerationApplyResult,
+  MetadataGenerationDecisionRequest,
+  MetadataGenerationDecisionResponse,
   MetadataGenerationEstimate,
   MetadataGenerationRun,
   MetadataGenerationRunId,
   MetadataGenerationRunRequest,
+  MetadataGenerationRunTable,
+  MetadataGenerationSuggestion,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag, invalidateTags, listTag } from "./tags";
+import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 function provideRunTags(run: MetadataGenerationRun) {
   return [idTag("metadata-generation-run", run.id)];
@@ -91,6 +98,56 @@ export const metadataGenerationApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("metadata-generation-run")]),
     }),
+    listMetadataGenerationRunTables: builder.query<
+      MetadataGenerationRunTable[],
+      MetadataGenerationRunId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/data-sensitivity/runs/${id}/tables`,
+      }),
+      providesTags: (_, __, id) => [idTag("metadata-generation-run", id)],
+    }),
+    listMetadataGenerationSuggestions: builder.query<
+      MetadataGenerationSuggestion[],
+      GetMetadataGenerationSuggestionsRequest
+    >({
+      query: ({ run_id, table_id }) => ({
+        method: "GET",
+        url: `/api/ee/data-sensitivity/runs/${run_id}/tables/${table_id}/suggestions`,
+      }),
+      providesTags: (_, __, { run_id }) => [
+        idTag("metadata-generation-run", run_id),
+      ],
+    }),
+    decideMetadataGenerationSuggestions: builder.mutation<
+      MetadataGenerationDecisionResponse,
+      MetadataGenerationDecisionRequest
+    >({
+      query: ({ run_id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/data-sensitivity/runs/${run_id}/decisions`,
+        body,
+      }),
+      invalidatesTags: (_, error, { run_id }) =>
+        invalidateTags(error, [idTag("metadata-generation-run", run_id)]),
+    }),
+    applyMetadataGenerationRun: builder.mutation<
+      MetadataGenerationApplyResult,
+      ApplyMetadataGenerationRunRequest
+    >({
+      query: ({ run_id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/data-sensitivity/runs/${run_id}/apply`,
+        body,
+      }),
+      invalidatesTags: (_, error, { run_id }) =>
+        invalidateTags(error, [
+          idTag("metadata-generation-run", run_id),
+          tag("table"),
+          tag("field"),
+        ]),
+    }),
   }),
 });
 
@@ -101,4 +158,8 @@ export const {
   useStartMetadataGenerationRunMutation,
   useCancelMetadataGenerationRunMutation,
   useRetryFailedMetadataGenerationRunMutation,
+  useListMetadataGenerationRunTablesQuery,
+  useListMetadataGenerationSuggestionsQuery,
+  useDecideMetadataGenerationSuggestionsMutation,
+  useApplyMetadataGenerationRunMutation,
 } = metadataGenerationApi;

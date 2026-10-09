@@ -1,4 +1,5 @@
 import type { DatabaseId } from "./database";
+import type { FieldId } from "./field";
 import type { ConcreteTableId, SchemaName } from "./table";
 import type { UserId } from "./user";
 
@@ -84,4 +85,101 @@ export type MetadataGenerationEstimate = {
   total_tokens: number;
   cost_usd: number;
   unavailable_reason: MetadataGenerationUnavailableReason | string | null;
+};
+
+export type MetadataGenerationSuggestionId = number;
+
+export type MetadataGenerationSuggestionStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "stale"
+  | "applied";
+
+export type MetadataGenerationValueSource =
+  | "human"
+  | "ai"
+  | "deterministic"
+  | "none";
+
+export type MetadataGenerationConfidence = "high" | "medium" | "low";
+
+export type MetadataGenerationStatusCounts = Record<
+  MetadataGenerationSuggestionStatus,
+  number
+>;
+
+export type MetadataGenerationRunTable = {
+  table_id: ConcreteTableId;
+  table_name: string | null;
+  schema: string | null;
+  total: number;
+  counts: MetadataGenerationStatusCounts;
+  human_set_pending: number;
+};
+
+export type MetadataGenerationSuggestion = {
+  id: MetadataGenerationSuggestionId;
+  run_id: MetadataGenerationRunId;
+  table_id: ConcreteTableId;
+  field_id: FieldId;
+  field_name: string;
+  field_display_name: string | null;
+  attribute: MetadataGenerationAttribute;
+  source: MetadataGenerationValueSource;
+  current_value: string | null;
+  proposed_value: string;
+  confidence: MetadataGenerationConfidence | null;
+  reasoning: string | null;
+  status: MetadataGenerationSuggestionStatus;
+  decided_by: UserId | null;
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GetMetadataGenerationSuggestionsRequest = {
+  run_id: MetadataGenerationRunId;
+  table_id: ConcreteTableId;
+};
+
+export type MetadataGenerationDecision = "accept" | "reject";
+
+export type MetadataGenerationDecisionRequest = {
+  run_id: MetadataGenerationRunId;
+  decision: MetadataGenerationDecision;
+  suggestion_ids?: MetadataGenerationSuggestionId[];
+  table_ids?: ConcreteTableId[];
+  all?: boolean;
+  include_human_set?: boolean;
+};
+
+export type MetadataGenerationDecisionResponse = {
+  updated: number;
+};
+
+export type ApplyMetadataGenerationRunRequest = {
+  run_id: MetadataGenerationRunId;
+  table_ids?: ConcreteTableId[];
+};
+
+export type MetadataGenerationApplyFailureReason =
+  | "field_not_found"
+  | "not_writable"
+  | "key_field"
+  | "type_mismatch"
+  | "error";
+
+export type MetadataGenerationApplyFailure = {
+  suggestion_id: MetadataGenerationSuggestionId;
+  field_id: FieldId;
+  attribute: MetadataGenerationAttribute;
+  reason: MetadataGenerationApplyFailureReason;
+};
+
+export type MetadataGenerationApplyResult = {
+  written: number;
+  stale: number;
+  failed: number;
+  failures: MetadataGenerationApplyFailure[];
 };

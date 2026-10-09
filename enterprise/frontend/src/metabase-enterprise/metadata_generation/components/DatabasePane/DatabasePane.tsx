@@ -20,6 +20,7 @@ import { useListMetadataGenerationRunsQuery } from "metabase-enterprise/api";
 
 import { isRunActive } from "../../utils";
 import { GenerateMetadataModal } from "../GenerateMetadataModal";
+import { ReviewModal } from "../ReviewModal";
 import { RunProgress } from "../RunProgress";
 
 import S from "./DatabasePane.module.css";
@@ -45,6 +46,8 @@ function MetadataGenerationSection({
   databaseId,
 }: MetadataGenerationDatabasePaneProps) {
   const [isModalOpen, { open: openModal, close: closeModal }] = useDisclosure();
+  const [isReviewOpen, { open: openReview, close: closeReview }] =
+    useDisclosure();
   const {
     data: runs,
     error,
@@ -78,6 +81,11 @@ function MetadataGenerationSection({
       )}
 
       <Group>
+        {latestRun != null && !hasActiveRun && (
+          <Button variant="default" onClick={openReview}>
+            {t`Review suggestions`}
+          </Button>
+        )}
         <Tooltip
           label={t`A run is already in progress for this database.`}
           disabled={!hasActiveRun}
@@ -98,6 +106,13 @@ function MetadataGenerationSection({
         opened={isModalOpen}
         onClose={closeModal}
       />
+      {latestRun != null && (
+        <ReviewModal
+          runId={latestRun.id}
+          opened={isReviewOpen}
+          onClose={closeReview}
+        />
+      )}
     </Stack>
   );
 }

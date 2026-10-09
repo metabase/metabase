@@ -1,8 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  MetadataGenerationApplyResult,
   MetadataGenerationEstimate,
   MetadataGenerationRun,
+  MetadataGenerationRunId,
+  MetadataGenerationRunTable,
+  MetadataGenerationSuggestion,
 } from "metabase-types/api";
 
 export function setupListMetadataGenerationRunsEndpoint(
@@ -53,4 +57,38 @@ export function setupRetryFailedMetadataGenerationRunEndpoint(
     `path:/api/ee/data-sensitivity/runs/${runId}/retry-failed`,
     newRun,
   );
+}
+
+export function setupListMetadataGenerationRunTablesEndpoint(
+  runId: MetadataGenerationRunId,
+  tables: MetadataGenerationRunTable[],
+) {
+  fetchMock.get(`path:/api/ee/data-sensitivity/runs/${runId}/tables`, tables);
+}
+
+export function setupListMetadataGenerationSuggestionsEndpoint(
+  runId: MetadataGenerationRunId,
+  tableId: MetadataGenerationRunTable["table_id"],
+  suggestions: MetadataGenerationSuggestion[],
+) {
+  fetchMock.get(
+    `path:/api/ee/data-sensitivity/runs/${runId}/tables/${tableId}/suggestions`,
+    suggestions,
+  );
+}
+
+export function setupDecideMetadataGenerationSuggestionsEndpoint(
+  runId: MetadataGenerationRunId,
+  updated = 1,
+) {
+  fetchMock.post(`path:/api/ee/data-sensitivity/runs/${runId}/decisions`, {
+    updated,
+  });
+}
+
+export function setupApplyMetadataGenerationRunEndpoint(
+  runId: MetadataGenerationRunId,
+  result: MetadataGenerationApplyResult,
+) {
+  fetchMock.post(`path:/api/ee/data-sensitivity/runs/${runId}/apply`, result);
 }
