@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupListSlowFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -30,6 +31,8 @@ import {
   createMockListSlowFindingsResponse,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { ContentDiagnosticsSectionLayout } from "../routes";
 
 import { SlowContentPage } from "./SlowContentPage";
 
@@ -65,6 +68,7 @@ function setup({
   error = false,
   getResponse,
 }: SetupOpts = {}) {
+  setupContentDiagnosticsCountsEndpoint();
   if (error) {
     fetchMock.get("path:/api/ee/content-diagnostics/slow", {
       status: 500,
@@ -92,14 +96,16 @@ function setup({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router } = renderWithProviders(
-    <Route
-      path={Urls.slowContent()}
-      element={
-        <MonitorContent>
-          <SlowContentPage />
-        </MonitorContent>
-      }
-    />,
+    <Route element={<ContentDiagnosticsSectionLayout />}>
+      <Route
+        path={Urls.slowContent()}
+        element={
+          <MonitorContent>
+            <SlowContentPage />
+          </MonitorContent>
+        }
+      />
+    </Route>,
     {
       withRouter: true,
       initialRoute: `${Urls.slowContent()}${queryToSearch(urlParams)}`,

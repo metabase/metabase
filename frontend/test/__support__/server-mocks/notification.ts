@@ -1,7 +1,8 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type CallLog, type UserRouteConfig } from "fetch-mock";
 
 import type {
   AdminNotification,
+  AdminNotificationCountsResponse,
   AdminNotificationDetail,
   AdminNotificationListResponse,
   ListNotificationsRequest,
@@ -29,18 +30,38 @@ export const setupCreateNotificationEndpoint = () => {
   });
 };
 
+export const setupAdminNotificationCountsEndpoint = (
+  response: AdminNotificationCountsResponse,
+  options?: UserRouteConfig,
+) => {
+  fetchMock.get("path:/api/notification/admin/counts", response, options);
+};
+
+export const setupAdminNotificationCountsErrorEndpoint = () => {
+  fetchMock.get("path:/api/notification/admin/counts", { status: 500 });
+};
+
 export const setupAdminListNotificationsEndpoint = (
-  notifications: AdminNotification[] = [],
+  response:
+    | AdminNotification[]
+    | ((
+        call: CallLog,
+      ) =>
+        | AdminNotificationListResponse
+        | Promise<AdminNotificationListResponse>) = [],
   overrides: Partial<AdminNotificationListResponse> = {},
 ) => {
-  const response: AdminNotificationListResponse = {
-    data: notifications,
-    total: notifications.length,
-    limit: null,
-    offset: null,
-    ...overrides,
-  };
-  fetchMock.get("path:/api/notification/admin", response);
+  const body =
+    typeof response === "function"
+      ? response
+      : {
+          data: response,
+          total: response.length,
+          limit: null,
+          offset: null,
+          ...overrides,
+        };
+  fetchMock.get("path:/api/notification/admin", body);
 };
 
 export const setupAdminNotificationDetailEndpoint = (

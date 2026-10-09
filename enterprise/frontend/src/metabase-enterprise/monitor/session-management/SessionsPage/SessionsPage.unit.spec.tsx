@@ -6,8 +6,10 @@ import {
   setupListSessionsErrorEndpoint,
   setupRevokeSessionsEndpoint,
   setupRevokeSessionsErrorEndpoint,
+  setupSessionCountsEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -16,9 +18,11 @@ import {
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import type {
   RevokeSessionsResponse,
   Session,
+  SessionCountsResponse,
   SessionListResponse,
 } from "metabase-types/api";
 import {
@@ -50,6 +54,7 @@ type SetupOpts = {
   sessions?: Session[];
   total?: number;
   listFails?: boolean;
+  counts?: SessionCountsResponse;
   /** Answers each list request from its query params, in place of `sessions` and `total` */
   getListResponse?: (params: URLSearchParams) => SessionListResponse;
   initialRoute?: string;
@@ -61,11 +66,13 @@ const setup = ({
   sessions = [ANN_SESSION, BOB_SESSION, CARL_SESSION],
   total = sessions.length,
   listFails = false,
+  counts = { active: 137, ended: 0 },
   getListResponse,
   initialRoute = PATHNAME,
   revokeResponse = createMockRevokeSessionsResponse(),
   revokeError,
 }: SetupOpts = {}) => {
+  setupSessionCountsEndpoint(counts, { name: "session-counts" });
   if (listFails) {
     setupListSessionsErrorEndpoint();
   } else if (getListResponse) {
@@ -154,18 +161,108 @@ describe("SessionsPage", () => {
     mockGetBoundingClientRect({ height: 800, width: 1000 });
   });
 
-  describe("list", () => {
-    it("requests the tab in the URL, sorted by sign-in time by default", async () => {
-      setup({ initialRoute: `${PATHNAME}?tab=ended` });
+  describe("counters", () => {
+    it("shows the default populations independently of the filtered and paged table", async () => {
+      setup({
+        initialRoute: `${PATHNAME}?tab=ended&query=ann&page=1`,
+        total: PAGE_SIZE + 10,
+      });
       await screen.findByTestId("session-row-ann-session");
 
-      const params = getLastListParams();
-      expect(params.get("status")).toBe("ended");
-      expect(params.get("limit")).toBe(String(PAGE_SIZE));
-      expect(params.get("offset")).toBe("0");
-      expect(params.get("sort-column")).toBe("created_at");
-      expect(params.get("sort-direction")).toBe("desc");
+      expect(
+        await within(screen.getByRole("button", { name: "Active" })).findByText(
+          "137",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("button", { name: "Ended" })).getByText("0"),
+      ).toBeInTheDocument();
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/ee/session-management/counts",
+      );
+      expect(calls).toHaveLength(1);
+      expect(new URL(calls[0].url).search).toBe("");
+      expect(getLastListParams().get("status")).toBe("ended");
+      expect(getLastListParams().get("query")).toBe("ann");
+      expect(getLastListParams().get("limit")).toBe(String(PAGE_SIZE));
+      expect(getLastListParams().get("offset")).toBe("25");
     });
+
+    it("reuses the section counts when switching tabs repeatedly", async () => {
+      setup();
+      await screen.findByTestId("session-row-ann-session");
+      expect(
+        await within(screen.getByRole("button", { name: "Active" })).findByText(
+          "137",
+        ),
+      ).toBeVisible();
+
+      for (let visit = 0; visit < 2; visit++) {
+        for (const label of ["Ended", "Active"]) {
+          await userEvent.click(screen.getByRole("button", { name: label }));
+          await waitFor(() =>
+            expect(screen.getByRole("button", { name: label })).toHaveAttribute(
+              "aria-current",
+              "page",
+            ),
+          );
+          expect(
+            await screen.findByTestId("session-row-ann-session"),
+          ).toBeVisible();
+        }
+      }
+      expect(
+        fetchMock.callHistory.calls("path:/api/ee/session-management/counts"),
+      ).toHaveLength(1);
+    });
+
+    it("refreshes counters after revocation while retaining known counts during the refresh", async () => {
+      setup();
+      const activeTab = screen.getByRole("button", { name: "Active" });
+      const endedTab = screen.getByRole("button", { name: "Ended" });
+      expect(await within(activeTab).findByText("137")).toBeInTheDocument();
+      const refreshedCounts = defer<SessionCountsResponse>();
+      fetchMock.modifyRoute("session-counts", {
+        response: () => refreshedCounts.promise,
+      });
+
+      await clickRevokeAll();
+      await confirmRevoke();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/ee/session-management/counts"),
+        ).toHaveLength(2);
+      });
+      expect(within(activeTab).getByText("137")).toBeInTheDocument();
+      expect(within(endedTab).getByText("0")).toBeInTheDocument();
+      expect(screen.queryAllByTestId("tab-count-skeleton")).toHaveLength(0);
+      await act(async () => {
+        refreshedCounts.resolve({ active: 134, ended: 3 });
+      });
+      expect(await within(activeTab).findByText("134")).toBeInTheDocument();
+      expect(within(endedTab).getByText("3")).toBeInTheDocument();
+    });
+  });
+
+  describe("list", () => {
+    it.each([
+      { tab: "active", status: "live" },
+      { tab: "ended", status: "ended" },
+    ])(
+      "requests $tab sessions in 25-row pages sorted by sign-in time",
+      async ({ tab, status }) => {
+        setup({ initialRoute: `${PATHNAME}?tab=${tab}` });
+        await screen.findByTestId("session-row-ann-session");
+
+        const params = getLastListParams();
+        expect(params.get("status")).toBe(status);
+        expect(params.get("limit")).toBe("25");
+        expect(params.get("offset")).toBe("0");
+        expect(params.get("sort-column")).toBe("created_at");
+        expect(params.get("sort-direction")).toBe("desc");
+      },
+    );
 
     it("says when there are no active sessions", async () => {
       setup({ sessions: [] });
@@ -253,13 +350,13 @@ describe("SessionsPage", () => {
     });
 
     it("pages to the next set of sessions, dropping the selection", async () => {
-      setup({ total: PAGE_SIZE + 10 });
+      setup({ total: 35 });
       await clickRowCheckbox("ann-session");
 
       await userEvent.click(screen.getByRole("button", { name: "Next page" }));
 
       await waitFor(() => {
-        expect(getLastListParams().get("offset")).toBe(String(PAGE_SIZE));
+        expect(getLastListParams().get("offset")).toBe("25");
       });
       expect(queryBulkActionBar()).not.toBeInTheDocument();
     });

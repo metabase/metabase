@@ -6,6 +6,61 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(deftest counts-requires-superuser-test
+  (testing "Alert counters are not visible to non-superusers"
+    (mt/user-http-request :rasta :get 403 "notification/admin/counts")))
+
+(deftest counts-test
+  (testing "Counters include active alert rows, latest failed checks, and both kinds of ownerless alerts"
+    (let [all-total       (:total (mt/user-http-request :crowberto :get 200 "notification/admin" :active true))
+          failing-total   (:total (mt/user-http-request :crowberto :get 200 "notification/admin"
+                                                      :active true :last_check_status "failing"))
+          ownerless-total (:total (mt/user-http-request :crowberto :get 200 "notification/admin"
+                                                      :active true :creatorless true))]
+      (mt/with-temp [:model/User {deactivated-id :id} {:is_active false}
+                     :model/Card {card-id :id} {}
+                     :model/NotificationCard {payload-id :id} {:card_id card-id}
+                     :model/Notification {healthy-id :id} {:payload_type :notification/card
+                                                           :payload_id payload-id
+                                                           :active true
+                                                           :creator_id (mt/user->id :crowberto)}
+                     :model/Notification {failing-id :id} {:payload_type :notification/card
+                                                           :payload_id payload-id
+                                                           :active true
+                                                           :creator_id (mt/user->id :crowberto)}
+                     :model/Notification _ {:payload_type :notification/card
+                                             :payload_id payload-id
+                                             :active true
+                                             :creator_id deactivated-id}
+                     :model/Notification {creatorless-id :id} {:payload_type :notification/card
+                                                               :payload_id payload-id
+                                                               :active true
+                                                               :creator_id (mt/user->id :crowberto)}
+                     :model/Notification {inactive-id :id} {:payload_type :notification/card
+                                                            :payload_id payload-id
+                                                            :active false
+                                                            :creator_id deactivated-id}
+                     :model/Notification _ {:payload_type :notification/system-event :active true}
+                     :model/TaskRun _ {:run_type :alert :entity_type :card :entity_id card-id
+                                       :notification_id healthy-id :status :failed
+                                       :started_at (t/minus (t/instant) (t/hours 1))
+                                       :ended_at (t/minus (t/instant) (t/hours 1))}
+                     :model/TaskRun _ {:run_type :alert :entity_type :card :entity_id card-id
+                                       :notification_id healthy-id :status :success
+                                       :started_at (t/instant) :ended_at (t/instant)}
+                     :model/TaskRun _ {:run_type :alert :entity_type :card :entity_id card-id
+                                       :notification_id failing-id :status :failed
+                                       :started_at (t/instant) :ended_at (t/instant)}
+                     :model/TaskRun _ {:run_type :alert :entity_type :card :entity_id card-id
+                                       :notification_id inactive-id :status :failed
+                                       :started_at (t/instant) :ended_at (t/instant)}]
+        ;; Legacy alerts can lack creators, but new alert validation requires a creator ID.
+        (t2/query {:update :notification :set {:creator_id nil} :where [:= :id creatorless-id]})
+        (is (= {:all (+ all-total 4), :failing (inc failing-total), :ownerless (+ ownerless-total 2)}
+               (mt/user-http-request :crowberto :get 200 "notification/admin/counts")))
+        (is (= {:all (+ all-total 4), :failing (inc failing-total), :ownerless (+ ownerless-total 2)}
+               (mt/user-http-request :crowberto :get 200 "notification/admin/counts" :limit 1 :offset 100)))))))
+
 (deftest list-stub-returns-shape-test
   (testing "GET /api/notification/admin returns :data + :total shape for superuser"
     (let [resp (mt/user-http-request :crowberto :get 200 "notification/admin")]

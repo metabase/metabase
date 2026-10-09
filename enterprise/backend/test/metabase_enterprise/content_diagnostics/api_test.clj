@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-diagnostics.api-test
+(ns ^:synchronized metabase-enterprise.content-diagnostics.api-test
   "Who may invoke the content-diagnostics endpoints at all. The reads take the same union as the FE
   `canAccessContentDiagnostics` guard. What an authorized caller then sees is collection-filtered in
   `api.common` and covered by the per-finding-type suites."
@@ -6,12 +6,16 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api :as cd.api]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private read-endpoints
-  ["ee/content-diagnostics/stale"
+  ["ee/content-diagnostics/counts"
+   "ee/content-diagnostics/stale"
    "ee/content-diagnostics/slow"
    "ee/content-diagnostics/imbalanced"
    "ee/content-diagnostics/duplicated"])
@@ -167,3 +171,112 @@
         (testing "a column no endpoint serves is still rejected"
           (mt/user-http-request :rasta :put 400 "user-key-value/namespace/content_diagnostics/key/stale"
                                 {:value {:sort_column "not-a-sortable-column"}}))))))
+
+(defn- default-list-counts
+  [user]
+  (into {}
+        (for [[tab endpoint params] [[:stale "stale" []]
+                                     [:duplicated "duplicated" []]
+                                     [:slow "slow" []]
+                                     [:empty "imbalanced" [:finding-types "empty"]]
+                                     [:sparse "imbalanced" [:finding-types "sparse"]]
+                                     [:crowded "imbalanced" [:finding-types "crowded"]]]]
+          [tab (:total (apply mt/user-http-request user :get 200
+                              (str "ee/content-diagnostics/" endpoint)
+                              :include-personal-collections true :limit 1 params))])))
+
+(defn- insert-counted-findings!
+  [entity-type entity-id finding-types]
+  (t2/insert-returning-instances!
+   :model/ContentDiagnosticsFinding
+   (for [finding-type finding-types]
+     {:scan_id         (mt/random-name)
+      :entity_type     entity-type
+      :entity_kind     entity-type
+      :entity_id       entity-id
+      :entity_name     "Counter fixture"
+      :finding_type    finding-type
+      :duration_ms     20000
+      :duplicate_count 2
+      :content_count   0
+      :details         (case finding-type
+                         :stale          {:threshold_days 30}
+                         :slow           {:slow_entity_ids []}
+                         :duplicate_name {:normalized_name "counter fixture" :duplicate_entity_ids []}
+                         {:threshold 5 :unit "items"})})))
+
+(deftest counts-default-populations-test
+  (testing "counters match the UI's personal-inclusive defaults, excluding archived and missing entities"
+    (mt/with-premium-features #{:content-diagnostics}
+      (let [baseline (default-list-counts :crowberto)
+            expected (merge-with + baseline {:stale 3 :duplicated 4 :slow 4 :empty 4 :sparse 4 :crowded 4})
+            finding-types [:stale :duplicate_name :slow :empty :sparse :crowded]
+            personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Dashboard {first-id :id} {}
+                         :model/Dashboard {second-id :id} {}
+                         :model/Dashboard {archived-id :id} {:archived true}
+                         :model/Dashboard {personal-dash :id} {:collection_id personal-id}
+                         :model/Collection {nested-personal :id} {:location (str "/" personal-id "/")}
+                         :model/Dashboard {nested-dash :id} {:collection_id nested-personal}
+                         :model/Collection {archived-folder :id} {:archived true}
+                         :model/Dashboard {folder-dash :id} {:collection_id archived-folder}]
+            (doseq [id [first-id second-id archived-id personal-dash nested-dash folder-dash Integer/MAX_VALUE]]
+              (insert-counted-findings! :dashboard id finding-types))
+            ;; A partial new scan can leave two active rows. Only the newest may count.
+            (insert-counted-findings! :dashboard first-id [:duplicate_name])
+            (let [newest-stale (first (insert-counted-findings! :dashboard second-id [:stale]))]
+              (t2/update! :model/ContentDiagnosticsFinding (:id newest-stale) {:invalidated_at (t/offset-date-time)}))
+            (is (= expected (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/counts")))
+            (testing "optional table filters and pagination never narrow badge populations"
+              (is (= expected (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/counts"
+                                                    :include-personal-collections false :query "no matches"
+                                                    :entity-types "card" :finding-types "empty"
+                                                    :threshold-days 100000 :min-duration-ms 99999999
+                                                    :min-duplicate-count 99 :offset 1000 :limit 1))))
+            (is (= expected (default-list-counts :crowberto)))
+            (testing "dismissal removes a finding from its tab without collapsing other finding types"
+              (let [empty-id (t2/select-one-pk :model/ContentDiagnosticsFinding
+                                               :entity_type :dashboard :entity_id first-id :finding_type :empty)]
+                (mt/user-http-request :crowberto :post 200 "ee/content-diagnostics/invalidate" {:ids [empty-id]})
+                (is (= (update expected :empty dec)
+                       (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/counts")))))))))))
+
+(deftest counts-live-collection-visibility-test
+  (testing "an analyst's counts follow current collection permissions and moves, not the scan-time collection"
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (let [baseline (default-list-counts :rasta)]
+            (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+              (mt/with-temp [:model/Collection {readable :id} {}
+                             :model/Collection {hidden :id} {}
+                             :model/Dashboard {visible-dash :id} {:collection_id readable}
+                             :model/Dashboard {hidden-dash :id} {:collection_id hidden}]
+                (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
+                (doseq [id [visible-dash hidden-dash]]
+                  (insert-counted-findings! :dashboard id [:stale :duplicate_name :slow :empty :sparse :crowded]))
+                (is (= (update-vals baseline inc)
+                       (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))
+                (t2/update! :model/Dashboard visible-dash {:collection_id hidden})
+                (is (= baseline (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))
+                (perms/grant-collection-read-permissions! (perms/all-users-group) hidden)
+                (is (= (update-vals baseline #(+ % 2))
+                       (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))))))))))
+
+(deftest counts-transform-entitlements-test
+  (testing "transform findings require both an entitled analyst and an enabled transforms feature"
+    (mt/with-user-in-groups [group {:name "Counter monitoring"}
+                             user [group]]
+      (mt/with-premium-features #{:content-diagnostics :advanced-permissions :transforms-basic :hosting}
+        (perms/grant-application-permissions! group :monitoring)
+        (let [baseline (default-list-counts user)]
+          (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+            (mt/with-temp [:model/Transform {transform-id :id} {}]
+              (insert-counted-findings! :transform transform-id [:stale :slow :duplicate_name])
+              (is (= baseline (mt/user-http-request user :get 200 "ee/content-diagnostics/counts")))
+              (mt/with-data-analyst-role! (:id user)
+                (is (= (merge-with + baseline {:stale 1 :slow 1 :duplicated 1})
+                       (mt/user-http-request user :get 200 "ee/content-diagnostics/counts")))
+                (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+                  (is (= baseline (mt/user-http-request user :get 200 "ee/content-diagnostics/counts"))))))))))))

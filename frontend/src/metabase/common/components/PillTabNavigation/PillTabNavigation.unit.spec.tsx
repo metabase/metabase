@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 
@@ -8,10 +10,15 @@ const TABS: PillTab[] = [
   { label: "Events", to: "/monitor/example/events" },
 ];
 
+interface SetupOpts {
+  tabs?: PillTab[];
+  initialRoute?: string;
+}
+
 function setup({
   tabs = TABS,
   initialRoute = "/monitor/example/usage",
-}: { tabs?: PillTab[]; initialRoute?: string } = {}) {
+}: SetupOpts = {}) {
   renderWithProviders(
     <Route path="*" element={<PillTabNavigation tabs={tabs} />} />,
     { withRouter: true, initialRoute },
@@ -19,6 +26,68 @@ function setup({
 }
 
 describe("PillTabNavigation", () => {
+  it("supports a query-state tab action without a fake route", async () => {
+    const onClick = jest.fn<void, []>();
+    setup({
+      tabs: [{ label: "Failing", onClick, isSelected: true }],
+    });
+
+    const tab = screen.getByRole("button", { name: "Failing" });
+    expect(tab).toHaveAttribute("aria-current", "page");
+    await userEvent.click(tab);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a resolved zero count without hiding the tab", () => {
+    setup({
+      tabs: [
+        {
+          label: "Events",
+          to: "/monitor/example/events",
+          count: { status: "loaded", value: 0 },
+        },
+      ],
+    });
+
+    expect(
+      within(screen.getByRole("link", { name: "Events" })).getByText("0"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a placeholder while the count loads without blocking navigation", () => {
+    setup({
+      tabs: [
+        {
+          label: "Events",
+          to: "/monitor/example/events",
+          count: { status: "loading" },
+        },
+      ],
+    });
+
+    const tab = screen.getByRole("link", { name: "Events" });
+    expect(tab).toHaveAttribute("href", "/monitor/example/events");
+    expect(within(tab).getByTestId("tab-count-skeleton")).toBeInTheDocument();
+  });
+
+  it("omits a failed count without hiding the tab", () => {
+    setup({
+      tabs: [
+        {
+          label: "Events",
+          to: "/monitor/example/events",
+          count: { status: "error" },
+        },
+      ],
+    });
+
+    const tab = screen.getByRole("link", { name: "Events" });
+    expect(within(tab).queryByText(/\d/)).not.toBeInTheDocument();
+    expect(
+      within(tab).queryByTestId("tab-count-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders each tab as a real link to its route", () => {
     setup();
 

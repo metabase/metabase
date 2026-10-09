@@ -1,14 +1,19 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
+  setupDependencyCountsEndpoint,
+  setupDependencyCountsErrorEndpoint,
   setupListBreakingGraphNodesEndpoint,
   setupListUnreferencedGraphNodesEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
@@ -27,6 +32,8 @@ import {
   createMockListUnreferencedGraphNodesResponse,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { DependencyDiagnosticsSectionLayout } from "../routes";
 
 import {
   BrokenDependencyDiagnosticsPage,
@@ -51,6 +58,8 @@ type SetupOpts = {
   total?: number;
   urlParams?: Urls.DependencyDiagnosticsParams;
   lastUsedParams?: DependencyDiagnosticsUserParams;
+  countsDelay?: number;
+  countsError?: boolean;
 };
 
 function setup({
@@ -59,7 +68,17 @@ function setup({
   total,
   urlParams = {},
   lastUsedParams = {},
+  countsDelay,
+  countsError = false,
 }: SetupOpts) {
+  if (countsError) {
+    setupDependencyCountsErrorEndpoint();
+  } else {
+    setupDependencyCountsEndpoint(
+      { breaking: 137, unreferenced: 0 },
+      { delay: countsDelay },
+    );
+  }
   if (mode === "broken") {
     setupListBreakingGraphNodesEndpoint(
       createMockListBrokenGraphNodesResponse({
@@ -90,14 +109,16 @@ function setup({
       : UnreferencedDependencyDiagnosticsPage;
 
   const { router } = renderWithProviders(
-    <Route
-      path={getPageUrl(mode, {})}
-      element={
-        <MonitorContent>
-          <PageComponent />
-        </MonitorContent>
-      }
-    />,
+    <Route element={<DependencyDiagnosticsSectionLayout />}>
+      <Route
+        path={getPageUrl(mode, {})}
+        element={
+          <MonitorContent>
+            <PageComponent />
+          </MonitorContent>
+        }
+      />
+    </Route>,
     {
       withRouter: true,
       initialRoute: getPageUrl(mode, urlParams),
@@ -128,6 +149,69 @@ async function waitForListToLoad() {
 
 describe("DependencyDiagnosticsPage", () => {
   describe("list", () => {
+    it("renders the filtered, paginated table while default-population counters are pending", async () => {
+      setup({
+        nodes: CARD_NODES,
+        total: 150,
+        countsDelay: 1000,
+        urlParams: {
+          query: "Question",
+          page: 2,
+          includePersonalCollections: true,
+        },
+      });
+
+      const list = await screen.findByRole("treegrid");
+      expect(await within(list).findByText("Question 1")).toBeInTheDocument();
+      expect(screen.getAllByTestId("tab-count-skeleton")).toHaveLength(2);
+      await act(async () => jest.advanceTimersByTime(1000));
+      expect(
+        await within(
+          screen.getByRole("link", { name: "Broken dependencies" }),
+        ).findByText("137"),
+      ).toBeInTheDocument();
+      expect(
+        within(
+          screen.getByRole("link", { name: "Unreferenced entities" }),
+        ).getByText("0"),
+      ).toBeInTheDocument();
+      const countCalls = fetchMock.callHistory.calls(
+        "path:/api/ee/dependencies/counts",
+      );
+      expect(countCalls).toHaveLength(1);
+      expect(new URL(countCalls[0].url).search).toBe("");
+      const listCalls = fetchMock.callHistory.calls(
+        "path:/api/ee/dependencies/graph/breaking",
+      );
+      const listParams = new URL(listCalls[listCalls.length - 1].url)
+        .searchParams;
+      expect(listParams.get("query")).toBe("Question");
+      expect(listParams.get("include-personal-collections")).toBe("true");
+      expect(Number(listParams.get("offset"))).toBeGreaterThan(0);
+    });
+
+    it("keeps table content visible when the count request fails", async () => {
+      setup({ nodes: CARD_NODES, countsError: true });
+
+      const list = await screen.findByRole("treegrid");
+      expect(await within(list).findByText("Question 1")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/ee/dependencies/counts"),
+        ).toHaveLength(1);
+        expect(
+          fetchMock.callHistory.done("path:/api/ee/dependencies/counts"),
+        ).toBe(true);
+        expect(screen.queryAllByTestId("tab-count-skeleton")).toHaveLength(0);
+      });
+      expect(
+        within(
+          screen.getByRole("link", { name: "Broken dependencies" }),
+        ).queryByText(/\d/),
+      ).not.toBeInTheDocument();
+      expect(within(list).getByText("Question 1")).toBeInTheDocument();
+    });
+
     it("renders provided nodes in the list", async () => {
       setup({ nodes: CARD_NODES });
 

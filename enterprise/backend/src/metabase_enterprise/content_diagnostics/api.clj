@@ -330,6 +330,24 @@
        (check-diagnostics-access)
        (handler request respond raise)))))
 
+(api.macros/defendpoint :get "/counts"
+  :- [:map {:closed true}
+      [:stale      nat-int?]
+      [:duplicated nat-int?]
+      [:slow       nat-int?]
+      [:empty      nat-int?]
+      [:sparse     nat-int?]
+      [:crowded    nat-int?]]
+  "Count each tab's default latest valid, visible findings, including personal collections."
+  [_route-params _query-params _body _request]
+  (let [params {:exclude-personal? false}]
+    {:stale      (cd.db/finding-count (stale-where-clause params))
+     :duplicated (cd.db/finding-count (duplicated-where-clause params))
+     :slow       (cd.db/finding-count (slow-where-clause params))
+     :empty      (cd.db/finding-count (imbalanced-where-clause (assoc params :finding-types :empty)))
+     :sparse     (cd.db/finding-count (imbalanced-where-clause (assoc params :finding-types :sparse)))
+     :crowded    (cd.db/finding-count (imbalanced-where-clause (assoc params :finding-types :crowded)))}))
+
 (api.macros/defendpoint :get "/stale"
   :- [:map
       [:data         [:sequential StaleFinding]]

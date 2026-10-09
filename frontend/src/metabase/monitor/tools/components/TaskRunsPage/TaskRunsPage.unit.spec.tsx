@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupTaskRunsEndpoints } from "__support__/server-mocks";
+import {
+  setupTaskCountsEndpoint,
+  setupTaskRunsEndpoints,
+} from "__support__/server-mocks";
 import {
   act,
   mockGetBoundingClientRect,
@@ -15,6 +18,8 @@ import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ListTaskRunsResponse } from "metabase-types/api";
 import { createMockTaskRun } from "metabase-types/api/mocks";
+
+import { TasksSectionLayout } from "../../routes";
 
 import { TaskRunsPage } from "./TaskRunsPage";
 
@@ -31,13 +36,16 @@ const setup = async ({
   }),
   initialRoute = PATHNAME,
 }: SetupOpts = {}) => {
+  setupTaskCountsEndpoint({ tasks: 0, runs: taskRunsResponse.total });
   setupTaskRunsEndpoints(taskRunsResponse);
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const utils = renderWithProviders(
-    <Route path={PATHNAME} element={<TaskRunsPage />}>
-      <Route path=":runId" />
+    <Route element={<TasksSectionLayout />}>
+      <Route path={PATHNAME} element={<TaskRunsPage />}>
+        <Route path=":runId" />
+      </Route>
     </Route>,
     {
       initialRoute,
@@ -111,7 +119,7 @@ describe("TaskRunsPage", () => {
       taskRunsResponse: createMockTaskRunsResponse({
         data: [createMockTaskRun()],
         total: 75,
-        limit: 50,
+        limit: 25,
         offset: 0,
       }),
     });
@@ -154,6 +162,8 @@ describe("TaskRunsPage", () => {
       });
 
       const params = getLastRunsParams();
+      expect(params.get("limit")).toBe("25");
+      expect(params.get("offset")).toBe("0");
       expect(params.get("sort-column")).toBe("started_at");
       expect(params.get("sort-direction")).toBe("desc");
     });
@@ -260,7 +270,7 @@ describe("TaskRunsPage", () => {
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
           total: 75,
-          limit: 50,
+          limit: 25,
           offset: 0,
         }),
       });
@@ -275,7 +285,7 @@ describe("TaskRunsPage", () => {
       await userEvent.click(nextPage);
 
       await waitFor(() => {
-        expect(getLastRunsParams().get("offset")).toBe("50");
+        expect(getLastRunsParams().get("offset")).toBe("25");
       });
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);

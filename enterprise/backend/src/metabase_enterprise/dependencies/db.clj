@@ -15,6 +15,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -464,7 +465,7 @@
      :left-join (build-left-joins join all-joins)
      :where (into [:and join-filter item-visible-expr] (keep identity) exprs)}))
 
-(def ^:private DependencyItemParams
+(mr/def ::dependency-item-params
   "Params shared by [[dependency-item-ids]] and [[dependency-item-count]]."
   [:map {:closed true}
    [:query-type [:enum :unreferenced :breaking]]
@@ -487,7 +488,7 @@
   `:dependents-with-errors`) in `sort-direction`, skipping `offset` and returning up to `limit`. Entities are
   restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`; throws
   when `user-id` is missing."
-  [{:keys [entity-types sort-direction offset limit] :as params} :- DependencyItemParams]
+  [{:keys [entity-types sort-direction offset limit] :as params} :- ::dependency-item-params]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
     (->> (t2/query (assoc union-query
@@ -499,7 +500,7 @@
 (mu/defn dependency-item-count
   "The total count of items matching the same criteria as [[dependency-item-ids]] (ignoring sort direction, offset,
   and limit); throws when `user-id` is missing."
-  [{:keys [entity-types] :as params} :- DependencyItemParams]
+  [{:keys [entity-types] :as params} :- ::dependency-item-params]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
     (-> (t2/query {:select [[:%count.* :total]] :from [[union-query :subquery]]})

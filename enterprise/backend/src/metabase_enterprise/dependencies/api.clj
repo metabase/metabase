@@ -533,6 +533,45 @@
    [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
    [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
 
+(mu/defn- dependency-item-params :- ::dependencies.db/dependency-item-params
+  [query-type :- [:enum :unreferenced :breaking]
+   {:keys [types card-types query include-personal-collections sort-column sort-direction]
+    :or {card-types (vec lib.schema.metadata/card-types)
+         include-personal-collections false
+         sort-column :name
+         sort-direction :asc}} :- [:maybe dependency-items-args]]
+  (let [types (or types (case query-type
+                          :unreferenced (vec deps.dependency-types/dependency-types)
+                          :breaking [:card :table]))
+        selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes have no name or location to search.
+                         query (remove #{:sandbox}))]
+    (merge (current-user-visibility nil)
+           {:query-type query-type
+            :entity-types selected-types
+            :card-types (if (sequential? card-types) card-types [card-types])
+            :search-text query
+            :include-personal-collections? include-personal-collections
+            :sort-column sort-column
+            :sort-direction sort-direction
+            :offset 0
+            :limit 50})))
+
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                           [:breaking nat-int?]
+                                           [:unreferenced nat-int?]]
+  "Returns row counts for the Monitor's default Broken and Unreferenced tables, including personal collections."
+  [_route-params _query-params _body _request]
+  (let [breaking-params {:types [:table :card :transform]
+                         :card-types [:question :model]
+                         :include-personal-collections true}
+        unreferenced-params {:types [:table :card :segment :measure :snippet]
+                             :card-types [:question :model :metric]
+                             :include-personal-collections true}]
+    {:breaking (dependencies.db/dependency-item-count (dependency-item-params :breaking breaking-params))
+     :unreferenced (dependencies.db/dependency-item-count
+                    (dependency-item-params :unreferenced unreferenced-params))}))
+
 (def ^:private dependency-items-response
   [:map
    [:data [:sequential ::entity]]
@@ -560,28 +599,10 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
-    :or {types (vec deps.dependency-types/dependency-types)
-         card-types (vec lib.schema.metadata/card-types)
-         include-personal-collections false
-         sort-column :name
-         sort-direction :asc}} :- dependency-items-args]
+   params :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
-                         query (remove #{:sandbox}))
-        card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
-                           {:query-type :unreferenced
-                            :entity-types selected-types
-                            :card-types card-types
-                            :search-text query
-                            :include-personal-collections? include-personal-collections
-                            :sort-column sort-column
-                            :sort-direction sort-direction
-                            :offset offset
-                            :limit limit})
+        item-params (assoc (dependency-item-params :unreferenced params) :offset offset :limit limit)
         all-ids (dependencies.db/dependency-item-ids item-params)
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         total (dependencies.db/dependency-item-count item-params)]
@@ -611,28 +632,10 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
-    :or {types [:card :table]
-         card-types (vec lib.schema.metadata/card-types)
-         include-personal-collections false
-         sort-column :name
-         sort-direction :asc}} :- dependency-items-args]
+   params :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
-                         query (remove #{:sandbox}))
-        card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
-                           {:query-type :breaking
-                            :entity-types selected-types
-                            :card-types card-types
-                            :search-text query
-                            :include-personal-collections? include-personal-collections
-                            :sort-column sort-column
-                            :sort-direction sort-direction
-                            :offset offset
-                            :limit limit})
+        item-params (assoc (dependency-item-params :breaking params) :offset offset :limit limit)
         all-ids (dependencies.db/dependency-item-ids item-params)
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         nodes-by-type (u/group-by first second all-ids)
