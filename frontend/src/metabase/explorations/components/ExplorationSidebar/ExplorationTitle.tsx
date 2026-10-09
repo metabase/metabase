@@ -70,7 +70,6 @@ function SidebarToggleButton({
         aria-label={label}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         data-testid="exploration-sidebar-toggle"
-        size="2rem"
       >
         <Icon name={isSidebarOpen ? "sidebar_closed" : "sidebar_open"} />
       </ActionIcon>

@@ -98,7 +98,6 @@ export function BrowseMetrics() {
                   <ActionIcon
                     variant="subtle"
                     aria-label={t`Create a new metric`}
-                    size={32}
                     component={ForwardRefLink}
                     to={newMetricLink}
                     onClick={() => {

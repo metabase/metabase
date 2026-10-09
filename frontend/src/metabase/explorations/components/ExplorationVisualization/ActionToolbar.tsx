@@ -461,11 +461,7 @@ export function ActionToolbar({
         >
           <Menu.Target>
             <Tooltip label={t`More actions`} disabled={isMoreActionsOpen}>
-              <ActionIcon
-                variant="subtle"
-                size="2rem"
-                aria-label={t`More actions`}
-              >
+              <ActionIcon variant="subtle" aria-label={t`More actions`}>
                 <Icon name="ellipsis" size="1.125rem" />
               </ActionIcon>
             </Tooltip>
@@ -521,7 +517,6 @@ function TriageNavButton({
         className={S.triageButton}
         aria-label={label}
         radius="xl"
-        size="2rem"
         disabled={!onClick}
         onClick={onClick}
       >

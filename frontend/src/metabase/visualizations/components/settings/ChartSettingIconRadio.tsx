@@ -26,7 +26,6 @@ export const ChartSettingIconRadio = ({
         <ActionIcon
           key={`radio-icon-${option.iconName}`}
           variant={option.value === value ? "light" : "default"}
-          size="2rem"
           ml="sm"
           onClick={() => handleClick(option.value)}
         >

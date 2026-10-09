@@ -51,7 +51,6 @@ export const BookmarkToggle = forwardRef(function BookmarkToggle(
         aria-label={label}
         ref={ref}
         onClick={handleClick}
-        size="2rem"
       >
         <Icon
           name={iconName}

@@ -60,7 +60,6 @@ export const ToggleNativeQueryPreview = ({
       <ActionIcon
         variant="subtle"
         aria-label={buttonText}
-        size={32}
         role="switch"
         onClick={handleClick}
       >

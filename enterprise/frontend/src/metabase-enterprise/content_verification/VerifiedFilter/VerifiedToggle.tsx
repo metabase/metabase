@@ -18,7 +18,6 @@ export const VerifiedToggle = ({
         variant="subtle"
         aria-label={buttonLabel}
         aria-selected={verified}
-        size={32}
         role="switch"
         onClick={() => handleVerifiedFilterChange(!verified)}
         c={verified ? "core-brand" : "text-primary"}
