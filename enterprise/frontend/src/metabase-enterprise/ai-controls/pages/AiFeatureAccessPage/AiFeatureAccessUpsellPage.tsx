@@ -4,7 +4,7 @@ import upsellAiUsageControlsImage from "assets/img/upsell-ai-usage-controls.png"
 
 import { MetabotUpsellPage } from "../MetabotUpsellPage";
 
-export function MetabotFeatureAccessUpsellPage() {
+export function AiFeatureAccessUpsellPage() {
   return (
     <MetabotUpsellPage
       campaign="ai-controls-usage-controls"

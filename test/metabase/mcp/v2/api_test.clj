@@ -7,6 +7,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
@@ -276,12 +277,14 @@
       (testing "the cause is a missing permission, not an expired login"
         (is (re-find #"(?i)missing permission" instructions))
         (is (re-find #"(?i)not an expired login" instructions)))
-      (testing "GHY-4555: the roster is not a grant. Every tool is listed whatever the token holds, but a scope-filtered
+      (testing "GHY-4555: the roster is not a grant. Tools are listed whatever the token holds, but a scope-filtered
                 list is the conventional design and nothing on the wire signals ours, so a model asked what the
                 connection could do read the roster as a grant and named scopes it did not hold"
-        (is (re-find #"(?i)every tool is listed whatever this connection holds" instructions))
+        (is (re-find #"(?i)tools are listed whatever this connection holds" instructions))
         (is (re-find #"(?i)says nothing about its permissions" instructions))
-        (is (re-find #"(?i)only a failed call reveals a missing one" instructions)))
+        (is (re-find #"(?i)only a failed call reveals a missing one" instructions))
+        (testing "while an admin's group policy does hide tools, so the model drops advice about one it cannot see"
+          (is (re-find #"(?i)an unlisted tool is off for this user" instructions))))
       (testing "a resource read is refused the same way as a tool call, so the guidance covers both"
         (is (re-find #"(?i)tool call or resource read" instructions)))
       (testing "the model names the tool and the permission, as the consent screen names it"
@@ -832,38 +835,25 @@
               (is (not (:isError result)))
               (is (= {:ok true :message "pong"} (:structuredContent result))))))))))
 
-(defn- do-with-temp-tool!
-  "Register a throwaway tool for the body, then restore the registry. Lets a test assert scope filtering against a
-  tool whose scope differs from the token's without depending on a not-yet-landed real tool."
-  [tool thunk]
-  (let [tools-atom @#'registry/tools*
-        snapshot   @tools-atom]
-    (try
-      (registry/register-tool! tool)
-      (thunk)
-      (finally
-        (reset! tools-atom snapshot)
-        ;; register-tool! flushes the manifest cache; do the same on the way out so a later test doesn't see
-        ;; a manifest that still lists the throwaway tool.
-        (reset! @#'registry/manifest-cache nil)))))
-
 (defn- do-with-bearer-token!
-  "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
-  [scopes f]
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (oauth-server.tu/with-oauth-client [client-id]
-      (mt/with-model-cleanup [:model/OAuthAccessToken]
-        (let [token (str (random-uuid))]
-          ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-          ;; up, so the row has to be written the same way a real issued token would be — including a
-          ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
-          (t2/insert! :model/OAuthAccessToken
-                      {:token     (oidc.util/hash-token token)
-                       :user_id   (mt/user->id :crowberto)
-                       :client_id client-id
-                       :scope     (vec scopes)
-                       :expiry    (+ (System/currentTimeMillis) 3600000)})
-          (f {"authorization" (str "Bearer " token)}))))))
+  "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
+  ([scopes f]
+   (do-with-bearer-token! :crowberto scopes f))
+  ([user scopes f]
+   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+     (oauth-server.tu/with-oauth-client [client-id]
+       (mt/with-model-cleanup [:model/OAuthAccessToken]
+         (let [token (str (random-uuid))]
+           ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+           ;; up, so the row has to be written the same way a real issued token would be — including a
+           ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
+           (t2/insert! :model/OAuthAccessToken
+                       {:token     (oidc.util/hash-token token)
+                        :user_id   (mt/user->id user)
+                        :client_id client-id
+                        :scope     (vec scopes)
+                        :expiry    (+ (System/currentTimeMillis) 3600000)})
+           (f {"authorization" (str "Bearer " token)})))))))
 
 (defn- embedded-credential
   "The UI credential the fallback template embedded in shell `html`, or nil when it embedded none."
@@ -932,6 +922,34 @@
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
                                     native-query))))))))))))
 
+(deftest ui-credential-native-query-honors-the-execute-sql-group-policy-test
+  (testing "a user whose groups deny execute_sql must not run raw SQL through the iframe credential either, or
+            refresh_ui_credential plus POST /api/dataset rebuilds the tool an admin denied. The policy is read per
+            request, so a credential minted while execute_sql was allowed stops working once it is denied"
+    (mcp.ui-resource/with-fallback-template
+      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+            mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
+        (do-with-bearer-token!
+         :rasta #{"agent:query:run" "agent:sql:run"}
+         (fn [headers]
+           (let [credential (ui-credential-for headers)
+                 post       (fn [status query]
+                              (client/client-full-response
+                               :post status "dataset"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                               query))]
+             (is (string? credential)
+                 "the shell must render a credential — otherwise this test passes vacuously")
+             (testing "denied: the native query is refused with the execute_sql denial"
+               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "no"}])]
+                 (is (re-find #"needs the \"execute_sql\" tool, which is not enabled for your groups"
+                              (str (:body (post 403 native-query)))))
+                 (testing "while its MBQL queries are untouched"
+                   (is (= 202 (:status (post 202 mbql-query)))))))
+             (testing "allowed: the same credential runs the native query"
+               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "yes"}])]
+                 (is (= 202 (:status (post 202 native-query)))))))))))))
+
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
             transport on the same authenticated branch a cookie session does. It must still dispatch with the
@@ -940,13 +958,14 @@
     ;; Register a throwaway tool on a DIFFERENT scope (`agent:content:write`, which the token below does not carry)
     ;; so the negative half of the scope contract has teeth independent of which real write tools are registered:
     ;; this test fails if the bearer request dispatches unrestricted.
-    (do-with-temp-tool!
-     {:name        "scope_probe_write"
-      :scope       metabot.scope/agent-content-write
-      :description "test-only tool gated on a write scope the narrow token lacks"
-      :annotations {:readOnlyHint false}
-      :args        [:map]
-      :handler     (fn [_ _] nil)}
+    (v2.tu/do-with-temp-tool!
+     {:name           "scope_probe_write"
+      :scope          metabot.scope/agent-content-write
+      :default-access :allowed
+      :description    "test-only tool gated on a write scope the narrow token lacks"
+      :annotations    {:readOnlyHint false}
+      :args           [:map]
+      :handler        (fn [_ _] nil)}
      (fn []
        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
          (oauth-server.tu/with-oauth-client [client-id]
@@ -1347,13 +1366,14 @@
 
 (deftest unscoped-callers-never-get-an-insufficient-scope-challenge-test
   (testing "GHY-4543: a cookie session is stamped unrestricted, so a tool gated on any scope is served over 200"
-    (do-with-temp-tool!
-     {:name        "scope_probe_sql"
-      :scope       metabot.scope/agent-sql-run
-      :description "test-only tool gated on agent:sql:run"
-      :annotations {:readOnlyHint true}
-      :args        [:map]
-      :handler     (fn [_ _] {:content [{:type "text" :text "served"}]})}
+    (v2.tu/do-with-temp-tool!
+     {:name           "scope_probe_sql"
+      :scope          metabot.scope/agent-sql-run
+      :default-access :allowed
+      :description    "test-only tool gated on agent:sql:run"
+      :annotations    {:readOnlyHint true}
+      :args           [:map]
+      :handler        (fn [_ _] {:content [{:type "text" :text "served"}]})}
      (fn []
        (let [[session-id] (initialize!)
              response     (mcp-request (jsonrpc-request "tools/call" {:name "scope_probe_sql" :arguments {}})

@@ -1371,7 +1371,7 @@
            metabase.mcp.usage
            metabase.mcp.v2.api
            metabase.mcp.v2.registry}
-   :model-exports #{:model/McpSessionLog :model/McpToolCallLog}
+   :model-exports #{:model/McpGroupPermission :model/McpSessionLog :model/McpToolCallLog}
    :uses #{activity-feed
            ai-tracing
            api
@@ -1490,7 +1490,8 @@
               metabase.metabot.settings
               metabase.metabot.tools
               metabase.metabot.tools.construct
-              metabase.metabot.tools.search}
+              metabase.metabot.tools.search
+              metabase.metabot.usage-controls}
    :module-exports #{metabot.agent-api
                      metabot.llm
                      metabot.slackbot}
@@ -3982,16 +3983,23 @@
 
   enterprise/mcp
   {:team    "Metabot"
-   :api     #{metabase-enterprise.mcp.init}
+   :api     #{metabase-enterprise.mcp.api.permissions metabase-enterprise.mcp.init}
    :uses    #{analytics
+              api
+              app-db
               lib.schema
               mcp
               metabot
+              models
+              permissions
               premium-features
               task
               util}
-   :model-imports #{:model/McpSessionLog
-                    :model/McpToolCallLog}}
+   :model-imports #{:model/McpGroupPermission
+                    :model/McpSessionLog
+                    :model/McpToolCallLog
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership}}
 
   enterprise/memoize-monitor
   {:team "Graphy"
@@ -4012,9 +4020,7 @@
    :module-exports #{enterprise/metabot.agent-api
                      enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
-   :api            #{metabase-enterprise.metabot.api
-                     metabase-enterprise.metabot.api.routes
-                     metabase-enterprise.metabot.init}
+   :api            #{metabase-enterprise.metabot.api metabase-enterprise.metabot.api.routes metabase-enterprise.metabot.init}
    :uses           #{api
                      lib.schema
                      metabot

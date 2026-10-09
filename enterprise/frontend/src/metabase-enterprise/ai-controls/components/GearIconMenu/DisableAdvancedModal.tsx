@@ -1,25 +1,20 @@
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useMetadataToasts } from "metabase/common/hooks";
 import { Text } from "metabase/ui";
-import { useDisableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
+
+import type { SwitchAdvancedMode } from "../../types";
 
 type Props = {
+  loading: boolean;
+  onConfirm: SwitchAdvancedMode;
   onClose: () => void;
 };
 
-export function DisableAdvancedModal({ onClose }: Props) {
-  const [disableAdvanced, { isLoading: loading }] =
-    useDisableAdvancedAIControlsPermissionsMutation();
-  const { sendErrorToast } = useMetadataToasts();
-
+export function DisableAdvancedModal({ loading, onConfirm, onClose }: Props) {
   const handleConfirm = async () => {
-    try {
-      await disableAdvanced().unwrap();
+    if (await onConfirm()) {
       onClose();
-    } catch {
-      sendErrorToast(t`Failed to remove group-level access`);
     }
   };
 
