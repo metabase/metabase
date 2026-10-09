@@ -217,7 +217,7 @@ describe("monitor routes", () => {
   it("resolves every lazy page", async () => {
     const loaders = lazyLoaders(getMonitorRoutes());
 
-    expect(loaders).toHaveLength(17);
+    expect(loaders).toHaveLength(19);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

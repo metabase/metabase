@@ -11,6 +11,7 @@ import {
   isValidCollectionId,
 } from "metabase/common/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
+import { DataActionCollectionName } from "metabase/common/components/DataActionCollectionName";
 import {
   CollectionPickerModal,
   type EntityPickerModalProps,
@@ -50,6 +51,10 @@ function ItemName({
 
   if (namespace === "transforms") {
     return <TransformCollectionName id={id} />;
+  }
+
+  if (namespace === "data-actions") {
+    return <DataActionCollectionName id={id} />;
   }
 
   // Check for tenant namespace display name via plugin

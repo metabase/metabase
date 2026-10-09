@@ -347,23 +347,20 @@
 (def supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
-   "claude-opus-5-5"            {:display-name "Claude Opus 5.5"   :max-tokens 128000 :context-window 1000000}
-   "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000 :context-window 1000000}
-   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000 :context-window  200000}
-   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000 :context-window  200000}
-   "claude-sonnet-5-5"          {:display-name "Claude Sonnet 5.5" :max-tokens 128000 :context-window 1000000}
-   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000 :context-window 1000000}
-   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000 :context-window 1000000}
-   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000 :context-window  200000}
-   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000 :context-window  200000}})
-
-(def ^:private default-max-tokens
-  "`max_tokens` for an unresolved model — low enough to be safe on any of them."
-  64000)
+  {"claude-fable-5-1"           {:display-name "Claude Fable 5.1"  :context-window 1000000}
+   "claude-fable-5"             {:display-name "Claude Fable 5"    :context-window 1000000}
+   "claude-opus-5-5"            {:display-name "Claude Opus 5.5"   :context-window 1000000}
+   "claude-opus-5"              {:display-name "Claude Opus 5"     :context-window 1000000}
+   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :context-window 1000000}
+   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :context-window 1000000}
+   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :context-window 1000000}
+   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :context-window  200000}
+   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :context-window  200000}
+   "claude-sonnet-5-5"          {:display-name "Claude Sonnet 5.5" :context-window 1000000}
+   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :context-window 1000000}
+   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :context-window 1000000}
+   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :context-window  200000}
+   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :context-window  200000}})
 
 (mu/defn list-models :- adapter/ModelListing
   "List the Anthropic chat models supported by this adapter, by intersecting [[supported-models]] with the
@@ -383,36 +380,32 @@
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
-(defn- model-max-tokens
-  "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."
-  [model]
-  (get-in supported-models [(strip-vendor-prefix model) :max-tokens]))
-
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
   [model :- [:maybe :string]]
   (get-in supported-models [(strip-vendor-prefix model) :context-window]))
 
 (defn- claude-model-version
-  "`[family major minor]` for a Claude opus/sonnet model id, or nil.
+  "`[family major minor]` for a Claude opus/sonnet/fable/mythos model id, or nil.
   The minor version is one or two digits, so a date suffix doesn't read as one: `claude-opus-5-20261005` is 5.0."
   [model]
   ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
   ;; but Azure admins name deployments freely, and the dotted display-name spelling
   ;; (claude-opus-4.8) is the norm for the GPT family next to it
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet|fable|mythos)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 
 (defn- model-current-gen?
-  "Current-generation Claude (Fable, Opus >=4.7, Sonnet >=5): no sampling params;
+  "Current-generation Claude (Fable, Mythos, Opus >=4.7, Sonnet >=5): no sampling params;
   thinking streams via `display: summarized`."
   [model]
   (or (str/starts-with? (strip-vendor-prefix model) "claude-fable")
       (when-let [[family major minor] (claude-model-version model)]
         (case family
-          "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
-          "sonnet" (>= major 5)))))
+          ("fable" "mythos") true
+          "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
+          "sonnet"           (>= major 5)))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter. Sampling params
@@ -421,10 +414,12 @@
   (not (model-current-gen? model)))
 
 (defn- model-supports-forced-tool-choice?
-  "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on."
+  "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on,
+  Fable and Mythos from 5.1 on: https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported"
   [model]
-  (if-let [[_ major minor] (claude-model-version model)]
-    (or (< major 5) (and (= major 5) (< minor 5)))
+  (if-let [[family major minor] (claude-model-version model)]
+    (let [first-rejecting-minor (if (#{"fable" "mythos"} family) 1 5)]
+      (or (< major 5) (and (= major 5) (< minor first-rejecting-minor))))
     true))
 
 (def ^:private unforced-structured-output-token-floor
@@ -492,7 +487,8 @@
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)]
     (cond-> {:model         model
-             :max_tokens    (or max-tokens (model-max-tokens model) default-max-tokens)
+             ;; required by the Messages API (https://platform.claude.com/docs/en/api/messages), so never omitted
+             :max_tokens    (or max-tokens core/chat-max-output-tokens)
              :stream        true
              :cache_control {:type "ephemeral"}
              :messages      messages}

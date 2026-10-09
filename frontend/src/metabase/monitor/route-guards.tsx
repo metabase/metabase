@@ -1,6 +1,7 @@
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
+  canAccessApiKeyUsage,
   canAccessContentDiagnostics,
   canAccessDependencyDiagnostics,
   canAccessMonitor,
@@ -49,6 +50,11 @@ const UserCanAccessAiAuditing = createRedirectGuard(
   "/unauthorized",
 );
 
+const UserCanAccessApiKeyUsage = createRedirectGuard(
+  (state) => canAccessApiKeyUsage(state),
+  "/unauthorized",
+);
+
 export const CanAccessMonitor = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
@@ -93,4 +99,10 @@ export const CanAccessAiAuditing = () => (
   <UserCanAccessAiAuditing>
     <Outlet />
   </UserCanAccessAiAuditing>
+);
+
+export const CanAccessApiKeyUsage = () => (
+  <UserCanAccessApiKeyUsage>
+    <Outlet />
+  </UserCanAccessApiKeyUsage>
 );

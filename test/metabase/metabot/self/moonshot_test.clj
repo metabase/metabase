@@ -123,7 +123,8 @@
         2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512
               :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
         4096 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 4096}
-        nil  {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
+        ;; uncapped by the caller, so the default cap applies — already above the floor
+        32000 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
         512  {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512}
         512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
         512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :max-tokens 512

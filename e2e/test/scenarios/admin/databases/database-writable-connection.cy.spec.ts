@@ -124,8 +124,8 @@ describe("scenarios > admin > databases > writable connection", () => {
   it("should be able to use model actions with a writable connection", () => {
     visitDatabase(WRITABLE_DB_ID);
 
-    cy.log("Model actions should be enabled for this db");
-    cy.findByLabelText("Model actions").should("be.checked");
+    cy.log("Data actions should be enabled for this db");
+    cy.findByLabelText("Data actions").should("be.checked");
 
     createModelWithAction().then((action) => {
       updateMainConnection(READ_ONLY_USER);

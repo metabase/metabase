@@ -33,6 +33,7 @@ export { createSnippetFolder } from "./createSnippetFolder";
 export { createTestNativeQuery, createTestQuery } from "./createTestQuery";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
+export type { TimelineEventDetails } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";
 export { createTransform } from "./createTransform";
 export { createTransformJob } from "./createTransformJob";

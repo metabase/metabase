@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.db :as typed-schemas.db]
@@ -152,8 +150,8 @@
 
 (deftest metric-schemas-excludes-metrics-that-join-a-saved-question-test
   ;; Metric 258 is table-sourced and joins a saved question, so `source-card-id` — which only reads
-  ;; stage 0's source — passes it. The CLI checks the whole query and rejects it, aborting
-  ;; `sync-resources` for any app that uses it, so codegen has to drop it here as well.
+  ;; stage 0's source — passes it. A data app's copy of it would reference a saved question outside
+  ;; the app's resources, which the pull refuses, so codegen has to drop it here as well.
   (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
                               (constantly [{:id 247
                                             :dataset_query {:lib/type :mbql/query
@@ -179,20 +177,9 @@
     (is (= [247]
            (vec (schema.metric/metric-schemas nil nil))))))
 
-(deftest table-source-names-filters-unreadable-tables-test
-  (with-redefs [perms/prime-table-perms-cache (constantly nil)
-                typed-schemas.db/table-names
-                (constantly [{:id 10 :name "orders" :display_name "Orders"}
-                             {:id 20 :name "franchises" :display_name "Franchises"}])
-                mi/can-read? (fn [{:keys [id]}] (= id 10))]
-    (is (= {10 "orders"}
-           (#'schema.metric/table-source-names [10 20])))
-    (is (= {10 "Orders"}
-           (#'schema.metric/table-key-disambiguators [10 20])))))
-
 (deftest metric-schema-keys-dimensions-test
   (mt/with-dynamic-fn-redefs [schema.metric/metric-result-column (constantly nil)
-                              schema.metric/readable-table-source-rows
+                              schema.metric/table-source-rows
                               (constantly [{:id 10 :name "orders" :display_name "Orders"}])
                               schema.metric/sync-and-fetch-metric-dimensions!
                               (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
@@ -228,17 +215,15 @@
 
 (deftest metric-schema-reuses-table-source-rows-test
   (let [table-select-count (atom 0)]
-    (with-redefs [schema.metric/metric-result-column (constantly nil)
-                  schema.metric/sync-and-fetch-metric-dimensions!
-                  (constantly [{:id       "orders-dimension"
-                                :name     "orders"
-                                :table-id 10}])
-                  mi/can-read? (constantly true)
-                  perms/prime-table-perms-cache (constantly nil)
-                  typed-schemas.db/table-names
-                  (fn [_table-ids]
-                    (swap! table-select-count inc)
-                    [{:id 10 :name "orders" :display_name "Orders"}])]
+    (mt/with-dynamic-fn-redefs [schema.metric/metric-result-column (constantly nil)
+                                schema.metric/sync-and-fetch-metric-dimensions!
+                                (constantly [{:id       "orders-dimension"
+                                              :name     "orders"
+                                              :table-id 10}])
+                                typed-schemas.db/table-names
+                                (fn [_table-ids]
+                                  (swap! table-select-count inc)
+                                  [{:id 10 :name "orders" :display_name "Orders"}])]
       (#'schema.metric/metric-schema
        {:id   247
         :name "Customer Lifetime Value"}

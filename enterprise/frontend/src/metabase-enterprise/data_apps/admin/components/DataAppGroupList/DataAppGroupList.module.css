@@ -1,0 +1,28 @@
+.groupListContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+}
+
+.groupListContent.overlappingGroupListContent {
+  display: grid;
+}
+
+/**
+  Overlap the group card and empty state, so the
+  collapsing empty state does not add a second row
+  when transitioning from and to empty states
+ */
+.overlappingGroupListContent > * {
+  grid-area: 1 / 1;
+}
+
+.groupTable tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.removeGroupButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

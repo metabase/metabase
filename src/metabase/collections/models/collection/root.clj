@@ -58,6 +58,7 @@
                         :shared-tenant-collections (tru "Shared collections")
                         :snippets (tru "SQL snippets")
                         :transforms (tru "Transforms")
+                        :data-actions (tru "Data actions")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :is_personal false
