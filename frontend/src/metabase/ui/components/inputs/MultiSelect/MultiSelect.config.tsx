@@ -27,7 +27,6 @@ export const multiSelectOverrides = {
     classNames: {
       ...(selectOverrides?.Select?.classNames ?? {}),
       input: S.MultiSelectInput,
-      inputField: S.MultiSelectField,
       pill: S.MultiSelectPill,
       pillsList: S.MultiSelectPillsList,
     },
