@@ -9,7 +9,6 @@ import {
   getDefaultSize,
   getMinSize,
   resolveGoalSegments,
-  validateGoalReferences,
 } from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
@@ -25,14 +24,14 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   isSensible: ({ cols, rows }) => {
     return rows.length === 1 && cols.length === 1;
   },
-  checkRenderable: (series, settings) => {
-    const [{ data }] = series;
-
-    if (!isNumeric(data.cols[0]) || isDate(data.cols[0])) {
+  checkRenderable: ([
+    {
+      data: { cols },
+    },
+  ]) => {
+    if (!isNumeric(cols[0]) || isDate(cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
-
-    validateGoalReferences(series, settings);
   },
   settings: {
     ...columnSettings({

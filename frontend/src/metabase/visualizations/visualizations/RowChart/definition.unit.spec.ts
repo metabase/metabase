@@ -8,7 +8,6 @@ import {
   createMockColumn,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -31,7 +30,6 @@ const SETTINGS: VisualizationSettings = {
   "graph.show_goal": true,
   "graph.goal_value": REFERENCED_GOAL,
 };
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 describe("ROW_CHART_DEFINITION", () => {
   describe("graph.goal_value widget", () => {
@@ -53,47 +51,12 @@ describe("ROW_CHART_DEFINITION", () => {
   });
 
   describe("checkRenderable", () => {
-    it("accepts a static goal value", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          ...SETTINGS,
-          "graph.goal_value": 100,
-        }),
-      ).not.toThrow();
-    });
-
-    it("accepts a goal reference that is still resolving", () => {
-      expect(() => checkRenderable(createSeries(), SETTINGS)).not.toThrow();
-    });
-
-    it("accepts a resolved goal reference", () => {
-      const series = createSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: 250,
-        }),
-      });
-
-      expect(() => checkRenderable(series, SETTINGS)).not.toThrow();
-    });
-
-    it("refuses to render when the referenced query failed", () => {
+    it("renders when the referenced query failed", () => {
       const series = createSeries({
         referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
-      expect(() => checkRenderable(series, SETTINGS)).toThrow(GOAL_ERROR);
-    });
-
-    it("refuses to render when the referenced value is not a number", () => {
-      const series = createSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: "x",
-        }),
-      });
-
-      expect(() => checkRenderable(series, SETTINGS)).toThrow(GOAL_ERROR);
+      expect(() => checkRenderable(series, SETTINGS)).not.toThrow();
     });
   });
 });

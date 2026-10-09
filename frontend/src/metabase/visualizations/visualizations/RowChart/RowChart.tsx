@@ -6,7 +6,7 @@ import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { assignLazily } from "metabase/utils/merge-lazily";
-import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -270,8 +270,8 @@ const RowChartVisualization = ({
           getHref={getHref}
         />
       )}
-      {goalStatus !== "resolved" ? (
-        <GoalResolutionState kind="value" status={goalStatus} />
+      {goalStatus === "resolving" ? (
+        <GoalResolvingState />
       ) : (
         <RowChartLegendLayout
           width={outerWidth}

@@ -43,7 +43,11 @@ describe("useResolvedGoalSettings", () => {
     };
     const { result } = setup(createMockCard({ display: "line" }), settings);
 
-    expect(result.current).toEqual({ status: "resolved", settings });
+    expect(result.current).toEqual({
+      status: "resolved",
+      settings,
+      errors: [],
+    });
     expect(result.current.settings).toBe(settings);
   });
 
@@ -56,6 +60,7 @@ describe("useResolvedGoalSettings", () => {
     expect(result.current).toEqual({
       status: "resolved",
       settings: REFERENCED_SETTINGS,
+      errors: [],
     });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
@@ -67,7 +72,11 @@ describe("useResolvedGoalSettings", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
       const { result } = setup(card, settings);
 
-      expect(result.current).toEqual({ status: "resolved", settings });
+      expect(result.current).toEqual({
+        status: "resolved",
+        settings,
+        errors: [],
+      });
       expect(result.current.settings).toBe(settings);
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });
@@ -86,6 +95,7 @@ describe("useResolvedGoalSettings", () => {
       expect(result.current).toEqual({
         status: "resolved",
         settings: { ...REFERENCED_SETTINGS, "graph.goal_value": 250 },
+        errors: [],
       });
     });
 
@@ -105,40 +115,54 @@ describe("useResolvedGoalSettings", () => {
       expect(result.current).toEqual({
         status: "resolving",
         settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+        errors: [],
       });
 
       await waitFor(() =>
         expect(result.current).toEqual({
           status: "resolved",
           settings: { ...REFERENCED_SETTINGS, "graph.goal_value": 250 },
+          errors: [],
         }),
       );
     });
 
-    it("fails when the reference cannot be resolved", async () => {
+    it("falls back to 0 and reports the error when the reference cannot be resolved", async () => {
       setupCardDataset({ status: 500 });
 
       const { result } = setup(card, REFERENCED_SETTINGS);
 
       await waitFor(() =>
-        expect(result.current).toEqual({
-          status: "failed",
-          settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+        expect(result.current).toMatchObject({
+          status: "resolved",
+          settings: { ...REFERENCED_SETTINGS, "graph.goal_value": 0 },
+          errors: [{ reason: "query-failed" }],
         }),
       );
     });
 
-    it("fails for a reference the dataset reports as failed", () => {
+    it("falls back to 0 and reports the error for a reference the dataset reports as failed", () => {
       const data = createMockDatasetData({
         ...DATA,
-        referenced_entities: createMockFailedReferencedEntitiesResults(),
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error: "boom",
+        }),
       });
 
       const { result } = setup(card, REFERENCED_SETTINGS, data);
 
       expect(result.current).toEqual({
-        status: "failed",
-        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+        status: "resolved",
+        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": 0 },
+        errors: [
+          {
+            type: "card",
+            id: 9,
+            column: "goal",
+            reason: "query-failed",
+            message: "boom",
+          },
+        ],
       });
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });

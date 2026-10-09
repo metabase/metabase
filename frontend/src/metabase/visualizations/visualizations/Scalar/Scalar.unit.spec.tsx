@@ -341,8 +341,6 @@ describe("Scalar", () => {
 
 describe("Scalar conditional colors", () => {
   const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
-  const UNRESOLVED_MESSAGE =
-    "Couldn't load a value one of this chart's ranges depends on.";
 
   function setup(series: Series, segments: ScalarSegment[]) {
     renderWithProviders(
@@ -418,42 +416,35 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
   });
 
-  it("explains instead of rendering when a self-column range's cell is null", () => {
-    setup(createScalarSeries({ rows: [[null]] }), [
+  it.each([
+    ["the cell is null", [[null]]],
+    ["the question returned no rows", []],
+  ])("renders the value when a self-column range's %s", (_name, rows) => {
+    setup(createScalarSeries({ rows }), [
       { min: "count", max: null, color: "green", label: "above goal" },
     ]);
 
-    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
-    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
   });
 
-  it("explains instead of rendering when a self-column range's question returned no rows", () => {
-    setup(createScalarSeries({ rows: [] }), [
-      { min: "count", max: null, color: "green", label: "above goal" },
-    ]);
-
-    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
-    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
-  });
-
-  it("explains instead of rendering when a range's bound failed to load", () => {
+  it("colors the value as if a bound that failed to load were unset", () => {
     setup(
       createScalarSeries({
         referenced_entities: createMockFailedReferencedEntitiesResults({
           id: GOAL_REF.id,
         }),
       }),
-      [{ min: GOAL_REF, max: null, color: "green", label: "above goal" }],
+      [
+        { min: 10000, max: GOAL_REF, color: "green", label: "high" },
+        { min: GOAL_REF, max: null, color: "red", label: "low" },
+      ],
     );
 
-    expect(screen.getByText(UNRESOLVED_MESSAGE)).toBeInTheDocument();
-    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+    expect(screen.getByText("12,345")).toBeInTheDocument();
+    expect(getValueColor()).toBe("green");
     expect(screen.getByTestId("scalar-title")).toHaveTextContent(
       "Scalar Title",
     );
-    expect(
-      screen.getByRole("button", { name: "Download" }),
-    ).toBeInTheDocument();
   });
 
   function createScalarSeries(data: Partial<DatasetData> = {}): Series {
