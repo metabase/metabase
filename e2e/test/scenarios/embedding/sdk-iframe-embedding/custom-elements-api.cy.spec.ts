@@ -191,7 +191,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   });
 
   describe("<metabase-question>", () => {
-    it("should embed a question with <metabase-question question-id='${number}'>", () => {
+    it("should embed a question with <metabase-question question-id='${number}'> and remove a column via viz settings (metabase#77135)", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
 
@@ -201,6 +201,17 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       `);
 
       H.getSimpleEmbedIframeContent(0).findByText("Orders").should("exist");
+
+      cy.log("remove a column via viz settings (metabase#77135)");
+      H.getSimpleEmbedIframeContent().within(() => {
+        H.tableInteractive().findByText("Tax").should("be.visible");
+
+        cy.findByTestId("viz-settings-button").click();
+        cy.findByRole("button", { name: /Add or remove columns/ }).click();
+
+        cy.findByLabelText("Tax").should("be.checked").click();
+        H.tableInteractive().findByText("Tax").should("not.exist");
+      });
     });
 
     it("should allow rendering two different questions in the same page", () => {
