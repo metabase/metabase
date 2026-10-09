@@ -3730,6 +3730,36 @@
             (is (= 3 (count (set entity-ids))))
             (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))))))))
 
+(deftest timeline-event-timestamp-kept-on-update-test
+  (testing "v65.m2xncr: updating a timeline event keeps its date"
+    (impl/test-migrations ["v65.m2xncr"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-cranes@example.com"
+                                                             :password    "password"
+                                                             :date_joined :%now
+                                                             :entity_id   (u/generate-nano-id)})
+            timeline-id (t2/insert-returning-pk! :timeline {:name       "Crane seasons"
+                                                            :icon       "star"
+                                                            :creator_id user-id
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :entity_id  (u/generate-nano-id)})
+            event-id    (t2/insert-returning-pk! :timeline_event {:name         "Cranes arrive"
+                                                                  :archived     false
+                                                                  :icon         "star"
+                                                                  :timeline_id  timeline-id
+                                                                  :creator_id   user-id
+                                                                  :created_at   :%now
+                                                                  :updated_at   :%now
+                                                                  :timestamp    #t "2027-03-10T00:00:00Z"
+                                                                  :time_matters false
+                                                                  :timezone     "UTC"
+                                                                  :entity_id    (u/generate-nano-id)})
+            event-date  #(t2/select-one-fn :timestamp :timeline_event :id event-id)
+            before      (event-date)]
+        (migrate!)
+        (t2/update! :timeline_event event-id {:archived true})
+        (is (= before (event-date)))))))
+
 (deftest add-library-dashboards-section-test
   (testing "v65.2026-10-06T16:00:00 through v65.2026-10-06T16:00:02: an existing Library gets a Dashboards section with its permissions"
     (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
