@@ -628,6 +628,8 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - segment-create
 - segment-delete
 - segment-update
+- session-revoked
+- sessions-revoked
 - setting-update
 - subscription-create
 - subscription-delete
@@ -711,6 +713,7 @@ The Entity Type column on the [Content](#content) model takes one of:
 - dashboard
 - document
 - event
+- exploration
 - glossary
 - model
 - question

@@ -291,6 +291,18 @@ describe("ConversationsPage", () => {
       ).toBeInTheDocument();
     });
 
+    it("clears the filters when navigated to the unfiltered url", async () => {
+      const { router } = setup({
+        initialRoute: `${CONVERSATIONS_PATH}?user=${ROBERT.id}`,
+      });
+
+      await screen.findByDisplayValue(ROBERT.common_name);
+
+      act(() => router?.navigate(CONVERSATIONS_PATH));
+
+      expect(await screen.findByDisplayValue("All users")).toBeInTheDocument();
+    });
+
     it("filters by user", async () => {
       const { router } = setup();
 

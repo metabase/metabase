@@ -623,9 +623,9 @@ export const Bar = styled.div<{ width: number }>`
 
 ### Pattern 9: Core CSS Utility Classes (Discouraged)
 
-**Do NOT introduce new `CS` utility class usage.** Core CSS utilities (`CS` from `metabase/css/core/index.css`) are legacy and discouraged for new code. Prefer Mantine style props or CSS modules instead.
+**Don't use `CS` utility classes in new, moved, or otherwise edited code.** Core CSS utilities (`CS` from `metabase/css/core/index.css`) are legacy. Prefer Mantine style props or CSS modules instead.
 
-If existing code already uses `CS` classes and you're not migrating that specific code, leave them alone. But when migrating Emotion → Mantine, replace with the proper alternative:
+Existing `CS` usage may remain on lines this change neither edits nor moves; editing a neighboring line doesn't require migrating untouched usage. When moving or editing the usage itself, including during an Emotion → Mantine migration, replace it with the proper alternative:
 
 | Instead of `CS.*`   | Use                                                          |
 | ------------------- | ------------------------------------------------------------ |

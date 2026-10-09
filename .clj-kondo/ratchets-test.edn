@@ -17,7 +17,7 @@
 {:ignore-counts                {:case-symbol-test                                                    1
                                 :clojure-lsp/unused-public-var                                       1
                                 :deprecated-namespace                                                66
-                                :deprecated-var                                                      32
+                                :deprecated-var                                                      33
                                 :equals-true                                                         1
                                 :metabase/disallow-hardcoded-driver-names-in-tests                   34
                                 :metabase/discourage-dynamic-vars                                    41
@@ -32,7 +32,7 @@
                                 :unresolved-symbol                                                   2
                                 :unused-binding                                                      6
                                 :unused-private-var                                                  2}
- :discouraged-namespace-counts {:clojure.tools.logging 5
+ :discouraged-namespace-counts {:clojure.tools.logging 2
                                 :toucan2.core          1}
  :discouraged-var-counts       {:clojure.core/pr                            1
                                 :clojure.core/print                         1

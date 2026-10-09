@@ -53,7 +53,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     );
   });
 
-  it("should work for the primary key, the foreign key and the implicit join when set through the filter widget", () => {
+  it("should work for the primary key, the foreign key and the implicit join when set through the filter widget or as the default filter", () => {
     ID_FILTERS.forEach((filter) => addIdFilter(filter));
 
     H.saveDashboard();
@@ -77,9 +77,16 @@ describe("scenarios > dashboard > filters > ID", () => {
         cy.wait("@dashboardData");
       },
     );
-  });
 
-  it("should work for the primary key, the foreign key and the implicit join when set as the default filter", () => {
+    cy.log("recreate the filters with default values");
+    H.editDashboard();
+    ID_FILTERS.forEach(({ name }) => {
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText(name)
+        .click();
+      H.sidebar().findByRole("button", { name: "Remove" }).click();
+    });
+
     ID_FILTERS.forEach((filter) => {
       addIdFilter(filter);
       cy.findByText("Default value").next().click();

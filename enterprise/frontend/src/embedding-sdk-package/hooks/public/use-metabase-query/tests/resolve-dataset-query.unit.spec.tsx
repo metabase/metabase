@@ -97,6 +97,52 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("passes breakout and orderBy binning through Lib.createTestQuery", async () => {
+    const { amount } = TEST_SCHEMA.tables.orders.fields;
+    const binning = { strategy: "num-bins", numBins: 10 } as const;
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [breakout(amount, { binning })],
+      orderBys: [orderBy(amount, "asc", { binning })],
+    });
+
+    const binnedAmount = [
+      "field",
+      expect.objectContaining({
+        binning: { strategy: "num-bins", "num-bins": 10 },
+      }),
+      102,
+    ];
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+      breakout: [binnedAmount],
+      "order-by": [["asc", expect.anything(), binnedAmount]],
+    });
+  });
+
+  it("passes default binning on a plain breakout object through Lib.createTestQuery", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [
+        {
+          ...TEST_SCHEMA.tables.orders.fields.amount,
+          binning: { strategy: "default" },
+        },
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].breakout).toEqual([
+      [
+        "field",
+        expect.objectContaining({ binning: { strategy: "default" } }),
+        102,
+      ],
+    ]);
+  });
+
   it("passes generated table Measures to Lib.createTestQuery measure aggregations", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: TEST_SCHEMA.tables.orders,
@@ -221,6 +267,28 @@ describe("resolveDatasetQuery", () => {
         },
       ],
     });
+  });
+
+  it("filters the dynamic stage on an FK-joined dimension of the static query", async () => {
+    const product = TEST_SCHEMA.metrics.revenue.dimensions.orders.product;
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: TEST_SCHEMA.tables.orders,
+        aggregations: [TEST_SCHEMA.metrics.revenue],
+        breakouts: [breakout(product)],
+      },
+      { filters: [filter(product, "=", "Widget")] },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      [
+        "=",
+        expect.anything(),
+        ["field", expect.anything(), expect.stringContaining("NAME")],
+        "Widget",
+      ],
+    ]);
   });
 
   it("passes generated metric dimension orderBys through Lib.createTestQuery", async () => {

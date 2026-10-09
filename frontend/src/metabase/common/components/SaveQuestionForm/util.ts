@@ -74,7 +74,14 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
 };
 
 export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, onCreate, targetCollection } = options;
+  const {
+    details,
+    question,
+    sourceCardId,
+    sourceQuestion,
+    onCreate,
+    targetCollection,
+  } = options;
 
   if (details.saveType !== "create") {
     return;
@@ -104,7 +111,11 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
   const isMetric = question.type() === "metric";
 
   try {
-    const result = await onCreate(newQuestion, { dashboardTabId });
+    const result = await onCreate(newQuestion, {
+      dashboardTabId,
+      sourceCardId,
+      sourceQuestion,
+    });
 
     if (isMetric) {
       trackMetricCreated("success", "main_app", result.id());
@@ -136,9 +147,13 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
       onSave,
     });
   } else {
+    // A question saved as a new one keeps the original's timeline selection, so the
+    // backend treats it as a copy rather than re-checking every selected timeline.
     await createQuestion({
       question,
       details,
+      sourceCardId: originalQuestion?.id(),
+      sourceQuestion: originalQuestion ?? undefined,
       onCreate,
       targetCollection,
     });

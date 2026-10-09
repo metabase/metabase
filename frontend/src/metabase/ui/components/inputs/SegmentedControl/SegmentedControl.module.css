@@ -40,6 +40,10 @@
   &[data-active] {
     color: var(--mb-color-text-primary);
   }
+
+  &:has(.SegmentedControlTooltipTarget) {
+    padding: 0;
+  }
 }
 
 .SegmentedControlInnerLabel {
@@ -48,6 +52,14 @@
   justify-content: center;
   gap: var(--mantine-spacing-xs);
   min-height: 1rem;
+}
+
+.SegmentedControlTooltipTarget {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
 }
 
 .SegmentedControlIconElement {
