@@ -37,7 +37,10 @@ const TRANSFORM_VERSION = "1";
 // re-read and re-hash every source each time.
 const transformMemo = new Map();
 const transformCached = (file) => transformSource(file, fs.readFileSync(file, "utf8"));
+// The project files loaded since the last spec file ended.
+const loadedFiles = new Set();
 const transform = (file) => {
+  loadedFiles.add(file);
   const memoized = transformMemo.get(file);
   if (memoized !== undefined) return memoized;
   const code = transformCached(file);
@@ -237,6 +240,18 @@ registerHooks({
     return loaded;
   },
 });
+
+globalThis.__testHarness.takeLoaded = () => {
+  const loaded = [...loadedFiles];
+  loadedFiles.clear();
+  return loaded;
+};
+// Watch mode: these files were edited, so what was read from them is dropped.
+globalThis.__testHarness.sourceChanged = (files) => {
+  for (const file of files) transformMemo.delete(file);
+  foundFiles.clear();
+  resolveCache.clear();
+};
 
 // --- jsdom as the global DOM -----------------------------------------------------
 const { JSDOM } = require(bunModule("jsdom").replace(/jsdom@[^/]+/, (m) => m)); 
