@@ -49,10 +49,13 @@ const nextFromParent = () =>
   new Promise((resolve) => {
     const onMessage = (message) => {
       process.off("message", onMessage);
+      if (message?.changed?.length) globalThis.__testHarness.sourceChanged(message.changed);
       resolve(message && message.file ? message.file : null);
     };
     process.on("message", onMessage);
-    process.send({ ready: true });
+    // The project files the last spec loaded go back with the request for the
+    // next one. Watch mode uses them to tell which specs a change can reach.
+    process.send({ ready: true, loaded: globalThis.__testHarness.takeLoaded() });
   });
 
 (async () => {
