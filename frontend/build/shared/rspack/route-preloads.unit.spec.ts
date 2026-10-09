@@ -1,70 +1,221 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { getStore, mainReducers } from "__support__/entities-store";
 import { createMockSettingsState } from "__support__/state";
+import { reinitialize } from "metabase/plugins";
 import { getRoutes } from "metabase/routes";
+import MetabaseSettings from "metabase/utils/settings";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
+import type { RouteChunk, Unnamed } from "./derive-route-preloads";
 import { collectRouteChunks } from "./derive-route-preloads";
 import { preloadRows } from "./route-preloads-rows";
 import { readRoutes } from "./routes";
+// The lint rule `bounded-route-gate` holds route gates to this many features.
+// Reading the same constant is what keeps the sweep and the rule in step.
+import { ROUTE_GATE_STRENGTH } from "./route-gate-strength";
 
-// The admin routes read settings off the store while the tree is built, so this
-// needs a real one.
-const treeFor = (settings: Parameters<typeof createMockSettingsState>[0]) => {
+const key = ({ pattern, chunks }: { pattern: string; chunks: string[] }) =>
+  `${pattern} -> ${[...chunks].sort().join("+")}`;
+
+// A failure has to be reproducible, so the rows come from a fixed seed rather
+// than from Math.random.
+const SWEEP_SEED = 20261009;
+
+const randomFrom = (seed: number) => () => {
+  seed = (seed + 0x6d2b79f5) | 0;
+  let state = Math.imul(seed ^ (seed >>> 15), seed | 1);
+  state ^= state + Math.imul(state ^ (state >>> 7), state | 61);
+  return ((state ^ (state >>> 14)) >>> 0) / 4294967296;
+};
+
+/**
+ * Feature configurations covering every combination of `strength` features at
+ * both values. Far smaller than every combination: 59 features need thousands
+ * of pairs but only tens of rows.
+ */
+const coveringArray = (features: string[], strength: number) => {
+  const random = randomFrom(SWEEP_SEED);
+  const combinations: number[][] = [];
+  const choose = (start: number, picked: number[]) => {
+    if (picked.length === strength) {
+      combinations.push([...picked]);
+      return;
+    }
+    for (let i = start; i < features.length; i++) {
+      picked.push(i);
+      choose(i + 1, picked);
+      picked.pop();
+    }
+  };
+  choose(0, []);
+
+  const needed = combinations.length * 2 ** strength;
+  const covered = new Set<number>();
+  const rows: boolean[][] = [];
+
+  // Bounded by attempts, not by rows: once coverage saturates no row gains
+  // anything, and a loop bounded by rows would never end.
+  for (let attempt = 0; attempt < 2000 && covered.size < needed; attempt++) {
+    const row = features.map(() => random() < 0.5);
+    let gained = false;
+    combinations.forEach((combination, index) => {
+      let bits = 0;
+      for (const feature of combination) {
+        bits = (bits << 1) | (row[feature] ? 1 : 0);
+      }
+      const id = index * 2 ** strength + bits;
+      if (!covered.has(id)) {
+        covered.add(id);
+        gained = true;
+      }
+    });
+    if (gained) {
+      rows.push(row);
+    }
+  }
+
+  return rows.map((row) => {
+    const config = features.map((feature, index) => [feature, row[index]]);
+
+    // `fromEntries` widens the keys back to `string`, and every key here comes
+    // from the shape of the mock itself.
+    return Object.fromEntries(config) as Partial<TokenFeatures>;
+  });
+};
+
+/**
+ * One configuration's route tree.
+ *
+ * `hasPremiumFeature` reads MetabaseSettings, and a plugin writes its route
+ * slots once when it initialises, so the features have to be in place before
+ * the plugins re-register. `reinitialize` resets the slots so they can.
+ */
+const treeFor = (features: Partial<TokenFeatures>) => {
+  const tokenFeatures = createMockTokenFeatures(features);
+  MetabaseSettings.set("token-features", tokenFeatures);
+  reinitialize();
+  setupEnterprisePlugins();
+
   // `getRoutes` wants the app's own store type, which the test store satisfies
   // at runtime but not on paper.
   const store = getStore(mainReducers, {
-    settings: createMockSettingsState(settings),
+    settings: createMockSettingsState({ "token-features": tokenFeatures }),
   }) as unknown as Parameters<typeof getRoutes>[0];
 
   return collectRouteChunks(getRoutes(store));
 };
 
-const everyTokenFeature = () => {
-  const enabled = Object.keys(createMockTokenFeatures()).map((feature) => [
-    feature,
-    true,
-  ]);
-
-  // `fromEntries` widens the keys back to `string`, and every key here comes
-  // from the shape of the mock itself.
-  return Object.fromEntries(enabled) as TokenFeatures;
-};
-
 /**
- * Two trees, united. A plain instance reaches neither the enterprise routes nor
- * the ones a token feature gates, and the reader reports a route whether or not
- * the instance it runs on can reach it.
+ * Every route any instance can reach, united over the sweep. The reader reports
+ * a route whether or not the instance it runs on reaches it, so the executed
+ * side has to visit the configurations that select one.
  */
-const open = treeFor({});
-setupEnterprisePlugins();
-const paid = treeFor({ "token-features": everyTokenFeature() });
+const sweep = () => {
+  const features = Object.keys(createMockTokenFeatures());
+  const routes = new Map<string, RouteChunk>();
+  const unnamed = new Map<string, Unnamed>();
 
-const executed = {
-  routes: [...open.routes, ...paid.routes],
-  unnamed: [...open.unnamed, ...paid.unnamed],
+  for (const config of [{}, ...coveringArray(features, ROUTE_GATE_STRENGTH)]) {
+    const tree = treeFor(config);
+    for (const route of tree.routes) {
+      routes.set(key(route), route);
+    }
+    for (const route of tree.unnamed) {
+      unnamed.set(route.pattern, route);
+    }
+  }
+
+  return { routes: [...routes.values()], unnamed: [...unnamed.values()] };
 };
 
+const executed = sweep();
 const derived = readRoutes(process.cwd());
 
-const key = ({ pattern, chunks }: { pattern: string; chunks: string[] }) =>
-  `${pattern} -> ${[...chunks].sort().join("+")}`;
-
 /**
- * Pages a plugin registers at runtime. Source cannot reach them, so they get no
- * hint and load a moment after the app does. Pinned so a new one shows up here
- * rather than in production.
+ * Routes a plugin registers at runtime, which source cannot reach, so they get
+ * no hint and load a moment after the app does.
+ *
+ * The sweep is what makes this list honest. A plugin writes its route slots once
+ * when it initialises, reading the features in place at that moment, so a single
+ * tree shows one instance's routes. Re-initialising per configuration showed 74
+ * of these rather than the 8 a single enterprise tree found.
  */
 const ROUTES_WITHOUT_HINTS = [
+  "/admin/databases/:databaseId/write-data -> admin+writable-connection",
   "/admin/metabot/customization -> admin+metabot-customization",
   "/admin/metabot/system-prompts/metabot-chat -> admin+metabot-system-prompts",
+  "/admin/metabot/system-prompts/natural-language-queries -> admin+metabot-system-prompts",
+  "/admin/metabot/system-prompts/sql-generation -> admin+metabot-system-prompts",
   "/admin/metabot/usage-controls/ai-feature-access -> admin+metabot-feature-access",
+  "/admin/metabot/usage-controls/ai-usage-limits -> admin+metabot-usage-limits",
+  "/admin/people/tenants/groups -> admin+tenants",
+  "/admin/people/tenants/groups/:groupId -> admin+tenants",
+  "/admin/people/tenants/people -> admin+tenants",
+  "/admin/permissions/application -> admin+application-permissions",
+  "/admin/security-center -> admin+security-center",
   "/admin/settings/authentication/2fa/enrolled -> admin+admin-settings+mfa-enrolled-users",
   "/admin/settings/authentication/2fa/unenrolled -> admin+admin-settings+mfa-unenrolled-users",
+  "/admin/settings/authentication/jwt -> admin+admin-settings+auth-jwt",
+  "/admin/settings/authentication/oidc -> admin+admin-settings+auth-oidc",
+  "/admin/settings/authentication/saml -> admin+admin-settings+auth-saml",
+  "/admin/settings/python-runner -> admin+admin-settings+python-runner-settings",
+  "/apps/:name -> data-apps",
+  "/apps/:name/* -> data-apps",
+  "/browse/databases/:dbId/tables/:tableId/edit/:objectId? -> table-editing",
+  "/collection/tenant-specific -> tenant-collections",
+  "/collection/tenant-users -> tenant-users",
+  "/collection/tenant-users/:tenantId -> tenant-user-collections",
+  "/data-studio/dependencies -> data-studio+dependency-graph",
+  "/data-studio/library -> data-studio+data-studio-library",
+  "/data-studio/library/metrics/:cardId -> data-studio+metrics",
+  "/data-studio/library/metrics/:cardId/dependencies -> data-studio+metrics",
+  "/data-studio/library/metrics/:cardId/dimensions -> data-studio+metrics",
+  "/data-studio/library/metrics/:cardId/history -> data-studio+metrics",
+  "/data-studio/library/metrics/:cardId/overview -> data-studio+metrics",
+  "/data-studio/library/metrics/:cardId/query -> data-studio+metrics",
+  "/data-studio/library/metrics/new -> data-studio+metrics",
+  "/data-studio/library/snippets/:snippetId -> data-studio+data-studio-snippets",
+  "/data-studio/library/snippets/:snippetId/dependencies -> data-studio+data-studio-snippets",
+  "/data-studio/library/snippets/archived -> data-studio+data-studio-snippets",
+  "/data-studio/library/snippets/new -> data-studio+data-studio-snippets",
+  "/data-studio/library/tables/:tableId -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/dependencies -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/fields -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/fields/:fieldId -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/measures -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/measures/:measureId -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/measures/:measureId/dependencies -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/measures/:measureId/revisions -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/measures/new -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/segments -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/segments/:segmentId -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/segments/:segmentId/dependencies -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/segments/:segmentId/revisions -> data-studio+data-studio-tables",
+  "/data-studio/library/tables/:tableId/segments/new -> data-studio+data-studio-tables",
+  "/data-studio/schema-viewer -> data-studio+schema-viewer",
   "/data-studio/transforms -> data-studio+transforms-python",
+  "/data-studio/transforms/:transformId/inspect -> data-studio+transforms-inspector",
   "/data-studio/transforms/:transformId/inspect -> data-studio+transforms-inspector-upsell",
+  "/data-studio/transforms/:transformId/inspect/:lensId -> data-studio+transforms-inspector",
   "/data-studio/transforms/:transformId/inspect/:lensId -> data-studio+transforms-inspector-upsell",
+  "/data-studio/transforms/library/:path -> data-studio+transforms-python",
+  "/data-studio/transforms/new/python -> data-studio+transforms-python",
+  "/data-studio/transforms/tools/migrate-models -> data-studio+model-replacement",
+  "/monitor/ai-auditing/cli -> ai-auditing+monitor",
+  "/monitor/ai-auditing/cli/calls -> ai-auditing+monitor",
+  "/monitor/ai-auditing/cli/usage -> ai-auditing+monitor",
+  "/monitor/ai-auditing/conversations -> ai-auditing+monitor",
+  "/monitor/ai-auditing/conversations/:convoId -> ai-auditing+monitor",
+  "/monitor/ai-auditing/mcp -> ai-auditing+monitor",
+  "/monitor/ai-auditing/mcp/events -> ai-auditing+monitor",
+  "/monitor/ai-auditing/mcp/usage -> ai-auditing+monitor",
+  "/monitor/ai-auditing/usage/* -> ai-auditing+monitor",
+  "/monitor/ai-auditing/usage/:metric -> ai-auditing+monitor",
+  "/monitor/dependency-diagnostics/broken -> dependency-diagnostics+monitor",
+  "/monitor/dependency-diagnostics/unreferenced -> dependency-diagnostics+monitor",
+  "/monitor/sessions -> monitor+monitor-session-management",
+  "/monitor/sessions/:sessionId -> monitor+monitor-session-management",
 ];
 
 /**
