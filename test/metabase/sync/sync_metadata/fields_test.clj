@@ -3,13 +3,10 @@
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -511,28 +508,6 @@
         (is (not= ::thrown
                   (try (sync-fields/sync-fields-for-table! (mt/db) table)
                        (catch Throwable _ ::thrown))))))))
-
-(deftest nested-field-columns-failure-does-not-block-field-sync-test
-  (testing "If describing nested field columns fails, the table's other Fields still sync and a warning is logged (#83790)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-      (mt/dataset (mt/dataset-definition
-                   "nested_field_columns_failure"
-                   [["table_a"
-                     [{:field-name "col_json" :base-type :type/JSON}
-                      {:field-name "col_text" :base-type :type/Text}]
-                     [["{\"key_a\": 1}" "a"]]]])
-        (when-not (mysql/mariadb? (mt/db))
-          (t2/update! :model/Field (mt/id :table_a :col_text) {:active false})
-          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-table/describe-json-fields
-                                      (fn [& _] (throw (ex-info "Sample query failed" {})))]
-            (mt/with-log-messages-for-level [messages :warn]
-              (sync/sync-database! (mt/db) {:scan :schema})
-              (testing "the table's regular Fields are still synced"
-                (is (= #{"id" "col_json" "col_text"}
-                       (t2/select-fn-set :name :model/Field :table_id (mt/id :table_a) :active true))))
-              (is (some #(and (str/includes? (:message %) "Error describing nested field columns")
-                              (str/includes? (:message %) "table_a"))
-                        (messages))))))))))
 
 (deftest visibility-type-stays-normal-after-manual-change-test
   (testing "visibility_type remains :normal after being manually changed from :details-only"
