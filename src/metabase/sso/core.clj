@@ -34,7 +34,7 @@
  [metabase.sso.slack-connect
   disconnect-slack-account!
   slack-account-status
-  slack-connect-identity-current?]
+  slack-connect-identity-active?]
  [metabase.sso.ldap.settings
   ldap-enabled])
 

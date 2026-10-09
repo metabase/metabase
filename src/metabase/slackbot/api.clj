@@ -91,11 +91,11 @@
 ;; ------------------------- AUTHENTICATION ------------------------------
 
 (defn- slack-id->user-id
-  "Return the user ID of the newest Slack link if it is current and its user is active, or nil.
-  Rotating the signing secret automatically invalidates existing identity links."
+  "Return the user ID of the newest Slack link if the link is active and so is its user, or nil.
+  Turning off Slack Connect or rotating the signing secret makes existing links inactive."
   [slack-user-id]
   (let [identity (slackbot.db/active-slack-connect-identity slack-user-id)]
-    (when (sso/slack-connect-identity-current? identity)
+    (when (sso/slack-connect-identity-active? identity)
       (:user_id identity))))
 
 (defn- slack-user-authorize-link
