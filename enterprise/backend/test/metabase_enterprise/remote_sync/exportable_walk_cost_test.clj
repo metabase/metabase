@@ -9,10 +9,14 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.app-db.activity-test-util :as db-activity]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -94,3 +98,111 @@
       (testing (format "statements: %d at 20 cards, %d at 40 cards" small large)
         (is (pos? small))
         (is (= small large))))))
+
+(defn- by-model
+  "The `[model-name id]` keys `ks` as `{model-name #{id ...}}`, without the models that git sync walks through but never
+  writes."
+  [ks]
+  (-> (apply dissoc (u/group-by first second ks) @#'spec/models-traversed-but-not-stored)
+      (update-vals set)))
+
+(defn- per-entity-walk
+  "The walk as it was: `serdes/descendants` once per entity from the root collection `root` (which has no parent, so
+  the `required` walk adds nothing), grouped by [[by-model]]."
+  [root opts]
+  (by-model (keys (u/traverse [["Collection" root]] #(serdes/descendants (first %) (second %) opts)))))
+
+(deftest exportable-walk-finds-what-the-per-entity-walk-finds-test
+  (testing "the walk finds exactly the targets that calling serdes/descendants once per entity finds"
+    (do-with-content!
+     10
+     (fn [root]
+       (let [targets (update-vals (spec/exportable-entities) set)]
+         (is (= 12 (count (get targets "Card"))) "10 cards, the model, and the card built on a card")
+         (is (= 2 (count (get targets "Dashboard"))))
+         (is (= #{"Walk action" "Walk modelless action"}
+                (t2/select-fn-set :name :model/Action :id [:in (get targets "Action")]))
+             "the active actions, with and without a model; the archived action is skipped")
+         (is (= (per-entity-walk root spec/git-sync-extract-opts) targets)))))))
+
+(defn- descendant-closure
+  "The walk of [[spec/exportable-entities]] from the root collection `root` with `opts`, grouped like
+  [[per-entity-walk]]."
+  [root opts]
+  (by-model (#'spec/descendant-closure [["Collection" root]] opts)))
+
+(deftest batched-walk-honors-skip-archived-test
+  (testing "the batched walk and the per-entity walk find the same targets, archived content skipped or not"
+    (do-with-content!
+     10
+     (fn [root]
+       (doseq [skip-archived? [true false]
+               :let [opts (assoc spec/git-sync-extract-opts :skip-archived skip-archived?)]]
+         (testing (str ":skip-archived " skip-archived?)
+           (let [batched (descendant-closure root opts)]
+             (is (= (per-entity-walk root opts) batched))
+             (is (= (cond-> #{"Walk action" "Walk modelless action"}
+                      (not skip-archived?) (conj "Walk archived action"))
+                    (t2/select-fn-set :name :model/Action :id [:in (get batched "Action")]))))))))))
+
+(deftest batched-walk-is-the-same-for-each-chunk-size-test
+  (testing "the batched walk finds what the per-entity walk finds, for chunk sizes 1 to 7 and 1000"
+    (do-with-content!
+     20
+     (fn [root]
+       (let [per-entity (per-entity-walk root spec/git-sync-extract-opts)]
+         (doseq [size [1 2 3 4 5 6 7 1000]]
+           (testing (str ":descendants-batch-size " size)
+             (is (= per-entity
+                    (descendant-closure root (assoc spec/git-sync-extract-opts :descendants-batch-size size)))))))))))
+
+(deftest descendants-batch-matches-descendants-test
+  (testing "each batch method finds the union of what serdes/descendants finds entity by entity"
+    (do-with-content!
+     10
+     (fn [_]
+       (let [targets (spec/exportable-entities)]
+         (doseq [model ["Card" "Dashboard"]
+                 :let  [ids (get targets model)]]
+           (testing model
+             (is (seq ids))
+             (is (= (into #{} (mapcat #(keys (serdes/descendants model % spec/git-sync-extract-opts))) ids)
+                    (set (keys (serdes/descendants-batch model ids spec/git-sync-extract-opts))))))))))))
+
+(deftest exportable-walk-bounds-ids-per-query-test
+  (testing (str "with :descendants-batch-size 3, no id query of the walk gets more than 3 ids, and the walk finds what "
+                "it finds with the default size")
+    ;; 20 cards: the root collection holds two dashboards, so one level has 6 dashcards
+    (do-with-content!
+     20
+     (fn [root]
+       (let [sizes (atom [])
+             spy   (fn [label f] (fn [ids & more] (swap! sizes conj [label (count ids)]) (apply f ids more)))
+             ;; descendants-batch is a multimethod, which with-dynamic-fn-redefs cannot wrap; the id queries of its
+             ;; Card and Dashboard methods show the size of each call
+             walk  (fn [opts]
+                     (reset! sizes [])
+                     [(mt/with-dynamic-fn-redefs
+                        [queries.db/cards
+                         (spy :cards (mt/original-fn #'queries.db/cards))
+
+                         dashboards.db/dashboards
+                         (spy :dashboards (mt/original-fn #'dashboards.db/dashboards))
+
+                         dashboards.db/dashcard-serdes-columns-for-dashboards
+                         (spy :dashcards (mt/original-fn #'dashboards.db/dashcard-serdes-columns-for-dashboards))
+
+                         dashboards.db/dashcard-series-columns
+                         (spy :series (mt/original-fn #'dashboards.db/dashcard-series-columns))]
+                        (descendant-closure root opts))
+                      @sizes])
+             [unbounded unbounded-calls] (walk spec/git-sync-extract-opts)
+             [bounded bounded-calls]     (walk (assoc spec/git-sync-extract-opts :descendants-batch-size 3))]
+         (is (= unbounded bounded))
+         (testing "the walk did batch: some model had more than 3 ids at a level, so the bounded walk made more calls"
+           (is (< (count unbounded-calls) (count bounded-calls))))
+         (doseq [label [:cards :dashboards :dashcards :series]]
+           (testing label
+             (is (seq (filter #(= label (first %)) bounded-calls)) "was called")))
+         (testing "no call got more than 3 ids"
+           (is (= [] (filterv #(< 3 (second %)) bounded-calls)))))))))
