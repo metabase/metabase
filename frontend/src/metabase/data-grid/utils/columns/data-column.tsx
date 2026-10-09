@@ -117,6 +117,7 @@ export const getDataColumn = <TRow, TValue>(
     wrap,
     cell,
     header,
+    footer,
     headerClickTargetSelector,
     sortingFn,
   } = columnOptions;
@@ -133,6 +134,8 @@ export const getDataColumn = <TRow, TValue>(
       typeof cell !== "string"
         ? memo(cell ?? getDefaultCellTemplate(columnOptions))
         : cell,
+    footer:
+      typeof footer !== "string" && footer != null ? memo(footer) : footer,
     minSize: MIN_COLUMN_WIDTH,
     enableResizing: true,
     meta: {
