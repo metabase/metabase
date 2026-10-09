@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { merge } from "icepick";
 
 import type { UndoVariant } from "metabase/redux/store/undo";
 import { Icon, Stack } from "metabase/ui";
@@ -199,6 +198,7 @@ export const Overview = {
   },
 };
 
-export const OverviewDark = merge(Overview, {
-  args: { theme: "dark" },
-});
+export const OverviewDark = {
+  ...Overview,
+  args: { ...Overview.args, theme: "dark" },
+};
