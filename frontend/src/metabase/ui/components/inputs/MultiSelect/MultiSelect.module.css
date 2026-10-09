@@ -1,7 +1,5 @@
 /* this is the wrapper element that looks like an input */
 .MultiSelectInput {
-  --multiselect-line-height: rem(20px);
-
   padding-inline-end: var(--input-right-section-size);
 
   :not([data-with-left-section]) > &:has(.MultiSelectPill) {
@@ -10,20 +8,6 @@
 
   &[data-disabled] {
     opacity: 1;
-  }
-
-  /*
-   * The text line is as tall as a pill. PillsInput.module.css still sets
-   * 28px, sized for the old 40px inputs.
-   * TODO: fix it there with TagsInput (GDGT-2475) and remove this override
-   */
-  .MultiSelectField {
-    height: var(--multiselect-line-height);
-    line-height: var(--multiselect-line-height);
-
-    &:only-child {
-      margin-inline: 0;
-    }
   }
 
   /*

@@ -1,0 +1,26 @@
+.input {
+  :not([data-with-left-section]) > &:has(.pill) {
+    padding-inline-start: var(--input-padding-y);
+  }
+
+  .pillsList {
+    --pg-gap-md: var(--mantine-spacing-xs);
+    --pg-gap-lg: rem(10px);
+  }
+
+  .inputField {
+    min-width: rem(32px);
+    max-width: 100%;
+
+    @supports (field-sizing: content) {
+      &:not(:placeholder-shown) {
+        flex: 1 1 auto;
+        field-sizing: content;
+      }
+    }
+  }
+
+  &:has(.pill) .inputField::placeholder {
+    opacity: 0;
+  }
+}
