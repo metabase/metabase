@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -638,3 +639,48 @@
         ;; round the numeric column: Presto's distributed SUM is ULP-nondeterministic across the two runs
         (is (= (mt/formatted-rows [str 2.0] (qp/process-query direct-query))
                (mt/formatted-rows [str 2.0] (qp/process-query measure-query))))))))
+
+(deftest ^:parallel aggregation-column-names-match-result-columns-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "the names Lib gives breakout and aggregation columns, deduplicated in stage order, are the names of the
+              result columns, even when aggregations share names with each other and with a breakout"
+      (let [mp           (mt/metadata-provider)
+            orders       (lib.metadata/table mp (mt/id :orders))
+            field        #(lib.metadata/field mp (mt/id :orders %))
+            mp           (lib.tu/mock-metadata-provider
+                          mp
+                          {:measures [{:id         1
+                                       :name       "Total Subtotal"
+                                       :table-id   (mt/id :orders)
+                                       :definition (-> (lib/query mp orders)
+                                                       (lib/aggregate (lib/sum (field :subtotal))))}]
+                           :cards    [{:id            1
+                                       :type          :metric
+                                       :name          "Order Count"
+                                       :database-id   (mt/id)
+                                       :dataset-query (-> (lib/query mp orders)
+                                                          (lib/aggregate (lib/count)))}]})
+            base         (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            category     (m/find-first #(= (mt/id :products :category) (:id %)) (lib/breakoutable-columns base))
+            named        (fn [clause column-name] (lib.options/update-options clause assoc :name column-name))
+            query        (-> base
+                             (lib/breakout (lib/with-temporal-bucket (field :created_at) :month))
+                             (lib/breakout (lib/with-temporal-bucket (field :created_at) :year))
+                             (lib/breakout category)
+                             (lib/aggregate (lib/count))
+                             (lib/aggregate (lib/sum (field :total)))
+                             (lib/aggregate (lib/sum (field :tax)))
+                             (lib/aggregate (lib/distinct (field :user_id)))
+                             (lib/aggregate (lib/avg (field :total)))
+                             (lib/aggregate (named (lib/count) (:name category)))
+                             (lib/aggregate (lib.metadata/measure mp 1))
+                             (lib/aggregate (lib.metadata/metric mp 1))
+                             (lib/aggregate (named (lib/ref (lib.metadata/measure mp 1)) "revenue")))
+            column-names (concat (for [breakout (lib/breakouts query)]
+                                   (:name (lib/breakout-column query breakout)))
+                                 (for [aggregation (lib/aggregations query)]
+                                   (:name (lib/aggregation-column query aggregation))))]
+        (testing "the case is one where names collide"
+          (is (not= column-names (distinct column-names))))
+        (is (= (map (lib/unique-name-generator) column-names)
+               (map :name (mt/cols (qp/process-query query)))))))))

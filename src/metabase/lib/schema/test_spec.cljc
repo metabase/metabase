@@ -139,10 +139,18 @@
    [:left [:ref ::test-join-source-spec]]
    [:right [:ref ::test-join-source-spec]]])
 
+(mr/def ::test-named-aggregation-spec
+  [:map {:closed true}
+   [:name string?]
+   [:value [:or
+            [:ref ::test-expression-spec]
+            [:ref ::test-measure-spec]
+            [:ref ::test-metric-spec]]]])
+
 (mr/def ::test-aggregation-spec
   [:or
    [:ref ::test-expression-spec]
-   [:ref ::test-named-expression-spec]
+   [:ref ::test-named-aggregation-spec]
    [:ref ::test-measure-spec]
    [:ref ::test-metric-spec]])
 

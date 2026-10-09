@@ -310,16 +310,19 @@
   [query            :- ::lib.schema/query
    stage-number     :- :int
    aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
-  (if (saved-aggregation-spec? aggregation-spec)
-    (if-let [aggregation (saved-aggregation query aggregation-spec)]
-      (lib.aggregation/aggregate query stage-number aggregation)
-      (throw (ex-info "No saved aggregation found" {:aggregation-spec aggregation-spec})))
-    (let [clause (->> (lib.aggregation/aggregable-columns query stage-number)
-                      (expression-spec->expression-clause query stage-number aggregation-spec))]
-      (lib.aggregation/aggregate query stage-number
-                                 (cond-> clause
-                                   ;; Only the name a later stage refers to; the display name stays derived.
-                                   (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec)))))))
+  (let [saved-spec (cond
+                     (saved-aggregation-spec? aggregation-spec)                aggregation-spec
+                     (some-> (:value aggregation-spec) saved-aggregation-spec?) (:value aggregation-spec))
+        clause     (if saved-spec
+                     (if-let [aggregation (saved-aggregation query saved-spec)]
+                       (lib.ref/ref aggregation)
+                       (throw (ex-info "No saved aggregation found" {:aggregation-spec saved-spec})))
+                     (->> (lib.aggregation/aggregable-columns query stage-number)
+                          (expression-spec->expression-clause query stage-number aggregation-spec)))]
+    (lib.aggregation/aggregate query stage-number
+                               (cond-> clause
+                                 ;; Only the name a later stage refers to; the display name stays derived.
+                                 (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec))))))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query

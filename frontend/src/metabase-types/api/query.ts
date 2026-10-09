@@ -496,9 +496,14 @@ export type TestMetricSpec = {
 
 export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
 
+export type TestNamedAggregationSpec = {
+  name: string;
+  value: TestExpressionSpec | TestMeasureSpec | TestMetricSpec;
+};
+
 export type TestAggregationSpec =
   | TestExpressionSpec
-  | TestNamedExpressionSpec
+  | TestNamedAggregationSpec
   | TestMeasureSpec
   | TestMetricSpec;
 

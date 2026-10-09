@@ -6,11 +6,13 @@ import {
   isMeasureReference,
   isMetricReference,
   isSegmentReference,
+  unwrapNamedAggregation,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type {
   MetricSchema,
   QuestionSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import * as Lib from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
 // `satisfies` ties the list to the input type, so a renamed or mistyped clause
@@ -210,7 +212,7 @@ function validateTableScopedInputs(input: TableQueryInput) {
     );
   });
 
-  input.aggregations?.forEach((aggregation) => {
+  input.aggregations?.map(unwrapNamedAggregation).forEach((aggregation) => {
     if (isMetricReference(aggregation)) {
       validateMetricAggregation(aggregation, tableId);
       return;
@@ -499,4 +501,74 @@ function binningOptionsMatch(left: unknown, right: unknown) {
     left.numBins === right.numBins &&
     left.binWidth === right.binWidth
   );
+}
+
+type StageColumnName = {
+  name: string;
+  displayName: string;
+  isAggregation: boolean;
+};
+
+function stageColumnNames(
+  query: Lib.Query,
+  stageIndex: number,
+): StageColumnName[] {
+  const breakouts = Lib.breakouts(query, stageIndex).reduce<StageColumnName[]>(
+    (columns, breakout) => {
+      const column = Lib.breakoutColumn(query, stageIndex, breakout);
+
+      if (column) {
+        columns.push({
+          name: Lib.displayInfo(query, stageIndex, column).name,
+          displayName: Lib.displayInfo(query, stageIndex, breakout).displayName,
+          isAggregation: false,
+        });
+      }
+
+      return columns;
+    },
+    [],
+  );
+  const aggregations = Lib.aggregations(query, stageIndex).map(
+    (aggregation) => ({
+      name: Lib.displayInfo(
+        query,
+        stageIndex,
+        Lib.aggregationColumn(query, stageIndex, aggregation),
+      ).name,
+      displayName: Lib.displayInfo(query, stageIndex, aggregation).displayName,
+      isAggregation: true,
+    }),
+  );
+
+  return [...breakouts, ...aggregations];
+}
+
+function stageConflicts(query: Lib.Query, stageIndex: number): string[] {
+  const byName = new Map<string, StageColumnName[]>();
+  stageColumnNames(query, stageIndex).forEach((column) => {
+    byName.set(column.name, [...(byName.get(column.name) ?? []), column]);
+  });
+
+  return [...byName]
+    .filter(
+      ([, columns]) =>
+        columns.length > 1 && columns.some((column) => column.isAggregation),
+    )
+    .map(
+      ([name, columns]) =>
+        `${columns.map((column) => column.displayName).join(", ")} share the column name "${name}"`,
+    );
+}
+
+export function validateUniqueAggregationNames(query: Lib.Query) {
+  const conflicts = Lib.stageIndexes(query).flatMap((stageIndex) =>
+    stageConflicts(query, stageIndex),
+  );
+
+  if (conflicts.length > 0) {
+    throw new Error(
+      `Aggregations need unique column names: ${conflicts.join("; ")}. Give the aggregations unique names.`,
+    );
+  }
 }

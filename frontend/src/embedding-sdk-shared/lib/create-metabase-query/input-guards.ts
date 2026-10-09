@@ -1,5 +1,7 @@
 import type {
+  TestAggregationSpec,
   TestExpressionSpec,
+  TestNamedAggregationSpec,
   TestStageSpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
@@ -54,6 +56,17 @@ export const isSegmentReference = (value: unknown): value is SegmentSchema =>
 
 export const isMeasureReference = (value: unknown): value is MeasureSchema =>
   isObject(value) && typeof value.id === "number" && value.type === "measure";
+
+export const isNamedAggregation = (
+  value: unknown,
+): value is TestNamedAggregationSpec =>
+  isObject(value) &&
+  typeof value.name === "string" &&
+  "value" in value &&
+  !("type" in value);
+
+export const unwrapNamedAggregation = (aggregation: TestAggregationSpec) =>
+  isNamedAggregation(aggregation) ? aggregation.value : aggregation;
 
 export const isQuestionInput = (input: unknown): input is QuestionQueryInput =>
   isObject(input) && "source" in input && isQuestionReference(input.source);

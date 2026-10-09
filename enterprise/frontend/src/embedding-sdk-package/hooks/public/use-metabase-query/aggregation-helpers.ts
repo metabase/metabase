@@ -1,9 +1,10 @@
-import type { SchemaJavaScriptType } from "../data-schema";
+import type { SchemaColumn, SchemaJavaScriptType } from "../data-schema";
 
 import type {
   CountAggregationSchema,
   FieldAggregationOperator,
   FieldAggregationSchema,
+  NamedSavedAggregation,
   NumericAggregationDimension,
   OrderableAggregationDimension,
 } from "./types";
@@ -159,12 +160,62 @@ const isOrderableJavaScriptType = (
   value === "boolean" ||
   value === "Date";
 
+type SavedAggregation<TType extends "measure" | "metric"> = {
+  type: TType;
+  columns?: readonly SchemaColumn[];
+};
+
+const namedSavedAggregation = <TAggregation, TName extends string>(
+  aggregation: TAggregation & { columns?: readonly SchemaColumn[] },
+  name: TName,
+): NamedSavedAggregation<TAggregation, TName> => ({
+  name,
+  value: aggregation,
+  columns: [{ ...aggregation.columns?.[0], name }],
+});
+
+export function measure<const TMeasure extends SavedAggregation<"measure">>(
+  measure: TMeasure,
+): TMeasure;
+export function measure<
+  const TMeasure extends SavedAggregation<"measure">,
+  const TName extends string,
+>(
+  measure: TMeasure,
+  options: AggregationOptions<TName>,
+): NamedSavedAggregation<TMeasure, TName>;
+export function measure(
+  measure: SavedAggregation<"measure">,
+  options?: AggregationOptions<string>,
+) {
+  return options ? namedSavedAggregation(measure, options.name) : measure;
+}
+
+export function metric<const TMetric extends SavedAggregation<"metric">>(
+  metric: TMetric,
+): TMetric;
+export function metric<
+  const TMetric extends SavedAggregation<"metric">,
+  const TName extends string,
+>(
+  metric: TMetric,
+  options: AggregationOptions<TName>,
+): NamedSavedAggregation<TMetric, TName>;
+export function metric(
+  metric: SavedAggregation<"metric">,
+  options?: AggregationOptions<string>,
+) {
+  return options ? namedSavedAggregation(metric, options.name) : metric;
+}
+
 export const aggregations = {
   avg,
   count,
   distinct,
   max,
   median,
+  measure,
+  metric,
   min,
   sum,
 } as const;

@@ -1447,3 +1447,38 @@
                                              :args [{:type :column :name "TOTAL"} {:type :literal :value 1}]}}]
                      :aggregations [{:type :operator :operator :count}]
                      :breakouts    [{:type :column :name "TOTAL"}]}]})))))
+
+(def ^:private metadata-provider-with-measure
+  (lib.tu/mock-metadata-provider
+   meta/metadata-provider
+   {:measures [{:id         1
+                :name       "Revenue"
+                :table-id   (meta/id :venues)
+                :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))}]}))
+
+(deftest ^:parallel test-query-names-saved-aggregation-test
+  (testing "measure or metric is named by wrapping it as `{:name .. :value ..}`, as an operator aggregation can be"
+    (let [measure-query (lib.query.test-spec/test-query
+                         metadata-provider-with-measure
+                         {:stages [{:source       {:type :table :id (meta/id :venues)}
+                                    :aggregations [{:name "revenue" :value {:type :measure :id 1}}
+                                                   {:type :operator :operator :sum
+                                                    :args [{:type :column :name "PRICE"}]}]}]})
+          metric-query  (lib.query.test-spec/test-query
+                         lib.tu/metadata-provider-with-metric
+                         {:stages [{:source       {:type :table :id (meta/id :checkins)}
+                                    :aggregations [{:name "visits" :value {:type :metric :id 1}}]}]})]
+      (is (=? [[:measure {:name "revenue"} 1] [:sum {} some?]]
+              (lib/aggregations measure-query)))
+      (is (= ["revenue" "sum"] (map :name (lib/returned-columns measure-query))))
+      (is (=? [[:metric {:name "visits"} 1]] (lib/aggregations metric-query)))
+      (is (= ["visits"] (map :name (lib/returned-columns metric-query)))))))
+
+(deftest ^:parallel test-query-ignores-saved-aggregation-own-name-test
+  (testing "measure's own `:name`, as a generated schema carries it, is not its result column's name"
+    (let [query (lib.query.test-spec/test-query
+                 metadata-provider-with-measure
+                 {:stages [{:source       {:type :table :id (meta/id :venues)}
+                            :aggregations [{:type :measure :id 1 :name "Revenue"}]}]})]
+      (is (= ["sum"] (map :name (lib/returned-columns query)))))))

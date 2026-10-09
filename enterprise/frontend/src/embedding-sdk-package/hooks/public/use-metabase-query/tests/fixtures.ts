@@ -241,12 +241,17 @@ export const TEST_METADATA = {
       name: "Revenue",
       table_id: 1,
       definition: {
-        type: "query",
+        "lib/type": "mbql/query",
         database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["count"]],
-        },
+        stages: [
+          {
+            "lib/type": "mbql.stage/mbql",
+            "source-table": 1,
+            aggregation: [
+              ["count", { "lib/uuid": "00000000-0000-4000-8000-000000000021" }],
+            ],
+          },
+        ],
       },
     },
   },

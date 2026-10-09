@@ -194,10 +194,20 @@ type DimensionAggregation<TDimension> =
   | FieldAggregation<FieldAggregationOperator, TDimension>
   | FieldAggregationSchema<FieldAggregationOperator, TDimension>;
 
+export type NamedSavedAggregation<
+  TAggregation = unknown,
+  TName extends string = string,
+> = {
+  name: TName;
+  value: TAggregation;
+  columns: readonly [SchemaColumn & { name: TName }];
+};
+
 type AnyAggregation<TTable = unknown> =
   | DimensionAggregation<FieldReference<TTable>>
   | MeasureReference<TTable>
-  | MetricReference<TTable>;
+  | MetricReference<TTable>
+  | NamedSavedAggregation<MeasureReference<TTable> | MetricReference<TTable>>;
 
 type AggregationDimensionWithJavaScriptType<
   TDimension,

@@ -2,6 +2,7 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { UseMetabaseQueryObjectResult } from "..";
 import {
+  aggregations,
   breakout,
   count,
   filter,
@@ -155,6 +156,23 @@ function ValidTypeFixtures() {
 
   void namedCountValue;
   void namedSumValue;
+
+  const namedMeasureResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        aggregations.measure(TEST_SCHEMA.tables.orders.measures.revenue, {
+          name: "revenue",
+        }),
+        count(),
+      ],
+    }),
+  );
+
+  const namedMeasureValue: RowValue | undefined =
+    namedMeasureResult.data?.rows[0]?.revenue;
+
+  void namedMeasureValue;
 
   const groupedMetricResult = useMetabaseQuery(
     defineQuery<OrdersTable>({

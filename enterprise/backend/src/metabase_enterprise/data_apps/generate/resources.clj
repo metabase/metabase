@@ -101,6 +101,26 @@
             (tru "Could not serialize {0}: {1}" label cause)
             (tru "Could not serialize {0}." label)))))
 
+(defn- check-unique-aggregation-names
+  "Throws naming the aggregations of `query` whose result column shares its name with another column, since a later
+  stage, or a result row keyed by column name, would read the wrong one."
+  [query]
+  (let [columns   (concat (for [breakout (lib/breakouts query)]
+                            {:name         (:name (lib/breakout-column query breakout))
+                             :display-name (:display-name (lib/display-info query breakout))})
+                          (for [aggregation (lib/aggregations query)]
+                            {:name         (:name (lib/aggregation-column query aggregation))
+                             :display-name (:display-name (lib/display-info query aggregation))
+                             :aggregation? true}))
+        conflicts (for [[column-name same-name] (group-by :name columns)
+                        :when (and (> (count same-name) 1) (some :aggregation? same-name))]
+                    (tru "{0} share the column name \"{1}\""
+                         (str/join ", " (map :display-name same-name))
+                         column-name))]
+    (when (seq conflicts)
+      (fail (tru "Aggregations need unique column names: {0}. Give the aggregations unique names."
+                 (str/join "; " conflicts))))))
+
 (mu/defn- build-query :- ::lib.schema/query
   "The query Lib builds from `query-definition`, once its source table and every table it reads at any depth exist."
   [{[{{table-id :id} :source}] :stages, :as query-definition} :- ::query-definition/query-definition]
@@ -110,6 +130,7 @@
     (let [query (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)]
       (when-not (mr/validate ::lib.schema/query query)
         (fail (tru "The definition does not build a valid query.")))
+      (check-unique-aggregation-names query)
       (doseq [read-id (sort (into (:table (lib/all-referenced-entity-ids-recursive query))
                                   (keep :table-id)
                                   (lib/returned-columns query -1 query {:include-remaps? true})))]

@@ -527,3 +527,40 @@
                                       :queries first)]
       (is (= [:database :stages :lib/type] (keys (:dataset_query (file-entity file)))))
       (is (< (str/index-of yaml "name:") (str/index-of yaml "\ndataset_query:"))))))
+
+(defn- venues-sum
+  [column-name]
+  {:type "operator" :operator "sum" :args [{:type "column" :name column-name}]})
+
+(deftest refuses-aggregations-sharing-column-name-test
+  (testing "aggregations named alike would be read as one by a later stage or a result row, so the author names them"
+    (is (=? {:queries [{:error "Aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Give the aggregations unique names."}]}
+            (generate! :crowberto 200
+                       {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]}]})]})))))
+
+(deftest accepts-named-aggregations-test
+  (let [{[file] :queries} (generate! :crowberto 200
+                                     {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                              :aggregations [(assoc (venues-sum "PRICE") :name "price")
+                                                                                             (venues-sum "LATITUDE")]}]})]})]
+    (is (=? [["sum" {:name "price"} some?] ["sum" {} some?]]
+            (get-in (file-entity file) [:dataset_query :stages 0 :aggregation])))))
+
+(deftest names-measure-test
+  (testing "measure wrapped as `{name, value}` gets that column name, and its own `name` is left out"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
+                                                      :name       "Revenue"
+                                                      :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))}]
+        (let [measure {:type "measure" :id measure-id :name "Revenue" :tableId (mt/id :venues)}
+              body    (fn [measure]
+                        {:queries [(query-item "Revenue" {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                    :aggregations [measure (venues-sum "LATITUDE")]}]})]})]
+          (testing "unnamed, it shares the column name of the sum beside it"
+            (is (=? {:queries [{:error #".*share the column name \"sum\".*"}]}
+                    (generate! :crowberto 200 (body measure)))))
+          (let [{[file] :queries} (generate! :crowberto 200 (body {:name "revenue" :value measure :columns [{:name "revenue"}]}))]
+            (is (=? [["measure" {:name "revenue"} some?] ["sum" {} some?]]
+                    (get-in (file-entity file) [:dataset_query :stages 0 :aggregation])))))))))

@@ -24,7 +24,11 @@ import type {
 import { isObject } from "metabase-types/guards";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
-import { validateDynamicQuery, validateQueryInput } from "./validation";
+import {
+  validateDynamicQuery,
+  validateQueryInput,
+  validateUniqueAggregationNames,
+} from "./validation";
 
 export type ResolveDatasetQuery = (
   store: SdkStore,
@@ -135,17 +139,19 @@ function resolveQueryFromLoadedMetadata(
   const provider = selectMetadataProviderUnfiltered(state, databaseId);
   const sourceStage = toStageSpec(input);
 
-  const datasetQuery = Lib.toJsQuery(
-    Lib.createTestQuery(provider, {
-      // The dynamic clauses run as their own stage rather than merging into the
-      // source stage. Merged, they would apply before the static aggregation on
-      // a table source but after it on the published card — the same app would
-      // return different numbers in the dev preview and in production.
-      stages: dynamicQuery
-        ? [sourceStage, toResultColumnStageSpec(dynamicQuery)]
-        : [sourceStage],
-    } satisfies TestQuerySpec),
-  );
+  const query = Lib.createTestQuery(provider, {
+    // The dynamic clauses run as their own stage rather than merging into the
+    // source stage. Merged, they would apply before the static aggregation on
+    // a table source but after it on the published card — the same app would
+    // return different numbers in the dev preview and in production.
+    stages: dynamicQuery
+      ? [sourceStage, toResultColumnStageSpec(dynamicQuery)]
+      : [sourceStage],
+  } satisfies TestQuerySpec);
+
+  validateUniqueAggregationNames(query);
+
+  const datasetQuery = Lib.toJsQuery(query);
 
   // Lib reads the database off the metadata provider, and a user who may read a
   // card but not create queries gets none from `/api/card/:id/query_metadata` —

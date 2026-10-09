@@ -121,9 +121,17 @@
    [:literal [:ref ::literal-expression]]
    [:operator [:ref ::aggregation-operator-expression]]])
 
+(mr/def ::named-aggregation
+  "A measure or a metric whose result column is named, as `aggregations.measure` and `aggregations.metric` name it."
+  [:map {:closed true :decode/normalize {:compile query-map-decoder}
+         ::sdk-metadata [:columns]}
+   [:name string?]
+   [:value [:or [:ref ::measure] [:ref ::metric]]]])
+
 (mr/def ::aggregation
   [:or
    [:ref ::aggregation-expression]
+   [:ref ::named-aggregation]
    [:ref ::measure]
    [:ref ::metric]])
 

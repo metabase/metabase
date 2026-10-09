@@ -13,7 +13,16 @@ import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sd
 import { cardApi } from "metabase/api";
 import * as Lib from "metabase-lib";
 
-import { avg, breakout, count, filter, orderBy, sum } from "..";
+import {
+  aggregations,
+  avg,
+  breakout,
+  count,
+  distinct,
+  filter,
+  orderBy,
+  sum,
+} from "..";
 
 import { TEST_METADATA, TEST_SCHEMA } from "./fixtures";
 
@@ -185,10 +194,12 @@ describe("resolveDatasetQuery", () => {
         ),
       ],
       aggregations: [
-        TEST_SCHEMA.metrics.revenue,
+        aggregations.metric(TEST_SCHEMA.metrics.revenue, { name: "revenue" }),
         count(),
         sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount),
-        TEST_SCHEMA.tables.orders.measures.revenue,
+        aggregations.measure(TEST_SCHEMA.tables.orders.measures.revenue, {
+          name: "orders",
+        }),
       ],
       breakouts: [
         breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
@@ -228,10 +239,10 @@ describe("resolveDatasetQuery", () => {
             ["=", expect.anything(), ["field", expect.anything(), 101], "paid"],
           ],
           aggregation: [
-            ["metric", expect.anything(), 31],
+            ["metric", expect.objectContaining({ name: "revenue" }), 31],
             ["count", expect.anything()],
             ["sum", expect.anything(), ["field", expect.anything(), 102]],
-            ["measure", expect.anything(), 21],
+            ["measure", expect.objectContaining({ name: "orders" }), 21],
           ],
           breakout: [
             [
@@ -649,5 +660,95 @@ describe("resolveDatasetQuery", () => {
         },
       ],
     });
+  });
+});
+
+describe("resolveDatasetQuery aggregation column names", () => {
+  const orders = TEST_SCHEMA.tables.orders;
+
+  it("refuses aggregations that share a column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count(), distinct(orders.fields.status)],
+      }),
+    ).rejects.toThrow(
+      'Aggregations need unique column names: Count, Distinct values of Status share the column name "count". Give the aggregations unique names.',
+    );
+  });
+
+  it("accepts aggregations named apart", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [
+        count(),
+        distinct(orders.fields.status, { name: "statuses" }),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].aggregation).toEqual([
+      ["count", expect.anything()],
+      [
+        "distinct",
+        expect.objectContaining({ name: "statuses" }),
+        ["field", expect.anything(), 101],
+      ],
+    ]);
+  });
+
+  it("leaves a measure's own name out of its column name", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [orders.measures.revenue],
+    });
+
+    expect(stagesOf(datasetQuery)[0].aggregation).toEqual([
+      ["measure", expect.not.objectContaining({ name: "Revenue" }), 21],
+    ]);
+  });
+
+  it("refuses a measure that shares a column name with another aggregation", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [orders.measures.revenue, count()],
+      }),
+    ).rejects.toThrow('share the column name "count"');
+  });
+
+  it("passes a measure through aggregations.measure unchanged without a name", () => {
+    expect(aggregations.measure(orders.measures.revenue)).toBe(
+      orders.measures.revenue,
+    );
+  });
+
+  it("names a measure's column with aggregations.measure", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [
+        aggregations.measure(orders.measures.revenue, { name: "revenue" }),
+        count(),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].aggregation).toEqual([
+      ["measure", expect.objectContaining({ name: "revenue" }), 21],
+      ["count", expect.anything()],
+    ]);
+  });
+
+  it("refuses dynamic aggregations that share a column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(
+        {
+          source: orders,
+          aggregations: [count()],
+          breakouts: [breakout(orders.fields.status)],
+        },
+        {
+          aggregations: [count(), distinct({ type: "column", name: "STATUS" })],
+        },
+      ),
+    ).rejects.toThrow('share the column name "count"');
   });
 });

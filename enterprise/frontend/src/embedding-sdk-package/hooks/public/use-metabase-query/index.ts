@@ -4,7 +4,9 @@ export {
   count,
   distinct,
   max,
+  measure,
   median,
+  metric,
   min,
   sum,
 } from "./aggregation-helpers";
