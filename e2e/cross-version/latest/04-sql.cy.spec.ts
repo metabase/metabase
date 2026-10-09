@@ -91,9 +91,10 @@ describe("Cross-version questions - sql", () => {
     // As a result of PR #77133, cards created in >=v63 fail to load on older
     // versions. We explicitly don't guarantee that things created in a new version of
     // Metabase will work when rolled back to an older version so skipping this test for
-    // v58 aligns with our support commitments.
+    // versions below v63 aligns with our support commitments.
     cy.request("/api/session/properties").then(({ body }) => {
-      cy.skipOn(/^v[01]\.58\./.test(body.version.tag));
+      const major = Number(body.version.tag.match(/^v[01]\.(\d+)\./)?.[1]);
+      cy.skipOn(major < 63);
     });
 
     cy.signIn("admin", { skipCache: true });

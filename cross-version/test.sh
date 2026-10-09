@@ -19,7 +19,6 @@ SOURCE_VERSION=""
 TARGET_VERSION=""
 METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
-RESULT_FILE="${RESULT_FILE:-/tmp/cross-version-result.json}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 
 # Colors for output
@@ -31,17 +30,6 @@ NC='\033[0m' # No Color
 log() { echo -e "${GREEN}[cross-version]${NC} $*"; }
 warn() { echo -e "${YELLOW}[cross-version]${NC} $*"; }
 error() { echo -e "${RED}[cross-version]${NC} $*" >&2; }
-
-# Write a structured result file on failure so CI can categorize the failure
-write_failure() {
-  local phase="$1"  # "migration" or "e2e"
-  jq -n \
-    --arg phase "$phase" \
-    --arg source "$SOURCE_VERSION" \
-    --arg target "$TARGET_VERSION" \
-    '{phase:$phase, source:$source, target:$target}' > "$RESULT_FILE"
-  log "Wrote failure result to $RESULT_FILE"
-}
 
 usage() {
   cat <<EOF
@@ -404,7 +392,6 @@ main() {
   if ! wait_for_health "$HEALTH_TIMEOUT"; then
     error "❌ SOURCE version ($SOURCE_VERSION) failed health check"
     docker compose logs metabase
-    write_failure "migration"
     exit 1
   fi
 
@@ -413,7 +400,6 @@ main() {
   log ""
   log "Step 2: Running e2e tests (@source)..."
   if ! run_e2e source "$SOURCE_VERSION"; then
-    write_failure "e2e"
     exit 1
   fi
 
@@ -430,7 +416,6 @@ main() {
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
       error "❌ TARGET version ($TARGET_VERSION) failed health check after upgrade"
       docker compose logs metabase
-      write_failure "migration"
       exit 1
     fi
     log "✅ UPGRADE successful - TARGET version ($TARGET_VERSION) is healthy"
@@ -438,7 +423,6 @@ main() {
     log ""
     log "Step 5: Running e2e tests (@target)..."
     if ! run_e2e target "$TARGET_VERSION"; then
-      write_failure "e2e"
       exit 1
     fi
 
@@ -447,7 +431,6 @@ main() {
     if ! check_downgrade_refused; then
       error "❌ TARGET version ($TARGET_VERSION) did not properly detect downgrade"
       docker compose logs metabase
-      write_failure "migration"
       exit 1
     fi
 
@@ -458,7 +441,6 @@ main() {
     log "Step 5: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
     if ! cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION"; then
       error "❌ migrate down failed"
-      write_failure "migration"
       exit 1
     fi
 
@@ -470,7 +452,6 @@ main() {
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
       error "❌ TARGET version ($TARGET_VERSION) failed health check after migrate down"
       docker compose logs metabase
-      write_failure "migration"
       exit 1
     fi
     log "✅ DOWNGRADE successful - TARGET version ($TARGET_VERSION) is healthy after migrate down"
@@ -478,7 +459,6 @@ main() {
     log ""
     log "Step 7: Running e2e tests (@target)..."
     if ! run_e2e target "$TARGET_VERSION"; then
-      write_failure "e2e"
       exit 1
     fi
   fi
