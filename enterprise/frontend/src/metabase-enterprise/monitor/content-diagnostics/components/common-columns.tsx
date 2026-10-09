@@ -5,7 +5,9 @@ import type { useGetIcon } from "metabase/hooks/use-icon";
 import {
   Ellipsified,
   FixedSizeIcon,
+  Flex,
   Group,
+  SortableHeaderPill,
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
@@ -13,7 +15,7 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
 import { DiagnosticsEntityIcon } from "./DiagnosticsEntityIcon";
-import { TOOLTIP_OPEN_DELAY_MS } from "./constants";
+import { TOOLTIP_OPEN_DELAY_MS, TYPE_COLUMN_MIN_WIDTH } from "./constants";
 import {
   getCollectionName,
   getEntityName,
@@ -46,10 +48,18 @@ export function getCommonColumns<T extends ContentDiagnosticsBaseFinding>(
     },
     entityType: {
       id: "entity-type",
-      header: t`Type`,
+      header: ({ column }) => (
+        <Flex justify="center" flex={1}>
+          <SortableHeaderPill
+            name={t`Type`}
+            sort={column.getIsSorted() || undefined}
+          />
+        </Flex>
+      ),
       enableSorting: true,
       sortDescFirst: false,
       width: "auto",
+      minWidth: TYPE_COLUMN_MIN_WIDTH,
       accessorFn: (finding) => getEntityTypeLabel(finding),
       cell: ({ row }) => (
         <DiagnosticsEntityIcon
