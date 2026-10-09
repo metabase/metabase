@@ -257,16 +257,54 @@
                           (mdb.connection/do-after-commit #(throw (ex-info "Callback error" {})))))]
     (is (nil? (register-late)))))
 
-(deftest nested-transaction-opened-after-the-outer-commit-test
-  ;; Once the after-commit callbacks have run there is no list left to count or truncate.
-  ;; A caller that still holds the transaction's bindings must be able to open a nested transaction regardless.
-  ;; The enclosing `with-connection` keeps the connection open after the transaction on it ends.
-  (t2/with-connection [conn]
-    (let [open-nested (t2/with-transaction [_conn conn]
-                        (bound-fn []
-                          (t2/with-transaction [_conn]
-                            :nested-result)))]
-      (is (= :nested-result (open-nested))))))
+(defn- do-transaction-ending
+  "Call `f` in a transaction on `connectable` that commits, or rolls back if `rollback?`, and return its result."
+  [connectable rollback? f]
+  (if rollback?
+    (t2/with-transaction [_conn connectable {:rollback-only true}]
+      (f))
+    (t2/with-transaction [_conn connectable]
+      (f))))
+
+(deftest transaction-opened-after-the-outer-one-ends-is-its-own-transaction-test
+  ;; A caller that kept the bindings of a finished transaction is no longer inside it.
+  ;; A transaction it opens must commit and roll back on its own, not as a nested scope of the finished one.
+  ;; The enclosing `with-connection` keeps the connection open after the first transaction ends.
+  (letfn [(late-transaction-events [outer-rolls-back? body]
+            (let [events (atom [])]
+              (t2/with-connection [conn]
+                (let [open-late (do-transaction-ending
+                                 conn outer-rolls-back?
+                                 (fn []
+                                   (bound-fn []
+                                     (try
+                                       (t2/with-transaction [_conn]
+                                         (mdb.connection/do-after-commit #(swap! events conj :callback))
+                                         (swap! events conj :body)
+                                         (body))
+                                       (catch Exception _
+                                         (swap! events conj :rolled-back))))))]
+                  (open-late)))
+              @events))]
+    (doseq [[outer-end outer-rolls-back?] {"committed" false, "rolled back" true}]
+      (testing (str "after the outer transaction " outer-end)
+        (testing "its after-commit callback waits for its own commit"
+          (is (= [:body :callback]
+                 (late-transaction-events outer-rolls-back? (fn [])))))
+        (testing "its after-commit callback never runs if it rolls back"
+          (is (= [:body :rolled-back]
+                 (late-transaction-events outer-rolls-back? #(throw (ex-info "Roll back" {}))))))))))
+
+(deftest in-transaction?-is-false-once-the-transaction-ends-test
+  (doseq [[outer-end rolls-back?] {"committed" false, "rolled back" true}]
+    (testing (str "after the transaction " outer-end)
+      (let [[inside? in-late-fn?] (do-transaction-ending
+                                   nil rolls-back?
+                                   (fn []
+                                     [(mdb.connection/in-transaction?)
+                                      (bound-fn [] (mdb.connection/in-transaction?))]))]
+        (is (= {:inside true, :afterwards false}
+               {:inside inside?, :afterwards (in-late-fn?)}))))))
 
 (deftest nested-transaction-rolling-back-after-the-outer-commit-test
   ;; The nested scope opens while there are still callbacks to count, and rolls back after they have run.
