@@ -2,6 +2,7 @@
   "Tests for TaskRun model and with-task-run macro."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
@@ -118,6 +119,39 @@
         ;; called outside the macro, as the notification worker does on its own thread
         (task-history/task-run-work-done! @run-id)
         (is (= :success (t2/select-one-fn :status :model/TaskRun :id @run-id)))))))
+
+(deftest task-run-work-done-recomputes-run-without-owner-test
+  (testing "for an :auto-complete false run, each task-run-work-done! sets the run status from the tasks as they are now (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [run-id   (task-run/create-task-run! {:run_type    :subscription
+                                                 :entity_type :dashboard
+                                                 :entity_id   1})
+            run      #(t2/select-one [:model/TaskRun :status :ended_at] :id run-id)
+            start!   #(t2/insert-returning-pk! :model/TaskHistory {:task       "notification-send"
+                                                                   :run_id     run-id
+                                                                   :status     :started
+                                                                   :started_at (t/instant)})
+            finish!  (fn [task-id status]
+                       (t2/update! :model/TaskHistory task-id {:status status :ended_at (t/instant)}))
+            email    (start!)
+            slack    (start!)]
+        (testing "the first send ends while the second one still runs: the run stays started"
+          (finish! email :success)
+          (task-history/task-run-work-done! run-id)
+          (is (=? {:status :started :ended_at nil} (run))))
+        (testing "the last send ends: the run gets the status of all its tasks"
+          (finish! slack :success)
+          (task-history/task-run-work-done! run-id)
+          (is (=? {:status :success :ended_at some?} (run))))
+        (testing "a send that fails after the run succeeded turns the run failed"
+          (finish! (start!) :failed)
+          (task-history/task-run-work-done! run-id)
+          (is (= :failed (:status (run)))))
+        (testing "an abandoned run keeps its status"
+          (t2/update! :model/TaskRun run-id {:status :abandoned})
+          (finish! (start!) :success)
+          (task-history/task-run-work-done! run-id)
+          (is (= :abandoned (:status (run)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Nesting prevention tests                                            |

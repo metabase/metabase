@@ -53,6 +53,27 @@
                           (u/poll {:thunk #(latest-task-history-entry "notification-trigger")
                                    :done? (fn [task] (= [(:id noti)] (get-in task [:task_details :notification_ids])))}))))))))))))
 
+(deftest send-notification-job-completes-run-test
+  (testing "the job records the run of a scheduled alert as success after its `notification-trigger` row ends (GDGT-3331)"
+    ;; with the testing setup the send runs on the job's thread, so it ends while the `notification-trigger` row is
+    ;; still started, and only the job's own call can set the final status
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (notification.tu/with-notification-testing-setup!
+        (notification.tu/with-card-notification
+          [notification {:subscriptions [{:type          :notification-subscription/cron
+                                          :cron_schedule every-second}]
+                         :handlers      [{:channel_type :channel/email
+                                          :recipients   [{:type    :notification-recipient/user
+                                                          :user_id (mt/user->id :crowberto)}]}]}]
+          (with-redefs [channel/render-notification (fn [& _] [{:stub-message true}])
+                        channel/send!               (constantly nil)]
+            (#'task.notification/send-notification* (-> notification :subscriptions first :id)))
+          (let [run (t2/select-one :model/TaskRun :notification_id (:id notification))]
+            (is (= :success (:status run)))
+            (is (some? (:ended_at run)))
+            (is (= #{"notification-trigger" "notification-send"}
+                   (t2/select-fn-set :task :model/TaskHistory :run_id (:id run) :task [:not= "channel-send"])))))))))
+
 (deftest init-send-notification-triggers-test
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp-scheduler!

@@ -110,8 +110,8 @@
     :process_uuid    config/local-process-uuid}))
 
 (mu/defn complete-task-run!
-  "Mark a task run as complete, deriving status from child tasks.
-   Must be called manually for async flows, or automatically via [[with-task-run]].
+  "Mark a task run as complete, deriving status from child tasks. [[with-task-run]] calls it after its body; for
+  `:auto-complete false` runs use [[task-run-work-done!]].
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
   (let [task-statuses (task-history.db/task-statuses-for-run run-id)
@@ -120,15 +120,40 @@
                         :failed)]
     (task-history.db/finish-started-task-run! run-id status (t/instant))))
 
+(defn- run-status-from-tasks
+  "The status of a run whose tasks have `task-statuses`: started while any task runs, success when every task
+  succeeded, else failed."
+  [task-statuses]
+  (cond
+    (contains? task-statuses :started) :started
+    (= #{:success} task-statuses)      :success
+    :else                              :failed))
+
+(mu/defn- recompute-task-run-status!
+  "Set the status of the run `run-id` from its tasks as they are now. An abandoned run keeps its status.
+
+  The run row stays locked while its tasks are read, so when two pieces of work end at the same time, the second one
+  reads the tasks after the first one wrote, and its status is the one that stays."
+  [run-id :- ms/PositiveInt]
+  (t2/with-transaction [_conn]
+    (let [current (task-history.db/lock-task-run-status run-id)]
+      (when-not (contains? #{nil :abandoned} current)
+        (let [status (run-status-from-tasks (task-history.db/task-statuses-for-run run-id))]
+          (when (not= status current)
+            (task-history.db/set-task-run-status! run-id status (when-not (= :started status) (t/instant)))))))))
+
 (mu/defn task-run-work-done!
   "Call when one piece of work in the run `run-id` ends, for example one notification send.
 
   Inside a [[with-task-run]] with `:auto-complete`, that macro completes the run after all of its work, so this does
-  nothing. A completion here would fix the run status before the rest of the work ran. Otherwise (`:auto-complete
-  false`, the work runs on other threads) this completes the run."
+  nothing. A completion here would fix the run status before the rest of the work ran.
+
+  Otherwise (`:auto-complete false`) the work runs on other threads, and no single place sees it all end. So every
+  piece of work, and the code that queued it, calls this, and each call sets the run status from the tasks as they are
+  now. The run is started while any task runs; the last call sees every task and sets the final status."
   [run-id :- ms/PositiveInt]
   (when-not (and (= run-id (:id *run*)) (:auto-complete? *run*))
-    (complete-task-run! run-id)))
+    (recompute-task-run-status! run-id)))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.
@@ -138,7 +163,7 @@
    creating a new task run (prevents nesting).
 
    For async flows (e.g., async notifications), use :auto-complete false and
-   call [[task-run-work-done!]] when each piece of async work is done."
+   call [[task-run-work-done!]] when each piece of async work is done, and when the code that queued it is done."
   {:style/indent 1}
   [run-info & body]
   `(if (or *run* (nil? ~run-info))
