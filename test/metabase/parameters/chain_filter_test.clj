@@ -138,6 +138,50 @@
     (is (= {:values [["Festa"] ["Fred 62"]], :has_more_values false}
            (chain-filter venues.name {venues.price [:between 2 3], venues.name [:starts-with "f" {:case-sensitive false}]})))))
 
+(deftest ^:parallel one-to-many-constraints-semi-join-test
+  (testing (str "Constraints on Tables reached through one-to-many joins are applied in de-duplicated sub-selects, "
+                "so the joins can't multiply the source Table's rows")
+    (mt/dataset test-data
+      (mt/$ids
+        (let [query (#'chain-filter/chain-filter-mbql-query %products.category
+                                                            [(shorthand->constraint %orders.user_id 1)
+                                                             (shorthand->constraint %reviews.rating 1)]
+                                                            nil)]
+          (is (= #{{:strategy :inner-join, :breakout #{%orders.product_id}, :filters #{%orders.user_id}}
+                   {:strategy :inner-join, :breakout #{%reviews.product_id}, :filters #{%reviews.rating}}}
+                 (set (for [a-join (lib/joins query)
+                            :let   [stage (first (:stages a-join))]]
+                        {:strategy (:strategy a-join)
+                         :breakout (into #{} (mapcat lib/all-field-ids) (:breakout stage))
+                         :filters  (into #{} (mapcat lib/all-field-ids) (:filters stage))}))))
+          (is (= []
+                 (lib/filters query))))
+        (is (= {:values [["Doohickey"] ["Widget"]], :has_more_values false}
+               (chain-filter products.category {orders.user_id 1, reviews.rating 1})))))))
+
+(deftest ^:parallel one-to-many-constraints-shared-join-test
+  (testing (str "Constraints whose paths share their first one-to-many join are applied in one sub-select, so they "
+                "still have to match the same row of it")
+    (mt/dataset test-data
+      (mt/$ids
+        (let [query (#'chain-filter/chain-filter-mbql-query
+                     %venues.name
+                     [(shorthand->constraint %users.name "Plato Yeshua")
+                      (shorthand->constraint %checkins.date [:between "2015-01-01" "2015-06-30"])]
+                     nil)]
+          (is (= [#{%users.name %checkins.date}]
+                 (for [a-join (lib/joins query)]
+                   (into #{} (mapcat lib/all-field-ids) (:filters (first (:stages a-join))))))))
+        (testing "venues with a check-in by Plato Yeshua in the first half of 2015"
+          (is (= {:values          [["Barney's Beanery"]
+                                    ["Cha Cha Chicken"]
+                                    ["Don Day Korean Restaurant"]
+                                    ["Red Medicine"]
+                                    ["Shanghai Dumpling King"]]
+                  :has_more_values false}
+                 (chain-filter venues.name {users.name    "Plato Yeshua"
+                                            checkins.date [:between "2015-01-01" "2015-06-30"]}))))))))
+
 (deftest ^:parallel multiple-values-test
   (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
     (testing "Show me restaurants with price = 1 or 2 with the word 'BBQ' in their name (case-sensitive)"
@@ -644,11 +688,17 @@
       (lib.walk/walk-clause clause collect))
     @acc))
 
-(defn- inner-projection-field-ids
-  "Set of field-ids that `a-join`'s inner-stage `:fields` projects. Structural read: the projection list is the thing
-  under test."
+(defn- semi-join?
+  "Whether `a-join` joins a de-duplicated sub-select, whose only columns are its breakouts."
   [a-join]
-  (into #{} (mapcat lib/all-field-ids) (:fields (first (:stages a-join)))))
+  (boolean (seq (:breakout (first (:stages a-join))))))
+
+(defn- inner-projection-field-ids
+  "Set of field-ids that `a-join`'s inner-stage `:fields` projects, or its `:breakout` for a semi-join. Structural read:
+  the projection list is the thing under test."
+  [a-join]
+  (let [stage (first (:stages a-join))]
+    (into #{} (mapcat lib/all-field-ids) (if (semi-join? a-join) (:breakout stage) (:fields stage)))))
 
 (defn- inner-projection-by-join-alias
   "Return `{alias #{field-id ...}}` — the field-ids each join's inner-stage `:fields` projects, keyed by the join's
@@ -717,12 +767,19 @@
              [tid {:declared declared, :actual actual, :extra extra}])))))
 
 (defn- check-tight-projections
-  "Run both the MBQL-level and SQL-level invariants on a chain-filter query."
+  "Run both the MBQL-level and SQL-level invariants on a chain-filter query, and on the sub-select of each of its
+  semi-joins. The SQL-level check of the outer query leaves out the semi-joins, whose sub-selects reference columns of
+  their own."
   [query]
   (testing "MBQL: each join's inner-stage :fields equals the fields referenced on its source table"
     (is (nil? (projection-violations query))))
   (testing "SQL: the compiled query references no joined-Table columns outside MBQL :fields"
-    (is (nil? (sql-over-projections query)))))
+    (is (nil? (sql-over-projections (update-in query [:stages 0] u/assoc-dissoc :joins
+                                               (not-empty (vec (remove semi-join? (lib/joins query)))))))))
+  (doseq [a-join (lib/joins query)
+          :when  (semi-join? a-join)]
+    (testing (str "semi-join " (lib/current-join-alias a-join))
+      (check-tight-projections (assoc query :stages (vec (:stages a-join)))))))
 
 ;;; Scenarios that exercise the join-building paths in `chain-filter-mbql-query`. Each
 ;;; `:build` thunk runs inside `mt/dataset test-data` so `mt/id` resolves correctly.
@@ -799,7 +856,7 @@
   ;; elides the partition filter, because the joined-Table column it would reference is no longer in
   ;; `visible-columns`. That's a behavior regression on BigQuery.
   ;;
-  ;; The query below is chosen so venues becomes a JOIN target (source = categories, constraint on venues.id), and
+  ;; The query below is chosen so venues becomes a JOIN target (source = checkins, constraint on venues.id), and
   ;; the partition column (venues.price) is not referenced by anything the user wrote. So if tighten-join-projections
   ;; correctly survives the late-added partition filter, venues.price ends up in the venues join's inner stage
   ;; *only because of the partition filter middleware*.
@@ -808,7 +865,7 @@
           partition-fid (mt/id :venues :price)]
       (mt/with-temp-vals-in-db :model/Table venues-id {:database_require_filter true}
         (mt/with-temp-vals-in-db :model/Field partition-fid {:database_partitioned true}
-          (let [q            (mbql-for (mt/id :categories :name)
+          (let [q            (mbql-for (mt/id :checkins :user_id)
                                        nil
                                        {(mt/id :venues :id) 1})
                 venues-alias (some (fn [j]
@@ -821,7 +878,18 @@
                        "in :filters; got: " (pr-str (-> q :stages first :filters)))))
             (testing "venues join projects partition column in its inner stage"
               (is (contains? (get (inner-projection-by-join-alias q) venues-alias) partition-fid)
-                  (str "expected " partition-fid " in inner stage of venues join (" (pr-str venues-alias) ")")))))))))
+                  (str "expected " partition-fid " in inner stage of venues join (" (pr-str venues-alias) ")"))))
+          (testing "a semi-join's sub-select gets the partition filter on its own source table"
+            ;; source = categories reaches venues through a one-to-many join
+            (let [q          (mbql-for (mt/id :categories :name)
+                                       nil
+                                       {(mt/id :venues :id) 1})
+                  [a-join]   (lib/joins q)
+                  sub-select (assoc q :stages (vec (:stages a-join)))]
+              (is (semi-join? a-join))
+              (is (some? (find-partition-filter sub-select partition-fid nil))
+                  (str "expected a [:> [:field {} " partition-fid "] _] clause in the sub-select's :filters; got: "
+                       (pr-str (-> sub-select :stages first :filters)))))))))))
 
 ;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test
