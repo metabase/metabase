@@ -108,6 +108,10 @@
   [schema]
   (str/split schema #"\."))
 
+(defmethod sql.qp/use-ctes-for-stages? :databricks
+  [_driver]
+  true)
+
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
   [_driver [tag identifier-type components :as _identifier]]
   (let [components (if (or (and (= identifier-type :table)

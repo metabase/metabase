@@ -596,6 +596,10 @@
   ;; to a different one, so no promotions are possible
   {})
 
+(defmethod sql.qp/use-ctes-for-stages? :snowflake
+  [_driver]
+  true)
+
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])

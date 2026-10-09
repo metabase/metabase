@@ -203,6 +203,10 @@
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
+(defmethod sql.qp/use-ctes-for-stages? :sqlite
+  [_driver]
+  true)
+
 ;; SQLite stores datetimes as text and the QP wraps datetime literals in `DATETIME(...)` (space-separated),
 ;; so raw column reads (T-separated) don't compare equal to those literals. Wrap only when we can
 ;; confirm the expr is a table-level datetime column (via its `:database-type`) so both sides

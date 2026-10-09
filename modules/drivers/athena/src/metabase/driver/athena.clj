@@ -170,6 +170,10 @@
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
+(defmethod sql.qp/use-ctes-for-stages? :athena
+  [_driver]
+  true)
+
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
