@@ -295,7 +295,11 @@
                                          :session-id                    session-id
                                          :profile                       (some-> profile-id name)
                                          :duration-ms                   (some-> (:duration-ms part) long)
-                                         :result                        (if (:error part) "error" "success")
+                                         ;; A failed call carries `:error` on its result — success
+                                         ;; is the absence of it, as it is everywhere else.
+                                         :result                        (if (get-in part [:result :error])
+                                                                          "error"
+                                                                          "success")
                                          :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
                                                                                                (:function part)
                                                                                                "unknown")}

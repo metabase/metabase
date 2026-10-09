@@ -98,7 +98,8 @@
                                                                            :query-id "q1"}}}]
         failure  [{:type :tool-input :id "b" :function "edit_sql_query"}
                   {:type :tool-output :id "b" :result {:output "validation error"
-                                                       :instructions "fix it"}}]
+                                                       :error  {:class :validation
+                                                                :code  :invalid-arguments}}}]
         read     [{:type :tool-input :id "c" :function "read_resource"}
                   {:type :tool-output :id "c" :result {:output "<fields/>"}}]]
     (testing "a successful terminal-tool call ends the turn"
@@ -170,22 +171,34 @@
           (is (contains? tools "document_construct_sql_chart"))
           (is (contains? tools "document_schema_collect")))))))
 
+(defn- unrecoverable-part
+  [id user-message]
+  {:type   :tool-output
+   :id     id
+   :result (cond-> {:output "This call failed and the user was shown the error (:x). Don't retry it."
+                    :error  {:class :unrecoverable :code :x}}
+             user-message (assoc-in [:error :user-message] user-message))})
+
 (deftest terminal-error-message-test
   (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
-                {:type :tool-output :id "a" :result {:output "No native permission."
-                                                     :terminal-error? true}}]]
-    (testing "reads the message off a tool result marked terminal"
+                (unrecoverable-part "a" "No native permission.")]]
+    (testing "reads the user-facing message off an unrecoverable failure"
       (is (= "No native permission." (#'agent/terminal-error-message denial))))
-    (testing "an ordinary tool failure is not terminal"
+    (testing "a recoverable failure is not terminal — the model can still self-correct"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "b" :result {:output "syntax error"}}]))))
-    (testing "a terminal marker with no message yields nil so no empty text part is emitted"
+                 [{:type :tool-output :id "b" :result {:output "syntax error"
+                                                       :error {:class :recoverable :code :x}}}]))))
+    (testing "and neither is a success"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "c" :result {:output "" :terminal-error? true}}]))))
+                 [{:type :tool-output :id "b" :result {:output "fine"}}]))))
+    (testing "an unrecoverable failure with no :user-message gets the generic one, so the user is
+             always told something"
+      (is (= "Something went wrong."
+             (#'agent/terminal-error-message [(unrecoverable-part "c" nil)]))))
     (testing "the first denial wins when an iteration produces several"
       (is (= "first" (#'agent/terminal-error-message
-                      [{:type :tool-output :id "a" :result {:output "first" :terminal-error? true}}
-                       {:type :tool-output :id "b" :result {:output "second" :terminal-error? true}}]))))
+                      [(unrecoverable-part "a" "first")
+                       (unrecoverable-part "b" "second")]))))
     (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
       (is (#'agent/should-continue? 0 20 #{} denial)))))
 

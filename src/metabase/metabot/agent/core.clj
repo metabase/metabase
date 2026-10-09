@@ -24,6 +24,7 @@
    [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -175,12 +176,13 @@
 
 (defn- successful-tool-output?
   "Whether a `:tool-output` part represents a successful call.
-  Answer-producing tools attach `:structured-output` when they produce a result (a query, a chart
-  draft, a clarification question), and return just an `:output` error string on validation/exception
-  failures — so its presence is the success signal."
+
+  Success is the absence of `:error`. It used to be the presence of `:structured-output`, which made
+  a tool that produced no structured output indistinguishable from one that failed, and forced
+  answer-producing tools to attach one whether a consumer read it or not."
   [part]
   (and (= (:type part) :tool-output)
-       (some? (get-in part [:result :structured-output]))))
+       (nil? (get-in part [:result :error]))))
 
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
@@ -215,12 +217,17 @@
   (some #(= (:type %) :error) parts))
 
 (defn- terminal-error-message
-  "Message from a tool failure no retry can fix (a permission denial), or nil if there was none."
+  "The user-facing message from a tool failure no retry can fix, or nil if there was none.
+
+  An unrecoverable failure is one only the user can act on — a permission denial, a server fault —
+  so the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
+  generic one, because `:output` is written for the model and says only that the call failed."
   [parts]
   (some (fn [part]
           (when (and (= (:type part) :tool-output)
-                     (get-in part [:result :terminal-error?]))
-            (not-empty (get-in part [:result :output]))))
+                     (= :unrecoverable (get-in part [:result :error :class])))
+            (or (not-empty (get-in part [:result :error :user-message]))
+                (tru "Something went wrong."))))
         parts))
 
 (defn- should-continue?
@@ -504,7 +511,9 @@
                          (assoc :conversation-id conversation-id)
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+        ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
+        ;; their declarations, so converted and unconverted ones arrive the same way.
+        tools        (update-vals (tools/->entries (vals base-tools) memory-atom metabot-id profile-id)
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)

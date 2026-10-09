@@ -26,6 +26,8 @@
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -610,22 +612,33 @@
       (is (=? {:type       :tool-output-available
                :toolCallId "call-err"
                :toolName   "get-time"
-               :error      {:message string?
-                            :type    string?}}
+               :result     {:output string?
+                            :error  {:class :unrecoverable :code :internal}}}
               (last result))))))
 
-(deftest ^:parallel tool-failure-log-level-test
+(def ^:private failing-tool-exception
+  "What `failing-tool` throws. An atom so the tool can be a real var, which is what `adapt` accepts."
+  (atom nil))
+
+(mu/defn ^{:tool-name "failing"}
+  failing-tool
+  "Always throws whatever `failing-tool-exception` holds."
+  [_args :- [:map {:closed true}]]
+  (throw @failing-tool-exception))
+
+(deftest tool-failure-log-level-test
   (let [run-failing (fn [e]
-                      (into [] (self.core/tool-executor-xf {"failing" {:fn (fn [_] (throw e))}})
+                      (reset! failing-tool-exception e)
+                      (into [] (self.core/tool-executor-xf
+                                (metabot.tools/->entries [#'failing-tool] (atom {}) nil nil))
                             (test-util/parts->aisdk-chunks
                              [{:type :tool-input :id "call-f" :function "failing" :arguments {}}])))]
-    (testing "an unexpected tool failure is logged at error with its exception"
-      (let [e (ex-info "boom" {})]
-        (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :error]]
-          (run-failing e)
-          (is (= [[:error e]] (map (juxt :level :e) (messages)))))))
-    (testing "an agent error is not"
-      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :error]]
+    (testing "an unexpected tool failure is logged at error"
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
+        (run-failing (ex-info "boom" {}))
+        (is (= [:error] (map :level (messages))))))
+    (testing "a failure the tool wrote for the model is not"
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
         (run-failing (ex-info "No such field" {:agent-error? true}))
         (is (empty? (messages)))))))
 
@@ -651,8 +664,9 @@
                     {:type       :tool-output-available
                      :toolCallId "call-1"
                      :toolName   "analyze_chart"
-                     :error      {:message (str "Tool `analyze_chart` does not exist. "
-                                                "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
+                     :result     {:output (str "Tool `analyze_chart` does not exist. "
+                                               "Available tools: convert-currency, get-time, mock-llm, no-arg.")
+                                  :error  {:class :validation :code :unknown-tool}}})
               result)))))
 
 (deftest ^:parallel tool-executor-xf-stream-error-test
@@ -670,19 +684,21 @@
 
 ;;; tool argument validation tests
 
-(defn- schema-tool
-  [args-schema]
-  {:fn     (fn [_args] {:output "ok"})
-   :doc    "validation test tool"
-   :schema [:=> [:cat args-schema] :any]})
-
 (defn- validation-error
+  "The text the model would see for `arguments` against `args-schema`, or nil when they are accepted."
   [args-schema arguments]
-  (let [tools  {"validated" (schema-tool args-schema)}
+  (let [tools  (metabot.tools/->entries
+                [(reify tools.core/Tool
+                   (declaration [_] {:name "validated" :description "validation test tool"
+                                     :args args-schema})
+                   (handle [_ _args _ctx] {:output "ok"}))]
+                (atom {}) nil nil)
         chunks (test-util/parts->aisdk-chunks
                 [{:type :start :id "msg-v"}
-                 {:type :tool-input :id "call-v" :function "validated" :arguments arguments}])]
-    (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message)))
+                 {:type :tool-input :id "call-v" :function "validated" :arguments arguments}])
+        result (-> (into [] (self.core/tool-executor-xf tools) chunks) last :result)]
+    (when (:error result)
+      (:output result))))
 
 (deftest ^:parallel tool-argument-validation-test
   (let [schema [:map {:closed true}
@@ -713,12 +729,20 @@
 
 (deftest ^:parallel tool-unparseable-arguments-test
   (testing "arguments the provider streamed as invalid JSON are reported as such"
-    (let [tools  {"validated" (schema-tool [:map {:closed true} [:names {:optional true} [:sequential :string]]])}
+    (let [tools  (metabot.tools/->entries
+                  [(reify tools.core/Tool
+                     (declaration [_] {:name "validated" :description "validation test tool"
+                                       :args [:map {:closed true}
+                                              [:names {:optional true} [:sequential :string]]]})
+                     (handle [_ _args _ctx] {:output "ok"}))]
+                  (atom {}) nil nil)
           chunks (concat [{:type :tool-input-start :toolName "validated" :toolCallId "call-j"}]
                          [{:type :tool-input-delta :toolCallId "call-j" :inputTextDelta "{\"names\": ["}]
-                         [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])]
+                         [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])
+          result (-> (into [] (self.core/tool-executor-xf tools) chunks) last :result)]
       (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
-             (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message))))))
+             (:output result)))
+      (is (= {:class :validation :code :invalid-json} (:error result))))))
 
 (deftest ^:parallel tool-without-schema-is-not-validated-test
   (testing "a tool with no declared argument schema is left alone"
@@ -731,137 +755,25 @@
 
 ;;; tool :decode tests
 
-(defn- make-decode-tool
-  "Create a wrapped tool map that records its received arguments and has an optional `:decode` fn.
-  Returns a map with `:fn`, `:doc`, `:schema` and optionally `:decode` — the same shape
-  that [[wrap-tools-with-state]] produces."
-  [tool-name received-atom decode-fn]
-  (let [f (fn [args]
-            (reset! received-atom args)
-            {:output "ok"})]
-    (cond-> {:fn f
-             :doc (str tool-name " test tool")
-             :schema [:=> [:cat [:map]] :any]}
-      decode-fn (assoc :decode decode-fn))))
-
-(deftest ^:parallel tool-decode-var-test
-  (testing "tool definition map with :decode has decode applied before invocation"
-    (let [received (atom nil)
-          decode-fn (fn [args]
-                      (update args :x inc))
-          tool-def {:fn     (fn [args]
-                              (reset! received args)
-                              {:output "ok"})
-                    :decode decode-fn
-                    :schema [:=> [:cat [:map [:x :int]]] :any]
-                    :doc    "increment x"}
-          tools {"decode-inc" tool-def}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-1"}
-                   {:type :tool-input :id "call-d1" :function "decode-inc" :arguments {:x 41}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (= 42 (:x @received))
-          "decode should have incremented x before the tool saw it")
-      (is (=? {:type :tool-output-available :toolCallId "call-d1"}
-              tool-result)))))
-
-(deftest ^:parallel tool-decode-map-test
-  (testing "wrapped tool map with :decode has decode applied"
-    (let [received (atom nil)
-          tool (make-decode-tool "coerce-test" received
-                                 (fn [args]
-                                   (update args :x str)))
-          tools {"coerce-test" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-2"}
-                   {:type :tool-input :id "call-d2" :function "coerce-test" :arguments {:x 123}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (= "123" (:x @received))
-          "decode should have converted x to string before the tool saw it")
-      (is (=? {:type :tool-output-available :toolCallId "call-d2"}
-              tool-result)))))
-
-(deftest ^:parallel tool-decode-error-test
-  (testing "decode that throws agent-error is returned to LLM"
-    (let [received (atom nil)
-          tool (make-decode-tool "bad-decode" received
-                                 (fn [_args]
-                                   (throw (ex-info "Value must be positive"
-                                                   {:agent-error? true :status-code 400}))))
-          tools {"bad-decode" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-3"}
-                   {:type :tool-input :id "call-d3" :function "bad-decode" :arguments {:x -1}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (nil? @received)
-          "tool function should not have been called")
-      (is (=? {:type       :tool-output-available
-               :toolCallId "call-d3"
-               :toolName   "bad-decode"
-               :error      {:message #"Value must be positive"}}
-              tool-result)))))
-
-(deftest ^:parallel tool-without-decode-test
-  (testing "tool without :decode still works normally"
-    (let [received (atom nil)
-          tool (make-decode-tool "no-decode" received nil)
-          tools {"no-decode" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-4"}
-                   {:type :tool-input :id "call-d4" :function "no-decode" :arguments {:x 99}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)
-          tool-result (last result)]
-      (is (= 99 (:x @received))
-          "without decode, arguments pass through unchanged")
-      (is (=? {:type :tool-output-available :toolCallId "call-d4"}
-              tool-result)))))
-
-(deftest ^:parallel tool-decode-coercion-test
-  (testing "decode can deeply transform nested arguments (simulating temporal filter coercion)"
-    (let [received (atom nil)
-          ;; Simulate the temporal filter decode: walk into query.filters and coerce values
-          decode-fn (fn [args]
-                      (update-in args [:query :filters]
-                                 (fn [filters]
-                                   (mapv (fn [f]
-                                           (if (and (= "year-of-era" (:bucket f))
-                                                    (string? (:value f)))
-                                             (assoc f :value (Integer/parseInt (subs (:value f) 0 4)))
-                                             f))
-                                         filters))))
-          tool (make-decode-tool "construct-test" received decode-fn)
-          tools {"construct-test" tool}
-          chunks (test-util/parts->aisdk-chunks
-                  [{:type :start :id "msg-dec-5"}
-                   {:type :tool-input :id "call-d5" :function "construct-test"
-                    :arguments {:query {:filters [{:bucket "year-of-era" :value "2024-01-01"}
-                                                  {:bucket nil :value "2024-06-15"}]}}}])
-          result (into [] (self.core/tool-executor-xf tools) chunks)]
-      (is (= 2024 (get-in @received [:query :filters 0 :value]))
-          "year-of-era filter value should be coerced to integer")
-      (is (= "2024-06-15" (get-in @received [:query :filters 1 :value]))
-          "filter without bucket should pass through unchanged")
-      (is (=? {:type :tool-output-available :toolCallId "call-d5"}
-              (last result))))))
-
-;;; stringified scalar coercion tests
-
 (defn- probe-tool
-  "A tool named `probe` that declares `args-schema` and records the arguments it is called with."
+  "Entries for a tool named `probe` that declares `args-schema` and records the arguments it is
+  called with.
+
+  Built through `->entries` rather than by hand, because argument coercion and validation live in
+  `metabase.metabot.tools.runtime` — a hand-made `:fn` would be called with the raw arguments."
   [args-schema received]
-  {"probe" {:tool-name "probe"
-            :doc       "Records the arguments it was called with."
-            :schema    [:=> [:cat args-schema] :any]
-            :fn        (fn [args]
-                         (reset! received args)
-                         {:output "ok"})}})
+  (metabot.tools/->entries
+   [(reify tools.core/Tool
+      (declaration [_] {:name        "probe"
+                        :description "Records the arguments it was called with."
+                        :args        (or args-schema :any)})
+      (handle [_ args _ctx]
+        (reset! received args)
+        {:output "ok"}))]
+   (atom {}) nil nil))
 
 (defn- run-probe
-  "Run one `probe` tool call with `arguments` against `tools`.
-  Returns the last output chunk."
+  "Run one `probe` tool call with `arguments` against `tools`. Returns the last output chunk."
   [tools arguments]
   (let [chunks (test-util/parts->aisdk-chunks
                 [{:type :start :id "msg-coerce"}
@@ -869,7 +781,7 @@
     (last (into [] (self.core/tool-executor-xf tools) chunks))))
 
 (defn- tool-received-args
-  "Run one `probe` tool call with `arguments` and return the arguments the tool function saw."
+  "Run one `probe` tool call with `arguments` and return the arguments the tool saw."
   [args-schema arguments]
   (let [received (atom nil)]
     (run-probe (probe-tool args-schema received) arguments)
@@ -917,23 +829,16 @@
     (is (= {:limit "15"}
            (tool-received-args nil {:limit "15"})))))
 
-(deftest ^:parallel tool-args-coercion-precedes-decode-test
-  (testing "coercion happens before the tool's own :decode fn, which sees a real integer"
-    (let [received (atom nil)
-          tools    (update (probe-tool [:map [:limit :int]] received)
-                           "probe" assoc :decode #(update % :limit inc))]
-      (run-probe tools {:limit "15"})
-      (is (= {:limit 16}
-             @received)))))
-
 (deftest ^:parallel tool-args-stringified-int-satisfies-tool-validation-test
   (testing "a stringified integer no longer fails a tool that validates its own arguments"
     (let [args-schema [:map [:limit [:maybe [:int {:min 1 :max 50}]]]]
-          tools       {"probe" {:tool-name "probe"
-                                :doc       "Validates its arguments."
-                                :schema    [:=> [:cat args-schema] :any]
-                                :fn        (mu/fn [args :- args-schema]
-                                             {:output (str "limit=" (:limit args))})}}]
+          tools       (metabot.tools/->entries
+                       [(reify tools.core/Tool
+                          (declaration [_] {:name "probe" :description "Validates its arguments."
+                                            :args args-schema})
+                          (handle [_ args _ctx]
+                            {:output (str "limit=" (:limit (mc/coerce args-schema args nil)))}))]
+                       (atom {}) nil nil)]
       (is (=? {:type   :tool-output-available
                :result {:output "limit=15"}}
               (run-probe tools {:limit "15"}))))))
@@ -1145,12 +1050,10 @@
                "boom"    {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
                "num"     {:tool-name "num"   :title-fn (fn [_] 42)}
                "plain"   {:tool-name "plain"}
-               "decoded" {:tool-name "decoded"
-                          :decode    (fn [args] (update args :who (fn [who] (if (string? who) [who] who))))
-                          :title-fn  (fn [{:keys [who]}] (str "Greeting " (str/join ", " who)))}
-               "badcode" {:tool-name "badcode"
-                          :decode    (fn [_] (throw (ex-info "nope" {})))
-                          :title-fn  (fn [_] "never")}}
+               "coerced" {:tool-name "coerced"
+                          :title-fn  (fn [{:keys [who]}]
+                                       (str "Greeting " (str/join ", " (cond-> who
+                                                                         (string? who) vector))))}}
         stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
     (testing "title-fn result becomes :title"
       (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
@@ -1165,17 +1068,10 @@
     (testing "a tool without a title-fn is untouched"
       (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
              (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
-    (testing "the tool's :decode runs first, so the title describes the arguments the tool will run with"
-      (is (= [{:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}
-               :title "Greeting Sam"}]
-             (stamp {:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}}))))
-    (testing "a throwing :decode leaves the part untitled"
-      (is (= [{:type :tool-input :id "c6" :function "badcode" :arguments {}}]
-             (stamp {:type :tool-input :id "c6" :function "badcode" :arguments {}}))))
-    (testing "a double-encoded argument is coerced before :decode, as it is before the tool runs"
-      (is (= [{:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}
+    (testing "a double-encoded argument is coerced, as it is before the tool runs"
+      (is (= [{:type :tool-input :id "c7" :function "coerced" :arguments {:who "[\"Sam\",\"Kim\"]"}
                :title "Greeting Sam, Kim"}]
-             (stamp {:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}}))))
+             (stamp {:type :tool-input :id "c7" :function "coerced" :arguments {:who "[\"Sam\",\"Kim\"]"}}))))
     (testing "non-tool-input parts pass through"
       (is (= [{:type :text :id "t1" :text "hi"}]
              (stamp {:type :text :id "t1" :text "hi"}))))))
