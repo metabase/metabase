@@ -119,6 +119,15 @@ export const isDark = (c: string) => {
   return Color(color(c)).isDark();
 };
 
+/** Returns undefined for CSS expressions or variables, which cannot be parsed */
+export const tryIsDark = (c: string): boolean | undefined => {
+  try {
+    return isDark(c);
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * Lighten or darken the color, based on whether it's dark or light.
  * Can be used for deriving hover or highlight colors.

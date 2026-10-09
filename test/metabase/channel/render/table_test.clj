@@ -6,6 +6,7 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
@@ -236,6 +237,47 @@
             (is (= ["1" "1" "2"]
                    (map #(first (:content %)) td-els))
                 "Body should include row indices as first column")))))))
+
+(deftest table-striped-rows-test
+  (mt/dataset test-data
+    (let [q (str "SELECT 1 AS A, 2 AS B"
+                 " UNION ALL SELECT 3 AS A, 4 AS B"
+                 " UNION ALL SELECT 5 AS A, 6 AS B"
+                 " UNION ALL SELECT 7 AS A, 8 AS B")
+          body-row-backgrounds
+          (fn [viz]
+            (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                               :type     :native
+                                                                               :native   {:query q}}
+                                                      :visualization_settings viz}]
+              (let [doc     (render.tu/render-card-as-hickory! card-id)
+                    tbodies (hik.s/select (hik.s/tag :tbody) doc)
+                    rows    (mapcat #(hik.s/select (hik.s/tag :tr) %) tbodies)]
+                (mapv (fn [row-el]
+                        (->> (hik.s/select (hik.s/tag :td) row-el)
+                             (mapv #(get-in % [:attrs :style]))
+                             (every? (fn [style]
+                                       (str/includes? (or style "")
+                                                      (str "background-color: " style/color-row-stripe-bg))))))
+                      rows))))]
+      (testing "Alternating rows are shaded when table.striped is enabled"
+        (is (= [false true false true]
+               (body-row-backgrounds {:table.striped true}))))
+      (testing "Row index column also gets the stripe background"
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query q}}
+                                                  :visualization_settings {:table.striped   true
+                                                                           :table.row_index true}}]
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
+                tbodies (hik.s/select (hik.s/tag :tbody) doc)
+                rows    (mapcat #(hik.s/select (hik.s/tag :tr) %) tbodies)
+                second-row-first-cell (first (hik.s/select (hik.s/tag :td) (second rows)))]
+            (is (str/includes? (get-in second-row-first-cell [:attrs :style])
+                               (str "background-color: " style/color-row-stripe-bg))))))
+      (testing "No rows are shaded when table.striped is disabled or absent"
+        (is (every? false? (body-row-backgrounds {:table.striped false})))
+        (is (every? false? (body-row-backgrounds {})))))))
 
 (deftest table-minibar-test
   (mt/dataset test-data

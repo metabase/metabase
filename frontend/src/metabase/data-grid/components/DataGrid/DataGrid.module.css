@@ -86,6 +86,13 @@
   width: 100%;
   position: relative;
 
+  &.striped {
+    background-color: var(
+      --data-grid-striped-bg-color,
+      var(--mb-color-background-hover)
+    );
+  }
+
   &.active {
     background-color: color-mix(
       in srgb,

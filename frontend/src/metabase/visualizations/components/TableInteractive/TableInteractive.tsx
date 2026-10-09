@@ -42,6 +42,7 @@ import type {
   PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { getDefaultCellBackgroundColor } from "metabase/data-grid/utils/striped-background-color";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -503,6 +504,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     };
   }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
 
+  const dataGridTheme: DataGridTheme = useMemo(
+    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
+    [tableTheme, theme?.other?.fontSize],
+  );
+
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
@@ -513,13 +519,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const isImage = columnSettings["view_as"] === "image";
       const headerVariant =
         hasColumnReordering || isDashboard ? "light" : "outline";
-      const getBackgroundColor = memoize(
-        (value: RowValue, rowIndex: number) =>
-          settings["table._cell_background_getter"]?.(
-            value,
-            rowIndex,
-            col.name,
-          ) ?? tableTheme?.cell?.backgroundColor,
+      const getBackgroundColor = memoize((value: RowValue, rowIndex: number) =>
+        settings["table._cell_background_getter"]?.(value, rowIndex, col.name),
       );
 
       const formatter = columnFormatters[columnIndex];
@@ -603,9 +604,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         options.cell = ({
           getValue,
           row,
-        }: CellContext<RowValues, RowValue>) => {
+          isStriped,
+        }: CellContext<RowValues, RowValue> & { isStriped?: boolean }) => {
           const value = getValue();
-          const backgroundColor = getBackgroundColor(value, row?.index);
+          const backgroundColor =
+            getBackgroundColor(value, row?.index) ??
+            getDefaultCellBackgroundColor(dataGridTheme, isStriped);
           const columnExtent = getColumnExtent(cols, rows, columnIndex);
           const isHighlighted = highlightedCellKeys.has(
             getHighlightedTableCellKey({ rowIndex: row.index, columnIndex }),
@@ -645,7 +649,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isPivoted,
     rows,
     settings,
-    tableTheme,
+    dataGridTheme,
     isDashboard,
     tc,
     highlightedCellKeys,
@@ -725,11 +729,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isDocument,
     zoomedRowIndex,
   ]);
-
-  const dataGridTheme: DataGridTheme = useMemo(
-    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
-    [tableTheme, theme?.other?.fontSize],
-  );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
     return {
@@ -894,6 +893,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       >
         <DataGrid
           {...tableProps}
+          striped={settings["table.striped"]}
           styles={dataGridStyles}
           showRowsCount={isDashboard}
           formatRowsCountMessage={formatRowsCountMessage}
