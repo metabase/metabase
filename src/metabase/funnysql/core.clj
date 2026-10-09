@@ -843,7 +843,7 @@
 
 (defn- inline! [x context]
   (letfn [(inlineable-atomic-value? [x]
-            ((some-fn number? boolean?) x))
+            ((some-fn nil? number? boolean?) x))
           ;; splice numbers directly rather than via [[compile!]], since [[number!]] binds non-integral ones
           (inline-atomic-value! [x]
             ((if (number? x) splice-number! compile!) x context))]
@@ -861,7 +861,7 @@
       :else
       (do
         ;; TODO (Cam 2026-10-01) Make this an actual error instead of just a warning
-        (log/warnf ":inline is only allowed for numbers and booleans, got: %s" (pr-str x))
+        (log/warnf ":inline is only allowed for numbers, booleans and nil, got: %s" (pr-str x))
         (compile! x context)))))
 
 (defn- check-valid-unit [unit]
