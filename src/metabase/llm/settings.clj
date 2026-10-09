@@ -449,7 +449,7 @@
   :export?    false
   :getter     (connection-field-getter :llm-openai-compatible-api-base-url)
   :setter     (connection-field-setter :llm-openai-compatible-api-base-url)
-  :doc        "Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+  :doc        "Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.")
 
 (defsetting llm-openai-compatible-api-key
   (deferred-tru "The API key for the server that the OpenAI-compatible connection talks to, if it asks for one.")
