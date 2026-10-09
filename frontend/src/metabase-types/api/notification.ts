@@ -225,6 +225,12 @@ export type AdminNotificationListParams = {
   sort_direction?: SortDirection;
 };
 
+export type AdminNotificationCountsResponse = {
+  all: number;
+  failing: number;
+  ownerless: number;
+};
+
 export type AdminNotificationListResponse = {
   data: AdminNotification[];
   total: number;

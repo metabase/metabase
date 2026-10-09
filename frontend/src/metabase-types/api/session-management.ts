@@ -97,6 +97,11 @@ export type SessionListParams = SessionFilters &
     "sort-direction"?: SortDirection;
   };
 
+export type SessionCountsResponse = {
+  active: number;
+  ended: number;
+};
+
 export type SessionListResponse = PaginationResponse & {
   data: Session[];
 };

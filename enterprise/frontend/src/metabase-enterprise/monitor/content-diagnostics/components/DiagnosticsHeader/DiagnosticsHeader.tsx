@@ -4,28 +4,37 @@ import { c, t } from "ttag";
 import {
   type PillTab,
   PillTabNavigation,
+  getTabCount,
 } from "metabase/common/components/PillTabNavigation";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Group, Icon, Stack, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { contentDiagnosticsApi } from "metabase-enterprise/api/content-diagnostics";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
+  const { currentData: counts, isError } =
+    contentDiagnosticsApi.endpoints.getContentDiagnosticsCounts.useQueryState(
+      undefined,
+    );
   const tabs: PillTab[] = [
     {
       label: c("Navigation tab for content that hasn't been used recently")
         .t`Stale`,
       to: Urls.staleContent(),
       icon: "clock",
+      count: getTabCount({ value: counts?.stale, isError }),
     },
     {
       label: c("Navigation tab for duplicated content").t`Duplicated`,
       to: Urls.duplicatedContent(),
       icon: "copy",
+      count: getTabCount({ value: counts?.duplicated, isError }),
     },
     {
       label: c("Navigation tab for slow-loading content").t`Slow`,
       to: Urls.slowContent(),
       icon: "gauge",
+      count: getTabCount({ value: counts?.slow, isError }),
     },
     {
       label: c(
@@ -33,16 +42,19 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
       ).t`Empty`,
       to: Urls.imbalancedContent("empty"),
       icon: "unreferenced",
+      count: getTabCount({ value: counts?.empty, isError }),
     },
     {
       label: c("Navigation tab for content with very few items").t`Sparse`,
       to: Urls.imbalancedContent("sparse"),
       icon: "layout_grid",
+      count: getTabCount({ value: counts?.sparse, isError }),
     },
     {
       label: c("Navigation tab for content with too many items").t`Crowded`,
       to: Urls.imbalancedContent("crowded"),
       icon: "grid_bordered",
+      count: getTabCount({ value: counts?.crowded, isError }),
     },
   ];
 

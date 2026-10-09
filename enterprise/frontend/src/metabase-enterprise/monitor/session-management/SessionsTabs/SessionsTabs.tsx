@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { Icon, Tabs } from "metabase/ui";
+import {
+  PillTabNavigation,
+  getTabCount,
+} from "metabase/common/components/PillTabNavigation";
+import { useSessionCountsQuery } from "metabase-enterprise/api";
 import type { IconName } from "metabase-types/api";
 
 import type { SessionsTab } from "../SessionsPage/types";
@@ -17,37 +21,25 @@ type TabConfig = {
 };
 
 export const SessionsTabs = ({ tab, onChange }: SessionsTabsProps) => {
+  const { currentData: counts, isError } = useSessionCountsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const tabs: TabConfig[] = [
     { value: "active", icon: "key", label: t`Active` },
     { value: "ended", icon: "history", label: t`Ended` },
   ];
 
-  const handleTabChange = (value: string | null) => {
-    const next = tabs.find((config) => config.value === value);
-    if (next !== undefined) {
-      onChange(next.value);
-    }
-  };
-
   return (
-    <Tabs
-      variant="pills"
-      value={tab}
-      onChange={handleTabChange}
+    <PillTabNavigation
       data-testid="sessions-tabs"
-    >
-      <Tabs.List>
-        {tabs.map((config) => (
-          <Tabs.Tab
-            key={config.value}
-            value={config.value}
-            leftSection={<Icon name={config.icon} />}
-            data-testid={`sessions-tab-${config.value}`}
-          >
-            {config.label}
-          </Tabs.Tab>
-        ))}
-      </Tabs.List>
-    </Tabs>
+      tabs={tabs.map((config) => ({
+        label: config.label,
+        icon: config.icon,
+        count: getTabCount({ value: counts?.[config.value], isError }),
+        isSelected: config.value === tab,
+        "data-testid": `sessions-tab-${config.value}`,
+        onClick: () => onChange(config.value),
+      }))}
+    />
   );
 };

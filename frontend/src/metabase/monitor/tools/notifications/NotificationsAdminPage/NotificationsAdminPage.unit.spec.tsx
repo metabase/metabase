@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import {
   findRequests,
@@ -8,6 +8,9 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  setupAdminListNotificationsEndpoint,
+  setupAdminNotificationCountsEndpoint,
+  setupAdminNotificationCountsErrorEndpoint,
   setupAdminNotificationDetailEndpoint,
   setupAdminNotificationDetailErrorEndpoint,
   setupBulkNotificationActionEndpoint,
@@ -24,8 +27,11 @@ import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { defer } from "metabase/utils/promise";
 import type {
   AdminNotification,
+  AdminNotificationCountsResponse,
+  AdminNotificationListResponse,
   NotificationId,
   UserListResult,
 } from "metabase-types/api";
@@ -137,9 +143,12 @@ type SetupOpts = {
   cardDelay?: number;
   detailDelay?: number;
   detailErrorId?: NotificationId;
-  failingCountError?: boolean;
-  allCountError?: boolean;
+  countsError?: boolean;
+  countsDelay?: number;
   refetchDelay?: number;
+  getListResponse?: (
+    call: CallLog,
+  ) => AdminNotificationListResponse | Promise<AdminNotificationListResponse>;
 };
 
 const setup = ({
@@ -153,40 +162,39 @@ const setup = ({
   cardDelay,
   detailDelay,
   detailErrorId,
-  failingCountError = false,
-  allCountError = false,
+  countsError = false,
+  countsDelay,
   refetchDelay,
+  getListResponse,
 }: SetupOpts = {}) => {
   let listCallCount = 0;
 
-  fetchMock.get("path:/api/notification/admin", (call) => {
-    const params = new URL(call.url).searchParams;
-    if (
-      params.get("limit") === "1" &&
-      params.get("last_check_status") === "failing"
-    ) {
-      return failingCountError
-        ? { status: 500, body: { message: "Count failed" } }
-        : { data: [], total: failingCount, limit: 1, offset: 0 };
+  if (countsError) {
+    setupAdminNotificationCountsErrorEndpoint();
+  } else {
+    setupAdminNotificationCountsEndpoint(
+      { all: allCount, failing: failingCount, ownerless: ownerlessCount },
+      { delay: countsDelay, name: "admin-notification-counts" },
+    );
+  }
+
+  setupAdminListNotificationsEndpoint((call) => {
+    if (getListResponse) {
+      return getListResponse(call);
     }
-    if (params.get("limit") === "1" && params.get("creatorless") === "true") {
-      return { data: [], total: ownerlessCount, limit: 1, offset: 0 };
-    }
-    if (
-      params.get("limit") === "1" &&
-      !params.has("last_check_status") &&
-      !params.has("creatorless")
-    ) {
-      return allCountError
-        ? { status: 500, body: { message: "All count failed" } }
-        : { data: [], total: allCount, limit: 1, offset: 0 };
-    }
-    const page = { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
+    const page: AdminNotificationListResponse = {
+      data: notifications,
+      total,
+      limit: PAGE_SIZE,
+      offset: 0,
+    };
     listCallCount += 1;
     // Keep every refetch except the initial load in flight, so tests can
     // observe the loading state the grid.
     return refetchDelay !== undefined && listCallCount > 1
-      ? new Promise((resolve) => setTimeout(() => resolve(page), refetchDelay))
+      ? new Promise<AdminNotificationListResponse>((resolve) =>
+          setTimeout(() => resolve(page), refetchDelay),
+        )
       : page;
   });
 
@@ -236,24 +244,8 @@ const getListCalls = () =>
         new URL(call.url).searchParams.get("limit") === String(PAGE_SIZE),
     );
 
-const getAllCountCalls = () =>
-  fetchMock.callHistory.calls("path:/api/notification/admin").filter((call) => {
-    const params = new URL(call.url).searchParams;
-    return (
-      params.get("limit") === "1" &&
-      !params.has("last_check_status") &&
-      !params.has("creatorless")
-    );
-  });
-
-const getFailingCountCalls = () =>
-  fetchMock.callHistory.calls("path:/api/notification/admin").filter((call) => {
-    const params = new URL(call.url).searchParams;
-    return (
-      params.get("limit") === "1" &&
-      params.get("last_check_status") === "failing"
-    );
-  });
+const getCountCalls = () =>
+  fetchMock.callHistory.calls("path:/api/notification/admin/counts");
 
 const getBulkPosts = async () =>
   (await findRequests("POST")).filter((request) =>
@@ -307,6 +299,130 @@ describe("NotificationsAdminPage", () => {
       expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
         "120",
       );
+    });
+
+    it.each(["Failing", "Ownerless"])(
+      "shows a skeleton instead of stale rows while the uncached %s tab loads",
+      async (tab) => {
+        const pending = defer<AdminNotificationListResponse>();
+        const nextNotification = createMockAdminNotification({
+          id: 2,
+          creator: null,
+        });
+        const nextPage: AdminNotificationListResponse = {
+          data: [nextNotification],
+          total: 1,
+          limit: PAGE_SIZE,
+          offset: 0,
+        };
+        setup({
+          total: 120,
+          failingCount: 1,
+          ownerlessCount: 1,
+          initialRoute: `${PATHNAME}?sort_column=last_check`,
+          getListResponse: ({ url }) => {
+            const params = new URL(url).searchParams;
+            return params.get("creatorless") === "true" ||
+              params.get("last_check_status") === "failing"
+              ? pending.promise
+              : {
+                  data: [notification1],
+                  total: 120,
+                  limit: PAGE_SIZE,
+                  offset: 0,
+                };
+          },
+        });
+        try {
+          await waitForTableToLoad();
+          expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+          await userEvent.click(screen.getByRole("button", { name: tab }));
+          await waitFor(() => expect(getListCalls()).toHaveLength(2));
+          expect(
+            screen.getByTestId("notifications-admin-table"),
+          ).toHaveAttribute("aria-busy", "true");
+          expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("notification-row-1"),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("pagination-total"),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("loading-overlay"),
+          ).not.toBeInTheDocument();
+          act(() => pending.resolve(nextPage));
+          expect(
+            await screen.findByTestId("notification-row-2"),
+          ).toBeInTheDocument();
+          await userEvent.click(
+            screen.getByRole("button", { name: "All alerts" }),
+          );
+          expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+          expect(screen.getByRole("treegrid")).toBeInTheDocument();
+          expect(
+            screen.getByTestId("notifications-admin-table"),
+          ).toHaveAttribute("aria-busy", "false");
+          expect(getListCalls()).toHaveLength(2);
+        } finally {
+          pending.resolve(nextPage);
+        }
+      },
+    );
+
+    it("retains rows under the loading overlay during a same-query mutation refresh", async () => {
+      const pending = defer<AdminNotificationListResponse>();
+      const initialPage: AdminNotificationListResponse = {
+        data: [notification1],
+        total: 1,
+        limit: PAGE_SIZE,
+        offset: 0,
+      };
+      const refreshedPage: AdminNotificationListResponse = {
+        data: [],
+        total: 0,
+        limit: PAGE_SIZE,
+        offset: 0,
+      };
+      let calls = 0;
+      setup({
+        getListResponse: () => (++calls === 1 ? initialPage : pending.promise),
+      });
+      try {
+        await waitForTableToLoad();
+        await userEvent.click(
+          within(screen.getByTestId("notification-row-1")).getByRole(
+            "checkbox",
+          ),
+        );
+        await userEvent.click(
+          within(screen.getByTestId("toast-card")).getByRole("button", {
+            name: "Delete",
+          }),
+        );
+        const dialog = await screen.findByRole("dialog");
+        await userEvent.click(
+          within(dialog).getByRole("button", { name: "Delete" }),
+        );
+        expect(
+          await screen.findByTestId("loading-overlay"),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+        expect(screen.getByRole("treegrid")).toBeInTheDocument();
+        expect(screen.getByTestId("notifications-admin-table")).toHaveAttribute(
+          "aria-busy",
+          "true",
+        );
+        expect(getListCalls()).toHaveLength(2);
+        act(() => pending.resolve(refreshedPage));
+        expect(await screen.findByText("No alerts")).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("notification-row-1"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+      } finally {
+        pending.resolve(refreshedPage);
+      }
     });
 
     it("renders a row per notification with its owner and question", async () => {
@@ -421,6 +537,37 @@ describe("NotificationsAdminPage", () => {
       expect(within(allTab).getByText("137")).toBeInTheDocument();
     });
 
+    it("reuses the section counts when switching tabs repeatedly", async () => {
+      const { router } = setup({
+        allCount: 137,
+        failingCount: 9,
+        ownerlessCount: 33,
+      });
+      await waitForTableToLoad();
+      expect(
+        await within(
+          screen.getByRole("button", { name: "All alerts" }),
+        ).findByText("137"),
+      ).toBeVisible();
+
+      for (let visit = 0; visit < 2; visit++) {
+        for (const [label, tab] of [
+          ["Failing", "failing"],
+          ["Ownerless", "ownerless"],
+          ["All alerts", "all"],
+        ]) {
+          await userEvent.click(screen.getByRole("button", { name: label }));
+          await waitFor(() => {
+            expect(
+              new URLSearchParams(router?.location.search).get("tab") ?? "all",
+            ).toBe(tab);
+          });
+          await waitForTableToLoad();
+        }
+      }
+      expect(getCountCalls()).toHaveLength(1);
+    });
+
     it("pushes the selected tab to the URL", async () => {
       const { router } = setup({ failingCount: 2 });
       await waitForTableToLoad();
@@ -467,43 +614,91 @@ describe("NotificationsAdminPage", () => {
       ).toBeInTheDocument();
     });
 
-    it("counts all alerts with the active filter applied", async () => {
-      setup({ initialRoute: `${PATHNAME}?active=false` });
+    it.each(["false", "all"])(
+      "keeps counters on the default population when the table's active filter is %s",
+      async (active) => {
+        setup({ initialRoute: `${PATHNAME}?active=${active}`, allCount: 23 });
+        await waitForTableToLoad();
+
+        expect(
+          await within(
+            screen.getByRole("button", { name: "All alerts" }),
+          ).findByText("23"),
+        ).toBeInTheDocument();
+        expect(getCountCalls()).toHaveLength(1);
+        expect(new URL(getCountCalls()[0].url).search).toBe("");
+        expect(
+          fetchMock.callHistory
+            .calls("path:/api/notification/admin")
+            .every(
+              (call) =>
+                new URL(call.url).searchParams.get("limit") ===
+                String(PAGE_SIZE),
+            ),
+        ).toBe(true);
+      },
+    );
+
+    it("keeps navigation and the table usable when counters fail", async () => {
+      setup({ countsError: true });
       await waitForTableToLoad();
 
-      const [countCall] = getAllCountCalls();
-      expect(new URL(countCall.url).searchParams.get("active")).toBe("false");
+      await waitFor(() => {
+        expect(getCountCalls()).toHaveLength(1);
+        expect(screen.queryAllByTestId("tab-count-skeleton")).toHaveLength(0);
+      });
+      for (const label of ["All alerts", "Failing", "Ownerless"]) {
+        const tab = screen.getByRole("button", { name: label });
+        expect(tab).toBeEnabled();
+        expect(within(tab).queryByText(/\d/)).not.toBeInTheDocument();
+      }
     });
 
-    it("counts inactive failing alerts when the status filter includes them", async () => {
-      setup({ initialRoute: `${PATHNAME}?active=all` });
+    it("does not wait for counters to show the alert table", async () => {
+      setup({ countsDelay: 1000 });
       await waitForTableToLoad();
 
-      const [countCall] = getFailingCountCalls();
-      expect(new URL(countCall.url).searchParams.get("active")).toBeNull();
-    });
-
-    it("shows count query errors", async () => {
-      setup({ failingCountError: true });
-
-      expect(await screen.findByText("Count failed")).toBeInTheDocument();
-    });
-
-    it("keeps the page usable when only the all-count request fails", async () => {
-      setup({ allCountError: true, failingCount: 2 });
-      await waitForTableToLoad();
-
-      expect(screen.queryByText("All count failed")).not.toBeInTheDocument();
+      expect(screen.getAllByTestId("tab-count-skeleton")).toHaveLength(3);
+      expect(screen.getByRole("button", { name: "Failing" })).toBeEnabled();
+      act(() => jest.advanceTimersByTime(1000));
       expect(
-        within(screen.getByTestId("notifications-admin-tab-all")).queryByText(
-          /\d/,
-        ),
-      ).not.toBeInTheDocument();
-      expect(
-        within(screen.getByTestId("notifications-admin-tab-failing")).getByText(
-          "2",
-        ),
+        await within(
+          screen.getByRole("button", { name: "All alerts" }),
+        ).findByText("1"),
       ).toBeInTheDocument();
+    });
+
+    it("refreshes counters after archiving and keeps the previous count until the response arrives", async () => {
+      setup({ allCount: 9 });
+      await waitForTableToLoad();
+      const allTab = screen.getByRole("button", { name: "All alerts" });
+      expect(await within(allTab).findByText("9")).toBeInTheDocument();
+      const countsRefetch = defer<AdminNotificationCountsResponse>();
+      fetchMock.modifyRoute("admin-notification-counts", {
+        response: () => countsRefetch.promise,
+      });
+
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: "Select all" }),
+      );
+      await userEvent.click(
+        within(screen.getByTestId("toast-card")).getByRole("button", {
+          name: "Delete",
+        }),
+      );
+      await userEvent.click(
+        within(await screen.findByTestId("confirm-modal")).getByRole("button", {
+          name: "Delete",
+        }),
+      );
+
+      await waitFor(() => expect(getCountCalls()).toHaveLength(2));
+      expect(within(allTab).getByText("9")).toBeInTheDocument();
+      expect(
+        within(allTab).queryByTestId("tab-count-skeleton"),
+      ).not.toBeInTheDocument();
+      act(() => countsRefetch.resolve({ all: 8, failing: 0, ownerless: 0 }));
+      expect(await within(allTab).findByText("8")).toBeInTheDocument();
     });
   });
 
@@ -554,6 +749,112 @@ describe("NotificationsAdminPage", () => {
       });
     });
 
+    it("paginates Ownerless alerts and preserves its filters and page boundaries", async () => {
+      const ownerless = Array.from({ length: 42 }, (_, index) =>
+        createMockAdminNotification({
+          id: index + 1,
+          creator_id: null,
+          creator: null,
+        }),
+      );
+      const all = [
+        ...ownerless,
+        createMockAdminNotification({ id: 99, creator: ANN }),
+      ];
+      const { router } = setup({
+        notifications: all,
+        total: 43,
+        ownerlessCount: 42,
+        initialRoute: `${PATHNAME}?tab=ownerless`,
+        getListResponse: ({ url }) => {
+          const params = new URL(url).searchParams;
+          const rows = params.get("creatorless") === "true" ? ownerless : all;
+          const offset = Number(params.get("offset"));
+          const limit = Number(params.get("limit"));
+          return {
+            data: rows.slice(offset, offset + limit),
+            total: rows.length,
+            limit,
+            offset,
+          };
+        },
+      });
+      await waitForTableToLoad();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("42");
+      expect(
+        screen.getByRole("button", { name: "Previous page" }),
+      ).toBeDisabled();
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(
+        await screen.findByTestId("notification-row-26"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("notification-row-1"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Previous page" }),
+      ).toBeEnabled();
+      expect(getListCalls()).toHaveLength(2);
+      const secondPageParams = new URL(getListCalls()[1].url).searchParams;
+      expect(secondPageParams.get("limit")).toBe("25");
+      expect(secondPageParams.get("offset")).toBe("25");
+      expect(secondPageParams.get("active")).toBe("true");
+      expect(secondPageParams.get("creatorless")).toBe("true");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Previous page" }),
+      );
+      expect(
+        await screen.findByTestId("notification-row-1"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Previous page" }),
+      ).toBeDisabled();
+      expect(getListCalls()).toHaveLength(2);
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(
+        await screen.findByTestId("notification-row-26"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "All alerts" }));
+      await waitFor(() => {
+        const params = new URLSearchParams(router?.location.search);
+        expect(params.get("page") ?? "0").toBe("0");
+        expect(params.get("tab") ?? "all").toBe("all");
+      });
+      expect(
+        await screen.findByTestId("notification-row-1"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("43");
+    });
+
+    it.each([0, 25])(
+      "hides the Ownerless pager when its %i alerts fit on one page",
+      async (total) => {
+        setup({
+          notifications: Array.from({ length: total }, (_, index) =>
+            createMockAdminNotification({
+              id: index + 1,
+              creator_id: null,
+              creator: null,
+            }),
+          ),
+          total,
+          ownerlessCount: total,
+          initialRoute: `${PATHNAME}?tab=ownerless`,
+        });
+        await waitForTableToLoad();
+        expect(
+          screen.queryByTestId("pagination-total"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Next page" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Previous page" }),
+        ).not.toBeInTheDocument();
+      },
+    );
+
     it("paginates and refetches with the next offset", async () => {
       const { router } = setup({
         notifications: [notification1, notification2],
@@ -572,7 +873,7 @@ describe("NotificationsAdminPage", () => {
 
       await waitFor(() => {
         expect(
-          getListCalls().some((call) => call.url.includes("offset=50")),
+          getListCalls().some((call) => call.url.includes("offset=25")),
         ).toBe(true);
       });
 
@@ -584,7 +885,7 @@ describe("NotificationsAdminPage", () => {
       });
     });
 
-    it("covers the grid with a loading overlay while a refetch is in flight", async () => {
+    it("shows a skeleton while uncached sorting results are in flight", async () => {
       setup({
         notifications: [notification1, notification2],
         refetchDelay: 10_000,
@@ -598,23 +899,22 @@ describe("NotificationsAdminPage", () => {
 
       await userEvent.click(screen.getByRole("columnheader", { name: "ID" }));
 
+      await waitFor(() => expect(getListCalls()).toHaveLength(2));
       expect(
-        await within(table).findByTestId("loading-overlay"),
-      ).toBeInTheDocument();
+        within(table).queryByTestId("loading-overlay"),
+      ).not.toBeInTheDocument();
       expect(table).toHaveAttribute("aria-busy", "true");
-      expect(screen.getByRole("treegrid")).toBeInTheDocument();
-      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+      expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("notification-row-1"),
+      ).not.toBeInTheDocument();
 
       act(() => {
         jest.advanceTimersByTime(10_000);
       });
 
-      await waitFor(() => {
-        expect(
-          within(table).queryByTestId("loading-overlay"),
-        ).not.toBeInTheDocument();
-      });
-      expect(table).toHaveAttribute("aria-busy", "false");
+      await waitFor(() => expect(table).toHaveAttribute("aria-busy", "false"));
+      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
     });
 
     it("keeps search loading feedback in the grid instead of the search box", async () => {
@@ -633,9 +933,12 @@ describe("NotificationsAdminPage", () => {
       });
 
       const table = screen.getByTestId("notifications-admin-table");
+      await waitFor(() => expect(getListCalls()).toHaveLength(2));
       expect(
-        await within(table).findByTestId("loading-overlay"),
-      ).toBeInTheDocument();
+        within(table).queryByTestId("loading-overlay"),
+      ).not.toBeInTheDocument();
+      expect(table).toHaveAttribute("aria-busy", "true");
+      expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
       await waitFor(() => {
@@ -648,11 +951,8 @@ describe("NotificationsAdminPage", () => {
         jest.advanceTimersByTime(10_000);
       });
 
-      await waitFor(() => {
-        expect(
-          within(table).queryByTestId("loading-overlay"),
-        ).not.toBeInTheDocument();
-      });
+      await waitFor(() => expect(table).toHaveAttribute("aria-busy", "false"));
+      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
     });
   });
 

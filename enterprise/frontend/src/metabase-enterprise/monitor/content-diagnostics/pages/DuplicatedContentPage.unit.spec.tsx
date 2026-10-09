@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupListDuplicatedFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -31,6 +32,8 @@ import {
   createMockListDuplicatedFindingsResponse,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { ContentDiagnosticsSectionLayout } from "../routes";
 
 import { DuplicatedContentPage } from "./DuplicatedContentPage";
 
@@ -66,6 +69,7 @@ function setup({
   error = false,
   getResponse,
 }: SetupOpts = {}) {
+  setupContentDiagnosticsCountsEndpoint();
   if (error) {
     fetchMock.get("path:/api/ee/content-diagnostics/duplicated", {
       status: 500,
@@ -93,14 +97,16 @@ function setup({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router } = renderWithProviders(
-    <Route
-      path={Urls.duplicatedContent()}
-      element={
-        <MonitorContent>
-          <DuplicatedContentPage />
-        </MonitorContent>
-      }
-    />,
+    <Route element={<ContentDiagnosticsSectionLayout />}>
+      <Route
+        path={Urls.duplicatedContent()}
+        element={
+          <MonitorContent>
+            <DuplicatedContentPage />
+          </MonitorContent>
+        }
+      />
+    </Route>,
     {
       withRouter: true,
       initialRoute: `${Urls.duplicatedContent()}${queryToSearch(urlParams)}`,

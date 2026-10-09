@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import type {
+  AdminNotificationCountsResponse,
   AdminNotificationDetail,
   AdminNotificationListParams,
   AdminNotificationListResponse,
@@ -104,6 +105,13 @@ export const notificationApi = Api.injectEndpoints({
         body: _.omit(body, "creator"),
       }),
     }),
+    adminNotificationCounts: builder.query<
+      AdminNotificationCountsResponse,
+      void
+    >({
+      query: () => ({ method: "GET", url: "/api/notification/admin/counts" }),
+      providesTags: [adminNotificationListTag(), listTag("notification")],
+    }),
     adminListNotifications: builder.query<
       AdminNotificationListResponse,
       AdminNotificationListParams | void
@@ -180,6 +188,7 @@ export const {
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
+  useAdminNotificationCountsQuery,
   useAdminListNotificationsQuery,
   useLazyAdminListNotificationsQuery,
   useBulkNotificationActionMutation,

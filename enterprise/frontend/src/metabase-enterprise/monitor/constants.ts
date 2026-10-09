@@ -1,1 +1,1 @@
-export const PAGE_SIZE = 25;
+export { PAGE_SIZE } from "metabase/monitor/constants";

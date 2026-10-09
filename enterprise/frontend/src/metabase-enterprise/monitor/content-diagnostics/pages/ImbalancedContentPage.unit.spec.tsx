@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import type { ComponentType } from "react";
 
 import {
+  setupContentDiagnosticsCountsEndpoint,
   setupInvalidateFindingsEndpoint,
   setupListImbalancedFindingsEndpoint,
   setupUserKeyValueEndpoints,
@@ -33,6 +34,8 @@ import {
   createMockListImbalancedFindingsResponse,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { ContentDiagnosticsSectionLayout } from "../routes";
 
 import {
   CrowdedContentPage,
@@ -85,6 +88,7 @@ function setup({
   error = false,
   getResponse,
 }: SetupOpts = {}) {
+  setupContentDiagnosticsCountsEndpoint();
   if (error) {
     fetchMock.get("path:/api/ee/content-diagnostics/imbalanced", {
       status: 500,
@@ -113,14 +117,16 @@ function setup({
 
   const Page = PAGE_BY_MODE[mode];
   const { router } = renderWithProviders(
-    <Route
-      path={Urls.imbalancedContent(mode)}
-      element={
-        <MonitorContent>
-          <Page />
-        </MonitorContent>
-      }
-    />,
+    <Route element={<ContentDiagnosticsSectionLayout />}>
+      <Route
+        path={Urls.imbalancedContent(mode)}
+        element={
+          <MonitorContent>
+            <Page />
+          </MonitorContent>
+        }
+      />
+    </Route>,
     {
       withRouter: true,
       initialRoute: `${Urls.imbalancedContent(mode)}${queryToSearch(urlParams)}`,

@@ -233,6 +233,17 @@
                                    limit offset
                                    authed-session-key-hash))}))
 
+(api.macros/defendpoint :get "/counts" :- [:map {:closed true}
+                                         [:active ms/IntGreaterThanOrEqualToZero]
+                                         [:ended ms/IntGreaterThanOrEqualToZero]]
+  "Count active and ended sessions without table filters or pagination. Superuser only."
+  [_route-params _query-params _body _request]
+  (api/check-superuser)
+  (let [liveness (session/liveness-params)
+        filters  (params->filters nil)]
+    {:active (sm.db/session-count liveness (assoc filters :status :live))
+     :ended  (sm.db/session-count liveness (assoc filters :status :ended))}))
+
 (defn- record-revocation!
   "Write the audit trail for a revoke by criteria: one `:event/sessions-revoked` summary row for the whole call, plus
   one `:event/session-revoked` row per affected user, tied back to the summary by the criteria they share. Never
