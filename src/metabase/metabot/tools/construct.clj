@@ -17,7 +17,8 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -36,7 +37,7 @@
 
 (def ^:private construct-visualization-schema
   [:map {:closed true}
-   [:chart_type :string]])
+   [:chart_type (into [:enum] shared/chart-types)]])
 
 (def ^:private construct-notebook-query-json-schema
   "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
@@ -841,63 +842,54 @@
 
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
-(mu/defn ^{:tool-name "construct_notebook_query"
-           :scope     scope/agent-notebook-create}
-  construct-notebook-query-tool
-  "Construct and visualize a notebook query from a metric, model, or table.
+(defn- chart-instructions
+  [chart-id]
+  (let [link (te/link "Chart" "metabase://chart/" chart-id)]
+    (te/lines
+     "Your query and chart have been created successfully."
+     ""
+     "Next steps to present the chart to the user:"
+     (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+     "- If creating multiple charts, present all chart links")))
 
-  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
-  short, human-friendly `title` shown above the resulting chart. Also provide a concise
-  one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
-  any notable filter); it is used as the saved question's description. See
-  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
-  (try
-    (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
-          chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
-                                      :table)
-          query-result            (execute-representations-query
-                                   query
-                                   {:recovery-hint recovery-hints/recovery-hint})
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [chart-result (create-chart-tools/create-chart
-                            {:query-id      (:query-id structured)
-                             :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
-              full-structured (assoc structured
-                                     :result-type   :query
-                                     :chart-id      (:chart-id chart-result)
-                                     :chart-type    (:chart-type chart-result)
-                                     :chart-link    (:chart-link chart-result)
-                                     :chart-content (:chart-content chart-result))
-              instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-                (te/lines
-                 "Your query and chart have been created successfully."
-                 ""
-                 "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-                 "- If creating multiple charts, present all chart links"))
-              chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        [(streaming/viz-part
-                                {:entity-id   (:chart-id chart-result)
-                                 :query-id    (:query-id structured)
-                                 :query       (links/->legacy-mbql (:query structured))
-                                 :display     chart-type
-                                 :title       title
-                                 :description description})]
-           :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
-    (catch Exception e
-      (tools.u/handle-agent-or-api-error e))))
+(defrecord ConstructNotebookQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "construct_notebook_query"
+     :description (str "Construct and visualize a notebook query from a metric, model, or table.\n\n"
+                       "Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, "
+                       "plus a short, human-friendly `title` shown above the resulting chart. Also provide "
+                       "a concise one- or two-sentence `description` of what the chart shows (the metric, "
+                       "the grouping, and any notable filter); it is used as the saved question's "
+                       "description.")
+     :scope       scope/agent-notebook-create
+     :args        construct-notebook-query-args-schema})
+  (handle [_ {:keys [query visualization title description]} _ctx]
+    (let [chart-type   (chart-type->keyword (or (:chart_type visualization) "table"))
+          {structured :structured-output} (tools/with-pipeline-errors
+                                            (execute-representations-query query))
+          {:keys [query-id]} structured
+          chart-result (create-chart-tools/create-chart
+                        {:query-id      query-id
+                         :chart-type    chart-type
+                         :queries-state {query-id (:query structured)}})
+          chart-id     (:chart-id chart-result)]
+      {:output            (str "<result>\n" (structured->chart-xml structured chart-id chart-type) "\n</result>\n"
+                               "<instructions>\n" (chart-instructions chart-id) "\n</instructions>")
+       :data-parts        [(streaming/viz-part
+                            {:entity-id   chart-id
+                             :query-id    query-id
+                             :query       (links/->legacy-mbql (:query structured))
+                             :display     chart-type
+                             :title       title
+                             :description description})]
+       :structured-output (assoc structured
+                                 :result-type   :query
+                                 :chart-id      chart-id
+                                 :chart-type    (:chart-type chart-result)
+                                 :chart-link    (:chart-link chart-result)
+                                 :chart-content (:chart-content chart-result))})))
+
+(def construct-notebook-query-tool
+  "The `construct_notebook_query` tool."
+  (->ConstructNotebookQueryTool))

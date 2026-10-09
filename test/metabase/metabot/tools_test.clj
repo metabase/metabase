@@ -9,6 +9,8 @@
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
    [metabase.notification.models :as models.notification]
@@ -128,8 +130,8 @@
     (doseq [[tool-name tool-var] tools]
       (is (var? tool-var))
       (is (string? tool-name))
-      (is (= tool-name (:tool-name (meta tool-var))))
-      (is (some? (:schema (meta tool-var)))))))
+      (is (= tool-name (:name (tools.legacy/declaration-of tool-var))))
+      (is (some? (:args (tools.legacy/declaration-of tool-var)))))))
 
 (deftest search-tool-test
   (testing "search-tool var has valid metadata"
@@ -162,12 +164,13 @@
                                        :source-table ["Sample" "PUBLIC" "ORDERS"]
                                        :aggregation  [["count" {}]]}]}
               result (binding [shared/*profile-id* :nlq]
-                       (agent-tools/construct-notebook-query-tool
-                        {:reasoning     "check seats"
-                         :query         query-input
-                         :title         "Seat check"
-                         :description   "Total order count."
-                         :visualization {:chart_type "table"}}))]
+                       (tools.core/handle agent-tools/construct-notebook-query-tool
+                                          {:reasoning     "check seats"
+                                           :query         query-input
+                                           :title         "Seat check"
+                                           :description   "Total order count."
+                                           :visualization {:chart_type "table"}}
+                                          {}))]
           (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
@@ -176,27 +179,30 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
-(defn- construct-tool-output-for-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`.
-  Returns the `:output` the LLM would see when the tool handles `e`; otherwise `e` propagates."
+(defn- construct-tool-with-thrown
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`."
   [e]
-  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
-    (:output (binding [shared/*profile-id* :nlq]
-               (agent-tools/construct-notebook-query-tool
-                {:query       {:lib/type "mbql/query" :stages []}
-                 :title       "Seat check"
-                 :description "Total order count."})))))
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [& _] (throw e))]
+    (binding [shared/*profile-id* :nlq]
+      (tools.core/handle agent-tools/construct-notebook-query-tool
+                         {:query       {:lib/type "mbql/query" :stages []}
+                          :title       "Seat check"
+                          :description "Total order count."}
+                         {}))))
 
 (deftest construct-notebook-query-tool-permission-error-test
-  (testing (str "a 403 reaches the LLM as the permission message itself: `api/read-check` throws "
-                "a bare one with no `:agent-error?`, and the user not being allowed the card they "
-                "named is not a failure to report as one")
-    (is (= "You don't have permissions to do that."
-           (construct-tool-output-for-thrown
-            (ex-info "You don't have permissions to do that." {:status-code 403})))))
+  (testing (str "a 403 from the pipeline becomes the declared not-found error: `api/read-check` throws "
+                "a bare one with no `:agent-error?`, and saying the entity exists but is forbidden would "
+                "leak it")
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (construct-tool-with-thrown
+                          (ex-info "You don't have permissions to do that." {:status-code 403}))))]
+      (is (=? {:class :recoverable
+               :code  :metabase.metabot.tools.recoverable.common/not-found}
+              (tools.error/classify e)))))
   (testing "an unexpected error propagates to the agent loop"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"something went sideways"
-                          (construct-tool-output-for-thrown
+                          (construct-tool-with-thrown
                            (ex-info "something went sideways" {}))))))
 
 (deftest ->entries-test

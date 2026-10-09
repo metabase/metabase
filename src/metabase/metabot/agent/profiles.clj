@@ -47,7 +47,7 @@
                     {:tool-var   tool-var
                      :metadata   (meta tool-var)
                      :errors     (me/humanize (mu/explain tool-var-schema tool-var))})))
-  (when-let [required-scope (:scope (meta tool-var))]
+  (when-let [required-scope (:scope (tools.legacy/declaration-of tool-var))]
     (when-not (api-scope/registered-scope? required-scope)
       (throw (ex-info (str "Tool has unregistered scope: " required-scope)
                       {:tool-var tool-var
@@ -93,7 +93,7 @@
                [:terminal-tools {:optional true} [:set :string]]
                [:system-prompt-context {:optional true} [:fn ifn?]]]]
   (let [tool-vars     (:tools profile)
-        tool-name-seq (map #(:tool-name (meta %)) tool-vars)
+        tool-name-seq (map #(:name (tools.legacy/declaration-of %)) tool-vars)
         tool-names    (set tool-name-seq)]
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))

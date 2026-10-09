@@ -8,6 +8,8 @@
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.charts.edit :as edit-chart]
    [metabase.metabot.tools.construct :as tools.construct]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.query-processor :as qp]
@@ -16,6 +18,9 @@
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn- construct-query [args]
+  (tools.core/handle tools.construct/construct-notebook-query-tool args {}))
 
 (deftest edit-chart-test
   (testing "edits a chart's visualization type"
@@ -154,7 +159,7 @@
                                    "aggregation"  [["count" {}]]
                                    "breakout"     [["field" {} category-field-fk]]}]}
           external-query (walk/keywordize-keys query-data)
-          construct-result (tools.construct/construct-notebook-query-tool
+          construct-result (construct-query
                             {:query         external-query
                              :title         "Counts by category"
                              :description   "Counts by category."
@@ -205,7 +210,7 @@
                                                        ["field" {}
                                                         [db-name "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
+            result (construct-query
                     {:query         external-query
                      :title         "Test chart"
                      :description   "Test chart description."
@@ -250,23 +255,23 @@
                                                        ["field" {}
                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})]
-        (testing "tool returns a clear, agent-targeted error rather than producing a chart"
-          ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
-          ;; `{:output <message>}` (no `:structured-output`). That's the LLM-visible signal.
-          (is (nil? (:structured-output result))
-              (str "expected no structured-output, got: " (pr-str result)))
-          (is (string? (:output result)))
-          (is (re-find #"Sample" (:output result))
+            e      (is (thrown? clojure.lang.ExceptionInfo
+                                (construct-query
+                                 {:query         external-query
+                                  :title         "Test chart"
+                                  :description   "Test chart description."
+                                  :visualization {:chart_type "bar"}})))
+            error  (tools.error/classify e)]
+        (testing "tool raises a declared, agent-targeted error rather than producing a chart"
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.recoverable.pipeline/unknown-database}
+                  error))
+          (is (re-find #"Sample" (:message error))
               (str "error message should mention the offending DB name; got: "
-                   (:output result)))
-          (is (re-find #"read_resource|Unknown database" (:output result))
-              (str "error message should hint at the recovery path; got: "
-                   (:output result))))))))
+                   (:message error)))
+          (is (re-find #"Unknown database" (:message error))
+              (str "error message should name the failure; got: "
+                   (:message error))))))))
 
 (deftest construct-notebook-query-llm-uses-canonical-db-name-end-to-end-test
   (testing (str "Symmetric to the previous test: the LLM writes `database: Sample Database`\n"
@@ -284,7 +289,7 @@
                                      "breakout"     [["field" {}
                                                       [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
+            result (construct-query
                     {:query         external-query
                      :title         "Test chart"
                      :description   "Test chart description."
@@ -340,7 +345,7 @@
                                      "breakout"     [["field" {} category-field-fk]]}]}
             external-query (walk/keywordize-keys query-data)
 
-            construct-result (tools.construct/construct-notebook-query-tool
+            construct-result (construct-query
                               {:query         external-query
                                :title         "Test chart"
                                :description   "Test chart description."

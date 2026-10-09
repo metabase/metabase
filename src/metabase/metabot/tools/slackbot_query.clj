@@ -10,9 +10,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.metabot.tools.recovery-hints :as recovery-hints]
-   [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.util.malli :as mu]))
+   [metabase.metabot.tools.core :as tools]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,33 +29,28 @@
               :description "Visualization type for displaying the query results in Slack. Required in practice whenever the user asks for a chart or graph, and it must match any requested chart type. Valid values: 'table', 'bar', 'line', 'pie', 'area', 'row', 'scatter', 'funnel'. Use requested chart types like 'line', 'bar', 'area', 'pie', 'scatter', 'funnel', 'row', or 'table' when they fit the query. Omitting this field falls back to Metabase's default table display, so do not omit it for chart or graph requests. Only omit it when you intentionally want a plain table and the user did not request a chart type."}
     [:maybe [:enum "table" "bar" "line" "pie" "area" "row" "scatter" "funnel"]]]])
 
-(mu/defn ^{:tool-name "construct_notebook_query"
-           :scope     scope/agent-notebook-create}
-  slackbot-construct-notebook-query-tool
-  "Construct a notebook query from a metric, model, or table. The query results will be
-  rendered as a visualization in Slack.
+(defrecord SlackbotConstructNotebookQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "construct_notebook_query"
+     :description (str "Construct a notebook query from a metric, model, or table. The query results will be "
+                       "rendered as a visualization in Slack.")
+     :scope       scope/agent-notebook-create
+     :args        slackbot-query-schema})
+  (handle [_ {:keys [query title display]} _ctx]
+    (let [{structured :structured-output} (tools/with-pipeline-errors
+                                            (construct/execute-representations-query query))
+          adhoc-viz-value                 (cond-> {:query (:query structured)
+                                                   :link  (streaming/query->question-url (:query structured) display)}
+                                            title   (assoc :title title)
+                                            display (assoc :display display))]
+      {:output            (str "Query created. The visualization will be posted as a separate "
+                               "follow-up message in the thread with the query results. "
+                               "Use future tense when referring to results — they haven't "
+                               "appeared yet when the user sees your text.")
+       :structured-output structured
+       :data-parts        [(streaming/adhoc-viz-part adhoc-viz-value)]})))
 
-  See `resources/metabot/prompts/tools/construct_notebook_query.md` for the JSON format the
-  `:query` argument must follow — the prompt is shared with the main `construct_notebook_query`
-  tool."
-  [{:keys [_reasoning query title display]} :- slackbot-query-schema]
-  (try
-    (let [query-result (construct/execute-representations-query
-                        query
-                        {:recovery-hint recovery-hints/recovery-hint})
-          structured   (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [metabase-link (streaming/query->question-url (:query structured) display)
-              adhoc-viz-value (cond-> {:query (:query structured)
-                                       :link  metabase-link}
-                                title   (assoc :title title)
-                                display (assoc :display display))]
-          {:structured-output structured
-           :instructions (str "Query created. The visualization will be posted as a separate "
-                              "follow-up message in the thread with the query results. "
-                              "Use future tense when referring to results — they haven't "
-                              "appeared yet when the user sees your text.")
-           :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
-        query-result))
-    (catch Exception e
-      (metabot.tools.u/handle-agent-or-api-error e))))
+(def slackbot-construct-notebook-query-tool
+  "The Slackbot variant of the `construct_notebook_query` tool."
+  (->SlackbotConstructNotebookQueryTool))

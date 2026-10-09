@@ -4,6 +4,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -183,34 +184,32 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
-(mu/defn ^{:tool-name "document_construct_model_chart"
-           :scope     scope/agent-document-create}
-  document-construct-model-chart-tool
-  "Construct notebook/model-backed chart draft payload for document insertion."
-  [{:keys [name description query viz_settings]} :- model-chart-schema]
-  (try
-    (let [chart-type (get viz_settings :chart_type)
-          result     (construct-tools/construct-notebook-query-tool
-                      {:query query
-                       :title name
-                       :description description
-                       :visualization {:chart_type chart-type}})
-          structured (or (:structured-output result) (:structured_output result))
-          query-id   (:query-id structured)
-          dataset-query (:query structured)]
-      (if (map? dataset-query)
-        {:output "Draft chart payload generated from model/notebook query."
-         :structured-output {:tool          "document_construct_model_chart"
-                             :name          name
-                             :description   description
-                             :dataset_query dataset-query
-                             :display       chart-type
-                             :chart_type    chart-type
-                             :query_id      query-id
-                             :query         dataset-query
-                             :result-type   :chart-draft}}
-        ;; Preserve tool error messaging from construct_notebook_query path.
-        (or result
-            {:output "Failed to construct model chart draft."})))
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+(defrecord DocumentConstructModelChartTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "document_construct_model_chart"
+     :description "Construct notebook/model-backed chart draft payload for document insertion."
+     :scope       scope/agent-document-create
+     :args        model-chart-schema})
+  (handle [_ {:keys [name description query viz_settings]} ctx]
+    (let [chart-type (:chart_type viz_settings)
+          {structured :structured-output} (tools/handle construct-tools/construct-notebook-query-tool
+                                                        {:query         query
+                                                         :title         name
+                                                         :description   description
+                                                         :visualization {:chart_type chart-type}}
+                                                        ctx)]
+      {:output            "Draft chart payload generated from model/notebook query."
+       :structured-output {:tool          "document_construct_model_chart"
+                           :name          name
+                           :description   description
+                           :dataset_query (:query structured)
+                           :display       chart-type
+                           :chart_type    chart-type
+                           :query_id      (:query-id structured)
+                           :query         (:query structured)
+                           :result-type   :chart-draft}})))
+
+(def document-construct-model-chart-tool
+  "The `document_construct_model_chart` tool."
+  (->DocumentConstructModelChartTool))
