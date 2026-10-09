@@ -9,7 +9,12 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import {
+  renderRoutes,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import type { MfaStatus, TokenFeatures, User } from "metabase-types/api";
 import {
@@ -95,9 +100,21 @@ export function setup({
   return {
     ...rendered,
     user,
+    openDisconnectDialog,
     disconnect: async () =>
       userEvent.click(
-        await screen.findByRole("button", { name: "Disconnect" }),
+        within(await openDisconnectDialog()).getByRole("button", {
+          name: "Disconnect",
+        }),
       ),
   };
+}
+
+async function openDisconnectDialog() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Disconnect" }),
+  );
+  return screen.findByRole("dialog", {
+    name: "Disconnect your Slack account?",
+  });
 }
