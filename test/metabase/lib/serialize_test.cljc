@@ -262,6 +262,7 @@
    :qp.pivot/num-remapped-breakouts          3
    :qp.pivot/remapped-indexes                {0 1}
    :query-permissions/referenced-card-ids    #{1}
+   :query-permissions/referenced-snippet-ids #{2}
    :destination-database/id                  2
    :impersonation/role                       "analyst"
    :impersonation/admin?                     true
