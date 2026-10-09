@@ -94,6 +94,7 @@ Before frontend edits, including test-only changes, read `frontend/CLAUDE.md`, `
 
 - **No comments by default**. Well-named identifiers carry the `what`.
 - **Comments should be concise**. Add a short, concise comment only when the `why` is non-obvious: a workaround, a hidden invariant, a subtle ordering constraint, a clever reduction. Never document the actual implementation, focus on the intent and the why.
+- **JSDoc describes the contract, not the implementation**. On exported functions, hooks and components, say what the caller gets: what it does, what it returns and what happens in edge cases (e.g. `undefined` while loading).
 
 ## Test authoring
 
