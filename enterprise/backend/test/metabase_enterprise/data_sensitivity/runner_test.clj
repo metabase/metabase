@@ -336,6 +336,54 @@
                     :usage         {:input_tokens 100 :output_tokens 20 :total_tokens 120}}
                    (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))))))))))
 
+(deftest call-timeout-test
+  (testing "a chunk call that runs past the call timeout fails its table, and the run goes on to the next table"
+    (do-with-temp-tables
+     2
+     (fn [db tables]
+       (let [blocked? (atom true)]
+         (core-test/do-with-llm!
+          (fn [& [_model messages :as args]]
+            (when (and (= "ds_00" (table-name-in-message messages)) @blocked?)
+              (Thread/sleep 30000))
+            (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args))
+          (fn []
+            (mt/with-dynamic-fn-redefs [runner/call-timeout-ms (constantly 200)]
+              (let [timer (u/start-timer)
+                    run   (start! db {:attributes [:data_sensitivity]})
+                    ended (wait-ended (:id run))]
+                (is (< (u/since-ms timer) 10000) "the run does not wait for the blocked call")
+                (is (=? {:status        :succeeded
+                         :done_tables   1
+                         :failed_tables 1
+                         :table_errors  [{:table_id   (:id (first tables))
+                                          :error_code "llm_call_timeout"
+                                          :elapsed_ms #(>= % 200)}]
+                         :usage         {:max_table_ms #(>= % 200)}}
+                        ended))
+                (is (= [(:id (second tables))] (distinct (map :table_id (suggestions (:id run))))))
+                (testing "retry-failed classifies the timed-out table when the provider answers"
+                  (reset! blocked? false)
+                  (let [retry (wait-ended (:id (runner/retry-failed! db ended (mt/user->id :crowberto))))]
+                    (is (=? {:status :succeeded :done_tables 1 :failed_tables 0} retry))
+                    (is (= [(:id (first tables))] (distinct (map :table_id (suggestions (:id retry)))))))))))))))))
+
+(deftest slow-calls-test
+  (testing "the run's usage counts the chunk calls slower than slow-call-ms and records the slowest table time"
+    (do-with-temp-tables
+     2
+     (fn [db _tables]
+       (core-test/do-with-llm!
+        (fn [& [_model messages :as args]]
+          (when (= "ds_01" (table-name-in-message messages))
+            (Thread/sleep 300))
+          (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args))
+        (fn []
+          (mt/with-dynamic-fn-redefs [runner/slow-call-ms (constantly 150)]
+            (is (=? {:status :succeeded
+                     :usage  {:slow_calls 1 :max_table_ms #(>= % 300)}}
+                    (wait-ended (:id (start! db {:attributes [:data_sensitivity]}))))))))))))
+
 (deftest usage-limit-stop-test
   (testing "a usage limit ends the run with status usage_limit and leaves the remaining tables unprocessed"
     (do-with-temp-tables

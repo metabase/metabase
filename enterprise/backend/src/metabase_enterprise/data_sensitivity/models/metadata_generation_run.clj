@@ -39,7 +39,8 @@
    [:table_name {:optional true} [:maybe :string]]
    [:schema     {:optional true} [:maybe :string]]
    [:message    :string]
-   [:error_code {:optional true} [:maybe :string]]])
+   [:error_code {:optional true} [:maybe :string]]
+   [:elapsed_ms {:optional true} [:maybe :int]]])
 
 (mr/def ::usage
   [:map {:closed true}
@@ -48,7 +49,9 @@
    [:cache_read_tokens     {:optional true} :int]
    [:cache_creation_tokens {:optional true} :int]
    [:total_tokens          :int]
-   [:cost_usd              {:optional true} [:maybe number?]]])
+   [:cost_usd              {:optional true} [:maybe number?]]
+   [:max_table_ms          {:optional true} :int]
+   [:slow_calls            {:optional true} :int]])
 
 (mr/def ::metadata-generation-run
   [:map

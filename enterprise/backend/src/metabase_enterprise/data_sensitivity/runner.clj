@@ -11,7 +11,9 @@
   not finish go to `table_errors` with error code `not_processed`, so [[retry-failed!]] covers them.
 
   Each node heartbeats the runs it owns ([[heartbeat-tick!]]); [[reap-orphaned-runs!]] fails an active run whose
-  heartbeat is stale, for example after its node died."
+  heartbeat is stale, for example after its node died. The heartbeat does not show that the chunk calls progress, so
+  the worker fails a chunk call that runs longer than [[call-timeout-ms]] (decision `ghy-4721-chunk-call-timeout`).
+  The run's `usage` records `max_table_ms` and `slow_calls` so a slow provider is visible on the run."
   (:require
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
@@ -49,6 +51,18 @@
 (def poll-ms
   "How often, in milliseconds, a worker that waits on chunk calls reads the status of its run."
   1000)
+
+(defn call-timeout-ms
+  "How long, in milliseconds, one chunk call may run, its retries included, before the worker fails it. Haiku chunk
+  calls take 5 to 20 s. The Metabot client socket timeout bounds only the gap between two reads, so a stalled
+  connection can hold a call far longer."
+  []
+  180000)
+
+(defn slow-call-ms
+  "A chunk call that runs longer than this, in milliseconds, counts in the run's `usage.slow_calls`."
+  []
+  60000)
 
 (def heartbeat-stale-minutes
   "An active run whose heartbeat is older than this is reaped."
@@ -178,14 +192,31 @@
           (reset! stop (if (= :canceling status) :canceled :gone))
           (stop! @stop))))))
 
+(defn- check-call-time!
+  "Throw when the chunk call of `timing` has run longer than [[call-timeout-ms]]."
+  [timing]
+  (when-let [timer (:timer @timing)]
+    (when (> (u/since-ms timer) (call-timeout-ms))
+      (throw (ex-info (tru "The AI provider did not answer within {0} seconds." (quot (call-timeout-ms) 1000))
+                      {:error-code "llm_call_timeout"})))))
+
+(defn- slow-calls
+  "The number of chunk calls of `submitted` that started and ran, or have run so far, longer than [[slow-call-ms]]."
+  [{:keys [timings]}]
+  (count (filter (fn [timing]
+                   (when-let [{:keys [timer elapsed-ms]} @timing]
+                     (> (or elapsed-ms (u/since-ms timer)) (slow-call-ms))))
+                 timings)))
+
 (defn- await-chunks!
-  "Wait for every chunk call of `submitted` in order, checking for a stop every [[poll-ms]]. Rethrows a failure as
-  soon as its chunk ends, as the chunk threw it."
-  [ctx {:keys [futures]}]
-  (doseq [^Future f futures]
+  "Wait for every chunk call of `submitted` in order, checking for a stop and for a call that runs too long every
+  [[poll-ms]]. Rethrows a failure as soon as its chunk ends, as the chunk threw it."
+  [ctx {:keys [futures timings]}]
+  (doseq [[^Future f timing] (map vector futures timings)]
     (loop []
       (when-not (.isDone f)
         (check-stop! ctx)
+        (check-call-time! timing)
         (try
           (.get f poll-ms TimeUnit/MILLISECONDS)
           (catch TimeoutException _ nil)
@@ -262,8 +293,9 @@
 
 (defn- classify-table
   "Build the packet of `table`, submit its chunk calls with all Metabot permissions granted, and wait for them while
-  checking for a stop. Cancels the chunks not finished on any exit. On a failure or stop, puts the model and the usage
-  of the chunks that finished in the `:spent` volatile of `ctx`, then rethrows."
+  checking for a stop. Cancels the chunks not finished on any exit. Returns the number of [[slow-calls]] with the
+  result. On a failure or stop, puts the model, the usage of the chunks that finished and the slow calls in the
+  `:spent` volatile of `ctx`, then rethrows."
   [{:keys [attributes] :as ctx} database table packet-opts]
   (let [packet (database-routing/with-database-routing-off
                  (context/table-packet database table packet-opts))]
@@ -272,35 +304,48 @@
     (let [submitted (metabot/do-with-all-metabot-permissions #(llm/submit-packet packet :attributes attributes))]
       (try
         (await-chunks! ctx submitted)
-        {:packet packet :classification (llm/collect-packet submitted)}
+        {:packet packet :classification (llm/collect-packet submitted) :slow-calls (slow-calls submitted)}
         (catch Throwable e
-          (vreset! (:spent ctx) {:model (:model submitted) :usage (llm/completed-usage submitted)})
+          (vreset! (:spent ctx) {:model      (:model submitted)
+                                 :usage      (llm/completed-usage submitted)
+                                 :slow-calls (slow-calls submitted)})
           (throw e))
         (finally
           (llm/cancel-packet submitted))))))
 
-(defn- table-error [table message code]
-  {:table_id   (:id table)
-   :table_name (:name table)
-   :schema     (:schema table)
-   :message    message
-   :error_code code})
+(defn- table-error
+  ([table message code]
+   {:table_id   (:id table)
+    :table_name (:name table)
+    :schema     (:schema table)
+    :message    message
+    :error_code code})
+  ([table message code elapsed-ms]
+   (assoc (table-error table message code) :elapsed_ms elapsed-ms)))
 
 (defn- error-code [e]
   (let [{:keys [error-code type]} (ex-data e)]
     (some-> (or error-code type) u/qualified-name)))
 
-(defn- progress [{:keys [done failed errors usage]}]
-  {:done_tables done :failed_tables failed :table_errors errors :usage usage})
+(defn- progress [{:keys [done failed errors usage max-table-ms slow-calls] :or {max-table-ms 0 slow-calls 0}}]
+  {:done_tables   done
+   :failed_tables failed
+   :table_errors  errors
+   :usage         (assoc usage :max_table_ms max-table-ms :slow_calls slow-calls)})
 
 (defn- not-processed [state tables message]
   (update state :errors into (map #(table-error % message "not_processed")) tables))
 
 (defn- add-spent
-  "Add the usage of the chunks that finished in a table that failed or stopped, from [[classify-table]], to `state`."
-  [state {:keys [model usage]}]
+  "Add the usage of the chunks that finished in a table that failed or stopped, and its slow calls, from
+  [[classify-table]], to `state`."
+  [state {:keys [model usage slow-calls]}]
   (cond-> state
-    usage (update :usage add-usage model usage)))
+    usage      (update :usage add-usage model usage)
+    slow-calls (update :slow-calls (fnil + 0) slow-calls)))
+
+(defn- add-table-time [state elapsed-ms]
+  (update state :max-table-ms (fnil max 0) elapsed-ms))
 
 (defn- run-tables!
   "Classify `tables` in order and record each one on the run. Returns the final state, with `:end` set to how the
@@ -313,18 +358,21 @@
       (if-not table
         (assoc state :end :succeeded)
         (let [_       (vreset! spent nil)
+              timer   (u/start-timer)
               outcome (try
                         (check-stop! ctx)
-                        (let [{:keys [packet classification]} (classify-table ctx database table packet-opts)]
+                        (let [{:keys [packet classification slow-calls]} (classify-table ctx database table packet-opts)]
                           {:usage       (:usage classification)
                            :model       (:model classification)
+                           :slow-calls  slow-calls
                            :suggestions (table-suggestions run-id attributes packet (:fields classification))})
                         (catch Exception e
                           (cond
                             (stop-reason e)         {:end [:stopped (stop-reason e)]}
                             (interrupted? e)        {:end [:stopped :gone]}
                             (usage-limit-message e) {:end [:usage-limit (usage-limit-message e)]}
-                            :else                   {:error e})))]
+                            :else                   {:error e})))
+              elapsed (long (u/since-ms timer))]
           (cond
             (:end outcome)
             (assoc (add-spent state @spent) :end (:end outcome) :remaining remaining)
@@ -332,8 +380,10 @@
             (:error outcome)
             (let [e     (:error outcome)
                   state (-> (add-spent state @spent)
+                            (add-table-time elapsed)
                             (update :failed inc)
-                            (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e))))]
+                            (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e)
+                                                              elapsed)))]
               (log/warnf e "Metadata generation run %d failed for table %d" run-id (:id table))
               (if (db/record-table! run-id (progress state) [])
                 (recur state more)
@@ -341,7 +391,9 @@
 
             :else
             (let [state (-> state
+                            (add-table-time elapsed)
                             (update :done inc)
+                            (update :slow-calls (fnil + 0) (:slow-calls outcome))
                             (update :usage add-usage (:model outcome) (:usage outcome)))]
               (if (db/record-table! run-id (progress state) (:suggestions outcome))
                 (recur state more)

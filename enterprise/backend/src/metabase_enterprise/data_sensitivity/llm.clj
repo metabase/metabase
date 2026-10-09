@@ -15,6 +15,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -576,7 +577,8 @@ name, gets a chunk of its own. The size
   "The chunk calls of one packet on [[pool]], from [[submit-packet]], for [[collect-packet]]."
   [:map {:closed true}
    [:model   :string]
-   [:futures [:sequential [:fn #(instance? Future %)]]]])
+   [:futures [:sequential [:fn #(instance? Future %)]]]
+   [:timings [:sequential [:fn #(instance? clojure.lang.Atom %)]]]])
 
 (mu/defn submit-packet :- ::submitted
   "Submit one call per chunk of `packet` to [[pool]] and return without waiting. A chunk holds at most `chunk-size`
@@ -584,20 +586,30 @@ name, gets a chunk of its own. The size
   caller's dynamic bindings: the Metabot permission binding and the current user. `model` defaults to the mini model,
   `attributes` to [[default-attributes]], and `chunk-size` to [[chunk-size-for]] the attributes. A packet with no fields
   submits nothing. Only chunk calls run on the pool; a task never submits to it, so the pool cannot
-  deadlock. A caller that stops before [[collect-packet]] returns must call [[cancel-packet]]."
+  deadlock. A caller that stops before [[collect-packet]] returns must call [[cancel-packet]]. Each atom in `:timings`
+  holds nil while its chunk waits, `{:timer t}` from [[u/start-timer]] once the call starts on the pool, and also
+  `:elapsed-ms` once the call ends."
   [packet :- ::context/packet
    & {:keys [model attributes chunk-size char-budget]} :- [:maybe ::classify-options]]
   (let [model      (or model (metabot.settings/llm-mini-model))
-        attributes (or attributes default-attributes)]
+        attributes (or attributes default-attributes)
+        chunks     (chunk-fields packet
+                                 attributes
+                                 (or chunk-size (chunk-size-for attributes))
+                                 (or char-budget default-char-budget))
+        timings    (mapv (fn [_] (atom nil)) chunks)]
     {:model   model
-     :futures (mapv (fn [fields]
+     :timings timings
+     :futures (mapv (fn [fields timing]
                       (cp/future pool
-                                 (let [{:keys [result parts]} (call! model attributes packet fields)]
-                                   (assoc (parse-response fields result attributes) :usage (usage-from-parts parts)))))
-                    (chunk-fields packet
-                                  attributes
-                                  (or chunk-size (chunk-size-for attributes))
-                                  (or char-budget default-char-budget)))}))
+                                 (reset! timing {:timer (u/start-timer)})
+                                 (try
+                                   (let [{:keys [result parts]} (call! model attributes packet fields)]
+                                     (assoc (parse-response fields result attributes) :usage (usage-from-parts parts)))
+                                   (finally
+                                     (swap! timing #(assoc % :elapsed-ms (u/since-ms (:timer %))))))))
+                    chunks
+                    timings)}))
 
 (defn cancel-packet
   "Cancel the chunk calls of a [[submit-packet]] result that have not finished, last chunk first. The pool runs chunks

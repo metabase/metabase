@@ -31,6 +31,7 @@ export type MetadataGenerationTableError = {
   schema?: string | null;
   message: string;
   error_code?: string | null;
+  elapsed_ms?: number | null;
 };
 
 export type MetadataGenerationUsage = {
@@ -40,6 +41,8 @@ export type MetadataGenerationUsage = {
   cache_creation_tokens?: number;
   total_tokens: number;
   cost_usd?: number | null;
+  max_table_ms?: number;
+  slow_calls?: number;
 };
 
 export type MetadataGenerationRun = {
