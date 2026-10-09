@@ -3,30 +3,27 @@ import * as Urls from "metabase/urls";
 import type { TreeItem } from "../types";
 
 export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
-  const treeItem = row.original;
+  const { data, name } = row.original;
 
-  if (
-    treeItem.model === "empty-state" ||
-    treeItem.data.model === "empty-state"
-  ) {
+  if (data.model === "empty-state" || data.model === "collection") {
     return null;
   }
-  // Unjustified type cast. FIXME
-  const entityId = treeItem.data.id as number;
-  if (treeItem.model === "metric") {
-    return Urls.dataStudioMetric(entityId);
+  if (data.id == null) {
+    return null;
   }
-  if (treeItem.model === "snippet") {
-    return Urls.dataStudioSnippet(entityId);
+
+  switch (data.model) {
+    case "table":
+      return Urls.dataStudioTable(data.id);
+    case "metric":
+      return Urls.dataStudioMetric(data.id);
+    case "snippet":
+      return Urls.dataStudioSnippet(data.id);
+    case "action":
+      return Urls.dataStudioAction(data.id);
+    case "dashboard":
+      return Urls.dashboard({ id: data.id, name });
+    default:
+      return null;
   }
-  if (treeItem.model === "action") {
-    return Urls.dataStudioAction(entityId);
-  }
-  if (treeItem.model === "table") {
-    return Urls.dataStudioTable(entityId);
-  }
-  if (treeItem.model === "dashboard") {
-    return Urls.dashboard({ id: entityId, name: treeItem.name });
-  }
-  return null;
 };

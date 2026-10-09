@@ -136,13 +136,12 @@ export function useLibraryTreeTableInstance({
         sortingFn: "datetime",
         width: "auto",
         widthPadding: 20,
-        cell: ({ row, getValue }) => {
-          if (row.original.model === "empty-state") {
+        cell: ({ row }) => {
+          const { model, updatedAt } = row.original;
+          if (model === "empty-state" || !updatedAt) {
             return null;
           }
-          // Unjustified type cast. FIXME
-          const dateValue = getValue() as string | undefined;
-          return dateValue ? <DateTime value={dateValue} /> : null;
+          return <DateTime value={updatedAt} />;
         },
       },
       {
@@ -231,13 +230,8 @@ function getRowCanExpand(row: Row<TreeItem>) {
     return true;
   }
   // Not loaded yet — check here/below from the API to know if expandable
-  if (!isEmptyStateData(data) && "here" in data) {
-    // Unjustified type cast. FIXME
-    const item = data as { here?: string[]; below?: string[] };
-    return (
-      (item.here != null && item.here.length > 0) ||
-      (item.below != null && item.below.length > 0)
-    );
+  if (data.model === "collection") {
+    return (data.here?.length ?? 0) > 0 || (data.below?.length ?? 0) > 0;
   }
   return false;
 }
