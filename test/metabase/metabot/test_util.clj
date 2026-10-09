@@ -15,7 +15,6 @@
 
 (def ^:private fixture-dir "test_resources/llm")
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *live*
   "When true, `raw-fixture` makes real API calls even if a cached file exists.
   Bind to `true` in the REPL to re-capture all fixtures:

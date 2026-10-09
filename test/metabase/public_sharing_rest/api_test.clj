@@ -2,6 +2,7 @@
   "Tests for `api/public/` (public links) endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.public-sharing-rest.api-test]}}}}}}
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -22,6 +23,7 @@
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -33,6 +35,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
+   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
@@ -214,6 +217,25 @@
           (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid))))))
         (with-temp-public-dashboard [{uuid :public_uuid, dashboard-id :id}]
           (is (= dashboard-id (:id (mt/client :get 200 (str "public/dashboard/" uuid))))))))))
+
+(deftest ^:synchronized public-uuid-prefix-lookup-is-bound-test
+  (testing "GHY-4587: every shared model resolves by its uuid through the bound prefix lookup"
+    (encryption-tu/with-encrypted-app-db
+      (mt/with-actions-enabled
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid, card-id :id}]
+            (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid)))))
+            (is (= card-id (:id (public-sharing/public-uuid->model :model/Card uuid)))))
+          (with-temp-public-dashboard [{uuid :public_uuid, dashboard-id :id}]
+            (is (= dashboard-id (:id (mt/client :get 200 (str "public/dashboard/" uuid)))))
+            (is (= dashboard-id (:id (public-sharing/public-uuid->model :model/Dashboard uuid)))))
+          (let [{uuid :public_uuid, :as action-opts} (shared-obj)]
+            (mt/with-actions [{action-id :action-id} action-opts]
+              (is (= action-id (:id (mt/client :get 200 (str "public/action/" uuid)))))
+              (is (= action-id (:id (public-sharing/public-uuid->model :model/Action uuid))))))
+          (mt/with-temp [:model/Document {uuid :public_uuid, document-id :id} (merge {:name "Shared Doc"} (shared-obj))]
+            (is (= document-id (:id (mt/client :get 200 (str "public/document/" uuid)))))
+            (is (= document-id (:id (public-sharing/public-uuid->model :model/Document uuid))))))))))
 
 (defn- assert-forged-plaintext-does-not-resolve!
   [model id]
@@ -2040,6 +2062,110 @@
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url dash card dashcard)))))))))))))
 
+(def ^:private error-leak-sql-canary "ERROR_LEAK_SQL_CANARY")
+(def ^:private error-leak-card-name-canary "ERROR LEAK CARD NAME CANARY")
+
+(defn- date-param-native-card
+  "A healthy native Card with a date field filter, so a caller-supplied parameter value can drive it to an error without
+  the Card itself being broken."
+  [display]
+  {:name          error-leak-card-name-canary
+   :display       display
+   :dataset_query {:database (mt/id)
+                   :type     :native
+                   :native   {:query         (str "SELECT COUNT(*) AS N FROM ORDERS WHERE {{d}} -- " error-leak-sql-canary)
+                              :template-tags {"d" {:id           "d"
+                                                   :name         "d"
+                                                   :display-name "D"
+                                                   :type         :dimension
+                                                   :widget-type  :date/all-options
+                                                   :dimension    [:field (mt/id :orders :created_at) nil]}}}}
+   :parameters    [{:id     "d"
+                    :type   :date/all-options
+                    :name   "D"
+                    :slug   "d"
+                    :target [:dimension [:template-tag "d"]]}]})
+
+(def ^:private unparseable-date-param
+  "A parameter value that passes endpoint validation but blows up while the query is being built."
+  (json/encode [{:id     "d"
+                 :type   "date/all-options"
+                 :target ["dimension" ["template-tag" "d"]]
+                 :value  "NOT-A-DATE"}]))
+
+(defn- assert-generic-query-error
+  "Assert that `response` (from [[client/client-full-response]]) is the generic public-endpoint failure body and that
+  nothing about the Card leaked into it."
+  [{:keys [status body]}]
+  (let [body-str (pr-str body)]
+    (testing "the query genuinely failed"
+      (is (contains? #{400 500} status)))
+    (testing "the body is the generic failed-query shape"
+      (is (=? {:status "failed"
+               :error  string?}
+              body))
+      (is (set/subset? (set (keys body)) #{:status :error :error_type})))
+    (testing "the Card's SQL, name, and a stacktrace must not reach an unauthenticated caller"
+      (is (not (str/includes? body-str error-leak-sql-canary)))
+      (is (not (str/includes? body-str error-leak-card-name-canary)))
+      (is (not (str/includes? body-str ":trace")))
+      (is (not (str/includes? body-str ":via"))))))
+
+(deftest public-pivot-card-error-does-not-leak-query-test
+  (testing "GET /api/public/pivot/card/:uuid/query"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace"
+      (mt/dataset test-data
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
+            (let [url (format "public/pivot/card/%s/query" uuid)]
+              (testing "sanity check: the Card is healthy without the bad parameter"
+                (is (= 202 (:status (client/client-full-response :get url)))))
+              (assert-generic-query-error
+               (client/client-full-response :get url :parameters unparseable-date-param)))))))))
+
+(deftest public-card-with-pivot-display-error-does-not-leak-query-test
+  (testing "GET /api/public/card/:uuid/query"
+    (testing "a Card with :display :pivot takes the pivot path on its ordinary public link too"
+      (mt/dataset test-data
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :pivot)]
+            (assert-generic-query-error
+             (client/client-full-response :get (format "public/card/%s/query" uuid)
+                                          :parameters unparseable-date-param))))))))
+
+(deftest public-pivot-dashcard-error-does-not-leak-query-test
+  (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+    (testing "an error raised before the QP runs must not leak the query of a Card that is not itself public"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash]
+          (mt/with-temp [:model/Card card {:name          error-leak-card-name-canary
+                                           :display       :pivot
+                                           :dataset_query {:database (mt/id)
+                                                           :type     :native
+                                                           :native   {:query (str "SELECT * FROM no_such_table -- "
+                                                                                  error-leak-sql-canary)}}}]
+            (let [dashcard (add-card-to-dashboard! card dash)]
+              ;; Both pivot flows fail with the same H2 "table not found" root cause, but H2 embeds the
+              ;; compiled SQL in its error message and the compiled SQL has different Metabase-added
+              ;; comments per path. The parity signature compares message text, so it flags this as a
+              ;; divergence even though the user-visible outcome is identical. Disable parity for this
+              ;; test rather than loosen the signature across the board.
+              (api.pivots/without-pivot-parity-check
+               (is (nil? (:public_uuid card)))
+               (assert-generic-query-error
+                (client/client-full-response :get (pivot-dashcard-url dash card dashcard)))))))))))
+
+(deftest public-card-query-exception-outside-qp-does-not-leak-test
+  (testing "GET /api/public/card/:uuid/query"
+    (testing "an exception that escapes the QP entirely (thrown outside its error-handling middleware) is still sanitized"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid} {:name error-leak-card-name-canary}]
+          (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
+                                      (fn [query _rff]
+                                        (throw (ex-info (str "Boom " error-leak-sql-canary) {:query query})))]
+            (assert-generic-query-error
+             (client/client-full-response :get (format "public/card/%s/query" uuid)))))))))
+
 ;;; ------------------------- POST /api/public/dashboard/:dashboard-uuid/dashcard/:uuid/execute ------------------------------
 
 (deftest execute-public-dashcard-action-test
@@ -2420,3 +2546,213 @@
               (testing "so the public endpoint won't run it"
                 (is (= "Not found."
                        (client/client :get 404 (dashcard-url dash blocked dashcard))))))))))))
+
+(defn- public-dashboard-properties []
+  {:public_uuid       (str (random-uuid))
+   :made_public_by_id (mt/user->id :crowberto)
+   :enable_embedding true
+   :parameters       []})
+
+(defn- dashboard-events [dashboard]
+  (into {} (map (juxt :id :timeline_events)) (:dashcards dashboard)))
+
+(defn- dashboard-event-ids [dashboard]
+  (update-vals (dashboard-events dashboard) #(mapv :id %)))
+
+(defn- public-dashboard [dashboard]
+  (mt/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))
+
+(deftest public-and-signed-dashboard-timeline-selections-test
+  (let [secret (u.random/secure-hex 32)]
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding-modular true
+                                       embedding-secret-key secret]
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Timeline first-timeline  {:collection_id (:id collection)}
+                     :model/Timeline second-timeline {:collection_id (:id collection)}
+                     :model/Timeline unrelated       {:collection_id (:id collection)}
+                     :model/Timeline archived        {:collection_id (:id collection) :archived true}
+                     :model/Timeline missing         {}
+                     :model/TimelineEvent first-event  {:timeline_id (:id first-timeline)}
+                     :model/TimelineEvent excluded     {:timeline_id (:id first-timeline)}
+                     :model/TimelineEvent _archived    {:timeline_id (:id first-timeline) :archived true}
+                     :model/TimelineEvent second-event {:timeline_id (:id second-timeline)}
+                     :model/TimelineEvent _unrelated   {:timeline_id (:id unrelated)}
+                     :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
+                     :model/Dashboard dashboard (public-dashboard-properties)
+                     :model/Card first-card
+                     {:display "line"
+                      :collection_id (:id collection)
+                      :visualization_settings {:timeline.selected_timeline_ids [(:id first-timeline)
+                                                                                (:id archived) (:id missing)]
+                                               :timeline.excluded_timeline_event_ids [(:id excluded)]}}
+                     :model/Card second-card
+                     {:display "line"
+                      :visualization_settings {:timeline.selected_timeline_ids [(:id second-timeline)]}}
+                     :model/Card unselected-card {:display "line" :collection_id (:id collection)}
+                     :model/Card empty-card
+                     {:display "line"
+                      :visualization_settings {:timeline.selected_timeline_ids []}}
+                     :model/DashboardCard first-dashcard {:dashboard_id (:id dashboard) :card_id (:id first-card)}
+                     :model/DashboardCard second-dashcard {:dashboard_id (:id dashboard) :card_id (:id second-card)}
+                     :model/DashboardCard unselected-dashcard {:dashboard_id (:id dashboard)
+                                                               :card_id (:id unselected-card)}
+                     :model/DashboardCard empty-dashcard {:dashboard_id (:id dashboard) :card_id (:id empty-card)}]
+        (t2/delete! :model/Timeline (:id missing))
+        (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+        (let [token (jwt/sign {:resource {:dashboard (:id dashboard)} :params {}} secret)
+              expected {(:id first-dashcard) [(:id first-event)]
+                        (:id second-dashcard) [(:id second-event)]
+                        (:id unselected-dashcard) []
+                        (:id empty-dashcard) []}]
+          (doseq [path [(str "public/dashboard/" (:public_uuid dashboard)) (str "embed/dashboard/" token)]]
+            (testing path
+              (let [response (mt/client :get 200 path)]
+                (is (= expected (dashboard-event-ids response)))
+                (testing "only rendering fields are public"
+                  (doseq [event (mapcat val (dashboard-events response))]
+                    (is (= #{:id :timeline_id :name :description :icon :timestamp :timezone
+                             :time_matters :archived :created_at}
+                           (set (keys event)))))))))
+          (testing "a signed-in viewer without collection access sees the same public selection"
+            (is (= expected
+                   (dashboard-event-ids
+                    (mt/user-http-request :rasta :get 200 (str "public/dashboard/" (:public_uuid dashboard))))))))))))
+
+(deftest public-and-signed-dashboard-timeline-display-changes-test
+  (let [secret (u.random/secure-hex 32)]
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding-modular true
+                                       embedding-secret-key secret]
+      (mt/with-temp [:model/Timeline timeline {}
+                     :model/TimelineEvent event {:timeline_id (:id timeline)}
+                     :model/Card card {:display "line"
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard (public-dashboard-properties)
+                     :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)}]
+        (let [token (jwt/sign {:resource {:dashboard (:id dashboard)} :params {}} secret)
+              paths [(str "public/dashboard/" (:public_uuid dashboard)) (str "embed/dashboard/" token)]]
+          (doseq [[display visible?] [["line" true] ["table" false] ["pie" false] ["row" false]
+                                      ["bar" true] ["area" true] ["combo" true] ["scatter" true] ["waterfall" true]]]
+            (testing (str "saving the question as " display)
+              (let [updated-card (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:display display})]
+                (is (= (:visualization_settings card) (:visualization_settings updated-card))
+                    "Changing display preserves the saved timeline selection"))
+              (doseq [path paths]
+                (testing path
+                  (is (= {(:id dashcard) (if visible? [(:id event)] [])}
+                         (dashboard-event-ids (mt/client :get 200 path)))))))))))))
+
+(deftest public-and-signed-dashboard-timeline-display-permissions-test
+  (let [secret (u.random/secure-hex 32)]
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding-modular true
+                                       embedding-secret-key secret]
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Timeline timeline {:collection_id (:id collection)}
+                     :model/TimelineEvent event {:timeline_id (:id timeline)}
+                     :model/Card card {:display "line"
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard (public-dashboard-properties)
+                     :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+        (let [card-path (str "card/" (:id card))
+              token     (jwt/sign {:resource {:dashboard (:id dashboard)} :params {}} secret)
+              paths     [(str "public/dashboard/" (:public_uuid dashboard)) (str "embed/dashboard/" token)]]
+          (testing "display changes that don't reveal events don't need timeline access"
+            (mt/user-http-request :rasta :put 200 card-path {:display "bar"})
+            (mt/user-http-request :rasta :put 200 card-path {:display "table"}))
+          (testing "changing display cannot reveal an inaccessible timeline"
+            (mt/user-http-request :rasta :put 403 card-path {:display "line"})
+            (is (= :table (t2/select-one-fn :display :model/Card (:id card))))
+            (is (= (:visualization_settings card)
+                   (t2/select-one-fn :visualization_settings :model/Card (:id card))))
+            (doseq [path paths]
+              (is (= {(:id dashcard) []} (dashboard-event-ids (mt/client :get 200 path))))))
+          (testing "timeline readers can restore a supported display"
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/user-http-request :rasta :put 200 card-path {:display "line"})
+            (doseq [path paths]
+              (is (= {(:id dashcard) [(:id event)]} (dashboard-event-ids (mt/client :get 200 path)))))))))))
+
+(deftest public-dashboard-ineligible-dashcards-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/TimelineEvent _event {:timeline_id (:id timeline)}
+                   :model/Dashboard dashboard (public-dashboard-properties)]
+      (doseq [[description card-properties dashcard-settings]
+              [["disabled events" {:visualization_settings {:timeline_events.enabled false}} {}]
+               ["archived dashboard question" {:dashboard_id (:id dashboard)
+                                               :archived true :archived_directly false} {}]
+               ["virtual card with a backing question" {} {:virtual_card {:display "text"}}]
+               ["visualizer with a backing question" {} {:visualization {}}]]]
+        (testing description
+          (mt/with-temp [:model/Card card
+                         (-> (merge {:display "line"} card-properties)
+                             (update :visualization_settings assoc :timeline.selected_timeline_ids [(:id timeline)]))
+                         :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
+                                                        :card_id (:id card)
+                                                        :visualization_settings dashcard-settings}]
+            (is (= {(:id dashcard) []} (dashboard-event-ids (public-dashboard dashboard))))))))))
+
+(deftest public-dashboard-action-dashcard-events-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-actions [{:keys [action-id model-id]} {}]
+        (mt/with-temp [:model/Timeline timeline {}
+                       :model/TimelineEvent _event {:timeline_id (:id timeline)}
+                       :model/Dashboard dashboard (public-dashboard-properties)
+                       :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
+                                                      :action_id    action-id
+                                                      :card_id      model-id}]
+          (t2/update! :model/Card model-id
+                      {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})
+          (is (= {(:id dashcard) []} (dashboard-event-ids (public-dashboard dashboard)))))))))
+
+(deftest public-dashboard-series-card-events-test
+  (testing "a dashcard shows the events its own card selects, not the ones its series select"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Timeline card-timeline {}
+                     :model/TimelineEvent card-event {:timeline_id (:id card-timeline)}
+                     :model/Timeline series-timeline {}
+                     :model/TimelineEvent _series-event {:timeline_id (:id series-timeline)}
+                     :model/Dashboard dashboard (public-dashboard-properties)
+                     :model/Card card {:display                "line"
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id card-timeline)]}}
+                     :model/Card series-card {:display                "line"
+                                              :visualization_settings {:timeline.selected_timeline_ids [(:id series-timeline)]}}
+                     :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)}
+                     :model/DashboardCardSeries _ {:dashboardcard_id (:id dashcard)
+                                                   :card_id          (:id series-card)
+                                                   :position         0}]
+        (is (= {(:id dashcard) [(:id card-event)]}
+               (dashboard-event-ids (public-dashboard dashboard))))))))
+
+(deftest public-dashboard-cardless-dashcard-events-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Dashboard dashboard (public-dashboard-properties)
+                   :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id nil}]
+      (is (= {(:id dashcard) []} (dashboard-event-ids (public-dashboard dashboard)))))))
+
+(deftest public-dashboard-does-not-authorize-timeline-apis-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/TimelineEvent event {:timeline_id (:id timeline)}
+                   :model/Dashboard dashboard (public-dashboard-properties)
+                   :model/Card card {:display "line"
+                                     :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                   :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)}]
+      (is (= {(:id dashcard) [(:id event)]} (dashboard-event-ids (public-dashboard dashboard))))
+      (doseq [[method path body]
+              [[:get "timeline" nil]
+               [:get (str "timeline/" (:id timeline)) nil]
+               [:get (str "timeline-event/" (:id event)) nil]
+               [:post "timeline-event" {:timeline_id (:id timeline) :name "Unauthorized event"
+                                        :timestamp "2026-09-09" :timezone "UTC"}]
+               [:put (str "timeline-event/" (:id event)) {:name "Unauthorized edit"}]
+               [:delete (str "timeline-event/" (:id event)) nil]]]
+        (testing (str method " " path)
+          (is (= 401 (:status (if body
+                                (mt/client-full-response method 401 path body)
+                                (mt/client-full-response method 401 path)))))))
+      (is (= (:name event) (t2/select-one-fn :name :model/TimelineEvent (:id event)))))))

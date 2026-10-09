@@ -111,21 +111,38 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
     });
 
     it("serves the report to shell agents, with cursor filtering", () => {
+      // Retry the full read-then-cursor pair until no POST sneaks between
+      // the two GETs. Under CPU throttling the reporter's batched timer can
+      // jitter enough to land a POST in that gap, so a single-pass idle
+      // guard before the first GET is not enough.
+      const verifyStableCursor = (attempt = 0): Cypress.Chainable<void> => {
+        return cy.request(DIAGNOSTICS_URL).then(({ body: report }) => {
+          expect(report.manifest?.errors).to.have.length(0);
+          expect(report.clients).to.be.gte(1);
+
+          return cy
+            .request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
+            .then(({ body: filtered }) => {
+              if (filtered.entries.length === 0) {
+                return;
+              }
+              if (attempt >= 20) {
+                throw new Error("Cursor never stabilized");
+              }
+              return cy
+                .wait(250, { log: false })
+                .then(() => verifyStableCursor(attempt + 1));
+            });
+        });
+      };
+
       readDiagnosticsUntil(
         DIAGNOSTICS_URL,
         "a blocked-network entry and a healthy connection",
         (report) =>
           report.entries.some((entry) => entry.kind === "blocked-network") &&
           report.connection?.reachable === true,
-      ).then((report) => {
-        expect(report.manifest?.errors).to.have.length(0);
-        expect(report.clients).to.be.gte(1);
-
-        // A reader that has consumed everything sees an empty page, not a replay.
-        cy.request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
-          .its("body.entries")
-          .should("be.empty");
-      });
+      ).then(() => verifyStableCursor());
     });
 
     it("keeps the buffer across a page reload, with continuous event ids", () => {
@@ -262,10 +279,12 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         .findByText(/allowed_hosts changed since the dev server started/)
         .should("not.exist");
 
-      // `allowed_hosts` is the manifest's last key, so appending stays valid YAML.
       cy.writeFile(
         DATA_APP_DEV_MANIFEST_PATH,
-        `${originalManifest}  - https://added.example\n`,
+        originalManifest.replace(
+          "  - https://allowed.data-app.test\n",
+          "  - https://allowed.data-app.test\n  - https://added.example\n",
+        ),
       );
 
       // No reload and no dev-server restart: the watcher re-validates and the

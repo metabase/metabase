@@ -8,17 +8,36 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *user-ctx* nil)
 
 (defmacro with-sync-search-indexing
   "Perform all search indexing synchronously."
   [& body]
-  `(binding [metabase.search.ingestion/*force-sync* true]
+  `(binding [search.ingestion/*force-sync* true]
      ~@body))
+
+(defn do-with-labelled-cards
+  "Create a temporary card for each entry of `docs`, a map from a label (`:A` to `:H`) to card attributes.
+  Calls `body-fn` with a map from those labels to the card ids.
+  The cards do not enqueue index updates."
+  [docs body-fn]
+  ;; `with-temp` needs fixed bindings, so it creates all eight; absent labels get a filler name.
+  (binding [search.ingestion/*disable-updates* true]
+    (let [missing {:name (str "zzq-nonmatch-" (random-uuid))}]
+      (mt/with-temp
+        [:model/Card {a :id} (get docs :A missing)
+         :model/Card {b :id} (get docs :B missing)
+         :model/Card {c :id} (get docs :C missing)
+         :model/Card {d :id} (get docs :D missing)
+         :model/Card {e :id} (get docs :E missing)
+         :model/Card {f :id} (get docs :F missing)
+         :model/Card {g :id} (get docs :G missing)
+         :model/Card {h :id} (get docs :H missing)]
+        (body-fn (select-keys {:A a, :B b, :C c, :D d, :E e, :F f, :G g, :H h} (keys docs)))))))
 
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body.

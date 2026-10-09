@@ -1,8 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
+import cx from "classnames";
 import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import {
   getShallowTableFieldIds,
   getShallowTableForeignKeys,
@@ -14,16 +16,14 @@ import {
   fetchTableForeignKeys,
   fetchTableMetadata,
 } from "metabase/redux/tables";
-import { Loader } from "metabase/ui";
+import { Center, Loader, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { NormalizedTable, TableId } from "metabase-types/api";
 
-import { Description, EmptyDescription } from "../MetadataInfo";
-import { AbsoluteContainer, Fade } from "../MetadataInfo.styled";
+import { Description, EmptyDescription, Fade } from "../MetadataInfo";
 
 import { ColumnCount } from "./ColumnCount";
 import { type ConnectedTable, ConnectedTables } from "./ConnectedTables";
-import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
 
 export type TableInfoProps = {
   className?: string;
@@ -129,17 +129,22 @@ export function TableInfoInner({
   });
 
   return (
-    <InfoContainer className={className}>
+    <Stack
+      className={cx(CS.overflowAuto, className)}
+      pos="relative"
+      gap="xxxs"
+      p="lg"
+    >
       {description ? (
         <Description>{description}</Description>
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <MetadataContainer>
+      <Stack className={CS.overflowHidden} pos="relative" gap="sm" fz="sm">
         <Fade visible={!hasFetchedMetadata}>
-          <AbsoluteContainer>
+          <Center pos="absolute" inset={0}>
             <Loader size="md" color="core-brand" />
-          </AbsoluteContainer>
+          </Center>
         </Fade>
         <Fade visible={hasFetchedMetadata}>
           {table && <ColumnCount fieldCount={fieldCount} />}
@@ -152,8 +157,8 @@ export function TableInfoInner({
             />
           )}
         </Fade>
-      </MetadataContainer>
-    </InfoContainer>
+      </Stack>
+    </Stack>
   );
 }
 

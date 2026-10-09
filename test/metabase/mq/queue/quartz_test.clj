@@ -298,7 +298,7 @@
     ;; and silently never delivered; throwing keeps outbox rows for the recovery sweep and lets the
     ;; publish buffer retry/loudly drop, same as the nil-scheduler case above.
     (mt/with-temp-scheduler!
-      (with-redefs [task/scheduler-disabled? (constantly true)]
+      (mt/with-dynamic-fn-redefs [task/scheduler-disabled? (constantly true)]
         (let [queue (keyword "queue" (str "quartz-disabled-" (random-uuid)))]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"scheduler is not running"

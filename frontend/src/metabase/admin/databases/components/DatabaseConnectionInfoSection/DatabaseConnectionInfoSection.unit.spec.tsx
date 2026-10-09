@@ -178,6 +178,33 @@ describe("DatabaseConnectionInfoSection", () => {
     });
   });
 
+  describe("sync failure cause", () => {
+    it("shows why the initial sync aborted (GHY-3856)", () => {
+      setup({
+        database: createMockDatabase({
+          initial_sync_status: "aborted",
+          initial_sync_error:
+            "User is not authorized to perform: glue:GetDatabases",
+        }),
+      });
+
+      expect(screen.getByText("Sync failed")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "User is not authorized to perform: glue:GetDatabases",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("isn't shown when the database has no recorded sync error", () => {
+      setup({
+        database: createMockDatabase({ initial_sync_status: "aborted" }),
+      });
+
+      expect(screen.queryByText("Sync failed")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Cloud-attached databases", () => {
     it("should not show the sync actions", async () => {
       setup({ database: createMockDatabase({ is_attached_dwh: true }) });
@@ -187,6 +214,18 @@ describe("DatabaseConnectionInfoSection", () => {
       expect(
         screen.queryByText(/Re-scan field values/i),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Stub databases", () => {
+    it("should hide the sync actions but allow editing the connection details", async () => {
+      setup({ database: createMockDatabase({ is_stub: true }) });
+      expect(
+        screen.queryByText(/Sync database schema/i),
+      ).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("button", { name: /Edit connection details/i }),
+      ).toBeEnabled();
     });
   });
 

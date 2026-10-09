@@ -35,7 +35,6 @@
   {:pre [((some-fn sequential? set?) drivers)]}
   (reset! default-test-drivers (set drivers)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn- ^:dynamic *test-drivers*
   []
   (or @default-test-drivers

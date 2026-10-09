@@ -124,31 +124,35 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-schema-tool-choice-test
-  (testing "the structured-output forced tool call is downgraded to auto for qwen3.8-max"
-    (let [body (openrouter/openrouter-request-body
-                {:model  "qwen/qwen3.8-max"
-                 :input  [{:role :user :content "hi"}]
-                 :schema {:type "object" :properties {:answer {:type "string"}}}})]
-      (is (=? {:tool_choice "auto"
-               :tools       [{:function {:name "structured_output"}}]}
-              body)))))
+  (testing "the structured-output forced tool call is downgraded to auto"
+    (doseq [model ["qwen/qwen3.8-max-0902" "anthropic/claude-fable-5.1"]]
+      (testing model
+        (let [body (openrouter/openrouter-request-body
+                    {:model  model
+                     :input  [{:role :user :content "hi"}]
+                     :schema {:type "object" :properties {:answer {:type "string"}}}})]
+          (is (=? {:tool_choice "auto"
+                   :tools       [{:function {:name "structured_output"}}]}
+                  body)))))))
 
 (deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-explicit-tool-choice-test
   (testing "an explicit tool_choice required is downgraded too"
-    (let [body (openrouter/openrouter-request-body
-                {:model       "qwen/qwen3.8-max"
-                 :input       [{:role :user :content "hi"}]
-                 :tools       [{:tool-name "get_thing"
-                                :doc       "Get a thing."
-                                :schema    [:=> [:cat [:map [:id :int]]] :any]
-                                :fn        identity}]
-                 :tool_choice "required"})]
-      (is (= "auto" (:tool_choice body))))))
+    (doseq [model ["qwen/qwen3.8-max-0902" "anthropic/claude-fable-5.1"]]
+      (testing model
+        (let [body (openrouter/openrouter-request-body
+                    {:model       model
+                     :input       [{:role :user :content "hi"}]
+                     :tools       [{:tool-name "get_thing"
+                                    :doc       "Get a thing."
+                                    :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                    :fn        identity}]
+                     :tool_choice "required"})]
+          (is (= "auto" (:tool_choice body))))))))
 
 (deftest ^:parallel request-body-no-required-tool-choice-model-leaves-auto-tool-choice-test
   (testing "a tool_choice that is already auto is left alone for qwen3.8-max"
     (let [body (openrouter/openrouter-request-body
-                {:model       "qwen/qwen3.8-max"
+                {:model       "qwen/qwen3.8-max-0902"
                  :input       [{:role :user :content "hi"}]
                  :tools       [{:tool-name "get_thing"
                                 :doc       "Get a thing."
@@ -159,7 +163,7 @@
 
 (deftest ^:parallel request-body-other-models-keep-required-tool-choice-test
   (testing "models that accept a forced tool call keep tool_choice required"
-    (doseq [model ["anthropic/claude-haiku-4.5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
+    (doseq [model ["anthropic/claude-haiku-4.5" "anthropic/claude-fable-5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
       (testing model
         (let [body (openrouter/openrouter-request-body
                     {:model  model
@@ -208,7 +212,7 @@
                                   :tool_choice "required"})))))
   (testing "qwen's required->auto downgrade lands first, so its directive stays enabled"
     (is (= {:enabled true}
-           (:reasoning (body-for {:model       "qwen/qwen3.8-max"
+           (:reasoning (body-for {:model       "qwen/qwen3.8-max-0902"
                                   :tools       [{:tool-name "get_thing"
                                                  :doc       "Get a thing."
                                                  :schema    [:=> [:cat [:map [:id :int]]] :any]
@@ -216,7 +220,7 @@
                                   :tool_choice "required"})))))
   (testing "mandatory-reasoning models get no directive instead of a rejected disable"
     (is (not (contains? (body-for {:model "anthropic/claude-fable-5" :reasoning? false}) :reasoning)))
-    (is (not (contains? (body-for {:model "qwen/qwen3.8-max" :schema {:type "object"}}) :reasoning))))
+    (is (not (contains? (body-for {:model "qwen/qwen3.8-max-0902" :schema {:type "object"}}) :reasoning))))
   (testing "renderable-default models never get a directive, even under structured output:
             they stream summaries server-side by default and an explicit enable suppresses
             gpt-5.6's reasoning entirely"
@@ -239,11 +243,12 @@
   (testing "a forced tool call on a mandatory-reasoning model gets its max_tokens cap floored"
     ;; safety net — its reasoning cannot be disabled and bills against the same budget as the
     ;; tool call; theory vs practice in openrouter/forced-tool-call-token-floor
-    (are [expected opts] (= expected (:max_tokens (body-for (assoc opts :model "qwen/qwen3.8-max"))))
-      2048 {:schema {:type "object"} :max-tokens 512}
-      4096 {:schema {:type "object"} :max-tokens 4096}
-      nil  {:schema {:type "object"}}
-      512  {:max-tokens 512}))
+    (are [expected opts] (= expected (:max_tokens (body-for (assoc opts :model "qwen/qwen3.8-max-0902"))))
+      2048  {:schema {:type "object"} :max-tokens 512}
+      4096  {:schema {:type "object"} :max-tokens 4096}
+      ;; uncapped by the caller, so the default cap applies — already far above the floor
+      32000 {:schema {:type "object"}}
+      512   {:max-tokens 512}))
   (testing "a non-mandatory model keeps its cap — it got the disable instead"
     (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :schema {:type "object"} :max-tokens 512})]
       (is (= 512 (:max_tokens body)))
@@ -262,11 +267,12 @@
 
 (deftest ^:parallel reasoning-class-partition-test
   (testing "every whitelisted model is deliberately classified, and the class drives the body"
-    (let [renderable         #{"anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
-                               "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6" "anthropic/claude-sonnet-5"
+    (let [renderable         #{"anthropic/claude-fable-5.1" "anthropic/claude-fable-5" "anthropic/claude-opus-5"
+                               "anthropic/claude-opus-4.8" "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6"
+                               "anthropic/claude-sonnet-5"
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
                                "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
-                               "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max" "z-ai/glm-5.3" "z-ai/glm-5.2"}
+                               "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max-0902" "z-ai/glm-5.3" "z-ai/glm-5.2"}
           renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
                                "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
           budget             #{"anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1" "anthropic/claude-sonnet-4.5"
@@ -510,7 +516,7 @@
                                     :body   {:data [{:id "openai/gpt-5.6-sol"          :name "OpenAI: GPT-5.6 Sol"          :created 50}
                                                     {:id "openai/gpt-5.6-terra"        :name "OpenAI: GPT-5.6 Terra"        :created 49}
                                                     {:id "openai/gpt-5.6-luna"         :name "OpenAI: GPT-5.6 Luna"         :created 48}
-                                                    {:id "qwen/qwen3.8-max"            :name "Qwen: Qwen3.8 Max"            :created 41}
+                                                    {:id "qwen/qwen3.8-max-0902"       :name "Qwen: Qwen3.8 Max 0902"       :created 41}
                                                     {:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
                                                     {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
@@ -527,7 +533,7 @@
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}
                 {:id "openai/gpt-5.6-sol"          :display_name "OpenAI: GPT-5.6 Sol"}
                 {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}
-                {:id "qwen/qwen3.8-max"            :display_name "Qwen: Qwen3.8 Max"}
+                {:id "qwen/qwen3.8-max-0902"       :display_name "Qwen: Qwen3.8 Max 0902"}
                 {:id "z-ai/glm-5.3"                :display_name "Z.AI: GLM 5.3"}]
                (:models (openrouter/list-models {:credentials byok-credentials}))))))))
 

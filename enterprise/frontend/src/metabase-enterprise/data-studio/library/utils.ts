@@ -84,10 +84,12 @@ export const useGetResolvedLibraryCollection = ({
       libraryCollection && hasStuff ? { id: libraryCollection.id } : skipToken,
     );
 
+  // The Dashboards section never holds data sources
   const subcollectionsWithStuff =
     libraryItems?.data.filter(
       (item) =>
         item.model === "collection" &&
+        item.type !== "library-dashboards" &&
         (item.here?.length || item.below?.length),
     ) ?? [];
 
@@ -97,7 +99,10 @@ export const useGetResolvedLibraryCollection = ({
       ({ subcollectionsWithStuff }) => subcollectionsWithStuff?.length === 1,
       () => subcollectionsWithStuff[0],
     )
-    .with({ hasStuff: true }, () => libraryCollection)
+    .when(
+      ({ subcollectionsWithStuff }) => subcollectionsWithStuff.length > 1,
+      () => libraryCollection,
+    )
     .otherwise(() => undefined);
 
   return {
@@ -118,6 +123,8 @@ function getLibrarySectionName(type: LibrarySubCollectionType) {
       return t`Data`;
     case "library-metrics":
       return t`Metrics`;
+    case "library-dashboards":
+      return t`Dashboards`;
   }
 }
 
@@ -135,6 +142,7 @@ export function getCollectionPickerItems({
   const librarySubCollectionType: LibrarySubCollectionType[] = [
     "library-data",
     "library-metrics",
+    "library-dashboards",
   ];
 
   return librarySubCollectionType.flatMap((type) => {
@@ -189,20 +197,31 @@ export const getLibraryCollectionEmptyStateMessages = (
   if (type === "library-data") {
     return {
       title: t`No published tables yet`,
-      description: t`Publish tables in the Library to see them here.`,
+      description: t`Publish tables in the semantic layer to see them here.`,
+    };
+  }
+
+  if (type === "library-dashboards") {
+    return {
+      title: t`No dashboards yet`,
+      description: t`Put dashboards in the semantic layer to see them here.`,
     };
   }
 
   return {
     title: t`No metrics yet`,
-    description: t`Put metrics in the Library to see them here.`,
+    description: t`Put metrics in the semantic layer to see them here.`,
   };
 };
 
 export const isLibrarySubCollectionType = (
   type?: string | null,
 ): type is LibrarySubCollectionType => {
-  return type === "library-data" || type === "library-metrics";
+  return (
+    type === "library-data" ||
+    type === "library-metrics" ||
+    type === "library-dashboards"
+  );
 };
 
 export const isLibraryDataCollectionType = (

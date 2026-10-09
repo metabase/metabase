@@ -7,9 +7,10 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
+  getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
@@ -75,6 +76,9 @@ export function App() {
   const isMonitorApp = useSelector((state) =>
     getIsMonitorApp(state, routerProps),
   );
+  const isEmbeddingHubApp = useSelector((state) =>
+    getIsEmbeddingHubApp(state, routerProps),
+  );
   const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
   const isAppBarVisible = useSelector((state) =>
     getIsAppBarVisible(state, routerProps),
@@ -124,7 +128,11 @@ export function App() {
               <EmbedSetupModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isMonitorApp ||
+                  isEmbeddingHubApp ||
+                  isDataApp
                 }
               />
             </AppContentContainer>

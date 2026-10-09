@@ -323,6 +323,52 @@
                 (testing "no Card carrying that target may exist afterwards"
                   (is (empty? (t2/select :model/Card :collection_id coll-id))))))))))))
 
+(deftest document-draft-card-inherits-source-card-timeline-visibility-test
+  (testing "a draft card forked from a saved card inherits the source card's timeline selection"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id}       {}
+                       :model/Collection {restricted-id :id} {}
+                       :model/Timeline   private-timeline    {:collection_id restricted-id}
+                       :model/Timeline   private-timeline-2  {:collection_id restricted-id}
+                       :model/Card       source              {:collection_id          coll-id
+                                                              :display                :line
+                                                              :dataset_query          (mt/mbql-query venues)
+                                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                                       [(:id private-timeline)]}}
+                       :model/Card       unreadable-source   {:collection_id          restricted-id
+                                                              :display                :line
+                                                              :dataset_query          (mt/mbql-query venues)
+                                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                                       [(:id private-timeline)]}}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (let [draft     (-> source
+                              (select-keys [:dataset_query :visualization_settings])
+                              (assoc :name "Draft" :display "bar"))
+                save-doc! (fn [status card]
+                            (mt/user-http-request :rasta :post status "document/"
+                                                  {:name          "d"
+                                                   :collection_id coll-id
+                                                   :document      {:type "doc" :content []}
+                                                   :cards         {"-1" card}}))]
+            (testing "with the source card id the draft saves with the inherited timeline selection"
+              (let [doc-id (:id (save-doc! 200 (assoc draft :source_card_id (:id source))))]
+                (is (=? {:display                :bar
+                         :visualization_settings {:timeline.selected_timeline_ids [(:id private-timeline)]}}
+                        (t2/select-one :model/Card :document_id doc-id)))))
+            (t2/delete! :model/Card :name "Draft")
+            (testing "without the source card id the unreadable timeline is refused"
+              (save-doc! 403 draft))
+            (testing "a newly added unreadable timeline is still refused"
+              (save-doc! 403 (-> draft
+                                 (assoc :source_card_id (:id source))
+                                 (assoc-in [:visualization_settings :timeline.selected_timeline_ids]
+                                           [(:id private-timeline) (:id private-timeline-2)]))))
+            (testing "a source card the user cannot read is refused"
+              (save-doc! 403 (assoc draft :source_card_id (:id unreadable-source))))
+            (testing "no draft card exists after the refused saves"
+              (is (empty? (t2/select :model/Card :name "Draft"))))))))))
+
 (deftest copy-document-archived-document-test
   (testing "POST /api/document/:id/copy - archived source document returns 404"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Archived Document"
@@ -2677,6 +2723,28 @@
             (testing "the embedded card is cloned into the document"
               (is (t2/exists? :model/Card :document_id doc-id)))))))))
 
+(deftest put-document-create-card-without-collection-id-in-body-test
+  (testing "PUT /api/document/:id - new cards default to the document's collection when the body omits :collection_id"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Document {doc-id :id} {:name          "My Doc"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "")}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/user-http-request :rasta
+                                :put 200 (str "document/" doc-id)
+                                {:document {:type    "doc"
+                                            :content [{:type "cardEmbed" :attrs {:id -1 :name nil}}]}
+                                 :cards    {-1 {:name                   "New Card"
+                                                :type                   :question
+                                                :dataset_query          (mt/mbql-query venues)
+                                                :display                :table
+                                                :visualization_settings {}}}})
+          (testing "the card is created in the document's collection"
+            (is (=? [{:name "New Card" :collection_id coll-id}]
+                    (t2/select :model/Card :document_id doc-id)))))))))
+
 (deftest copy-document-containing-native-card-without-native-perms-test
   (testing "POST /api/document/:id/copy - user without native perms can copy a document containing a native card (UXW-5037)"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -2743,6 +2811,34 @@
           (is (= "You cannot copy this question because you do not have permissions to run its query."
                  (mt/user-http-request :rasta :post 403 (format "document/%d/copy" doc-id) {:collection_id coll-id})))
           (is (= 1 (t2/count :model/Document :name [:like "Doc with W%"]))))))))
+
+(deftest copy-document-with-inaccessible-timeline-selection-test
+  (testing "POST /api/document/:id/copy keeps a timeline selection the copier cannot read (mirrors card copy behavior)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Collection {timeline-coll-id :id} {}
+                       :model/Timeline {timeline-id :id} {:collection_id timeline-coll-id}
+                       :model/Document {doc-id :id} {:name          "Doc with timeline card"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "placeholder")}
+                       :model/Card {card-id :id} {:name                   "Doc-owned Card"
+                                                  :collection_id          coll-id
+                                                  :document_id            doc-id
+                                                  :dataset_query          (mt/mbql-query venues)
+                                                  :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}]
+          (t2/update! :model/Document doc-id {:document (card-embed-ast card-id)})
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (perms/revoke-collection-permissions! (perms/all-users-group) timeline-coll-id)
+          (let [result      (mt/user-http-request :rasta :post 200 (format "document/%d/copy" doc-id)
+                                                  {:collection_id coll-id})
+                cloned-card (t2/select-one :model/Card :document_id (:id result))]
+            (testing "the document-owned card is cloned"
+              (is (some? cloned-card))
+              (is (not= card-id (:id cloned-card))))
+            (testing "the inherited timeline selection is preserved without a fresh read check"
+              (is (= [timeline-id]
+                     (get-in cloned-card [:visualization_settings :timeline.selected_timeline_ids]))))))))))
 
 (deftest post-document-draft-native-card-still-requires-native-perms-test
   (testing "POST /api/document/ - client-supplied draft native cards still require native query perms"

@@ -1,7 +1,7 @@
 (ns metabase.llm.provider-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
@@ -226,7 +226,7 @@
            clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
            (llm.provider/validate-config! "bedrock" {})))
       (testing "the pair is a mandatory set, so the form marks each of its fields required"
-        (is (= {:access-key-id true :secret-access-key true :region false :session-token false}
+        (is (= {:access-key-id true :secret-access-key true :region false :model-id false :session-token false}
                (->> (llm.provider/provider-type "bedrock")
                     :fields
                     (into {} (map (juxt :key (comp boolean :required?))))))))
@@ -318,6 +318,10 @@
     (is (= "anthropic/claude-sonnet-4-5"
            (llm.provider/connection-model "azure" {:model-family    "anthropic"
                                                    :deployment-name "claude-sonnet-4-5"}))))
+  (testing "Google names a Model Garden endpoint by the collection its ID belongs to, and nothing without an ID"
+    (is (= "endpoints/1234567890123456789"
+           (llm.provider/connection-model "google" {:endpoint-id " 1234567890123456789 "})))
+    (is (nil? (llm.provider/connection-model "google" {:oauth-access-token "ya29.token"}))))
   (testing "a half-filled connection names no model rather than a malformed one"
     (is (nil? (llm.provider/connection-model "azure" {:model-family "openai"})))
     (is (nil? (llm.provider/connection-model "azure" {:model-family    "openai"
@@ -493,12 +497,15 @@
                  :env-vars   #{"MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY"}
                  :env-fields #{:service-account-key}
                  :source     :db}]
-               (llm.provider/connections))))))
-  (testing "a lone base-url variable reaches the stored connection's base URL"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
-               (llm.provider/credentials "anthropic")))))))
+               (llm.provider/connections)))))))
+
+(deftest a-region-survives-keys-from-the-environment-test
+  (testing "the region only picks an AWS endpoint, so keys from the environment do not reset it to the default"
+    (mt/with-temporary-setting-values [llm-providers [(connection "bedrock" "bedrock" {:region "eu-central-1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id     "AKIAENV"
+                                    mb-llm-bedrock-secret-access-key "env-secret"]
+        (is (=? [{:key "bedrock" :config {:region "eu-central-1"}}]
+                (llm.provider/connections)))))))
 
 (deftest connections-drop-a-stored-base-url-an-env-credential-would-reach-test
   (testing (str "A base URL saved through the API is not where an environment-supplied credential gets sent: the "
@@ -533,6 +540,70 @@
       (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "vllm-env-key"]
         (is (= {:api-key "vllm-env-key"} (llm.provider/credentials "vllm")))
         (is (false? (llm.provider/connection-usable? "vllm")))))))
+
+(def ^:private self-hosted-ollama
+  "A self-hosted Ollama an admin gave a key to — a server of their own behind an authenticating proxy."
+  {:base-url "http://ollama.internal:11434/v1"
+   :api-key  "sk-entered-for-our-own-server"})
+
+(deftest connections-drop-a-stored-secret-an-env-base-url-would-move-test
+  (testing (str "The other order: an address arriving from the environment over a credential already stored. A key "
+                "is entered for the server it will be sent to, so a variable pointing elsewhere does not take it along.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+        (is (= {:base-url "http://elsewhere.example.com:11434/v1"} (llm.provider/credentials "ollama"))
+            "the key an admin entered for a server of their own does not go to the other one")
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "sk-entered-for-our-own-server"
+                 (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+  (testing "Ollama Cloud is one more address, so a variable naming it moves the connection the same way"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))
+            "a key typed for the operator's own server does not go to ollama.com"))))
+  (testing "an address the environment restates is not a move, so the key it was entered with stands"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://ollama.internal:11434/v1"]
+        (is (= "sk-entered-for-our-own-server" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "an address the environment restates with a trailing slash is not a move either"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://ollama.internal:11434/v1/"]
+        (is (= "sk-entered-for-our-own-server" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "the environment supplying both halves moves nothing it does not also credential"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"
+                                    mb-llm-ollama-api-key      "sk-operator-key"]
+        (is (= {:base-url "https://ollama.com/v1" :api-key "sk-operator-key"}
+               (llm.provider/credentials "ollama"))))))
+  (testing "a connection the llm-providers variable supplies is the operator's own, so its key stands"
+    (mt/with-temp-env-var-value! [mb-llm-providers (str "[{\"key\":\"ollama\",\"type\":\"ollama\","
+                                                        "\"name\":\"Ollama\","
+                                                        "\"config\":{\"base-url\":\"http://ollama.internal:11434/v1\","
+                                                        "\"api-key\":\"sk-operator-key\"}}]")
+                                  mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+      (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
+
+(deftest env-base-url-moves-a-key-stored-without-an-address-test
+  (testing (str "A key stored with no address, on a type with no default, has no address recorded with it. Thus, "
+                "nothing shows that it is for the address the variable names.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:api-key "sk-no-address"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (= {:base-url "https://ollama.com/v1"} (llm.provider/credentials "ollama")))))))
+
+(deftest env-base-url-keeps-the-key-on-types-it-always-shadowed-test
+  (testing (str "on a type in the compatibility exemption, a base-URL variable shadows the address alone and a "
+                "key typed in the UI goes along with it, whatever the connection stored: the gateway setup an "
+                "upgrade must not break")
+    (doseq [[label stored-url] {"left blank"            nil
+                                "stored at the default" "https://api.anthropic.com"
+                                "chosen by the admin"   "https://chosen.example.com"}]
+      (testing label
+        (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                      (cond-> {:api-key "sk-ant-db"}
+                                                                        stored-url (assoc :base-url stored-url)))]]
+          (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+            (is (= {:api-key "sk-ant-db" :base-url "https://gateway.example.com"}
+                   (llm.provider/credentials "anthropic")))))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
@@ -614,6 +685,33 @@
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
       (is (nil? (llm.provider/resolve-model-ref nil))))))
 
+(deftest resolve-model-ref-reads-a-retired-model-as-its-successor-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id resolves to the model that now serves it"
+      (is (= "qwen/qwen3.8-max-0902" (:model (llm.provider/resolve-model-ref "openrouter/qwen/qwen3.8-max")))))
+    (testing "the same id under another provider type is not retired there"
+      (is (= "qwen/qwen3.8-max" (:model (llm.provider/resolve-model-ref "anthropic/qwen/qwen3.8-max")))))))
+
+(deftest canonical-model-ref-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id reads as the model that now serves it"
+      (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max"))))
+    (testing "any other reference is returned unchanged"
+      (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max-0902")))
+      (is (= "anthropic/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "anthropic/qwen/qwen3.8-max")))
+      (is (= "nope/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "nope/qwen/qwen3.8-max")))
+      (is (nil? (llm.provider/canonical-model-ref nil))))))
+
+(deftest ^:parallel retired-models-map-straight-to-a-current-model-test
+  (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
+                "lookup, so a chain would leave a saved selection naming a retired id")
+    (doseq [{:keys [type retired-models]} (llm.provider/provider-types)
+            successor                     (vals retired-models)]
+      (testing type
+        (is (not (contains? retired-models successor)))))))
+
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
     (is (= "https://api.mistral.ai/v1"
@@ -658,8 +756,8 @@
                 "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
-    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-             "vllm" "metabase"}
+    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+             "bedrock" "vllm" "ollama" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -680,6 +778,11 @@
     (testing "google's service account key is a file field, but it is the whole credential"
       (is (= #{:service-account-key :oauth-access-token} (llm.provider/secret-field-keys "google"))))
     (is (= #{} (llm.provider/secret-field-keys "metabase"))))
+  (testing "every type other than the managed one is always available"
+    (is (true? (llm.provider/type-available? "anthropic")))
+    (is (false? (llm.provider/type-available? "evilai")))))
+
+(deftest ^:parallel provider-type-models-test
   (testing "every type's default model, which is what a first connection of that type gets selected for it"
     (is (= {"anthropic"  "claude-sonnet-4-6"
             "openai"     "gpt-5.4"
@@ -688,13 +791,15 @@
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
             "deepseek"   "deepseek-v4-pro"
+            "xai"        "grok-4.7"
             "google"     "google/gemini-3.5-flash"
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
             "bedrock"    "anthropic.claude-opus-4-8"
-            ;; nor is there for vLLM, which serves whatever the operator loaded: connecting adopts the model
-            ;; its probe exercised
+            ;; nor is there for the self-hosted types, which serve whatever the operator loaded or pulled:
+            ;; connecting adopts the model its probe exercised
             "vllm"       nil
+            "ollama"     nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -707,15 +812,64 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            "deepseek"   "deepseek-v4-flash"
+            "deepseek"   "deepseek-flash"
+            "xai"        "grok-4.3"
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"
-            ;; a vLLM server serves the one model the operator loaded, so there is no cheaper tier to fall back to
+            ;; a self-hosted server serves the models the operator chose to host, so there is no cheaper tier
+            ;; to fall back to
             "vllm"       nil
+            "ollama"     nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
-    (is (nil? (llm.provider/mini-model "evilai"))))
-  (testing "every type other than the managed one is always available"
-    (is (true? (llm.provider/type-available? "anthropic")))
-    (is (false? (llm.provider/type-available? "evilai")))))
+    (is (nil? (llm.provider/mini-model "evilai")))))
+
+(deftest ^:parallel env-base-url-shadowing-types-test
+  (testing (str "The types whose base-URL variable is exempt from tying credentials to their address. A type "
+                "added from now on starts outside it, so growing this set is a decision, not an accident.")
+    (is (= #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "xai" "zai"}
+           @#'llm.provider/env-base-url-shadowing-types))))
+
+(deftest per-setting-write-refuses-a-key-the-environment-moved-away-from-test
+  (testing "a key written through the per-provider setting is refused, not stored for every read to drop"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:base-url "http://ollama.internal:11434/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "https://ollama.com/v1"]
+        (is (=? {:message #".*MB_LLM_OLLAMA_API_BASE_URL.*MB_LLM_OLLAMA_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-new"})))
+        (is (nil? (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+
+(deftest typed-value-test
+  (testing "what counts as a value the caller really typed"
+    (are [submitted expected] (= expected (#'llm.provider/typed-value {:k submitted} :k))
+      "sk-new"           "sk-new"
+      "  sk-new  "       "sk-new"
+      nil                nil
+      "   "              nil
+      "**********ew"     nil
+      "**********ew  "   nil
+      ;; the mask of a newline-terminated JSON key file
+      "**********}\n"    nil)))
+
+(deftest ^:parallel served-mini-model-test
+  (testing "a listing that includes the type's mini model records it on the connection"
+    (is (= {:mini-model "claude-haiku-4-5-20251001"}
+           (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                                                        {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]))))
+  (testing "one that leaves it out records nothing, so an earlier answer is retired rather than kept"
+    (is (= {:mini-model nil}
+           (llm.provider/served-mini-model "anthropic" [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}])))
+    (is (= {:mini-model nil} (llm.provider/served-mini-model "anthropic" []))))
+  (testing "a type with no mini model has nothing to record"
+    (is (= {:mini-model nil}
+           (llm.provider/served-mini-model "azure" [{:id "openai/gpt-4.1" :display_name "gpt-4.1"}])))))
+
+(deftest ^:parallel connection-mini-model-test
+  (testing "reads the model the connection's listing recorded"
+    (is (= "claude-haiku-4-5-20251001"
+           (llm.provider/connection-mini-model {:key "anthropic" :type "anthropic"
+                                                :config {:api-key "sk-ant" :mini-model "claude-haiku-4-5-20251001"}}))))
+  (testing "and nothing for a connection no listing has answered for, whatever its type would offer"
+    (is (nil? (llm.provider/connection-mini-model {:key "anthropic" :type "anthropic" :config {:api-key "sk-ant"}})))
+    (is (nil? (llm.provider/connection-mini-model nil)))))

@@ -17,7 +17,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.o11y :refer [with-span]])
+  (:import
+   (java.io IOException)))
 
 (set! *warn-on-reflection* true)
 
@@ -126,6 +128,7 @@
    [:span-attrs       {:optional true} [:maybe [:map {::mr/deliberately-open true
                                                       :description "extra span attributes"}]]]
    [:error-msg        {:optional true} [:maybe fn?]]
+   [:read-stream      {:optional true} [:maybe fn?]]
    [:wrap-stream      {:optional true} [:maybe fn?]]
    [:on-request-error {:optional true} [:maybe fn?]]])
 
@@ -298,7 +301,82 @@
                           :display_name (or (get entry catalog-name-key)
                                             (get-in supported-models [id :display-name]))})))}))
 
+;;; ------------------------------------------- Preflight and its budget -----------------------------------------
+;;;
+;;; The self-hosted adapters (vLLM, Ollama) exercise the agent loop's contract at configuration time, because
+;;; the operator serves whatever they loaded and no allow-list can vouch for it. What they probe *with* is a
+;;; statement about Metabot, not about a provider, so it lives here rather than twice.
+
+(def probe-tool
+  "The tool a preflight probe offers. Trivial on purpose: a model that cannot call this cannot drive
+  Metabot, and one that can has told us the template wires tool calling up at all."
+  {:type     "function"
+   :function {:name        "record_table_name"
+              :description "Record the name of the table the user mentioned."
+              :parameters  {:type                 "object"
+                            :properties           {:table_name {:type        "string"
+                                                                :description "The table name the user mentioned."}}
+                            :required             ["table_name"]
+                            :additionalProperties false}}})
+
+(def probe-messages
+  "The prompt a preflight probe sends — one line, so nothing but the model's own verbosity can exhaust
+  [[probe-max-tokens]]."
+  [{:role "user" :content "Record the table name: orders"}])
+
+(def probe-max-tokens
+  "Generation ceiling for a preflight probe. High enough to clear a reasoning model's thinking, which is
+  billed against it: a probe that stops at `length` before the tool call looks identical to a server that
+  will not call tools at all."
+  2048)
+
+(def probe-timeout-ceiling-ms
+  "Upper bound on a single preflight probe, which blocks the admin behind a spinner. An operator who sets
+  their provider's request timeout lower than this keeps their own value."
+  120000)
+
+(def min-context-window-tokens
+  "Smallest context window a connection may be saved on. A product floor, not a measurement: Metabot's
+  tools and system prompt run to several thousand tokens before any history, and a self-hosted server is
+  the only place the window is small enough to matter — the hosted providers all exceed it.
+
+  Shared because it is a statement about Metabot, not about a provider: the adapters that can observe a
+  window (vLLM from its catalog, Ollama from the loaded model) must not drift apart on the number."
+  16384)
+
+(def forced-tool-call-token-floor
+  "Smallest `max_tokens` a forced tool call is given, whatever the caller asked for — below it a reasoning
+  model spends the budget thinking and emits no call. Equal to [[probe-max-tokens]], which preflight
+  already proves the model can clear."
+  probe-max-tokens)
+
+(def reasoning-model-token-floor
+  "Smallest `max_tokens` a request on a reasoning model gets. Chat Completions bills thinking, answer and
+  tool call against one budget."
+  16384)
+
+(def default-temperature
+  "Sampling temperature for a caller that supplies none, on a self-hosted server. The hosted providers pick
+  something sane server-side; a server the operator runs does not — vLLM defaults to 1.0 and an Ollama
+  model inherits whatever its Modelfile says — and both are wrong for tool calling and SQL generation."
+  0.3)
+
 ;;; ------------------------------------------------- Streaming --------------------------------------------------
+
+(defn io-guarded
+  "Wrap a stream `reducible` so an `IOException` raised while *consuming* it surfaces as `(ex-fn e)` rather
+  than raw. An adapter's own `try` covers only establishing the request; the body is read long after that
+  returns.
+
+  Goes inside `core/reducible-with-api-errors`, never outside: an adapter's IO translation tags `:api-error
+  true`, which `core/rethrow-api-error!` rethrows unchanged, so this wins for IO."
+  [reducible ex-fn]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (try
+        (.reduce ^clojure.lang.IReduceInit reducible rf init)
+        (catch IOException e
+          (throw (ex-fn e)))))))
 
 (mu/defn stream!
   "Open a provider's streaming request and return a reducible over its raw SSE events.
@@ -327,6 +405,8 @@
     :error-msg        - replaces the descriptor's own `res->message`, for a provider whose message
                         depends on the connection rather than only on the response. Applies to both
                         phases below.
+    :read-stream      - turns the response body into a reducible of the provider's events, for a stream
+                        that is not SSE. Defaults to [[core/sse-reducible]].
     :wrap-stream      - applied to the reducible before error translation, for an adapter with its own
                         translation to do first.
     :on-request-error - replaces the default [[rethrow!]] catch, for an adapter that retries. Only
@@ -335,11 +415,12 @@
                         instead, which no adapter overrides."
   [{:keys [slug display-name span] :as p}            :- Provider
    {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
-   {:keys [path body headers request-options span-attrs wrap-stream on-request-error error-msg]
+   {:keys [path body headers request-options span-attrs read-stream wrap-stream on-request-error error-msg]
     :or   {wrap-stream identity}}                    :- StreamOpts]
-  (let [msg-count  (count input)
-        tool-count (count tools)
-        res->msg   (or error-msg (:error-msg p))]
+  (let [msg-count   (count input)
+        tool-count  (count tools)
+        res->msg    (or error-msg (:error-msg p))
+        read-stream (or read-stream core/sse-reducible)]
     (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
     ;; flat keys, which is what `u.o11y/with-span` renders into its log line. clj-otel reads span
     ;; attributes only from `:attributes` and drops every other key, so these reach the log and not the
@@ -365,7 +446,7 @@
                            :body        (json/encode body)}
                         request-options)
               :body
-              core/sse-reducible
+              read-stream
               (debug/capture-stream {:provider slug
                                      :model    model
                                      :url      path

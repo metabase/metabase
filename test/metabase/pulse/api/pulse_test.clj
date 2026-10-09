@@ -7,12 +7,14 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.response :as api.response]
-   [metabase.channel.api.channel-test :as api.channel-test]
+   [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
+   [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -996,6 +998,30 @@
                                                          :user_id          (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection! [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))))
+
+(deftest send-test-pulse-delivery-failure-test
+  (testing "POST /api/pulse/test answers 502 when the channel does not deliver (GDGT-3144)"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Daily Sad Toucans"}
+                   :model/Card      card              {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)]
+        (with-redefs [channel/send! (fn [& _] (throw (ex-info "SMTP is down" {})))]
+          (let [response (mt/user-http-request :crowberto :post 502 "pulse/test"
+                                               {:name         (mt/random-name)
+                                                :dashboard_id dashboard-id
+                                                :cards        [{:id                (:id card)
+                                                                :include_csv       false
+                                                                :include_xls       false
+                                                                :dashboard_card_id nil}]
+                                                :channels     [{:enabled       true
+                                                                :channel_type  "email"
+                                                                :schedule_type "daily"
+                                                                :schedule_hour 12
+                                                                :schedule_day  nil
+                                                                :recipients    [(mt/fetch-user :rasta)]}]})]
+            (is (=? {:message         "Failed to deliver to channel/email"
+                     :error-code      "notification/delivery-failed"
+                     :failed-handlers [{:channel_type "channel/email"}]} response))
+            (is (not-any? :message (:failed-handlers response)))))))))
 
 (deftest send-test-pulse-test
   ;; see [[metabase-enterprise.advanced-config.api.pulse-test/test-pulse-endpoint-should-respect-email-domain-allow-list-test]]

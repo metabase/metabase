@@ -10,11 +10,11 @@ layout: new-docs
 
 # Sync Google Sheets with Metabase
 
-> Syncing Google Sheets is only available for Metabase Cloud instances with the [Metabase Cloud Storage](./storage.md) add-on.
+> Syncing Google Sheets is only available for Metabase Cloud instances with the [Metabase Cloud Storage](https://www.metabase.com/docs/latest/cloud/storage) add-on.
 
 ![Sync Google Sheets](./images/connect-google-sheets.png)
 
-If you've set up [Metabase Cloud Storage](./storage.md), an admin can set up Metabase to sync with Google Sheets in a Google Drive folder. Metabase will create tables in your Metabase Cloud Storage for the synced Google Sheets.
+If you've set up [Metabase Cloud Storage](https://www.metabase.com/docs/latest/cloud/storage), an admin can set up Metabase to sync with Google Sheets in a Google Drive folder. Metabase will create tables in your Metabase Cloud Storage for the synced Google Sheets.
 
 Currently, you can't sync Google Sheets to your own database.
 
@@ -100,4 +100,4 @@ To check how much storage you're using:
 
 The quota numbers update every 6 hours, so there might be a slight delay. Once you hit your quota limit, you won't be able to upload/sync more data until you either free up some space or increase your storage.
 
-To store more rows, see [increase Metabase Cloud storage](./storage.md#increase-metabase-cloud-storage).
+To store more rows, see [increase Metabase Cloud storage](https://www.metabase.com/docs/latest/cloud/storage#increase-metabase-cloud-storage).

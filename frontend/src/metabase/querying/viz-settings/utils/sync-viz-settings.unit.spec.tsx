@@ -8,7 +8,11 @@ import {
   createMockTableColumnOrderSetting,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
 import {
   type ColumnInfo,
@@ -554,8 +558,8 @@ describe("syncVizSettingsWithQuery", () => {
           {
             source: { type: "table", id: ORDERS_ID },
             fields: [
-              { type: "column", name: "ID", sourceName: "ORDERS" },
-              { type: "column", name: "ID", sourceName: "PEOPLE" },
+              { type: "column", name: "ID" },
+              { type: "column", name: "ID", sourceFieldId: ORDERS.USER_ID },
             ],
           },
         ],
@@ -566,9 +570,9 @@ describe("syncVizSettingsWithQuery", () => {
           {
             source: { type: "table", id: ORDERS_ID },
             fields: [
-              { type: "column", name: "ID", sourceName: "ORDERS" },
-              { type: "column", name: "ID", sourceName: "PRODUCTS" },
-              { type: "column", name: "ID", sourceName: "PEOPLE" },
+              { type: "column", name: "ID" },
+              { type: "column", name: "ID", sourceFieldId: ORDERS.PRODUCT_ID },
+              { type: "column", name: "ID", sourceFieldId: ORDERS.USER_ID },
             ],
           },
         ],
@@ -612,12 +616,10 @@ describe("syncVizSettingsWithQuery", () => {
               {
                 type: "operator",
                 operator: "sum",
-                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+                args: [{ type: "column", name: "TOTAL" }],
               },
             ],
-            breakouts: [
-              { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-            ],
+            breakouts: [{ type: "column", name: "CREATED_AT" }],
           },
         ],
       });
@@ -629,19 +631,15 @@ describe("syncVizSettingsWithQuery", () => {
               {
                 type: "operator",
                 operator: "sum",
-                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+                args: [{ type: "column", name: "TOTAL" }],
               },
               {
                 type: "operator",
                 operator: "sum",
-                args: [
-                  { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
-                ],
+                args: [{ type: "column", name: "SUBTOTAL" }],
               },
             ],
-            breakouts: [
-              { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-            ],
+            breakouts: [{ type: "column", name: "CREATED_AT" }],
           },
         ],
       });

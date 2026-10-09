@@ -62,6 +62,13 @@
         (let [n (events/backfill-glossary-tracking!)]
           (when (pos? n)
             (log/infof "Tracking %d existing glossary entries for remote sync" n))))
+      (when (= :read-write (settings/remote-sync-type))
+        (let [n (events/backfill-action-tracking!)]
+          (when (pos? n)
+            (log/infof "Tracking %d existing actions for remote sync" n)))
+        (let [n (events/backfill-data-app-tracking!)]
+          (when (pos? n)
+            (log/infof "Tracking %d existing data apps for remote sync" n))))
       (when-not (collection/has-remote-synced-collection?)
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")

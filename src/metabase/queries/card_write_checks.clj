@@ -9,6 +9,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
@@ -86,7 +87,10 @@
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
   (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
-    (check-allowed-to-remove-from-existing-dashboards card-before-update))
+    (check-allowed-to-remove-from-existing-dashboards card-before-update)
+    (when-let [dashboard-id (:dashboard_id card-updates)]
+      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
+                                                         [(merge card-before-update card-updates)])))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms
@@ -128,6 +132,14 @@
   (parameter-card/check-parameter-source-card-permissions (:parameters card))
   (query-perms/check-saved-query-run-permissions (:dataset_query card))
   (api/create-check :model/Card card))
+
+(defn check-allowed-to-delete-card!
+  "Throw a 400 when `card` is in a data app's collection and another card there reads it. For `DELETE /api/card/:id`
+   rather than the delete hook: deleting the collection deletes its cards together, readers and read."
+  [{:keys [id collection_id]}]
+  (when-let [reader (card/data-app-card-reader collection_id id)]
+    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t be deleted." reader)
+                    {:status-code 400}))))
 
 (mu/defn check-allowed-to-update-card!
   "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.

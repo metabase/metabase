@@ -139,8 +139,12 @@
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
   running server.
 
-    (let [server-routes (metabase.server.core/make-routes #'metabase.api-routes.core/routes)
-          handler       (metabase.server.core/make-handler server-routes)]
+    (let [server-routes (metabase.server.core/make-routes
+                         {:api        #'metabase.api-routes.core/routes
+                          :auth       #'metabase.sso.auth-wrapper/routes
+                          :oauth      #'metabase.oauth-server.api/oauth-routes
+                          :well-known #'metabase.oauth-server.api/well-known-routes})
+          handler       (metabase.server.core/make-handler server-routes #'metabase.mcp.http-handler/options)]
         (metabase.server.core/start-web-server! handler))"
   [handler :- ::api.macros/handler]
   (when-not (instance)

@@ -9,3 +9,28 @@
   color: var(--mb-color-text-disabled);
   font-weight: 700;
 }
+
+.fade {
+  transition: opacity 0.25s linear;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.slide {
+  transition:
+    opacity 0.25s linear,
+    transform 0.25s linear;
+}
+
+.slideOut {
+  transform: translateY(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade,
+  .slide {
+    transition-duration: 0s;
+  }
+}

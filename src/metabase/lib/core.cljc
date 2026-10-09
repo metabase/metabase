@@ -1581,6 +1581,8 @@
   native-query
   raw-native-query
   recognize-template-tags
+  rename-template-tags
+  rename-template-tags-in-text
   replace-template-tag-names
   required-native-extras
   native-query-card-ids
@@ -1724,6 +1726,7 @@
  [metabase.lib.walk.util
   all-field-ids
   all-referenced-entity-ids
+  all-referenced-entity-ids-recursive
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids

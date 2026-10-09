@@ -20,13 +20,16 @@
 (def ^:private provider-notes-resources
   "Hand-written prose appended to a provider type's section, keyed by type, for what an admin needs to know that the
   registry doesn't hold. The managed provider's covers that it's a Metabase Cloud offering, how it's billed, and how it
-  authenticates. Bedrock's covers the IAM actions the mantle endpoint needs and why the model picker is region-scoped."
+  authenticates. Bedrock's covers the IAM actions the mantle endpoint needs and why the model picker is region-scoped.
+  Google's covers connecting a Model Garden endpoint, which its fixed catalog cannot list."
   {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"
-   "bedrock"  "metabase/cmd/resources/ai-provider-bedrock.md"})
+   "bedrock"  "metabase/cmd/resources/ai-provider-bedrock.md"
+   "google"   "metabase/cmd/resources/ai-provider-google.md"
+   "ollama"   "metabase/cmd/resources/ai-provider-ollama.md"})
 
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
-  #{"vllm"})
+  #{"vllm" "ollama"})
 
 (def ^:private max-enumerated-options
   "Above this many `:options`, a field's choices are pointed at rather than listed. Bedrock's dozens of regions are
@@ -78,9 +81,14 @@
   "The condition that reveals a field, or nil when it is always shown."
   [{:keys [show-when]} {:keys [fields]}]
   (when-let [{:keys [field value]} show-when]
-    (let [controlling (field-at fields field)]
+    (let [controlling  (field-at fields field)
+          value-label  (option-label controlling value)]
+      ;; the stored value, in code, ties the label to the value [[field-options-sentence]] lists
       (str "Only when " (md/bold (label controlling))
-           " is " (md/bold (option-label controlling value)) "."))))
+           " is " (md/bold value-label)
+           (when (not= (str value-label) (str value))
+             (str " (" (md/code value) ")"))
+           "."))))
 
 (defn- field-requires-sentence
   "The siblings a field cannot be set without, or nil when it stands on its own. The registry keys `:requires` by
@@ -106,16 +114,17 @@
   [{:keys [options]}]
   (when (seq options)
     (if (<= (count options) max-enumerated-options)
-      (str "One of: " (str/join ", " (map #(md/code (label %)) options)) ".")
+      (str "One of: " (str/join ", " (map #(md/code (:value %)) options)) ".")
       ;; deliberately not a count: the long lists come from bundled SDKs, and would churn this page on every bump
       (str "Pick one from the dropdown in " (md/bold "Admin > AI") "."))))
 
 (defn- field-default-sentence
   "The value a field starts at, or nil when it has no `:default`."
-  [{:keys [default] :as field}]
+  [{:keys [default]}]
   (when default
-    ;; a field with `:options` stores one value but displays another, so show what the form shows
-    (str "Defaults to " (md/code (option-label field default)) ".")))
+    ;; the stored value, not the form's label — an environment variable or an `MB_LLM_PROVIDERS`
+    ;; config map has to carry the value, and the form's own dropdown is where labels are read
+    (str "Defaults to " (md/code default) ".")))
 
 (defn- field-env-var-sentence
   "The environment variable that can stand in for filling the field in, or nil when none configures it. Phrased as an
@@ -187,8 +196,8 @@
            "works out the model from " (field-labels fields model-fields) " instead.")
 
       (contains? dynamic-catalog-types type)
-      (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
-           "pick depends on how you started it.")
+      (str "Metabase lists whichever models your " provider-label " server has available, so what you "
+           "can pick depends on how you set it up.")
 
       :else
       (throw (ex-info (str "No model source for provider type " (pr-str type)

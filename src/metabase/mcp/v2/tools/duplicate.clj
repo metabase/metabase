@@ -77,7 +77,10 @@
                      (assoc :name new-name :collection_id collection-id)
                      (dissoc :dashboard_id :collection_position))]
     (queries/check-allowed-to-copy-card! new-card)
-    (queries/create-card! new-card @api/*current-user*)))
+    ;; Copy semantics for timelines too: an inherited selection the caller cannot read is preserved, as in
+    ;; `POST /api/card/:id/copy`, while any change to it is still checked.
+    (queries/with-copy-source-card card
+      (queries/create-card! new-card @api/*current-user*))))
 
 (defn- fetch-dashboard
   [id-or-eid]

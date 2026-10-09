@@ -1,0 +1,56 @@
+;; Budgets for kondo suppressions in test code: inline `:clj-kondo/ignore` forms per linter
+;; (:ignore-counts). Production code has its own budgets in .clj-kondo/ratchets.edn, which also holds
+;; every config-level waiver (:config-counts) -- config.edn's scoping doesn't cleanly split.
+;; The :discouraged-var-counts and :discouraged-namespace-counts fields budget those linters' inline
+;; ignores per symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened
+;; to `ee.`.
+;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other
+;; budget is a non-negative integer.
+;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
+;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
+;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one;
+;; a seed like `:discouraged-var/clojure.core/println` seeds one symbol, and `:discouraged-var` all of them.
+;; The workflow runs it on master, so feature branches do not need to record reductions.
+;; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the
+;; exemptions must be explained in the PR.
+;; :all is the vector-less ignore form, which suppresses every linter on the next form.
+{:ignore-counts                {:case-symbol-test                                                    1
+                                :clojure-lsp/unused-public-var                                       1
+                                :deprecated-namespace                                                66
+                                :deprecated-var                                                      33
+                                :equals-true                                                         1
+                                :metabase/disallow-hardcoded-driver-names-in-tests                   34
+                                :metabase/discourage-dynamic-vars                                    41
+                                :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
+                                :metabase/namespace-name                                             1
+                                :metabase/prefer-with-dynamic-fn-redefs                              :unlimited
+                                :metabase/test-helpers-use-non-thread-safe-functions                 18
+                                :metabase/validate-deftest                                           9
+                                :missing-protocol-method                                             3
+                                :type-mismatch                                                       6
+                                :uninitialized-var                                                   1
+                                :unresolved-symbol                                                   2
+                                :unused-binding                                                      6
+                                :unused-private-var                                                  2}
+ :discouraged-namespace-counts {:clojure.tools.logging 2
+                                :toucan2.core          1}
+ :discouraged-var-counts       {:clojure.core/pr                            1
+                                :clojure.core/print                         1
+                                :clojure.core/printf                        2
+                                :clojure.core/println                       9
+                                :clojure.core/prn                           1
+                                :clojure.core/time                          1
+                                :clojure.java.jdbc/get-connection           1
+                                :clojure.java.jdbc/with-db-connection       1
+                                :clojure.pprint/print-table                 1
+                                :clojure.string/lower-case                  1
+                                :compojure.core/routes                      2
+                                :ee.entity-retrieval.core/search-unfiltered 6
+                                :entity-retrieval.core/search-unfiltered    1
+                                :entity-retrieval.mirror/search-unfiltered  1
+                                :lib.equality/find-column-indexes-for-refs  2
+                                :test/with-temp                             28}
+ :comment-exempt               #{:deprecated-namespace
+                                 :discouraged-namespace
+                                 :discouraged-var
+                                 :metabase/discourage-dynamic-vars}}
