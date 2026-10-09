@@ -2,611 +2,587 @@
   "durations": [
     {
       "spec": "../test/scenarios/actions/actions-in-object-detail-view.cy.spec.js",
-      "duration": 26387
+      "duration": 25177
     },
     {
       "spec": "../test/scenarios/actions/actions-on-dashboards.cy.spec.js",
-      "duration": 143395
+      "duration": 142915
     },
     {
       "spec": "../test/scenarios/actions/actions-reproductions.cy.spec.js",
-      "duration": 44842
+      "duration": 43156
     },
     {
       "spec": "../test/scenarios/actions/model-actions.cy.spec.js",
-      "duration": 73760
+      "duration": 72810
     },
     {
       "spec": "../test/scenarios/actions/table-editing.cy.spec.ts",
-      "duration": 30759
+      "duration": 33220
     },
     {
       "spec": "../test/scenarios/admin/admin-reproductions.cy.spec.js",
-      "duration": 17230
+      "duration": 17306
     },
     {
       "spec": "../test/scenarios/admin/api-keys.cy.spec.ts",
-      "duration": 17164
+      "duration": 16973
     },
     {
       "spec": "../test/scenarios/admin/authentication.cy.spec.ts",
-      "duration": 9085
+      "duration": 8785
     },
     {
       "spec": "../test/scenarios/admin/database-connection-strings.cy.spec.ts",
-      "duration": 16234
+      "duration": 17322
     },
     {
       "spec": "../test/scenarios/admin/database-routing/database-routing-admin.cy.spec.ts",
-      "duration": 37865
+      "duration": 38282
     },
     {
       "spec": "../test/scenarios/admin/database-routing/database-routing-usage.cy.spec.ts",
-      "duration": 43864
+      "duration": 48570
     },
     {
       "spec": "../test/scenarios/admin/databases.cy.spec.js",
-      "duration": 45468
+      "duration": 45059
     },
     {
       "spec": "../test/scenarios/admin/databases/database-writable-connection.cy.spec.ts",
-      "duration": 57540
+      "duration": 47464
     },
     {
       "spec": "../test/scenarios/admin/datamodel/datamodel.cy.spec.ts",
-      "duration": 93742
+      "duration": 90615
     },
     {
       "spec": "../test/scenarios/admin/datamodel/reproductions.cy.spec.ts",
-      "duration": 27335
+      "duration": 27970
     },
     {
       "spec": "../test/scenarios/admin/datamodel/segments.cy.spec.ts",
-      "duration": 35127
+      "duration": 37083
     },
     {
       "spec": "../test/scenarios/admin/error-reporting.cy.spec.ts",
-      "duration": 11647
+      "duration": 15119
     },
     {
       "spec": "../test/scenarios/admin/help.cy.spec.ts",
-      "duration": 8505
+      "duration": 8197
     },
     {
       "spec": "../test/scenarios/admin/i18n/content-translation/dashboards.cy.spec.ts",
-      "duration": 52047
+      "duration": 49661
     },
     {
       "spec": "../test/scenarios/admin/i18n/content-translation/questions.cy.spec.ts",
-      "duration": 8000
+      "duration": 7891
     },
     {
       "spec": "../test/scenarios/admin/i18n/content-translation/upload-and-download.cy.spec.ts",
-      "duration": 14336
+      "duration": 13787
     },
     {
       "spec": "../test/scenarios/admin/instance-stats-snowplow.cy.spec.js",
-      "duration": 770
+      "duration": 813
     },
     {
       "spec": "../test/scenarios/admin/internal-analytics.cy.spec.ts",
-      "duration": 5819
+      "duration": 5837
     },
     {
       "spec": "../test/scenarios/admin/multi-factor-auth.cy.spec.ts",
-      "duration": 71894
+      "duration": 68158
     },
     {
       "spec": "../test/scenarios/admin/oauth-authorizations.cy.spec.ts",
-      "duration": 2670
+      "duration": 2710
     },
     {
       "spec": "../test/scenarios/admin/people.cy.spec.js",
-      "duration": 68234
+      "duration": 67788
     },
     {
       "spec": "../test/scenarios/admin/performance/caching.cy.spec.ts",
-      "duration": 27153
+      "duration": 21503
     },
     {
       "spec": "../test/scenarios/admin/remote-sync.cy.spec.ts",
-      "duration": 209758
+      "duration": 208123
     },
     {
       "spec": "../test/scenarios/admin/security-center.cy.spec.ts",
-      "duration": 10554
+      "duration": 10731
     },
     {
       "spec": "../test/scenarios/admin/settings.cy.spec.js",
-      "duration": 70694
+      "duration": 69781
     },
     {
       "spec": "../test/scenarios/admin/sso/google.cy.spec.js",
-      "duration": 6790
+      "duration": 6501
     },
     {
       "spec": "../test/scenarios/admin/sso/jwt.cy.spec.ts",
-      "duration": 15205
+      "duration": 15192
     },
     {
       "spec": "../test/scenarios/admin/sso/ldap.cy.spec.ts",
-      "duration": 21570
+      "duration": 21509
     },
     {
       "spec": "../test/scenarios/admin/sso/oidc.cy.spec.ts",
-      "duration": 9254
+      "duration": 9013
     },
     {
       "spec": "../test/scenarios/admin/sso/saml.cy.spec.ts",
-      "duration": 13210
+      "duration": 13822
     },
     {
       "spec": "../test/scenarios/admin/tenants.cy.spec.ts",
-      "duration": 59060
+      "duration": 57436
     },
     {
       "spec": "../test/scenarios/admin/whitelabel.cy.spec.js",
-      "duration": 69013
+      "duration": 66552
     },
     {
       "spec": "../test/scenarios/binning/binning-options.cy.spec.js",
-      "duration": 32462
+      "duration": 32648
     },
     {
       "spec": "../test/scenarios/binning/binning-reproductions.cy.spec.js",
-      "duration": 23028
+      "duration": 24351
     },
     {
       "spec": "../test/scenarios/binning/correctness/longitude.cy.spec.js",
-      "duration": 17657
+      "duration": 17719
     },
     {
       "spec": "../test/scenarios/binning/correctness/time-series.cy.spec.js",
-      "duration": 41903
+      "duration": 42006
     },
     {
       "spec": "../test/scenarios/binning/reproductions/23851-drill-temporal-extraction.cy.spec.js",
-      "duration": 4565
+      "duration": 4378
     },
     {
       "spec": "../test/scenarios/binning/reproductions/34688-34690-time-series-footer.cy.spec.js",
-      "duration": 5106
+      "duration": 5086
     },
     {
       "spec": "../test/scenarios/collections/cleanup.cy.spec.js",
-      "duration": 24774
+      "duration": 23605
     },
     {
       "spec": "../test/scenarios/collections/collection-picker-tenants.cy.spec.ts",
-      "duration": 7134
+      "duration": 7320
     },
     {
       "spec": "../test/scenarios/collections/collection-pinned-overview.cy.spec.js",
-      "duration": 11641
+      "duration": 11882
     },
     {
       "spec": "../test/scenarios/collections/collections-reproductions.cy.spec.ts",
-      "duration": 19527
+      "duration": 19138
     },
     {
       "spec": "../test/scenarios/collections/collections.cy.spec.js",
-      "duration": 81038
+      "duration": 78137
     },
     {
       "spec": "../test/scenarios/collections/instance-analytics.cy.spec.js",
-      "duration": 50766
+      "duration": 48913
     },
     {
       "spec": "../test/scenarios/collections/permissions.cy.spec.js",
-      "duration": 74270
+      "duration": 73373
     },
     {
       "spec": "../test/scenarios/collections/personal-collections.cy.spec.js",
-      "duration": 13105
+      "duration": 13217
     },
     {
       "spec": "../test/scenarios/collections/revision-history.cy.spec.js",
-      "duration": 26513
+      "duration": 25548
     },
     {
       "spec": "../test/scenarios/collections/tenant-collection-trash.cy.spec.ts",
-      "duration": 3204
+      "duration": 3098
     },
     {
       "spec": "../test/scenarios/collections/tenant-collections-list.cy.spec.ts",
-      "duration": 3175
+      "duration": 3061
     },
     {
       "spec": "../test/scenarios/collections/trash.cy.spec.js",
-      "duration": 60850
+      "duration": 60240
     },
     {
       "spec": "../test/scenarios/collections/uploads.cy.spec.js",
-      "duration": 36452
+      "duration": 36253
     },
     {
       "spec": "../test/scenarios/coverage-baseline.cy.spec.js",
-      "duration": 1637
+      "duration": 1705
     },
     {
       "spec": "../test/scenarios/custom-column/cc-boolean-functions.cy.spec.ts",
-      "duration": 51132
+      "duration": 53693
     },
     {
       "spec": "../test/scenarios/custom-column/cc-fields.cy.spec.ts",
-      "duration": 22645
+      "duration": 22900
     },
     {
       "spec": "../test/scenarios/custom-column/cc-literals.cy.spec.ts",
-      "duration": 39721
+      "duration": 38633
     },
     {
       "spec": "../test/scenarios/custom-column/cc-shortcuts-combine.cy.spec.ts",
-      "duration": 12070
+      "duration": 12216
     },
     {
       "spec": "../test/scenarios/custom-column/cc-shortcuts.cy.spec.ts",
-      "duration": 25242
+      "duration": 24536
     },
     {
       "spec": "../test/scenarios/custom-column/cc-typing-suggestion.cy.spec.js",
-      "duration": 33513
+      "duration": 34448
     },
     {
       "spec": "../test/scenarios/custom-column/custom-column-1.cy.spec.js",
-      "duration": 135250
+      "duration": 136021
     },
     {
       "spec": "../test/scenarios/custom-column/custom-column-2.cy.spec.js",
-      "duration": 80695
+      "duration": 79996
     },
     {
       "spec": "../test/scenarios/custom-column/custom-column-3.cy.spec.js",
-      "duration": 115910
+      "duration": 113021
     },
     {
       "spec": "../test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js",
-      "duration": 124959
+      "duration": 120898
     },
     {
       "spec": "../test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js",
-      "duration": 152564
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/click-behavior-reproductions.cy.spec.ts",
-      "duration": 23126
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/click-behavior.cy.spec.js",
-      "duration": 236421
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/dashboard-card-fetching.cy.spec.js",
-      "duration": 1772
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js",
-      "duration": 100911
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/dashboard-card-resizing.cy.spec.js",
-      "duration": 38989
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/dashboard-card-undo.cy.spec.js",
-      "duration": 6424
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/dashboard-drill.cy.spec.js",
-      "duration": 55833
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/dashboard-sections.cy.spec.js",
-      "duration": 10831
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/dashcard-replace-question.cy.spec.js",
-      "duration": 12489
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/duplicate-dashcards-tabs.cy.spec.js",
-      "duration": 5683
-    },
-    {
-      "spec": "../test/scenarios/dashboard-cards/visualization-options.cy.spec.js",
-      "duration": 10373
+      "duration": 159708
     },
     {
       "spec": "../test/scenarios/dashboard-filters-matrix/dashboard-filters-matrix.cy.spec.ts",
-      "duration": 109329
+      "duration": 106698
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-chained-filters.cy.spec.js",
-      "duration": 18165
+      "duration": 18676
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filter-data-permissions.cy.spec.js",
-      "duration": 9053
+      "duration": 8100
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filter-defaults.cy.spec.ts",
-      "duration": 6111
+      "duration": 7684
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-2-stage-4.cy.spec.ts",
-      "duration": 206383
+      "duration": 195406
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-auto-apply.cy.spec.js",
-      "duration": 27123
+      "duration": 18726
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-auto-wiring.cy.spec.js",
-      "duration": 48064
+      "duration": 45049
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-boolean.cy.spec.ts",
-      "duration": 35384
+      "duration": 32583
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-date.cy.spec.js",
-      "duration": 21501
+      "duration": 23702
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-id.cy.spec.js",
-      "duration": 16785
+      "duration": 21565
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-location.cy.spec.js",
-      "duration": 18655
+      "duration": 18480
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-management.cy.spec.js",
-      "duration": 12080
+      "duration": 10061
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-misc.cy.spec.ts",
-      "duration": 9524
+      "duration": 9805
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-number-source.cy.spec.js",
-      "duration": 23803
+      "duration": 23520
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-number.cy.spec.js",
-      "duration": 21657
+      "duration": 28399
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-remapping.cy.spec.ts",
-      "duration": 31728
+      "duration": 31668
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-reproductions-1.cy.spec.js",
-      "duration": 112746
+      "duration": 99230
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-reproductions-2.cy.spec.js",
-      "duration": 118750
+      "duration": 104675
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-reset-clear.cy.spec.ts",
-      "duration": 170270
+      "duration": 174647
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-source.cy.spec.js",
-      "duration": 38774
+      "duration": 36389
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-sql-management.cy.spec.js",
-      "duration": 5605
+      "duration": 4869
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-sql-number.cy.spec.js",
-      "duration": 3165
+      "duration": 5947
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-sql-required.cy.spec.js",
-      "duration": 7864
+      "duration": 7660
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-sql-text-category.cy.spec.js",
-      "duration": 7782
+      "duration": 7511
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-text-category.cy.spec.js",
-      "duration": 37589
+      "duration": 35778
     },
     {
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-with-question-revert.cy.spec.js",
-      "duration": 21527
+      "duration": 21475
     },
     {
       "spec": "../test/scenarios/dashboard-filters/parameters.cy.spec.js",
-      "duration": 117296
+      "duration": 109958
     },
     {
       "spec": "../test/scenarios/dashboard-filters/temporal-unit-parameters.cy.spec.js",
-      "duration": 95828
+      "duration": 89030
     },
     {
       "spec": "../test/scenarios/dashboard/dashboard-back-navigation.cy.spec.js",
-      "duration": 41535
+      "duration": 40750
     },
     {
       "spec": "../test/scenarios/dashboard/dashboard-management.cy.spec.js",
-      "duration": 54758
+      "duration": 53941
     },
     {
       "spec": "../test/scenarios/dashboard/dashboard-questions.cy.spec.js",
-      "duration": 157267
+      "duration": 163772
     },
     {
       "spec": "../test/scenarios/dashboard/dashboard-reproductions.cy.spec.js",
-      "duration": 127652
+      "duration": 105222
+    },
+    {
+      "spec": "../test/scenarios/dashboard/dashboard-tenant-question-picker.cy.spec.ts",
+      "duration": 9419
     },
     {
       "spec": "../test/scenarios/dashboard/dashboard-tenant-specific-question-picker.cy.spec.ts",
-      "duration": 6076
+      "duration": 5967
     },
     {
       "spec": "../test/scenarios/dashboard/dashboard-tenant-user-question-picker.cy.spec.ts",
-      "duration": 6190
+      "duration": 6902
     },
     {
       "spec": "../test/scenarios/dashboard/dashboard.cy.spec.js",
-      "duration": 139356
+      "duration": 130530
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-click-behavior-reproductions.cy.spec.ts",
-      "duration": 21301
+      "duration": 20751
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-click-behavior.cy.spec.js",
-      "duration": 205674
+      "duration": 218823
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-drill.cy.spec.js",
-      "duration": 54628
+      "duration": 50774
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-duplicate-tabs.cy.spec.js",
-      "duration": 6786
+      "duration": 7769
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-fetching.cy.spec.js",
-      "duration": 2446
+      "duration": 2505
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-replace-question.cy.spec.js",
-      "duration": 12633
+      "duration": 12213
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-reproductions.cy.spec.js",
-      "duration": 80081
+      "duration": 84890
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-resizing.cy.spec.js",
-      "duration": 43322
+      "duration": 41694
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-sections.cy.spec.js",
-      "duration": 10125
+      "duration": 9593
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-undo.cy.spec.js",
-      "duration": 7377
+      "duration": 7150
     },
     {
       "spec": "../test/scenarios/dashboard/dashcard-visualization-options.cy.spec.js",
-      "duration": 10258
+      "duration": 10590
     },
     {
       "spec": "../test/scenarios/dashboard/tabs.cy.spec.js",
-      "duration": 53504
+      "duration": 60305
     },
     {
       "spec": "../test/scenarios/dashboard/text-cards.cy.spec.js",
-      "duration": 30996
+      "duration": 22991
     },
     {
       "spec": "../test/scenarios/dashboard/title-drill.cy.spec.js",
-      "duration": 29832
+      "duration": 30517
     },
     {
       "spec": "../test/scenarios/dashboard/x-rays.cy.spec.js",
-      "duration": 59144
+      "duration": 55979
     },
     {
       "spec": "../test/scenarios/data-apps/actions.cy.spec.ts",
-      "duration": 20080
+      "duration": 18504
     },
     {
       "spec": "../test/scenarios/data-apps/admin.cy.spec.ts",
-      "duration": 12016
+      "duration": 13657
     },
     {
       "spec": "../test/scenarios/data-apps/backend_scope.cy.spec.ts",
-      "duration": 9047
+      "duration": 8658
     },
     {
       "spec": "../test/scenarios/data-apps/custom-viz.cy.spec.ts",
-      "duration": 6275
+      "duration": 6198
+    },
+    {
+      "spec": "../test/scenarios/data-apps/group-access-warnings.cy.spec.ts",
+      "duration": 9310
+    },
+    {
+      "spec": "../test/scenarios/data-apps/group-access.cy.spec.ts",
+      "duration": 15579
     },
     {
       "spec": "../test/scenarios/data-apps/legacy-permissions.cy.spec.ts",
-      "duration": 14961
-    },
-    {
-      "spec": "../test/scenarios/data-apps/sandbox.cy.spec.ts",
-      "duration": 20672
-    },
-    {
-      "spec": "../test/scenarios/data-apps/sandboxing_isolation.cy.spec.ts",
-      "duration": 138996
-    },
-    {
-      "spec": "../test/scenarios/data-apps/sdk.cy.spec.ts",
-      "duration": 27895
-    },
-    {
-      "spec": "../test/scenarios/data-apps/semantic-schema.cy.spec.ts",
-      "duration": 1127
+      "duration": 13910
     },
     {
       "spec": "../test/scenarios/data-apps/resources-production-actions.cy.spec.ts",
-      "duration": 14247
+      "duration": 16445
     },
     {
       "spec": "../test/scenarios/data-apps/resources-production.cy.spec.ts",
-      "duration": 15285
+      "duration": 16229
+    },
+    {
+      "spec": "../test/scenarios/data-apps/sandbox.cy.spec.ts",
+      "duration": 19658
+    },
+    {
+      "spec": "../test/scenarios/data-apps/sandboxing_isolation.cy.spec.ts",
+      "duration": 130430
+    },
+    {
+      "spec": "../test/scenarios/data-apps/sdk.cy.spec.ts",
+      "duration": 27460
+    },
+    {
+      "spec": "../test/scenarios/data-apps/semantic-schema.cy.spec.ts",
+      "duration": 1135
+    },
+    {
+      "spec": "../test/scenarios/data-apps/sync-resources-production-actions.cy.spec.ts",
+      "duration": 14569
+    },
+    {
+      "spec": "../test/scenarios/data-apps/sync-resources-production.cy.spec.ts",
+      "duration": 15955
     },
     {
       "spec": "../test/scenarios/data-apps/sync.cy.spec.ts",
-      "duration": 10085
+      "duration": 10298
     },
     {
       "spec": "../test/scenarios/data-apps/user-access.cy.spec.ts",
-      "duration": 21631
+      "duration": 22623
     },
     {
       "spec": "../test/scenarios/data-apps/viewing.cy.spec.ts",
-      "duration": 33919
+      "duration": 31506
     },
     {
       "spec": "../test/scenarios/data-model/data-model-shared-1.cy.spec.ts",
-      "duration": 117175
+      "duration": 113725
     },
     {
       "spec": "../test/scenarios/data-model/data-model-shared-2.cy.spec.ts",
-      "duration": 213808
+      "duration": 203968
     },
     {
       "spec": "../test/scenarios/data-model/data-model-shared-3.cy.spec.ts",
-      "duration": 132493
+      "duration": 126364
     },
     {
       "spec": "../test/scenarios/data-model/data-model-shared-4.cy.spec.ts",
-      "duration": 38826
+      "duration": 39556
     },
     {
       "spec": "../test/scenarios/data-studio/data-model/data-studio-bulk-table.cy.spec.ts",
-      "duration": 24283
+      "duration": 24610
     },
     {
       "spec": "../test/scenarios/data-studio/data-model/data-studio-single-table.cy.spec.ts",
-      "duration": 24689
+      "duration": 24941
     },
     {
       "spec": "../test/scenarios/data-studio/data-model/datamodel-data-studio.cy.spec.ts",
-      "duration": 72074
+      "duration": 68060
     },
     {
       "spec": "../test/scenarios/data-studio/data-model/model-to-transform.cy.spec.ts",
-      "duration": 27319
+      "duration": 25815
     },
     {
       "spec": "../test/scenarios/data-studio/data-model/segments-data-studio.cy.spec.ts",
-      "duration": 40045
+      "duration": 38583
     },
     {
       "spec": "../test/scenarios/data-studio/data-model/source-replacement.cy.spec.ts",
@@ -614,127 +590,131 @@
     },
     {
       "spec": "../test/scenarios/data-studio/data-studio-library.cy.spec.ts",
-      "duration": 45238
+      "duration": 44716
     },
     {
       "spec": "../test/scenarios/data-studio/data-studio-metrics.cy.spec.ts",
-      "duration": 28051
+      "duration": 27986
     },
     {
       "spec": "../test/scenarios/data-studio/data-studio-tables.cy.spec.ts",
-      "duration": 15493
+      "duration": 15066
     },
     {
       "spec": "../test/scenarios/data-studio/measures/measures-data-studio.cy.spec.ts",
-      "duration": 33219
+      "duration": 33387
     },
     {
       "spec": "../test/scenarios/data-studio/measures/measures-published-tables.cy.spec.ts",
-      "duration": 10863
+      "duration": 11231
     },
     {
       "spec": "../test/scenarios/data-studio/measures/measures-queries.cy.spec.ts",
-      "duration": 178701
+      "duration": 191347
     },
     {
       "spec": "../test/scenarios/data-studio/published-tables-segments.cy.spec.ts",
-      "duration": 8384
+      "duration": 8459
+    },
+    {
+      "spec": "../test/scenarios/data-studio/schema-viewer.cy.spec.ts",
+      "duration": 26141
     },
     {
       "spec": "../test/scenarios/data-studio/snippets.cy.spec.ts",
-      "duration": 24984
+      "duration": 25824
     },
     {
       "spec": "../test/scenarios/data-studio/table-collection-permissions.cy.spec.ts",
-      "duration": 86970
+      "duration": 85999
     },
     {
       "spec": "../test/scenarios/data-studio/transforms/python-library.cy.spec.ts",
-      "duration": 11339
+      "duration": 10003
     },
     {
       "spec": "../test/scenarios/data-studio/transforms/reproductions.cy.spec.ts",
-      "duration": 26847
+      "duration": 17259
     },
     {
       "spec": "../test/scenarios/data-studio/transforms/template-tags.cy.spec.ts",
-      "duration": 70211
+      "duration": 69065
     },
     {
       "spec": "../test/scenarios/data-studio/transforms/transforms-incremental.cy.spec.ts",
-      "duration": 18416
+      "duration": 18118
     },
     {
       "spec": "../test/scenarios/data-studio/transforms/transforms-indexes.cy.spec.ts",
-      "duration": 8263
+      "duration": 8368
     },
     {
       "spec": "../test/scenarios/data-studio/transforms/transforms-inspect.cy.spec.ts",
-      "duration": 36049
+      "duration": 36570
     },
     {
       "spec": "../test/scenarios/data-studio/transforms/transforms.cy.spec.ts",
-      "duration": 358126
+      "duration": 349414
     },
     {
       "spec": "../test/scenarios/dependencies/dependency-broken-list.cy.spec.ts",
-      "duration": 67220
+      "duration": 68807
     },
     {
       "spec": "../test/scenarios/dependencies/dependency-checks.cy.spec.ts",
-      "duration": 35420
+      "duration": 31439
     },
     {
       "spec": "../test/scenarios/dependencies/dependency-graph.cy.spec.ts",
-      "duration": 101712
+      "duration": 102554
     },
     {
       "spec": "../test/scenarios/dependencies/dependency-unreferenced-list.cy.spec.ts",
-      "duration": 91234
+      "duration": 93235
     },
     {
       "spec": "../test/scenarios/detail-view/detail-view.cy.spec.ts",
-      "duration": 10377
+      "duration": 10150
     },
     {
       "spec": "../test/scenarios/documents/card-embed-node.cy.spec.ts",
-      "duration": 26701
+      "duration": 27730
     },
     {
       "spec": "../test/scenarios/documents/comments.cy.spec.ts",
-      "duration": 86003
+      "duration": 85033
     },
     {
       "spec": "../test/scenarios/documents/document-downloads.cy.spec.ts",
-      "duration": 9641
+      "duration": 9763
     },
     {
       "spec": "../test/scenarios/documents/document-links.cy.spec.ts",
-      "duration": 13052
+      "duration": 12859
     },
     {
       "spec": "../test/scenarios/documents/document-metabot.cy.spec.ts",
-      "duration": 2469
+      "duration": 2459
     },
     {
       "spec": "../test/scenarios/documents/document-permissions.cy.spec.ts",
-      "duration": 6593
+      "duration": 6272
     },
     {
       "spec": "../test/scenarios/documents/documents.cy.spec.ts",
-      "duration": 113028
+      "duration": 117807
     },
     {
       "spec": "../test/scenarios/documents/public-documents.cy.spec.ts",
-      "duration": 7894
+      "duration": 7993
     },
     {
       "spec": "../test/scenarios/documents/supporting-text.cy.spec.ts",
-      "duration": 19583
+      "duration": 19308
     },
     {
       "spec": "../test/scenarios/embedding/embed-resource-downloads.cy.spec.ts",
-      "duration": 29369
+      "duration": 28477
     },
     {
       "spec": "../test/scenarios/embedding/embedding-admin-settings-oss.cy.spec.ts",
@@ -742,27 +722,27 @@
     },
     {
       "spec": "../test/scenarios/embedding/embedding-admin-settings-starter.cy.spec.ts",
-      "duration": 4093
+      "duration": 3685
     },
     {
       "spec": "../test/scenarios/embedding/embedding-dashboard.cy.spec.js",
-      "duration": 116149
+      "duration": 113687
     },
     {
       "spec": "../test/scenarios/embedding/embedding-linked-filters.cy.spec.js",
-      "duration": 22464
+      "duration": 22652
     },
     {
       "spec": "../test/scenarios/embedding/embedding-native.cy.spec.js",
-      "duration": 46999
+      "duration": 44031
     },
     {
       "spec": "../test/scenarios/embedding/embedding-questions.cy.spec.js",
-      "duration": 36319
+      "duration": 36721
     },
     {
       "spec": "../test/scenarios/embedding/embedding-reproductions.cy.spec.js",
-      "duration": 80828
+      "duration": 79830
     },
     {
       "spec": "../test/scenarios/embedding/embedding-smoketests.cy.spec.js",
@@ -770,475 +750,479 @@
     },
     {
       "spec": "../test/scenarios/embedding/embedding-snippets.cy.spec.js",
-      "duration": 17857
+      "duration": 18283
     },
     {
       "spec": "../test/scenarios/embedding/embedding-theme-editor/theme-editor.cy.spec.ts",
-      "duration": 25635
+      "duration": 25748
     },
     {
       "spec": "../test/scenarios/embedding/embedding-theme-editor/theme-listing.cy.spec.ts",
-      "duration": 13412
+      "duration": 13659
     },
     {
       "spec": "../test/scenarios/embedding/embedding-theme-editor/theme-upsell.cy.spec.ts",
-      "duration": 5280
+      "duration": 4778
     },
     {
       "spec": "../test/scenarios/embedding/interactive-embedding.cy.spec.js",
-      "duration": 204747
+      "duration": 208578
     },
     {
       "spec": "../test/scenarios/embedding/modular-embedding-settings.cy.spec.ts",
-      "duration": 3272
+      "duration": 3108
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/common-ee.cy.spec.ts",
-      "duration": 38169
+      "duration": 36423
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/common-oss-and-starter.cy.spec.ts",
-      "duration": 6398
+      "duration": 5953
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/embed-flow-enable-embed-js-ee.cy.spec.ts",
-      "duration": 15550
+      "duration": 15005
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/embed-flow-enable-embed-js-oss-and-starter.cy.spec.ts",
-      "duration": 8053
+      "duration": 7883
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/embed-parameters-remapping.cy.spec.ts",
-      "duration": 22431
+      "duration": 28469
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/embed-parameters.cy.spec.ts",
-      "duration": 39707
+      "duration": 40019
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/get-code.cy.spec.ts",
-      "duration": 43541
+      "duration": 42207
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/guest-embed-ee.cy.spec.ts",
-      "duration": 29138
+      "duration": 32117
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/guest-embed-oss.cy.spec.ts",
-      "duration": 1
+      "duration": 2
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/select-embed-entity.cy.spec.ts",
-      "duration": 26424
+      "duration": 26080
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/select-embed-experience.cy.spec.ts",
-      "duration": 31329
+      "duration": 29820
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/select-embed-options.cy.spec.ts",
-      "duration": 91147
+      "duration": 91490
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding-setup/user-settings-persistence.cy.spec.ts",
-      "duration": 12116
+      "duration": 12037
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/authentication.cy.spec.ts",
-      "duration": 22030
+      "duration": 22034
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/content-translations.cy.spec.ts",
-      "duration": 6790
+      "duration": 6510
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/custom-elements-api.cy.spec.ts",
-      "duration": 52582
+      "duration": 53878
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/custom-viz.cy.spec.ts",
-      "duration": 4187
+      "duration": 4232
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/eajs-internal-navigation.cy.spec.ts",
-      "duration": 16227
+      "duration": 17177
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/embed-options.cy.spec.ts",
-      "duration": 17340
+      "duration": 17867
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/guest-embed.cy.spec.ts",
-      "duration": 4948
+      "duration": 5032
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/guest-token-refresh.cy.spec.ts",
-      "duration": 33469
+      "duration": 33075
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/metabase-browser.cy.spec.ts",
-      "duration": 14450
+      "duration": 13757
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/missing-tokens.cy.spec.ts",
-      "duration": 3467
+      "duration": 3343
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/reproductions.cy.spec.ts",
-      "duration": 3606
+      "duration": 3843
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/sdk-csv-downloads.cy.spec.ts",
-      "duration": 5782
+      "duration": 5811
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/sdk-iframe-embedding.cy.spec.ts",
-      "duration": 44043
+      "duration": 45414
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/sdk-pdf-downloads.cy.spec.ts",
-      "duration": 4642
+      "duration": 4648
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/theming.cy.spec.ts",
-      "duration": 7238
+      "duration": 7249
     },
     {
       "spec": "../test/scenarios/embedding/sdk-iframe-embedding/view-and-curate-content.cy.spec.ts",
-      "duration": 22337
+      "duration": 22393
     },
     {
       "spec": "../test/scenarios/embedding/setup-guide/setup-guide.cy.spec.ts",
-      "duration": 85736
+      "duration": 86440
     },
     {
       "spec": "../test/scenarios/embedding/tenant-users-sidecar.cy.spec.ts",
-      "duration": 15089
+      "duration": 16600
     },
     {
       "spec": "../test/scenarios/explorations/explorations.cy.spec.ts",
-      "duration": 47278
+      "duration": 45364
     },
     {
       "spec": "../test/scenarios/filters/filter-bigint.cy.spec.ts",
-      "duration": 213979
+      "duration": 207575
     },
     {
       "spec": "../test/scenarios/filters/filter-bulk.cy.spec.js",
-      "duration": 75383
+      "duration": 74452
     },
     {
       "spec": "../test/scenarios/filters/filter-types.cy.spec.js",
-      "duration": 12463
+      "duration": 12067
     },
     {
       "spec": "../test/scenarios/filters/filter.cy.spec.js",
-      "duration": 89619
+      "duration": 86701
     },
     {
       "spec": "../test/scenarios/filters/filters-reproductions.cy.spec.js",
-      "duration": 75539
+      "duration": 72635
     },
     {
       "spec": "../test/scenarios/filters/operators.cy.spec.js",
-      "duration": 7208
+      "duration": 6948
     },
     {
       "spec": "../test/scenarios/filters/relative-datetime.cy.spec.js",
-      "duration": 75978
+      "duration": 72845
     },
     {
       "spec": "../test/scenarios/filters/time-series-chrome.cy.spec.ts",
-      "duration": 8437
+      "duration": 7896
     },
     {
       "spec": "../test/scenarios/filters/view.cy.spec.js",
-      "duration": 13846
+      "duration": 13932
     },
     {
       "spec": "../test/scenarios/joins/joins-custom-expressions.cy.spec.ts",
-      "duration": 18594
+      "duration": 18150
     },
     {
       "spec": "../test/scenarios/joins/joins-reproductions.cy.spec.js",
-      "duration": 80936
+      "duration": 77879
     },
     {
       "spec": "../test/scenarios/joins/joins.cy.spec.js",
-      "duration": 45457
+      "duration": 46000
     },
     {
       "spec": "../test/scenarios/metabot/ai-controls.cy.spec.ts",
-      "duration": 36319
+      "duration": 39381
     },
     {
       "spec": "../test/scenarios/metabot/mcp-apps-settings.cy.spec.ts",
-      "duration": 1895
+      "duration": 2010
     },
     {
       "spec": "../test/scenarios/metabot/metabot-query-builder.cy.spec.ts",
-      "duration": 12342
+      "duration": 12036
     },
     {
       "spec": "../test/scenarios/metabot/metabot.cy.spec.ts",
-      "duration": 27794
+      "duration": 27246
     },
     {
       "spec": "../test/scenarios/metabot/native-sql-generation.cy.spec.ts",
-      "duration": 27179
+      "duration": 26582
     },
     {
       "spec": "../test/scenarios/metrics/browse.cy.spec.ts",
-      "duration": 26665
+      "duration": 25474
     },
     {
       "spec": "../test/scenarios/metrics/metric-page.cy.spec.ts",
-      "duration": 25120
+      "duration": 25680
     },
     {
       "spec": "../test/scenarios/metrics/metrics-collection.cy.spec.js",
-      "duration": 8047
+      "duration": 8493
     },
     {
       "spec": "../test/scenarios/metrics/metrics-dashboard.cy.spec.js",
-      "duration": 30108
+      "duration": 30468
     },
     {
       "spec": "../test/scenarios/metrics/metrics-dimensions.cy.spec.ts",
-      "duration": 10710
+      "duration": 10985
     },
     {
       "spec": "../test/scenarios/metrics/metrics-editing.cy.spec.js",
-      "duration": 39091
+      "duration": 38422
     },
     {
       "spec": "../test/scenarios/metrics/metrics-explorer.cy.spec.ts",
-      "duration": 155900
+      "duration": 165375
     },
     {
       "spec": "../test/scenarios/metrics/metrics-question.cy.spec.js",
-      "duration": 24626
+      "duration": 21291
     },
     {
       "spec": "../test/scenarios/metrics/metrics-search.cy.spec.js",
-      "duration": 6084
+      "duration": 6272
     },
     {
       "spec": "../test/scenarios/metrics/reproductions/metrics-reproductions.cy.spec.ts",
-      "duration": 11493
+      "duration": 11392
     },
     {
       "spec": "../test/scenarios/models/create.cy.spec.js",
-      "duration": 11109
+      "duration": 11726
     },
     {
       "spec": "../test/scenarios/models/model-indexes.cy.spec.js",
-      "duration": 22941
+      "duration": 23399
     },
     {
       "spec": "../test/scenarios/models/models-list-view.cy.spec.js",
-      "duration": 18940
+      "duration": 18256
     },
     {
       "spec": "../test/scenarios/models/models-metadata.cy.spec.js",
-      "duration": 44839
+      "duration": 45486
     },
     {
       "spec": "../test/scenarios/models/models-query-editor.cy.spec.js",
-      "duration": 23163
+      "duration": 22656
     },
     {
       "spec": "../test/scenarios/models/models-revision-history.cy.spec.js",
-      "duration": 5513
+      "duration": 5228
     },
     {
       "spec": "../test/scenarios/models/models.cy.spec.js",
-      "duration": 68600
+      "duration": 67489
     },
     {
       "spec": "../test/scenarios/models/reproductions-1.cy.spec.ts",
-      "duration": 78853
+      "duration": 79660
     },
     {
       "spec": "../test/scenarios/models/reproductions-2.cy.spec.ts",
-      "duration": 52115
+      "duration": 51247
     },
     {
       "spec": "../test/scenarios/models/reproductions-3.cy.spec.ts",
-      "duration": 54919
+      "duration": 53392
     },
     {
       "spec": "../test/scenarios/models/reproductions.cy.spec.js",
-      "duration": 43227
+      "duration": 45386
     },
     {
       "spec": "../test/scenarios/monitor/ai-auditing/mcp-analytics.cy.spec.ts",
-      "duration": 5821
+      "duration": 5737
     },
     {
       "spec": "../test/scenarios/monitor/ai-auditing/usage-auditing.cy.spec.ts",
-      "duration": 5596
+      "duration": 5716
+    },
+    {
+      "spec": "../test/scenarios/monitor/api-key-usage.cy.spec.ts",
+      "duration": 6382
     },
     {
       "spec": "../test/scenarios/monitor/session-management/session-management.cy.spec.ts",
-      "duration": 20158
+      "duration": 20493
     },
     {
       "spec": "../test/scenarios/monitor/tools/tools.cy.spec.ts",
-      "duration": 43424
+      "duration": 35832
     },
     {
       "spec": "../test/scenarios/native/card-tag-normalization.cy.spec.ts",
-      "duration": 11516
+      "duration": 11686
     },
     {
       "spec": "../test/scenarios/native/native_subquery.cy.spec.js",
-      "duration": 24590
+      "duration": 24685
     },
     {
       "spec": "../test/scenarios/native/native-database-source.cy.spec.js",
-      "duration": 49237
+      "duration": 49840
     },
     {
       "spec": "../test/scenarios/native/native-filters-remapping.cy.spec.ts",
-      "duration": 12009
+      "duration": 12108
     },
     {
       "spec": "../test/scenarios/native/native-filters-reproductions.cy.spec.js",
-      "duration": 76956
+      "duration": 75232
     },
     {
       "spec": "../test/scenarios/native/native-reproductions.cy.spec.js",
-      "duration": 56314
+      "duration": 58685
     },
     {
       "spec": "../test/scenarios/native/native-reproductions.cy.spec.ts",
-      "duration": 107304
+      "duration": 111326
     },
     {
       "spec": "../test/scenarios/native/native.cy.spec.js",
-      "duration": 115802
+      "duration": 112429
     },
     {
       "spec": "../test/scenarios/native/snippet-tags.cy.spec.ts",
-      "duration": 31399
+      "duration": 30009
     },
     {
       "spec": "../test/scenarios/native/snippets.cy.spec.js",
-      "duration": 52278
+      "duration": 50378
     },
     {
       "spec": "../test/scenarios/native/sql-field-filter-types.cy.spec.js",
-      "duration": 22953
+      "duration": 23286
     },
     {
       "spec": "../test/scenarios/native/sql-field-filter.cy.spec.js",
-      "duration": 30649
+      "duration": 30119
     },
     {
       "spec": "../test/scenarios/native/sql-filters-reset-clear.cy.spec.ts",
-      "duration": 31936
+      "duration": 32751
     },
     {
       "spec": "../test/scenarios/native/sql-filters-source.cy.spec.js",
-      "duration": 91647
+      "duration": 88423
     },
     {
       "spec": "../test/scenarios/native/sql-filters.cy.spec.js",
-      "duration": 62504
+      "duration": 61962
     },
     {
       "spec": "../test/scenarios/native/suggestions.cy.spec.ts",
-      "duration": 13857
+      "duration": 17259
     },
     {
       "spec": "../test/scenarios/native/table-tags.cy.spec.ts",
-      "duration": 5619
+      "duration": 5723
     },
     {
       "spec": "../test/scenarios/onboarding/add-initial-data.cy.spec.ts",
-      "duration": 18678
+      "duration": 18256
     },
     {
       "spec": "../test/scenarios/onboarding/auth/forgot_password.cy.spec.js",
-      "duration": 4288
+      "duration": 4463
     },
     {
       "spec": "../test/scenarios/onboarding/auth/signin.cy.spec.js",
-      "duration": 12707
+      "duration": 12396
     },
     {
       "spec": "../test/scenarios/onboarding/auth/sso.cy.spec.js",
-      "duration": 7324
+      "duration": 7000
     },
     {
       "spec": "../test/scenarios/onboarding/command-palette.cy.spec.js",
-      "duration": 23290
+      "duration": 22734
     },
     {
       "spec": "../test/scenarios/onboarding/embedding-homepage.cy.spec.ts",
-      "duration": 3210
+      "duration": 3068
     },
     {
       "spec": "../test/scenarios/onboarding/home/browse-permalinks.cy.spec.ts",
-      "duration": 8575
+      "duration": 8602
     },
     {
       "spec": "../test/scenarios/onboarding/home/browse-slash-schema.cy.spec.ts",
-      "duration": 4109
+      "duration": 4242
     },
     {
       "spec": "../test/scenarios/onboarding/home/browse.cy.spec.ts",
-      "duration": 44285
+      "duration": 47382
     },
     {
       "spec": "../test/scenarios/onboarding/home/homepage.cy.spec.js",
-      "duration": 46858
+      "duration": 46868
     },
     {
       "spec": "../test/scenarios/onboarding/i18n.cy.spec.ts",
-      "duration": 98088
+      "duration": 101169
     },
     {
       "spec": "../test/scenarios/onboarding/navbar/navbar.cy.spec.js",
-      "duration": 14433
+      "duration": 14246
     },
     {
       "spec": "../test/scenarios/onboarding/navbar/new-menu.cy.spec.js",
-      "duration": 5348
+      "duration": 5349
     },
     {
       "spec": "../test/scenarios/onboarding/navbar/whats-new.cy.spec.js",
-      "duration": 4822
+      "duration": 4817
     },
     {
       "spec": "../test/scenarios/onboarding/notifications.cy.spec.js",
-      "duration": 6638
+      "duration": 6749
     },
     {
       "spec": "../test/scenarios/onboarding/onboarding-checklist.cy.spec.ts",
-      "duration": 13925
+      "duration": 14215
     },
     {
       "spec": "../test/scenarios/onboarding/reference/databases.cy.spec.js",
-      "duration": 10165
+      "duration": 9800
     },
     {
       "spec": "../test/scenarios/onboarding/reference/glossary.cy.spec.ts",
-      "duration": 8003
+      "duration": 8246
     },
     {
       "spec": "../test/scenarios/onboarding/reference/reproductions/5276-remove-field-type.cy.spec.js",
-      "duration": 3030
+      "duration": 3071
     },
     {
       "spec": "../test/scenarios/onboarding/setup/setup.cy.spec.ts",
-      "duration": 51900
+      "duration": 51398
     },
     {
       "spec": "../test/scenarios/onboarding/setup/user_settings.cy.spec.js",
-      "duration": 39995
+      "duration": 40762
     },
     {
       "spec": "../test/scenarios/onboarding/urls.cy.spec.js",
@@ -1246,451 +1230,451 @@
     },
     {
       "spec": "../test/scenarios/organization/bookmarks-collection.cy.spec.js",
-      "duration": 20825
+      "duration": 21035
     },
     {
       "spec": "../test/scenarios/organization/bookmarks-dashboard.cy.spec.js",
-      "duration": 3126
+      "duration": 3158
     },
     {
       "spec": "../test/scenarios/organization/bookmarks-question.cy.spec.js",
-      "duration": 10458
+      "duration": 9725
     },
     {
       "spec": "../test/scenarios/organization/bookmarks-reordering.cy.spec.ts",
-      "duration": 13997
+      "duration": 13688
     },
     {
       "spec": "../test/scenarios/organization/content-verification.cy.spec.js",
-      "duration": 6950
+      "duration": 6929
     },
     {
       "spec": "../test/scenarios/organization/edit-history-metadata.cy.spec.js",
-      "duration": 15919
+      "duration": 15029
     },
     {
       "spec": "../test/scenarios/organization/entity-picker-shared-tenant-collection.cy.spec.ts",
-      "duration": 54791
+      "duration": 54462
     },
     {
       "spec": "../test/scenarios/organization/entity-picker.cy.spec.ts",
-      "duration": 158604
+      "duration": 157721
     },
     {
       "spec": "../test/scenarios/organization/official-collections.cy.spec.js",
-      "duration": 23149
+      "duration": 23157
     },
     {
       "spec": "../test/scenarios/organization/timelines-collection.cy.spec.js",
-      "duration": 56525
+      "duration": 55019
+    },
+    {
+      "spec": "../test/scenarios/organization/timelines-dashboard.cy.spec.ts",
+      "duration": 69568
+    },
+    {
+      "spec": "../test/scenarios/organization/timelines-question-persistence.cy.spec.ts",
+      "duration": 61094
     },
     {
       "spec": "../test/scenarios/organization/timelines-question.cy.spec.js",
-      "duration": 55485
+      "duration": 60624
+    },
+    {
+      "spec": "../test/scenarios/organization/timelines-sharing.cy.spec.ts",
+      "duration": 30335
     },
     {
       "spec": "../test/scenarios/permissions/admin-permissions.cy.spec.js",
-      "duration": 10642
+      "duration": 10712
     },
     {
       "spec": "../test/scenarios/permissions/application-permissions.cy.spec.js",
-      "duration": 20369
+      "duration": 19689
     },
     {
       "spec": "../test/scenarios/permissions/create-queries.cy.spec.js",
-      "duration": 15156
+      "duration": 14957
     },
     {
       "spec": "../test/scenarios/permissions/data-model-permissions.cy.spec.js",
-      "duration": 11502
+      "duration": 10763
     },
     {
       "spec": "../test/scenarios/permissions/database-details-permissions.cy.spec.js",
-      "duration": 5073
+      "duration": 5078
     },
     {
       "spec": "../test/scenarios/permissions/downgrade-ee-to-oss.cy.spec.js",
-      "duration": 11664
+      "duration": 10730
     },
     {
       "spec": "../test/scenarios/permissions/download-permissions.cy.spec.js",
-      "duration": 90084
+      "duration": 91703
     },
     {
       "spec": "../test/scenarios/permissions/impersonated.cy.spec.js",
-      "duration": 50157
+      "duration": 49753
     },
     {
       "spec": "../test/scenarios/permissions/permissions-baseline.cy.spec.js",
-      "duration": 5010
+      "duration": 4666
     },
     {
       "spec": "../test/scenarios/permissions/permissions-reproductions.cy.spec.js",
-      "duration": 33420
+      "duration": 34619
     },
     {
       "spec": "../test/scenarios/permissions/permissions-reproductions.cy.spec.ts",
-      "duration": 10177
+      "duration": 10299
     },
     {
       "spec": "../test/scenarios/permissions/sandboxing/sandboxing-misconfiguration.cy.spec.ts",
-      "duration": 6787
+      "duration": 6738
     },
     {
       "spec": "../test/scenarios/permissions/sandboxing/sandboxing-via-api.cy.spec.js",
-      "duration": 115961
+      "duration": 129307
     },
     {
       "spec": "../test/scenarios/permissions/sandboxing/sandboxing-via-ui.cy.spec.ts",
-      "duration": 193357
+      "duration": 189799
     },
     {
       "spec": "../test/scenarios/permissions/transforms-permissions.cy.spec.ts",
-      "duration": 35160
+      "duration": 32890
     },
     {
       "spec": "../test/scenarios/permissions/view-data.cy.spec.js",
-      "duration": 63547
+      "duration": 64175
     },
     {
       "spec": "../test/scenarios/question/detail-visualization-custom-column.cy.spec.ts",
-      "duration": 4985
+      "duration": 5402
     },
     {
       "spec": "../test/scenarios/question/document-title.cy.spec.js",
-      "duration": 2540
+      "duration": 2641
     },
     {
       "spec": "../test/scenarios/question/multiple-column-breakouts.cy.spec.ts",
-      "duration": 150603
+      "duration": 140281
     },
     {
       "spec": "../test/scenarios/question/native-query-drill.cy.spec.ts",
-      "duration": 62632
+      "duration": 65348
     },
     {
       "spec": "../test/scenarios/question/nested.cy.spec.js",
-      "duration": 16975
+      "duration": 16899
     },
     {
       "spec": "../test/scenarios/question/new.cy.spec.js",
-      "duration": 57666
+      "duration": 54761
     },
     {
       "spec": "../test/scenarios/question/notebook-data-source.cy.spec.ts",
-      "duration": 46142
+      "duration": 44819
     },
     {
       "spec": "../test/scenarios/question/notebook-link-to-data-source.cy.spec.ts",
-      "duration": 64337
+      "duration": 66638
     },
     {
       "spec": "../test/scenarios/question/notebook-native-preview-sidebar.cy.spec.ts",
-      "duration": 26340
+      "duration": 25762
     },
     {
       "spec": "../test/scenarios/question/notebook.cy.spec.js",
-      "duration": 94182
+      "duration": 93216
     },
     {
       "spec": "../test/scenarios/question/nulls.cy.spec.js",
-      "duration": 14320
+      "duration": 13684
     },
     {
       "spec": "../test/scenarios/question/offset.cy.spec.ts",
-      "duration": 38045
+      "duration": 36846
     },
     {
       "spec": "../test/scenarios/question/question-analytics.cy.spec.js",
-      "duration": 9156
+      "duration": 9214
     },
     {
       "spec": "../test/scenarios/question/question-management.cy.spec.js",
-      "duration": 90876
+      "duration": 88816
     },
     {
       "spec": "../test/scenarios/question/questions-entity-id.cy.spec.ts",
-      "duration": 4150
+      "duration": 4072
     },
     {
       "spec": "../test/scenarios/question/reproductions-1.cy.spec.js",
-      "duration": 47365
+      "duration": 48542
     },
     {
       "spec": "../test/scenarios/question/reproductions-2.cy.spec.js",
-      "duration": 35498
+      "duration": 35933
     },
     {
       "spec": "../test/scenarios/question/reproductions-3.cy.spec.js",
-      "duration": 71843
+      "duration": 70465
     },
     {
       "spec": "../test/scenarios/question/reproductions-4.cy.spec.js",
-      "duration": 119966
+      "duration": 118980
     },
     {
       "spec": "../test/scenarios/question/reproductions.cy.spec.ts",
-      "duration": 64820
+      "duration": 66170
     },
     {
       "spec": "../test/scenarios/question/saved.cy.spec.js",
-      "duration": 72482
+      "duration": 73093
     },
     {
       "spec": "../test/scenarios/question/settings.cy.spec.js",
-      "duration": 38927
+      "duration": 36490
     },
     {
       "spec": "../test/scenarios/question/summarization.cy.spec.js",
-      "duration": 22264
+      "duration": 22176
     },
     {
       "spec": "../test/scenarios/schema-viewer/schema-viewer.cy.spec.ts",
-      "duration": 26717
+      "duration": 25510
     },
     {
       "spec": "../test/scenarios/search/recently-viewed.cy.spec.js",
-      "duration": 22213
+      "duration": 22481
     },
     {
       "spec": "../test/scenarios/search/search-filters.cy.spec.js",
-      "duration": 115739
+      "duration": 111693
     },
     {
       "spec": "../test/scenarios/search/search-pagination.cy.spec.js",
-      "duration": 9791
+      "duration": 9451
     },
     {
       "spec": "../test/scenarios/search/search-snowplow.cy.spec.js",
-      "duration": 27680
+      "duration": 27790
     },
     {
       "spec": "../test/scenarios/search/search.cy.spec.js",
-      "duration": 20170
+      "duration": 20706
     },
     {
       "spec": "../test/scenarios/sharing/alert/alert-permissions.cy.spec.js",
-      "duration": 15787
+      "duration": 15117
     },
     {
       "spec": "../test/scenarios/sharing/alert/alert-types.cy.spec.js",
-      "duration": 9784
+      "duration": 10088
     },
     {
       "spec": "../test/scenarios/sharing/alert/alert.cy.spec.js",
-      "duration": 24803
+      "duration": 24879
     },
     {
       "spec": "../test/scenarios/sharing/alert/email-alert.cy.spec.js",
-      "duration": 22058
+      "duration": 21828
     },
     {
       "spec": "../test/scenarios/sharing/downloads/downloads.cy.spec.js",
-      "duration": 127943
+      "duration": 125527
     },
     {
       "spec": "../test/scenarios/sharing/downloads/mid-stream-download-failure.cy.spec.ts",
-      "duration": 3471
+      "duration": 3432
     },
     {
       "spec": "../test/scenarios/sharing/downloads/sharing-download-reproductions.cy.spec.js",
-      "duration": 170863
+      "duration": 171602
     },
     {
       "spec": "../test/scenarios/sharing/invite-to-view.cy.spec.js",
-      "duration": 18536
+      "duration": 18609
     },
     {
       "spec": "../test/scenarios/sharing/public-dashboard.cy.spec.js",
-      "duration": 16455
+      "duration": 15326
     },
     {
       "spec": "../test/scenarios/sharing/public-question.cy.spec.js",
-      "duration": 23731
+      "duration": 24040
     },
     {
       "spec": "../test/scenarios/sharing/public-resource-downloads.cy.spec.ts",
-      "duration": 39420
+      "duration": 39300
     },
     {
       "spec": "../test/scenarios/sharing/public-sharing-embed-button-behavior.cy.spec.js",
-      "duration": 79679
+      "duration": 74102
     },
     {
       "spec": "../test/scenarios/sharing/public-sharing-embed-flow.cy.spec.ts",
-      "duration": 12756
+      "duration": 12635
     },
     {
       "spec": "../test/scenarios/sharing/public-sharing.cy.spec.js",
-      "duration": 11775
+      "duration": 11901
     },
     {
       "spec": "../test/scenarios/sharing/sharing-reproductions.cy.spec.js",
-      "duration": 67239
+      "duration": 68952
     },
     {
       "spec": "../test/scenarios/sharing/subscriptions.cy.spec.js",
-      "duration": 130580
+      "duration": 128879
     },
     {
       "spec": "../test/scenarios/visualizations/charts/bar_chart.cy.spec.js",
-      "duration": 66863
+      "duration": 84782
     },
     {
       "spec": "../test/scenarios/visualizations/charts/boxplot.cy.spec.js",
-      "duration": 29751
+      "duration": 29421
     },
     {
       "spec": "../test/scenarios/visualizations/charts/combo.cy.spec.js",
-      "duration": 8918
+      "duration": 10269
     },
     {
       "spec": "../test/scenarios/visualizations/charts/funnel.cy.spec.js",
-      "duration": 11633
+      "duration": 15754
     },
     {
       "spec": "../test/scenarios/visualizations/charts/gauge.cy.spec.js",
-      "duration": 2321
+      "duration": 2376
     },
     {
       "spec": "../test/scenarios/visualizations/charts/legend.cy.spec.js",
-      "duration": 21628
+      "duration": 22845
     },
     {
       "spec": "../test/scenarios/visualizations/charts/line_chart.cy.spec.js",
-      "duration": 79225
+      "duration": 94355
     },
     {
       "spec": "../test/scenarios/visualizations/charts/line-bar-tooltips.cy.spec.js",
-      "duration": 96649
+      "duration": 101853
     },
     {
       "spec": "../test/scenarios/visualizations/charts/maps.cy.spec.js",
-      "duration": 53786
+      "duration": 65527
     },
     {
       "spec": "../test/scenarios/visualizations/charts/pie_chart.cy.spec.js",
-      "duration": 46290
+      "duration": 52479
     },
     {
       "spec": "../test/scenarios/visualizations/charts/progress-bar.cy.spec.js",
-      "duration": 16042
+      "duration": 16828
     },
     {
       "spec": "../test/scenarios/visualizations/charts/rows.cy.spec.js",
-      "duration": 11680
+      "duration": 11432
     },
     {
       "spec": "../test/scenarios/visualizations/charts/sankey.cy.spec.js",
-      "duration": 14818
+      "duration": 12442
     },
     {
       "spec": "../test/scenarios/visualizations/charts/scalar.cy.spec.ts",
-      "duration": 5408
+      "duration": 5284
     },
     {
       "spec": "../test/scenarios/visualizations/charts/scatter.cy.spec.js",
-      "duration": 24351
+      "duration": 24256
     },
     {
       "spec": "../test/scenarios/visualizations/charts/treemap.cy.spec.ts",
-      "duration": 9842
+      "duration": 9870
     },
     {
       "spec": "../test/scenarios/visualizations/charts/trendline.cy.spec.js",
-      "duration": 9896
-    },
-    {
-      "spec": "../test/scenarios/visualizations/charts/visualizations-charts-reproductions.cy.spec.js",
-      "duration": 70193
-    },
-    {
-      "spec": "../test/scenarios/visualizations/charts/visualizations-charts-reproductions.cy.spec.ts",
-      "duration": 65252
+      "duration": 9792
     },
     {
       "spec": "../test/scenarios/visualizations/charts/waterfall.cy.spec.js",
-      "duration": 71876
+      "duration": 73137
     },
     {
       "spec": "../test/scenarios/visualizations/custom-viz/custom-viz.cy.spec.ts",
-      "duration": 220752
+      "duration": 214854
     },
     {
       "spec": "../test/scenarios/visualizations/drillthroughs/chart_drill.cy.spec.js",
-      "duration": 60687
+      "duration": 64341
     },
     {
       "spec": "../test/scenarios/visualizations/drillthroughs/column_extract_drill.cy.spec.js",
-      "duration": 31224
+      "duration": 25605
     },
     {
       "spec": "../test/scenarios/visualizations/drillthroughs/combine-column.cy.spec.ts",
-      "duration": 7759
+      "duration": 8099
     },
     {
       "spec": "../test/scenarios/visualizations/drillthroughs/dash_drill.cy.spec.js",
-      "duration": 10159
+      "duration": 11132
     },
     {
       "spec": "../test/scenarios/visualizations/drillthroughs/table_drills.cy.spec.js",
-      "duration": 35815
+      "duration": 38530
     },
     {
       "spec": "../test/scenarios/visualizations/tabular/column-shortcuts.cy.spec.ts",
-      "duration": 59631
+      "duration": 59046
     },
     {
       "spec": "../test/scenarios/visualizations/tabular/object_detail.cy.spec.js",
-      "duration": 99014
+      "duration": 104901
     },
     {
       "spec": "../test/scenarios/visualizations/tabular/pivot_tables.cy.spec.js",
-      "duration": 160009
+      "duration": 164822
     },
     {
       "spec": "../test/scenarios/visualizations/tabular/scalar.cy.spec.js",
-      "duration": 10574
+      "duration": 13617
     },
     {
       "spec": "../test/scenarios/visualizations/tabular/smartscalar-trend.cy.spec.js",
-      "duration": 39714
+      "duration": 38891
     },
     {
       "spec": "../test/scenarios/visualizations/tabular/table-column-settings.cy.spec.js",
-      "duration": 152180
+      "duration": 152128
     },
     {
       "spec": "../test/scenarios/visualizations/tabular/table.cy.spec.js",
-      "duration": 116123
-    },
-    {
-      "spec": "../test/scenarios/visualizations/tabular/visualizations-tabular-reproductions.cy.spec.js",
-      "duration": 89151
+      "duration": 128871
     },
     {
       "spec": "../test/scenarios/visualizer/basics.cy.spec.ts",
-      "duration": 109314
+      "duration": 107773
     },
     {
       "spec": "../test/scenarios/visualizer/cartesian.cy.spec.ts",
-      "duration": 54378
+      "duration": 52524
     },
     {
       "spec": "../test/scenarios/visualizer/drillthrough.cy.spec.ts",
-      "duration": 19555
+      "duration": 19158
     },
     {
       "spec": "../test/scenarios/visualizer/funnels.cy.spec.ts",
-      "duration": 11189
+      "duration": 10995
     },
     {
       "spec": "../test/scenarios/visualizer/reproductions.cy.spec.ts",
-      "duration": 5132
+      "duration": 4973
     },
     {
       "spec": "../test/scenarios/visualizer/snowplow-tracking.cy.spec.ts",
-      "duration": 10465
+      "duration": 10242
     }
   ]
 }
