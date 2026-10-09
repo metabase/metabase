@@ -23,7 +23,7 @@ export function McpToolsSaveBar({
     >
       <Text>{t`You've made changes to MCP tool access.`}</Text>
       <Group gap="sm">
-        <Button variant="subtle" onClick={onCancel}>
+        <Button variant="subtle" disabled={isSaving} onClick={onCancel}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" loading={isSaving} onClick={onSave}>
