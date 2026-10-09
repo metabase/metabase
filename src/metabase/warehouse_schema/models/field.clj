@@ -461,6 +461,15 @@
     (when table
       (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields))))))
 
+(defmethod serdes/load-update! "Field" [model-name ingested local]
+  ;; `local` holds only the id. The UPDATE writes the raw row, so the baseline is the raw row with the two columns that
+  ;; the after-select removes.
+  (serdes/update-changed-columns!
+   model-name ingested local
+   (warehouse-schema.db/stored-row-with-columns :model/Field :metabase_field (:id local)
+                                                [:is_defective_duplicate :unique_field_helper])
+   {}))
+
 (def ^:private legacy-dimensions
   "The Dimensions a Field file carried before they got files of their own."
   (serdes/nested :model/Dimension :field_id {}))

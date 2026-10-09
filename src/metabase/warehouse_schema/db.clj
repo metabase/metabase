@@ -18,6 +18,17 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
+(mu/defn stored-row-with-columns
+  "The stored row of `model` with `id`, read from its own `table` (no user-settings view), run through its
+  after-select, with the columns `kept` that its after-select removes; or nil."
+  [model :- :keyword
+   table :- :keyword
+   id    :- ms/PositiveInt
+   kept  :- [:sequential :keyword]]
+  (when-let [raw (t2/query-one {:select [:*] :from [table] :where [:= :id id]})]
+    (merge (models.db/after-select-via-identity-query {:model model :row raw})
+           (select-keys raw kept))))
+
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
