@@ -1429,6 +1429,15 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
+(defn- model-file-columns
+  "The part of the result columns `metadata` of an MBQL model that an export writes: `:name` and the keys that a model
+  preserves."
+  [metadata]
+  (let [keep-keys (into #{:name}
+                        (map u/->snake_case_en)
+                        (lib/model-preserved-keys false))]
+    (mapv #(select-keys % keep-keys) metadata)))
+
 (defn- export-result-metadata [card _k metadata]
   (cond
     (empty? metadata)
@@ -1452,14 +1461,11 @@
             metadata))
 
     (model? card)
-    (let [keep-keys (into #{:name}
-                          (map u/->snake_case_en)
-                          (lib/model-preserved-keys false))]
-      (mapv (fn [m]
-              (-> (select-keys m keep-keys)
-                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
-                  (m/update-existing :id serdes/*export-field-fk*)))
-            metadata))
+    (mapv (fn [m]
+            (-> m
+                (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
+                (m/update-existing :id serdes/*export-field-fk*)))
+          (model-file-columns metadata))
 
     :else
     ::serdes/skip))
@@ -1594,19 +1600,46 @@
 ;; when the load writes a column.
 (def ^:private serdes-derived-columns [:database_id :table_id :query_type])
 
+(defn- mbql-model?
+  [card]
+  (and (model? card)
+       (not (some-> (not-empty (:dataset_query card)) lib/native?))))
+
 (defn- adjust-serdes-changes
-  "The `:adjust-changes` function of the Card [[serdes/load-update!]]: `changes` plus `:dataset_query` of the
-  normalized file `row` when a column that [[populate-query-fields]] derives from that query differs from the stored
-  Card `local`. The option passes no stored row, so the method closes this function over `local`."
+  "The `:adjust-changes` function of the Card [[serdes/load-update!]], in this order: `changes` of the normalized file
+  `row` without `:dimension_mappings` that are [[metrics/same-dimension-mappings?]] as in the stored Card `local`, and
+  without `:result_metadata` of an MBQL model that equals the stored columns in the part that the file holds; plus
+  `:dataset_query` when a column that [[populate-query-fields]] derives from it differs from `local`; plus both
+  `:dataset_query` and `:result_metadata` of `row` when `row` is an MBQL model and the result holds either. The option
+  passes no stored row, so the method closes this function over `local`."
   [local changes row]
-  (let [query    (not-empty (:dataset_query row))
+  (let [;; the file holds only a part of these values, so compare only that part
+        changes  (cond-> changes
+                   (and (contains? changes :dimension_mappings)
+                        (metrics/same-dimension-mappings? (:dimension_mappings local) (:dimension_mappings changes)))
+                   (dissoc :dimension_mappings)
+
+                   (and (contains? changes :result_metadata)
+                        (mbql-model? local)
+                        (mbql-model? row)
+                        (= (model-file-columns (:result_metadata local))
+                           (model-file-columns (:result_metadata changes))))
+                   (dissoc :result_metadata))
+        query    (not-empty (:dataset_query row))
         derived  (when query
                    (select-keys (populate-query-fields {:dataset_query query} true) serdes-derived-columns))
         form     #(if (keyword? %) (u/qualified-name %) %)
-        drifted? (some (fn [[k v]] (not= (form v) (form (get local k)))) derived)]
-    ;; the write of `dataset_query` runs the before-update hook, which derives the drifted columns again
+        drifted? (some (fn [[k v]] (not= (form v) (form (get local k)))) derived)
+        ;; the write of `dataset_query` runs the before-update hook, which derives the drifted columns again
+        changes  (cond-> changes
+                   drifted? (assoc :dataset_query query))]
+    ;; The file columns of a model are overrides. The hook infers the model columns with them only when Toucan sees
+    ;; `dataset_query` change. Toucan drops a query equal to the stored one, for example a whole-table query: then the
+    ;; hook stores the overrides as they are, as on master.
     (cond-> changes
-      drifted? (assoc :dataset_query query))))
+      (and (mbql-model? row)
+           (some #(contains? changes %) [:dataset_query :result_metadata]))
+      (merge (select-keys row [:dataset_query :result_metadata])))))
 
 (defmethod serdes/load-update! "Card" [model-name ingested local]
   ;; `local` is the after-select row: the schema decision of a load (no write-back of an old `card_schema`) needs the

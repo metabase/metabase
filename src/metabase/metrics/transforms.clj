@@ -5,6 +5,7 @@
    Dimensions are kebab-case (`display-name`, `dimension-id`, …) everywhere — in memory,
    on the wire, and in the JSON at rest. See [[metabase.lib-metric.schema/persisted-dimension]]."
   (:require
+   [clojure.walk :as walk]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -141,6 +142,16 @@
                (vector? (:table-id mapping)) (update :table-id serdes/*import-table-fk*)
                (:target mapping)             (update :target serdes/import-mbql))))
           mappings)))
+
+(defn- without-lib-uuids [x]
+  (walk/prewalk (fn [form] (cond-> form (map? form) (dissoc :lib/uuid))) x))
+
+(defn same-dimension-mappings?
+  "True when the dimension mappings `a` and `b` are equal after the removal of every `:lib/uuid` key. An export drops
+  the `:lib/uuid` of each target ref, and each import makes a new one; no reader of a mapping uses it. Every other key,
+  `:base-type` and `:effective-type` of a target included, counts."
+  [a b]
+  (= (without-lib-uuids a) (without-lib-uuids b)))
 
 (defn dimension-mappings-deps
   "Serdes dependencies contributed by an entity's `:dimension_mappings` — the Fields/Tables referenced by each

@@ -44,6 +44,7 @@
   import-dimensions
   export-dimension-mappings
   import-dimension-mappings
+  same-dimension-mappings?
   dimension-mappings-deps])
 
 ;;; ------------------------------------------------- Re-exported schemas -------------------------------------------
