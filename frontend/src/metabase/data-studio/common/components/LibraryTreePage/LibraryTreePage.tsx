@@ -48,6 +48,10 @@ type LibraryTreePageProps = {
   onRowsChange?: (rows: Row<TreeItem>[]) => void;
   onSearchQueryChange: (searchQuery: string) => void;
   emptyStateActions?: Partial<Record<LibrarySectionType, () => void>>;
+  getTrashMessage?: (
+    section: LibrarySection,
+    count: number,
+  ) => string | undefined;
   onBulkActionComplete?: (
     section: LibrarySection,
     affectedCollectionIds: CollectionId[],
@@ -71,6 +75,7 @@ export function LibraryTreePage({
   onRowsChange,
   onSearchQueryChange,
   emptyStateActions,
+  getTrashMessage,
   onBulkActionComplete,
 }: LibraryTreePageProps) {
   const isRemoteSyncReadOnly = useSelector(
@@ -183,6 +188,7 @@ export function LibraryTreePage({
               : undefined
           }
           onActionComplete={handleBulkActionComplete}
+          getTrashMessage={getTrashMessage}
           onClear={clearSelection}
         />
       )}

@@ -9,7 +9,6 @@ import type {
 
 export { createEmptyStateItem } from "./create-empty-space-item";
 export { filterTreeByName } from "./filter-tree-by-name";
-export { getArchiveLibraryCollectionsMessage } from "./get-archive-library-collections-message";
 export { getDatasetQueryPreviewUrl } from "./get-dataset-query-preview-url";
 export { getLibraryCollectionDisplayName } from "./get-library-collection-display-name";
 export { getTreeRowHref } from "./get-tree-row-href";

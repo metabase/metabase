@@ -8,7 +8,6 @@ import {
   LibraryTreePage,
   useErrorHandling,
 } from "metabase/data-studio/common/components/LibraryTreePage";
-import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   filterTreeByName,
@@ -21,6 +20,7 @@ import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { RootSnippetsCollectionMenu } from "../../components/RootSnippetsCollectionMenu";
+import { useBuildSnippetTree } from "../../hooks/use-build-snippet-tree";
 
 const SNIPPET_COLLECTION_PICKER_OPTIONS = {
   hasLibrary: false,

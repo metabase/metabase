@@ -26,9 +26,18 @@ import {
   useLibrarySearch,
 } from "./hooks";
 import type { LibrarySearchModel } from "./hooks/useLibrarySearch";
-import { getWritableCollection } from "./utils";
+import {
+  getArchiveLibraryCollectionsMessage,
+  getWritableCollection,
+} from "./utils";
 
 const SEARCH_MODELS: LibrarySearchModel[] = ["table", "metric", "dashboard"];
+
+function getTrashMessage(section: LibrarySection, count: number) {
+  return section === "data"
+    ? getArchiveLibraryCollectionsMessage(count)
+    : undefined;
+}
 
 export function LibraryPage() {
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -213,6 +222,7 @@ function LibraryPageContent() {
       isChildrenLoading={isChildrenLoading}
       onRowsChange={handleRowsChange}
       onSearchQueryChange={setSearchQuery}
+      getTrashMessage={getTrashMessage}
       onBulkActionComplete={refreshSection}
     >
       <PublishTableModal

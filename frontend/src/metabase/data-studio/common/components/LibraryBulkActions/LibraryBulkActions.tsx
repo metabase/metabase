@@ -20,7 +20,6 @@ import type {
   LibrarySection,
   SelectedItem,
 } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
-import { getArchiveLibraryCollectionsMessage } from "metabase/data-studio/common/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
@@ -42,6 +41,10 @@ type LibraryBulkActionsProps = {
     section: LibrarySection,
     affectedCollectionIds: CollectionId[],
   ) => void;
+  getTrashMessage?: (
+    section: LibrarySection,
+    count: number,
+  ) => string | undefined;
   onClear: () => void;
 };
 
@@ -51,6 +54,7 @@ export function LibraryBulkActions({
   isAllTables,
   defaultCollectionId,
   onActionComplete,
+  getTrashMessage,
   onClear,
 }: LibraryBulkActionsProps) {
   const [action, setAction] = useState<BulkAction>();
@@ -144,8 +148,8 @@ export function LibraryBulkActions({
     showConfirm({
       title: t`Move to trash?`,
       message:
-        selectionSection === "data"
-          ? getArchiveLibraryCollectionsMessage(count)
+        selectionSection != null
+          ? getTrashMessage?.(selectionSection, count)
           : undefined,
       confirmButtonText: t`Move to trash`,
       onConfirm: handleTrash,

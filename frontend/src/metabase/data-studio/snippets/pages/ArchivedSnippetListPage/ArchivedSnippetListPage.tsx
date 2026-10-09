@@ -9,7 +9,6 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import {
   Card,
   Center,
@@ -22,6 +21,8 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionItem } from "metabase-types/api";
+
+import { useBuildSnippetTree } from "../../hooks/use-build-snippet-tree";
 
 import { useColumnDef } from "./hooks/useColumnDef";
 
