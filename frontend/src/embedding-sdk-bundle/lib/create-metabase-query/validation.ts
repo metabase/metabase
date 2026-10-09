@@ -521,35 +521,14 @@ function binningOptionsMatch(left: unknown, right: unknown) {
 type StageColumnName = {
   name: string;
   displayName: string;
-  requiresUniqueName: boolean;
 };
 
 function stageColumnNames(
   query: Lib.Query,
   stageIndex: number,
 ): StageColumnName[] {
-  const breakouts = Lib.breakouts(query, stageIndex).reduce<StageColumnName[]>(
-    (columns, breakout) => {
-      const column = Lib.breakoutColumn(query, stageIndex, breakout);
-
-      if (column) {
-        const columnName = Lib.displayInfo(query, stageIndex, column).name;
-        const { name, displayName } = Lib.displayInfo(
-          query,
-          stageIndex,
-          breakout,
-        );
-
-        columns.push({
-          name,
-          displayName,
-          requiresUniqueName: name !== columnName,
-        });
-      }
-
-      return columns;
-    },
-    [],
+  const breakouts = Lib.breakouts(query, stageIndex).map((breakout) =>
+    Lib.displayInfo(query, stageIndex, breakout),
   );
   const aggregations = Lib.aggregations(query, stageIndex).map(
     (aggregation) => ({
@@ -559,7 +538,6 @@ function stageColumnNames(
         Lib.aggregationColumn(query, stageIndex, aggregation),
       ).name,
       displayName: Lib.displayInfo(query, stageIndex, aggregation).displayName,
-      requiresUniqueName: true,
     }),
   );
 
@@ -573,11 +551,7 @@ function stageConflicts(query: Lib.Query, stageIndex: number): string[] {
   });
 
   return [...byName]
-    .filter(
-      ([, columns]) =>
-        columns.length > 1 &&
-        columns.some((column) => column.requiresUniqueName),
-    )
+    .filter(([, columns]) => columns.length > 1)
     .map(
       ([name, columns]) =>
         `${columns.map((column) => column.displayName).join(", ")} share the column name "${name}"`,
@@ -591,7 +565,7 @@ export function validateUniqueColumnNames(query: Lib.Query) {
 
   if (conflicts.length > 0) {
     throw new Error(
-      `Aggregations and named breakouts need unique column names: ${conflicts.join("; ")}. Name them apart with the \`name\` option of an aggregation helper, or with \`aggregations.measure\` or \`aggregations.metric\` for a measure or metric.`,
+      `Breakouts and aggregations need unique column names: ${conflicts.join("; ")}. Name them apart with the \`name\` option of \`breakout\` or of an aggregation helper, or with \`aggregations.measure\` or \`aggregations.metric\` for a measure or metric.`,
     );
   }
 }

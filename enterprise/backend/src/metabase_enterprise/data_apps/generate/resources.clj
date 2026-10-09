@@ -102,25 +102,21 @@
             (tru "Could not serialize {0}." label)))))
 
 (defn- check-unique-column-names
-  "Throws naming the aggregations and named breakouts of `query` whose result column shares its name with another
-  column."
+  "Throws naming the breakouts and aggregations of `query` whose result columns share a name."
   [query]
-  (let [columns   (concat (for [breakout (lib/breakouts query)
-                                :let [breakout-name (:name (lib/options breakout))]]
-                            {:name   (or breakout-name (:name (lib/breakout-column query breakout)))
-                             :clause breakout
-                             :named? (some? breakout-name)})
+  (let [columns   (concat (for [breakout (lib/breakouts query)]
+                            {:name   (or (:name (lib/options breakout)) (:name (lib/breakout-column query breakout)))
+                             :clause breakout})
                           (for [aggregation (lib/aggregations query)]
-                            {:name         (:name (lib/aggregation-column query aggregation))
-                             :clause       aggregation
-                             :aggregation? true}))
+                            {:name   (:name (lib/aggregation-column query aggregation))
+                             :clause aggregation}))
         conflicts (for [[column-name same-name] (group-by :name columns)
-                        :when (and (> (count same-name) 1) (some (some-fn :aggregation? :named?) same-name))]
+                        :when (> (count same-name) 1)]
                     (tru "{0} share the column name \"{1}\""
                          (str/join ", " (map #(lib/display-name query (:clause %)) same-name))
                          column-name))]
     (when (seq conflicts)
-      (fail (tru "Aggregations and named breakouts need unique column names: {0}. Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
+      (fail (tru "Breakouts and aggregations need unique column names: {0}. Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
                  (str/join "; " conflicts))))))
 
 (mu/defn- build-query :- ::lib.schema/query

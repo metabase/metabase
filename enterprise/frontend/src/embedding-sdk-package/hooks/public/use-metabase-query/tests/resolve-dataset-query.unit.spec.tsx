@@ -673,7 +673,7 @@ describe("resolveDatasetQuery aggregation column names", () => {
         aggregations: [count(), distinct(orders.fields.status)],
       }),
     ).rejects.toThrow(
-      'Aggregations and named breakouts need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
+      'Breakouts and aggregations need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
     );
   });
 
@@ -781,13 +781,26 @@ describe("resolveDatasetQuery aggregation column names", () => {
     ).rejects.toThrow('share the column name "count"');
   });
 
-  it("accepts a field broken out twice without names", async () => {
+  it("refuses a field broken out twice without names", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count()],
+        breakouts: [
+          breakout(orders.fields.createdAt, { unit: "month" }),
+          breakout(orders.fields.createdAt, { unit: "year" }),
+        ],
+      }),
+    ).rejects.toThrow('share the column name "CREATED_AT"');
+  });
+
+  it("accepts a field broken out twice with names", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: orders,
       aggregations: [count()],
       breakouts: [
-        breakout(orders.fields.createdAt, { unit: "month" }),
-        breakout(orders.fields.createdAt, { unit: "year" }),
+        breakout(orders.fields.createdAt, { unit: "month", name: "month" }),
+        breakout(orders.fields.createdAt, { unit: "year", name: "year" }),
       ],
     });
 

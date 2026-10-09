@@ -535,7 +535,7 @@
 
 (deftest refuses-aggregations-sharing-column-name-test
   (testing "aggregations named alike would be read as one by a later stage or a result row, so the author names them"
-    (is (=? {:queries [{:error "Aggregations and named breakouts need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."}]}
+    (is (=? {:queries [{:error "Breakouts and aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."}]}
             (generate! :crowberto 200
                        {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                                 :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]}]})]})))))
@@ -568,7 +568,7 @@
 
 (deftest refuses-order-by-on-shared-column-name-test
   (testing "order-by naming a column two aggregations share gets the same refusal, not Lib's ambiguity error"
-    (is (=? {:queries [{:error #"Aggregations and named breakouts need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\"\..*"}]}
+    (is (=? {:queries [{:error #"Breakouts and aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\"\..*"}]}
             (generate! :crowberto 200
                        {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                                 :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]
@@ -592,7 +592,7 @@
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                     (lib/breakout (lib.metadata/field mp (mt/id :venues :name)))
                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))]
-      (is (=? #"Aggregations and named breakouts need unique column names: .* share the column name \"sum\".*"
+      (is (=? #"Breakouts and aggregations need unique column names: .* share the column name \"sum\".*"
               (check-unique-names query))))))
 
 (deftest refuses-named-breakouts-sharing-name-test
@@ -608,11 +608,12 @@
       (is (=? #".* share the column name \"period\".*" (check-unique-names (query "period" "period")))))
     (testing "named apart they don't"
       (is (nil? (check-unique-names (query "month" "year")))))
-    (testing "the same field broken out twice without names doesn't, its columns are told apart by suffix"
-      (is (nil? (check-unique-names (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
-                                        (lib/breakout (lib/with-temporal-bucket created-at :month))
-                                        (lib/breakout (lib/with-temporal-bucket created-at :year))
-                                        (lib/aggregate (lib/count)))))))))
+    (testing "the same field broken out twice without names collides too"
+      (is (=? #".* share the column name \"DATE\".*"
+              (check-unique-names (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                      (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                      (lib/breakout (lib/with-temporal-bucket created-at :year))
+                                      (lib/aggregate (lib/count)))))))))
 
 (deftest names-breakout-test
   (testing "breakout sent as `{type: breakout, name, column}` keeps its name in the saved question"
