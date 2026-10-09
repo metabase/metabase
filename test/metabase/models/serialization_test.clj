@@ -506,3 +506,51 @@
       (is (= [[{:description "new"} {:name "Shared" :description "new"}]] @adjusted)))
     (testing "an empty result sends no write"
       (is (= [] (update! {:adjust-changes (constantly {})}))))))
+
+(deftest ^:parallel with-field-path-cache-scope-test
+  (testing "with-field-path-cache memoizes *export-field-fk* only inside its scope"
+    (let [names (atom {1 "a"})]
+      (binding [serdes/*export-field-fk* (fn [id] ["db" nil "table" (get @names id)])]
+        (is (= "a" (last (serdes/with-field-path-cache (serdes/*export-field-fk* 1)))))
+        (swap! names assoc 1 "b")
+        (testing "a new scope sees a change"
+          (is (= "b" (last (serdes/with-field-path-cache (serdes/*export-field-fk* 1))))))
+        (testing "inside one scope, a change after the first lookup is not seen (the documented limit)"
+          (is (= ["b" "b"]
+                 (serdes/with-field-path-cache
+                   (let [before (last (serdes/*export-field-fk* 1))]
+                     (swap! names assoc 1 "c")
+                     [before (last (serdes/*export-field-fk* 1))])))))
+        (testing "outside any scope, nothing is cached"
+          (is (= "c" (last (serdes/*export-field-fk* 1)))))))))
+
+(deftest ^:parallel with-field-path-cache-nesting-and-bound-test
+  (let [calls (atom 0)]
+    (binding [serdes/*export-field-fk* (fn [id] (swap! calls inc) [id])]
+      (serdes/with-field-path-cache
+        (serdes/*export-field-fk* 1)
+        (let [outer serdes/*export-field-fk*]
+          (serdes/with-field-path-cache
+            (is (identical? outer serdes/*export-field-fk*) "an inner scope uses the cache of the outer scope")
+            (serdes/*export-field-fk* 1)))
+        (is (= 1 @calls) "an inner scope reuses the cache of the outer scope")
+        (reset! calls 0)
+        (doseq [i (range 2 10003)]
+          (serdes/*export-field-fk* i))
+        (is (= 10001 @calls))
+        (reset! calls 0)
+        (serdes/*export-field-fk* 1)
+        (is (= 1 @calls) "the cache holds at most 10,000 entries, so the oldest entry was evicted")))))
+
+(deftest ^:parallel with-field-path-cache-does-not-cache-an-exception-test
+  (let [calls (atom 0)]
+    (binding [serdes/*export-field-fk* (fn [id]
+                                         (when (= 1 (swap! calls inc))
+                                           (throw (ex-info "lookup failed" {})))
+                                         [id])]
+      (serdes/with-field-path-cache
+        (is (thrown? clojure.lang.ExceptionInfo (serdes/*export-field-fk* 7)))
+        (is (= [7] (serdes/*export-field-fk* 7)) "a lookup that threw runs again")))))
+
+(deftest ^:parallel with-field-path-cache-nil-field-id-test
+  (is (nil? (serdes/with-field-path-cache (serdes/*export-field-fk* nil)))))
