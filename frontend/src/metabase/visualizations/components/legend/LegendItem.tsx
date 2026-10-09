@@ -20,7 +20,7 @@ interface LegendItemProps {
   item: LegendItemData;
   size?: LegendSize;
   index: number;
-  isHighlighted?: boolean;
+  isMuted?: boolean;
   isReversed?: boolean;
   onHoverChange?: (data?: { index: number; element: Element }) => void;
   onSelectSeries?: (
@@ -35,7 +35,7 @@ const LegendItemInner = ({
   item,
   size = "sm",
   index,
-  isHighlighted,
+  isMuted,
   isReversed,
   onHoverChange,
   onSelectSeries,
@@ -69,12 +69,12 @@ const LegendItemInner = ({
       <Flex<typeof UnstyledButton | "div">
         component={isInteractive ? UnstyledButton : "div"}
         className={cx(S.itemLabel, {
-          [S.highlightedLabel]: isHighlighted,
           [S.clickableLabel]: isInteractive,
         })}
         align="center"
         miw={0}
         w="100%"
+        opacity={isMuted ? 0.4 : 1}
         aria-label={onToggleSeriesVisibility ? toggleLabel : undefined}
         aria-description={onToggleSeriesVisibility ? item.name : undefined}
         aria-pressed={onToggleSeriesVisibility ? isVisible : undefined}

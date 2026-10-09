@@ -16,14 +16,7 @@
 }
 
 .itemLabel {
-  opacity: 0.35;
   transition: opacity 0.25s linear;
-}
-
-.itemLabel:hover,
-.itemLabel:focus-within,
-.highlightedLabel {
-  opacity: 1;
 }
 
 .itemTitle {
