@@ -184,7 +184,7 @@
 
   `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
   requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) which can be
-  unchecked."
+  unchecked, except for the MCP baseline, which cannot be unchecked."
   [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]

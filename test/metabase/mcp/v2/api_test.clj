@@ -1485,3 +1485,9 @@
                (is (true? (get-in response [:body :result :isError])))))
            (testing "and nothing was written either way"
              (is (zero? (t2/count :model/Card :name "Drill probe"))))))))))
+
+(deftest step-up-description-test
+  (let [description "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
+        described   (#'v2.api/step-up-description description)]
+    (testing "the note stays inside RFC 6750's error_description characters, or the header writer rewrites it"
+      (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" described)))))
