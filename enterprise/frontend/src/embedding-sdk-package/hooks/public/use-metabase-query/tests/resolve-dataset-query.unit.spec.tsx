@@ -809,3 +809,82 @@ describe("resolveDatasetQuery aggregation column names", () => {
     ).rejects.toThrow('share the column name "count"');
   });
 });
+
+describe("resolveDatasetQuery named breakouts", () => {
+  const orders = TEST_SCHEMA.tables.orders;
+  const createdMonth = breakout(orders.fields.createdAt, {
+    unit: "month",
+    name: "created_month",
+  });
+
+  it("names a breakout's result column with breakout's name option", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [count()],
+      breakouts: [createdMonth],
+      orderBys: [orderBy(createdMonth, "desc")],
+    });
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+      breakout: [
+        [
+          "field",
+          expect.objectContaining({
+            name: "created_month",
+            "temporal-unit": "month",
+          }),
+          103,
+        ],
+      ],
+      "order-by": [
+        [
+          "desc",
+          expect.anything(),
+          ["field", expect.objectContaining({ name: "created_month" }), 103],
+        ],
+      ],
+    });
+  });
+
+  it("resolves a dynamic column by name, ignoring a field ID from another instance", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: orders,
+        aggregations: [count()],
+        breakouts: [breakout(orders.fields.status)],
+      },
+      {
+        filters: [
+          filter({ ...orders.fields.status, fieldId: 999999 }, "=", "paid"),
+        ],
+      },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      ["=", expect.anything(), ["field", expect.anything(), "STATUS"], "paid"],
+    ]);
+  });
+
+  it("lets a dynamic stage refer to a named breakout by its name", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: orders,
+        aggregations: [count()],
+        breakouts: [createdMonth],
+      },
+      {
+        filters: [
+          filter({ type: "column", name: "created_month" }, "not-null"),
+        ],
+      },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      [
+        "not-null",
+        expect.anything(),
+        ["field", expect.anything(), "created_month"],
+      ],
+    ]);
+  });
+});

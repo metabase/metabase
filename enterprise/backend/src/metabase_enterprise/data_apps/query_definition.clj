@@ -58,8 +58,18 @@
    [:map {:closed true :decode/normalize {:compile query-map-decoder}}
     [:binning {:optional true} [:maybe ::binning]]]])
 
+(mr/def ::named-breakout
+  "A breakout whose result column is named, as `breakout(field, { name })` names it."
+  [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :breakout]]
+   [:name string?]
+   [:column [:ref ::column-with-binning]]])
+
 (mr/def ::breakout
-  [:ref ::column-with-binning])
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::column-with-binning]]
+   [:breakout [:ref ::named-breakout]]])
 
 (mr/def ::order-by
   [:merge

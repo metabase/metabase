@@ -208,10 +208,12 @@ function toResultColumnStageSpec({
 }
 
 // A card stage exposes the saved question's result columns, which are no
-// longer joined, so the join and foreign key keys are dropped; the field ID or
-// the name still finds the column.
+// longer joined, so the join and foreign key keys are dropped. The field ID is
+// dropped too, as it differs between the instance an app is built against and
+// the one it runs on; the name finds the column.
 function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   const {
+    fieldId: _fieldId,
     joinAlias: _joinAlias,
     sourceFieldId: _sourceFieldId,
     sourceFieldJoinAlias: _sourceFieldJoinAlias,

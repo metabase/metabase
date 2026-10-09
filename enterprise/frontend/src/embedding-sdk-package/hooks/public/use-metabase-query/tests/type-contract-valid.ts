@@ -174,6 +174,24 @@ function ValidTypeFixtures() {
 
   void namedMeasureValue;
 
+  const namedBreakoutResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [
+        breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+          unit: "month",
+          name: "created_month",
+        }),
+      ],
+    }),
+  );
+
+  const namedBreakoutValue: string | Date | null | undefined =
+    namedBreakoutResult.data?.rows[0]?.created_month;
+
+  void namedBreakoutValue;
+
   const groupedMetricResult = useMetabaseQuery(
     defineQuery<OrdersTable>({
       source: TEST_SCHEMA.tables.orders,

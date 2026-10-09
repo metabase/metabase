@@ -1,4 +1,7 @@
-import { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import {
+  isNamedBreakout,
+  isUnaryOperator,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 
 import type { SchemaColumn } from "../data-schema";
 
@@ -8,6 +11,7 @@ import type {
   FilterLiteralValue,
   FilterOperator,
   MetabaseDimensionFilterForOperator,
+  NamedBreakout,
   OrderByDirection,
   UnaryFilterOperatorForDimension,
   ValueFilterOperatorForDimension,
@@ -77,6 +81,14 @@ export function breakout<const TDimension extends object>(
   dimension: TDimension,
 ): TDimension;
 
+export function breakout<
+  const TDimension extends object,
+  const TName extends string,
+>(
+  dimension: TDimension,
+  options: BreakoutOptionsArgument<TDimension> & { name: TName },
+): NamedBreakout<TDimension & BreakoutOptionsArgument<TDimension>, TName>;
+
 export function breakout<const TDimension extends object>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
@@ -84,16 +96,25 @@ export function breakout<const TDimension extends object>(
 
 export function breakout<TDimension extends object>(
   dimension: TDimension,
-  options?: BreakoutOptionsArgument<TDimension>,
+  options?: BreakoutOptionsArgument<TDimension> & { name?: string },
 ) {
-  return {
+  const column = {
     ...dimension,
     ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
     ...(options?.binning !== undefined
       ? { binning: options.binning }
       : undefined),
   };
+
+  return options?.name !== undefined
+    ? { type: "breakout", name: options.name, column }
+    : column;
 }
+
+export function orderBy<const TName extends string>(
+  breakout: NamedBreakout<unknown, TName>,
+  direction?: OrderByDirection,
+): { type: "column"; name: TName; direction?: OrderByDirection };
 
 export function orderBy<
   TAggregation extends { columns?: readonly SchemaColumn[] },
@@ -120,6 +141,14 @@ export function orderBy<TDimension>(
   direction?: OrderByDirection,
   options?: BreakoutOptionsArgument<TDimension>,
 ) {
+  if (isNamedBreakout(dimension)) {
+    return {
+      type: "column",
+      name: dimension.name,
+      ...(direction ? { direction } : undefined),
+    };
+  }
+
   const aggregationColumn = getAggregationResultColumn(dimension);
 
   if (aggregationColumn) {

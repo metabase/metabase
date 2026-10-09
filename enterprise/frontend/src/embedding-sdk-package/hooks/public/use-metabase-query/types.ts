@@ -354,9 +354,16 @@ export type MetabaseBreakoutObjectForDimension<TDimension> =
           binning?: BinningOptions;
         });
 
+export type NamedBreakout<TColumn = unknown, TName extends string = string> = {
+  type: "breakout";
+  name: TName;
+  column: TColumn;
+};
+
 type BreakoutForDimension<TDimension> =
   | TDimension
-  | MetabaseBreakoutObjectForDimension<TDimension>;
+  | MetabaseBreakoutObjectForDimension<TDimension>
+  | NamedBreakout<TDimension | MetabaseBreakoutObjectForDimension<TDimension>>;
 
 export type MetabaseBreakout<TTable = unknown> = BreakoutForDimension<
   FieldReference<TTable>
@@ -480,10 +487,15 @@ type QueryFieldColumns<TQuery> = TQuery extends { fields?: infer TFields }
   ? TupleElement<NonNullable<TFields>>
   : never;
 
+type BreakoutColumn<TBreakout> =
+  TBreakout extends NamedBreakout<infer TColumn, infer TName>
+    ? Omit<TColumn, "name"> & { name: TName }
+    : TBreakout;
+
 type QueryBreakoutColumns<TQuery> = TQuery extends {
   breakouts?: infer TBreakouts;
 }
-  ? TupleElement<NonNullable<TBreakouts>>
+  ? BreakoutColumn<TupleElement<NonNullable<TBreakouts>>>
   : never;
 
 type QueryAggregationColumns<TQuery> = TQuery extends {

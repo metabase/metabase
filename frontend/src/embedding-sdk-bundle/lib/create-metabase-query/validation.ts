@@ -5,6 +5,7 @@ import {
   type TableQueryInput,
   isMeasureReference,
   isMetricReference,
+  isNamedBreakout,
   isSegmentReference,
   unwrapNamedAggregation,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
@@ -150,7 +151,10 @@ function validateResultColumnClauses(
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateDimension(breakout, `${label} breakouts`);
+    validateDimension(
+      isNamedBreakout(breakout) ? breakout.column : breakout,
+      `${label} breakouts`,
+    );
   });
 
   validateOrderBys(
@@ -236,7 +240,11 @@ function validateTableScopedInputs(input: TableQueryInput) {
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateGeneratedTableReference(breakout, tableId, "Table query breakouts");
+    validateGeneratedTableReference(
+      isNamedBreakout(breakout) ? breakout.column : breakout,
+      tableId,
+      "Table query breakouts",
+    );
   });
 
   validateOrderBys(input, "Table query orderBys", (orderBy) =>
@@ -390,12 +398,18 @@ function isBreakoutReference(
     return false;
   }
 
-  return (breakouts ?? []).some(
-    (breakout) =>
-      (matchByName
-        ? namesMatch(breakout, value)
-        : fieldsMatch(breakout, value)) && bucketOptionsMatch(breakout, value),
-  );
+  return (breakouts ?? []).some((breakout) => {
+    if (isNamedBreakout(breakout) && breakout.name === value.name) {
+      return true;
+    }
+
+    const column = isNamedBreakout(breakout) ? breakout.column : breakout;
+
+    return (
+      (matchByName ? namesMatch(column, value) : fieldsMatch(column, value)) &&
+      bucketOptionsMatch(column, value)
+    );
+  });
 }
 
 function getTableId(value: unknown): number | undefined {

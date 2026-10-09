@@ -76,3 +76,10 @@
       (is (nil? (mr/explain ::query-definition/query-definition
                             (assoc-in query-definition [:stages 0 :aggregations]
                                       [{:name "revenue" :value saved}])))))))
+
+(deftest ^:parallel named-breakout-test
+  (testing "breakout named with `breakout(field, { name })`"
+    (is (nil? (mr/explain ::query-definition/query-definition
+                          (assoc-in query-definition [:stages 0 :breakouts]
+                                    [{:type :breakout :name "created_month"
+                                      :column {:type :column :name "DATE" :unit :month}}]))))))

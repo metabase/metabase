@@ -613,3 +613,15 @@
                                         (lib/breakout (lib/with-temporal-bucket created-at :month))
                                         (lib/breakout (lib/with-temporal-bucket created-at :year))
                                         (lib/aggregate (lib/count)))))))))
+
+(deftest names-breakout-test
+  (testing "breakout sent as `{type: breakout, name, column}` keeps its name in the saved question"
+    (let [{[file] :queries} (generate! :crowberto 200
+                                       {:queries [(query-item "Venues by category"
+                                                              {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                         :aggregations [{:type "operator" :operator "count"}]
+                                                                         :breakouts    [{:type   "breakout"
+                                                                                         :name   "category"
+                                                                                         :column {:type "column" :name "CATEGORY_ID"}}]}]})]})]
+      (is (=? [["field" {:name "category"} some?]]
+              (get-in (file-entity file) [:dataset_query :stages 0 :breakout]))))))
