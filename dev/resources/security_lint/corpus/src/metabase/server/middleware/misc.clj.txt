@@ -1,0 +1,44 @@
+(ns metabase.server.middleware.misc
+  "Ring middleware: an entry of its own kind, `:middleware`, that runs on every request ahead of the session
+  check. Exercises `middleware-acts-on-request-value` and the anonymous grade that comes with the kind."
+  (:require
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
+   [metabase.util.log :as log]))
+
+;; the Host header repointing site-url for anonymous callers: an error
+(defn- maybe-set-site-url* [{:keys [headers]}]
+  (let [{:strs [host]} headers]
+    (system/site-url! host)))
+
+;; the same write under the session's superuser flag: graded as a superuser's, so a note
+(defn- maybe-set-site-url-gated* [{:keys [headers] superuser? :is-superuser?}]
+  (let [{:strs [host]} headers]
+    (when superuser?
+      (system/site-url! host))))
+
+;; a cookie deciding a full cache purge, on every request: a warning
+(defn- check-features-cookie [request]
+  (when (get-in request [:cookies "metabase.PREMIUM_FEATURES_LAST_UPDATED" :value])
+    (premium-features/clear-cache!)))
+
+;; the throttled reload is the fix: not reported
+(defn- check-settings-cookie [request]
+  (when (get-in request [:cookies "metabase.SETTINGS_LAST_UPDATED" :value])
+    (setting/restore-cache-if-needed! :force-check? true)))
+
+;; a header logged at ERROR per request: a warning
+(defn- log-origin [request]
+  (log/error "Invalid origin" (get-in request [:headers "origin"])))
+
+(defn wrap-misc
+  "Applied to the whole app handler."
+  [handler]
+  (fn [request respond raise]
+    (maybe-set-site-url* request)
+    (maybe-set-site-url-gated* request)
+    (check-features-cookie request)
+    (check-settings-cookie request)
+    (log-origin request)
+    (handler request respond raise)))
