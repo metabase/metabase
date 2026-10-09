@@ -300,10 +300,16 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;
+                       COMMENT ON COLUMN test_mview.true_facts IS 'Facts that are true';
                        ANALYZE test_mview;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
           (is (=? [(default-table-result "test_mview")]
-                  (describe-database->tables :postgres database))))))))
+                  (describe-database->tables :postgres database)))
+          (is (=? [{:table-schema  "public"
+                    :table-name    "test_mview"
+                    :name          "true_facts"
+                    :field-comment "Facts that are true"}]
+                  (into [] (driver/describe-fields :postgres database {:table-names ["test_mview"]})))))))))
 
 (deftest foreign-tables-test
   (mt/test-driver :postgres
