@@ -40,8 +40,6 @@ export interface RemoteSyncDirtyState {
   changedCollections: Record<number, boolean>;
   /** Whether any dirty changes exist globally */
   isDirty: boolean;
-  /** Whether any entities have "removed" status */
-  hasRemovedItems: boolean;
   /** Whether data is loading */
   isLoading: boolean;
   /** Check if a specific collection has dirty items */

@@ -413,9 +413,10 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify Data actions tab empty state");
       H.DataStudio.nav().findByRole("link", { name: "Data actions" }).click();
-      H.DataStudio.Library.libraryPage()
-        .findByText("No actions yet")
-        .should("be.visible");
+      H.DataStudio.Library.collectionItem("Data actions").should("be.visible");
+      H.DataStudio.Library.emptyStateRow("Queries that change data").should(
+        "be.visible",
+      );
     });
 
     describe("read-only mode", () => {

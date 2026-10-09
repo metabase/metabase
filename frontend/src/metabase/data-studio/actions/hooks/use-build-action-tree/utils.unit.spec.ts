@@ -58,8 +58,13 @@ describe("buildActiveActionTree", () => {
     ]);
   });
 
-  it("should build no tree when it is empty and no action can be created", () => {
-    expect(buildActiveActionTree([ROOT], [], false)).toEqual([]);
+  it("should keep the root with an empty state without an action when no action can be created", () => {
+    expect(buildActiveActionTree([ROOT], [], false)[0].children).toEqual([
+      expect.objectContaining({
+        model: "empty-state",
+        data: expect.objectContaining({ actionUrl: undefined }),
+      }),
+    ]);
   });
 
   it("should show the empty state when an action can be created", () => {

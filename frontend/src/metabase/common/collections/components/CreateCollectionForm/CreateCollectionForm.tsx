@@ -77,8 +77,11 @@ function CreateCollectionForm({
     location,
     params,
   });
+  const isNamespacedOnly = namespaces != null && !namespaces.includes(null);
+  // The user's default collection is outside the namespace, so start from the namespace root
   const initialCollectionId =
-    explicitInitialCollectionId ?? defaultInitialCollectionId;
+    explicitInitialCollectionId ??
+    (isNamespacedOnly ? null : defaultInitialCollectionId);
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
@@ -97,10 +100,11 @@ function CreateCollectionForm({
   const handleSubmit = useCallback(
     (values: CreateCollectionProperties) => {
       const parentCollection = selectedParentCollection ?? initialCollection;
-      const namespace =
+      const parentNamespace =
         parentCollection && "namespace" in parentCollection
           ? parentCollection.namespace
-          : namespaces?.[0];
+          : null;
+      const namespace = parentNamespace ?? namespaces?.[0];
 
       onSubmit({
         ...values,

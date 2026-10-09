@@ -74,7 +74,7 @@ function isDataAction(
 
 /**
  * The data actions root with its folders and the actions without a model under it, or nothing without a readable
- * root or when it is empty and no action can be created.
+ * root.
  */
 export function buildActiveActionTree(
   actionCollections: Collection[],
@@ -99,9 +99,6 @@ export function buildActiveActionTree(
     dataActions,
   );
   const hasContent = dataActions.length > 0 || collections.length > 0;
-  if (!hasContent && !canCreateActions) {
-    return [];
-  }
 
   return [
     {

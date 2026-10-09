@@ -325,7 +325,7 @@ export function getNodeLocationInfo(
           links: [
             {
               label: node.data.collection.name,
-              url: Urls.dataStudioLibrary(),
+              url: Urls.dataStudioSnippets(),
             },
           ],
         };
