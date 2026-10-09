@@ -1164,12 +1164,20 @@
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
 (deftest current-task-returns-cancelled-status-test
-  (testing "GET /api/ee/remote-sync/current-task returns cancelled status for cancelled task"
+  (testing "GET /api/ee/remote-sync/current-task returns running with the flag while a task holds a cancel request,
+            and cancelled once its worker ends the row"
     (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
                                                    :last_progress_report_at :%now
                                                    :started_at :%now}]
       (remote-sync.task/cancel-sync-task! id)
-      (is (=? {:cancelled true
+      (is (=? {:status "running"
+               :cancelled true
+               :ended_at nil
+               :error_message nil}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))
+      (remote-sync.task/end-task-cancelled! id)
+      (is (=? {:status "cancelled"
+               :cancelled true
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
