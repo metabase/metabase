@@ -137,6 +137,30 @@
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"]
     (is (true? (settings/remote-sync-enabled)))))
 
+(deftest settings-save-that-fails-part-way-changes-nothing-test
+  (testing "a save whose branch write fails after its URL write keeps the old URL and the old branch"
+    (mt/with-temporary-setting-values [:remote-sync-url    "file:///old"
+                                       :remote-sync-branch "old-branch"
+                                       :remote-sync-type   :read-only]
+      (let [orig (mt/original-fn #'setting/set!)]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)
+                                    setting/set!                 (fn [k & more]
+                                                                   (when (= :remote-sync-branch k)
+                                                                     (throw (ex-info "Simulated failure of the branch write" {})))
+                                                                   (apply orig k more))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated failure of the branch write"
+                                (settings/check-and-update-remote-settings!
+                                 {:remote-sync-url    "file:///new"
+                                  :remote-sync-branch "new-branch"
+                                  :remote-sync-type   :read-only})))))
+      (is (= {:url "file:///old" :branch "old-branch"}
+             {:url (settings/remote-sync-url) :branch (settings/remote-sync-branch)})
+          "the settings cache holds the old values")
+      (setting/restore-cache!)
+      (is (= {:url "file:///old" :branch "old-branch"}
+             {:url (settings/remote-sync-url) :branch (settings/remote-sync-branch)})
+          "the app DB holds the old values"))))
+
 (deftest deactivate-clears-remote-sync-with-blank-url-test
   (testing "Setting a blank remote-sync-url clears all git settings and disables remote sync"
     (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)]

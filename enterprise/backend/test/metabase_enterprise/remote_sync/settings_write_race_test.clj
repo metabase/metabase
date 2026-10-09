@@ -1,6 +1,6 @@
 (ns metabase-enterprise.remote-sync.settings-write-race-test
-  "A pull that writes a setting while an admin saves settings on another thread. Each test forces the order: the
-  admin save holds the `settings-last-updated` row while the worker of the pull writes its setting."
+  "Remote-sync setting writes at the same time as other setting writes: a pull and an admin save, or two admin
+  saves. Each test forces the order of the writes."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
@@ -156,6 +156,51 @@
             (is (=? {:status :successful :error_message nil :version "v1"} (task-row task-id)) "the pull succeeds")
             (is (true? (settings/remote-sync-transforms)) "the pull turned on remote-sync-transforms")
             (is (= "After the race" (setting/get :site-name)) "the admin save wrote its settings")))))))
+
+(deftest two-settings-saves-at-the-same-time-store-one-save-whole-test
+  (testing "two admins save a URL and a branch at the same time: the app DB holds the URL and the branch of one
+            save that succeeded, never the URL of one save and the branch of the other"
+    (mt/with-temporary-setting-values [:remote-sync-url    "file:///old"
+                                       :remote-sync-branch "old-branch"
+                                       :remote-sync-type   :read-only]
+      (let [orig     (mt/original-fn #'setting/set!)
+            a-thread (atom nil)
+            a-wrote  (promise)
+            release  (promise)
+            save!    (fn [prefix]
+                       (try
+                         (settings/check-and-update-remote-settings!
+                          {:remote-sync-url    (str "file:///" prefix)
+                           :remote-sync-branch (str prefix "-branch")
+                           :remote-sync-type   :read-only})
+                         :ok
+                         (catch Throwable t
+                           (ex-message t))))
+            results  (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)
+                                                 setting/set!                 (fn [k & more]
+                                                                                (let [x (apply orig k more)]
+                                                                                  (when (and (= :remote-sync-url k)
+                                                                                             (= (Thread/currentThread) @a-thread))
+                                                                                    (deliver a-wrote true)
+                                                                                    (deref release 20000 nil))
+                                                                                  x))]
+                       (let [a (future
+                                 (reset! a-thread (Thread/currentThread))
+                                 (save! "a"))
+                             _ (deref a-wrote 20000 nil)
+                             b (future (save! "b"))]
+                         ;; save a waits after its URL write; save b ends in this time unless a lock of save a
+                         ;; holds it
+                         (deref b 2000 nil)
+                         (deliver release true)
+                         {"a" (deref a 60000 :timed-out) "b" (deref b 60000 :timed-out)}))]
+        (setting/restore-cache!)
+        (is (some #{:ok} (vals results)) (pr-str results))
+        (is (contains? (set (for [[prefix result] results
+                                  :when (= :ok result)]
+                              {:url (str "file:///" prefix) :branch (str prefix "-branch")}))
+                       {:url (settings/remote-sync-url) :branch (settings/remote-sync-branch)})
+            (pr-str results))))))
 
 (defn- on-plain-thread!
   "Runs `f` on a thread that conveys no bindings, as another request does. Returns the value of `f`, or what it
