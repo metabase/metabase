@@ -52,7 +52,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `Field` with ID."
+  "Get `Field` with ID. With `include_editable_data_model`, also `data_sensitivity_source`: `human`, `ai`,
+  `deterministic`, or null."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
@@ -209,13 +210,28 @@
     ;; but that shouldn't matter for the datamodel page
     (let [updated (warehouse-schema-rest.db/field id)]
       (u/prog1 (-> updated
-                   (t2/hydrate :dimensions :has_field_values)
+                   (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
                    (field/hydrate-target-with-write-perms))
         (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
           ;; Run with admin perms to match behavior during normal sync.
           (quick-task/submit-task! (fn [] (request/as-admin (sync/refingerprint-field! updated)))))))))
+
+(api.macros/defendpoint :post "/:id/reset-to-automatic" :- :map
+  "Drop the user values of the Field columns in `columns`, so the Field shows the accepted AI value, else the value
+  sync and the classifiers set. Returns the updated Field."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [columns]} :- [:map {:closed true}
+                         [:columns [:sequential {:min 1} [:enum "data_sensitivity"]]]]]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
+    (schema.field-user-settings/unset-user-settings! field (mapv keyword columns))
+    (u/prog1 (-> (warehouse-schema-rest.db/field id)
+                 (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
+                 (field/hydrate-target-with-write-perms))
+      (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*}))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 

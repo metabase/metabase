@@ -14,7 +14,8 @@
   (let [field (-> (api/check-404 (warehouse-schema.db/field id))
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
-                (field/hydrate-target-with-write-perms field)
+                (-> (field/hydrate-target-with-write-perms field)
+                    (t2/hydrate :data_sensitivity_source))
                 (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;

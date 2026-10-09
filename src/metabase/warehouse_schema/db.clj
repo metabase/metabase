@@ -202,6 +202,15 @@
                            :join  [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :d.field_id]]
                            :where [:= :f.table_id table-id]})))
 
+(mu/defn field-data-sensitivity-layers
+  "Per Field in `field-ids`: its `:id`, its own `:data_sensitivity`, and the `:data_sensitivity_set` and
+  `:ai_data_sensitivity` of its FieldUserSettings (nil when it has none)."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/query {:select    [:f.id :f.data_sensitivity :u.data_sensitivity_set :u.ai_data_sensitivity]
+             :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
+             :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
+             :where     [:in :f.id field-ids]}))
+
 (mu/defn field-user-settings-for-tables
   "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."
   [table-ids :- [:sequential ::lib.schema.id/table]]

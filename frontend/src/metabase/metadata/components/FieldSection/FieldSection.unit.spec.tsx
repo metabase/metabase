@@ -233,5 +233,63 @@ describe("FieldSection", () => {
 
       await assertErrorToast("Failed to update formatting of Quantity");
     });
+
+    it("shows an error toast when updating data sensitivity fails", async () => {
+      setup();
+      failFieldUpdates();
+
+      await selectOption(
+        screen.getByLabelText("Data sensitivity"),
+        "Personally identifiable information",
+      );
+
+      await assertErrorToast("Failed to update data sensitivity of Quantity");
+    });
+  });
+
+  describe("data sensitivity", () => {
+    it("saves the selected category through PUT /api/field/:id", async () => {
+      setup();
+
+      await selectOption(
+        screen.getByLabelText("Data sensitivity"),
+        "Protected health information",
+      );
+
+      await waitFor(async () => {
+        const call = fetchMock.callHistory.lastCall(
+          `field-${QUANTITY_FIELD.id}-put`,
+        );
+        expect(await call?.request?.json()).toEqual({
+          data_sensitivity: "PHI",
+        });
+      });
+    });
+
+    it("resets a value a person set through POST /api/field/:id/reset-to-automatic", async () => {
+      const field = createOrdersQuantityField({
+        data_sensitivity: "PII",
+        data_sensitivity_source: "human",
+      });
+      const table = createOrdersTable({ fields: [field] });
+      setup({
+        field,
+        table,
+        database: createSampleDatabase({ tables: [table] }),
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset to automatic" }),
+      );
+
+      await waitFor(async () => {
+        const call = fetchMock.callHistory.lastCall(
+          `field-${QUANTITY_FIELD.id}-reset-to-automatic`,
+        );
+        expect(await call?.request?.json()).toEqual({
+          columns: ["data_sensitivity"],
+        });
+      });
+    });
   });
 });
