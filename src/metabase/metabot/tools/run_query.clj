@@ -100,14 +100,35 @@
   []
   (shared/tool-available? "construct_notebook_query"))
 
-(defn- stored-query
+(defn- viewed-saved-question-query
+  "A notebook query over the saved question or model the user is viewing whose id is `query-id`, or nil.
+   A viewed saved question arrives as its id alone, so the conversation holds no query for it. Only run_query reads
+   it this way: the chart, link and save tools still take a query the conversation holds. Running it as a
+   source-card query keeps the question's own permissions and the checks on SQL that Metabot saved."
   [query-id]
+  (when-let [card-id (some (fn [{:keys [id type]}]
+                             (when (and (= query-id (str id))
+                                        (contains? #{"question" "model"} (some-> type name)))
+                               (parse-long (str id))))
+                           (get-in (shared/current-memory) [:context :user_is_viewing]))]
+    (when-let [database-id (:database_id (metabot.db/card card-id))]
+      {:lib/type :mbql/query
+       :database database-id
+       :stages   [{:lib/type    :mbql.stage/mbql
+                   :source-card card-id}]})))
+
+(defn- stored-query
+  "The query `query-id` names: one the conversation holds, or with `notebook?` a saved question the user is viewing."
+  [query-id notebook?]
   (let [queries (shared/current-queries-state)]
     (or (get queries query-id)
+        (when notebook?
+          (viewed-saved-question-query query-id))
         (throw (refusal (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "]. "
                              (if (notebook-available?)
-                               (str "A saved question or model has no query id: to run one, build a notebook query "
-                                    "with it as the source-card using construct_notebook_query, then run that query.")
+                               (str "Only a saved question or model the user is viewing runs by its own id: to run "
+                                    "another, build a notebook query with it as the source-card using "
+                                    "construct_notebook_query, then run that query.")
                                (str "A saved question or model has no query id: to run one, write SQL that reads it "
                                     "using create_sql_query, then run that query."))))))))
 
@@ -490,7 +511,7 @@
     ;; The rows are stored with the conversation, and every participant can read them back.
     (when (conversation-open-to-others?)
       (throw (shared-conversation-refusal)))
-    (let [runnable (runnable-query query_id (stored-query query_id))]
+    (let [runnable (runnable-query query_id (stored-query query_id notebook?))]
       (when-not (or notebook? (:checked-sql runnable))
         (throw (refusal (str "You may only run SQL queries, and query " query_id " is not one. " sql-query-hint))))
       (let [page                                 (execute-page! query_id runnable (or row_limit default-row-limit))
@@ -527,7 +548,8 @@
   "Run a query you already have and read its first rows (default 20, max 200).
   Use it when the answer needs actual values: a number, the top item, whether a filter matches anything.
   `query_id` is the id of a query you built, or of a query the user is viewing.
-  A saved question or model has no query id: build a notebook query with it as the source-card and run that.
+  For a saved question or model the user is viewing, `query_id` is its own id. Any other has no query id: build a
+  notebook query with it as the source-card and run that.
   A SQL query, whether built with create_sql_query or viewed by the user, runs only where SQL execution is
   on, and only when it is a single read-only SELECT statement; otherwise it is refused, and you get values by
   building the question with construct_notebook_query.

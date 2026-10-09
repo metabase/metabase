@@ -119,9 +119,9 @@
       (is (= {:output "Query execution is turned off for Metabot."}
              (call-tool! {:state {:queries {"q1" (venues-by-id)}}} {:query_id "q1"})))))
   (testing "an unknown id lists the ids the model can use"
-    (is (= {:output (str "No query with id nope. Known query ids: [q1]. A saved question or model has no query id: "
-                         "to run one, build a notebook query with it as the source-card using "
-                         "construct_notebook_query, then run that query.")}
+    (is (= {:output (str "No query with id nope. Known query ids: [q1]. Only a saved question or model the user is "
+                         "viewing runs by its own id: to run another, build a notebook query with it as the "
+                         "source-card using construct_notebook_query, then run that query.")}
            (run-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
   (testing "a SQL query is refused with a pointer to construct_notebook_query while SQL execution is off"
     (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
@@ -362,6 +362,28 @@
   "A notebook query whose source is the saved question `card-id`."
   [card-id]
   {:database (mt/id), :type :query, :query {:source-table (str "card__" card-id)}})
+
+(deftest run-query-viewed-saved-question-test
+  (mt/with-temp [:model/Card {notebook-card :id}    {:dataset_query (venues-count)}
+                 :model/Card {metabot-sql-card :id} {:dataset_query (venues-sql)}]
+    (mark-saved-by-metabot! metabot-sql-card)
+    (let [run-viewing! (fn [viewing query-id]
+                         (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                           (call-tool! {:state   {:queries {}}
+                                        :context {:user_is_viewing viewing}}
+                                       {:query_id query-id})))]
+      (testing "a saved question or model the user is viewing runs by its own id"
+        (doseq [item-type ["question" "model"]]
+          (testing item-type
+            (is (= ["| Count |" "| --- |" "| 100 |"]
+                   (data-lines (:output (run-viewing! [{:type item-type, :id notebook-card}] (str notebook-card)))))))))
+      (testing "a saved question the user is not viewing does not run by its id"
+        (is (=? {:output #"No query with id \d+\. Known query ids: \[\]\. .*"}
+                (run-viewing! [] (str notebook-card)))))
+      (testing "a viewed SQL question that Metabot saved is still refused as SQL"
+        (is (=? {:output #"run_query .*SQL.*"}
+                (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+                  (run-viewing! [{:type "question", :id metabot-sql-card}] (str metabot-sql-card)))))))))
 
 (deftest run-query-saved-question-test
   (mt/with-non-admin-groups-no-root-collection-perms
