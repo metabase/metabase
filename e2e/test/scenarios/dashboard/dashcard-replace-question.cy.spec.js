@@ -213,7 +213,6 @@ describe("scenarios > dashboard cards > replace question", () => {
   });
 
   it("should handle questions with limited permissions", () => {
-    cy.signInAsAdmin();
     cy.updateCollectionGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
     });
