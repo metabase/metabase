@@ -7,7 +7,7 @@ import { Flex, Icon } from "metabase/ui";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
-import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
@@ -139,14 +139,8 @@ function ProgressComponent(props: VisualizationProps) {
     update();
   });
 
-  if (goalData.status !== "resolved") {
-    return (
-      <GoalResolutionState
-        className={className}
-        kind="value"
-        status={goalData.status}
-      />
-    );
+  if (goalData.status === "resolving") {
+    return <GoalResolvingState className={className} />;
   }
 
   return (

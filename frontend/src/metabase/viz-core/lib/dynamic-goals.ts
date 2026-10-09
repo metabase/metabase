@@ -26,6 +26,7 @@ import {
 import type {
   GoalCard,
   GoalData,
+  GoalRefError,
   GoalValueResult,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
@@ -34,7 +35,6 @@ import type {
 import {
   GOAL_SETTINGS,
   type GoalSettingKey,
-  type GoalSettingKind,
   getDynamicGoalSettingKeys,
 } from "./dynamic-goal-settings";
 
@@ -182,18 +182,6 @@ export function isDynamicGoalSetting(
   return getDynamicGoalSettingKeys(display).includes(key);
 }
 
-export const getUnresolvedGoalMessage = (kind: GoalSettingKind) =>
-  match(kind)
-    .with(
-      "value",
-      () => t`Couldn't load the value this chart's goal depends on.`,
-    )
-    .with(
-      "segments",
-      () => t`Couldn't load a value one of this chart's ranges depends on.`,
-    )
-    .exhaustive();
-
 function isGoalSettingActive(
   settings: VisualizationSettings,
   key: GoalSettingKey,
@@ -250,15 +238,11 @@ export function resolveOpenEndedGoalSegments(
   getColor: ColorGetter = color,
 ): ResolvedOpenEndedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
+    // a bound that can't resolve counts as unset
     const min = resolveGoalValue(data, segment.min).value;
     const max = resolveGoalValue(data, segment.max).value;
-    // a set bound that failed to resolve must not pass as one left empty
-    const hasUnresolvedBound =
-      (segment.min != null && min == null) ||
-      (segment.max != null && max == null);
-    const hasBound = min != null || max != null;
 
-    if (hasUnresolvedBound || !hasBound) {
+    if (min == null && max == null) {
       return [];
     }
 
@@ -296,18 +280,8 @@ export function getSegmentColor(
   return segment.color ?? getColor("text-secondary");
 }
 
-export function hasFailedGoalValues(
-  data: GoalData,
-  values: (GoalValue | null | undefined)[],
-): boolean {
-  return values.some((value) => isFailed(value, resolveGoalValue(data, value)));
-}
-
-export function hasUnresolvedGoalValues(
-  data: GoalData,
-  values: (GoalValue | null | undefined)[],
-): boolean {
-  return values.some((value) => isUnresolved(resolveGoalValue(data, value)));
+export function getGoalErrors(results: GoalValueResult[]): GoalRefError[] {
+  return results.flatMap((result) => (result.error ? [result.error] : []));
 }
 
 export function getUnansweredGoalEntities(
@@ -408,15 +382,4 @@ function isUnanswered(resolved: GoalValueResult): boolean {
 // Unanswered, or answered with an error.
 function isUnresolved(resolved: GoalValueResult): boolean {
   return isUnanswered(resolved) || resolved.error != null;
-}
-
-// Only a foreign reference gets re-asked (see needsAnswer) - every other error is final.
-function isFailed(
-  value: GoalValue | null | undefined,
-  resolved: GoalValueResult,
-): boolean {
-  return (
-    resolved.error != null &&
-    !(isGoalForeignColumnRef(value) && needsAnswer(resolved))
-  );
 }

@@ -16,7 +16,10 @@ import type {
 } from "metabase-types/api";
 import { isGoalForeignColumnRef } from "metabase-types/guards";
 
-import { useAnsweredGoalData } from "./use-answered-goal-data";
+import {
+  type GoalDataResolution,
+  useAnsweredGoalData,
+} from "./use-answered-goal-data";
 
 const RESOLVING: GoalValueResult = {
   value: null,
@@ -38,9 +41,7 @@ export function useAnsweredGoalValue({
   referencedEntities?: ReferencedEntity[];
   value: GoalValue | null | undefined;
 }): GoalValueResult {
-  const resolved = resolveGoalValue(data, value);
-  const unansweredRef =
-    needsAnswer(resolved) && isGoalForeignColumnRef(value) ? value : null;
+  const unansweredRef = getUnansweredRef(data, value);
 
   const answered = useAnsweredGoalData(
     datasetQuery,
@@ -49,6 +50,17 @@ export function useAnsweredGoalValue({
       ? (referencedEntities ?? getUnansweredGoalEntities(data, [value]))
       : [],
   );
+
+  return getAnsweredGoalValue(data, answered, value);
+}
+
+export function getAnsweredGoalValue(
+  data: DatasetData,
+  answered: GoalDataResolution,
+  value: GoalValue | null | undefined,
+): GoalValueResult {
+  const resolved = resolveGoalValue(data, value);
+  const unansweredRef = getUnansweredRef(data, value);
 
   if (unansweredRef === null) {
     return resolved;
@@ -69,6 +81,16 @@ export function useAnsweredGoalValue({
         : fresh;
     })
     .exhaustive();
+}
+
+function getUnansweredRef(
+  data: DatasetData,
+  value: GoalValue | null | undefined,
+): GoalForeignColumnRef | null {
+  return isGoalForeignColumnRef(value) &&
+    needsAnswer(resolveGoalValue(data, value))
+    ? value
+    : null;
 }
 
 function getFailedGoalValueResult({

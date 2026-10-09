@@ -10,7 +10,6 @@ import {
   createMockColumn,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -29,8 +28,6 @@ const REFERENCED_GOAL_SETTINGS: VisualizationSettings = {
   "graph.goal_value": REFERENCED_GOAL,
 };
 
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
-
 describe("definition", () => {
   describe("checkRenderable", () => {
     const { checkRenderable } = getCartesianChartDefinition({});
@@ -38,68 +35,14 @@ describe("definition", () => {
     describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       "goal line of a %s chart",
       (display) => {
-        it("accepts a static goal value", () => {
-          expect(() =>
-            checkRenderable(createSeries(display), {
-              ...GOAL_LINE_SETTINGS,
-              "graph.goal_value": 100,
-            }),
-          ).not.toThrow();
-        });
-
-        it("accepts a goal reference that is still resolving", () => {
-          expect(() =>
-            checkRenderable(createSeries(display), REFERENCED_GOAL_SETTINGS),
-          ).not.toThrow();
-        });
-
-        it("accepts a resolved goal reference", () => {
-          const series = createSeries(display, {
-            referenced_entities: createMockReferencedEntitiesResults({
-              column: "goal",
-              value: 250,
-            }),
-          });
-
-          expect(() =>
-            checkRenderable(series, REFERENCED_GOAL_SETTINGS),
-          ).not.toThrow();
-        });
-
-        it("refuses to render when the referenced query failed", () => {
+        it("renders when the referenced query failed", () => {
           const series = createSeries(display, {
             referenced_entities: createMockFailedReferencedEntitiesResults(),
           });
 
           expect(() =>
             checkRenderable(series, REFERENCED_GOAL_SETTINGS),
-          ).toThrow(GOAL_ERROR);
-        });
-
-        it("refuses to render when the referenced value is not a number", () => {
-          const series = createSeries(display, {
-            referenced_entities: createMockReferencedEntitiesResults({
-              column: "goal",
-              value: "x",
-            }),
-          });
-
-          expect(() =>
-            checkRenderable(series, REFERENCED_GOAL_SETTINGS),
-          ).toThrow(GOAL_ERROR);
-        });
-
-        it("reads the raw series when given a transformed one", () => {
-          const rawSeries = createSeries(display, {
-            referenced_entities: createMockFailedReferencedEntitiesResults(),
-          });
-          const transformed = Object.assign(createSeries(display), {
-            _raw: rawSeries,
-          });
-
-          expect(() =>
-            checkRenderable(transformed, REFERENCED_GOAL_SETTINGS),
-          ).toThrow(GOAL_ERROR);
+          ).not.toThrow();
         });
       },
     );

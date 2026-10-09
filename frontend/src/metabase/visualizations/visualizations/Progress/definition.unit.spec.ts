@@ -9,7 +9,6 @@ import {
   createMockColumn,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -23,7 +22,6 @@ const COLS = [
 ];
 const REFERENCED_GOAL = { type: "card", id: 9, column: "goal" } as const;
 const SETTINGS: VisualizationSettings = { "progress.goal": REFERENCED_GOAL };
-const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 describe("PROGRESS_CHART_DEFINITION", () => {
   describe("progress.goal widget", () => {
@@ -83,44 +81,12 @@ describe("PROGRESS_CHART_DEFINITION", () => {
   });
 
   describe("checkRenderable", () => {
-    it("accepts a goal reference that is still resolving", () => {
-      expect(() => checkRenderable(createSeries(), SETTINGS)).not.toThrow();
-    });
-
-    it("accepts a resolved goal reference", () => {
-      const series = createSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          value: 250,
-        }),
-      });
-
-      expect(() => checkRenderable(series, SETTINGS)).not.toThrow();
-    });
-
-    it("keeps rendering a column of this question whose value is empty", () => {
-      expect(() =>
-        checkRenderable(createSeries({ rows: [[50, null]] }), {
-          "progress.goal": "target",
-        }),
-      ).not.toThrow();
-    });
-
-    it("refuses to render when the referenced query failed", () => {
+    it("renders when the referenced query failed", () => {
       const series = createSeries({
         referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
-      expect(() => checkRenderable(series, SETTINGS)).toThrow(GOAL_ERROR);
-    });
-
-    it("refuses to render when the referenced value is not a number", () => {
-      const series = createSeries({
-        referenced_entities: createMockReferencedEntitiesResults({
-          value: "x",
-        }),
-      });
-
-      expect(() => checkRenderable(series, SETTINGS)).toThrow(GOAL_ERROR);
+      expect(() => checkRenderable(series, SETTINGS)).not.toThrow();
     });
   });
 });

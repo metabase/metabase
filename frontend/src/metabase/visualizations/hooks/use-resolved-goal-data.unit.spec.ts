@@ -33,7 +33,11 @@ describe("useResolvedGoalData", () => {
   it("resolves static values, self-column names and empty bounds without fetching", () => {
     const { result } = setup(DATA, [0, 100, "count", null]);
 
-    expect(result.current).toEqual({ status: "resolved", data: DATA });
+    expect(result.current).toEqual({
+      status: "resolved",
+      data: DATA,
+      results: [{ value: 0 }, { value: 100 }, { value: 50 }, { value: null }],
+    });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
@@ -61,55 +65,98 @@ describe("useResolvedGoalData", () => {
     });
   });
 
-  it("fails without fetching when the dataset already reports a failed reference", () => {
+  it("reports a reference the dataset already reports as failed without fetching", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: createMockFailedReferencedEntitiesResults(),
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        error: "boom",
+      }),
     });
 
     const { result } = setup(data, [0, GOAL_REF]);
 
-    expect(result.current).toEqual({ status: "failed" });
+    expect(result.current).toMatchObject({
+      status: "resolved",
+      results: [
+        { value: 0 },
+        { value: null, error: { reason: "query-failed", message: "boom" } },
+      ],
+    });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  it("fails without fetching when a self-column name matches no column", () => {
+  it("reports a self-column name that matches no column without fetching", () => {
     const { result } = setup(DATA, ["missing", 100]);
 
-    expect(result.current).toEqual({ status: "failed" });
+    expect(result.current).toMatchObject({
+      status: "resolved",
+      results: [
+        { value: null, error: { reason: "column-not-found" } },
+        { value: 100 },
+      ],
+    });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  it("fails when the fresh answer still lacks the referenced column", async () => {
+  it("reports a fresh answer that still lacks the referenced column", async () => {
     setupCardDataset({
       dataset: { data: createReferencedEntitiesAnswer(1, "other") },
     });
 
     const { result } = setup(DATA, [0, GOAL_REF]);
 
-    await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        status: "resolved",
+        results: [{ value: 0 }, { error: { reason: "column-not-found" } }],
+      }),
+    );
   });
 
-  it("fails when the resolving query fails", async () => {
+  it("reports the references when the resolving query fails", async () => {
     setupCardDataset({ status: 500 });
 
     const { result } = setup(DATA, [0, GOAL_REF]);
 
-    await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        status: "resolved",
+        data: DATA,
+        results: [
+          { value: 0 },
+          {
+            error: {
+              reason: "query-failed",
+              message: "Couldn't load this value",
+            },
+          },
+        ],
+      }),
+    );
   });
 
-  it("fails when the fresh answer reports a failed reference", async () => {
+  it("reports a reference the fresh answer reports as failed", async () => {
     setupCardDataset({
       dataset: {
         data: createMockDatasetData({
-          referenced_entities: createMockFailedReferencedEntitiesResults(),
+          referenced_entities: createMockFailedReferencedEntitiesResults({
+            error: "boom",
+          }),
         }),
       },
     });
 
     const { result } = setup(DATA, [0, GOAL_REF]);
 
-    await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        status: "resolved",
+        results: [
+          { value: 0 },
+          { error: { reason: "query-failed", message: "boom" } },
+        ],
+      }),
+    );
   });
 
   it("keeps resolving while a retargeted reference's answer is in flight", async () => {

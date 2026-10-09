@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
-import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import {
   ScalarCardShell,
   useScalarCardShell,
@@ -92,7 +92,7 @@ function ScalarComponent(
     );
   }
 
-  if (goalData.status !== "resolved") {
+  if (goalData.status === "resolving") {
     return (
       <ScalarCardShell
         actionButtons={actionButtons}
@@ -101,7 +101,7 @@ function ScalarComponent(
         tier={tier}
         title={title}
       >
-        <GoalResolutionState kind="segments" status={goalData.status} />
+        <GoalResolvingState />
         {titleElement}
       </ScalarCardShell>
     );
