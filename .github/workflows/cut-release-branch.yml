@@ -248,7 +248,7 @@ jobs:
                 : null,
               agentSkillsFailed
                 ? `:warning: Starting the data-app skills cut failed — please run <https://github.com/${owner}/agent-skills/actions/workflows/cut-data-app-skills.yml|Cut data app skills> with version *${next}*.`
-                : `Data-app skills for v${next}: approve the <https://github.com/${owner}/agent-skills/pulls|agent-skills PR> that adds \`skills/data-apps/${next}\`.`,
+                : null,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
                 : null,
