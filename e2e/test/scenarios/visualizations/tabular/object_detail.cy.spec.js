@@ -186,16 +186,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
-    H.openPeopleTable();
-    H.tableInteractiveScrollContainer().scrollTo(2000, 14900);
-    H.openObjectDetail(417);
-    cy.findByRole("dialog")
-      .should("contain", "418")
-      .and("contain", "31942-31950 Oak Ridge Parkway")
-      .and("contain", "koss-ella@hotmail.com");
-  });
-
   it("handles browsing records by FKs (metabase#21756)", () => {
     cy.intercept(
       { method: "GET", pathname: "/api/action" },
@@ -345,6 +335,33 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByText("People → Name").scrollIntoView().should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
+
+    cy.log(
+      "should display correct data when toggling columns (metabase#63745)",
+    );
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar")
+      .button("Add or remove columns")
+      .click();
+
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.get("ID")).to.eq("1");
+      expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
+    });
+
+    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
+
+    // A stale mapping shifts each value one label down: "Product ID" then shows the User ID value.
+    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
+      const cellsFlat = $cells.toArray().map((el) => el.textContent);
+      const map = new Map(chunk(cellsFlat, 2));
+      expect(map.has("ID")).to.be.false;
+      expect(map.get("User ID")).to.eq("1");
+      expect(map.get("Product ID")).to.eq("14");
+    });
   });
 
   it("reset object detail navigation state on query change (metabase#54317)", () => {
@@ -447,15 +464,21 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("should support keyboard navigation, row highlighting, sidebar toggling and viz settings", () => {
-    H.visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": PEOPLE_ID },
-      },
-    });
+  it("should support scrolling, keyboard navigation, row highlighting, sidebar toggling and viz settings", () => {
+    H.openPeopleTable();
+
+    cy.log(
+      "calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)",
+    );
+    H.tableInteractiveScrollContainer().scrollTo(2000, 14900);
+    H.openObjectDetail(417);
+    cy.findByRole("dialog")
+      .should("contain", "418")
+      .and("contain", "31942-31950 Oak Ridge Parkway")
+      .and("contain", "koss-ella@hotmail.com");
+    cy.realPress("Escape");
+    cy.findByTestId("object-detail").should("not.exist");
+    H.tableInteractiveScrollContainer().scrollTo(0, 0);
 
     H.tableInteractive()
       .findByText("Searsboro")
@@ -509,7 +532,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .findByRole("heading", { name: "Hudson Borer" })
       .should("be.visible");
 
-    cy.findByTestId("object-detail").findByText("Address").should("be.visible");
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Address").should("be.visible");
+      assertDetailColumnOrder({ before: "Email", after: "State" });
+    });
 
     cy.log("toggles the sidebar from the detail shortcut");
     // realHover does not work behind the modal overlay, so we're working around it with realMouseMove
@@ -557,14 +583,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByText("Address").should("not.exist");
 
       cy.log("viz settings columns order is respected");
-      cy.findAllByText(/State|Email/).then(($elements) => {
-        const texts = $elements
-          .map((_index, element) => element.textContent)
-          .get();
-
-        expect(texts.indexOf("State")).to.be.at.least(0);
-        expect(texts.indexOf("State")).to.be.lessThan(texts.indexOf("Email"));
-      });
+      assertDetailColumnOrder({ before: "State", after: "Email" });
     });
   });
 
@@ -662,45 +681,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .first()
         .scrollTo("bottom");
       H.modal().findByText("is connected to:").should("be.visible");
-    });
-  });
-
-  it("should display correct data when toggling columns (metabase#63745)", () => {
-    H.visitQuestionAdhoc({
-      name: "63745",
-      display: "object",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          limit: 5,
-        },
-      },
-    });
-
-    H.openVizSettingsSidebar();
-    cy.findByTestId("chartsettings-sidebar")
-      .button("Add or remove columns")
-      .click();
-
-    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
-      const cellsFlat = $cells.toArray().map((el) => el.textContent);
-      const map = new Map(chunk(cellsFlat, 2));
-      expect(map.get("ID")).to.eq("1");
-      expect(map.get("User ID")).to.eq("1");
-      expect(map.get("Product ID")).to.eq("14");
-    });
-
-    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
-
-    // A stale mapping shifts each value one label down: "Product ID" then shows the User ID value.
-    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
-      const cellsFlat = $cells.toArray().map((el) => el.textContent);
-      const map = new Map(chunk(cellsFlat, 2));
-      expect(map.has("ID")).to.be.false;
-      expect(map.get("User ID")).to.eq("1");
-      expect(map.get("Product ID")).to.eq("14");
     });
   });
 
@@ -886,6 +866,15 @@ function assertOrderDetailView({ id, heading, subtitle }) {
 
 function assertUserDetailView({ id, heading, subtitle }) {
   assertDetailView({ id, heading, subtitle, byFK: true });
+}
+
+function assertDetailColumnOrder({ before, after }) {
+  cy.findAllByText(new RegExp(`^(${before}|${after})$`)).should(($elements) => {
+    const texts = $elements.map((_index, element) => element.textContent).get();
+
+    expect(texts).to.include(before);
+    expect(texts.indexOf(before)).to.be.lessThan(texts.indexOf(after));
+  });
 }
 
 function getPreviousObjectDetailButton() {
