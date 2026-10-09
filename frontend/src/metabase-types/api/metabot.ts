@@ -247,7 +247,6 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
 export type MetabotFeedback = {
-  metabot_id: MetabotId | MetabotInfo["entity_id"];
   message_id: string;
   freeform_feedback?: string;
 } & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
@@ -255,7 +254,6 @@ export type MetabotFeedback = {
 export type MetabotSourceType = "table" | "card" | "model";
 
 export type MetabotSourceFeedback = {
-  metabot_id: MetabotId | MetabotInfo["entity_id"];
   message_id: string;
   source_id: number;
   source_type: MetabotSourceType;

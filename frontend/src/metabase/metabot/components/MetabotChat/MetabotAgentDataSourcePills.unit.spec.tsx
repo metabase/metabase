@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
-import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import type {
   DatasetQuery,
   MetabotCodeEdit,
@@ -151,7 +150,6 @@ describe("MetabotAgentDataSourcePills", () => {
       expect(
         fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
           body: {
-            metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
             message_id: "message-1",
             source_id: ORDERS_TABLE.id,
             source_type: "table",
@@ -187,7 +185,6 @@ describe("MetabotAgentDataSourcePills", () => {
     expect(
       fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
         body: {
-          metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
           message_id: "message-2",
           source_id: ORDERS_TABLE.id,
           source_type: "table",
@@ -209,7 +206,6 @@ describe("MetabotAgentDataSourcePills", () => {
       expect(
         fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
           body: {
-            metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
             message_id: "message-3",
             source_id: ORDERS_TABLE.id,
             source_type: "table",
@@ -331,7 +327,6 @@ describe("MetabotAgentDataSourcePills", () => {
       expect(
         fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
           body: {
-            metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
             message_id: "message-5-model",
             source_id: 4,
             source_type: "model",
@@ -411,7 +406,6 @@ describe("MetabotAgentDataSourcePills", () => {
       expect(
         fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
           body: {
-            metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
             message_id: "message-11",
             source_id: 4,
             source_type: "model",

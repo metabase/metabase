@@ -429,7 +429,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:metabot_id        [:or ms/PositiveInt :string]]
+            [:metabot_id        {:optional true} [:or ms/PositiveInt :string]]
             [:message_id        ms/NonBlankString]
             [:positive          :boolean]
             [:issue_type        {:optional true} [:maybe :string]]
@@ -445,7 +445,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:metabot_id   [:or ms/PositiveInt :string]]
+            [:metabot_id   {:optional true} [:or ms/PositiveInt :string]]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]
             [:source_type  [:enum "table" "card" "model"]]
