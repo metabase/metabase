@@ -556,7 +556,7 @@ type TestBucketSpec = TestTemporalBucketSpec & {
 
 export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
 
-export type TestNamedBreakoutSpec = {
+export type TestBreakoutWithNameSpec = {
   type: "breakout";
   name: string;
   column: TestColumnWithBinningSpec;
@@ -564,7 +564,7 @@ export type TestNamedBreakoutSpec = {
 
 export type TestBreakoutSpec =
   | TestColumnWithBinningSpec
-  | TestNamedBreakoutSpec;
+  | TestBreakoutWithNameSpec;
 
 export type TestJoinSpec = {
   source: TestSourceSpec;

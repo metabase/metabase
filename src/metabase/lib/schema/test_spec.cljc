@@ -66,7 +66,7 @@
    ::test-temporal-bucket-spec
    ::test-binning-bucket-spec])
 
-(mr/def ::test-named-breakout-spec
+(mr/def ::test-breakout-with-name-spec
   [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :breakout]]
    [:name string?]
@@ -76,7 +76,7 @@
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)}
    [:column [:ref ::test-column-with-binning-spec]]
-   [:breakout [:ref ::test-named-breakout-spec]]])
+   [:breakout [:ref ::test-breakout-with-name-spec]]])
 
 (mr/def ::test-order-by-spec
   [:merge
