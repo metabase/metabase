@@ -39,6 +39,8 @@ import {
   isRunActive,
 } from "../../utils";
 
+import S from "./RunProgress.module.css";
+
 const MAX_TABLE_ERRORS = 5;
 
 type RunProgressProps = {
@@ -109,15 +111,16 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
 
   return (
     <Stack gap="md" data-testid="metadata-generation-run">
-      <Group justify="space-between" wrap="nowrap">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Badge
+          className={S.noShrink}
           variant="light"
           color={getRunStatusColor(run.status)}
           data-testid="metadata-generation-run-status"
         >
           {getRunStatusLabel(run.status)}
         </Badge>
-        <Text size="sm" c="text-secondary">
+        <Text size="sm" c="text-secondary" ta="right">
           {getScopeLabel(run)}
           {" · "}
           {run.attributes.map(getAttributeLabel).join(", ")}
