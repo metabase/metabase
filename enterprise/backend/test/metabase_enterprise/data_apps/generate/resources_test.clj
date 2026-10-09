@@ -535,7 +535,7 @@
 
 (deftest refuses-aggregations-sharing-column-name-test
   (testing "aggregations named alike would be read as one by a later stage or a result row, so the author names them"
-    (is (=? {:queries [{:error "Breakouts and aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."}]}
+    (is (=? {:queries [{:error "Fields, breakouts and aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Name them apart with the `name` option of `field`, of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."}]}
             (generate! :crowberto 200
                        {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                                 :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]}]})]})))))
@@ -568,7 +568,7 @@
 
 (deftest refuses-order-by-on-shared-column-name-test
   (testing "order-by naming a column two aggregations share gets the same refusal, not Lib's ambiguity error"
-    (is (=? {:queries [{:error #"Breakouts and aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\"\..*"}]}
+    (is (=? {:queries [{:error #"Fields, breakouts and aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\"\..*"}]}
             (generate! :crowberto 200
                        {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                                 :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]
@@ -592,7 +592,7 @@
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                     (lib/breakout (lib.metadata/field mp (mt/id :venues :name)))
                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))]
-      (is (=? #"Breakouts and aggregations need unique column names: .* share the column name \"sum\".*"
+      (is (=? #"Fields, breakouts and aggregations need unique column names: .* share the column name \"sum\".*"
               (check-unique-names query))))))
 
 (deftest refuses-named-breakouts-sharing-name-test
@@ -614,6 +614,29 @@
                                       (lib/breakout (lib/with-temporal-bucket created-at :month))
                                       (lib/breakout (lib/with-temporal-bucket created-at :year))
                                       (lib/aggregate (lib/count)))))))))
+
+(deftest refuses-fields-sharing-name-test
+  (let [mp     (mt/metadata-provider)
+        own-id (lib.metadata/field mp (mt/id :checkins :id))
+        fk-id  (assoc (lib.metadata/field mp (mt/id :users :id)) :fk-field-id (mt/id :checkins :user_id))
+        named  (fn [column column-name] (lib/update-options (lib/ref column) assoc :name column-name))
+        query  (fn [fields] (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins))) fields))]
+    (testing "fields of two tables named alike collide"
+      (is (=? #"Fields, breakouts and aggregations need unique column names: .* share the column name \"ID\".*"
+              (check-unique-names (query [own-id fk-id])))))
+    (testing "named apart they don't"
+      (is (nil? (check-unique-names (query [own-id (named fk-id "user_id")])))))))
+
+(deftest names-field-test
+  (testing "field sent as `{type: field, name, column}` keeps its name in the saved question"
+    (let [{[file] :queries} (generate! :crowberto 200
+                                       {:queries [(query-item "Venue names"
+                                                              {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                                                         :fields [{:type   "field"
+                                                                                   :name   "venue_name"
+                                                                                   :column {:type "column" :name "NAME"}}]}]})]})]
+      (is (=? [["field" {:name "venue_name"} some?]]
+              (get-in (file-entity file) [:dataset_query :stages 0 :fields]))))))
 
 (deftest names-breakout-test
   (testing "breakout sent as `{type: breakout, name, column}` keeps its name in the saved question"

@@ -360,6 +360,12 @@ export type NamedBreakout<TColumn = unknown, TName extends string = string> = {
   column: TColumn;
 };
 
+export type NamedField<TColumn = unknown, TName extends string = string> = {
+  type: "field";
+  name: TName;
+  column: TColumn;
+};
+
 type BreakoutForDimension<TDimension> =
   | TDimension
   | MetabaseBreakoutObjectForDimension<TDimension>
@@ -436,7 +442,10 @@ type StageClauses<TDimension, TAggregation, TFilter> = {
 
 type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
-  fields?: readonly FieldReference<TTable>[];
+  fields?: readonly (
+    | FieldReference<TTable>
+    | NamedField<FieldReference<TTable>>
+  )[];
   /**
    * The entity ID of this query's saved question in the app's collection,
    * under the repository's `collections/data_apps/`. A production build runs
@@ -483,19 +492,20 @@ type TupleElement<TValue> = TValue extends readonly unknown[]
   ? TValue[number]
   : never;
 
-type QueryFieldColumns<TQuery> = TQuery extends { fields?: infer TFields }
-  ? TupleElement<NonNullable<TFields>>
-  : never;
+type NamedColumn<TClause> = TClause extends
+  | NamedField<infer TColumn, infer TName>
+  | NamedBreakout<infer TColumn, infer TName>
+  ? Omit<TColumn, "name"> & { name: TName }
+  : TClause;
 
-type BreakoutColumn<TBreakout> =
-  TBreakout extends NamedBreakout<infer TColumn, infer TName>
-    ? Omit<TColumn, "name"> & { name: TName }
-    : TBreakout;
+type QueryFieldColumns<TQuery> = TQuery extends { fields?: infer TFields }
+  ? NamedColumn<TupleElement<NonNullable<TFields>>>
+  : never;
 
 type QueryBreakoutColumns<TQuery> = TQuery extends {
   breakouts?: infer TBreakouts;
 }
-  ? BreakoutColumn<TupleElement<NonNullable<TBreakouts>>>
+  ? NamedColumn<TupleElement<NonNullable<TBreakouts>>>
   : never;
 
 type QueryAggregationColumns<TQuery> = TQuery extends {

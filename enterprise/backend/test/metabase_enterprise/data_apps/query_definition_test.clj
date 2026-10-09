@@ -83,3 +83,10 @@
                           (assoc-in query-definition [:stages 0 :breakouts]
                                     [{:type :breakout :name "created_month"
                                       :column {:type :column :name "DATE" :unit :month}}]))))))
+
+(deftest ^:parallel named-field-test
+  (testing "field named with `field(column, { name })`"
+    (is (nil? (mr/explain ::query-definition/query-definition
+                          (assoc-in query-definition [:stages 0 :fields]
+                                    [{:type :field :name "checkin_id"
+                                      :column {:type :column :name "ID"}}]))))))

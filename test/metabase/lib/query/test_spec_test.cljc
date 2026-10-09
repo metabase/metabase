@@ -1498,6 +1498,29 @@
       (is (=? [[:field {} "created_year"]]
               (lib/breakouts query 1))))))
 
+(deftest ^:parallel test-query-names-fields-test
+  (testing "field of type `:field` gives its result column its `:name`, and a later stage finds it by that name"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source {:type :table :id (meta/id :orders)}
+                            :fields [{:type :field :name "order_id" :column {:type :column :name "ID" :field-id (meta/id :orders :id)}}
+                                     {:type   :field
+                                      :name   "product_id"
+                                      :column {:type            :column
+                                               :name            "ID"
+                                               :field-id        (meta/id :products :id)
+                                               :source-field-id (meta/id :orders :product-id)}}]}
+                           {:filters [{:type     :operator
+                                       :operator :>
+                                       :args     [{:type :column :name "product_id"} {:type :literal :value 1}]}]}]})]
+      (is (=? [[:field {:name "order_id"} (meta/id :orders :id)]
+               [:field {:name "product_id" :source-field (meta/id :orders :product-id)} (meta/id :products :id)]]
+              (lib/fields query 0)))
+      (is (= ["order_id" "product_id"]
+             (map :name (lib/returned-columns query 0))))
+      (is (=? [[:> {} [:field {} "product_id"] 1]]
+              (lib/filters query 1))))))
+
 (def ^:private two-ids-stage
   {:source {:type :table :id (meta/id :orders)}
    :fields [{:type :column :name "ID" :field-id (meta/id :orders :id)}

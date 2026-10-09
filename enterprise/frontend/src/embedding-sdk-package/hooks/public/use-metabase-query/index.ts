@@ -10,7 +10,7 @@ export {
   min,
   sum,
 } from "./aggregation-helpers";
-export { breakout, filter, orderBy } from "./query-helpers";
+export { breakout, field, filter, orderBy } from "./query-helpers";
 export { useMetabaseQuery } from "./use-metabase-query";
 export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {

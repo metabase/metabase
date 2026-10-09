@@ -19,6 +19,7 @@ import {
   breakout,
   count,
   distinct,
+  field,
   filter,
   orderBy,
   sum,
@@ -676,7 +677,7 @@ describe("resolveDatasetQuery aggregation column names", () => {
         aggregations: [count(), distinct(orders.fields.status)],
       }),
     ).rejects.toThrow(
-      'Breakouts and aggregations need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
+      'Fields, breakouts and aggregations need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of `field`, of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
     );
   });
 
@@ -900,6 +901,76 @@ describe("resolveDatasetQuery named breakouts", () => {
         "not-null",
         expect.anything(),
         ["field", expect.anything(), "created_month"],
+      ],
+    ]);
+  });
+});
+
+describe("resolveDatasetQuery named fields", () => {
+  const orders = TEST_SCHEMA.tables.orders;
+  const productId = {
+    type: "column" as const,
+    fieldId: 200,
+    sourceFieldId: 104,
+    name: "ID",
+  };
+  const namedProductId = field(productId, { name: "product_id" });
+
+  it("refuses fields that share a column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        fields: [orders.fields.id, productId],
+      }),
+    ).rejects.toThrow('share the column name "ID"');
+  });
+
+  it("names a field's result column with field's name option", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      fields: [orders.fields.id, namedProductId],
+      orderBys: [orderBy(namedProductId, "desc")],
+    });
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+      fields: [
+        [
+          "field",
+          expect.not.objectContaining({ name: expect.anything() }),
+          100,
+        ],
+        [
+          "field",
+          expect.objectContaining({ name: "product_id", "source-field": 104 }),
+          200,
+        ],
+      ],
+      "order-by": [
+        [
+          "desc",
+          expect.anything(),
+          ["field", expect.objectContaining({ "source-field": 104 }), 200],
+        ],
+      ],
+    });
+  });
+
+  it("lets a dynamic stage refer to a named field by its name", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: orders,
+        fields: [orders.fields.id, namedProductId],
+      },
+      {
+        filters: [filter({ type: "column", name: "product_id" }, "not-null")],
+      },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      [
+        "not-null",
+        expect.anything(),
+        ["field", expect.anything(), "product_id"],
       ],
     ]);
   });

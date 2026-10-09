@@ -556,6 +556,14 @@ type TestBucketSpec = TestTemporalBucketSpec & {
 
 export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
 
+export type TestFieldWithNameSpec = {
+  type: "field";
+  name: string;
+  column: TestColumnSpec;
+};
+
+export type TestFieldSpec = TestColumnSpec | TestFieldWithNameSpec;
+
 export type TestBreakoutWithNameSpec = {
   type: "breakout";
   name: string;
@@ -586,7 +594,7 @@ export type TestOrderBySpec = TestColumnSpec & {
 } & TestBucketSpec;
 
 export type TestStageSpec = {
-  fields?: readonly TestColumnSpec[];
+  fields?: readonly TestFieldSpec[];
   expressions?: readonly TestNamedExpressionSpec[];
   joins?: readonly TestJoinSpec[];
   filters?: readonly TestFilterSpec[];

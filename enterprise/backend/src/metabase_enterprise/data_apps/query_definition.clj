@@ -35,6 +35,19 @@
    [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
    [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]])
 
+(mr/def ::named-field
+  "A field whose result column is named, as `field(column, { name })` names it."
+  [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :field]]
+   [:name string?]
+   [:column [:ref ::column]]])
+
+(mr/def ::field
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::column]]
+   [:field [:ref ::named-field]]])
+
 (mr/def ::temporal-bucket
   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
    [:unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]])
@@ -149,7 +162,7 @@
   [:map {:closed true :decode/normalize {:compile query-map-decoder}
          ::sdk-metadata [:enabled]}
    [:source       ::table-source]
-   [:fields       {:optional true} [:maybe [:sequential ::column]]]
+   [:fields       {:optional true} [:maybe [:sequential ::field]]]
    [:filters      {:optional true} [:maybe [:sequential [:or ::expression ::segment]]]]
    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
    [:breakouts    {:optional true} [:maybe [:sequential ::breakout]]]

@@ -102,9 +102,12 @@
             (tru "Could not serialize {0}." label)))))
 
 (defn- check-unique-column-names
-  "Throws naming the breakouts and aggregations of `query` whose result columns share a name."
+  "Throws naming the fields, breakouts and aggregations of `query` whose result columns share a name."
   [query]
-  (let [columns   (concat (for [breakout (lib/breakouts query)
+  (let [columns   (concat (for [field (lib/fields query)]
+                            {:name   (:name (lib/metadata query -1 field))
+                             :clause field})
+                          (for [breakout (lib/breakouts query)
                                 :let [column (lib/breakout-column query breakout)]]
                             {:name   (:name column)
                              :clause column})
@@ -117,7 +120,7 @@
                          (str/join ", " (map #(lib/display-name query (:clause %)) same-name))
                          column-name))]
     (when (seq conflicts)
-      (fail (tru "Breakouts and aggregations need unique column names: {0}. Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
+      (fail (tru "Fields, breakouts and aggregations need unique column names: {0}. Name them apart with the `name` option of `field`, of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
                  (str/join "; " conflicts))))))
 
 (mu/defn- build-query :- ::lib.schema/query

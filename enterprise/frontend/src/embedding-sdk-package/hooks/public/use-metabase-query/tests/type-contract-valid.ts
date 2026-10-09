@@ -5,6 +5,7 @@ import {
   aggregations,
   breakout,
   count,
+  field,
   filter,
   orderBy,
   sum,
@@ -191,6 +192,23 @@ function ValidTypeFixtures() {
     namedBreakoutResult.data?.rows[0]?.created_month;
 
   void namedBreakoutValue;
+
+  const namedFieldResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      fields: [
+        TEST_SCHEMA.tables.orders.fields.id,
+        field(TEST_SCHEMA.tables.orders.fields.status, {
+          name: "order_status",
+        }),
+      ],
+    }),
+  );
+
+  const namedFieldValue: string | null | undefined =
+    namedFieldResult.data?.rows[0]?.order_status;
+
+  void namedFieldValue;
 
   const groupedMetricResult = useMetabaseQuery(
     defineQuery<OrdersTable>({

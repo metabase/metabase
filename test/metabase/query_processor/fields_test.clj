@@ -4,6 +4,10 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.fields-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
@@ -30,3 +34,26 @@
                   {:fields   [$name $id]
                    :limit    10
                    :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel named-fields-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "fields named with `:name` come back under those names, and a later stage reads them by name"
+      (let [mp          (mt/metadata-provider)
+            order-id    (lib.metadata/field mp (mt/id :orders :id))
+            product-id  (assoc (lib.metadata/field mp (mt/id :products :id)) :fk-field-id (mt/id :orders :product_id))
+            named       (fn [column column-name]
+                          (lib.options/update-options (lib/ref column) assoc :name column-name))
+            two-stages  (fn [fields later-stage-column]
+                          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                          (lib/with-fields fields)
+                                          (lib/order-by order-id)
+                                          (lib/limit 3)
+                                          lib/append-stage)]
+                            (lib/filter query (lib/> (later-stage-column (lib/visible-columns query)) 0))))
+            named-query (two-stages [(named order-id "order_id") (named product-id "product_id")]
+                                    (fn [columns] (first (filter #(= "product_id" (:name %)) columns))))]
+        (is (= ["order_id" "product_id"]
+               (map :name (mt/cols (qp/process-query named-query)))))
+        (testing "the rows equal those of the same query without names"
+          (is (= (mt/formatted-rows [int int] (qp/process-query (two-stages [order-id product-id] second)))
+                 (mt/formatted-rows [int int] (qp/process-query named-query)))))))))

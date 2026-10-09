@@ -40,6 +40,18 @@
    [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
    [:source-field-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]])
 
+(mr/def ::test-field-with-name-spec
+  [:map {:closed true}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :field]]
+   [:name string?]
+   [:column [:ref ::test-column-spec]]])
+
+(mr/def ::test-field-spec
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::test-column-spec]]
+   [:field [:ref ::test-field-with-name-spec]]])
+
 (mr/def ::test-temporal-bucket-spec
   [:map
    [:unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]])
@@ -166,7 +178,7 @@
 (mr/def ::test-stage-spec
   [:map {:closed true}
    [:source       {:optional true} [:maybe ::test-source-spec]]
-   [:fields       {:optional true} [:maybe [:sequential ::test-column-spec]]]
+   [:fields       {:optional true} [:maybe [:sequential ::test-field-spec]]]
    [:expressions  {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
    [:joins        {:optional true} [:maybe [:sequential ::test-join-spec]]]
    [:filters      {:optional true} [:maybe [:sequential [:or ::test-expression-spec ::test-segment-spec]]]]

@@ -96,13 +96,24 @@
           column)
       (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
 
+(mu/defn- field-spec->field :- ::lib.ref/referenceable
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   columns      :- [:sequential ::lib.schema.metadata/column]
+   field-spec   :- ::lib.schema.test-spec/test-field-spec]
+  (if (= :field (keyword (:type field-spec)))
+    (-> (find-column query stage-number columns (:column field-spec))
+        lib.ref/ref
+        (lib.options/update-options assoc :name (:name field-spec)))
+    (find-column query stage-number columns field-spec)))
+
 (mu/defn- append-fields :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   field-specs  :- [:sequential ::lib.schema.test-spec/test-column-spec]]
+   field-specs  :- [:sequential ::lib.schema.test-spec/test-field-spec]]
   (let [visible (lib.metadata.calculation/visible-columns query stage-number)]
     (->> field-specs
-         (mapv (partial find-column query stage-number visible))
+         (mapv (partial field-spec->field query stage-number visible))
          (lib.field/with-fields query stage-number))))
 
 (mu/defn- matches-temporal-bucket? :- :boolean

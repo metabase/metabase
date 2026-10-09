@@ -1,5 +1,6 @@
 import {
   isNamedBreakout,
+  isNamedField,
   isUnaryOperator,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 
@@ -12,6 +13,7 @@ import type {
   FilterOperator,
   MetabaseDimensionFilterForOperator,
   NamedBreakout,
+  NamedField,
   OrderByDirection,
   UnaryFilterOperatorForDimension,
   ValueFilterOperatorForDimension,
@@ -77,6 +79,16 @@ export function filter(
   };
 }
 
+export function field<
+  const TDimension extends object,
+  const TName extends string,
+>(
+  dimension: TDimension,
+  options: { name: TName },
+): NamedField<TDimension, TName> {
+  return { type: "field", name: options.name, column: dimension };
+}
+
 export function breakout<const TDimension extends object>(
   dimension: TDimension,
 ): TDimension;
@@ -116,6 +128,11 @@ export function orderBy<const TName extends string>(
   direction?: OrderByDirection,
 ): { type: "column"; name: TName; direction?: OrderByDirection };
 
+export function orderBy<const TDimension>(
+  field: NamedField<TDimension>,
+  direction?: OrderByDirection,
+): TDimension & { direction?: OrderByDirection };
+
 export function orderBy<
   TAggregation extends { columns?: readonly SchemaColumn[] },
 >(
@@ -132,6 +149,10 @@ export function orderBy<TDimension>(
   dimension: TDimension,
   direction?: OrderByDirection,
 ) {
+  if (isNamedField(dimension)) {
+    return orderBy(dimension.column, direction);
+  }
+
   if (isNamedBreakout(dimension)) {
     return {
       type: "column",

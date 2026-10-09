@@ -4,6 +4,7 @@ import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import {
   breakout,
   count,
+  field,
   orderBy,
   sum,
   useMetabaseQuery,
@@ -201,6 +202,20 @@ function InvalidTypeFixtures() {
 
   // @ts-expect-error a named aggregation's column takes its name, not `sum`
   void namedAggregationResult.data?.rows[0]?.sum;
+
+  const namedFieldResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      fields: [
+        field(TEST_SCHEMA.tables.orders.fields.status, {
+          name: "order_status",
+        }),
+      ],
+    }),
+  );
+
+  // @ts-expect-error a named field's column takes its name, not `STATUS`
+  void namedFieldResult.data?.rows[0]?.STATUS;
 
   const metricResult = useMetabaseQuery(
     defineQuery({

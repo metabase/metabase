@@ -2,6 +2,7 @@ import type {
   TestAggregationSpec,
   TestBreakoutWithNameSpec,
   TestExpressionSpec,
+  TestFieldWithNameSpec,
   TestNamedAggregationSpec,
   TestStageSpec,
   TestStageWithSourceSpec,
@@ -63,6 +64,12 @@ export const isNamedBreakout = (
 ): value is TestBreakoutWithNameSpec =>
   isObject(value) &&
   value.type === "breakout" &&
+  typeof value.name === "string" &&
+  isObject(value.column);
+
+export const isNamedField = (value: unknown): value is TestFieldWithNameSpec =>
+  isObject(value) &&
+  value.type === "field" &&
   typeof value.name === "string" &&
   isObject(value.column);
 

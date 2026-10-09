@@ -47,6 +47,7 @@ export { useDataAppAction as useAction } from "./hooks/public/use-action";
 export {
   aggregations,
   breakout,
+  field,
   filter,
   orderBy,
   useMetabaseQuery,

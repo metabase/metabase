@@ -6,6 +6,7 @@ import {
   isMeasureReference,
   isMetricReference,
   isNamedBreakout,
+  isNamedField,
   isSegmentReference,
   unwrapNamedAggregation,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
@@ -201,7 +202,11 @@ function validateTableScopedInputs(input: TableQueryInput) {
   const tableId = input.source.id;
 
   input.fields?.forEach((field) => {
-    validateGeneratedTableReference(field, tableId, "Table query fields");
+    validateGeneratedTableReference(
+      isNamedField(field) ? field.column : field,
+      tableId,
+      "Table query fields",
+    );
   });
 
   input.filters?.forEach((filter) => {
@@ -527,6 +532,10 @@ function stageColumnNames(
   query: Lib.Query,
   stageIndex: number,
 ): StageColumnName[] {
+  const fields = Lib.fields(query, stageIndex).map((field) => {
+    const { name, displayName } = Lib.displayInfo(query, stageIndex, field);
+    return { name, displayName };
+  });
   const breakouts = Lib.breakouts(query, stageIndex).reduce<StageColumnName[]>(
     (columns, breakout) => {
       const column = Lib.breakoutColumn(query, stageIndex, breakout);
@@ -555,7 +564,7 @@ function stageColumnNames(
     }),
   );
 
-  return [...breakouts, ...aggregations];
+  return [...fields, ...breakouts, ...aggregations];
 }
 
 function stageConflicts(query: Lib.Query, stageIndex: number): string[] {
@@ -579,7 +588,7 @@ export function validateUniqueColumnNames(query: Lib.Query) {
 
   if (conflicts.length > 0) {
     throw new Error(
-      `Breakouts and aggregations need unique column names: ${conflicts.join("; ")}. Name them apart with the \`name\` option of \`breakout\` or of an aggregation helper, or with \`aggregations.measure\` or \`aggregations.metric\` for a measure or metric.`,
+      `Fields, breakouts and aggregations need unique column names: ${conflicts.join("; ")}. Name them apart with the \`name\` option of \`field\`, of \`breakout\` or of an aggregation helper, or with \`aggregations.measure\` or \`aggregations.metric\` for a measure or metric.`,
     );
   }
 }
