@@ -1338,3 +1338,48 @@
             (is (= (= :conflict (:status result))
                    (= "user edit" (t2/select-one-fn :description :model/Card :id c2)))
                 "C2 keeps the edit exactly when the pull stops")))))))
+
+(deftest dashboard-card-of-a-deleted-dashboard-held-during-the-reconcile-delete-test
+  (testing "The remote deletes collection Beta, which holds dashboard D2 and card C2. D2 shows card A of Alpha. At the
+            delete of the reconcile, the user updates the dashboard card of D2, and then C2, in one transaction.
+            Neither side gets a deadlock error, and no write is lost: C2 keeps the edit of the user exactly when the
+            pull stops."
+    (with-sync-settings
+      (mt/with-temp [:model/Collection    {alpha :id} {:name "Alpha" :is_remote_synced true :location "/"}
+                     :model/Card          {a :id}     {:name "Card A" :collection_id alpha}
+                     :model/Collection    {beta :id}  {:name "Beta" :is_remote_synced true :location "/"}
+                     :model/Card          {c2 :id}    {:name "Card C2" :collection_id beta}
+                     :model/Dashboard     {d2 :id}    {:name "Dash D2" :collection_id beta}
+                     :model/DashboardCard {dc :id}    {:dashboard_id d2 :card_id a}]
+        (mt/with-model-cleanup [:model/Card :model/Collection :model/Dashboard]
+          (let [t0      (export-tree!)
+                _       (pull-base! t0)
+                user    (atom nil)
+                dc-held (promise)
+                real    (mt/original-fn #'impl/delete-with-closure!)
+                {:keys [result]}
+                (mt/with-dynamic-fn-redefs [impl/delete-with-closure!
+                                            (fn [& args]
+                                              (when (nil? @user)
+                                                (reset! user (on-thread
+                                                              #(t2/with-transaction [_conn]
+                                                                 (t2/query {:update :report_dashboardcard
+                                                                            :set    {:size_x 7}
+                                                                            :where  [:= :id dc]})
+                                                                 (deliver dc-held true)
+                                                                 (t2/query {:update :report_card
+                                                                            :set    {:description "user edit"}
+                                                                            :where  [:= :id c2]})
+                                                                 :committed)))
+                                                (deref dc-held 5000 nil)
+                                                (Thread/sleep 200))
+                                              (apply real args))]
+                  (merge-pull! t0 (without-beta t0)))
+                user    (some-> @user (deref 60000 {:error "timed out"}))]
+            (is (some? user) "the user thread ran")
+            (is (not (deadlock? (:message result))) (pr-str result))
+            (is (not (deadlock? (:error user))) (pr-str user))
+            (is (contains? #{:success :conflict} (:status result)) (pr-str result))
+            (is (= (= :conflict (:status result))
+                   (= "user edit" (t2/select-one-fn :description :model/Card :id c2)))
+                "C2 keeps the edit exactly when the pull stops")))))))
