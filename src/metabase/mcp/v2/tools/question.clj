@@ -506,7 +506,8 @@
                                      "(learn(\"query-dialect\")). Prefer `query_handle`.")}]]]
    [:native {:optional true}
     [:maybe [:map {:description (str "A native SQL query to save: {database_id, sql, template_tags?}. Requires "
-                                     "the agent:sql:run scope and the mcp-execute-sql-enabled setting. Call "
+                                     "the agent:sql:run scope, the mcp-execute-sql-enabled setting, and the "
+                                     "execute_sql tool enabled for your groups. Call "
                                      "learn(\"native-parameters\") before first passing template_tags.")}
              [:database_id [:or :int :string]]
              [:sql [:string {:min 1}]]
