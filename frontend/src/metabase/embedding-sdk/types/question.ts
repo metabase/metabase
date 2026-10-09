@@ -95,12 +95,14 @@ export type WaterfallVisualizationSettings = Pick<
 export type TableVisualizationSettings = Pick<
   VisualizationSettings,
   | "table.columns"
-  | "table.pivot"
   | "table.column_formatting"
   | "pivot_table.column_split"
   | "pivot_table.collapsed_rows"
   | "column_settings"
->;
+> & {
+  /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
+  "table.pivot"?: boolean;
+};
 
 /**
  * Settings for pie and donut charts. Use these to pin slice/value result

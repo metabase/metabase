@@ -339,9 +339,6 @@ export type VisualizationSettings = {
   /** Visible table columns and order, as `{ name, enabled }` entries. */
   "table.columns"?: TableColumnOrderSetting[];
 
-  /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
-  "table.pivot"?: boolean;
-
   /**
    * Per-column titles, number or currency formatting, and click behavior.
    * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).
