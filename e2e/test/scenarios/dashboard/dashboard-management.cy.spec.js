@@ -169,11 +169,12 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.findByDisplayValue(newDashboardName);
                 H.appBar().findByText("Our analytics").click();
 
-                cy.findAllByTestId("collection-entry-name")
-                  .should("contain", dashboardName)
-                  .and("contain", newDashboardName)
-                  .and("contain", originalQuestionName)
-                  .and("contain", newQuestionName);
+                H.collectionTable().within(() => {
+                  cy.findByText(dashboardName).should("be.visible");
+                  cy.findByText(newDashboardName).should("be.visible");
+                  cy.findByText(originalQuestionName).should("be.visible");
+                  cy.findByText(newQuestionName).should("be.visible");
+                });
 
                 cy.log("deep duplicate to a collection created on the go");
                 const newCollectionDashboardId = id + 2;
@@ -225,9 +226,10 @@ describe("managing dashboard from the dashboard's edit menu", () => {
 
                 H.openNavigationSidebar();
                 H.navigationSidebar().findByText("Our analytics").click();
-                cy.findAllByTestId("collection-entry-name")
-                  .should("contain", dashboardName)
-                  .and("contain", originalQuestionName);
+                H.collectionTable().within(() => {
+                  cy.findByText(dashboardName).should("be.visible");
+                  cy.findByText(originalQuestionName).should("be.visible");
+                });
               });
             });
 
