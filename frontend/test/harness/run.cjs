@@ -28,6 +28,7 @@ const runFile = async (t, file) => {
   try {
     await globalThis.__testHarness.runFile(t, path.resolve(file));
   } catch (error) {
+    globalThis.__testHarness.recordFailure("(the file did not load)", error);
     if (process.env.NT_FAILURES) fs.appendFileSync(process.env.NT_FAILURES, `${file}\t(file)\t${String(error?.message ?? error).split("\n")[0].slice(0, 200)}\n`);
     if (process.env.NT_FAILURE_DETAIL) fs.appendFileSync(process.env.NT_FAILURE_DETAIL, `\n===== ${file} > (file)\n${error?.stack ?? error}\n`);
     throw error;
@@ -53,9 +54,7 @@ const nextFromParent = () =>
       resolve(message && message.file ? message.file : null);
     };
     process.on("message", onMessage);
-    // The project files the last spec loaded go back with the request for the
-    // next one. Watch mode uses them to tell which specs a change can reach.
-    process.send({ ready: true, loaded: globalThis.__testHarness.takeLoaded() });
+    process.send({ ready: true });
   });
 
 (async () => {
@@ -64,6 +63,10 @@ const nextFromParent = () =>
       const file = await nextFromParent();
       if (!file) break;
       await test(file, (t) => runFile(t, file));
+      // The result goes back before anything else, so a worker that is about to
+      // be recycled does not take it along. The project files the spec loaded
+      // go with it: watch mode uses them to tell which specs a change can reach.
+      process.send({ finished: true, loaded: globalThis.__testHarness.takeLoaded(), result: globalThis.__testHarness.takeResult() });
       const { rss } = process.memoryUsage();
       // A timed-out test leaves work running that cannot be stopped, so the
       // worker is spent: exit and let the pool start a clean one, rather than

@@ -10,7 +10,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { root, projectOf } = require("./jest-config.cjs");
-const { createPool } = require("./pool.cjs");
+const { createPool, estimateDuration, fastCores } = require("./pool.cjs");
+const { createReporter, reporterNames } = require("./reporters.cjs");
 
 const USAGE = `Usage: node frontend/test/harness/cli.cjs [pattern...] [options]
 
@@ -18,17 +19,18 @@ const USAGE = `Usage: node frontend/test/harness/cli.cjs [pattern...] [options]
   --watch                   run again when a spec, or a file it loads, changes
   -w, --workers <n>         number of worker processes (default: one per fast core)
   -u, --update-snapshots    write snapshots that do not match
-  --silent                  do not show what the specs print with console
+  --reporter <name>         human, agent or json (default: human at a terminal, agent otherwise)
   --ignore-projects <a,b>   leave out the specs of these jest projects
   -h, --help                show this text
 `;
 
 const parse = (argv) => {
-  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, silent: false, ignoredProjects: [] };
+  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, reporter: process.stdout.isTTY ? "human" : "agent", ignoredProjects: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--watch") options.watch = true;
-    else if (argument === "--silent") options.silent = true;
+    else if (argument === "--reporter") options.reporter = argv[(index += 1)];
+    else if (argument.startsWith("--reporter=")) options.reporter = argument.slice("--reporter=".length);
     else if (argument === "-w" || argument === "--workers") options.workers = Number(argv[(index += 1)]);
     else if (argument.startsWith("--workers=")) options.workers = Number(argument.slice("--workers=".length));
     else if (argument === "-u" || argument === "--update-snapshots") options.updateSnapshots = true;
@@ -38,6 +40,7 @@ const parse = (argv) => {
     else if (argument.startsWith("-")) { process.stderr.write(`Unknown option ${argument}\n\n${USAGE}`); process.exit(2); }
     else options.patterns.push(argument);
   }
+  if (!reporterNames.includes(options.reporter)) { process.stderr.write(`--reporter is one of ${reporterNames.join(", ")}\n`); process.exit(2); }
   if (options.workers !== undefined && !(options.workers >= 1)) { process.stderr.write(`--workers needs a number of 1 or more\n`); process.exit(2); }
   return options;
 };
@@ -61,69 +64,43 @@ const findSpecs = () => {
 };
 
 const cacheDir = path.join(root, "node_modules/.cache/test-harness");
-fs.mkdirSync(cacheDir, { recursive: true });
-const failuresFile = path.join(cacheDir, `failures-${process.pid}.tsv`);
-const detailFile = path.join(cacheDir, `failures-${process.pid}.txt`);
-const removeResultFiles = () => { for (const file of [failuresFile, detailFile]) fs.rmSync(file, { force: true }); };
-process.on("exit", removeResultFiles);
 
 // spec file -> the project files it loaded the last time it ran
 const loadedBy = new Map();
-let progress = { done: 0, total: 0 };
-const showProgress = () => {
-  if (process.stderr.isTTY) process.stderr.write(`\r${progress.done} of ${progress.total} spec files`);
+
+// The command that runs these spec files again, as the person or agent would type it.
+const rerunCommand = (files) => {
+  const script = process.env.npm_lifecycle_event;
+  const base = script ? `bun run ${script}` : `node ${path.relative(process.cwd(), __filename)}`;
+  return `${base} ${files.join(" ")}`;
 };
+
+const reporter = createReporter(options.reporter, {
+  root,
+  stream: process.stdout,
+  workers: options.workers ?? fastCores(),
+  estimate: estimateDuration,
+  detailDirectory: path.join(cacheDir, "last-run"),
+  rerunCommand,
+});
 
 const pool = createPool({
   workers: options.workers,
   keepAlive: options.watch,
-  silent: options.silent,
-  env: { NT_FAILURES: failuresFile, NT_FAILURE_DETAIL: detailFile, ...(options.updateSnapshots ? { NT_UPDATE_SNAPSHOTS: "1" } : {}) },
-  onFileDone: ({ file, loaded }) => {
-    loadedBy.set(file, new Set(loaded));
-    progress.done += 1;
-    showProgress();
+  // A worker that wins colour prints jest's matcher messages as jest does at a terminal.
+  env: { ...(options.updateSnapshots ? { NT_UPDATE_SNAPSHOTS: "1" } : {}), ...(options.reporter === "human" && process.stdout.isTTY ? { FORCE_COLOR: "1" } : {}) },
+  onFileStart: (started) => reporter.fileStarted(started),
+  onFileDone: (done) => {
+    loadedBy.set(done.file, new Set(done.loaded));
+    reporter.fileDone(done);
   },
 });
 
-const readFailures = () => {
-  if (!fs.existsSync(failuresFile)) return [];
-  return fs.readFileSync(failuresFile, "utf8").split("\n").filter(Boolean).map((line) => {
-    const [file, test, message] = line.split("\t");
-    return { file, test, message };
-  });
-};
-const DETAIL_LINES = 40;
-const printDetail = () => {
-  if (!fs.existsSync(detailFile)) return;
-  const blocks = fs.readFileSync(detailFile, "utf8").split(/\n(?====== )/);
-  for (const block of blocks) {
-    const lines = block.split("\n").filter((line) => line.trim() !== "" && !line.includes("node:internal") && !line.includes(__dirname + path.sep));
-    if (lines.length === 0) continue;
-    process.stdout.write(`\n${lines.slice(0, DETAIL_LINES).join("\n")}\n`);
-    if (lines.length > DETAIL_LINES) process.stdout.write(`  ... ${lines.length - DETAIL_LINES} more lines\n`);
-  }
-};
-
 // Runs the files and prints the result. Returns the spec files that failed.
 const run = async (files) => {
-  removeResultFiles();
-  progress = { done: 0, total: files.length };
-  const started = Date.now();
-  showProgress();
+  reporter.start(files);
   await pool.run(files);
-  if (process.stderr.isTTY) process.stderr.write("\r\x1b[K");
-  const failures = readFailures();
-  const failedFiles = [...new Set(failures.map(({ file }) => path.resolve(root, file)))];
-  printDetail();
-  if (failures.length > 0) {
-    process.stdout.write("\nFailing tests:\n");
-    for (const { file, test, message } of failures) process.stdout.write(`  ${file} > ${test}\n      ${message}\n`);
-  }
-  const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  const outcome = failures.length === 0 ? "all passed" : `${failures.length} failing ${failures.length === 1 ? "test" : "tests"} in ${failedFiles.length} ${failedFiles.length === 1 ? "file" : "files"}`;
-  process.stdout.write(`\n${files.length} spec ${files.length === 1 ? "file" : "files"}, ${outcome}, ${seconds} s\n`);
-  return failedFiles;
+  return reporter.finish();
 };
 
 const WATCHED = /\.(tsx?|jsx?|json|css)$/;
@@ -182,7 +159,7 @@ const watch = async (selected) => {
   };
   watchEverythingKnown();
 
-  const quit = () => { pool.close(); removeResultFiles(); process.exit(0); };
+  const quit = () => { pool.close(); process.exit(0); };
   process.on("SIGINT", quit);
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(true);

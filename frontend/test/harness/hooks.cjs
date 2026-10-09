@@ -31,7 +31,7 @@ fs.mkdirSync(cacheDir, { recursive: true });
 const crypto = require("node:crypto");
 // Keyed on content, not mtime, so the cache survives a fresh checkout. TRANSFORM_VERSION
 // stands in for the options below: bump it whenever they change.
-const TRANSFORM_VERSION = "1";
+const TRANSFORM_VERSION = "2";
 // Within one process a file cannot change, so the transformed output is held in
 // memory: every file loads the project's modules again and would otherwise
 // re-read and re-hash every source each time.
@@ -58,10 +58,13 @@ const transformSource = (file, source) => {
       .update(source)
       .digest("hex") + ".js";
   const cached = path.join(cacheDir, key);
+  // The source map is written next to the code and read only when a failure
+  // needs a line number, so it costs a passing run nothing.
+  sourceMapFiles.set(file, `${cached}.map`);
   if (fs.existsSync(cached)) return fs.readFileSync(cached, "utf8");
-  const { code } = swc.transformSync(source, {
+  const { code, map } = swc.transformSync(source, {
     filename: file,
-    sourceMaps: false,
+    sourceMaps: true,
     jsc: {
       target: "es2022",
       loose: true,
@@ -73,9 +76,33 @@ const transformSource = (file, source) => {
   });
   // Several harness processes share this cache: write, then rename into place.
   const temporary = `${cached}.${process.pid}.tmp`;
+  fs.writeFileSync(`${cached}.map`, map);
   fs.writeFileSync(temporary, code);
   fs.renameSync(temporary, cached);
   return code;
+};
+const sourceMapFiles = new Map();
+const sourceMaps = new Map();
+// Where a position in the transformed code is in the file as written.
+const originalPosition = (file, line, column) => {
+  if (!sourceMaps.has(file)) {
+    let sourceMap = null;
+    try { sourceMap = new (require("node:module").SourceMap)(JSON.parse(fs.readFileSync(sourceMapFiles.get(file), "utf8"))); } catch {}
+    sourceMaps.set(file, sourceMap);
+  }
+  const entry = sourceMaps.get(file)?.findEntry(line - 1, column - 1);
+  return entry?.originalLine === undefined ? { line, column } : { line: entry.originalLine + 1, column: entry.originalColumn + 1 };
+};
+// The frames of a stack that are in the project's own code, innermost first.
+const projectFrames = (stack) => {
+  const frames = [];
+  for (const text of String(stack).split("\n")) {
+    const match = text.match(/\(?((?:\/|[A-Za-z]:\\)[^():]+):(\d+):(\d+)\)?$/);
+    if (!match || !isProjectSource(match[1])) continue;
+    frames.push({ file: path.relative(root, match[1]), ...originalPosition(match[1], Number(match[2]), Number(match[3])) });
+    if (frames.length === 5) break;
+  }
+  return frames;
 };
 
 // --- resolution ----------------------------------------------------------------
@@ -248,9 +275,51 @@ globalThis.__testHarness.takeLoaded = () => {
 };
 // Watch mode: these files were edited, so what was read from them is dropped.
 globalThis.__testHarness.sourceChanged = (files) => {
-  for (const file of files) transformMemo.delete(file);
+  for (const file of files) { transformMemo.delete(file); sourceMaps.delete(file); }
   foundFiles.clear();
   resolveCache.clear();
+};
+
+// --- results --------------------------------------------------------------------
+// What a spec file did, in a form the pool can pass on: counts, and for each
+// failing test its message, stack and what it printed.
+const newFileResult = () => ({ passed: 0, failed: 0, skipped: 0, failures: [] });
+let fileResult = newFileResult();
+globalThis.__testHarness.takeResult = () => {
+  const result = fileResult;
+  fileResult = newFileResult();
+  return result;
+};
+// Console output is kept for the test that is running and shown only if that
+// test fails, so a passing run prints nothing. A spec that spies on the console
+// wraps these functions and still sees every call.
+const OUTPUT_LIMIT = 20000;
+let testOutput = null;
+const { format: formatConsole } = require("node:util");
+for (const method of ["log", "info", "warn", "error", "debug"]) {
+  console[method] = (...args) => {
+    if (testOutput === null || testOutput.size > OUTPUT_LIMIT) return;
+    const text = formatConsole(...args);
+    testOutput.size += text.length;
+    testOutput.lines.push(`console.${method}: ${text}`);
+  };
+}
+const recordFailure = (test, error, output) => {
+  fileResult.failed += 1;
+  fileResult.failures.push({
+    test,
+    message: String(error?.message ?? error),
+    stack: String(error?.stack ?? ""),
+    frames: projectFrames(error?.stack),
+    output: output?.lines.join("\n") ?? "",
+  });
+};
+globalThis.__testHarness.recordFailure = recordFailure;
+const countSkipped = (suite) => {
+  for (const child of suite.children) {
+    if (child.type === "suite") countSkipped(child.suite);
+    else fileResult.skipped += 1;
+  }
 };
 
 // --- jsdom as the global DOM -----------------------------------------------------
@@ -499,6 +568,7 @@ const runSuite = async (suite, t, outer) => {
   for (const fn of suite.beforeAll) await fn();
   for (const child of suite.children) {
     if (child.type === "suite") {
+      if (child.suite.mode === "skip") countSkipped(child.suite);
       await t.test(child.suite.name, { skip: child.suite.mode === "skip" }, (t2) => runSuite(child.suite, t2, hooks));
       continue;
     }
@@ -506,8 +576,10 @@ const runSuite = async (suite, t, outer) => {
     // writing to the shared registries, so anything after it would be scored
     // against that mess rather than its own behaviour.
     const poisoned = globalThis.__testHarness.poisoned === true;
+    if (poisoned || child.mode === "skip" || child.mode === "todo") fileResult.skipped += 1;
     await t.test(child.name, { skip: poisoned || child.mode === "skip", todo: child.mode === "todo", timeout: child.timeout ?? TIMEOUT }, async () => {
       let failure;
+      testOutput = { lines: [], size: 0 };
       if (actEnvironmentForFile !== undefined) globalThis.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
       const idleAtStart = process.env.NT_IDLE_LOG ? [realPerformance.eventLoopUtilization(), realPerformance.now()] : null;
       // jest joins the describe path and the test name with single spaces.
@@ -564,7 +636,11 @@ const runSuite = async (suite, t, outer) => {
         const used = realPerformance.eventLoopUtilization(idleAtStart[0]);
         fs.appendFileSync(process.env.NT_IDLE_LOG, `${currentFile}\t${child.name}\t${Math.round(realPerformance.now() - idleAtStart[1])}\t${Math.round(used.idle)}\n`);
       }
+      const output = testOutput;
+      testOutput = null;
+      if (!failure) fileResult.passed += 1;
       if (failure) {
+        recordFailure([...(child.path ?? []), child.name].join(" > "), failure.error, output);
         if (process.env.NT_FAILURE_DETAIL) fs.appendFileSync(process.env.NT_FAILURE_DETAIL, `\n===== ${currentFile} > ${child.name}\n${String(failure.error?.stack ?? failure.error).slice(0, 40000)}\n`);
         if (process.env.NT_FAILURES) fs.appendFileSync(process.env.NT_FAILURES, `${currentFile}\t${child.name}\t${String(failure.error?.message ?? failure.error).split("\n")[0].slice(0, 200)}\n`);
         throw failure.error;
