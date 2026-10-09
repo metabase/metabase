@@ -2,7 +2,6 @@ import { assoc } from "icepick";
 import _ from "underscore";
 
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
