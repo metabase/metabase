@@ -242,48 +242,6 @@ describe("useRemoteSyncDirtyState", () => {
     });
   });
 
-  describe("hasRemovedItems", () => {
-    it("returns false when no entities have removed status", async () => {
-      const { result } = setup({
-        dirty: [
-          createMockDirtyEntity({ sync_status: "update" }),
-          createMockDirtyEntity({ id: 2, sync_status: "create" }),
-        ],
-      });
-
-      await waitFor(() => {
-        expect(result.current.dirty.length).toBeGreaterThan(0);
-      });
-
-      expect(result.current.hasRemovedItems).toBe(false);
-    });
-
-    it("returns true when any entity has removed status", async () => {
-      const { result } = setup({
-        dirty: [
-          createMockDirtyEntity({ sync_status: "update" }),
-          createMockDirtyEntity({ id: 2, sync_status: "removed" }),
-        ],
-      });
-
-      await waitFor(() => {
-        expect(result.current.dirty.length).toBeGreaterThan(0);
-      });
-
-      expect(result.current.hasRemovedItems).toBe(true);
-    });
-
-    it("returns false when dirty list is empty", async () => {
-      const { result } = setup({ dirty: [] });
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.hasRemovedItems).toBe(false);
-    });
-  });
-
   describe("when git sync is not visible", () => {
     it("returns empty dirty state", async () => {
       const { result } = setup({
@@ -295,7 +253,6 @@ describe("useRemoteSyncDirtyState", () => {
         expect(result.current.dirty).toEqual([]);
       });
       expect(result.current.isDirty).toBe(false);
-      expect(result.current.hasRemovedItems).toBe(false);
     });
   });
 });

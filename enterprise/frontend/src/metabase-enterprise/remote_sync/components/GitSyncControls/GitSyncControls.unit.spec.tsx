@@ -267,11 +267,14 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
       // Wait until the dirty state has settled (push disabled, since nothing is dirty) so the pull takes
-      // the non-dirty direct-import path deterministically.
+      // the non-dirty direct-import path deterministically, and until the remote check enables the pull.
       await waitFor(async () => {
         expect(await findOption(/Push changes/)).toHaveAttribute(
           "data-combobox-disabled",
           "true",
+        );
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
         );
       });
       await userEvent.click(await findOption(/Pull changes/));
@@ -304,9 +307,13 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path.
+      // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path, and
+      // until the remote check enables the pull.
       await waitFor(async () => {
         expect(await findOption(/Push changes/)).toBeEnabled();
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+        );
       });
       await userEvent.click(await findOption(/Pull changes/));
 

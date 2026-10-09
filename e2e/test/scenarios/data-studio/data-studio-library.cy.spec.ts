@@ -69,7 +69,7 @@ describe("scenarios > data studio > library", () => {
     cy.log("Verify library collections appear in the library table");
     H.DataStudio.Library.collectionItem("Data").should("be.visible");
     H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
-    H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
+    H.DataStudio.Library.collectionItem("Dashboards").should("be.visible");
   });
 
   it("should let you move metrics into the library, even when empty", () => {
@@ -300,7 +300,6 @@ describe("scenarios > data studio > library", () => {
 
       H.DataStudio.Library.collectionItem("Data").should("be.visible");
       H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
-      H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
 
       cy.log("Verify Data section empty state");
       H.DataStudio.Library.libraryPage()
@@ -316,14 +315,6 @@ describe("scenarios > data studio > library", () => {
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByRole("link", { name: "New metric" })
-        .should("be.visible");
-
-      cy.log("Verify SQL snippets section empty state");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Reusable bits of code that save your time")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByRole("link", { name: "New snippet" })
         .should("be.visible");
 
       cy.log("Click on 'Publish a table' button and verify modal opens");
@@ -395,14 +386,37 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
 
       cy.log(
-        "Verify Metrics and SQL snippets still show empty states (always expanded behavior)",
+        "Verify Metrics still shows its empty state (always expanded behavior)",
       );
       H.DataStudio.Library.emptyStateRow(
         "Standardized calculations with known dimensions",
       ).should("be.visible");
+    });
+
+    it("should show empty states on the SQL snippets and Data actions tabs", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify the semantic layer has no snippets or actions sections");
+      H.DataStudio.Library.collectionItem("SQL snippets").should("not.exist");
+      H.DataStudio.Library.collectionItem("Data actions").should("not.exist");
+
+      cy.log("Verify SQL snippets tab empty state");
+      H.DataStudio.nav().findByRole("link", { name: "SQL snippets" }).click();
+      H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
       H.DataStudio.Library.emptyStateRow(
         "Reusable bits of code that save your time",
       ).should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("link", { name: "New snippet" })
+        .should("be.visible");
+
+      cy.log("Verify Data actions tab empty state");
+      H.DataStudio.nav().findByRole("link", { name: "Data actions" }).click();
+      H.DataStudio.Library.collectionItem("Data actions").should("be.visible");
+      H.DataStudio.Library.emptyStateRow("Queries that change data").should(
+        "be.visible",
+      );
     });
 
     describe("read-only mode", () => {
@@ -436,10 +450,11 @@ describe("scenarios > data studio > library", () => {
           .findByRole("link", { name: "New metric" })
           .should("not.exist");
 
-        cy.log("Verify SQL snippets section empty state action is not visible");
-        H.DataStudio.Library.libraryPage()
-          .findByText("Reusable bits of code that save your time")
-          .should("be.visible");
+        cy.log("Verify SQL snippets tab empty state action is not visible");
+        H.DataStudio.Snippets.visitList();
+        H.DataStudio.Library.emptyStateRow(
+          "Reusable bits of code that save your time",
+        ).should("be.visible");
         H.DataStudio.Library.libraryPage()
           .findByRole("link", { name: "New snippet" })
           .should("not.exist");
