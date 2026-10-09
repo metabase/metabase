@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupApplyMetadataGenerationRunEndpoint,
   setupDecideMetadataGenerationSuggestionsEndpoint,
+  setupEditMetadataGenerationSuggestionEndpoint,
   setupListMetadataGenerationRunTablesEndpoint,
   setupListMetadataGenerationSuggestionsEndpoint,
 } from "__support__/server-mocks";
@@ -56,6 +57,8 @@ function setup() {
       table_id: 10,
       field_id: 101,
       field_display_name: "Total",
+      field_base_type: "type/Float",
+      field_effective_type: "type/Float",
       attribute: "semantic_type",
       source: "human",
       current_value: "type/Quantity",
@@ -68,6 +71,7 @@ function setup() {
       field_display_name: "Notes",
       attribute: "description",
       proposed_value: "Free-text notes",
+      edited_value: "Notes the customer wrote at checkout",
       status: "accepted",
     }),
     createMockMetadataGenerationSuggestion({
@@ -85,6 +89,9 @@ function setup() {
   setupListMetadataGenerationSuggestionsEndpoint(RUN_ID, 10, suggestions);
   setupListMetadataGenerationSuggestionsEndpoint(RUN_ID, 20, []);
   setupDecideMetadataGenerationSuggestionsEndpoint(RUN_ID);
+  suggestions.forEach((suggestion) =>
+    setupEditMetadataGenerationSuggestionEndpoint(RUN_ID, suggestion),
+  );
   setupApplyMetadataGenerationRunEndpoint(
     RUN_ID,
     createMockMetadataGenerationApplyResult({
@@ -116,6 +123,15 @@ async function getLastDecisionBody() {
   const call = fetchMock.callHistory.lastCall(DECISIONS_PATH, {
     method: "POST",
   });
+  return call?.request?.json();
+}
+
+async function getLastEditBody(suggestionId: number) {
+  const path = `path:/api/ee/data-sensitivity/runs/${RUN_ID}/suggestions/${suggestionId}`;
+  await waitFor(() => {
+    expect(fetchMock.callHistory.called(path, { method: "PUT" })).toBe(true);
+  });
+  const call = fetchMock.callHistory.lastCall(path, { method: "PUT" });
   return call?.request?.json();
 }
 
@@ -287,5 +303,85 @@ describe("ReviewModal", () => {
     expect(fetchMock.callHistory.called(APPLY_PATH, { method: "POST" })).toBe(
       true,
     );
+  });
+
+  it("shows an edited value with an Edited marker in place of the AI proposal", async () => {
+    setup();
+
+    const rows = await screen.findAllByTestId("metadata-generation-suggestion");
+    expect(
+      within(rows[2]).getByText("Notes the customer wrote at checkout"),
+    ).toBeInTheDocument();
+    expect(within(rows[2]).getByText("Edited")).toBeInTheDocument();
+    expect(
+      within(rows[2]).queryByText("Free-text notes"),
+    ).not.toBeInTheDocument();
+    expect(within(rows[0]).queryByText("Edited")).not.toBeInTheDocument();
+  });
+
+  it("clears the edit when the AI proposal is chosen again", async () => {
+    setup();
+
+    const rows = await screen.findAllByTestId("metadata-generation-suggestion");
+    await userEvent.click(
+      within(rows[2]).getByRole("button", { name: "Use AI proposal" }),
+    );
+
+    expect(await getLastEditBody(3)).toEqual({ value: null });
+  });
+
+  it("saves an edited description", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit Description of Notes" }),
+    );
+    const textarea = screen.getByRole("textbox", { name: "Description" });
+    await userEvent.clear(textarea);
+    await userEvent.type(textarea, "  Order notes  {Enter}");
+
+    expect(await getLastEditBody(3)).toEqual({ value: "Order notes" });
+  });
+
+  it("saves an edited data sensitivity", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Edit Data sensitivity of Email",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Confidential business data" }),
+    );
+
+    expect(await getLastEditBody(1)).toEqual({ value: "BIZ_CONF" });
+  });
+
+  it("does not offer key types or no semantic type when editing a semantic type", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Edit Semantic type of Total",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("option", { name: "Currency" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Entity Key" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "No semantic type" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not offer to edit a stale suggestion", async () => {
+    setup();
+
+    const rows = await screen.findAllByTestId("metadata-generation-suggestion");
+    expect(within(rows[3]).queryByRole("button")).not.toBeInTheDocument();
   });
 });

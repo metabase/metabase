@@ -128,10 +128,14 @@ export type MetadataGenerationSuggestion = {
   field_id: FieldId;
   field_name: string;
   field_display_name: string | null;
+  field_base_type: string;
+  field_effective_type: string | null;
   attribute: MetadataGenerationAttribute;
   source: MetadataGenerationValueSource;
   current_value: string | null;
   proposed_value: string;
+  /** The value a person chose in place of `proposed_value`. Apply writes it as the person's value. */
+  edited_value: string | null;
   confidence: MetadataGenerationConfidence | null;
   reasoning: string | null;
   status: MetadataGenerationSuggestionStatus;
@@ -155,6 +159,13 @@ export type MetadataGenerationDecisionRequest = {
   table_ids?: ConcreteTableId[];
   all?: boolean;
   include_human_set?: boolean;
+};
+
+export type EditMetadataGenerationSuggestionRequest = {
+  run_id: MetadataGenerationRunId;
+  suggestion_id: MetadataGenerationSuggestionId;
+  /** `null` clears the edit. */
+  value: string | null;
 };
 
 export type MetadataGenerationDecisionResponse = {

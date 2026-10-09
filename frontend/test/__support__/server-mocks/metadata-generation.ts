@@ -86,6 +86,16 @@ export function setupDecideMetadataGenerationSuggestionsEndpoint(
   });
 }
 
+export function setupEditMetadataGenerationSuggestionEndpoint(
+  runId: MetadataGenerationRunId,
+  suggestion: MetadataGenerationSuggestion,
+) {
+  fetchMock.put(
+    `path:/api/ee/data-sensitivity/runs/${runId}/suggestions/${suggestion.id}`,
+    suggestion,
+  );
+}
+
 export function setupApplyMetadataGenerationRunEndpoint(
   runId: MetadataGenerationRunId,
   result: MetadataGenerationApplyResult,

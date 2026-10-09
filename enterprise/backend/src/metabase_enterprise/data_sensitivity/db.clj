@@ -177,12 +177,13 @@
                    :group-by [:table_id :status :source]})))
 
 (mu/defn table-suggestions :- [:sequential (ms/InstanceOf :model/MetadataGenerationSuggestion)]
-  "The suggestions of run `run-id` for `table-id`, with the field's `field_name` and `field_display_name`, ordered by
-  field position, field id and attribute."
+  "The suggestions of run `run-id` for `table-id`, with the field's `field_name`, `field_display_name`,
+  `field_base_type` and `field_effective_type`, ordered by field position, field id and attribute."
   [run-id   :- ms/PositiveInt
    table-id :- ::lib.schema.id/table]
   (t2/select :model/MetadataGenerationSuggestion
-             {:select   [:s.* [:f.name :field_name] [:f.display_name :field_display_name]]
+             {:select   [:s.* [:f.name :field_name] [:f.display_name :field_display_name]
+                         [:f.base_type :field_base_type] [:f.effective_type :field_effective_type]]
               :from     [[:metadata_generation_suggestion :s]]
               :join     [(warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :s.field_id]]
               :where    [:and [:= :s.run_id run-id] [:= :s.table_id table-id]]
@@ -209,6 +210,24 @@
                  (when table-ids      [:table_id [:in table-ids]])
                  (when exclude-human? [:source [:not= :human]])
                  [{:status status :decided_by user-id :decided_at (mi/now)}])))
+
+(mu/defn suggestion :- [:maybe (ms/InstanceOf :model/MetadataGenerationSuggestion)]
+  "The suggestion `suggestion-id` of run `run-id`."
+  [run-id        :- ms/PositiveInt
+   suggestion-id :- ms/PositiveInt]
+  (t2/select-one :model/MetadataGenerationSuggestion :id suggestion-id :run_id run-id))
+
+(mu/defn edit-suggestion! :- :int
+  "Set `edited_value` of the suggestion `suggestion-id` while its status is pending, accepted or rejected. A value also
+  marks the suggestion accepted by `user-id`; nil clears the edit and leaves the status. Returns the number of rows
+  updated."
+  [suggestion-id :- ms/PositiveInt
+   value         :- [:maybe :string]
+   user-id       :- ms/PositiveInt]
+  (t2/update! :model/MetadataGenerationSuggestion
+              :id suggestion-id :status [:in #{:pending :accepted :rejected}]
+              (cond-> {:edited_value value}
+                value (assoc :status :accepted :decided_by user-id :decided_at (mi/now)))))
 
 ;;; Apply
 

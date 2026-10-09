@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
+   [metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion :as suggestion]
    [metabase-enterprise.data-sensitivity.review :as review]
    [metabase-enterprise.data-sensitivity.runner :as runner]
    [metabase.api.common :as api]
@@ -103,9 +104,24 @@
   (api/check-404 (db/run id))
   (review/decide! id body api/*current-user-id*))
 
+(api.macros/defendpoint :put "/runs/:id/suggestions/:suggestion-id" :- ::suggestion/metadata-generation-suggestion
+  "Set the value a person chose in place of the proposed value of one suggestion, and accept it. `value` follows the
+  rules of the attribute: a data-sensitivity category, a semantic type that fits the field and is not a key type, or a
+  non-blank description. A null `value` clears the edit. Apply writes an edited value as the person's value. A stale
+  or applied suggestion is a 409."
+  [{:keys [id suggestion-id]} :- [:map {:closed true}
+                                  [:id            ms/PositiveInt]
+                                  [:suggestion-id ms/PositiveInt]]
+   _query-params
+   body :- ::review/edit-request]
+  (api/check-superuser)
+  (api/check-404 (db/run id))
+  (review/edit! id suggestion-id body api/*current-user-id*))
+
 (api.macros/defendpoint :post "/runs/:id/apply" :- ::review/apply-result
   "Write the accepted suggestions of the run as accepted AI values, for the tables in `table_ids`, else for every table.
-  Each table is one transaction. A suggestion over a value a person set clears that value. A suggestion whose field
+  An edited suggestion is written as the person's value instead. Each table is one transaction. An unedited suggestion
+  over a value a person set clears that value. A suggestion whose field
   changed after the run is marked `stale` and skipped. A suggestion that cannot be written stays accepted and is
   listed in `failures`."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]

@@ -7,12 +7,17 @@
   A suggestion with source `human` would replace a value a person set. Accept or unaccept by table or for the whole run
   leaves those suggestions out unless the request sets `include_human_set`; a decision by suggestion id always includes
   them.
-  Apply of such a suggestion clears the person's value."
+  Apply of such a suggestion clears the person's value.
+
+  A person can edit the proposed value of a suggestion before apply. Apply writes an edited value as the person's
+  value, not as an AI value (decision `ghy-4721-edited-suggestion-layer`)."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion :as suggestion]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -102,8 +107,72 @@
   [:merge
    ::suggestion/metadata-generation-suggestion
    [:map
-    [:field_name         :string]
-    [:field_display_name [:maybe :string]]]])
+    [:field_name           :string]
+    [:field_display_name   [:maybe :string]]
+    [:field_base_type      :string]
+    [:field_effective_type [:maybe :string]]]])
+
+;;; Edit
+
+(mr/def ::edit-request
+  [:map {:closed true}
+   [:value [:maybe :string]]])
+
+(defn- key-type? [semantic-type]
+  (or (isa? semantic-type :type/PK) (isa? semantic-type :type/FK)))
+
+(defn- edited-value
+  "`value` as the edited value of `attribute` of `field`, normalized, or throw a 400 when a person cannot set it: the
+  same rules as generation and apply."
+  [attribute field value]
+  (case attribute
+    :data_sensitivity
+    (if (some #{value} llm/categories)
+      value
+      (throw (bad-request (tru "Data sensitivity must be one of {0}." (str/join ", " llm/categories)))))
+
+    :semantic_type
+    (let [semantic-type (keyword value)
+          field-type    ((some-fn :effective_type :base_type) field)]
+      (cond
+        (not (and (isa? semantic-type :Semantic/*) (not (key-type? semantic-type))))
+        (throw (bad-request (tru "{0} is not a semantic type that can be set here." value)))
+
+        (not (llm/semantic-type-fits? semantic-type field-type))
+        (throw (bad-request (tru "{0} does not fit a field of type {1}." value (u/qualified-name field-type))))
+
+        :else
+        (u/qualified-name semantic-type)))
+
+    :description
+    (let [value (str/trim value)]
+      (cond
+        (str/blank? value)
+        (throw (bad-request (tru "The description must not be blank.")))
+
+        (> (count value) llm/description-cap)
+        (throw (bad-request (tru "The description must be at most {0} characters." llm/description-cap)))
+
+        :else
+        value))))
+
+(mu/defn edit! :- (ms/InstanceOf :model/MetadataGenerationSuggestion)
+  "Set the edited value of suggestion `suggestion-id` of run `run-id` to `value`, as `user-id`, and accept the
+  suggestion. A nil `value` clears the edit, so apply writes the proposed value again. A stale or applied suggestion is
+  a 409."
+  [run-id          :- ms/PositiveInt
+   suggestion-id   :- ms/PositiveInt
+   {:keys [value]} :- ::edit-request
+   user-id         :- ms/PositiveInt]
+  (let [{:keys [attribute field_id status]} (api/check-404 (db/suggestion run-id suggestion-id))]
+    (api/check (#{:pending :accepted :rejected} status)
+               [409 (tru "A stale or applied suggestion cannot be edited.")])
+    (db/edit-suggestion! suggestion-id
+                         (when (some? value)
+                           (let [field (api/check-404 (get (db/active-fields-by-id [field_id]) field_id))]
+                             (edited-value attribute field value)))
+                         user-id)
+    (db/suggestion run-id suggestion-id)))
 
 ;;; Apply
 
@@ -138,14 +207,19 @@
   (let [value (current-value field attribute)]
     (context/value-source settings attribute (if (= :description attribute) (not-empty value) value))))
 
-(defn- key-type? [semantic-type]
-  (or (isa? semantic-type :type/PK) (isa? semantic-type :type/FK)))
+(defn- value-to-write
+  "The value apply writes for suggestion `s`: the edited value when a person edited it, else the proposed value."
+  [{:keys [attribute edited_value proposed_value]}]
+  (let [value (or edited_value proposed_value)]
+    (case attribute
+      (:semantic_type :data_sensitivity) (keyword value)
+      :description                       value)))
 
 (defn- outcome
   "`:write`, `:stale`, or a failure reason for accepted suggestion `s`. Stale: the value readers see, or the layer that
   gives it, is not the one the run recorded. A semantic type never replaces a key type, which sync owns, and must fit
   the field's type."
-  [field settings {:keys [attribute source current_value proposed_value]}]
+  [field settings {:keys [attribute source current_value] :as s}]
   (cond
     (nil? field)                                                        :field_not_found
     (not (:can_write field))                                            :not_writable
@@ -153,19 +227,14 @@
         (not= source (current-source settings field attribute)))        :stale
     (not= :semantic_type attribute)                                     :write
     (key-type? (:semantic_type field))                                  :key_field
-    (not (llm/semantic-type-fits? (keyword proposed_value)
+    (not (llm/semantic-type-fits? (value-to-write s)
                                   ((some-fn :effective_type :base_type) field))) :type_mismatch
     :else                                                               :write))
 
-(defn- proposed-value [{:keys [attribute proposed_value]}]
-  (case attribute
-    (:semantic_type :data_sensitivity) (keyword proposed_value)
-    :description                       proposed_value))
-
 (defn- write-table!
-  "Write the accepted suggestions `suggestions` of one table in one transaction and mark them applied or stale. For a
-  suggestion over a human value, the person's value is cleared. Returns the outcome of each suggestion and the ids of
-  the written fields."
+  "Write the accepted suggestions `suggestions` of one table in one transaction and mark them applied or stale. An
+  edited suggestion is written as the person's value; any other is written as an AI value, and when it is over a human
+  value, the person's value is cleared. Returns the outcome of each suggestion and the ids of the written fields."
   [suggestions]
   (t2/with-transaction [_conn]
     (let [field-ids (vec (distinct (map :field_id suggestions)))
@@ -176,18 +245,21 @@
                           suggestions)
           writes    (filter #(= :write (::outcome %)) outcomes)
           by-field  (group-by :field_id writes)
+          ai-writes (group-by :field_id (remove :edited_value writes))
           dims      (db/internal-dimension-ids-by-field
                      (vec (keep (fn [[field-id ss]] (when (some #(= :semantic_type (:attribute %)) ss) field-id))
                                 by-field)))]
       (field-user-settings/set-ai-values-for-fields!
-       (update-vals by-field (fn [ss] (into {} (map (juxt :attribute proposed-value)) ss))))
-      (doseq [[field-id ss] by-field
+       (update-vals ai-writes (fn [ss] (into {} (map (juxt :attribute value-to-write)) ss))))
+      (doseq [[field-id ss] ai-writes
               :let [human (vec (keep #(when (= :human (:source %)) (:attribute %)) ss))]
               :when (seq human)]
         (field-user-settings/unset-user-settings! {:id field-id} human))
+      (doseq [[field-id ss] (group-by :field_id (filter :edited_value writes))]
+        (field-user-settings/upsert-user-settings {:id field-id} (into {} (map (juxt :attribute value-to-write)) ss)))
       (doseq [[field-id ids] dims
               :let [field    (get fields field-id)
-                    new-type (some #(when (= :semantic_type (:attribute %)) (proposed-value %)) (by-field field-id))]
+                    new-type (some #(when (= :semantic_type (:attribute %)) (value-to-write %)) (by-field field-id))]
               :when (not (warehouse-schema.field/internal-remapping-allowed? (:base_type field) new-type))]
         (db/delete-dimensions! ids))
       (db/set-suggestion-status! (mapv :id writes) :applied)
@@ -222,7 +294,7 @@
         (table-result (map #(assoc % ::outcome :error) suggestions))))))
 
 (mu/defn apply! :- ::apply-result
-  "Write the accepted suggestions of run `run-id` as accepted AI values, for the tables in `table_ids`, else for every
+  "Write the accepted suggestions of run `run-id` as accepted AI values, or as the person's values when edited, for the tables in `table_ids`, else for every
   table, as `user-id`. Each table is one transaction. A suggestion whose field changed after the run becomes `stale`
   and is skipped; a suggestion that cannot be written stays accepted and is counted as failed."
   [run-id                :- ms/PositiveInt

@@ -1,9 +1,13 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type KeyboardEvent, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
+import {
+  DataSensitivityPicker,
+  SemanticTypePicker,
+} from "metabase/metadata/components";
 import {
   ActionIcon,
   Badge,
@@ -19,11 +23,13 @@ import {
   ScrollArea,
   Stack,
   Text,
+  Textarea,
   Tooltip,
 } from "metabase/ui";
 import {
   useApplyMetadataGenerationRunMutation,
   useDecideMetadataGenerationSuggestionsMutation,
+  useEditMetadataGenerationSuggestionMutation,
   useListMetadataGenerationRunTablesQuery,
   useListMetadataGenerationSuggestionsQuery,
 } from "metabase-enterprise/api";
@@ -41,6 +47,7 @@ import { getAttributeLabel } from "../../utils";
 
 import S from "./ReviewModal.module.css";
 import {
+  DESCRIPTION_MAX_LENGTH,
   type RunTotals,
   formatSuggestionValue,
   getApplyFailureReasonLabel,
@@ -51,12 +58,15 @@ import {
   getRunTotals,
   getSuggestionStatusColor,
   getSuggestionStatusLabel,
+  getSuggestionValue,
   getTableCheckboxState,
   getTableLabel,
   hasOpenDecisions,
+  isFieldDataSensitivity,
   isHumanSet,
   isSuggestionChecked,
   isSuggestionDecidable,
+  isSuggestionEdited,
 } from "./utils";
 
 type ReviewModalProps = {
@@ -467,6 +477,7 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
                   index === 0 ||
                   suggestions[index - 1].field_id !== suggestion.field_id
                 }
+                runId={runId}
                 isDeciding={decideState.decidingIds.has(suggestion.id)}
                 decide={decide}
               />
@@ -479,6 +490,7 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
 }
 
 type SuggestionRowProps = {
+  runId: MetadataGenerationRunId;
   suggestion: MetadataGenerationSuggestion;
   isFirstOfField: boolean;
   isDeciding: boolean;
@@ -486,6 +498,7 @@ type SuggestionRowProps = {
 };
 
 function SuggestionRow({
+  runId,
   suggestion,
   isFirstOfField,
   isDeciding,
@@ -496,10 +509,6 @@ function SuggestionRow({
   const current = formatSuggestionValue(
     suggestion.attribute,
     suggestion.current_value,
-  );
-  const proposed = formatSuggestionValue(
-    suggestion.attribute,
-    suggestion.proposed_value,
   );
   const fieldLabel = getFieldLabel(suggestion);
   const attributeLabel = getAttributeLabel(suggestion.attribute);
@@ -552,7 +561,7 @@ function SuggestionRow({
       </td>
       <td className={S.value}>
         <Stack gap={4} align="flex-start">
-          <Text>{proposed}</Text>
+          <ProposedValue runId={runId} suggestion={suggestion} />
           {!isSuggestionDecidable(suggestion) && (
             <Tooltip label={getFixedStatusTooltip(suggestion)}>
               <Badge
@@ -579,6 +588,209 @@ function SuggestionRow({
         )}
       </td>
     </tr>
+  );
+}
+
+type ProposedValueProps = {
+  runId: MetadataGenerationRunId;
+  suggestion: MetadataGenerationSuggestion;
+};
+
+function ProposedValue({ runId, suggestion }: ProposedValueProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editSuggestion] = useEditMetadataGenerationSuggestionMutation();
+  const { sendErrorToast } = useMetadataToasts();
+  const { attribute, proposed_value } = suggestion;
+  const value = getSuggestionValue(suggestion);
+  const isEdited = isSuggestionEdited(suggestion);
+  const canEdit = isSuggestionDecidable(suggestion);
+  const attributeLabel = getAttributeLabel(attribute);
+  const fieldLabel = getFieldLabel(suggestion);
+
+  const save = async (newValue: string | null) => {
+    setIsEditing(false);
+    const editedValue = newValue === proposed_value ? null : newValue;
+    if (editedValue === suggestion.edited_value) {
+      return;
+    }
+    const { error } = await editSuggestion({
+      run_id: runId,
+      suggestion_id: suggestion.id,
+      value: editedValue,
+    });
+    if (error) {
+      sendErrorToast(getErrorMessage(error, t`Failed to save the value`));
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <ValueEditor
+        suggestion={suggestion}
+        value={value}
+        onSave={save}
+        onCancel={() => setIsEditing(false)}
+      />
+    );
+  }
+
+  return (
+    <Stack
+      gap={4}
+      align="flex-start"
+      data-testid="metadata-generation-proposed"
+    >
+      <Group gap={4} wrap="nowrap" align="flex-start">
+        <Text>{formatSuggestionValue(attribute, value)}</Text>
+        {canEdit && (
+          <ActionIcon
+            size="sm"
+            aria-label={t`Edit ${attributeLabel} of ${fieldLabel}`}
+            onClick={() => setIsEditing(true)}
+          >
+            <Icon name="pencil" size={12} />
+          </ActionIcon>
+        )}
+      </Group>
+      {isEdited && (
+        <Group gap={4} wrap="nowrap">
+          <Tooltip
+            label={t`AI proposal: ${formatSuggestionValue(attribute, proposed_value)}`}
+            maw="25rem"
+            multiline
+          >
+            <Badge variant="light" color="brand">{t`Edited`}</Badge>
+          </Tooltip>
+          {canEdit && (
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              leftSection={<Icon name="undo" size={12} />}
+              onClick={() => save(null)}
+            >
+              {t`Use AI proposal`}
+            </Button>
+          )}
+        </Group>
+      )}
+    </Stack>
+  );
+}
+
+type ValueEditorProps = {
+  suggestion: MetadataGenerationSuggestion;
+  value: string;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+};
+
+function ValueEditor({
+  suggestion,
+  value,
+  onSave,
+  onCancel,
+}: ValueEditorProps) {
+  const attributeLabel = getAttributeLabel(suggestion.attribute);
+
+  switch (suggestion.attribute) {
+    case "description":
+      return (
+        <DescriptionEditor
+          value={value}
+          label={attributeLabel}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
+      );
+    case "semantic_type":
+      return (
+        <SemanticTypePicker
+          aria-label={attributeLabel}
+          field={{
+            base_type: suggestion.field_base_type,
+            effective_type: suggestion.field_effective_type ?? undefined,
+          }}
+          value={value}
+          canSetKeyOrEmpty={false}
+          defaultDropdownOpened
+          w="100%"
+          onChange={(newValue) => (newValue ? onSave(newValue) : onCancel())}
+          onDropdownClose={onCancel}
+        />
+      );
+    case "data_sensitivity":
+      return (
+        <DataSensitivityPicker
+          aria-label={attributeLabel}
+          value={isFieldDataSensitivity(value) ? value : null}
+          source={null}
+          canClear={false}
+          defaultDropdownOpened
+          w="100%"
+          onChange={(newValue) => (newValue ? onSave(newValue) : onCancel())}
+          onDropdownClose={onCancel}
+          onReset={onCancel}
+        />
+      );
+  }
+}
+
+type DescriptionEditorProps = {
+  value: string;
+  label: string;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+};
+
+function DescriptionEditor({
+  value,
+  label,
+  onSave,
+  onCancel,
+}: DescriptionEditorProps) {
+  const [text, setText] = useState(value);
+  const trimmed = text.trim();
+  const canSave = trimmed.length > 0;
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Escape") {
+      // Escape closes the editor, not the modal.
+      event.stopPropagation();
+      onCancel();
+    } else if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (canSave) {
+        onSave(trimmed);
+      }
+    }
+  };
+
+  return (
+    <Stack gap={4} w="100%">
+      <Textarea
+        aria-label={label}
+        value={text}
+        maxLength={DESCRIPTION_MAX_LENGTH}
+        autosize
+        minRows={2}
+        autoFocus
+        onChange={(event) => setText(event.currentTarget.value)}
+        onKeyDown={handleKeyDown}
+      />
+      <Group gap="xs" justify="flex-end">
+        <Button size="compact-sm" variant="subtle" onClick={onCancel}>
+          {t`Cancel`}
+        </Button>
+        <Button
+          size="compact-sm"
+          variant="filled"
+          disabled={!canSave}
+          onClick={() => onSave(trimmed)}
+        >
+          {t`Save`}
+        </Button>
+      </Group>
+    </Stack>
   );
 }
 

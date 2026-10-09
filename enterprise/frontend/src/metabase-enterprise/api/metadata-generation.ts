@@ -1,5 +1,6 @@
 import type {
   ApplyMetadataGenerationRunRequest,
+  EditMetadataGenerationSuggestionRequest,
   GetMetadataGenerationSuggestionsRequest,
   ListMetadataGenerationRunsRequest,
   MetadataGenerationApplyResult,
@@ -32,6 +33,20 @@ const DECISION_RULES: Record<
   unaccept: { from: ["accepted", "rejected"], to: "pending" },
   reject: { from: ["pending", "accepted"], to: "rejected" },
 };
+
+/** Apply `edit` to `suggestion` by the same rules as the backend: a value also accepts a pending or rejected suggestion. */
+export function applySuggestionEdit(
+  suggestion: MetadataGenerationSuggestion,
+  { value }: EditMetadataGenerationSuggestionRequest,
+): void {
+  suggestion.edited_value = value;
+  if (
+    value != null &&
+    (suggestion.status === "pending" || suggestion.status === "rejected")
+  ) {
+    suggestion.status = "accepted";
+  }
+}
 
 /** The status that `request` gives `suggestion`, by the same rules as the backend. */
 export function getDecidedStatus(
@@ -196,6 +211,50 @@ export const metadataGenerationApi = EnterpriseApi.injectEndpoints({
         }
       },
     }),
+    editMetadataGenerationSuggestion: builder.mutation<
+      MetadataGenerationSuggestion,
+      EditMetadataGenerationSuggestionRequest
+    >({
+      query: ({ run_id, suggestion_id, value }) => ({
+        method: "PUT",
+        url: `/api/ee/data-sensitivity/runs/${run_id}/suggestions/${suggestion_id}`,
+        body: { value },
+      }),
+      invalidatesTags: (_, error, { run_id }) =>
+        invalidateTags(error, [idTag("metadata-generation-run", run_id)]),
+      onQueryStarted: async (
+        request,
+        { dispatch, getState, queryFulfilled },
+      ) => {
+        const patches = metadataGenerationApi.util
+          .selectCachedArgsForQuery(
+            getState(),
+            "listMetadataGenerationSuggestions",
+          )
+          .filter(({ run_id }) => run_id === request.run_id)
+          .map((args) =>
+            dispatch(
+              metadataGenerationApi.util.updateQueryData(
+                "listMetadataGenerationSuggestions",
+                args,
+                (draft) => {
+                  const suggestion = draft.find(
+                    ({ id }) => id === request.suggestion_id,
+                  );
+                  if (suggestion) {
+                    applySuggestionEdit(suggestion, request);
+                  }
+                },
+              ),
+            ),
+          );
+        try {
+          await queryFulfilled;
+        } catch {
+          patches.forEach((patch) => patch.undo());
+        }
+      },
+    }),
     applyMetadataGenerationRun: builder.mutation<
       MetadataGenerationApplyResult,
       ApplyMetadataGenerationRunRequest
@@ -225,5 +284,6 @@ export const {
   useListMetadataGenerationRunTablesQuery,
   useListMetadataGenerationSuggestionsQuery,
   useDecideMetadataGenerationSuggestionsMutation,
+  useEditMetadataGenerationSuggestionMutation,
   useApplyMetadataGenerationRunMutation,
 } = metadataGenerationApi;

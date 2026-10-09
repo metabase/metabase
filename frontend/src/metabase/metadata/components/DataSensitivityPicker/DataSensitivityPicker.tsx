@@ -22,6 +22,8 @@ interface Props extends Omit<
 > {
   value: FieldDataSensitivity | null;
   source: FieldDataSensitivitySource | null;
+  /** When false, "No label" is not offered. */
+  canClear?: boolean;
   onChange: (value: FieldDataSensitivity | null) => void;
   onReset: () => void;
 }
@@ -30,6 +32,7 @@ export const DataSensitivityPicker = ({
   comboboxProps,
   value,
   source,
+  canClear = true,
   onChange,
   onReset,
   ...props
@@ -57,7 +60,7 @@ export const DataSensitivityPicker = ({
           position: "bottom-start",
           ...comboboxProps,
         }}
-        data={getData()}
+        data={getData(canClear)}
         placeholder={t`Not labeled`}
         value={value ?? (isUserSet ? NO_LABEL_VALUE : null)}
         onChange={handleChange}
@@ -107,13 +110,13 @@ function getSourceLabel(source: FieldDataSensitivitySource): string {
   return labels[source];
 }
 
-function getData() {
+function getData(canClear: boolean) {
   return [
     ...FIELD_DATA_SENSITIVITY_TYPES.map((type) => ({
       label: getDataSensitivityLabel(type),
       value: type,
     })),
-    { label: t`No label`, value: NO_LABEL_VALUE },
+    ...(canClear ? [{ label: t`No label`, value: NO_LABEL_VALUE }] : []),
   ];
 }
 

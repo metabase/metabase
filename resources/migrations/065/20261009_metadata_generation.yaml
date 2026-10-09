@@ -382,3 +382,18 @@ databaseChangeLog:
               - column:
                   name: decided_by
       rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:12
+      author: tplude
+      comment: Add metadata_generation_suggestion.edited_value
+      changes:
+        - addColumn:
+            tableName: metadata_generation_suggestion
+            columns:
+              - column:
+                  name: edited_value
+                  type: ${text.type}
+                  remarks: The value a person chose in place of proposed_value; NULL when not edited. Apply writes it as the person's value
+                  constraints:
+                    nullable: true

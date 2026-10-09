@@ -49,6 +49,22 @@ export function getRunTotals(tables: MetadataGenerationRunTable[]): RunTotals {
   return { total, counts, humanSetPending };
 }
 
+/** Most characters of a description, the same cap the backend applies to generated and edited descriptions. */
+export const DESCRIPTION_MAX_LENGTH = 200;
+
+export function isSuggestionEdited(
+  suggestion: MetadataGenerationSuggestion,
+): boolean {
+  return suggestion.edited_value != null;
+}
+
+/** The value apply writes: the edited value when a person edited it, else the proposed value. */
+export function getSuggestionValue(
+  suggestion: MetadataGenerationSuggestion,
+): string {
+  return suggestion.edited_value ?? suggestion.proposed_value;
+}
+
 export function isHumanSet(suggestion: MetadataGenerationSuggestion): boolean {
   return suggestion.source === "human";
 }
@@ -126,7 +142,9 @@ export function getFieldLabel(
   return suggestion.field_display_name || suggestion.field_name;
 }
 
-function isFieldDataSensitivity(value: string): value is FieldDataSensitivity {
+export function isFieldDataSensitivity(
+  value: string,
+): value is FieldDataSensitivity {
   return FIELD_DATA_SENSITIVITY_TYPES.some((type) => type === value);
 }
 
