@@ -7,7 +7,7 @@ The checks only test what Metabot needs to run. Metabase doesn't benchmark these
 ### Servers this connection has been tried with
 
 - xAI, `https://api.x.ai/v1`, with `grok-4.3`: connects, and Metabot answers questions on it.
-- OpenRouter, `https://openrouter.ai/api/v1`, with `openai/gpt-oss-120b`: connects, and Metabot answers questions on it.
+- OpenRouter, `https://openrouter.ai/api/v1`, with `anthropic/claude-haiku-4.5`: passed the checks when tried. OpenRouter sends each request to one of the providers that serve a model, so a model can pass the checks on one try and fail them on the next, as `openai/gpt-oss-120b` did.
 - DeepSeek, `https://api.deepseek.com/v1`, with `deepseek-v4-pro`: doesn't connect. In thinking mode, DeepSeek rejects requests that require a tool call, so the forced tool call check fails.
 
 ### API base URL examples
