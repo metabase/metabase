@@ -53,7 +53,8 @@
   "DeepSeek models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
   ;; Both models answer an overflow with "This model's maximum context length is 1048576 tokens" (probed
-  ;; 2026-10-09, BOT-2158). DeepSeek's docs state "1M" (https://api-docs.deepseek.com/quick_start/pricing/).
+  ;; 2026-10-09, https://github.com/metabase/metabase/pull/83989). DeepSeek's docs state "1M"
+  ;; (https://api-docs.deepseek.com/quick_start/pricing/).
   {"deepseek-flash"  {:display-name "DeepSeek Flash"  :context-window 1048576}
    "deepseek-v4-pro" {:display-name "DeepSeek V4 Pro" :context-window 1048576}})
 

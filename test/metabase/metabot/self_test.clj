@@ -2646,7 +2646,7 @@
 
 (deftest context-overflow-error-test
   (testing "a 400 for a prompt that does not fit the window is a \"full\" error"
-    ;; Bodies probed 2026-10-09 (BOT-2158), unless a row names a doc.
+    ;; Bodies probed 2026-10-09 (https://github.com/metabase/metabase/pull/83989), unless a row names a doc.
     (are [provider body]
          (= "ai_provider_context_full"
             (:error-code (self/context-overflow-error (provider-api-error! provider 400 body))))

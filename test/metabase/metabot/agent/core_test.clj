@@ -1006,7 +1006,8 @@
                                         :context    {}}))))))
 
 (def ^:private openrouter-overflow-body
-  "OpenRouter's 400 body for a request over the window (probed 2026-10-09, BOT-2158)."
+  "OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+  https://github.com/metabase/metabase/pull/83989)."
   {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you requested about "
                           "200001 tokens (1 of text input, 200000 in the output).")
            :code     400

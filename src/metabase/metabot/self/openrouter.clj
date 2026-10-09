@@ -268,8 +268,8 @@
   divided by 4 and rounded up. For example, 700,000 characters of JSON give 175,000.
 
   OpenRouter's own admission check estimates tokens as characters ÷ 4 (probed in
-  https://linear.app/metabase/issue/BOT-1858), and it rejects a request whose prompt plus `max_tokens` exceeds the
-  context length (https://openrouter.ai/docs/api-reference/parameters)."
+  https://github.com/metabase/metabase/pull/82436), and it rejects a request whose prompt plus `max_tokens` exceeds
+  the context length (https://openrouter.ai/docs/api-reference/parameters)."
   [body]
   (quot (+ (count (json/encode (select-keys body [:messages :tools]))) 3)
         4))

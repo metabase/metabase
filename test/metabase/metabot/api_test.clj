@@ -147,7 +147,8 @@
                                        metabot.settings/llm-metabot-provider test-provider]
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (let [conversation-id (str (random-uuid))
-              ;; OpenRouter's 400 body for a request over the window (probed 2026-10-09, BOT-2158).
+              ;; OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+              ;; https://github.com/metabase/metabase/pull/83989).
               e               (ex-info "OpenRouter API error (HTTP 400)"
                                        {:api-error true
                                         :status    400

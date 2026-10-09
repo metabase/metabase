@@ -369,11 +369,12 @@
 (def ^:private context-overflow-message
   "The overflow 400 text of providers that send no structured code for it.
 
-  Probed 2026-10-09 (BOT-2158): OpenRouter \"This endpoint's maximum context length is 200000 tokens\", DeepSeek
-  \"This model's maximum context length is 1048576 tokens\", Mistral \"Prompt 1000015 > 262144 maximum context
-  length\", Moonshot \"exceeded model token limit: 262144\". Documented: Moonshot \"Input token length too long\" and
-  \"prompt tokens + max_tokens exceeds the model specification\" (https://platform.kimi.ai/docs/api/errors), Anthropic
-  \"prompt is too long\" (https://platform.claude.com/docs/en/build-with-claude/context-windows)."
+  Probed 2026-10-09 (https://github.com/metabase/metabase/pull/83989): OpenRouter \"This endpoint's maximum context
+  length is 200000 tokens\", DeepSeek \"This model's maximum context length is 1048576 tokens\", Mistral \"Prompt
+  1000015 > 262144 maximum context length\", Moonshot \"exceeded model token limit: 262144\". Documented: Moonshot
+  \"Input token length too long\" and \"prompt tokens + max_tokens exceeds the model specification\"
+  (https://platform.kimi.ai/docs/api/errors), Anthropic \"prompt is too long\"
+  (https://platform.claude.com/docs/en/build-with-claude/context-windows)."
   #"maximum context length|exceeded model token limit|token length too long|exceeds the model specification|prompt is too long")
 
 (defn- context-overflow?
