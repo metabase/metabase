@@ -28,23 +28,25 @@
 
 ;;; ------------------------------------------------ measuring ------------------------------------------------
 
-(defn- counting [counter real]
+(defn counting
+  "A spy for `real` that increments the atom `counter` on each call."
+  [counter real]
   (fn [& args] (swap! counter inc) (apply real args)))
 
-(defn- max-updated-at []
-  {:card      (t2/select-one-fn :m :model/Card {:select [[:%max.updated_at :m]]})
-   :dashboard (t2/select-one-fn :m :model/Dashboard {:select [[:%max.updated_at :m]]})})
+(defn max-updated-at
+  "{model latest `updated_at`} for each of `models`."
+  [models]
+  (into {} (for [m models]
+             [m (t2/select-one-fn :m m {:select [[:%max.updated_at :m]]})])))
 
-(defn- rewritten-since
-  "The cards and dashboards with an `updated_at` later than the values of [[max-updated-at]]. A nil value is an empty
-  table, so all of its rows count."
-  [{:keys [card dashboard]}]
-  (letfn [(newer [model latest]
-            (if latest
-              (t2/count model :updated_at [:> latest])
-              (t2/count model)))]
-    (+ (newer :model/Card card)
-       (newer :model/Dashboard dashboard))))
+(defn rewritten-since
+  "{model count} of the rows of each model of `before` (a [[max-updated-at]] result) whose `updated_at` is later than
+  the value there. A nil value is an empty table, so all of its rows count."
+  [before]
+  (into {} (for [[m latest] before]
+             [m (if latest
+                  (t2/count m :updated_at [:> latest])
+                  (t2/count m))])))
 
 (defn measure!
   "Run `thunk` and return its result under `:result`, with every JDBC-level count from
@@ -58,7 +60,7 @@
                            than the latest one before the thunk."
   [thunk]
   (let [inferences (atom 0)
-        before     (max-updated-at)]
+        before     (max-updated-at [:model/Card :model/Dashboard])]
     ;; so that an `updated_at` written during the thunk is strictly later than `before`
     (Thread/sleep 5)
     (mt/with-dynamic-fn-redefs [card.metadata/infer-metadata
@@ -66,7 +68,7 @@
       (let [counts (activity/count-db-activity! thunk)]
         (assoc counts
                :metadata-inferences @inferences
-               :rows-rewritten      (rewritten-since before))))))
+               :rows-rewritten      (reduce + (vals (rewritten-since before))))))))
 
 (def ^:private cost-keys
   (into activity/count-keys [:metadata-inferences :rows-rewritten]))
@@ -120,12 +122,15 @@
 ;;; ------------------------------------------------ scenarios ------------------------------------------------
 
 (defn forced-reload-of-unchanged!
-  "Load the content `shape` (the options of [[do-with-content!]]) once, then [[measure!]] a forced pull of the same
-  content. Asserts that the first load succeeds. Runs with the search index disabled."
-  [shape]
-  (search.tu/with-index-disabled
-    (do-with-content! shape
-                      (fn [tree]
-                        (let [src (rs.test/versioned-source :trees {"v0" tree} :current "v0")]
-                          (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "baseline load")
-                          (measure! #(rs.test/import-at! src "v0" :force? true)))))))
+  "Load the content `shape` (the options of [[do-with-content!]]) once, then call `run` (default [[measure!]]) with a
+  thunk that runs a forced pull of the same content, and return what `run` returns. Asserts that the first load
+  succeeds. Runs with the search index disabled."
+  ([shape]
+   (forced-reload-of-unchanged! shape measure!))
+  ([shape run]
+   (search.tu/with-index-disabled
+     (do-with-content! shape
+                       (fn [tree]
+                         (let [src (rs.test/versioned-source :trees {"v0" tree} :current "v0")]
+                           (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "baseline load")
+                           (run #(rs.test/import-at! src "v0" :force? true))))))))

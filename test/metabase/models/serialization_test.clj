@@ -408,3 +408,10 @@
     (is (= ["db" nil "orders" "customer" "tier"]
            (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
                                           {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))
+
+(deftest ^:parallel import-visualization-settings-drops-nil-column-settings-test
+  (testing "an exported `column_settings: null` imports as no column_settings key, which the app DB reads as {}"
+    (is (not (contains? (serdes/import-visualization-settings {:column_settings nil}) :column_settings)))
+    (is (= {} (serdes/import-visualization-settings {:column_settings nil}))))
+  (testing "a column_settings map is still imported"
+    (is (contains? (serdes/import-visualization-settings {:column_settings {}}) :column_settings))))
