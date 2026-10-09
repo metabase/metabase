@@ -1240,13 +1240,11 @@
                           uri-arg]]]))
 
   (batched-args [_ {:keys [uris]}]
+    ;; The reads run sequentially. Each URI resolves a different kind through a different presenter,
+    ;; so there is no shared query to issue up front — what they do share is the permission cache,
+    ;; which `tools/call` holds across the whole call. `pmap` over the fetches is worth measuring,
+    ;; but it needs the request bindings carried onto the threads.
     (mapv (fn [uri] {:uri uri}) uris))
-
-  (around-batch [_ _item-args _ctx run]
-    ;; Nothing to prewarm: each URI resolves a different kind through a different presenter, so
-    ;; there is no shared query to batch. The reads do run sequentially — `pmap` over them is worth
-    ;; measuring, but it needs the request bindings carried onto the threads.
-    (run))
 
   (compose [_ entries _ctx]
     ;; Every entry is wrapped here rather than in `handle`, which is what puts a failed URI inside

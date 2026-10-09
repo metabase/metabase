@@ -33,6 +33,7 @@
   follow one tool's behaviour without knowing which other shapes exist."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
@@ -197,16 +198,6 @@
 
     The inverse of what [[batched-declaration]] did to `:args`. The tool owns both, so the framework
     never has to guess how the plural shape maps onto the singular one.")
-  (around-batch [this item-args ctx run]
-    "Run the whole batched call, wrapped in whatever it needs. `(run)` performs it and returns the
-    composed result.
-
-    This is where batching in the database sense belongs. `metabase.metabot.metadata-perms/with-cache`
-    is a wrapper, so `(with-cache (run))` is the whole implementation; an eager prefetch reads
-    `item-args` first and then calls `(run)`. A failure here fails the whole call, which is the right
-    answer: five \"not found\"s thrown by a dead connection teach the agent the wrong thing.
-
-    The default is `(run)`. Clojure gives a protocol no way to supply one, so write it out.")
   (compose [this entries ctx]
     "The [[::result]] for the whole call, from one [[::entry]] per item in item order.
 
@@ -268,8 +259,8 @@
 
 (defn with-batched-entries
   "`f` applied to the entries of `tool`'s batched call — one [[::entry]] per item, in item order.
-  Returns whatever `f` returns. `around-batch` wraps both the item loading and `f`, so a tool that
-  prewarms a cache still holds it while `f` runs.
+  Returns whatever `f` returns, with the permission cache held across both the item loading and `f`
+  (see [[call]]).
 
   THE ONLY CALLER IS `metabase.agent-api.api`'s `POST /v1/read-resource`, and this function exists
   for it alone. That endpoint publishes a different contract from the agent loop's: one HTTP status
@@ -283,9 +274,9 @@
   that wants one result per call wants [[run-batched]], which is this with `compose` and the
   nothing-was-delivered check on top."
   [tool args ctx f]
-  (let [item-args (batched-args tool args)]
-    (around-batch tool item-args ctx
-                  (fn [] (f (mapv (fn [one] (entry tool one ctx)) item-args))))))
+  (metabot.perms/with-cache
+    (let [item-args (batched-args tool args)]
+      (f (mapv (fn [one] (entry tool one ctx)) item-args)))))
 
 (defn run-batched
   "Perform `tool`'s batched call and return one [[::result]].
@@ -330,11 +321,24 @@
   item's work; this is the function that performs a call.
 
   A consumer whose contract differs from `run-batched`'s — one that answers per item rather than per
-  call — uses [[with-batched-entries]] instead of this."
+  call — uses [[with-batched-entries]] instead of this.
+
+  Every call runs inside `metabase.metabot.metadata-perms/with-cache`, so the table rows and
+  per-table permission decisions a tool looks up are fetched once per call rather than once per
+  lookup. It is here rather than in each tool because no tool is worse off for it: a tool that never
+  reaches `metadata-perms` pays one dynamic binding and one empty atom, and `with-cache` nests, so
+  the six places inside tool code that already wrap their own work now reuse this one instead of
+  each opening a cache per item. That is what a batched tool gets out of it — five URIs through
+  `read_resource` used to re-fetch the same table and the same permission once per URI.
+
+  Nothing cached here is anything a tool mutates: table and field rows, and per-table `can-query?`,
+  view-data, sandbox and routing decisions, all keyed by the current user. A tool that creates a
+  card or an alert changes none of them."
   [tool args ctx]
-  (if (batched? tool)
-    (run-batched tool args ctx)
-    (handle tool args ctx)))
+  (metabot.perms/with-cache
+    (if (batched? tool)
+      (run-batched tool args ctx)
+      (handle tool args ctx))))
 
 ;;; ------------------------------------------------ Registration --------------------------------------------------
 

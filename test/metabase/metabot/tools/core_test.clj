@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.util.malli.registry :as mr]))
@@ -66,7 +67,6 @@
                          tools/BatchedTool
                          (batched-declaration [_ d] d)
                          (batched-args [_ _] [{:n "one"} {:n "two"}])
-                         (around-batch [_ _ _ run] (run))
                          (compose [_ es _] (tools/concatenated es)))
                        {} ctx)))))
 
@@ -152,7 +152,7 @@
   {:message  (str "Item " id " could not be loaded.")
    :recovery [{:uses #{"search"} :text "Call `search` for a loadable id."}]})
 
-(defrecord ItemTool [compose-fn around-fn]
+(defrecord ItemTool [compose-fn]
   tools/Tool
   (declaration [_]
     {:name "batched" :description "Loads one item."
@@ -166,10 +166,9 @@
         (assoc :description "Loads several items.")
         (assoc :args [:map {:closed true} [:ids [:sequential {:min 1 :max 3} :int]]])))
   (batched-args [_ {:keys [ids]}] (mapv (fn [id] {:id id}) ids))
-  (around-batch [_ item-args ctx run] ((or around-fn (fn [_ _ r] (r))) item-args ctx run))
   (compose [_ entries _ctx] ((or compose-fn tools/concatenated) entries)))
 
-(defn- item-tool [] (->ItemTool nil nil))
+(defn- item-tool [] (->ItemTool nil))
 
 (deftest ^:parallel the-single-form-is-a-real-tool-test
   (testing "take BatchedTool away and this still works; handle is the item loader"
@@ -211,20 +210,29 @@
            (str/split-lines
             (:output (tools/call (item-tool) {:ids [2 3]} (assoc ctx :tool-names #{}))))))))
 
-(deftest ^:parallel around-batch-wraps-the-whole-run-test
-  (let [log  (atom [])
-        tool (->ItemTool nil (fn [item-args _ctx run]
-                               (swap! log conj [:before (count item-args)])
-                               (let [result (run)]
-                                 (swap! log conj :after)
-                                 result)))]
-    (is (= {:output "item 2"} (tools/call tool {:ids [2]} ctx)))
-    (is (= [[:before 1] :after] @log)))
-  (testing "a failure in the wrapper fails the whole call"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"cache is cold"
-         (tools/call (->ItemTool nil (fn [_ _ _] (throw (ex-info "cache is cold" {}))))
-                     {:ids [2]} ctx)))))
+(deftest ^:parallel one-permission-cache-per-call-test
+  (testing "every call holds one `metadata-perms` cache, so a tool that looks the same table or the
+           same permission up for several items pays for it once. This replaced an `around-batch`
+           protocol method whose only implementation anywhere was `(run)`: the capability it existed
+           for is the cache, and the cache is the same for every tool, so the framework holds it."
+    (let [seen (atom [])
+          tool (->ItemTool (fn [entries]
+                             (swap! seen conj metabot.perms/*cache*)
+                             (tools/concatenated entries)))]
+      (is (nil? metabot.perms/*cache*) "no cache outside a call")
+      (is (= {:output "item 2\nitem 4"} (tools/call tool {:ids [2 4]} ctx)))
+      (is (= 1 (count @seen)))
+      (is (some? (first @seen)) "a call binds one")
+      (is (nil? metabot.perms/*cache*) "and unbinds it on the way out")))
+  (testing "and a tool's own `with-cache` nests into it rather than opening a second one, which is
+           what makes this free for the six places inside tool code that already wrap their work"
+    (let [inner (atom nil)
+          tool  (->ItemTool (fn [entries]
+                              (metabot.perms/with-cache
+                                (reset! inner metabot.perms/*cache*))
+                              (tools/concatenated entries)))]
+      (tools/call tool {:ids [2]} ctx)
+      (is (some? @inner)))))
 
 (deftest ^:parallel only-declared-recoverables-are-captured-test
   (testing "an undeclared exception ends the turn and discards the items that loaded"
@@ -239,7 +247,6 @@
                        tools/BatchedTool
                        (batched-declaration [_ d] d)
                        (batched-args [_ {:keys [ids]}] (mapv (fn [i] {:id i}) ids))
-                       (around-batch [_ _ _ run] (run))
                        (compose [_ es _] (tools/concatenated es)))
                      {:ids [1 2]} ctx)))))
 
@@ -254,7 +261,6 @@
                        tools/BatchedTool
                        (batched-declaration [_ d] d)
                        (batched-args [_ _] [{:id 1}])
-                       (around-batch [_ _ _ run] (run))
                        (compose [_ es _] (tools/concatenated es)))
                      {} ctx)))))
 
@@ -278,8 +284,7 @@
                                      (let [{ok false failed true} (group-by :failed? entries)]
                                        {:output (str "ok: " (str/join ", " (map :output ok))
                                                      " | failed: "
-                                                     (str/join ", " (map (comp :id :item) failed)))}))
-                                   nil)
+                                                     (str/join ", " (map (comp :id :item) failed)))})))
                        {:ids [2 3]} ctx)))))
 
 ;;; ------------------------------------------------ with-entity ---------------------------------------------------
