@@ -29,7 +29,8 @@
 (def ^:private message-delay-ms
   "The time a message waits before coming off the queue.
   Updates made in a transaction are queued when it commits, see [[ingest-maybe-async!]].
-  The delay covers writes in a transaction that `mdb/do-after-commit` cannot see, such as one opened with raw JDBC."
+  The delay is a head start for a write in a transaction `mdb/do-after-commit` cannot see, such as a raw JDBC one.
+  Such a write is still missed if its transaction stays open longer than the delay."
   100)
 
 (def ^:private listener-name
