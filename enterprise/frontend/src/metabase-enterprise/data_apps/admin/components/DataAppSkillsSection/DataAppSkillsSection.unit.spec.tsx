@@ -1,19 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockVersion } from "metabase-types/api/mocks";
 
 import { DataAppSkillsSection } from "./DataAppSkillsSection";
 
-const setup = (tag?: string) => {
-  renderWithProviders(<DataAppSkillsSection />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState({
-        version: createMockVersion({ tag }),
-      }),
-    }),
-  });
+const setup = () => {
+  renderWithProviders(<DataAppSkillsSection />);
 };
 
 const copyCommand = async () => {
@@ -35,55 +27,37 @@ const DATA_APP_SKILLS = [
 ];
 
 describe("DataAppSkillsSection", () => {
-  it("shows the command in a copy field, split across lines with shell continuations", async () => {
-    setup("v0.64.0");
+  it("shows the command in a copy field, one install per line joined with shell continuations", async () => {
+    setup();
 
     const command = await copyCommand();
 
     // The command is shown in a copy field (textarea) exactly as it is copied.
     expect(screen.getByRole("textbox")).toHaveValue(command);
 
-    // Each --skill sits on its own line, joined by ` \` line-continuations, so
-    // the pasted command is still one runnable invocation.
-    expect(command).toContain(
-      "npx skills add metabase/agent-skills/skills/data-apps/",
-    );
-    expect(command).toContain(" \\\n--skill metabase-data-app-setup");
+    // Each install sits on its own line, joined by ` && \` so the pasted
+    // command still runs every install.
+    const lines = command.split(" && \\\n");
+    expect(lines).toHaveLength(DATA_APP_SKILLS.length + 1);
+    lines.forEach((line) => expect(line).toMatch(/^npx skills add \S+/));
   });
 
   it.each(DATA_APP_SKILLS)(
-    "includes the %s skill in the copied command",
+    "installs the %s skill from its v1 folder",
     async (skill) => {
-      setup("v0.64.0");
+      setup();
 
-      expect(await copyCommand()).toContain(`--skill ${skill}`);
+      expect(await copyCommand()).toContain(
+        `npx skills add metabase/agent-skills/skills/${skill}/v1 \\\n  --skill ${skill}`,
+      );
     },
   );
 
   it("also installs the skill for writing Metabase YAML, in the same copied command", async () => {
-    setup("v0.64.0");
+    setup();
 
     expect(await copyCommand()).toContain(
-      " && \\\nnpx skills add metabase/agent-skills/skills --skill metabase-representation-format",
+      " && \\\nnpx skills add metabase/agent-skills/skills \\\n  --skill metabase-representation-format",
     );
   });
-
-  // Release builds install from their `data-apps/<major>` folder; local,
-  // snapshot, and unknown builds fall back to `data-apps/master`.
-  it.each<[tag: string | undefined, folder: string]>([
-    ["v0.65.0", "65"],
-    ["v1.65.2", "65"],
-    ["vLOCAL_DEV", "master"],
-    ["v0.53.0-SNAPSHOT", "master"],
-    [undefined, "master"],
-  ])(
-    "installs the skills for version '%s' from data-apps/%s",
-    async (tag, folder) => {
-      setup(tag);
-
-      expect(await copyCommand()).toContain(
-        `npx skills add metabase/agent-skills/skills/data-apps/${folder} \\\n`,
-      );
-    },
-  );
 });
