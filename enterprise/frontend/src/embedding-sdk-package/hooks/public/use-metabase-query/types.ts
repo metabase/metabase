@@ -320,8 +320,8 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? { unit?: never; binning?: BinningOptions } & BinningOptionsInput
-  : { unit?: TemporalUnit; binning?: BinningOptions } & BinningOptionsInput;
+  ? { unit?: never; binning?: BinningOptions }
+  : { unit?: TemporalUnit; binning?: BinningOptions };
 
 export type MetabaseBreakoutObjectForDimension<TDimension> =
   | ([DateBucketDimension<TDimension>] extends [never]
@@ -329,12 +329,12 @@ export type MetabaseBreakoutObjectForDimension<TDimension> =
       : DateBucketDimension<TDimension> & {
           unit?: TemporalUnit;
           binning?: BinningOptions;
-        } & BinningOptionsInput)
+        })
   | ([NonDateBucketDimension<TDimension>] extends [never]
       ? never
       : NonDateBucketDimension<TDimension> & {
           binning?: BinningOptions;
-        } & BinningOptionsInput);
+        });
 
 type BreakoutForDimension<TDimension> =
   | TDimension
@@ -366,14 +366,24 @@ type AggregationResultOrderBy = {
   direction?: OrderByDirection;
 };
 
-type BinningOptionsInput =
-  | { bins?: number | "auto"; binWidth?: never }
-  | { binWidth?: number | "auto"; bins?: never };
+export type DefaultBinningOptions = {
+  strategy: "default";
+};
+
+export type NumBinsBinningOptions = {
+  strategy: "num-bins";
+  numBins: number;
+};
+
+export type BinWidthBinningOptions = {
+  strategy: "bin-width";
+  binWidth: number;
+};
 
 export type BinningOptions =
-  | { strategy: "default" }
-  | { strategy: "num-bins"; "num-bins": number }
-  | { strategy: "bin-width"; "bin-width": number };
+  | DefaultBinningOptions
+  | NumBinsBinningOptions
+  | BinWidthBinningOptions;
 
 /**
  * The clauses one query stage accepts. A table stage scopes them to its fields,
@@ -402,7 +412,14 @@ type StageClauses<TDimension, TAggregation, TFilter> = {
 type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
-  savedQuestionSourceId?: number;
+  /**
+   * The entity ID of this query's saved question in the app's collection,
+   * under the repository's `collections/data_apps/`. A production build runs
+   * that card instead of the table: it sits in the app's collection, which the
+   * app's viewers can read, and a table source isn't. The dev preview ignores
+   * it and runs the table source.
+   */
+  savedQuestionEntityId?: string;
 } & StageClauses<
   FieldReference<TTable>,
   AnyAggregation<TTable>,

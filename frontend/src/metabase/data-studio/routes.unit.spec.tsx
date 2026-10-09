@@ -9,16 +9,20 @@ import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { DataStudioIndexRedirect, getDataStudioRoutes } from "./routes";
+import {
+  DataStudioIndexRedirect,
+  getDataStudioLibraryRedirects,
+  getDataStudioRoutes,
+} from "./routes";
 
 const Guard = () => null;
 describe("data-studio routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getDataStudioRoutes(Guard));
 
-    // Includes the transform, data model, glossary and settings routes, which
-    // this tree nests.
-    expect(loaders).toHaveLength(39);
+    // Includes the transform, data model, glossary, settings, snippet and action
+    // routes, which this tree nests.
+    expect(loaders).toHaveLength(52);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
@@ -128,5 +132,23 @@ describe("Data Studio index redirect", () => {
 
     expect(await screen.findByTestId("transforms-index")).toBeInTheDocument();
     expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
+  });
+});
+
+describe("Data Studio library redirects", () => {
+  it.each([
+    ["/data-studio/library/snippets/5", "/data-studio/snippets/5"],
+    ["/data-studio/library/actions/7/run", "/data-studio/actions/7/run"],
+  ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
+    const { router } = renderWithProviders(
+      <Route path="/">
+        {getDataStudioLibraryRedirects()}
+        <Route path="*" element={<div data-testid="target" />} />
+      </Route>,
+      { withRouter: true, initialRoute },
+    );
+
+    expect(await screen.findByTestId("target")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(expectedPathname);
   });
 });

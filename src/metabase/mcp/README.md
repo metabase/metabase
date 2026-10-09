@@ -55,7 +55,7 @@ Access tokens are scoped to limit what tools a client can use:
 | Scope | Tools it grants |
 | ----- | --------------- |
 | `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
-| `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write`, `transform_write` |
+| `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
@@ -87,27 +87,29 @@ OAuth protected resource metadata is available at:
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-On the consent screen, the baseline scopes are ticked and locked, and every other scope the client requested starts
-unticked. Only the scopes the user ticks are granted, and only for the token this authorization mints: an untick never
-touches a token the app already has. A scope left unticked is not remembered by Metabase. A later 403 can trigger
-another step-up in clients that support it. Other clients may require manual reauthorization. Each challenge's
-`error_description` ends with a note that the user must tick the permission on the consent screen.
+On the consent screen, every scope the client requested starts ticked, and the baseline scopes are also locked. Only
+the scopes left ticked are granted, and only for the token this authorization mints. An untick never touches a token
+the app already has. A scope left unticked is not remembered by Metabase. A later 403 can trigger another step-up in
+clients that support it. Other clients may require manual reauthorization. Each challenge's `error_description` ends
+with a note that the user must grant the permission on the consent screen.
 
-Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
-`instructions` explain scope failures to the model too: an auth error usually means a missing permission rather than an
-expired login, the model should name the failed tool or resource and the permission it requires, and the user grants it
-by reconnecting and ticking permissions on the consent screen. Because every optional permission starts unticked, the
-instructions tell the model to have the user tick every permission they want, not only the new one. The instructions
-are one static string, the same for every caller: there is no per-connection permission list.
+Several clients replace the 403's `error_description` with their own text, so the `initialize` result's `instructions`
+explain scope failures to the model too: an auth error usually means a missing permission rather than an expired
+login, the model should name the failed tool or resource and the permission it requires, and the user grants it by
+reconnecting and leaving the permission ticked on the consent screen. The instructions are one static string, the same
+for every caller: there is no per-connection permission list.
+
+### Per-group tool access
+
+On Enterprise instances with the `ai_controls` feature, an admin can narrow the surface per permissions group on Admin > AI > Usage controls > MCP tools access (shown whenever the MCP server is on, with or without an LLM provider). Each group has a row in `mcp_group_permission` saying whether its members may connect at all and, per tool name, the admin's explicit `"yes"` or `"no"`; a tool with no entry takes the default its author declared, so every `deftool` carries a required `:default-access` of `:allowed` or `:denied` and a tool released later gets exactly that default in every group until an admin overrides it. Entries are keyed by tool name, so renaming a tool needs `:renamed-from` with its former names (a stored entry under a former name still applies and the admin API presents it under the current name), or the author accepts that every admin's choice for it is discarded; `metabase.mcp.v2.tool-names-test` pins the live names so neither happens by accident. A user's effective policy is the `tool_access` of each group of theirs whose row enables MCP: MCP is on when any such group exists, and a tool is allowed when any of those groups resolves it to yes. The rows alone decide it, and they also record the permission mode: simple mode (Administrators, All Users, and All tenant users) or group-level mode (every other group), which is the state in which All Users has no row. A switch deletes the rows of the groups the new mode hides and seeds the groups it enables on entry that have no row (Data Analysts on entering group-level mode, All Users and All tenant users on leaving it), and `PUT` refuses a group the current mode hides, so no request reads a cached mode. The policy is applied on top of OAuth scopes in `tools/list` and `tools/call` (`v2/registry.clj`), and a user whose groups grant no access is refused at `initialize` and at `resources/read` (for sessions opened before MCP was turned off) with an error naming the fix. App-only tools (`_meta {:ui {:visibility ["app"]}}`, i.e. `refresh_ui_credential`) are not on the admin page: they are allowed while the policy allows any MCP Apps tool. Superusers and internal callers are never narrowed; OSS allows everything. On Enterprise the stored rows are enforced even without the `ai_controls` feature (an expired or unverifiable token keeps the restrictions an admin configured); the feature only gates the admin page and API. The resolver is `permissions.clj` (`defenterprise`, EE implementation in `metabase-enterprise.mcp.permissions`) and the admin API is `/api/ee/ai-controls/mcp-permissions`.
 
 ## Available tools
 
 Generated from the v2 registry (`deftool`). The scope named here is what the registry checks before the tool
 runs; some handlers check a further scope once they know what the call does - `agent:sql:run` when a source
-resolves to native SQL (`question_write`, `transform_write`), and `agent:query:run` for the execution an
-alert or subscription defers (`alert_write`, `subscription_write`). Those refusals carry the same 403
-`insufficient_scope` challenge. `tools/list` shows every tool whatever the token holds, and a token missing
-the scope may not call it.
+resolves to native SQL (`question_write`), and `agent:query:run` for the execution an alert or subscription defers
+(`alert_write`, `subscription_write`). Those refusals carry the same 403 `insufficient_scope` challenge. `tools/list`
+shows every tool whatever the token holds, and a token missing the scope may not call it.
 
 | Tool | Scope | Description |
 | ---- | ----- | ----------- |
@@ -134,7 +136,6 @@ the scope may not call it.
 | `search` | `agent:content:read` | Find content across the Metabase instance by relevance. |
 | `segment_write` | `agent:content:write` | Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries' filters. |
 | `subscription_write` | `agent:delivery:write` | Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. |
-| `transform_write` | `agent:content:write` | Create or update a transform: a saved query that Metabase runs to materialize its results into a real table in your warehouse, which questions and other transforms can then query. |
 | `visualize_query` | `agent:query:run` | Visualize a query as an interactive chart or table, rendered inline in the conversation. |
 
 `execute_query` returns `row_limit` rows per call (default 100, max 2000) — a page size, not a bound on the result.

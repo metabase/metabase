@@ -24,18 +24,18 @@ export const getResourceSelectorButton = (
   options?: Partial<Cypress.Timeoutable>,
 ) => cy.findByTestId("embed-browse-entity-button", options);
 
+// "New embed" is a button in the embedding hub's nav.
+export const clickNewEmbedButton = () =>
+  cy.findByRole("button", { name: "New embed" }).click();
+
 export const visitNewEmbedPage = (
   { waitForResource } = { waitForResource: true },
 ) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
-  cy.visit("/admin/embedding");
+  cy.visit("/embedding/security");
 
-  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
-    .first()
-    .within(() => {
-      cy.findByText("New embed").click();
-    });
+  clickNewEmbedButton();
 
   cy.get("body").then(() => {
     if (waitForResource) {

@@ -50,6 +50,7 @@
     "enterprise/frontend/src/metabase-enterprise/auth/index.ts": "global",
     "enterprise/frontend/src/metabase-enterprise/clean_up/CleanupCollectionModal/utils.ts": "self",
     "enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx": "self",
+    "enterprise/frontend/src/metabase-enterprise/data-studio/library/pages/LibraryPage/CreateLibraryDashboardModal/CreateLibraryDashboardModal.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/app-data-app.tsx": "entry",
     "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/iframe-vendors.ts": "entry",
     "enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx": "self",

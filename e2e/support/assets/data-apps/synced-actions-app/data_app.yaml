@@ -1,3 +1,10 @@
-name: Synced Actions App
 version: 1
+name: Synced Actions App
+slug: synced-actions-app
 path: ./dist/index.js
+collection: syncedActionsAppColl1
+entity_id: syncedActionsAppEnt01
+serdes/meta:
+- model: DataApp
+  id: syncedActionsAppEnt01
+  label: synced-actions-app

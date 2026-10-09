@@ -5,7 +5,8 @@
    [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :as i18n :refer [tru]]))
+   [metabase.test.util :as tu]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -73,12 +74,21 @@
       (is (= nil
              (system.settings/site-url))))))
 
+(setting/defsetting test-nested-i18n-setting
+  "Public setting whose value nests a deferred-tru, the way driver connection properties do."
+  :encryption :no
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] {:display-name (deferred-tru "Host")})
+  :doc        false)
+
 (deftest translate-public-setting
-  (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
-    (mt/with-user-locale "zz"
-      (is (= "HOST"
-             (str (get-in (setting/user-readable-values-map #{:public})
-                          [:engines :postgres :details-fields 0 :fields 0 :display-name])))))))
+  (testing "a deferred-tru nested inside a public setting's value is realized in the user's locale"
+    (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
+      (mt/with-user-locale "zz"
+        (is (= "HOST"
+               (str (get-in (setting/user-readable-values-map #{:public})
+                            [:test-nested-i18n-setting :display-name]))))))))
 
 (deftest tru-translates
   (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
@@ -126,3 +136,47 @@
 (deftest site-locale-only-return-valid-locales-test
   (mt/with-temporary-raw-setting-values [site-locale "wow_this_in_not_a_locale"]
     (is (nil? (system.settings/site-locale)))))
+
+(def ^:private allowlist-settings
+  [[:readable-paths system.settings/readable-paths :mb-readable-paths]
+   [:writable-paths system.settings/writable-paths :mb-writable-paths]])
+
+(deftest allowed-paths-default-test
+  (doseq [[setting-name getter env-var] allowlist-settings]
+    (testing setting-name
+      (tu/do-with-temp-env-var-value!
+       env-var nil
+       (fn []
+         (testing "self-hosted, with nothing configured, every path is allowed"
+           (mt/with-premium-features #{}
+             (is (= ["/"] (getter)))))
+         (testing "hosted, with nothing configured, only /tmp is allowed"
+           (mt/with-premium-features #{:hosting}
+             (is (= ["/tmp"] (getter))))))))))
+
+(deftest allowed-paths-from-env-test
+  (doseq [[setting-name getter env-var] allowlist-settings
+          hosting                       [#{} #{:hosting}]]
+    (testing (str setting-name " with features " hosting)
+      (mt/with-premium-features hosting
+        (testing "the environment wins over the default, even when hosted"
+          (tu/do-with-temp-env-var-value! env-var "/a, /b/c ,,"
+                                          #(is (= ["/a" "/b/c"] (getter)))))
+        (testing "NONE allows no path"
+          (tu/do-with-temp-env-var-value! env-var "NONE"
+                                          #(is (= [] (getter)))))))))
+
+(deftest allowed-paths-are-environment-only-test
+  (testing "the allowlists are read from the environment only: a value that reached the setting table is ignored"
+    (mt/with-premium-features #{:hosting}
+      (mt/with-temp-env-var-value! [mb-readable-paths nil
+                                    mb-writable-paths nil]
+        (mt/with-temporary-raw-setting-values [readable-paths "/"
+                                               writable-paths "/"]
+          (is (= ["/tmp"] (system.settings/readable-paths)))
+          (is (= ["/tmp"] (system.settings/writable-paths)))))))
+  (testing "nothing can write them: they are read-only Settings"
+    (is (thrown-with-msg? UnsupportedOperationException #"read-only setting"
+                          (setting/set! :readable-paths "/")))
+    (is (thrown-with-msg? UnsupportedOperationException #"read-only setting"
+                          (setting/set! :writable-paths "/")))))

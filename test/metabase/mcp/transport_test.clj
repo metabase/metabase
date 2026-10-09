@@ -88,21 +88,53 @@
       (testing "the keepalive written before the cancellation still reached the client"
         (is (= ": keepalive\n\n" (str sink)))))))
 
+(defn- scripted-hash-fn!
+  "A tools hash fn whose `n`th read returns the `n`th of `reads`, throwing for `::fail`, and offering a cancellation on
+  `canceled` from the third read so the loop ends after a known number of ticks."
+  [canceled reads]
+  (let [calls (atom 0)]
+    (fn []
+      (let [call (swap! calls inc)
+            read (nth reads (dec call))]
+        (when (>= call 3)
+          (a/offer! canceled ::request-canceled))
+        (if (= ::fail read)
+          (throw (ex-info "app database unavailable" {}))
+          read)))))
+
+(defn- run-scripted-keepalive-loop!
+  "Run the keepalive loop over [[scripted-hash-fn!]] `reads`, returning what it wrote, after checking it returned
+  after three ticks."
+  [reads]
+  (let [canceled (a/promise-chan)
+        sink     (StringWriter.)]
+    (is (= :returned (run-keepalive-loop! sink (scripted-hash-fn! canceled reads) canceled 1)))
+    (is (= 3 (count (re-seq #": keepalive" (str sink)))))
+    (str sink)))
+
+(defn- list-changed-count
+  [output]
+  (count (re-seq #"notifications/tools/list_changed" output)))
+
 (deftest keepalive-loop-emits-tools-list-changed-on-hash-change-test
   (testing "a change in the visible tool set between ticks emits notifications/tools/list_changed exactly once"
-    (let [canceled (a/promise-chan)
-          sink     (StringWriter.)
-          calls    (atom 0)
-          hash-fn  (fn []
-                     (let [n (swap! calls inc)]
-                       ;; cancel on the third read so the loop terminates after a known number of ticks
-                       (when (>= n 3)
-                         (a/offer! canceled ::request-canceled))
-                       (if (= n 1) "hash-1" "hash-2")))]
-      (is (= :returned (run-keepalive-loop! sink hash-fn canceled 1)))
-      (let [output (str sink)]
-        (is (= 3 (count (re-seq #": keepalive" output))))
-        (is (= 1 (count (re-seq #"notifications/tools/list_changed" output))))))))
+    (is (= 1 (list-changed-count (run-scripted-keepalive-loop! ["hash-1" "hash-2" "hash-2"]))))))
+
+(deftest keepalive-loop-survives-a-failing-tools-hash-test
+  (testing "a tick whose tools hash throws keeps the previous hash, so the stream stays open and nothing is announced"
+    (is (zero? (list-changed-count (run-scripted-keepalive-loop! ["hash-1" ::fail "hash-1"])))))
+  (testing "a failing first read doesn't end the stream, and the first hash read after it seeds the hash rather than
+            announcing a change"
+    (is (zero? (list-changed-count (run-scripted-keepalive-loop! [::fail "hash-1" "hash-1"])))))
+  (testing "a change after that seeding read is still announced"
+    (is (= 1 (list-changed-count (run-scripted-keepalive-loop! [::fail "hash-1" "hash-2"]))))))
+
+(deftest keepalive-loop-warns-once-for-a-sustained-tools-hash-failure-test
+  (testing "a tools hash that keeps failing warns on the first failure and logs the rest at debug"
+    (mt/with-log-messages-for-level [messages [metabase.mcp.transport :debug]]
+      (run-scripted-keepalive-loop! [::fail ::fail ::fail])
+      (is (= [:warn :debug :debug]
+             (map :level (filter #(re-find #"hash the MCP tool list" (str (:message %))) (messages))))))))
 
 (defn- keepalive-counts []
   @@#'mcp.transport/keepalive-stream-counts)
@@ -438,7 +470,7 @@
   (testing (str "with no instance origin to check against — site-url unset or unparsable — the guard falls back "
                 "to the Origin/Host comparison. Weaker, but a misconfigured instance degrading to the previous "
                 "behaviour beats 403ing its own browser clients.")
-    (with-redefs [system/site-url (constantly nil)]
+    (mt/with-dynamic-fn-redefs [system/site-url (constantly nil)]
       (testing "same host and port is served"
         (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
                                          {"host" "localhost:3000" "origin" "http://localhost:3000"})))))

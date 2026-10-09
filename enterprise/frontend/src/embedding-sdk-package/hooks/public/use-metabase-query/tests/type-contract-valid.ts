@@ -1,9 +1,3 @@
-/* eslint-disable import/order */
-
-import { TEST_SCHEMA } from "./fixtures";
-
-import type { RowValue } from "../../data-schema";
-
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { UseMetabaseQueryObjectResult } from "..";
@@ -16,31 +10,36 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
-import { useAction, useDataAppAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
+import type { RowValue } from "../../data-schema";
+import { useAction, useDataAppAction } from "../../use-action";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
 const revenueQuery = defineQuery({
-  savedQuestionSourceId: 54,
+  savedQuestionEntityId: "revenueQuestionEntity",
   source: TEST_SCHEMA.tables.orders,
   limit: 10,
 });
 
-const _savedQuestionSourceId: 54 = revenueQuery.savedQuestionSourceId;
+const _savedQuestionEntityId: "revenueQuestionEntity" =
+  revenueQuery.savedQuestionEntityId;
 const _queryLimit: 10 = revenueQuery.limit;
 
 const CreateOrder = defineAction({
-  copiedActionId: 91,
-  action: TEST_SCHEMA.models.orders.actions.create,
+  copiedActionEntityId: "createOrderCopyEntity",
+  action: TEST_SCHEMA.actions.createOrder,
 });
 
-const _copiedActionId: 91 = CreateOrder.copiedActionId;
+const _copiedActionEntityId: "createOrderCopyEntity" =
+  CreateOrder.copiedActionEntityId;
 const _sourceActionId: 51 = CreateOrder.action.id;
 
-// A definition is authored without a generated ID; synchronization writes one.
+// A definition is valid before its copy is written.
 const UpdateOrder = defineAction({
-  action: TEST_SCHEMA.models.orders.actions.update,
+  action: TEST_SCHEMA.actions.updateOrder,
 });
 
 // --------
@@ -73,10 +72,10 @@ function ValidTypeFixtures() {
 
   void createOrder.execute({ status: "shipped" });
 
-  const createdRow: RowValue | undefined =
-    createOrder.result?.["created-row"].ID;
+  const createdCount: number | undefined =
+    createOrder.result?.["rows-affected"];
 
-  void createdRow;
+  void createdCount;
 
   const updateOrder = useDataAppAction(UpdateOrder);
 
@@ -84,16 +83,16 @@ function ValidTypeFixtures() {
 
   // The SDK hook takes a plain definition object, and a `defineAction` export too.
   const sdkCreateOrder = useAction({
-    action: TEST_SCHEMA.models.orders.actions.create,
+    action: TEST_SCHEMA.actions.createOrder,
   });
 
   void sdkCreateOrder.execute({ status: "shipped" });
   void useAction(CreateOrder).execute({ status: "shipped" });
 
-  const updatedRows: readonly RowValue[] | undefined =
-    updateOrder.result?.["rows-updated"];
+  const updatedCount: number | undefined =
+    updateOrder.result?.["rows-affected"];
 
-  void updatedRows;
+  void updatedCount;
 
   // A raw id types nothing, so the generics still stand in for a definition.
   const rawAction = useAction<{ status: string }, "create">(51);
@@ -194,7 +193,7 @@ function ValidTypeFixtures() {
   // A static query published as a card, with dynamic clauses layered on top.
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionSourceId: 41,
+    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
   const dynamicResult = useMetabaseQuery(staticQuery, {

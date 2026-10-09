@@ -6,13 +6,8 @@ job_tags:
 - entity_id: CL1TVitmzJrDjdjvO2xmN
   position: 0
   tag_id: DeeJHc81qKhD9qWINISO8
-  serdes/meta:
-  - id: CL1TVitmzJrDjdjvO2xmN
-    model: TransformJobTransformTag
 name: Monthly job
 schedule: 0 0 0 1 * ? *
 ui_display_type: cron/builder
 serdes/meta:
-- id: CL1TVitmzJrDjdjvO2xmN
-  label: monthly_job
-  model: TransformJob
+- model: TransformJob

@@ -34,6 +34,11 @@ import { ProviderTypePicker } from "./ProviderTypePicker";
 import { findProviderTypeForApiKey } from "./api-key";
 import { getHiddenFieldKeys, isVisibleField } from "./visible-fields";
 
+const OLLAMA_TYPE = "ollama";
+const BASE_URL_FIELD = "base-url";
+// Ollama Cloud is reached like any other Ollama server, at its own address.
+const OLLAMA_CLOUD_BASE_URL = "https://ollama.com/v1";
+
 export function ProviderConnectionForm({
   providerTypes,
   connection,
@@ -46,8 +51,8 @@ export function ProviderConnectionForm({
   onCancel?: () => void;
 }) {
   const isEditing = connection != null;
-  const [typeName, setTypeName] = useState<string | undefined>(
-    connection?.type,
+  const [providerType, setProviderType] = useState(() =>
+    providerTypes.find((option) => option.type === connection?.type),
   );
   const [name, setName] = useState(connection?.name ?? "");
   const [config, setConfig] = useState<LlmProviderConfig>(
@@ -83,11 +88,6 @@ export function ProviderConnectionForm({
   const [updateProvider, updateResult] = useUpdateLlmProviderMutation();
   const isSaving = createResult.isLoading || updateResult.isLoading;
 
-  const providerType = useMemo(
-    () => providerTypes.find((option) => option.type === typeName),
-    [providerTypes, typeName],
-  );
-
   const [primaryFields, advancedFields] = useMemo(() => {
     const fields = providerType?.fields ?? [];
     return [
@@ -102,7 +102,7 @@ export function ProviderConnectionForm({
 
   const selectProviderType = useCallback(
     (selected: LlmProviderType, nextConfig: LlmProviderConfig = {}) => {
-      setTypeName(selected.type);
+      setProviderType(selected);
       setName(selected.label);
       setConfig(nextConfig);
       setModel(selected.default_model ?? undefined);
@@ -140,7 +140,7 @@ export function ProviderConnectionForm({
   }, [isPickingType, providerTypes, selectProviderType]);
 
   const handleBack = () => {
-    setTypeName(undefined);
+    setProviderType(undefined);
     setName("");
     setConfig({});
     setModel(undefined);
@@ -252,6 +252,24 @@ export function ProviderConnectionForm({
                 disabledFields={connection?.env_fields}
                 autoFocusFirstField
               />
+              {selected.type === OLLAMA_TYPE &&
+                !connection?.env_fields.includes(BASE_URL_FIELD) && (
+                  <Group>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      onClick={() =>
+                        setConfig((current) => ({
+                          ...current,
+                          [BASE_URL_FIELD]: OLLAMA_CLOUD_BASE_URL,
+                        }))
+                      }
+                      disabled={isSaving}
+                    >
+                      {t`Use Ollama Cloud`}
+                    </Button>
+                  </Group>
+                )}
               {selected.models.length > 0 && !hasConfiguredModel && (
                 <Select
                   label={t`Model`}

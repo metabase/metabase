@@ -139,7 +139,7 @@
   `(do-with-new-secret-key! (fn ~binding ~@body)))
 
 (defmacro with-static-embedding! ^{:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-modular true]
      ~@body))
 
 (defn- embedded-dictionary-url [token]

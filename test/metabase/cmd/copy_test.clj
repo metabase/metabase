@@ -82,17 +82,20 @@
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
+    :model/ApiKeyUsageLog
     :model/CacheConfig
     :model/CardFavorite
     :model/CloudMigration
     :model/ContentTranslation
     :model/DashboardFavorite
     :model/DataApp
+    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/ExplorationQueryResult
+    :model/McpGroupPermission
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog

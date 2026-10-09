@@ -326,6 +326,66 @@ describe("dashboard client-side sorting", () => {
 });
 
 describe("text_wrapping", () => {
+  describe("line breaks in cells (#6178, #64697)", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
+
+    const wrappedColumn = createMockCategoryColumn({
+      name: "wrapped",
+      display_name: "wrapped",
+    });
+    const unwrappedColumn = createMockCategoryColumn({
+      name: "unwrapped",
+      display_name: "unwrapped",
+    });
+
+    it.each([
+      ["\\n", "\n"],
+      ["\\r\\n", "\r\n"],
+      ["\\r", "\r"],
+      ["\\u0085", "\u0085"],
+      ["\\u2028", " "],
+      ["\\u2029", " "],
+    ])(
+      "should render %s as a line break when wrapped and a space when not",
+      (_name, lineBreak) => {
+        const value = `line1${lineBreak}line2`;
+        const series = [
+          createMockSingleSeries(
+            {
+              display: "table",
+              visualization_settings: {
+                column_settings: {
+                  [getColumnKey(wrappedColumn)]: { text_wrapping: true },
+                },
+              },
+            },
+            {
+              data: {
+                cols: [wrappedColumn, unwrappedColumn],
+                rows: [[value, value]],
+              },
+            },
+          ),
+        ];
+
+        renderWithProviders(
+          <Visualization rawSeries={series} width={600} height={400} />,
+        );
+
+        const [_rowIdCell, wrappedCell, unwrappedCell] =
+          screen.getAllByRole("gridcell");
+        expect(wrappedCell).toHaveTextContent("line1\nline2", {
+          normalizeWhitespace: false,
+        });
+        expect(unwrappedCell).toHaveTextContent("line1 line2", {
+          normalizeWhitespace: false,
+        });
+      },
+    );
+  });
+
   describe("in columnSettings", () => {
     function assertDefined<T>(
       value: T | undefined | null,

@@ -1,5 +1,5 @@
 # Catch-all filter — emits the full changed-files list as `all_changed_files`
-# so create-test-plan in run-tests.yml can reuse dorny's diff.
+# for the create-test-plan action.
 all_changed:
   - "**"
 
@@ -23,6 +23,8 @@ shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/run-tests.yml"
+  # Every suite's gate calls it, so a change here can turn any suite off.
+  - ".github/workflows/test.gate.yml"
 
 shared_e2e: &shared_e2e
   - "e2e/runner/**"
@@ -39,6 +41,8 @@ frontend_configs: &frontend_configs
   - "package.json"
   - "babel.config.json"
   - "eslint.config.mjs"
+  - "oxlint.config.mts"
+  - ".oxfmtrc.json"
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"
@@ -75,6 +79,7 @@ frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
+  - "frontend/lint/**/!(*.md)"
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
@@ -152,7 +157,7 @@ backend_sources: &backend_sources
   # Ratchet files drive project_ratchet_checks alone, so automation PRs that lower budgets
   # run the Project tests job by themselves. Patterns are OR-ed, so a separate "!..." entry would match
   # every other path instead of excluding this one.
-  - ".clj-kondo/**/!(ratchets.edn)"
+  - ".clj-kondo/**/!(ratchets.edn|ratchets-test.edn)"
 
 backend_specs: &backend_specs
   - *shared_specs
@@ -197,12 +202,14 @@ project_backend_checks:
   - "{resources,test_resources,test_config}/**/*.{clj,cljc,cljs}"
   - ".clj-kondo/config.edn"
   - ".clj-kondo/config/modules/config.edn"
+  - ".clj-kondo/config/modules/cycle-clusters.edn"
   - ".github/team.json"
   - "dev/resources/dev/modules_config_test/**"
 
 # Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
 project_ratchet_checks:
   - ".clj-kondo/ratchets.edn"
+  - ".clj-kondo/ratchets-test.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
 
 project_migration_checks:
@@ -241,14 +248,14 @@ embedding_sdk_ci: &embedding_sdk_ci
   - ".github/actions/prepare-cypress/**"
   - ".github/workflows/embedding-sdk*.yml"
 
-embedding_sdk_components:
+embedding_sdk_components: &embedding_sdk_components
   - *default
   - *embedding_sdk_ci
   - *sources
   - *shared_e2e
   - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
 
-embedding_sdk_host_sample_apps:
+embedding_sdk_host_sample_apps: &embedding_sdk_host_sample_apps
   - *default
   - *embedding_sdk_ci
   - *frontend_sources
@@ -278,7 +285,7 @@ e2e_infra: &e2e_infra
   - ".github/scripts/build-e2e-matrix.js"
   - ".github/file-paths.yaml"
 
-e2e_all:
+e2e_all: &e2e_all
   - *default
   - *e2e_ci
   - *sources
@@ -294,9 +301,27 @@ documentation:
 docs:
   - "docs/**"
 
-embedding_documentation:
+embedding_documentation: &embedding_documentation
   - ".typedoc/**"
   - "docs/embedding/**"
+
+# Everything the SDK package build feeds, so the build itself follows the union of its consumers.
+build_embedding_sdk_package:
+  - *embedding_sdk_ci
+  - *embedding_sdk_components
+  - *embedding_sdk_host_sample_apps
+  - *embedding_documentation
+  - *frontend_sources
+
+# The uberjar only exists to feed e2e, the SDK suites that boot a Metabase instance, bundle-size and
+# containerize, so it is worth building exactly when one of them might run. The SDK's type checks run
+# against the package artifact alone, so embedding docs do not belong here.
+build_uberjar:
+  - *backend_all
+  - *frontend_all
+  - *e2e_all
+  - *embedding_sdk_components
+  - *embedding_sdk_host_sample_apps
 
 yaml:
   - "**/*.yml"
@@ -358,9 +383,10 @@ openapi:
   - "src/metabase/api/**"
   - "src/metabase/api_routes/**"
   - "src/metabase/*_rest/api.clj"
-  - "src/metabase/*/rest/api.clj"
-  - "src/metabase/*/api.clj"
-  - "src/metabase/*/api/*.clj"
+  - "src/metabase/**/rest/api.clj"
+  - "src/metabase/**/rest/api/*.clj"
+  - "src/metabase/**/api.clj"
+  - "src/metabase/**/api/*.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
   - "resources/openapi/**"

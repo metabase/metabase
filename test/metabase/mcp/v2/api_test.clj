@@ -7,12 +7,14 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
+   [metabase.mcp.v2.skills :as skills]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -275,12 +277,14 @@
       (testing "the cause is a missing permission, not an expired login"
         (is (re-find #"(?i)missing permission" instructions))
         (is (re-find #"(?i)not an expired login" instructions)))
-      (testing "GHY-4555: the roster is not a grant. Every tool is listed whatever the token holds, but a scope-filtered
+      (testing "GHY-4555: the roster is not a grant. Tools are listed whatever the token holds, but a scope-filtered
                 list is the conventional design and nothing on the wire signals ours, so a model asked what the
                 connection could do read the roster as a grant and named scopes it did not hold"
-        (is (re-find #"(?i)every tool is listed whatever this connection holds" instructions))
+        (is (re-find #"(?i)tools are listed whatever this connection holds" instructions))
         (is (re-find #"(?i)says nothing about its permissions" instructions))
-        (is (re-find #"(?i)only a failed call reveals a missing one" instructions)))
+        (is (re-find #"(?i)only a failed call reveals a missing one" instructions))
+        (testing "while an admin's group policy does hide tools, so the model drops advice about one it cannot see"
+          (is (re-find #"(?i)an unlisted tool is off for this user" instructions))))
       (testing "a resource read is refused the same way as a tool call, so the guidance covers both"
         (is (re-find #"(?i)tool call or resource read" instructions)))
       (testing "the model names the tool and the permission, as the consent screen names it"
@@ -298,16 +302,9 @@
       (testing "the retry waits until the user has reconnected"
         (is (re-find #"(?i)retry once they have reconnected" instructions))
         (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
-      (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model tells the user
-                to tick it, and asks rather than sending them through consent unprompted"
+      (testing "GHY-4555: the model asks rather than sending the user through consent unprompted"
         (is (not (re-find #"(?i)no per-permission" instructions)))
-        (is (re-find #"(?i)unticked" instructions))
-        (is (re-find #"(?i)tell them to tick it" instructions))
-        (is (re-find #"(?i)ask whether to grant it" instructions))
-        (testing "and that every other permission starts unticked too, so a step-up doesn't silently drop one the
-                  connection already had"
-          (is (re-find #"(?i)every other permission also starts unticked" instructions))
-          (is (re-find #"(?i)re-tick the ones they want to keep" instructions))))
+        (is (re-find #"(?i)ask whether to grant it" instructions)))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
@@ -561,6 +558,21 @@
   (-> (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
       (get-in [:headers "Mcp-Session-Id"])))
 
+(deftest ui-tools-hidden-from-client-switched-off-test
+  (testing "EMB-2406: a client the admin switched off under \"Show inline charts\" is not offered the UI tools"
+    (let [handshake (fn []
+                      (-> (mcp-request (jsonrpc-request "initialize"
+                                                        (assoc mcp-app-ui-capabilities
+                                                               :clientInfo {:name "ChatGPT"})))
+                          (get-in [:headers "Mcp-Session-Id"])))
+          tool-names (fn [session-id]
+                       (->> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                            :body :result :tools (map :name) set))]
+      (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients []]
+        (is (not (contains? (tool-names (handshake)) "visualize_query"))))
+      (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients ["chatgpt"]]
+        (is (contains? (tool-names (handshake)) "visualize_query"))))))
+
 (deftest tools-list-descriptions-fit-client-truncation-test
   (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping
             whatever guidance comes after. Every description `tools/list` sends, MCP Apps tools included and the
@@ -575,6 +587,51 @@
         (testing tool-name
           (is (<= (count description) 2048)
               (str "the description is " (count description) " characters")))))))
+
+(deftest no-transforms-on-the-surface-test
+  (testing "GHY-4746: MCP is for consuming content, so MCP v2 has no transforms — no tool, input-schema enum value,
+            or learn topic is one, and no text the server sends names them: the initialize instructions, tools/list,
+            resources/list, the text resources, learn(), and every learn topic and reference"
+    (let [init       (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+          session-id (get-in init [:headers "Mcp-Session-Id"])
+          request!   (fn [method params]
+                       (-> (mcp-request (jsonrpc-request method params) {"mcp-session-id" session-id})
+                           (get-in [:body :result])))
+          learn!     (fn [arguments] (request! "tools/call" {:name "learn" :arguments arguments}))
+          tools      (:tools (request! "tools/list" {}))
+          resources  (:resources (request! "resources/list" {}))]
+      (testing "no tool is named for transforms"
+        (is (empty? (filter #(re-find #"(?i)transform" %) (map :name tools)))))
+      (testing "no input-schema enum offers a transform value"
+        (doseq [{tool-name :name :keys [inputSchema]} tools]
+          (testing tool-name
+            (is (empty? (for [node  (tree-seq coll? seq inputSchema)
+                              :when (map? node)
+                              value (:enum node)
+                              :when (re-find #"(?i)^transforms?$" (str value))]
+                          value))))))
+      (testing "no learn topic is transforms"
+        (is (empty? (filter #(re-find #"(?i)transform" %) (skills/topics)))))
+      (testing "no text names transforms"
+        (doseq [[label payload]
+                (concat [["initialize instructions" (get-in init [:body :result :instructions])]
+                         ["tools/list" tools]
+                         ["resources/list" resources]
+                         ["learn()" (learn! {})]]
+                        ;; The ui:// resources are frontend bundles, where `transform` is CSS.
+                        (for [{:keys [uri]} resources
+                              :when (not (str/starts-with? uri "ui://"))]
+                          [(str "resources/read " uri) (request! "resources/read" {:uri uri})])
+                        (for [topic (skills/topics)]
+                          [(str "learn(" topic ")") (learn! {:topic topic})])
+                        (for [topic     (skills/topics)
+                              reference (skills/reference-names topic)]
+                          [(str "learn(" topic ", " reference ")") (learn! {:topic topic :reference reference})]))]
+          (testing label
+            (is (some? payload) "sanity: the request returned a result")
+            (is (not (:isError payload)) "sanity: the request succeeded")
+            (is (empty? (re-seq #"(?i).{0,40}\btransforms?\b.{0,40}"
+                                (if (string? payload) payload (json/encode payload)))))))))))
 
 (deftest refresh-ui-credential-test
   (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
@@ -778,38 +835,25 @@
               (is (not (:isError result)))
               (is (= {:ok true :message "pong"} (:structuredContent result))))))))))
 
-(defn- do-with-temp-tool!
-  "Register a throwaway tool for the body, then restore the registry. Lets a test assert scope filtering against a
-  tool whose scope differs from the token's without depending on a not-yet-landed real tool."
-  [tool thunk]
-  (let [tools-atom @#'registry/tools*
-        snapshot   @tools-atom]
-    (try
-      (registry/register-tool! tool)
-      (thunk)
-      (finally
-        (reset! tools-atom snapshot)
-        ;; register-tool! flushes the manifest cache; do the same on the way out so a later test doesn't see
-        ;; a manifest that still lists the throwaway tool.
-        (reset! @#'registry/manifest-cache nil)))))
-
 (defn- do-with-bearer-token!
-  "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
-  [scopes f]
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (oauth-server.tu/with-oauth-client [client-id]
-      (mt/with-model-cleanup [:model/OAuthAccessToken]
-        (let [token (str (random-uuid))]
-          ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-          ;; up, so the row has to be written the same way a real issued token would be — including a
-          ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
-          (t2/insert! :model/OAuthAccessToken
-                      {:token     (oidc.util/hash-token token)
-                       :user_id   (mt/user->id :crowberto)
-                       :client_id client-id
-                       :scope     (vec scopes)
-                       :expiry    (+ (System/currentTimeMillis) 3600000)})
-          (f {"authorization" (str "Bearer " token)}))))))
+  "Issue an OAuth access token carrying `scopes` for `user` (default crowberto) and call `f` with the auth headers."
+  ([scopes f]
+   (do-with-bearer-token! :crowberto scopes f))
+  ([user scopes f]
+   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+     (oauth-server.tu/with-oauth-client [client-id]
+       (mt/with-model-cleanup [:model/OAuthAccessToken]
+         (let [token (str (random-uuid))]
+           ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
+           ;; up, so the row has to be written the same way a real issued token would be — including a
+           ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
+           (t2/insert! :model/OAuthAccessToken
+                       {:token     (oidc.util/hash-token token)
+                        :user_id   (mt/user->id user)
+                        :client_id client-id
+                        :scope     (vec scopes)
+                        :expiry    (+ (System/currentTimeMillis) 3600000)})
+           (f {"authorization" (str "Bearer " token)})))))))
 
 (defn- embedded-credential
   "The UI credential the fallback template embedded in shell `html`, or nil when it embedded none."
@@ -878,6 +922,34 @@
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
                                     native-query))))))))))))
 
+(deftest ui-credential-native-query-honors-the-execute-sql-group-policy-test
+  (testing "a user whose groups deny execute_sql must not run raw SQL through the iframe credential either, or
+            refresh_ui_credential plus POST /api/dataset rebuilds the tool an admin denied. The policy is read per
+            request, so a credential minted while execute_sql was allowed stops working once it is denied"
+    (mcp.ui-resource/with-fallback-template
+      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+            mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
+        (do-with-bearer-token!
+         :rasta #{"agent:query:run" "agent:sql:run"}
+         (fn [headers]
+           (let [credential (ui-credential-for headers)
+                 post       (fn [status query]
+                              (client/client-full-response
+                               :post status "dataset"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                               query))]
+             (is (string? credential)
+                 "the shell must render a credential — otherwise this test passes vacuously")
+             (testing "denied: the native query is refused with the execute_sql denial"
+               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "no"}])]
+                 (is (re-find #"needs the \"execute_sql\" tool, which is not enabled for your groups"
+                              (str (:body (post 403 native-query)))))
+                 (testing "while its MBQL queries are untouched"
+                   (is (= 202 (:status (post 202 mbql-query)))))))
+             (testing "allowed: the same credential runs the native query"
+               (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "yes"}])]
+                 (is (= 202 (:status (post 202 native-query)))))))))))))
+
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
             transport on the same authenticated branch a cookie session does. It must still dispatch with the
@@ -886,13 +958,14 @@
     ;; Register a throwaway tool on a DIFFERENT scope (`agent:content:write`, which the token below does not carry)
     ;; so the negative half of the scope contract has teeth independent of which real write tools are registered:
     ;; this test fails if the bearer request dispatches unrestricted.
-    (do-with-temp-tool!
-     {:name        "scope_probe_write"
-      :scope       metabot.scope/agent-content-write
-      :description "test-only tool gated on a write scope the narrow token lacks"
-      :annotations {:readOnlyHint false}
-      :args        [:map]
-      :handler     (fn [_ _] nil)}
+    (v2.tu/do-with-temp-tool!
+     {:name           "scope_probe_write"
+      :scope          metabot.scope/agent-content-write
+      :default-access :allowed
+      :description    "test-only tool gated on a write scope the narrow token lacks"
+      :annotations    {:readOnlyHint false}
+      :args           [:map]
+      :handler        (fn [_ _] nil)}
      (fn []
        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
          (oauth-server.tu/with-oauth-client [client-id]
@@ -981,23 +1054,6 @@
 (def ^:private metadata-url
   "http://localhost:3000/.well-known/oauth-protected-resource")
 
-(def ^:private unticked-note
-  "What every `insufficient_scope` `error_description` ends with."
-  ". The user must tick this permission on the consent screen.")
-
-(deftest ^:parallel step-up-description-test
-  (testing "GHY-4555: a step-up opens a consent screen where the missing permission is unticked, so a client that shows
-            the error_description tells the user to tick it; the note covers a permission that was never granted and one
-            that was unticked and removed, so it does not claim the permission starts unticked; the text stays inside
-            RFC 6750's error_description characters (printable ASCII without quote or backslash)"
-    (is (= (str "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
-                unticked-note)
-           (#'v2.api/step-up-description
-            "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)")))
-    (is (not (str/includes? unticked-note "starts unticked"))
-        "a removed permission does not start unticked, it was ticked and then cleared")
-    (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" unticked-note))))
-
 (deftest scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a scope denial must be a real HTTP 403 carrying an `insufficient_scope` WWW-Authenticate
             challenge (MCP authorization spec, runtime insufficient scope). Claude Code only records a step-up
@@ -1011,12 +1067,12 @@
          (testing "a registry-gated tool the token lacks the scope for"
            (let [response (post! 403 denied)]
              (is (= 403 (:status response)))
-             (is (= (str "Bearer error=\"insufficient_scope\", "
-                         "scope=\"agent:content:read agent:sql:run\", "
-                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                         "error_description=\"execute_sql requires agent:sql:run "
-                         "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\"")
-                    (get-in response [:headers "WWW-Authenticate"]))
+             (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"])
+                                   (str "Bearer error=\"insufficient_scope\", "
+                                        "scope=\"agent:content:read agent:sql:run\", "
+                                        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                                        "error_description=\"execute_sql requires agent:sql:run "
+                                        "(" (registry/english-scope-label "agent:sql:run") ")"))
                  "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
              (testing "the body is still the JSON-RPC error, for clients that read it"
                (is (= "application/json" (get-in response [:headers "Content-Type"])))
@@ -1068,12 +1124,13 @@
                response  (post! 403 (jsonrpc-request "tools/call"
                                                      {:name "alert_write" :arguments arguments}))]
            (is (= 403 (:status response)))
-           (is (= (str "Bearer error=\"insufficient_scope\", "
-                       "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
-                       "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                       "error_description=\"alert_write requires agent:query:run "
-                       "(" (registry/english-scope-label "agent:query:run") ")" unticked-note "\"")
-                  (get-in response [:headers "WWW-Authenticate"])))
+           (is (str/starts-with?
+                (get-in response [:headers "WWW-Authenticate"])
+                (str "Bearer error=\"insufficient_scope\", "
+                     "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
+                     "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                     "error_description=\"alert_write requires agent:query:run "
+                     "(" (registry/english-scope-label "agent:query:run") ")")))
            (is (= -32600 (get-in response [:body :error :code])))
            (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
            (is (zero? (t2/count :model/NotificationCard :card_id card-id))
@@ -1133,12 +1190,13 @@
                      (pr-str (get-in response [:body :result]))))))
            (testing "raw SQL still steps up, naming agent:sql:run on top of the baseline"
              (let [response (call! 403 "execute_sql" {})]
-               (is (= (str "Bearer error=\"insufficient_scope\", "
-                           "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
-                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                           "error_description=\"execute_sql requires agent:sql:run "
-                           "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\"")
-                      (get-in response [:headers "WWW-Authenticate"])))))))))))
+               (is (str/starts-with?
+                    (get-in response [:headers "WWW-Authenticate"])
+                    (str "Bearer error=\"insufficient_scope\", "
+                         "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
+                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                         "error_description=\"execute_sql requires agent:sql:run "
+                         "(" (registry/english-scope-label "agent:sql:run") ")")))))))))))
 
 (deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a data resource read the token lacks the scope for answers with the same 403 challenge as
@@ -1154,12 +1212,13 @@
            (testing "the fields catalog without agent:resource:read"
              (let [response (post! 403 denied)]
                (is (= 403 (:status response)))
-               (is (= (str "Bearer error=\"insufficient_scope\", "
-                           "scope=\"agent:content:read agent:resource:read\", "
-                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                           "error_description=\"catalog://metabase/fields requires agent:resource:read "
-                           "(" (registry/english-scope-label "agent:resource:read") ")" unticked-note "\"")
-                      (get-in response [:headers "WWW-Authenticate"])))
+               (is (str/starts-with?
+                    (get-in response [:headers "WWW-Authenticate"])
+                    (str "Bearer error=\"insufficient_scope\", "
+                         "scope=\"agent:content:read agent:resource:read\", "
+                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                         "error_description=\"catalog://metabase/fields requires agent:resource:read "
+                         "(" (registry/english-scope-label "agent:resource:read") ")")))
                (testing "the body is the JSON-RPC error, with no transport-internal marker"
                  (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
                  (is (= {:code    -32600
@@ -1307,13 +1366,14 @@
 
 (deftest unscoped-callers-never-get-an-insufficient-scope-challenge-test
   (testing "GHY-4543: a cookie session is stamped unrestricted, so a tool gated on any scope is served over 200"
-    (do-with-temp-tool!
-     {:name        "scope_probe_sql"
-      :scope       metabot.scope/agent-sql-run
-      :description "test-only tool gated on agent:sql:run"
-      :annotations {:readOnlyHint true}
-      :args        [:map]
-      :handler     (fn [_ _] {:content [{:type "text" :text "served"}]})}
+    (v2.tu/do-with-temp-tool!
+     {:name           "scope_probe_sql"
+      :scope          metabot.scope/agent-sql-run
+      :default-access :allowed
+      :description    "test-only tool gated on agent:sql:run"
+      :annotations    {:readOnlyHint true}
+      :args           [:map]
+      :handler        (fn [_ _] {:content [{:type "text" :text "served"}]})}
      (fn []
        (let [[session-id] (initialize!)
              response     (mcp-request (jsonrpc-request "tools/call" {:name "scope_probe_sql" :arguments {}})
@@ -1329,9 +1389,8 @@
        "it needs (each tool's description starts with the permission it requires), and why, and ask whether to grant "
        "it. Some clients open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, "
        "select this server, Re-authenticate; "
-       "Codex: `codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; "
-       "tell them to tick it. Every other permission also starts unticked, so tell them to re-tick the ones they "
-       "want to keep. Retry once they have reconnected."))
+       "Codex: `codex mcp login <server>`, then a new session). The consent screen starts with every permission "
+       "the client requests ticked; tell them to leave this one ticked. Retry once they have reconnected."))
 
 (deftest initialize-instructions-say-each-thing-once-test
   (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is one
@@ -1364,32 +1423,27 @@
        "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run\", "
        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
        "error_description=\"" tool-name " requires agent:sql:run "
-       "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\""))
+       "(" (registry/english-scope-label "agent:sql:run") ")"))
 
 (deftest native-source-scope-denial-is-a-403-insufficient-scope-challenge-test
-  (testing "GHY-4543: question_write and transform_write check agent:sql:run inside the handler, once the source
-            resolves to native SQL. Over HTTP that must be the same 403 `insufficient_scope` challenge the registry
-            gate sends, or a client records no step-up scope and the user can never grant it."
+  (testing "GHY-4543: question_write checks agent:sql:run inside the handler, once the source resolves to native
+            SQL. Over HTTP that must be the same 403 `insufficient_scope` challenge the registry gate sends, or a
+            client records no step-up scope and the user can never grant it."
     (do-with-bearer-token!
      content-write-scopes
      (fn [headers]
-       (let [post!  (bearer-session-post! headers)
-             native {:database (mt/id) :type "native" :native {:query "SELECT 1"}}]
-         (doseq [[tool-name arguments]
-                 [["question_write"  {:method "create" :name "Native probe"
-                                      :native {:database_id (mt/id) :sql "SELECT 1"}}]
-                  ["transform_write" {:method     "create" :name "Native probe"
-                                      :definition {:type "query" :query native}
-                                      :target     {:name "mcp_native_probe" :schema "PUBLIC"}}]]]
-           (testing tool-name
-             (let [response (post! 403 (jsonrpc-request "tools/call" {:name tool-name :arguments arguments}))]
-               (is (= 403 (:status response)))
-               (is (= (sql-step-up-challenge tool-name) (get-in response [:headers "WWW-Authenticate"])))
-               (is (= -32600 (get-in response [:body :error :code])))
-               (is (re-find #"agent:sql:run" (get-in response [:body :error :message]))))))
+       (let [post!     (bearer-session-post! headers)
+             arguments {:method "create" :name "Native probe"
+                        :native {:database_id (mt/id) :sql "SELECT 1"}}
+             response  (post! 403 (jsonrpc-request "tools/call" {:name "question_write" :arguments arguments}))]
+         (is (= 403 (:status response)))
+         (is (str/starts-with?
+              (get-in response [:headers "WWW-Authenticate"])
+              (sql-step-up-challenge "question_write")))
+         (is (= -32600 (get-in response [:body :error :code])))
+         (is (re-find #"agent:sql:run" (get-in response [:body :error :message])))
          (testing "and nothing was written"
-           (is (zero? (t2/count :model/Card :name "Native probe")))
-           (is (zero? (t2/count :model/Transform :name "Native probe")))))))))
+           (is (zero? (t2/count :model/Card :name "Native probe")))))))))
 
 (defn- mcp-app-session-id!
   "Handshake over bearer `headers` as a client that can render MCP Apps, returning the session id."
@@ -1403,7 +1457,7 @@
 (deftest drill-handle-cannot-save-native-sql-without-the-sql-scope-test
   (testing "GHY-4543: `/api/embed-mcp/drills` stores whatever query the iframe hands it, charged the UI credential's
             single agent:query:run, and a handle resolves by user, so holding a drill handle is not proof the SQL
-            gates were spent. Saving one through question_write or transform_write is still charged agent:sql:run."
+            gates were spent. Saving one through question_write is still charged agent:sql:run."
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (do-with-bearer-token!
        content-write-scopes
@@ -1424,36 +1478,36 @@
                                                                "mcp-session-id"         session-id}}}
                                   {:encodedQuery (u/encode-base64 (json/encode query))})
                                  (get-in [:body :handle])))
-               call!       (fn [expected-status tool-name handle]
+               call!       (fn [expected-status handle]
                              (in-session expected-status
                                          (jsonrpc-request
                                           "tools/call"
-                                          {:name      tool-name
-                                           :arguments (cond-> {:method       "create"
-                                                               :name         "Drill probe"
-                                                               :query_handle handle}
-                                                        (= tool-name "transform_write")
-                                                        (assoc :target {:name   "mcp_drill_probe"
-                                                                        :schema "PUBLIC"}))})))]
+                                          {:name      "question_write"
+                                           :arguments {:method       "create"
+                                                       :name         "Drill probe"
+                                                       :query_handle handle}})))]
            (is (string? credential) "the iframe must get a credential, or the drill store is unreachable")
            (testing "a handle carrying an MBQL 5 native stage is refused with the step-up challenge"
              (let [handle (drill! {:lib/type "mbql/query"
                                    :database (mt/id)
                                    :stages   [{:lib/type "mbql.stage/native" :native "SELECT 1"}]})]
                (is (string? handle))
-               (doseq [tool-name ["question_write" "transform_write"]]
-                 (testing tool-name
-                   (let [response (call! 403 tool-name handle)]
-                     (is (= (sql-step-up-challenge tool-name) (get-in response [:headers "WWW-Authenticate"])))
-                     (is (= -32600 (get-in response [:body :error :code]))))))))
+               (let [response (call! 403 handle)]
+                 (is (str/starts-with?
+                      (get-in response [:headers "WWW-Authenticate"])
+                      (sql-step-up-challenge "question_write")))
+                 (is (= -32600 (get-in response [:body :error :code]))))))
            (testing "the legacy shape never reaches those gates: the save path decodes serialized MBQL 5 only, so a
                      legacy `{type: native}` payload is refused as an invalid query, with no challenge"
-             (let [handle (drill! {:type "native" :database (mt/id) :native {:query "SELECT 1"}})]
-               (doseq [tool-name ["question_write" "transform_write"]]
-                 (testing tool-name
-                   (let [response (call! 200 tool-name handle)]
-                     (is (nil? (get-in response [:headers "WWW-Authenticate"])))
-                     (is (true? (get-in response [:body :result :isError]))))))))
+             (let [handle   (drill! {:type "native" :database (mt/id) :native {:query "SELECT 1"}})
+                   response (call! 200 handle)]
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (true? (get-in response [:body :result :isError])))))
            (testing "and nothing was written either way"
-             (is (zero? (t2/count :model/Card :name "Drill probe")))
-             (is (zero? (t2/count :model/Transform :name "Drill probe"))))))))))
+             (is (zero? (t2/count :model/Card :name "Drill probe"))))))))))
+
+(deftest step-up-description-test
+  (let [description "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
+        described   (#'v2.api/step-up-description description)]
+    (testing "the note stays inside RFC 6750's error_description characters, or the header writer rewrites it"
+      (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" described)))))

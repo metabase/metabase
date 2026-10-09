@@ -200,6 +200,7 @@ export function mapSnowflakeValues(parsedValues: RegexFields) {
   ]);
 
   if (parsedValues.password) {
+    fieldsMap.set("details.auth-mode", "password");
     fieldsMap.set("details.use-password", true);
     fieldsMap.set("details.password", parsedValues.password);
   }

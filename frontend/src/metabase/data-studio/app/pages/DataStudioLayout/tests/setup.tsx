@@ -17,8 +17,6 @@ import type {
   TokenFeatures,
 } from "metabase-types/api";
 import {
-  createMockDirtyCardEntity,
-  createMockDirtyTransformEntity,
   createMockLibraryCollection,
   createMockSettings,
   createMockTokenFeatures,
@@ -164,8 +162,7 @@ interface SetupOpts {
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
   canAccessTransforms?: boolean;
-  hasDirtyChanges?: boolean;
-  hasTransformDirtyChanges?: boolean;
+  dirty?: RemoteSyncEntity[];
   remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
@@ -179,8 +176,7 @@ export const setup = ({
   remoteSyncBranch = null,
   isAdmin = true,
   canAccessTransforms = false,
-  hasDirtyChanges = false,
-  hasTransformDirtyChanges = false,
+  dirty = [],
   remoteSyncTransforms = false,
   isNavbarOpened = true,
   enterprisePlugins,
@@ -188,23 +184,10 @@ export const setup = ({
   transformsEnabled = false,
   transformsSetupComplete = false,
 }: SetupOpts = {}) => {
-  // Build collections list
-  const collections: Collection[] = [];
-  if (hasDirtyChanges) {
-    collections.push(createMockLibraryCollection());
-  }
-  if (hasTransformDirtyChanges) {
-    collections.push(createMockTransformsCollection());
-  }
-
-  // Build dirty entities list
-  const dirty: RemoteSyncEntity[] = [];
-  if (hasDirtyChanges) {
-    dirty.push(createMockDirtyCardEntity());
-  }
-  if (hasTransformDirtyChanges) {
-    dirty.push(createMockDirtyTransformEntity());
-  }
+  const collections = [
+    createMockLibraryCollection(),
+    createMockTransformsCollection(),
+  ];
 
   const remoteSyncSettings: Partial<RemoteSyncSettings> = {
     enabled: remoteSyncEnabled,

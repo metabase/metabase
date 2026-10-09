@@ -18,6 +18,7 @@
   font-weight: bold;
   padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
   border-radius: var(--mantine-radius-xs);
+  line-height: normal;
 
   &:hover:not([data-active], [data-disabled]) {
     color: var(--mb-color-text-primary);
@@ -39,13 +40,30 @@
   &[data-active] {
     color: var(--mb-color-text-primary);
   }
+
+  &:has(.SegmentedControlTooltipTarget) {
+    padding: 0;
+  }
 }
 
 .SegmentedControlInnerLabel {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--mantine-spacing-xs);
   min-height: 1rem;
+}
+
+.SegmentedControlTooltipTarget {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
+}
+
+.SegmentedControlIconElement {
+  display: flex;
 }
 
 .SegmentedControlIndicator {

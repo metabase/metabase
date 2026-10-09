@@ -58,9 +58,21 @@
    [:format_rows       {:optional true} [:maybe :boolean]]
    [:pivot_results     {:optional true} [:maybe :boolean]]])
 
+(def ^:private subject-max-length
+  "Inboxes truncate long before this; it bounds what a client can store."
+  255)
+
+(mr/def ::email-subject
+  "A dashboard subscription email subject: one line, not blank, at most 255 characters."
+  [:and
+   ms/NonBlankString
+   [:string {:max subject-max-length}]
+   ;; the value becomes a mail header, so a line break would let it inject headers
+   [:re {:error/message "a single line"} #"\A[^\r\n]*\z"]])
+
 (mr/def ::pulse-channel.details
   "The `:details` column of a PulseChannel, decoded. Shape varies by `:channel_type` (email carries
-  `:emails`; slack carries `:channel`/`:channels`/`:channel_id`; both may carry `:include_pdf`/
+  `:emails` and `:subject`; slack carries `:channel`/`:channels`/`:channel_id`; both may carry `:include_pdf`/
   `:attachment_only`), so every key is optional here rather than modeled as a `:channel_type`-dispatched
   `:multi`."
   [:map {:closed true}
@@ -69,6 +81,7 @@
    [:channel_id      {:optional true} [:maybe :string]]
    [:include_pdf     {:optional true} [:maybe :boolean]]
    [:attachment_only {:optional true} [:maybe :boolean]]
+   [:subject         {:optional true} [:maybe ::email-subject]]
    [:emails          {:optional true} [:maybe [:sequential :string]]]])
 
 (mr/def ::pulse-channel

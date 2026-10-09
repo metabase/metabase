@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 
 import { setup } from "./setup";
@@ -25,6 +25,26 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByText("Connected data")).toBeInTheDocument();
+    });
+
+    it("should render the library tabs", async () => {
+      setup({ remoteSyncBranch: "main" });
+
+      const nav = await screen.findByTestId("data-studio-nav");
+      for (const label of [
+        "Semantic layer",
+        "SQL snippets",
+        "Data actions",
+        "Glossary",
+      ]) {
+        expect(within(nav).getByText(label)).toBeInTheDocument();
+      }
+      expect(
+        within(nav).getByRole("link", { name: /SQL snippets/ }),
+      ).toHaveAttribute("href", "/data-studio/snippets");
+      expect(
+        within(nav).getByRole("link", { name: /Data actions/ }),
+      ).toHaveAttribute("href", "/data-studio/actions");
     });
 
     it("should render content area", async () => {

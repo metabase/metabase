@@ -7,8 +7,8 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import CS from "metabase/css/core/index.css";
 import { EmbedServerSnippetLanguageSelect } from "metabase/embedding/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
 import type { CodeSampleOption } from "metabase/embedding/types";
+import { Box } from "metabase/ui";
 
-import { CopyButtonContainer } from "./CodeSample.styled";
 import { getHighlightedRanges } from "./utils";
 
 interface CodeSampleProps {
@@ -74,9 +74,14 @@ export const CodeSample = ({
           value={source}
         />
         {source && (
-          <CopyButtonContainer>
+          <Box
+            className={cx(CS.z2, CS.cursorPointer, CS.textBrandHover)}
+            pos="absolute"
+            top={0}
+            right={0}
+          >
             <CopyButton className={CS.p1} value={source} onCopy={onCopy} />
-          </CopyButtonContainer>
+          </Box>
         )}
       </div>
     </div>

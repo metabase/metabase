@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
-import { Box, Button, Flex, Switch, Text, Title } from "metabase/ui";
+import { Box, Button, Flex, Stack, Switch, Text, Title } from "metabase/ui";
 
 import { startAiConfig } from "../../actions";
 import {
@@ -12,7 +12,6 @@ import {
   getUserEmail,
 } from "../../selectors";
 
-import { StepBody, StepFooter, StepRoot } from "./CompletedStep.styled";
 import { trackNewsletterToggleClicked } from "./analytics";
 
 export const CompletedStep = (): JSX.Element | null => {
@@ -42,32 +41,45 @@ export const CompletedStep = (): JSX.Element | null => {
   };
 
   return (
-    <StepRoot>
+    <Stack
+      component="section"
+      p="xxxl"
+      gap="xxl"
+      mb="xl"
+      bd="1px solid var(--mb-color-border-neutral)"
+      bdrs="sm"
+      bg="background_page-primary"
+    >
       <Title order={2}>{t`You're all set up!`}</Title>
       {shouldOfferAiConfig && (
-        <StepBody>
-          <Flex align="center" justify="space-between" gap="xl">
-            <Box>
-              <Text fw="bold">{t`Want to use AI in Metabase?`}</Text>
-              <Text c="text-secondary">
-                {t`Connect an AI provider to use AI explorations, SQL generation and Metabot.`}
-              </Text>
-            </Box>
-            <Button
-              flex="0 0 auto"
-              onClick={() => dispatch(startAiConfig())}
-            >{t`Set up AI`}</Button>
-          </Flex>
-        </StepBody>
+        <Flex
+          align="center"
+          justify="space-between"
+          gap="xl"
+          bd="1px solid var(--mb-color-border-neutral)"
+          bdrs="xxs"
+          p="xl"
+        >
+          <Box>
+            <Text fw="bold">{t`Want to use AI in Metabase?`}</Text>
+            <Text c="text-secondary">
+              {t`Connect an AI provider to use AI explorations, SQL generation and Metabot.`}
+            </Text>
+          </Box>
+          <Button
+            flex="0 0 auto"
+            onClick={() => dispatch(startAiConfig())}
+          >{t`Set up AI`}</Button>
+        </Flex>
       )}
-      <StepBody>
+      <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="xxs" p="xl">
         <Switch
           checked={checkboxValue}
           onChange={handleSwitchToggle}
           label={t`Get infrequent emails about new releases and feature updates.`}
         />
-      </StepBody>
-      <StepFooter>
+      </Box>
+      <Flex justify="flex-end">
         <Button
           component="a"
           href={baseUrl}
@@ -77,7 +89,7 @@ export const CompletedStep = (): JSX.Element | null => {
         >
           {t`Take me to Metabase`}
         </Button>
-      </StepFooter>
-    </StepRoot>
+      </Flex>
+    </Stack>
   );
 };

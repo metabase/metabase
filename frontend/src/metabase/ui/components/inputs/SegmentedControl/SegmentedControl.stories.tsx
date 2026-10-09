@@ -1,9 +1,9 @@
 import type { StoryFn } from "@storybook/react";
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import {
   Box,
-  Group,
   Icon,
   SegmentedControl,
   type SegmentedControlItem,
@@ -21,33 +21,32 @@ import S from "./SegmentedControl.module.css";
 const TEXT_DATA = [
   { label: "Code", value: "code" },
   { label: "Preview", value: "preview" },
-];
+] satisfies SegmentedControlItem<string>[];
 
 const TEXT_AND_ICON_DATA = [
-  {
-    label: (
-      <Group gap="xs" wrap="nowrap">
-        <Icon name="embed" />
-        Code
-      </Group>
-    ),
-    value: "code",
-  },
-  {
-    label: (
-      <Group gap="xs" wrap="nowrap">
-        <Icon name="eye_filled" />
-        Preview
-      </Group>
-    ),
-    value: "preview",
-  },
-];
+  { label: "Code", icon: "embed", value: "code" },
+  { label: "Preview", icon: "eye_filled", value: "preview" },
+] satisfies SegmentedControlItem<string>[];
 
 const ICON_DATA = [
-  { label: <Icon name="embed" aria-label="Code" />, value: "code" },
-  { label: <Icon name="eye_filled" aria-label="Preview" />, value: "preview" },
-];
+  { ariaLabel: "Code", icon: "embed", value: "code" },
+  { ariaLabel: "Preview", icon: "eye_filled", value: "preview" },
+] satisfies SegmentedControlItem<string>[];
+
+const ICON_TOOLTIP_DATA = [
+  { ariaLabel: "Code", icon: "embed", value: "code", withTooltip: true },
+  {
+    ariaLabel: "Preview",
+    icon: "eye_filled",
+    value: "preview",
+    withTooltip: true,
+  },
+] satisfies SegmentedControlItem<string>[];
+
+const ICON_ELEMENT_DATA = [
+  { ariaLabel: "Code", icon: <Icon name="embed" />, value: "code" },
+  { ariaLabel: "Preview", icon: <Icon name="eye_filled" />, value: "preview" },
+] satisfies SegmentedControlItem<string>[];
 
 export default {
   title: "Components/Inputs/SegmentedControl",
@@ -69,6 +68,11 @@ export const IconOnly = {
   args: { data: ICON_DATA },
 };
 
+export const IconOnlyWithTooltip = {
+  name: "Icon only with tooltip",
+  args: { data: ICON_TOOLTIP_DATA },
+};
+
 export const FullWidth = {
   name: "Full width",
   args: { data: TEXT_AND_ICON_DATA, fullWidth: true },
@@ -87,6 +91,7 @@ const CONTENT_KINDS: {
   { id: "text", label: "Text only", data: TEXT_DATA },
   { id: "text-and-icon", label: "Text + icon", data: TEXT_AND_ICON_DATA },
   { id: "icon", label: "Icon only", data: ICON_DATA },
+  { id: "icon-element", label: "Icon element", data: ICON_ELEMENT_DATA },
 ];
 
 type OverviewState = {
@@ -123,6 +128,23 @@ const withSecondItemDisabled = (data: SegmentedControlItem<string>[]) =>
 // so targeting every label in the row forces the unselected segment only.
 const labelSelectorFor = (id: string) =>
   `[data-state-row="${id}"] .${S.SegmentedControlLabel}`;
+
+function HoveredTooltipExample() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const targets = ref.current?.querySelectorAll(
+      `.${S.SegmentedControlTooltipTarget}`,
+    );
+    targets?.[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  }, []);
+
+  return (
+    <Box ref={ref}>
+      <SegmentedControl data={ICON_TOOLTIP_DATA} defaultValue="code" />
+    </Box>
+  );
+}
 
 const gridStyle = {
   display: "grid",
@@ -166,6 +188,17 @@ const OverviewTemplate: StoryFn = () => (
       </Box>
     </StorySection>
 
+    <StorySection title="Tooltip">
+      <StoryJsx>
+        {
+          '<SegmentedControl data={[{ ariaLabel: "Preview", icon: "eye_filled", withTooltip: true }, …]} />'
+        }
+      </StoryJsx>
+      <Box mt="3rem">
+        <HoveredTooltipExample />
+      </Box>
+    </StorySection>
+
     <StorySection title="Full width">
       <Box w="24rem">
         <StoryJsx>{"<SegmentedControl fullWidth />"}</StoryJsx>
@@ -182,6 +215,9 @@ const OverviewTemplate: StoryFn = () => (
 
 export const Overview = {
   render: OverviewTemplate,
+  // The tooltip fades in over 200ms (Tooltip config); wait well past that
+  // before Loki captures, with margin for slow CI runners.
+  decorators: [createWaitForResizeToStopDecorator(500)],
   parameters: {
     pseudo: {
       hover: [labelSelectorFor("hover")],

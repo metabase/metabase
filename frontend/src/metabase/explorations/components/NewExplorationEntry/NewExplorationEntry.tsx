@@ -83,7 +83,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
   }, [prompt, submitInput, goToPlanPage]);
 
   return (
-    <Stack h="100%" bg="background-primary" align="center" p="2rem">
+    <Stack h="100%" align="center" p="2rem" className={S.page}>
       <Stack w="100%" maw="42rem" align="flex-start" gap="xl" mih={0}>
         {hasNlqAccess && (
           <Button

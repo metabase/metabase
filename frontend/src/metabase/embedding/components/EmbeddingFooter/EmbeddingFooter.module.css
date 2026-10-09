@@ -1,5 +1,22 @@
+/* Same padding and breakpoints as FullWidthContainer, so the footer lines up with the content */
 .EmbeddingFooter {
+  height: 3.125rem;
+  padding: 0 1em;
   color: var(--mb-color-text-primary);
   background-color: transparent;
   transition: var(--transition-theme-change);
+
+  @media screen and (min-width: 40em) {
+    height: 4.0625rem;
+    padding: 0 1.5rem;
+  }
+
+  @media screen and (min-width: 80em) {
+    height: 5rem;
+    padding: 0 2rem;
+  }
+}
+
+.borderTop {
+  border-top: 1px solid var(--mb-color-border-neutral);
 }

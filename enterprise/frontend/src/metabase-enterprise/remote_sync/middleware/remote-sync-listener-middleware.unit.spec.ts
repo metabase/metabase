@@ -21,6 +21,7 @@ import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import {
@@ -30,6 +31,9 @@ import {
 } from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
+
+const CURRENT_USER_ID = 1;
+const OTHER_USER_ID = 2;
 
 const createTestStore = (
   settingsOverrides: Partial<EnterpriseSettings> = {},
@@ -51,6 +55,10 @@ const createTestStore = (
             "remote-sync-transforms": false,
             ...settingsOverrides,
           }),
+        },
+        {
+          endpointName: "getCurrentUser",
+          value: createMockUser({ id: CURRENT_USER_ID, is_superuser: true }),
         },
       ]),
     },
@@ -327,7 +335,7 @@ describe("remote-sync-listener-middleware", () => {
     const CURRENT_TASK = "path:/api/ee/remote-sync/current-task";
     const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
 
-    it("follows a task found running on load so the tab can watch it", async () => {
+    it("follows the current user's task found running on load so the tab can watch it", async () => {
       fetchMock.get(CURRENT_TASK, {
         status: 200,
         body: {
@@ -336,6 +344,7 @@ describe("remote-sync-listener-middleware", () => {
           sync_task_type: "import",
           progress: 0.4,
           ended_at: null,
+          initiated_by: CURRENT_USER_ID,
         },
       });
       const store = createTestStore();
@@ -350,6 +359,84 @@ describe("remote-sync-listener-middleware", () => {
         );
       });
       expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(true);
+    });
+
+    it.each([
+      ["another user", OTHER_USER_ID],
+      ["no user (auto-import)", null],
+    ])(
+      "does not follow or show a running task started by %s",
+      async (_description, initiatedBy) => {
+        fetchMock.get(CURRENT_TASK, {
+          status: 200,
+          body: {
+            id: 5,
+            status: "running",
+            sync_task_type: "export",
+            progress: 0.3,
+            ended_at: null,
+            initiated_by: initiatedBy,
+          },
+        });
+        const store = createTestStore();
+
+        store.dispatch(
+          remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+        );
+
+        await waitForCondition(() => fetchMock.callHistory.done(CURRENT_TASK));
+        await settle();
+
+        expect(
+          store.getState().plugins.remoteSyncPlugin.currentTask,
+        ).toBeNull();
+        expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
+      },
+    );
+
+    it("does not route another user's import conflict to the setup modal", async () => {
+      const responses = [
+        {
+          id: 5,
+          status: "running",
+          sync_task_type: "import",
+          progress: 0.3,
+          ended_at: null,
+          initiated_by: OTHER_USER_ID,
+        },
+        {
+          id: 5,
+          status: "conflict",
+          sync_task_type: "import",
+          ended_at: "2026-01-01T00:00:01Z",
+          initiated_by: OTHER_USER_ID,
+        },
+      ];
+      fetchMock.get(CURRENT_TASK, () => ({
+        status: 200,
+        body: responses.shift() ?? responses[0],
+      }));
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+      await waitForCondition(() => fetchMock.callHistory.done(CURRENT_TASK));
+      await settle();
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(undefined, {
+          forceRefetch: true,
+        }),
+      );
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls(CURRENT_TASK)).toHaveLength(2);
+      });
+      await settle();
+
+      expect(
+        store.getState().plugins.remoteSyncPlugin.syncConflictVariant,
+      ).toBeNull();
+      expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
     });
 
     it("leaves a finished task found on load alone", async () => {
