@@ -22,7 +22,7 @@ jobs:
       - name: Build cljs
         run: bun run build-pure:cljs
       - name: Measure jest and the harness
-        run: node-test-spike/ci-measure.sh
+        run: frontend/test/harness/ci-measure.sh
       - uses: actions/upload-artifact@v7
         if: always()
         with:

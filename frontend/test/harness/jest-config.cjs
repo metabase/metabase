@@ -3,7 +3,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const root = path.resolve(__dirname, "..");
+// The repository root is the nearest directory above this one that holds the
+// jest config.
+const root = (() => {
+  let directory = __dirname;
+  while (!fs.existsSync(path.join(directory, "jest.config.js"))) directory = path.dirname(directory);
+  return directory;
+})();
 const config = require(path.join(root, "jest.config.js"));
 const fromRoot = (value) => value.replace(/<rootDir>/g, root);
 

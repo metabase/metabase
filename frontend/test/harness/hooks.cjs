@@ -1,5 +1,5 @@
 /* eslint-disable */
-// node:test harness spike. Loaded with --require. It gives Node what jest's
+// A test runner on node:test for the jest specs. Loaded with --require. It gives Node what jest's
 // config gives jest: the swc transform (lazy CommonJS), the module name
 // mapping, a jsdom global, and the jest globals on top of node:test.
 // jest sets both. Test support and app code branch on them.
@@ -26,7 +26,7 @@ const bunModule = (name) => {
 
 // --- transform ---------------------------------------------------------------
 const swc = require("@swc/core");
-const cacheDir = abs("node_modules/.cache/node-test-spike");
+const cacheDir = abs("node_modules/.cache/test-harness");
 fs.mkdirSync(cacheDir, { recursive: true });
 const crypto = require("node:crypto");
 // Keyed on content, not mtime, so the cache survives a fresh checkout. TRANSFORM_VERSION
@@ -127,7 +127,7 @@ const resolveProject = (specifier, parentFile) => {
 const mocks = new Map();
 let bypassMocks = 0;
 const state = { mocks, mockExports: new Map() };
-globalThis.__nodeTestSpike = {
+globalThis.__testHarness = {
   mockExports(file) {
     if (!state.mockExports.has(file)) {
       state.mockExports.set(file, mocks.get(file)());
@@ -143,7 +143,7 @@ const mockStubs = new Map();
 const mockStub = (file) => {
   if (!mockStubs.has(file)) {
     const stubFile = path.join(processDir, `mock-${crypto.createHash("sha1").update(file).digest("hex")}.cjs`);
-    fs.writeFileSync(stubFile, `module.exports = globalThis.__nodeTestSpike.mockExports(${JSON.stringify(file)});\n`);
+    fs.writeFileSync(stubFile, `module.exports = globalThis.__testHarness.mockExports(${JSON.stringify(file)});\n`);
     mockStubs.set(file, stubFile);
   }
   return mockStubs.get(file);
@@ -279,7 +279,7 @@ for (const name of [
 // stay available to the runtime and are hidden from everything else.
 const fromRuntime = () => {
   const caller = (new Error().stack ?? "").split("\n")[3] ?? "";
-  return caller.includes("/node_modules/jsdom/") || caller.includes("node:") || caller.includes("/node-test-spike/");
+  return caller.includes("/node_modules/jsdom/") || caller.includes("node:") || caller.includes(__dirname + path.sep);
 };
 for (const name of ["setImmediate", "clearImmediate"]) {
   const original = globalThis[name];
@@ -379,7 +379,7 @@ const withDeadline = (run, ms) => {
         // The body cannot be cancelled, and in a shared process it keeps
         // registering routes and timers for later tests to trip over, so the
         // process is spent once this fires.
-        globalThis.__nodeTestSpike.poisoned = true;
+        globalThis.__testHarness.poisoned = true;
         reject(new Error(`test timed out after ${ms} ms`));
       }, ms);
       // A runaway test can fill the heap long before the deadline, and an OOM
@@ -490,7 +490,7 @@ const runSuite = async (suite, t, outer) => {
     // Once a test has outlived its deadline its body is still running and still
     // writing to the shared registries, so anything after it would be scored
     // against that mess rather than its own behaviour.
-    const poisoned = globalThis.__nodeTestSpike.poisoned === true;
+    const poisoned = globalThis.__testHarness.poisoned === true;
     await t.test(child.name, { skip: poisoned || child.mode === "skip", todo: child.mode === "todo", timeout: child.timeout ?? TIMEOUT }, async () => {
       let failure;
       if (actEnvironmentForFile !== undefined) globalThis.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
@@ -691,13 +691,13 @@ const fileCleanup = async () => {
   // refuses to focus anything in the next file.
   resetFocus();
   resetNavigator();
-  globalThis.__nodeTestSpike.restoreRealm?.();
-  globalThis.__nodeTestSpike.restoreEnvironment?.();
+  globalThis.__testHarness.restoreRealm?.();
+  globalThis.__testHarness.restoreEnvironment?.();
   const previous = dom;
   dom = createDom();
   win = dom.window;
   installWindowGlobals(true);
-  globalThis.__nodeTestSpike.remirror();
+  globalThis.__testHarness.remirror();
   repointScreen();
   try { previous.window.close(); } catch {}
   const evicted = new Set();
@@ -709,9 +709,9 @@ const fileCleanup = async () => {
   releaseEvicted(evicted);
   // A package that is loaded again registers its hooks again.
   for (const kind of Object.keys(packageHooks)) packageHooks[kind] = packageHooks[kind].filter((fn) => !WINDOW_BOUND_PACKAGES.test(packageHookOwners.get(fn) ?? ""));
-  globalThis.__nodeTestSpike.restoreSharedPackages?.();
+  globalThis.__testHarness.restoreSharedPackages?.();
   restoreSetupMocks();
-  globalThis.__nodeTestSpike.betweenFiles?.();
+  globalThis.__testHarness.betweenFiles?.();
   betweenFilesInRepository();
   mocks.clear();
   for (const [key, factory] of preloadMocks) mocks.set(key, factory);
@@ -729,7 +729,7 @@ const fileCleanup = async () => {
 
 let filesRunHere = 0;
 let fileStarted = 0;
-globalThis.__nodeTestSpike.runFile = async (t, file) => {
+globalThis.__testHarness.runFile = async (t, file) => {
   fileStarted = Date.now();
   preloadMocks ??= new Map(mocks);
   currentFile = path.relative(root, file);
@@ -942,7 +942,7 @@ globalThis.jest = {
   requireMock: (id) => {
     const from = callerFile();
     const file = resolveFrom(id, from);
-    return mocks.has(file) ? globalThis.__nodeTestSpike.mockExports(file) : Module.createRequire(from)(file);
+    return mocks.has(file) ? globalThis.__testHarness.mockExports(file) : Module.createRequire(from)(file);
   },
   // Project modules load again on their next require. Packages stay, as they
   // do between files, so React and the testing library keep one copy.
@@ -1017,7 +1017,7 @@ Object.assign(globalThis, structuredClone(project.globals));
       try { Object.defineProperty(win, key, { configurable: true, get: () => globalThis[key], set: (value) => { globalThis[key] = value; } }); } catch {}
     }
   };
-  globalThis.__nodeTestSpike.remirror = () => { packagesLoadedSinceMirror = true; mirrorGlobalsOntoWindow(); };
+  globalThis.__testHarness.remirror = () => { packagesLoadedSinceMirror = true; mirrorGlobalsOntoWindow(); };
   {
     const compileAny = NodeModule.prototype._compile;
     NodeModule.prototype._compile = function (content, filename, ...rest) {
@@ -1062,7 +1062,7 @@ Object.assign(globalThis, structuredClone(project.globals));
       return result;
     };
   }
-  globalThis.__nodeTestSpike.restoreSharedPackages = () => {
+  globalThis.__testHarness.restoreSharedPackages = () => {
     let restored = 0;
     for (const [target, baseline] of packageBaselines) {
       for (const key of Reflect.ownKeys(target)) {
@@ -1157,10 +1157,10 @@ const restoreRealm = () => {
   for (const [target, descriptors] of realmBaseline) restoreDescriptors(target, descriptors, true);
   restoreDescriptors(globalThis, globalBaseline, true, sharedGlobalKeys);
 };
-globalThis.__nodeTestSpike.restoreRealm = restoreRealm;
+globalThis.__testHarness.restoreRealm = restoreRealm;
 // jest gives each file its own copy of process.env.
 const environmentBaseline = { ...process.env };
-globalThis.__nodeTestSpike.restoreEnvironment = () => {
+globalThis.__testHarness.restoreEnvironment = () => {
   for (const key of Object.keys(process.env)) if (!(key in environmentBaseline)) delete process.env[key];
   for (const [key, value] of Object.entries(environmentBaseline)) if (process.env[key] !== value) process.env[key] = value;
 };
@@ -1243,5 +1243,5 @@ const resetTestingLibraryConfig = () => {
   } catch {}
 };
 resetTestingLibraryConfig();
-globalThis.__nodeTestSpike.betweenFiles = () => { restoreCanvasMocks(); wrapCanvasGetContext(); resetTestingLibraryConfig(); };
+globalThis.__testHarness.betweenFiles = () => { restoreCanvasMocks(); wrapCanvasGetContext(); resetTestingLibraryConfig(); };
 wrapCanvasGetContext();

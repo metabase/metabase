@@ -6,7 +6,7 @@ WORKERS=$(nproc)
 OUT=${GITHUB_STEP_SUMMARY:-/dev/stdout}
 LIST=$(mktemp)
 JSON=$(mktemp --suffix=.json)
-while read -r file; do [ -f "$file" ] && echo "$file"; done < node-test-spike/ci-files.txt > "$LIST"
+while read -r file; do [ -f "$file" ] && echo "$file"; done < frontend/test/harness/ci-files.txt > "$LIST"
 node -e 'const fs=require("fs");const path=require("path");fs.writeFileSync(process.argv[2],JSON.stringify(fs.readFileSync(process.argv[1],"utf8").split("\n").filter(Boolean).map((f)=>path.resolve(f))))' "$LIST" "$JSON"
 
 {
@@ -29,7 +29,7 @@ measure() {
     rm -f /tmp/harness.failures
     rm -f /tmp/harness.detail
     NT_FAILURES=/tmp/harness.failures NT_FAILURE_DETAIL=/tmp/harness.detail NT_FILE_LOG=1 /usr/bin/time -f '%e %U %S' -o "$timing" \
-      node node-test-spike/pool.cjs "$LIST" "$WORKERS" > /dev/null 2> "$log"
+      node frontend/test/harness/pool.cjs "$LIST" "$WORKERS" > /dev/null 2> "$log"
     result="$(wc -l < /tmp/harness.failures 2>/dev/null || echo 0) failing tests in $(cut -f1 /tmp/harness.failures 2>/dev/null | sort -u | wc -l) files, $(grep -o '[0-9]* worker restarts' "$log" | tail -1)"
     cp /tmp/harness.failures "harness-failures-$round-${runner//[ ,]/}.tsv" 2>/dev/null
     cp /tmp/harness.detail "harness-failures-$round-${runner//[ ,]/}.detail.tsv" 2>/dev/null
