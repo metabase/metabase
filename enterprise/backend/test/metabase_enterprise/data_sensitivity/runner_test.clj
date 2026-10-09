@@ -94,6 +94,26 @@
                         tables)
                 "a run writes no field metadata"))))))))
 
+(deftest semantic-type-suggestion-rules-test
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (:id db) :name "ds_semantic_rules" :active true}
+                 :model/Field    _     {:table_id (:id table) :name "ds_count" :base_type :type/Integer}
+                 :model/Field    _     {:table_id (:id table) :name "ds_email" :base_type :type/Text}]
+    (core-test/do-with-llm!
+     (core-test/canned-llm {"ds_count" {:data_sensitivity "PUBLIC" :semantic_type "type/Email"}
+                            "ds_email" {:data_sensitivity "PII" :semantic_type "type/Email"}})
+     (fn []
+       (testing "a semantic type that does not fit the field's type makes no suggestion"
+         (let [run (start! db {:attributes [:semantic_type]})]
+           (wait-ended (:id run))
+           (is (= [["ds_email" "type/Email"]]
+                  (for [s (suggestions (:id run))]
+                    [(t2/select-one-fn :name :model/Field :id (:field_id s)) (:proposed_value s)])))))
+       (testing "a run without the semantic_type attribute makes no semantic_type suggestion"
+         (let [run (start! db {:attributes [:data_sensitivity]})]
+           (wait-ended (:id run))
+           (is (= #{:data_sensitivity} (set (map :attribute (suggestions (:id run))))))))))))
+
 (deftest suggestion-source-and-attributes-test
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (:id db) :name "ds_sources" :active true}

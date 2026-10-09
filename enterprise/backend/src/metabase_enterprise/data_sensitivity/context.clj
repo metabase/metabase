@@ -68,6 +68,7 @@
    [:display_name    [:maybe :string]]
    [:description     [:maybe :string]]
    [:base_type       :keyword]
+   [:effective_type  {:optional true} [:maybe :keyword]]
    [:database_type   [:maybe :string]]
    [:semantic_type   [:maybe :keyword]]
    [:position        [:maybe :int]]
@@ -239,6 +240,7 @@
      :display_name    (:display_name field)
      :description     (:description field)
      :base_type       (:base_type field)
+     :effective_type  (:effective_type field)
      :database_type   (:database_type field)
      :semantic_type   (:semantic_type field)
      :position        (:position field)

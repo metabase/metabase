@@ -210,10 +210,12 @@
 (deftest classify-table-parse-counts-test
   (mt/with-temp [:model/Field _ {:table_id (mt/id :people) :name "ds_invalid" :base_type :type/Text}
                  :model/Field _ {:table_id (mt/id :people) :name "ds_missing" :base_type :type/Text}
-                 :model/Field _ {:table_id (mt/id :people) :name "ds_bad_semantic" :base_type :type/Text}]
+                 :model/Field _ {:table_id (mt/id :people) :name "ds_bad_semantic" :base_type :type/Text}
+                 :model/Field _ {:table_id (mt/id :people) :name "ds_misfit" :base_type :type/Integer}]
     (let [entries {"ds_invalid"      {:data_sensitivity "SECRET"}
                    "ds_missing"      nil
-                   "ds_bad_semantic" {:semantic_type "type/Nope"}}
+                   "ds_bad_semantic" {:semantic_type "type/Nope"}
+                   "ds_misfit"       {:semantic_type "type/Email"}}
           result  (do-with-llm! (misbehaving-llm #(get entries % {}))
                                 #(core/classify-table! (people-table) :include-values? false :chunk-size 4))]
       (testing "discarded model output is counted and summed over chunks"
@@ -221,10 +223,11 @@
         (is (= {:dropped_unknown  (:requests result)
                 :dropped_invalid  1
                 :dropped_missing  1
-                :semantic_dropped 1}
+                :semantic_dropped 1
+                :semantic_misfit  1}
                (:parse_counts result))))
       (testing "a well-behaved response discards nothing"
-        (is (= {:dropped_unknown 0 :dropped_invalid 0 :dropped_missing 0 :semantic_dropped 0}
+        (is (= {:dropped_unknown 0 :dropped_invalid 0 :dropped_missing 0 :semantic_dropped 0 :semantic_misfit 0}
                (:parse_counts (do-with-llm! (canned-llm (constantly {}))
                                             #(core/classify-table! (people-table) :include-values? false)))))))))
 

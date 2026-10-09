@@ -48,26 +48,40 @@
    "PUBLIC"        "Nothing sensitive: surrogate keys, timestamps, product or catalog attributes, categories, quantities, prices, ratings, and other data that identifies no person and reveals no secret."})
 
 (def semantic-types
-  "The closed list of semantic types the model may propose, matching the field-settings picker in the app. `none`
-  means the current value is right or nothing fits."
-  ["type/PK" "type/Name" "type/FK" "type/Category" "type/Comment" "type/Description" "type/Title" "type/City"
-   "type/Country" "type/Latitude" "type/Longitude" "type/State" "type/ZipCode" "type/Cost" "type/Currency"
-   "type/Discount" "type/GrossMargin" "type/Income" "type/Price" "type/Quantity" "type/Score" "type/Share"
-   "type/Percentage" "type/Birthdate" "type/Company" "type/Email" "type/Owner" "type/Subscription" "type/User"
-   "type/CancelationDate" "type/CancelationTime" "type/CancelationTimestamp" "type/CreationDate" "type/CreationTime"
-   "type/CreationTimestamp" "type/DeletionDate" "type/DeletionTime" "type/DeletionTimestamp" "type/UpdatedDate"
-   "type/UpdatedTime" "type/UpdatedTimestamp" "type/JoinDate" "type/JoinTime" "type/JoinTimestamp" "type/Enum"
-   "type/Product" "type/Source" "type/AvatarURL" "type/ImageURL" "type/URL" "type/SerializedJSON"])
+  "The closed list of semantic types the model may propose: the options of the field-settings picker in the app that
+  it can offer for some field type (see [[semantic-type-fits?]]), without deprecated types, `type/PK`, and `type/FK`.
+  Sync owns key detection, and a foreign key needs a target field. `none` means the current value is right or nothing
+  fits."
+  ["type/Name" "type/Category" "type/Description" "type/Title" "type/City" "type/Country" "type/Latitude"
+   "type/Longitude" "type/State" "type/ZipCode" "type/Currency" "type/Discount" "type/Income" "type/Quantity"
+   "type/Score" "type/Percentage" "type/Birthdate" "type/Email" "type/CreationDate" "type/CreationTime"
+   "type/CreationTimestamp" "type/JoinDate" "type/JoinTime" "type/JoinTimestamp" "type/AvatarURL" "type/ImageURL"
+   "type/URL" "type/SerializedJSON"])
+
+(def ^:private level-one-types
+  "The direct children of `:type/*`, such as `:type/Number` and `:type/Text`."
+  (into #{} (filter #(contains? (parents %) :type/*)) (descendants :type/*)))
+
+(defn semantic-type-fits?
+  "Whether a field of `field-type` (its effective type, else its base type) can have `semantic-type`. The same rule
+  as the field-settings picker (`getCompatibleSemanticTypes`): `type/Category` fits every type but Boolean,
+  `type/Name` fits text, and any other semantic type must derive from a level-one type the field type derives from."
+  [semantic-type field-type]
+  (case semantic-type
+    :type/Category (not (isa? field-type :type/Boolean))
+    :type/Name     (isa? field-type :type/Text)
+    (boolean (some #(and (isa? field-type %) (isa? semantic-type %)) level-one-types))))
+
+(when-not config/is-prod?
+  (assert (= (set categories) (set (keys category-definitions))) "every category needs a definition")
+  (doseq [t semantic-types]
+    (assert (mr/validate ::lib.schema.common/semantic-or-relation-type (keyword t)) (pr-str t))
+    (assert (some #(semantic-type-fits? (keyword t) %) level-one-types) (str t " fits no field type"))))
 
 (def no-semantic-type
   "Marker returned in `semantic_type` when the model proposes no change. A string rather than JSON `null` so the
   enum is a plain string enum for every provider adapter."
   "none")
-
-(when-not config/is-prod?
-  (assert (= (set categories) (set (keys category-definitions))) "every category needs a definition")
-  (doseq [t semantic-types]
-    (assert (mr/validate ::lib.schema.common/semantic-or-relation-type (keyword t)) (pr-str t))))
 
 ;;; Prompt
 
@@ -265,7 +279,8 @@
              [:dropped-unknown  :int]
              [:dropped-invalid  :int]
              [:dropped-missing  :int]
-             [:semantic-dropped :int]]]])
+             [:semantic-dropped :int]
+             [:semantic-misfit  :int]]]])
 
 (def ^:private category-set (set categories))
 (def ^:private semantic-type-set (set semantic-types))
@@ -275,12 +290,14 @@
 
 (mu/defn parse-response :- ::parsed
   "Turn the model's `{:fields [...]}` into one entry per input field, keyed by name. Entries naming an unknown field
-  are counted and ignored; an invalid category drops the field; `UNSURE` abstains; an invalid semantic type is
-  nulled and counted; fields with no entry are dropped. When a name appears twice the first entry wins."
+  are counted and ignored; an invalid category drops the field; `UNSURE` abstains; an invalid semantic type, or one
+  that does not fit the field's type (see [[semantic-type-fits?]]), is nulled and counted; fields with no entry are
+  dropped. When a name appears twice the first entry wins."
   [fields   :- [:sequential ::context/field]
    response :- [:maybe [:map {::mr/deliberately-open true}]]]
-  (let [known   (into #{} (map :name) fields)
-        counts  (volatile! {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 0 :semantic-dropped 0})
+  (let [known   (into {} (map (juxt :name identity)) fields)
+        counts  (volatile! {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 0 :semantic-dropped 0
+                            :semantic-misfit 0})
         count!  (fn [k] (vswap! counts update k inc))
         parsed  (reduce
                  (fn [acc {:keys [name reasoning data_sensitivity confidence semantic_type]}]
@@ -292,10 +309,20 @@
                      acc
 
                      :else
-                     (let [semantic-type (cond
-                                           (or (nil? semantic_type) (= no-semantic-type semantic_type)) nil
-                                           (contains? semantic-type-set semantic_type) (keyword semantic_type)
-                                           :else (do (count! :semantic-dropped) nil))
+                     (let [{:keys [base_type effective_type]} (get known name)
+                           semantic-type (cond
+                                           (or (nil? semantic_type) (= no-semantic-type semantic_type))
+                                           nil
+
+                                           (not (contains? semantic-type-set semantic_type))
+                                           (do (count! :semantic-dropped) nil)
+
+                                           (not (semantic-type-fits? (keyword semantic_type)
+                                                                     (or effective_type base_type)))
+                                           (do (count! :semantic-misfit) nil)
+
+                                           :else
+                                           (keyword semantic_type))
                            base          {:confidence    confidence
                                           :semantic-type semantic-type
                                           :reasoning     reasoning}]
@@ -420,7 +447,8 @@ name, gets a chunk of its own. The size
                        (map :usage calls))
      :fields   (into {} (map :fields) calls)
      :counts   (reduce (partial merge-with +)
-                       {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 0 :semantic-dropped 0}
+                       {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 0 :semantic-dropped 0
+                        :semantic-misfit 0}
                        (map :counts calls))}))
 
 (mu/defn classify-packet :- ::classification

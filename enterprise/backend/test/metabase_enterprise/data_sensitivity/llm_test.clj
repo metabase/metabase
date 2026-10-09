@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-sensitivity.llm-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase.metabot.self :as metabot.self]
@@ -129,7 +129,7 @@
     (is (= (conj (mapv name [:SEC_KEY :SYS_TELEMETRY :PHI :BIO_GEN :PCI_FIN :SENS_PERS :PII :CORP_IP :BIZ_CONF :PUBLIC])
                  "UNSURE")
            (get-in item [:properties :data_sensitivity :enum])))
-    (is (= 52 (count (get-in item [:properties :semantic_type :enum]))))
+    (is (= 29 (count (get-in item [:properties :semantic_type :enum]))))
     (is (= "none" (last (get-in item [:properties :semantic_type :enum]))))
     (is (false? (:additionalProperties item)))
     (is (false? (:additionalProperties llm/response-schema)))))
@@ -167,14 +167,66 @@
     (testing "a field with no entry is dropped"
       (is (= :dropped (get-in parsed [:fields "E" :status]))))
     (testing "counts cover the unknown name, the invalid category, the missing field, and the bad semantic type"
-      (is (= {:dropped-unknown 1 :dropped-invalid 1 :dropped-missing 1 :semantic-dropped 1} (:counts parsed))))
+      (is (= {:dropped-unknown 1 :dropped-invalid 1 :dropped-missing 1 :semantic-dropped 1 :semantic-misfit 0}
+             (:counts parsed))))
     (testing "every input field has exactly one entry"
       (is (= #{"A" "B" "C" "D" "E"} (set (keys (:fields parsed))))))))
 
 (deftest parse-nil-response-test
   (is (= {:fields {"A" {:data-sensitivity nil :confidence nil :semantic-type nil :reasoning nil :status :dropped}}
-          :counts {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 1 :semantic-dropped 0}}
+          :counts {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 1 :semantic-dropped 0 :semantic-misfit 0}}
          (llm/parse-response [(field "A")] nil))))
+
+(deftest semantic-types-exclude-keys-test
+  (testing "the model cannot propose a primary or foreign key"
+    (is (not-any? #{"type/PK" "type/FK"} llm/semantic-types))
+    (is (not-any? #{"type/PK" "type/FK"} (get-in llm/response-schema [:properties :fields :items :properties
+                                                                      :semantic_type :enum]))))
+  (testing "a proposed key type is nulled as invalid and the label kept"
+    (let [parsed (llm/parse-response [(field "ID" :base_type :type/BigInteger) (field "USER_ID" :base_type :type/Integer)]
+                                     {:fields [(entry "ID" :data_sensitivity "PUBLIC" :semantic_type "type/PK")
+                                               (entry "USER_ID" :data_sensitivity "PUBLIC" :semantic_type "type/FK")]})]
+      (is (= [[:labeled nil] [:labeled nil]]
+             (map (juxt :status :semantic-type) (vals (:fields parsed)))))
+      (is (= 2 (get-in parsed [:counts :semantic-dropped]))))))
+
+(deftest semantic-type-fits-test
+  (testing "the rule matches the field-settings picker"
+    (are [semantic-type field-type fits?] (= fits? (llm/semantic-type-fits? semantic-type field-type))
+      :type/Email      :type/Text       true
+      :type/Email      :type/Integer    false
+      :type/Price      :type/Integer    true
+      :type/Latitude   :type/Float      true
+      :type/Latitude   :type/Text       false
+      :type/CreationTimestamp :type/DateTime true
+      :type/CreationTimestamp :type/Text     false
+      :type/Category   :type/Integer    true
+      :type/Category   :type/Boolean    false
+      :type/Name       :type/Text       true
+      :type/Name       :type/Integer    false
+      :type/User       :type/Text       false)))
+
+(deftest parse-response-semantic-misfit-test
+  (let [fields [(field "EMAIL" :base_type :type/Integer)
+                (field "ACTIVE" :base_type :type/Boolean)
+                (field "CREATED" :base_type :type/Text :effective_type :type/DateTime)
+                (field "STARTED" :base_type :type/DateTime :effective_type :type/Text)]
+        parsed (llm/parse-response
+                fields
+                {:fields [(entry "EMAIL" :data_sensitivity "PII" :semantic_type "type/Email")
+                          (entry "ACTIVE" :data_sensitivity "PUBLIC" :semantic_type "type/Category")
+                          (entry "CREATED" :data_sensitivity "PUBLIC" :semantic_type "type/CreationTimestamp")
+                          (entry "STARTED" :data_sensitivity "PUBLIC" :semantic_type "type/JoinTimestamp")]})]
+    (testing "a semantic type that does not fit the base type is nulled and the label kept"
+      (is (= {:data-sensitivity :PII :semantic-type nil :status :labeled}
+             (select-keys (get-in parsed [:fields "EMAIL"]) [:data-sensitivity :semantic-type :status])))
+      (is (nil? (get-in parsed [:fields "ACTIVE" :semantic-type]))))
+    (testing "the effective type decides the fit when the field has one"
+      (is (= :type/CreationTimestamp (get-in parsed [:fields "CREATED" :semantic-type])))
+      (is (nil? (get-in parsed [:fields "STARTED" :semantic-type]))))
+    (testing "misfits are counted apart from invalid semantic types"
+      (is (= {:semantic-dropped 0 :semantic-misfit 3}
+             (select-keys (:counts parsed) [:semantic-dropped :semantic-misfit]))))))
 
 (defn- canned-call
   "A `call-llm-structured-with-trace` stand-in that labels every column in the user message PUBLIC and records
