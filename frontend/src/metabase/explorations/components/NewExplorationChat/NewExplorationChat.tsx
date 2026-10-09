@@ -139,8 +139,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to add research groups`,
         });
       }
@@ -182,8 +181,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to update research plan`,
         });
       }
@@ -227,8 +225,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to add timelines`,
         });
       }

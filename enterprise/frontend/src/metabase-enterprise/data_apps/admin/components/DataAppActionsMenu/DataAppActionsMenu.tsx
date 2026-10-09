@@ -26,7 +26,7 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
     try {
       await setEnabled({ name: app.name, enabled: !app.enabled }).unwrap();
     } catch {
-      sendToast({ message: t`Failed to update this app`, icon: "warning" });
+      sendToast({ message: t`Failed to update this app`, variant: "negative" });
     }
   }, [app.name, app.enabled, setEnabled, sendToast]);
 
@@ -41,7 +41,7 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
         } catch {
           sendToast({
             message: t`Failed to remove this data app`,
-            icon: "warning",
+            variant: "negative",
           });
         }
       },

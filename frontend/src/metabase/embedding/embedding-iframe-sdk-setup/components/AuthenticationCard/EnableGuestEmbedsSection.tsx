@@ -40,7 +40,10 @@ export const EnableGuestEmbedsSection = ({
         ...(!termsAccepted && { "show-static-embed-terms": false }),
       });
     } catch (error) {
-      sendToast({ message: t`Failed to enable guest embeds` });
+      sendToast({
+        message: t`Failed to enable guest embeds`,
+        variant: "negative",
+      });
     }
   };
 

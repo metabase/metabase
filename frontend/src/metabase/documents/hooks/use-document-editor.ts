@@ -385,7 +385,7 @@ export function useDocumentEditor({
         }
       } catch (error) {
         console.error("Failed to save document:", error);
-        sendToast({ message: t`Error saving document`, icon: "warning" });
+        sendToast({ message: t`Error saving document`, variant: "negative" });
         return {
           error: error,
         };

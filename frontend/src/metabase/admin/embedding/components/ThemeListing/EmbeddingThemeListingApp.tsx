@@ -40,7 +40,7 @@ function EmbeddingThemeListingAppInner() {
       sendToast({ message: t`Theme duplicated successfully`, icon: "check" });
     } catch (error) {
       console.error("Failed to duplicate theme:", error);
-      sendToast({ message: t`Failed to duplicate theme`, icon: "warning" });
+      sendToast({ message: t`Failed to duplicate theme`, variant: "negative" });
     }
   };
 

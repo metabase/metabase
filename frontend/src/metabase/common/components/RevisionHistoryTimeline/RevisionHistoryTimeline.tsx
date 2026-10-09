@@ -46,8 +46,7 @@ export function RevisionHistoryTimeline({
     } catch (error) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: getErrorMessage(
             error,
             t`Failed to revert to previous version.`,

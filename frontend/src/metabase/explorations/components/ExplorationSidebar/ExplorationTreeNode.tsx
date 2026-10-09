@@ -229,8 +229,7 @@ function ExplorationGroupMenu({
         return true;
       } catch {
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to update ${groupName}`,
         });
         return false;
@@ -266,8 +265,7 @@ function ExplorationGroupMenu({
       if (error) {
         sendToast({
           message: t`Failed to stop`,
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
         });
         return;
       }
@@ -285,8 +283,7 @@ function ExplorationGroupMenu({
       if (error) {
         sendToast({
           message: t`Failed to restart`,
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
         });
         return;
       }

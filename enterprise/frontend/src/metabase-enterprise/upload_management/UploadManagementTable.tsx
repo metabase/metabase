@@ -119,8 +119,7 @@ export function UploadManagementTable() {
 
             sendToast({
               message,
-              toastColor: "feedback-negative",
-              icon: "warning",
+              variant: "negative",
             });
           } else if (result.length > 0) {
             const message = ngettext(

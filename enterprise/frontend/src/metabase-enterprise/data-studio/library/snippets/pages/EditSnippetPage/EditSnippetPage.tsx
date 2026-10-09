@@ -75,7 +75,7 @@ export function EditSnippetPage() {
     if (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to update snippet content`),
-        icon: "warning",
+        variant: "negative",
       });
     } else {
       sendToast({

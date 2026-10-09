@@ -180,7 +180,7 @@ function MetabotCollectionConfigurationPane({
     if (result.error) {
       sendToast({
         message: t`Error setting ${newEntity.name}`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   };

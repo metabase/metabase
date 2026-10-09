@@ -434,8 +434,7 @@ export function DataComplexityHeader() {
       await refreshDataComplexityScores().unwrap();
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           error,
           t`Could not recompute data complexity.`,

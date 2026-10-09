@@ -123,7 +123,7 @@ export function IndexEditorModal({
       trackFailure({ transformId: transform.id, kind, result: "failure" });
       sendToast({
         message: getErrorMessage(submitError, t`Failed to save index`),
-        icon: "warning",
+        variant: "negative",
       });
       throw submitError;
     }

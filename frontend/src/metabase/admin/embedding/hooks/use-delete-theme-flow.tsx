@@ -35,7 +35,7 @@ export function useDeleteThemeFlow({
       onDeleted?.();
     } catch (error) {
       console.error("Failed to delete theme:", error);
-      sendToast({ message: t`Failed to delete theme`, icon: "warning" });
+      sendToast({ message: t`Failed to delete theme`, variant: "negative" });
       setIsDeleting(false);
     }
   };

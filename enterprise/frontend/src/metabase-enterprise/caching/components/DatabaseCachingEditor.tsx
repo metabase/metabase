@@ -194,7 +194,7 @@ export const DatabaseCachingEditor = () => {
         } catch {
           dispatch(
             addUndo({
-              icon: "warning",
+              variant: "negative",
               message: t`Could not reset the caching policies.`,
             }),
           );
