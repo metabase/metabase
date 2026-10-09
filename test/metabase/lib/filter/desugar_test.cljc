@@ -268,11 +268,7 @@
       [:= {} [:field {} 1] [:field {} 2]]
 
       [:in (opts) [:field (opts) 1] 2 3]
-      [:or {}
-       [:= {}
-        [:field {} 1]
-        2]
-       [:= {} [:field {} 1] 3]]
+      [:= {} [:field {} 1] 2 3]
 
       [:not-in (opts)
        [:field (opts) 1]
@@ -290,9 +286,7 @@
        [:field (opts) 1]
        2
        3]
-      [:and {}
-       [:!= {} [:field {} 1] 2]
-       [:!= {} [:field {} 1] 3]])))
+      [:!= {} [:field {} 1] 2 3])))
 
 (deftest ^:parallel desugar-relative-datetime-with-current-test-1
   (testing "when comparing `:relative-datetime`to `:field`, it should take the temporal unit of the `:field`"
@@ -348,28 +342,67 @@
                     x
                     y]))))))))
 
-(deftest ^:parallel desugar-other-filter-clauses-test-1
-  (testing "desugaring := and :!= with extra args"
-    (testing "= with extra args should get converted to or"
-      (is (=? [:or {}
-               [:= {} [:field {} 1] 2]
-               [:= {} [:field {} 1] 3]
-               [:= {} [:field {} 1] 4]
-               [:= {} [:field {} 1] 5]]
-              (desugar-filter-clause
-               [:= (opts)
-                [:field (opts) 1] 2 3 4 5]))))))
+(deftest ^:parallel desugar-equality-with-extra-args-test
+  (testing "= and != with extra args should be left as-is so drivers can compile them to IN and NOT IN (#23101)"
+    (are [clause expected] (=? expected
+                               (desugar-filter-clause clause))
+      [:= (opts) [:field (opts :base-type :type/Integer) 1] 2 3 4 5]
+      [:= {} [:field {} 1] 2 3 4 5]
 
-(deftest ^:parallel desugar-other-filter-clauses-test-2
-  (testing "desugaring := and :!= with extra args"
-    (testing "!= with extra args should get converted to or"
-      (is (=? [:and {}
-               [:!= {} [:field {} 1] 2]
-               [:!= {} [:field {} 1] 3]
-               [:!= {} [:field {} 1] 4]
-               [:!= {} [:field {} 1] 5]]
-              (desugar-filter-clause
-               [:!= (opts) [:field (opts) 1] 2 3 4 5]))))))
+      [:!= (opts) [:field (opts :base-type :type/Integer) 1] 2 3 4 5]
+      [:!= {} [:field {} 1] 2 3 4 5]
+
+      [:= (opts) [:field (opts :base-type :type/Text) 1] "A" "B"]
+      [:= {} [:field {} 1] "A" "B"]
+
+      [:= (opts) [:field (opts) 1] [:field (opts) 2] [:field (opts) 3]]
+      [:= {} [:field {} 1] [:field {} 2] [:field {} 3]])))
+
+(deftest ^:parallel desugar-equality-with-extra-args-and-nil-test
+  (testing "nil values in = and != with extra args should get split out into their own clauses (#23101)"
+    (are [clause expected] (=? expected
+                               (desugar-filter-clause clause))
+      [:= (opts) [:field (opts) 1] nil 2 3]
+      [:or {}
+       [:= {} [:field {} 1] nil]
+       [:= {} [:field {} 1] 2 3]]
+
+      [:= (opts) [:field (opts) 1] 2 nil]
+      [:or {}
+       [:= {} [:field {} 1] nil]
+       [:= {} [:field {} 1] 2]]
+
+      [:!= (opts) [:field (opts) 1] 2 3 nil]
+      [:and {}
+       [:!= {} [:field {} 1] nil]
+       [:!= {} [:field {} 1] 2 3]]
+
+      [:!= (opts) [:field (opts) 1] nil [:value (opts :effective-type :type/Integer) nil]]
+      [:!= {} [:field {} 1] nil])))
+
+(deftest ^:parallel desugar-temporal-equality-with-extra-args-test
+  (testing (str "= and != with extra args that compare temporal values should still get converted to compound filters, "
+                "so the QP can optimize each comparison into a range")
+    (are [clause expected] (=? expected
+                               (desugar-filter-clause clause))
+      [:= (opts) [:field (opts :base-type :type/DateTime :temporal-unit :month) 1] "2024-01-01" "2024-02-01"]
+      [:or {}
+       [:= {} [:field {:temporal-unit :month} 1] "2024-01-01"]
+       [:= {} [:field {:temporal-unit :month} 1] "2024-02-01"]]
+
+      [:!= (opts) [:field (opts :base-type :type/Date) 1] "2024-01-01" "2024-02-01"]
+      [:and {}
+       [:!= {} [:field {} 1] "2024-01-01"]
+       [:!= {} [:field {} 1] "2024-02-01"]]
+
+      [:= (opts) [:field (opts) 1] [:relative-datetime (opts) -1 :day] [:relative-datetime (opts) -2 :day]]
+      [:or {}
+       [:= {} [:field {} 1] [:relative-datetime {} -1 :day]]
+       [:= {} [:field {} 1] [:relative-datetime {} -2 :day]]]))
+  (testing "Comparisons against extracted temporal units like :day-of-week compare numbers, so leave them as-is"
+    (is (=? [:!= {} [:field {:temporal-unit :day-of-week} 1] 1 7]
+            (desugar-filter-clause
+             [:!= (opts) [:field (opts :base-type :type/DateTime :temporal-unit :day-of-week) 1] 1 7])))))
 
 (deftest ^:parallel desugar-other-filter-clauses-test-3
   (testing "desugaring :inside"

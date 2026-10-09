@@ -692,15 +692,55 @@
 
 (deftest ^:parallel equals-and-not-equals-with-extra-args-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing ":= with >2 args"
-      (is (= 81
-             (count-with-filter-clause [:= $price 1 2]))))))
+    (testing ":= with >2 args (e.g. IN in SQL) (#23101)"
+      (are [filter-clause] (= 81
+                              (count-with-filter-clause filter-clause))
+        [:= $price 1 2]
+        [:= $price 1 2 nil]
+        [:= [:- $price 1] 0 1]))))
 
 (deftest ^:parallel equals-and-not-equals-with-extra-args-test-2
   (mt/test-drivers (mt/normal-drivers)
-    (testing ":!= with >2 args"
-      (is (= 19
-             (count-with-filter-clause [:!= $price 1 2]))))))
+    (testing ":!= with >2 args (e.g. NOT IN in SQL) (#23101)"
+      (are [filter-clause] (= 19
+                              (count-with-filter-clause filter-clause))
+        [:!= $price 1 2]
+        [:!= $price 1 2 nil]
+        [:!= [:- $price 1] 0 1]))))
+
+(deftest ^:parallel equals-and-not-equals-with-extra-args-strings-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "strings"
+      (is (= 2
+             (count-with-filter-clause [:= $name "Red Medicine" "Stout Burgers & Beers" "Nope"])))
+      (is (= 98
+             (count-with-filter-clause [:!= $name "Red Medicine" "Stout Burgers & Beers" "Nope"]))))))
+
+(deftest ^:parallel equals-and-not-equals-with-extra-args-columns-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "columns"
+      (is (= 26
+             (count-with-filter-clause [:= $price $category_id 1]))))))
+
+(deftest ^:parallel equals-and-not-equals-with-extra-args-temporal-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "temporal values"
+      (is (= 3
+             (count-with-filter-clause checkins [:= $date "2014-04-07" "2014-09-18"])))
+      (is (= 997
+             (count-with-filter-clause checkins [:!= $date "2014-04-07" "2014-09-18"])))
+      (is (= 81
+             (count-with-filter-clause checkins [:= !month.date "2014-04-01" "2014-09-01"]))))))
+
+(deftest ^:parallel equals-and-not-equals-with-many-values-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "more values than some databases allow in a single IN list (Oracle allows 1000)"
+      (is (= 100
+             (count-with-filter-clause (into [:= $id] (range 1 1101)))))
+      ;; exclude everything but ID 1 rather than everything, since Mongo returns no rows instead of 0 for an empty
+      ;; count (#5419)
+      (is (= 1
+             (count-with-filter-clause (into [:!= $id] (range 2 1101))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   NOT FILTER                                                   |
