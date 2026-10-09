@@ -39,7 +39,7 @@ const readDurations = () => {
 
 // keepAlive holds idle workers for the next run() instead of ending them, which
 // is what makes a rerun in watch mode start warm.
-const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFileDone = () => {} } = {}) => {
+const createPool = ({ workers = fastCores(), keepAlive = false, silent = false, env = {}, onFileDone = () => {} } = {}) => {
   const durations = readDurations();
   const queues = Object.fromEntries(projects.map(({ name }) => [name, []]));
   const serving = Object.fromEntries(projects.map(({ name }) => [name, 0]));
@@ -116,7 +116,8 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
     starting[project] += 1;
     live += 1;
     serving[project] += 1;
-    child.stderr.on("data", (chunk) => process.stderr.write(chunk));
+    // What specs print with console goes to a worker's stderr.
+    child.stderr.on("data", (chunk) => { if (!silent) process.stderr.write(chunk); });
     child.on("message", (message) => {
       if (!message?.ready) return;
       startupFailures = 0;

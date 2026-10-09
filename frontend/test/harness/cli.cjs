@@ -18,15 +18,17 @@ const USAGE = `Usage: node frontend/test/harness/cli.cjs [pattern...] [options]
   --watch                   run again when a spec, or a file it loads, changes
   -w, --workers <n>         number of worker processes (default: one per fast core)
   -u, --update-snapshots    write snapshots that do not match
+  --silent                  do not show what the specs print with console
   --ignore-projects <a,b>   leave out the specs of these jest projects
   -h, --help                show this text
 `;
 
 const parse = (argv) => {
-  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, ignoredProjects: [] };
+  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, silent: false, ignoredProjects: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--watch") options.watch = true;
+    else if (argument === "--silent") options.silent = true;
     else if (argument === "-w" || argument === "--workers") options.workers = Number(argv[(index += 1)]);
     else if (argument.startsWith("--workers=")) options.workers = Number(argument.slice("--workers=".length));
     else if (argument === "-u" || argument === "--update-snapshots") options.updateSnapshots = true;
@@ -75,6 +77,7 @@ const showProgress = () => {
 const pool = createPool({
   workers: options.workers,
   keepAlive: options.watch,
+  silent: options.silent,
   env: { NT_FAILURES: failuresFile, NT_FAILURE_DETAIL: detailFile, ...(options.updateSnapshots ? { NT_UPDATE_SNAPSHOTS: "1" } : {}) },
   onFileDone: ({ file, loaded }) => {
     loadedBy.set(file, new Set(loaded));
