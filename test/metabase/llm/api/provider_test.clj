@@ -1896,6 +1896,32 @@
         (is (= {:message "rate limited" :fatal? false}
                (select-keys (llm.health/failure "throttled-anthropic") [:message :fatal?])))))))
 
+(deftest listing-holds-an-adapters-own-configuration-against-the-connection-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "listed-google" "google" {:oauth-access-token "ya29.t"})
+                                                    (connection "listed-vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [provider _opts]
+                                  (case provider
+                                    "google" (throw (ex-info "Could not obtain a Google access token: invalid_grant"
+                                                             {:api-error   true
+                                                              :status-code 400
+                                                              :error-code  :google-token-refresh-failed}
+                                                             (java.io.IOException. "invalid_grant: account disabled")))
+                                    "vllm"   (throw (ex-info "Could not reach the vLLM server at http://vllm.internal:8000/v1."
+                                                             {:api-error   true
+                                                              :status-code 400
+                                                              :error-code  :vllm-unreachable}
+                                                             (java.net.ConnectException. "Connection refused")))))]
+      (try
+        (mt/user-http-request :crowberto :get 200 "llm/models")
+        (testing "a token refresh the adapter refused stays against the connection rather than expiring back into rotation"
+          (is (=? {:fatal? true} (llm.health/failure "listed-google"))))
+        (testing "a server that could not be reached is transient: it may be back by the next request"
+          (is (=? {:fatal? false} (llm.health/failure "listed-vllm"))))
+        (finally
+          (llm.health/record-success! "listed-google")
+          (llm.health/record-success! "listed-vllm"))))))
+
 (deftest editing-a-connection-clears-its-failure-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]]
     (llm.health/record-failure! "anthropic" "invalid x-api-key" true)

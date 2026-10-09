@@ -2772,6 +2772,67 @@
                   (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)
                                             "metabase/anthropic/claude-sonnet-4-6")))))))
 
+(defn- google-token-refresh-failure
+  [^Exception cause]
+  (caught #(#'google/fresh-bearer-headers
+            (proxy [com.google.auth.oauth2.GoogleCredentials] []
+              (refreshIfExpired [] (throw cause))))))
+
+(deftest call-llm-health-classifies-what-the-adapters-throw-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! [model-ref]
+                (mt/with-log-level [metabase.metabot.self :fatal]
+                  (caught #(into [] (self/call-llm model-ref nil [] {}
+                                                   {:tag "agent" :required-permission :permission/metabot}
+                                                   nil)))))
+              (with-clean-record [conn-key thunk]
+                (llm.health/record-success! conn-key)
+                (try
+                  (thunk)
+                  (finally
+                    (llm.health/record-success! conn-key))))]
+        (testing "a prompt longer than the model's window is about that one request, so the connection stays healthy"
+          (with-clean-record
+            "anthropic"
+            #(mt/with-dynamic-fn-redefs [self.claude/claude
+                                         (fn [_]
+                                           (throw (provider-api-error!
+                                                   "anthropic" 400
+                                                   {:type  "error"
+                                                    :error {:type    "invalid_request_error"
+                                                            :message "prompt is too long: 215000 tokens > 200000 maximum"}})))]
+               (call! "anthropic/claude-haiku-4-5")
+               (is (true? (llm.health/healthy? "anthropic"))))))
+        (testing "an empty balance takes the connection out, though Anthropic answers it with a 400 too"
+          (with-clean-record
+            "anthropic"
+            #(mt/with-dynamic-fn-redefs [self.claude/claude
+                                         (fn [_] (throw (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))]
+               (call! "anthropic/claude-haiku-4-5")
+               (is (=? {:fatal? true} (llm.health/failure "anthropic"))))))
+        (testing "a Google token refresh that fails for a disabled service account takes the connection out"
+          (with-clean-record
+            "google"
+            #(let [failure (google-token-refresh-failure (java.io.IOException. "invalid_grant: account disabled"))]
+               (mt/with-dynamic-fn-redefs [google/google-raw (fn [& _] (throw failure))]
+                 (call! "google/google/gemini-3.5-flash")
+                 (is (=? {:fatal? true} (llm.health/failure "google")))))))
+        (testing "but one that never reached Google's token endpoint is transient, since the network is not the configuration"
+          (with-clean-record
+            "google"
+            #(let [failure (google-token-refresh-failure (java.net.UnknownHostException. "oauth2.googleapis.com"))]
+               (mt/with-dynamic-fn-redefs [google/google-raw (fn [& _] (throw failure))]
+                 (call! "google/google/gemini-3.5-flash")
+                 (is (=? {:fatal? false} (llm.health/failure "google")))))))
+        (testing "a Bedrock connection with an unknown region takes itself out, through the real adapter"
+          (llm.tu/with-connections [(llm.tu/connection "bedrock" {:region "mars-north-1"})]
+            (with-clean-record
+              "bedrock"
+              #(do (call! (str "bedrock/" (llm.provider/default-model "bedrock")))
+                   (is (=? {:fatal? true :message #"Invalid AWS Bedrock region.*"}
+                           (llm.health/failure "bedrock")))))))))))
+
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"
     (let [models (self/known-models "anthropic")]
