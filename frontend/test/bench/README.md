@@ -183,6 +183,11 @@ does not create one on demand, and a push to a table it does not know returns a
 4xx. The upload treats any failure as a warning and leaves the run green, so a
 missing table shows up as an empty chart rather than a red build.
 
+A called run, which is how a backfill measures a commit, also keeps its rows as
+a `bundle-load-rows-<sha>` artifact with one CSV file per locale. The columns are
+the columns of the table, so the files of a run can be joined and imported by
+hand.
+
 The conditions are a fast and a slow network crossed with a fast and a slow CPU.
 Neither CPU condition runs unthrottled: a throttle of 1 leaves the reading at the
 mercy of whichever CPU the runner drew, which is the largest source of spread in

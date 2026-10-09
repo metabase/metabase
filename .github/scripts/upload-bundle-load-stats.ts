@@ -1,8 +1,9 @@
 // Appends the measured load times to the "Bundle Load Times" table in
 // eng-stats-importer. Reads ROWS (the JSON matrix.js prints) and API_KEY from
-// env, and stamps each row with the commit it came from.
+// env, and stamps each row with the commit it came from. Writes the same rows to
+// a CSV file next to ROWS, and appends them only when UPLOAD is "true".
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 import { importStats } from "./stats-import";
 
@@ -91,6 +92,16 @@ function buildRows(
   }));
 }
 
+function toCsv(rows: LoadTimeRow[]): string {
+  const columns = Object.keys(rows[0]);
+  const toCell = (value: string | number) => {
+    const text = String(value);
+    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  };
+  const lines = [columns, ...rows.map((row) => columns.map((key) => row[key]))];
+  return lines.map((cells) => cells.map(toCell).join(",")).join("\n") + "\n";
+}
+
 async function main() {
   const path = process.env.ROWS || "artifacts/load-times.json";
   // matrix.js wrote this file, and Condition is the shape it prints.
@@ -105,6 +116,12 @@ async function main() {
   });
 
   console.table(rows);
+  writeFileSync(path.replace(/\.json$/, ".csv"), toCsv(rows));
+
+  if (process.env.UPLOAD !== "true") {
+    console.log("UPLOAD is not true, so the rows stay in the CSV file");
+    return;
+  }
 
   try {
     await importStats({ table: "bundle_load_times", rows });

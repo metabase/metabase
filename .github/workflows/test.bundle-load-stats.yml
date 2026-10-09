@@ -172,8 +172,8 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Import load times into Stats
-        if: ${{ inputs.commit == '' || inputs.upload }}
         env:
+          UPLOAD: ${{ inputs.commit == '' || inputs.upload }}
           # Passed via env (not interpolated into the shell) so the commit
           # message can't inject commands; the script keeps only the subject.
           COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message || env.COMMIT_SUBJECT }}
@@ -186,3 +186,10 @@ jobs:
             ROWS="artifacts/load-times-${locale}.json" \
               bun .github/scripts/upload-bundle-load-stats.ts
           done
+      - name: Keep the rows of a called run
+        if: ${{ inputs.commit != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: bundle-load-rows-${{ env.HEAD_SHA }}
+          path: artifacts/load-times-*.csv
+          if-no-files-found: error
