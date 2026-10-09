@@ -137,7 +137,7 @@
                            ["orders__SLASH__invoices" "orders__SLASH__invoices.yaml"])
                 "Slashes in directory names get escaped"))
           (testing "the Field was properly exported"
-            (is (= (ts/extract-one "Field" (:id website))
+            (is (= (serdes/storable (ts/extract-one "Field" (:id website)))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases"  "my_company_data"
                                                 "tables"     "customers"
@@ -523,3 +523,21 @@
                                   {:label "tables"     :key "tables"}
                                   {:label "target"     :key "table-1"}]))
             "transforms under databases/.../schemas/ should not get _2 suffix")))))
+
+(deftest entity-file-path-and-yaml-match-the-file-writer-test
+  (testing "the file writer writes each entity at its entity-file-path, holding exactly its entity-yaml"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Collection parent {:name "Some Collection"}
+                           :model/Collection _child {:name "Child Collection" :location (format "/%d/" (:id parent))}
+                           :model/Card       _card  {:name "A Question" :collection_id (:id parent)}]
+          (let [export   (into [] (extract/extract {:no-settings true :no-data-model true :no-transforms true}))
+                entities (filterv (comp #{"Collection" "Card"} :model last :serdes/meta) export)
+                ctx      (serdes/storage-base-context)]
+            (storage/store! export (storage.files/file-writer dump-dir))
+            (is (= 3 (count entities)))
+            (doseq [entity entities
+                    :let   [path (storage.util/entity-file-path ctx entity)]]
+              (testing path
+                (is (= (storage.util/entity-yaml entity)
+                       (slurp (io/file dump-dir path))))))))))))

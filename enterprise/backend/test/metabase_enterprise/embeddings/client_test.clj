@@ -2,16 +2,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.embeddings.client :as embeddings.client]
-   [metabase-enterprise.semantic-search.core :as semantic-search]))
+   [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (deftest legacy-model-dimensions-are-normalized-test
   (let [captured (atom nil)]
-    (with-redefs [semantic-search/get-embeddings-batch
-                  (fn [model texts & {:as opts}]
-                    (reset! captured [model texts opts])
-                    [[1.0 2.0]])]
+    (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+                                (fn [model texts & {:as opts}]
+                                  (reset! captured [model texts opts])
+                                  [[1.0 2.0]])]
       (is (= [[1.0 2.0]]
              (embeddings.client/get-embeddings-batch
               {:provider "ai-service" :model-name "model" :model-dimensions 2}
@@ -24,10 +25,10 @@
 
 (deftest embeds-through-the-connection-keyed-after-the-provider-test
   (let [captured (atom nil)]
-    (with-redefs [semantic-search/get-embeddings-batch
-                  (fn [_model _texts & {:as opts}]
-                    (reset! captured opts)
-                    [[1.0 2.0]])]
+    (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch
+                                (fn [_model _texts & {:as opts}]
+                                  (reset! captured opts)
+                                  [[1.0 2.0]])]
       (embeddings.client/get-embeddings-batch {:provider "openai" :model-name "model" :model-dimensions 2} ["text"])
       (is (= {:connection-key "openai"} @captured)))))
 

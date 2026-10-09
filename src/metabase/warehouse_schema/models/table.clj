@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -531,11 +532,18 @@
 
 (mi/define-batched-hydration-method with-metrics
   :metrics
-  "Efficiently hydrate the Metrics for a collection of `tables`."
+  "Efficiently hydrate the Metrics for a collection of `tables`.
+
+  Consumers of a Table's `:metrics` want an id, a name and a link, never a metric's `:dimensions`, so the
+  `card_schema` 24 backfill is skipped. Without that the upgrade builds the whole implicitly-joined dimension set
+  for every pre-curation metric on these tables -- work proportional to (metrics x columns), then discarded --
+  which is minutes of CPU and enough garbage to exhaust the heap on a wide table with many old metrics (#83937).
+  Every other `card_schema` upgrade still runs."
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (->> (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids)
+      (->> (binding [card-schema/*skip-dimension-backfill?* true]
+             (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
            (filter mi/can-read?)))
     tables))
 
@@ -587,6 +595,9 @@
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
                     {:model "Table" :id (:name table)}])))
+
+(defmethod serdes/ingested-path "Table" [_ {:keys [db_id schema name]}]
+  (serdes/table->path [db_id schema name]))
 
 (defmethod serdes/entity-id "Table" [_ {:keys [name]}]
   name)

@@ -59,9 +59,13 @@ export type CollectionPermissionsModalProps = {
 export type LibraryCollectionType =
   | "library"
   | "library-data"
-  | "library-metrics";
+  | "library-metrics"
+  | "library-dashboards";
 
-export type LibrarySubCollectionType = "library-data" | "library-metrics";
+export type LibrarySubCollectionType =
+  | "library-data"
+  | "library-metrics"
+  | "library-dashboards";
 
 export type GetEntityPickerSyntheticLibraryItemFunction = {
   (params: {

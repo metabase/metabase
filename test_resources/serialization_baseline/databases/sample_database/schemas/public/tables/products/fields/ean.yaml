@@ -13,12 +13,5 @@ position: 1
 database_position: 1
 has_field_values: auto-list
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: PRODUCTS
-  model: Table
-- id: EAN
-  model: Field
+- model: Field
 database_indexed: false

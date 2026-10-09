@@ -400,7 +400,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as options} finished-chan]
+   f {:keys [content-type status headers async-timeout-ms], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
     (.addListener async-context
@@ -416,6 +416,8 @@
                     (onComplete [_ _event])
                     (onStartAsync [_ _event])))
     (try
+      (when async-timeout-ms
+        (.setTimeout async-context async-timeout-ms))
       (.setStatus response (or status 202))
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map))
@@ -522,6 +524,8 @@
      of a query) must supply their own executor so they cannot exhaust it. The supplied executor's futures must
      support real interruption (`Future.cancel(true)`) — the hung-request escalation interrupts the worker, and a
      ForkJoinPool-backed executor silently ignores it.
+  *  `:async-timeout-ms` -- how long the response may run before Jetty completes it, cutting the stream short.
+     Defaults to `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`; `0` means no limit.
   *  `:error-response-fn` -- optional function applied to any error body right before [[write-error!]] writes it to the
      client. Usually added after the fact with [[with-error-response-fn]]."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}

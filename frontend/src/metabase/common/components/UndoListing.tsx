@@ -34,6 +34,7 @@ import {
   Progress,
   Stack,
 } from "metabase/ui";
+import { isFocusVisible } from "metabase/utils/dom";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
 import S from "./UndoListing.module.css";
@@ -109,7 +110,7 @@ function UndoToast({
   };
 
   const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (event.target.matches(":focus-visible")) {
+    if (isFocusVisible(event.target)) {
       updateInteraction({ isFocused: true });
     }
   };

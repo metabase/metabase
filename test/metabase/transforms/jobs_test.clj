@@ -1,10 +1,7 @@
 (ns ^:mb/driver-tests metabase.transforms.jobs-test
-  ;; raw tools.logging is required so tests can redef log/log* and capture log output
-  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
@@ -137,41 +134,37 @@
                              :source query-source
                              :name "Test Query Transform"}
             run-id 102
-            logged-messages (atom [])
             run-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                               (swap! logged-messages conj {:level level :message message}))
-                                    transform-run/running-run-for-transform-id (constantly nil)
-                                    transforms.execute/execute! (fn [_ _]
-                                                                  (reset! run-called? true))]
-          (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
-                                  :add-run-activity! (constantly nil)}
-                                 (promise) query-transform)
-          (is (empty? (filter (comp #{:warn} :level) @logged-messages))
-              "Should not log warnings when feature is enabled")
-          (is @run-called?
-              "Should call run-mbql-transform! when feature is enabled"))))))
+        (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+          (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                      transforms.execute/execute! (fn [_ _]
+                                                                    (reset! run-called? true))]
+            (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                    :add-run-activity! (constantly nil)}
+                                   (promise) query-transform)
+            (is (empty? (filter (comp #{:warn} :level) (messages)))
+                "Should not log warnings when feature is enabled")
+            (is @run-called?
+                "Should call run-mbql-transform! when feature is enabled")))))))
 
 (deftest run-query-transform-skipped-hosted-without-basic-feature-test
   (mt/with-premium-features #{:hosting}
     (let [query-transform {:id 1
                            :source query-source
                            :name "Test Query Transform"}
-          run-id 100
-          logged-messages (atom [])]
-      (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                             (swap! logged-messages conj {:level level :message message}))
-                                  transform-run/running-run-for-transform-id (constantly nil)]
-        (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
-                                :add-run-activity! (constantly nil)}
-                               (promise) query-transform)
-        (is (= 1 (count @logged-messages))
-            "Should log exactly one warning")
-        (is (= :warn (:level (first @logged-messages)))
-            "Should log at warn level")
-        (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
-                        (:message (first @logged-messages)))
-            "Warning message should indicate transform was skipped due to missing features")))))
+          run-id 100]
+      (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+        (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)]
+          (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                  :add-run-activity! (constantly nil)}
+                                 (promise) query-transform)
+          (is (= 1 (count (messages)))
+              "Should log exactly one warning")
+          (is (= :warn (:level (first (messages))))
+              "Should log at warn level")
+          (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
+                          (:message (first (messages))))
+              "Warning message should indicate transform was skipped due to missing features"))))))
 
 (deftest run-query-transform-with-transforms-basic-feature-test
   (mt/with-premium-features #{:hosting :transforms-basic}
@@ -179,20 +172,18 @@
                            :source query-source
                            :name "Test Query Transform"}
           run-id 102
-          logged-messages (atom [])
           run-called? (atom false)]
-      (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                             (swap! logged-messages conj {:level level :message message}))
-                                  transform-run/running-run-for-transform-id (constantly nil)
-                                  transforms.execute/execute! (fn [_ _]
-                                                                (reset! run-called? true))]
-        (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
-                                :add-run-activity! (constantly nil)}
-                               (promise) query-transform)
-        (is (empty? (filter (comp #{:warn} :level) @logged-messages))
-            "Should not log warnings when feature is enabled")
-        (is @run-called?
-            "Should call run-mbql-transform! when feature is enabled")))))
+      (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+        (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/execute! (fn [_ _]
+                                                                  (reset! run-called? true))]
+          (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                  :add-run-activity! (constantly nil)}
+                                 (promise) query-transform)
+          (is (empty? (filter (comp #{:warn} :level) (messages)))
+              "Should not log warnings when feature is enabled")
+          (is @run-called?
+              "Should call run-mbql-transform! when feature is enabled"))))))
 
 (deftest run-query-transform-skipped-when-transforms-enabled-false-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "false"]
@@ -201,36 +192,34 @@
                              :source query-source
                              :name "Disabled Transform"}
             run-id 103
-            logged-messages (atom [])
             run-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                               (swap! logged-messages conj {:level level :message message}))
-                                    transform-run/running-run-for-transform-id (constantly nil)
-                                    transforms.execute/execute! (fn [_ _]
-                                                                  (reset! run-called? true))]
-          (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
-                                  :add-run-activity! (constantly nil)}
-                                 (promise) query-transform)
-          (is (= 1 (count @logged-messages))
-              "Should log exactly one warning")
-          (is (= :warn (:level (first @logged-messages)))
-              "Should log at warn level")
-          (is (re-matches #".*Skip running transform 4 due to lacking premium features.*"
-                          (:message (first @logged-messages)))
-              "Warning message should indicate transform was skipped")
-          (is (false? @run-called?)
-              "Should not execute when transforms-enabled is explicitly false"))))))
+        (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+          (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                      transforms.execute/execute! (fn [_ _]
+                                                                    (reset! run-called? true))]
+            (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                    :add-run-activity! (constantly nil)}
+                                   (promise) query-transform)
+            (is (= 1 (count (messages)))
+                "Should log exactly one warning")
+            (is (= :warn (:level (first (messages))))
+                "Should log at warn level")
+            (is (re-matches #".*Skip running transform 4 due to lacking premium features.*"
+                            (:message (first (messages))))
+                "Warning message should indicate transform was skipped")
+            (is (false? @run-called?)
+                "Should not execute when transforms-enabled is explicitly false")))))))
 
 (deftest run-transform-locked-meter-test
   ;; `transform-metered-as` is `defenterprise`; the OSS impl returns nil for everything,
   ;; which makes `transform-locked?` short-circuit to false regardless of `:locked-meters`.
   ;; Mock the routing so the test exercises the lock-check branch under any classpath.
-  (with-redefs [premium-features/transform-metered-as (fn [source-type]
-                                                        (case (keyword source-type)
-                                                          :native "transform-basic"
-                                                          :mbql   "transform-basic"
-                                                          :python "transform-advanced"
-                                                          nil))]
+  (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (fn [source-type]
+                                                                      (case (keyword source-type)
+                                                                        :native "transform-basic"
+                                                                        :mbql   "transform-basic"
+                                                                        :python "transform-advanced"
+                                                                        nil))]
     (testing "scheduled run-transform! is skipped (with warn log) when the meter is locked"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
@@ -238,21 +227,19 @@
                                  :source_type :native
                                  :source      query-source
                                  :name        "Locked Transform"}
-                logged          (atom [])
                 run-called?     (atom false)]
-            (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                                   (swap! logged conj {:level level :message message}))
-                                        transform-run/running-run-for-transform-id (constantly nil)
-                                        transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
-              (#'jobs/run-transform! {:parent-run [:job 200] :run-method :scheduled :user-id nil
-                                      :add-run-activity! (constantly nil)}
-                                     (promise) transform)
-              (is (false? @run-called?)
-                  "execute! must not be called when the meter is locked")
-              (is (some #(re-matches #".*Skip running transform 7 due to locked meter.*"
-                                     (:message %))
-                        @logged)
-                  "Should log warning naming the locked-meter reason"))))))
+            (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+              (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                          transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
+                (#'jobs/run-transform! {:parent-run [:job 200] :run-method :scheduled :user-id nil
+                                        :add-run-activity! (constantly nil)}
+                                       (promise) transform)
+                (is (false? @run-called?)
+                    "execute! must not be called when the meter is locked")
+                (is (some #(re-matches #".*Skip running transform 7 due to locked meter.*"
+                                       (:message %))
+                          (messages))
+                    "Should log warning naming the locked-meter reason")))))))
     (testing "scheduled run-transform! runs normally when the meter is not locked"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs false}]
@@ -266,7 +253,7 @@
               (is (true? @run-called?)))))))
     (testing "non-metered transform (transform-metered-as → nil) is never blocked by lock state"
       ;; Override the outer mock with one that returns nil for every source-type.
-      (with-redefs [premium-features/transform-metered-as (constantly nil)]
+      (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (constantly nil)]
         (mt/with-premium-features #{:hosting :transforms-basic}
           (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
                                                             :transform-advanced-runs true}]

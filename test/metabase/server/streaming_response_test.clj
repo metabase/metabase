@@ -9,11 +9,11 @@
    [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.server.instance :as server.instance]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
+   [metabase.server.test-util :as server.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -182,16 +182,11 @@
                                  (recur)))))
                          (catch Exception _e
                            (reset! canceled :not-nice))))
-                     req)))
-        server   (doto (server.instance/create-server handler {:port 0 :join? false})
-                   .start)
-        url      (str "http://localhost:" (.. server getURI getPort))]
-    (try
+                     req)))]
+    (server.tu/with-test-server [url handler]
       (with-redefs [streaming-response/async-cancellation-poll-interval-ms 5]
         (testing "Closing body stops request handler"
-          (let [res (http/request {:method          :post :url url
-                                   :as              :stream
-                                   :decompress-body false})]
+          (let [res (server.tu/request url :post "" {:as :stream})]
             (.read ^InputStream (:body res)) ;; start the handler
             ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
             (.close ^Closeable (:http-client res))
@@ -203,9 +198,7 @@
             (testing "cancellation is working"
               ;; we're not checking for particular way of cancelling, because cancellation poll interval can conflict
               ;; with Thread/sleep and will make this test flaky
-              (is (some? @canceled))))))
-      (finally
-        (.stop server)))))
+              (is (some? @canceled)))))))))
 
 (deftest abort-on-committed-error-test
   (testing "An error after the response is committed aborts the connection so the client cannot read a complete body"
@@ -217,24 +210,19 @@
                         (.write os (.getBytes "a,b,c\n1,2,3\n" "UTF-8"))
                         (.flush os)
                         (streaming-response/write-error! os {:error "boom"} :csv 500))
-                      req)))
-          server  (doto (server.instance/create-server handler {:port 0 :join? false})
-                    .start)
-          url     (str "http://localhost:" (.. server getURI getPort))
-          consume (fn [] (let [res (http/request {:method :get, :url url, :as :stream, :decompress-body false})]
-                           [res (slurp (:body res))]))]
-      (try
-        (testing "the response is chunked so a missing terminator is detectable"
-          ;; can't read the body cleanly, so just open a request to inspect the headers
-          (let [res (http/request {:method :get, :url url, :as :stream, :decompress-body false})]
-            (is (= "chunked" (get-in res [:headers "transfer-encoding"])))
-            (u/ignore-exceptions (.close ^InputStream (:body res)))))
-        (testing "consuming the whole body throws because the stream was aborted without a clean chunk terminator"
-          (is (thrown? Exception (consume))))
-        (testing "no JSON error blob is appended to the body"
-          (is (not (re-find #"boom" (try (second (consume)) (catch Exception _ ""))))))
-        (finally
-          (.stop server))))))
+                      req)))]
+      (server.tu/with-test-server [url handler]
+        (let [consume (fn [] (let [res (server.tu/request url :get "" {:as :stream})]
+                               [res (slurp (:body res))]))]
+          (testing "the response is chunked so a missing terminator is detectable"
+            ;; can't read the body cleanly, so just open a request to inspect the headers
+            (let [res (server.tu/request url :get "" {:as :stream})]
+              (is (= "chunked" (get-in res [:headers "transfer-encoding"])))
+              (u/ignore-exceptions (.close ^InputStream (:body res)))))
+          (testing "consuming the whole body throws because the stream was aborted without a clean chunk terminator"
+            (is (thrown? Exception (consume))))
+          (testing "no JSON error blob is appended to the body"
+            (is (not (re-find #"boom" (try (second (consume)) (catch Exception _ "")))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
@@ -770,6 +758,47 @@
                                             (a/timeout 5000) ([_] ::timed-out)))))))
           (is (false? (.await complete-called 100 TimeUnit/MILLISECONDS))
               "Worker thread should not call .complete when timeout already completed the context"))))))
+
+(deftest async-timeout-ms-test
+  (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+    (let [started (promise)
+          release (promise)
+          handler (fn [req respond _raise]
+                    (let [no-timeout? (= "/no-timeout" (:uri req))
+                          options     (cond-> {:content-type "text/plain"}
+                                        no-timeout? (assoc :async-timeout-ms 0))]
+                      (respond
+                       (compojure.response/render
+                        (streaming-response/streaming-response options [os _]
+                          (when no-timeout?
+                            (deliver started true))
+                          (deref release 5000 nil)
+                          (.write os (.getBytes "done" "UTF-8")))
+                        req))))]
+      (server.tu/with-test-server [url handler]
+        (try
+          (let [no-timeout (future (:body (server.tu/request url :get "/no-timeout")))]
+            (is (true? (deref started 5000 ::timed-out)))
+            (testing "Jetty completes a response that runs past MB_JETTY_ASYNC_RESPONSE_TIMEOUT"
+              (is (= "" (:body (server.tu/request url :get "/")))))
+            (deliver release true)
+            (testing "unless the response sets :async-timeout-ms 0"
+              (is (= "done" (deref no-timeout 5000 ::timed-out)))))
+          (finally
+            (deliver release true)))))))
+
+(deftest positive-async-timeout-ms-test
+  (testing "A positive response timeout replaces the shorter server timeout"
+    (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+      (let [handler (fn [req respond _raise]
+                      (respond
+                       (compojure.response/render
+                        (streaming-response/streaming-response {:content-type "text/plain" :async-timeout-ms 2000} [os _]
+                          (a/<!! (a/timeout 300))
+                          (.write os (.getBytes "done" "UTF-8")))
+                        req)))]
+        (server.tu/with-test-server [url handler]
+          (is (= "done" (:body (server.tu/request url :get "/")))))))))
 
 (deftest do-f-async-custom-executor-test
   (testing "the :executor option runs `f` on that executor instead of the shared streaming pool"

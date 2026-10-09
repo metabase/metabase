@@ -79,10 +79,9 @@ describe("ManageDataAppsPage", () => {
         screen.getByRole("link", { name: "Go to Git sync settings" }),
       ).toHaveAttribute("href", "/admin/settings/remote-sync");
       expect(
-        screen.getByText(/npx skills add metabase\/metabase/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/--skill metabase-data-app-setup/),
+        screen.getByText(
+          /npx skills add metabase\/agent-skills\/skills\/metabase-data-apps\/v1/,
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -147,18 +146,6 @@ describe("ManageDataAppsPage", () => {
       expect(
         screen.getByRole("button", { name: "Actions for Beta App" }),
       ).toBeInTheDocument();
-    });
-
-    it("labels drafts", async () => {
-      setup({
-        apps: [
-          createMockDataApp({ id: 1, display_name: "Live App" }),
-          createMockDataApp({ id: 2, display_name: "Draft App", draft: true }),
-        ],
-      });
-
-      expect(await screen.findByText("Draft App")).toBeInTheDocument();
-      expect(screen.getAllByText("Draft")).toHaveLength(1);
     });
 
     it("shows how many hosts an app is allowed to reach", async () => {

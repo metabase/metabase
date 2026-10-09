@@ -7,13 +7,13 @@ import { EllipsifiedCollectionPath } from "metabase/common/components/Ellipsifie
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import {
   ItemNameCell,
   TBody,
   Table,
   TableColumn,
-} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/common/components/ItemsTable/Columns";
+} from "metabase/common/components/ItemsTable/TableElements";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
@@ -41,16 +41,12 @@ export interface ModelsTableProps {
   skeleton?: boolean;
 }
 
-export const itemsTableContainerName = "ItemsTableContainer";
-
 const descriptionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
-  containerName: itemsTableContainerName,
 };
 
 const collectionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "xs",
-  containerName: itemsTableContainerName,
 };
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {

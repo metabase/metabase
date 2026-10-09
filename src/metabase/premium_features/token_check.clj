@@ -97,6 +97,7 @@
    :enabled-embedding-interactive false
    :enabled-embedding-sdk         false
    :enabled-embedding-simple      false
+   :enabled-embedding-sidecar     false
    :use-tenants                   false})
 
 (defn- yesterday []

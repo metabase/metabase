@@ -2,12 +2,12 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Group, Text, rem } from "metabase/ui";
+import { Box, Group, NumberInput, Text, rem } from "metabase/ui";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 
 import { MenuItemStyled } from "./MenuItem.styled";
-import { NumberInputStyled } from "./PeriodsAgoMenuOption.styled";
+import S from "./PeriodsAgoMenuOption.module.css";
 
 type PeriodsAgoMenuOptionProps = {
   "aria-selected": boolean;
@@ -96,7 +96,8 @@ export function PeriodsAgoMenuOption({
     <MenuItemStyled py="xxs" aria-selected={isSelected}>
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
         <Group gap="sm">
-          <NumberInputStyled
+          <NumberInput
+            classNames={{ input: S.input }}
             allowDecimal={false}
             value={value}
             onChange={(value) => handleInputChange(value)}
