@@ -103,7 +103,7 @@ describe("scenarios > visualizations > line chart", () => {
     cy.log("x-axis column settings (metabase#51952)");
     cy.findByTestId("settings-CREATED_AT").click();
     H.popover().findByText("Abbreviate days and months").click();
-    H.echartsContainer().findByText("Jan 2027");
+    H.echartsContainer().findByText("Apr 2027");
     cy.realPress("Escape");
     cy.get("[data-element-id=mantine-popover]")
       .filter(":visible")
