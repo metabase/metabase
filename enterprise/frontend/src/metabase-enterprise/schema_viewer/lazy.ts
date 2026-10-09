@@ -5,4 +5,6 @@
  * reuses it, so both sides always name the same module.
  */
 export const loadSchemaViewerPage = () =>
-  import(/* webpackChunkName: "schema-viewer" */ "./pages/SchemaViewerPage");
+  import(/* webpackChunkName: "schema-viewer" */ "./pages/SchemaViewerPage").then(
+    ({ SchemaViewerPage }) => ({ Component: SchemaViewerPage }),
+  );
