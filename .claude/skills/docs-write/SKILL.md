@@ -1,6 +1,6 @@
 ---
 name: docs-write
-description: Write documentation following Metabase's conversational, clear, and user-focused style. Use when creating or editing documentation files (markdown, MDX, etc.).
+description: Write documentation following Metabase's conversational, clear, and reader-focused style. Use when creating or editing pages in `docs/`.
 allowed-tools: Read, Write, Edit, Grep, Bash, Glob
 ---
 
@@ -12,7 +12,7 @@ Read `../_shared/metabase-style-guide.md` (relative to this skill's directory) b
 
 ## Scope
 
-This skill covers clarity, style, and formatting. Accuracy is a separate check, so write from the material you're given, and look something up only when you need it to write the page. Don't audit the material against the source code. If something in it looks wrong on its face, keep it and say so in your reply.
+This skill covers clarity, style, and formatting. Accuracy is a separate check, so write from the material you're given, and look something up only when you need it to write the page. Don't audit the material against the source code. If something in it looks wrong on its face, keep it and say so in your reply. If the material doesn't say where the feature stops, say so in your reply. Don't guess.
 
 ## Writing a new page
 
@@ -21,7 +21,7 @@ This skill covers clarity, style, and formatting. Accuracy is a separate check, 
 
 ## Editing an existing doc
 
-- **Scope changes to the sections you were asked to change.** Fix style exceptions inside them. That's as far as the guide's "while I'm on this page, I might as well tidy up" goes for you. Mention problems elsewhere on the page instead of fixing them.
+- **Scope changes to the sections you were asked to change.** Fix anything in them that breaks the guide. That's as far as the guide's "while I'm on this page, I might as well tidy up" goes for you. Mention problems elsewhere on the page instead of fixing them.
 - **Check the formatting before you edit.** Run `bunx prettier --check` on the file. If it passes, run `bunx prettier --write` on it when you're done. If it doesn't, leave the formatting alone, or prettier rewrites lines you didn't touch.
 - **If you rewrite a heading, fix the links to it.** Product code links to docs anchors too, and nothing checks those links. Before changing `## Cache configuration`, search for the anchor it generates, without the `#`:
 

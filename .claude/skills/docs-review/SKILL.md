@@ -1,6 +1,6 @@
 ---
 name: docs-review
-description: Review documentation changes for compliance with the Metabase writing style guide. Use when reviewing pull requests, files, or diffs containing documentation markdown files.
+description: Review documentation changes for compliance with the Metabase writing style guide. Use when reviewing pull requests, files, or diffs that touch `docs/`.
 allowed-tools: Read, Grep, Bash, Glob
 ---
 
@@ -16,7 +16,7 @@ Read the diff once for intent before flagging anything — half of what looks wr
 
 ## Scope
 
-This review covers clarity, style, and formatting. Accuracy is a separate check, so don't verify facts against the source code. If something looks wrong on its face, say so in one line at the end of the review, marked "Not checked", and move on.
+This review covers clarity, style, and formatting. Accuracy is a separate check, so don't verify facts against the source code. If something looks wrong on its face, say so in one line at the end of the review, marked "Not checked," and move on. Reviewing a file, not a diff? Every line is in scope.
 
 ## Tiers
 
@@ -40,7 +40,7 @@ Cut anything that won't materially help the reader, then number what's left from
 ## Issues
 
 **Issue 1 (Clarity)** — Line 8
-"Cache configuration" names the topic. State the point: "Turn on caching for slow questions".
+"Cache configuration" names the topic. State the point: "Turn on caching for slow questions."
 
 **Issue 2 (Clarity)** — Lines 12–14
 The command comes after two sentences of explanation. Lead with the command, then explain.
