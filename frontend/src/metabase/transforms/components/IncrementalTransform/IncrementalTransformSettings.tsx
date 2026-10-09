@@ -68,8 +68,14 @@ export const IncrementalTransformSettings = ({
 
   const { url: incrementalTransformsDocsUrl, showMetabaseLinks } = useDocsUrl(
     transformType === "python"
-      ? "data-studio/transforms/python-transforms#incremental-python-transforms"
-      : "data-studio/transforms/query-transforms#incremental-query-transforms",
+      ? "data-modeling/transforms/python"
+      : "data-modeling/transforms/query",
+    {
+      anchor:
+        transformType === "python"
+          ? "incremental-python-transforms"
+          : "incremental-query-transforms",
+    },
   );
 
   const renderIncrementalSwitch = () => {
