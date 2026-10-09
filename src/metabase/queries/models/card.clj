@@ -1669,9 +1669,16 @@
 (defmethod serdes/descendants "Card" [model-name id opts]
   (serdes/descendants-batch model-name [id] opts))
 
-(defmethod serdes/descendants-batch "Card" [_model-name ids _opts]
-  (let [cards (u/index-by :id (queries.db/cards ids))]
-    (serdes/merge-descendants #(card-descendants % (get cards %)) ids)))
+(def ^:private descendants-card-chunk-size
+  "The most Card rows that [[serdes/descendants-batch]] holds at one time. A Card row holds its query and its result
+  metadata, so a chunk of wide cards is large."
+  200)
+
+(defmethod serdes/descendants-batch "Card" [_model-name ids opts]
+  (serdes/merge-descendants (fn [chunk]
+                              (let [cards (u/index-by :id (queries.db/cards chunk))]
+                                (serdes/merge-descendants #(card-descendants % (get cards %)) chunk)))
+                            (partition-all (min descendants-card-chunk-size (serdes/descendants-batch-size opts)) ids)))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
