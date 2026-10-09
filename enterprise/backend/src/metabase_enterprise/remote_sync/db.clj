@@ -298,11 +298,14 @@
   (doseq [model collection-content-models]
     (lock-children! model :collection_id collection-ids {:nowait? true})))
 
-(mu/defn lock-dashboard-cards-of-cards! :- :nil
-  "Lock with NOWAIT (see [[LockOpts]]) the rows of the DashboardCards that show the Cards `card-ids`, in primary-key
-  order. A delete of those Cards removes these rows by cascade."
-  [card-ids :- [:sequential ms/PositiveInt]]
+(mu/defn lock-dashboard-cards-of-delete! :- :nil
+  "Lock with NOWAIT (see [[LockOpts]]) the rows of the DashboardCards that show the Cards `card-ids`, then those on the
+  Dashboards `dashboard-ids`, each in primary-key order. A delete of those Cards and Dashboards removes these rows by
+  cascade."
+  [card-ids      :- [:sequential ms/PositiveInt]
+   dashboard-ids :- [:sequential ms/PositiveInt]]
   (lock-children! :model/DashboardCard :card_id card-ids {:nowait? true})
+  (lock-children! :model/DashboardCard :dashboard_id dashboard-ids {:nowait? true})
   nil)
 
 (def ^:private ScheduledRows

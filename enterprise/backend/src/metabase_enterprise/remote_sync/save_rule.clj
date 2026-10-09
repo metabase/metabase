@@ -247,19 +247,21 @@
   with those contents.
 
   With `:lock?`, it locks the rows of those Collections for update, then reads their contents, then locks the rows of
-  each round of the closure, parents first, and then the rows of the dashboard cards that show the Cards of the delete.
-  Else it takes no lock."
+  each round of the closure, parents first, and then the rows of the dashboard cards that the delete removes by
+  cascade: those that show a Card of the delete, and those on a Dashboard of the delete. Else it takes no lock."
   ([ids-by-model]
    (delete-closure ids-by-model {}))
   ([ids-by-model {:keys [lock?] :as opts}]
    (let [delete-set (merge-with into ids-by-model (collection-contents (:model/Collection ids-by-model) lock?))
          closure    (remote-sync.db/delete-closure delete-set opts)]
      (when lock?
-       ;; the delete removes them by cascade: the hook of a Collection deletes each Card in it
-       (remote-sync.db/lock-dashboard-cards-of-cards!
-        (vec (sort (into (get-in closure [:ids-by-model :model/Card] #{})
-                         (when-let [subtree (seq (:model/Collection delete-set))]
-                           (remote-sync.db/ids-in-collections :model/Card (vec subtree))))))))
+       ;; the delete removes them by cascade: the hook of a Collection deletes each Card and Dashboard in it
+       (let [subtree (vec (:model/Collection delete-set))
+             ids-of  (fn [model-key]
+                       (vec (sort (into (get-in closure [:ids-by-model model-key] #{})
+                                        (when (seq subtree)
+                                          (remote-sync.db/ids-in-collections model-key subtree))))))]
+         (remote-sync.db/lock-dashboard-cards-of-delete! (ids-of :model/Card) (ids-of :model/Dashboard))))
      (assoc closure :delete-set delete-set))))
 
 (defn lock-closure!
