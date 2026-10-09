@@ -113,6 +113,8 @@
    "McpQueryHandle"
    "McpSessionLog"
    "McpToolCallLog"
+   "MetadataGenerationRun"
+   "MetadataGenerationSuggestion"
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotGroupLimit"
