@@ -36,10 +36,15 @@
 
   Returns `{:output … :resources …}`, so the assertions below stay about what a reader gets rather
   than about how the tool is invoked. `:tool-names` holds a profile that has `search`, so the
-  recovery steps that name it survive."
+  recovery steps that name it survive.
+
+  `:all-items-failed :compose` is the Agent API's stance, and the right one for the tests below:
+  they are about what each URI produced, and most read a single URI, which would otherwise be
+  `all-items-failed` the moment it misses. The agent loop's opposite default has its own test."
   [{:keys [uris]}]
   (tools/call read-resource/read-resource-tool {:uris (vec uris)}
-              {:tool-names #{"read_resource" "search"}}))
+              {:tool-names       #{"read_resource" "search"}
+               :all-items-failed :compose}))
 
 (deftest ^:parallel scalar-uris-arg-test
   (testing "a scalar `uris` is rejected with guidance on how to repair the call"
@@ -177,18 +182,44 @@
         (is (not (str/includes? output "URIs under")))
         (is (str/includes? output "The resource types served here are:"))))))
 
+(deftest ^:parallel a-read-that-delivered-nothing-is-a-failed-call-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [ctx {:tool-names #{"read_resource" "search"}}]
+      (testing "the agent loop's default: no URI could be read, so the call failed. The text is the
+               same per-URI text a partially successful call shows; what changes is that the agent
+               loop, the provider adapters and telemetry are told it failed instead of counting it
+               a success."
+        (let [{:keys [class code text]}
+              (test-util/tool-failure read-resource/read-resource-tool
+                                      {:uris ["metabase://bogus/1" "metabase://table/99999999"]}
+                                      #{"read_resource" "search"})]
+          (is (= :recoverable class))
+          (is (= :metabase.metabot.tools.core/all-items-failed code))
+          (testing "every URI is still named, so the agent can retry the ones worth retrying"
+            (is (str/includes? text "metabase://bogus/1"))
+            (is (str/includes? text "metabase://table/99999999")))))
+      (testing "one URI surviving is a successful call with the failure in position"
+        (is (nil? (:error (tools/call read-resource/read-resource-tool
+                                      {:uris ["metabase://databases" "metabase://bogus/1"]}
+                                      ctx)))))
+      (testing "and a single URI that missed is a failed call too — there is nothing else in it"
+        (is (= :metabase.metabot.tools.core/all-items-failed
+               (:code (test-util/tool-failure read-resource/read-resource-tool
+                                              {:uris ["metabase://table/99999999"]}
+                                              #{"read_resource" "search"}))))))))
+
 (deftest ^:parallel a-recovery-step-naming-a-missing-tool-is-dropped-test
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "the `search` step survives in a profile that has search"
-      (is (str/includes? (:output (tools/call read-resource/read-resource-tool
-                                              {:uris ["metabase://nonsense/1"]}
-                                              {:tool-names #{"read_resource" "search"}}))
+      (is (str/includes? (:text (test-util/tool-failure read-resource/read-resource-tool
+                                                        {:uris ["metabase://nonsense/1"]}
+                                                        #{"read_resource" "search"}))
                          "`search` result")))
     (testing "and disappears in one that does not, rather than sending the agent at a tool it
              cannot call"
-      (is (not (str/includes? (:output (tools/call read-resource/read-resource-tool
-                                                   {:uris ["metabase://nonsense/1"]}
-                                                   {:tool-names #{"read_resource"}}))
+      (is (not (str/includes? (:text (test-util/tool-failure read-resource/read-resource-tool
+                                                             {:uris ["metabase://nonsense/1"]}
+                                                             #{"read_resource"}))
                               "`search`"))))))
 
 ;; ===== Dispatch routing — every URI pattern routes to the expected handler =====

@@ -180,15 +180,18 @@
           (assert-formatted-output result "multiple tables" #"<resources>"))))))
 
 (deftest read-resource-error-uri-test
-  (testing "read_resource with bad URI returns :output string, not an exception"
+  (testing (str "read_resource with a bad URI gives the model authored text. The one URI could not "
+                "be read, so the call failed — but what the model reads is still a string with no "
+                "EDN in it.")
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [{:keys [output]} (test-util/call-tool resource-tools/read-resource-tool
-                                                    {:uris ["metabase://table/999999999"]})]
-          (is (string? output) "error case must still return :output string")
+        (let [{:keys [class text]} (test-util/tool-failure resource-tools/read-resource-tool
+                                                           {:uris ["metabase://table/999999999"]})]
+          (is (= :recoverable class))
+          (is (string? text) "a failure must still carry text for the model")
           (testing "Should not contain EDN patterns"
             (doseq [pattern edn-patterns]
-              (is (not (re-find pattern output)) (str "error output contains EDN pattern " pattern)))))))))
+              (is (not (re-find pattern text)) (str "error output contains EDN pattern " pattern)))))))))
 
 (deftest search-tool-structured-output-formats-correctly-test
   (testing "search tool :structured-output formats to clean XML via format-structured-result"

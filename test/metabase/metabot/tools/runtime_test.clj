@@ -256,16 +256,29 @@
            (str/split-lines
             (:output (invoke (ctx {:tool-names #{"read_many"}}) "read_many" {:ids [2 3]})))))))
 
-(deftest ^:parallel everything-failed-is-still-a-success-test
-  (testing "OPEN QUESTION — nothing was delivered, yet the call succeeds and its whole output is
-           failure text. Arguably it should fail, but as which error? There is no code for \"your
-           five items were five different kinds of missing\", and collapsing them loses the
-           attribution the agent needs to retry."
-    (let [outcome (invoke "read_many" {:ids [3]})]
-      (is (nil? (:error outcome)))
+(deftest ^:parallel a-call-where-every-item-failed-is-a-failed-call-test
+  (testing "nothing was delivered, so the call failed. The question this used to record was which
+           error it could be — there is no code for \"your five items were five different kinds of
+           missing\", and collapsing them would lose the attribution the agent needs to retry. The
+           answer is that the text does not have to change: `all-items-failed` carries the composed
+           per-item text as its message, so the model reads exactly what a call that lost all but
+           one item would have shown it, and the `:error` is what changes."
+    (let [outcome (invoke "read_many" {:ids [3 5]})]
+      (is (= {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed}
+             (:error outcome)))
       (is (= ["Card 3 was not found. It may not exist, or you may not have access to it."
+              "Call `search` to find the entity you want and use an id from the results."
+              "Card 5 was not found. It may not exist, or you may not have access to it."
               "Call `search` to find the entity you want and use an id from the results."]
-             (str/split-lines (:output outcome)))))))
+             (str/split-lines (:output outcome))))))
+  (testing "one item surviving is still a successful call, with the failure in position"
+    (is (nil? (:error (invoke "read_many" {:ids [2 3]})))))
+  (testing "and the per-item steps are still filtered by profile, which is why the runtime does not
+           apply its \"a message may not name a tool\" rule to this one error: the message was
+           assembled from text this profile had already been filtered for."
+    (is (= ["Card 3 was not found. It may not exist, or you may not have access to it."]
+           (str/split-lines
+            (:output (invoke (ctx {:tool-names #{"read_many"}}) "read_many" {:ids [3]})))))))
 
 (deftest ^:parallel a-renderable-output-is-rendered-at-the-boundary-test
   (testing "a tool may return a non-string renderable; this consumer wants a string and renders it"
