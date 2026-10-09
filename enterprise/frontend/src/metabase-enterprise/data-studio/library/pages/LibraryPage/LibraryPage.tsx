@@ -14,18 +14,17 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import type { CollectionId } from "metabase-types/api";
 
-import { LibraryEmptyState } from "../components/LibraryEmptyState";
-
-import { ActionCell } from "./components/ActionCell";
-import { CreateLibraryDashboardModal } from "./components/CreateLibraryDashboardModal";
-import { CreateMenu } from "./components/CreateMenu";
-import { PublishTableModal } from "./components/PublishTableModal";
+import { ActionCell } from "./ActionCell";
+import { CreateLibraryDashboardModal } from "./CreateLibraryDashboardModal";
+import { CreateMenu } from "./CreateMenu";
+import { LibraryEmptyState } from "./LibraryEmptyState";
+import { PublishTableModal } from "./PublishTableModal";
 import {
   useLibraryCollectionTree,
   useLibraryCollections,
   useLibrarySearch,
 } from "./hooks";
-import type { LibrarySearchModel } from "./hooks/use-library-search";
+import type { LibrarySearchModel } from "./hooks";
 import {
   getArchiveLibraryCollectionsMessage,
   getWritableCollection,

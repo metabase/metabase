@@ -23,10 +23,10 @@ import { useParams } from "metabase/router";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
 import { SnippetHeader } from "../../components/SnippetHeader";
 
 import S from "./EditSnippetPage.module.css";
+import { SnippetDescriptionSection } from "./SnippetDescriptionSection";
 
 type EditSnippetPageParams = {
   snippetId: string;

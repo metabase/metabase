@@ -18,8 +18,8 @@ import {
 } from "metabase/ui";
 import type { FieldSettings, FieldType } from "metabase-types/api";
 
-import type { ActionField } from "../../../hooks/use-action-fields";
 import { getFieldSettingsForFieldType } from "../../../utils";
+import type { ActionField } from "../hooks";
 
 import { getDefaultValueInputType, textToOptions } from "./utils";
 

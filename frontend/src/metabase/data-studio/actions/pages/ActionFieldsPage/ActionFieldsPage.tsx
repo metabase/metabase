@@ -10,13 +10,13 @@ import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
 import { useActionDatabases } from "../../hooks/use-action-databases";
-import { useActionFields } from "../../hooks/use-action-fields";
 import { useRouteAction } from "../../hooks/use-route-action";
 import { canEditActionQuery } from "../../utils";
 
 import { ActionFieldDetails } from "./ActionFieldDetails";
 import { ActionFieldList } from "./ActionFieldList";
 import S from "./ActionFieldsPage.module.css";
+import { useActionFields } from "./hooks";
 
 export function ActionFieldsPage() {
   const {

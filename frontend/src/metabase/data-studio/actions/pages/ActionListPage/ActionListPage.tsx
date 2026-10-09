@@ -18,7 +18,6 @@ import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { RootDataActionsMenu } from "../../components/RootDataActionsMenu";
 import {
   ACTION_COLLECTION_NAMESPACES,
   ACTION_COLLECTION_PICKER_OPTIONS,
@@ -26,6 +25,8 @@ import {
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useBuildActionTree } from "../../hooks/use-build-action-tree";
 import { canCreateActions } from "../../utils";
+
+import { RootDataActionsMenu } from "./RootDataActionsMenu";
 
 export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");

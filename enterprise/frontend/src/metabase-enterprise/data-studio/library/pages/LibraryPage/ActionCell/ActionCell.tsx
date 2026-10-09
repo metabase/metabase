@@ -12,7 +12,7 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
 import type { CollectionId } from "metabase-types/api";
 
-import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
+import { LibraryCollectionRowMenu } from "../LibraryCollectionRowMenu";
 
 type ActionCellProps = {
   treeItem: TreeItem;

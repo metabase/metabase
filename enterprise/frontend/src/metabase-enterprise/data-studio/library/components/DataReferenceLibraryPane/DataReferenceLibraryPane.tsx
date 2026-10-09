@@ -20,7 +20,7 @@ import type {
 import { Box, Ellipsified, Text } from "metabase/ui";
 import { type SearchResult, isConcreteTableId } from "metabase-types/api";
 
-import { useGetLibraryCollection } from "./utils";
+import { useGetLibraryCollection } from "../../hooks/use-get-library-collection";
 
 type DataReferenceLibraryPaneProps =
   DataReferencePaneProps<DataReferenceLibraryItem>;

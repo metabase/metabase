@@ -16,13 +16,12 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 
+import { useActionQuery } from "../../components/ActionEditor/hooks";
 import {
   getFieldSettingsFromQuery,
   getQueryParameters,
   setTemplateTagFieldType,
-} from "../utils";
-
-import { useActionQuery } from "./use-action-query";
+} from "../../utils";
 
 export type ActionField = {
   parameter: WritebackParameter;

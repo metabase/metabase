@@ -13,7 +13,7 @@ import {
 import type { DatabaseId, SearchResult } from "metabase-types/api";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 
-import { DataReferenceLibraryPane } from "./DataReferenceLibraryPane";
+import { DataReferenceLibraryPane } from ".";
 
 const TARGET_DB_ID = 1;
 

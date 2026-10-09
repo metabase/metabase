@@ -22,7 +22,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { PublishTableModal } from "./PublishTableModal";
+import { PublishTableModal } from ".";
 
 jest.mock("metabase/common/components/Pickers/EntityPicker", () => ({
   ...jest.requireActual(

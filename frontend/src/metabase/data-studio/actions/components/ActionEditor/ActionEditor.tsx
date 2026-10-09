@@ -8,7 +8,7 @@ import type {
 import * as Lib from "metabase-lib";
 import type { Database, DatasetQuery } from "metabase-types/api";
 
-import { useActionQuery } from "../../hooks/use-action-query";
+import { useActionQuery } from "./hooks";
 
 type ActionEditorProps = {
   datasetQuery: DatasetQuery;

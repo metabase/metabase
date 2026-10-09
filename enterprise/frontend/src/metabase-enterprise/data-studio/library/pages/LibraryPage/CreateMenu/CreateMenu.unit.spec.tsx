@@ -10,7 +10,7 @@ import {
 } from "metabase-types/api/mocks";
 import type { User } from "metabase-types/api/user";
 
-import { CreateMenu } from "./CreateMenu";
+import { CreateMenu } from ".";
 
 interface SetupOptions {
   user?: Partial<User>;

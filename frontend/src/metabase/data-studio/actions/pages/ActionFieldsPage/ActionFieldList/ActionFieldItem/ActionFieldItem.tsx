@@ -4,7 +4,7 @@ import { Link } from "metabase/common/components/Link";
 import { Sortable } from "metabase/common/components/Sortable";
 import { Badge, Card, Code, Group, Icon, Stack, Text } from "metabase/ui";
 
-import type { ActionField } from "../../../../hooks/use-action-fields";
+import type { ActionField } from "../../hooks";
 
 import S from "./ActionFieldItem.module.css";
 import { getFieldIcon, getFieldSummary } from "./utils";

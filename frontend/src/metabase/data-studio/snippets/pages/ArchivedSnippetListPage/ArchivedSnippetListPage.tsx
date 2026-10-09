@@ -24,7 +24,7 @@ import type { CollectionItem } from "metabase-types/api";
 
 import { useBuildSnippetTree } from "../../hooks/use-build-snippet-tree";
 
-import { useColumnDef } from "./hooks/use-column-def";
+import { useColumnDef } from "./hooks";
 
 export function ArchivedSnippetListPage() {
   const [searchQuery, setSearchQuery] = useState("");

@@ -14,7 +14,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
+import { LibraryCollectionRowMenu } from ".";
 
 function setup({
   collection = createMockCollection({

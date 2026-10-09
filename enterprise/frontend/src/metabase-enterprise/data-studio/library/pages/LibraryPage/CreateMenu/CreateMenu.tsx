@@ -11,7 +11,7 @@ import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
-import { PublishTableModal } from "./PublishTableModal";
+import { PublishTableModal } from "../PublishTableModal";
 
 export const CreateMenu = ({
   metricCollectionId,

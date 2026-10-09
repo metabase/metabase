@@ -19,8 +19,9 @@ import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { RootSnippetsCollectionMenu } from "../../components/RootSnippetsCollectionMenu";
 import { useBuildSnippetTree } from "../../hooks/use-build-snippet-tree";
+
+import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 
 const SNIPPET_COLLECTION_PICKER_OPTIONS = {
   hasLibrary: false,

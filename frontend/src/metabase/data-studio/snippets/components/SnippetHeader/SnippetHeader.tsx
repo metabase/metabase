@@ -22,7 +22,7 @@ import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-import { SnippetMoreMenu } from "../SnippetMoreMenu";
+import { SnippetMoreMenu } from "./SnippetMoreMenu";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 

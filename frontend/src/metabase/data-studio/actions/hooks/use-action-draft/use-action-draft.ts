@@ -4,9 +4,8 @@ import { getDefaultFormSettings } from "metabase/actions/utils";
 import * as Lib from "metabase-lib";
 import type { ActionFormSettings, DatasetQuery } from "metabase-types/api";
 
-import { type ActionDefinition, getActionDefinition } from "../utils";
-
-import { useActionQuery } from "./use-action-query";
+import { useActionQuery } from "../../components/ActionEditor/hooks";
+import { type ActionDefinition, getActionDefinition } from "../../utils";
 
 type UseActionDraftOptions = {
   initialDatasetQuery: DatasetQuery;

@@ -7,7 +7,7 @@ import {
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import { CreateLibraryDashboardModal } from "./CreateLibraryDashboardModal";
+import { CreateLibraryDashboardModal } from ".";
 
 const DASHBOARDS_COLLECTION = createMockCollection({
   id: 3,
