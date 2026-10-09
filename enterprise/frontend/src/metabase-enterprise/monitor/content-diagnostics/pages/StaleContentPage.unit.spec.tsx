@@ -3,7 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
+  setupInvalidateFindingsEndpoint,
   setupListStaleFindingsEndpoint,
+  setupUpdateCardEndpointWithError,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -19,9 +21,11 @@ import { MonitorContent } from "metabase/monitor/components/MonitorLayout/Monito
 import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { defer } from "metabase/utils/promise";
 import type {
   ContentDiagnosticsStaleFinding,
   ContentDiagnosticsStaleUserParams,
+  InvalidateFindingsResponse,
   ListStaleFindingsResponse,
 } from "metabase-types/api";
 import {
@@ -56,7 +60,10 @@ type SetupOpts = {
   urlParams?: UrlStateQuery;
   lastUsedParams?: ContentDiagnosticsStaleUserParams;
   error?: boolean;
-  getResponse?: (url: string) => ListStaleFindingsResponse;
+  getResponse?: (
+    url: string,
+  ) => ListStaleFindingsResponse | Promise<ListStaleFindingsResponse>;
+  withUndos?: boolean;
 };
 
 function setup({
@@ -66,6 +73,7 @@ function setup({
   lastUsedParams = {},
   error = false,
   getResponse,
+  withUndos = false,
 }: SetupOpts = {}) {
   if (error) {
     fetchMock.get("path:/api/ee/content-diagnostics/stale", {
@@ -73,9 +81,7 @@ function setup({
       body: { message: "Stale scan failed" },
     });
   } else if (getResponse) {
-    fetchMock.get("path:/api/ee/content-diagnostics/stale", ({ url }) =>
-      getResponse(url),
-    );
+    setupListStaleFindingsEndpoint(({ url }) => getResponse(url));
   } else {
     setupListStaleFindingsEndpoint(
       createMockListStaleFindingsResponse({
@@ -104,6 +110,7 @@ function setup({
     />,
     {
       withRouter: true,
+      withUndos,
       initialRoute: `${Urls.staleContent()}${queryToSearch(urlParams)}`,
       storeInitialState: {
         currentUser: createMockUser(),
@@ -112,24 +119,6 @@ function setup({
   );
 
   return { router, store };
-}
-
-function getUrlQuery(router: TestRouter | undefined) {
-  return parseSearchQuery(router?.location.search ?? "");
-}
-
-function getLastRequestUrl() {
-  return new URL(
-    String(
-      fetchMock.callHistory.lastCall("path:/api/ee/content-diagnostics/stale")
-        ?.url,
-    ),
-    "http://localhost",
-  );
-}
-
-async function waitForListToLoad() {
-  expect(await screen.findByRole("treegrid")).toBeInTheDocument();
 }
 
 describe("StaleContentPage", () => {
@@ -179,7 +168,7 @@ describe("StaleContentPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("allows to select only findings the user can trash", async () => {
+  it("allows findings for read-only entities to be dismissed but not trashed", async () => {
     setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({
@@ -210,7 +199,214 @@ describe("StaleContentPage", () => {
     }
 
     expect(within(writableRow).getByRole("checkbox")).toBeEnabled();
-    expect(within(readonlyRow).getByRole("checkbox")).toBeDisabled();
+    expect(within(readonlyRow).getByRole("checkbox")).toBeEnabled();
+    await userEvent.click(within(readonlyRow).getByRole("checkbox"));
+    expect(
+      screen.getByRole("button", { name: "Move to trash" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    ).toBeEnabled();
+  });
+
+  it("dismisses findings, refetches the list, and clears selection", async () => {
+    let findings = [
+      createMockContentDiagnosticsStaleFinding({
+        id: 11,
+        entity_id: 101,
+        entity_display_name: "Dismiss me",
+        can_write: false,
+      }),
+    ];
+    setupInvalidateFindingsEndpoint(() => {
+      findings = [];
+      return { invalidated: [11], skipped: [] };
+    });
+    setup({
+      getResponse: () =>
+        createMockListStaleFindingsResponse({
+          data: findings,
+          total: findings.length,
+        }),
+    });
+    await screen.findByRole("treegrid");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await confirmBulkAction("Dismiss finding");
+    expect(
+      await screen.findByText("No stale content found"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("content-diagnostics-bulk-actions"),
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
+        .length,
+    ).toBeGreaterThan(1);
+    const calls = fetchMock.callHistory.calls(
+      "path:/api/ee/content-diagnostics/invalidate",
+    );
+    expect(calls).toHaveLength(1);
+    const [call] = calls;
+    expect(JSON.parse(String(call.options.body))).toEqual({ ids: [11] });
+  });
+
+  it("keeps rows and pagination until dismissal refetches the authoritative list", async () => {
+    const findings = [
+      ...FINDINGS,
+      ...Array.from({ length: 23 }, (_, index) =>
+        createMockContentDiagnosticsStaleFinding({
+          id: index + 3,
+          entity_id: index + 3,
+          entity_display_name: `Finding ${index + 3}`,
+        }),
+      ),
+    ];
+    const remainingFinding = createMockContentDiagnosticsStaleFinding({
+      id: 26,
+      entity_id: 26,
+      entity_display_name: "Remaining finding",
+    });
+    const dismissal = defer<InvalidateFindingsResponse>();
+    const refresh = defer<ListStaleFindingsResponse>();
+    const dismissalResponse = {
+      invalidated: findings.map(({ id }) => id),
+      skipped: [],
+    };
+    const refreshResponse = createMockListStaleFindingsResponse({
+      data: [remainingFinding],
+      total: 1,
+    });
+    let listRequests = 0;
+    setupInvalidateFindingsEndpoint(() => dismissal.promise);
+    setup({
+      withUndos: true,
+      getResponse: () => {
+        listRequests += 1;
+        return listRequests === 1
+          ? createMockListStaleFindingsResponse({ data: findings, total: 26 })
+          : refresh.promise;
+      },
+    });
+
+    try {
+      await screen.findByText("Sales overview");
+      await userEvent.click(screen.getByLabelText("Select all"));
+      await confirmBulkAction("Dismiss findings");
+
+      expect(screen.getByText("Sales overview")).toBeVisible();
+      expect(screen.getByText("Marketing funnel")).toBeVisible();
+      expect(screen.getByText(/^1 - 25/)).toHaveTextContent("1 - 25 of 26");
+      expect(
+        screen.queryByText("No stale content found"),
+      ).not.toBeInTheDocument();
+      const dialog = screen.getByRole("dialog");
+      expect(
+        within(dialog).getByRole("button", { name: "Dismiss findings" }),
+      ).toBeDisabled();
+      expect(
+        within(dialog).getByRole("button", { name: "Cancel" }),
+      ).toBeDisabled();
+      expect(
+        screen.queryByText("Dismissed 25 findings"),
+      ).not.toBeInTheDocument();
+
+      dismissal.resolve(dismissalResponse);
+      await waitFor(() =>
+        expect(screen.getByText("Dismissed 25 findings")).toBeVisible(),
+      );
+      await waitFor(() => expect(listRequests).toBe(2));
+      expect(screen.getByTestId("loading-overlay")).toBeVisible();
+      expect(screen.getByText("Sales overview")).toBeVisible();
+      expect(screen.getByText(/^1 - 25/)).toHaveTextContent("1 - 25 of 26");
+      expect(
+        screen.queryByText("No stale content found"),
+      ).not.toBeInTheDocument();
+
+      refresh.resolve(refreshResponse);
+      expect(await screen.findByText("Remaining finding")).toBeVisible();
+      expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+    } finally {
+      dismissal.resolve(dismissalResponse);
+      refresh.resolve(refreshResponse);
+    }
+  });
+
+  it("keeps rows and selection when dismissal fails", async () => {
+    const dismissal = defer<Response>();
+    const failureResponse = new Response(
+      JSON.stringify({ message: "Dismiss failed" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+    setupInvalidateFindingsEndpoint(() => dismissal.promise);
+    setup({ findings: FINDINGS, withUndos: true });
+
+    try {
+      await screen.findByText("Sales overview");
+      await userEvent.click(screen.getByLabelText("Select all"));
+      await confirmBulkAction("Dismiss findings");
+      for (const name of ["Sales overview", "Marketing funnel"]) {
+        const row = getFindingRow(name);
+        expect(row).toBeVisible();
+        expect(
+          within(row).getByRole("checkbox", { hidden: true }),
+        ).toBeChecked();
+      }
+      expect(screen.queryByText("Dismiss failed")).not.toBeInTheDocument();
+
+      dismissal.resolve(failureResponse);
+      await waitFor(() =>
+        expect(screen.getByText("Dismiss failed")).toBeVisible(),
+      );
+      for (const name of ["Sales overview", "Marketing funnel"]) {
+        const row = getFindingRow(name);
+        expect(row).toBeVisible();
+        expect(within(row).getByRole("checkbox")).toBeChecked();
+      }
+      expect(screen.getByText("2 items selected")).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: "Dismiss findings" }),
+      ).toBeEnabled();
+      expect(
+        screen.queryByText("Dismissed 2 findings"),
+      ).not.toBeInTheDocument();
+    } finally {
+      dismissal.resolve(failureResponse);
+    }
+  });
+
+  it("returns to the first page when dismissal removes the last page", async () => {
+    const finding = createMockContentDiagnosticsStaleFinding({
+      id: 26,
+      entity_display_name: "Last page finding",
+    });
+    let dismissed = false;
+    setupInvalidateFindingsEndpoint(() => {
+      dismissed = true;
+      return { invalidated: [26], skipped: [] };
+    });
+    const { router } = setup({
+      urlParams: { page: "1" },
+      getResponse: (url) => {
+        const lastPageData = dismissed ? [] : [finding];
+        return createMockListStaleFindingsResponse({
+          data: url.includes("offset=25") ? lastPageData : FINDINGS,
+          total: dismissed ? 25 : 26,
+        });
+      },
+    });
+    await screen.findByText("Last page finding");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await confirmBulkAction("Dismiss finding");
+    expect(await screen.findByText("Sales overview")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(getLastRequestUrl().searchParams.get("offset")).toBe("0"),
+    );
+    expect(getUrlQuery(router)).toEqual({});
+    expect(
+      screen.queryByTestId("content-diagnostics-bulk-actions"),
+    ).not.toBeInTheDocument();
   });
 
   it("archives the selected findings and refetches the list", async () => {
@@ -287,7 +483,7 @@ describe("StaleContentPage", () => {
 
   it("keeps items that failed to trash selected", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
-    fetchMock.put("path:/api/card/2", { status: 500, body: {} });
+    setupUpdateCardEndpointWithError(2);
     const { store } = setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({
@@ -832,3 +1028,38 @@ describe("StaleContentPage", () => {
     });
   });
 });
+
+function getUrlQuery(router: TestRouter | undefined) {
+  return parseSearchQuery(router?.location.search ?? "");
+}
+
+function getLastRequestUrl() {
+  return new URL(
+    String(
+      fetchMock.callHistory.lastCall("path:/api/ee/content-diagnostics/stale")
+        ?.url,
+    ),
+    "http://localhost",
+  );
+}
+
+async function waitForListToLoad() {
+  expect(await screen.findByRole("treegrid")).toBeInTheDocument();
+}
+
+function getFindingRow(name: string) {
+  const row = within(screen.getByRole("treegrid", { hidden: true }))
+    .getAllByRole("row", { hidden: true })
+    .find((row) => within(row).queryByText(name));
+  if (row === undefined) {
+    throw new Error(`Expected finding row: ${name}`);
+  }
+  return row;
+}
+
+async function confirmBulkAction(name: string) {
+  await userEvent.click(screen.getByRole("button", { name }));
+  await userEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", { name }),
+  );
+}

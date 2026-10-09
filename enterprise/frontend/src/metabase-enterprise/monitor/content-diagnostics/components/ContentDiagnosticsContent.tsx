@@ -18,6 +18,7 @@ import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type {
   ContentDiagnosticsBaseFinding,
   ContentDiagnosticsFilterType,
+  ContentDiagnosticsFindingId,
   SortDirection,
 } from "metabase-types/api";
 
@@ -28,7 +29,7 @@ import {
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
 
-import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
+import { ContentDiagnosticsBulkActionsBar } from "./ContentDiagnosticsBulkActionsBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import type {
@@ -132,7 +133,8 @@ export function ContentDiagnosticsContent<
   TSortColumn
 >) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [selectedFindingId, setSelectedFindingId] = useState<number>();
+  const [selectedFindingId, setSelectedFindingId] =
+    useState<ContentDiagnosticsFindingId>();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const { page = 0, query, sortColumn, sortDirection } = params;
@@ -145,7 +147,7 @@ export function ContentDiagnosticsContent<
   );
   const isFetching = isFetchingFindings || isLoadingParams;
   const isLoading = isLoadingFindings || isLoadingParams;
-  const findings = data?.data ?? [];
+  const findings = useMemo(() => data?.data ?? [], [data]);
   const totalCount = data?.total ?? 0;
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,
@@ -239,6 +241,14 @@ export function ContentDiagnosticsContent<
     });
     setSelectedFindingId(finding.id);
   };
+  const handleBulkActionSettled = (
+    failedIds: readonly ContentDiagnosticsFindingId[],
+    settledIds: readonly ContentDiagnosticsFindingId[],
+  ) => {
+    setRowSelection((selection) =>
+      reconcileRowSelection({ selection, failedIds, settledIds }),
+    );
+  };
 
   return (
     <>
@@ -281,17 +291,12 @@ export function ContentDiagnosticsContent<
               onPageChange={handlePageChange}
             />
           )}
-          {enableBulkTrash && (
-            <ContentDiagnosticsBulkTrashBar
-              tab={tab}
-              selectedFindings={selectedFindings}
-              onSettled={(failedIds) =>
-                setRowSelection(
-                  Object.fromEntries(failedIds.map((id) => [id, true])),
-                )
-              }
-            />
-          )}
+          <ContentDiagnosticsBulkActionsBar
+            enableTrash={enableBulkTrash}
+            tab={tab}
+            selectedFindings={selectedFindings}
+            onSettled={handleBulkActionSettled}
+          />
         </MonitorMain>
         {selectedFinding != null && (
           <Sidebar containerWidth={containerWidth}>
@@ -303,4 +308,24 @@ export function ContentDiagnosticsContent<
       </Flex>
     </>
   );
+}
+
+function reconcileRowSelection({
+  selection,
+  failedIds,
+  settledIds,
+}: {
+  selection: RowSelectionState;
+  failedIds: readonly ContentDiagnosticsFindingId[];
+  settledIds: readonly ContentDiagnosticsFindingId[];
+}): RowSelectionState {
+  const settledKeys = new Set(settledIds.map((id) => id.toString()));
+  return {
+    ...Object.fromEntries(
+      Object.entries(selection).filter(([id]) => !settledKeys.has(id)),
+    ),
+    ...Object.fromEntries(
+      settledIds.filter((id) => failedIds.includes(id)).map((id) => [id, true]),
+    ),
+  };
 }

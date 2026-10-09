@@ -35,7 +35,6 @@ type ImbalancedContentTableProps = {
   emptyStateLabel: string;
   isFetching?: boolean;
   isLoading?: boolean;
-  enableSelection: boolean;
   rowSelection: RowSelectionState;
   onSelect?: (finding: ContentDiagnosticsImbalancedFinding) => void;
   onSortOptionsChange: (
@@ -52,7 +51,6 @@ export function ImbalancedContentTable({
   emptyStateLabel,
   isFetching = false,
   isLoading = false,
-  enableSelection,
   rowSelection,
   onSelect,
   onSortOptionsChange,
@@ -78,9 +76,7 @@ export function ImbalancedContentTable({
       sorting: sortingState,
       manualSorting: true,
       getNodeId: (finding) => String(finding.id),
-      enableRowSelection: enableSelection
-        ? (row) => row.original.can_write
-        : false,
+      enableRowSelection: true,
       rowSelection,
       onRowActivate: handleRowActivate,
       onRowSelectionChange,
@@ -104,7 +100,7 @@ export function ImbalancedContentTable({
     >
       {isLoading ? (
         <TreeTableSkeleton
-          showCheckboxes={enableSelection}
+          showCheckboxes
           columnWidths={SKELETON_COLUMN_WIDTHS}
         />
       ) : (
@@ -112,7 +108,7 @@ export function ImbalancedContentTable({
           <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
           <TreeTable
             instance={treeTableInstance}
-            showCheckboxes={enableSelection}
+            showCheckboxes
             onHeaderCheckboxClick={() =>
               treeTableInstance.table.toggleAllRowsSelected()
             }

@@ -7,12 +7,6 @@ import {
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import {
-  runContentDiagnosticsScan,
-  searchFindings,
-  visitContentDiagnosticsTab,
-} from "./helpers/content-diagnostics-helpers";
-
 const SEARCH_TERM = "trashing";
 const FIRST_DASHBOARD_NAME = "E2E trashing first dashboard";
 const SECOND_DASHBOARD_NAME = "E2E trashing second dashboard";
@@ -22,10 +16,6 @@ const READABLE_DASHBOARD_NAME = "E2E trashing readable dashboard";
 const READABLE_COLLECTION_NAME = "E2E trashing readable collection";
 
 const LIST = "imbalanced-content-list";
-
-function findingRow(name: string) {
-  return cy.findByTestId(LIST).contains('[role="row"]', name);
-}
 
 describe("scenarios > monitor > content diagnostics > bulk trash", () => {
   beforeEach(() => {
@@ -37,13 +27,17 @@ describe("scenarios > monitor > content diagnostics > bulk trash", () => {
   it("moves the selected findings to the trash and drops them from the list", () => {
     H.createDashboard({ name: FIRST_DASHBOARD_NAME });
     H.createDashboard({ name: SECOND_DASHBOARD_NAME });
-    runContentDiagnosticsScan();
+    H.runContentDiagnosticsScan();
 
-    visitContentDiagnosticsTab("empty");
-    searchFindings(SEARCH_TERM);
+    H.visitContentDiagnosticsTab("empty");
+    H.searchFindings(SEARCH_TERM);
 
-    findingRow(FIRST_DASHBOARD_NAME).findByRole("checkbox").click();
-    findingRow(SECOND_DASHBOARD_NAME).findByRole("checkbox").click();
+    H.findImbalancedContentFindingRow(FIRST_DASHBOARD_NAME)
+      .findByRole("checkbox")
+      .click();
+    H.findImbalancedContentFindingRow(SECOND_DASHBOARD_NAME)
+      .findByRole("checkbox")
+      .click();
 
     cy.findByTestId("toast-card").within(() => {
       cy.findByText("2 items selected").should("be.visible");
@@ -64,7 +58,7 @@ describe("scenarios > monitor > content diagnostics > bulk trash", () => {
     cy.findByTestId(LIST).should("not.contain.text", SECOND_DASHBOARD_NAME);
   });
 
-  it("lets an analyst select only the findings they can trash", () => {
+  it("disables trash when an analyst selects findings for read-only entities", () => {
     H.createDashboard({ name: WRITABLE_DASHBOARD_NAME });
     H.createCollection({ name: READABLE_COLLECTION_NAME }).then(
       ({ body: collection }) => {
@@ -79,19 +73,28 @@ describe("scenarios > monitor > content diagnostics > bulk trash", () => {
         });
       },
     );
-    runContentDiagnosticsScan();
+    H.runContentDiagnosticsScan();
 
     H.setUserAsAnalyst(NORMAL_USER_ID);
     cy.signInAsNormalUser();
 
-    visitContentDiagnosticsTab("empty");
-    searchFindings(SEARCH_TERM);
+    H.visitContentDiagnosticsTab("empty");
+    H.searchFindings(SEARCH_TERM);
 
-    findingRow(WRITABLE_DASHBOARD_NAME)
+    H.findImbalancedContentFindingRow(WRITABLE_DASHBOARD_NAME)
       .findByRole("checkbox")
-      .should("be.enabled");
-    findingRow(READABLE_DASHBOARD_NAME)
+      .should("be.enabled")
+      .click();
+    H.findImbalancedContentFindingRow(READABLE_DASHBOARD_NAME)
       .findByRole("checkbox")
-      .should("be.disabled");
+      .should("be.enabled")
+      .click();
+
+    cy.findByTestId("content-diagnostics-bulk-actions").within(() => {
+      cy.findByRole("button", { name: "Move to trash" }).should("be.disabled");
+      cy.findByRole("button", { name: "Dismiss findings" }).should(
+        "be.enabled",
+      );
+    });
   });
 });
