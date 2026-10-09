@@ -115,6 +115,19 @@
     (testing "a blank description is not written"
       (is (not (str/includes? body "description"))))))
 
+(deftest typescript-renderer-names-joins-to-the-same-table-by-their-foreign-keys-test
+  (let [orders (-> orders-table
+                   (assoc-in [:fields "createdBy"] {:type "column" :name "created_by" :jsType "number" :fieldId 41 :tableId 10})
+                   (assoc-in [:fields "approvedBy"] {:type "column" :name "approved_by" :jsType "number" :fieldId 42 :tableId 10}))
+        body   (schemas/render-typescript
+                {:schemaVersion 2
+                 :tables        {"orders" orders "franchises" franchises-table}
+                 :metrics       {"revenue" (assoc revenue-metric :dimensions
+                                                  {"creatorName"  (assoc franchise-name-dimension :sourceFieldId 41)
+                                                   "approverName" (assoc franchise-name-dimension :sourceFieldId 42)})}})]
+    (is (str/includes? body "franchisesViaCreatedBy: pickFields(tables.franchises.fields, [ \"name\" ], { sourceFieldId: 41 })"))
+    (is (str/includes? body "franchisesViaApprovedBy: pickFields(tables.franchises.fields, [ \"name\" ], { sourceFieldId: 42 })"))))
+
 (deftest typescript-renderer-compacts-metric-dimensions-test
   (let [body (schemas/render-typescript compacting-schema)]
     ;; Metric dimensions should compact into pickFields(...) references.
