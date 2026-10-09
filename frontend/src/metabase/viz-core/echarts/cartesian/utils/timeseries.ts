@@ -197,11 +197,14 @@ export interface TickGrid {
   step: number;
 }
 
-const SUB_DAY_UNITS = new Set<TimeSeriesInterval["unit"]>([
+type SubDayUnit = "hour" | "minute" | "second";
+const SUB_DAY_UNITS: ReadonlySet<TimeSeriesInterval["unit"]> = new Set([
   "hour",
   "minute",
   "second",
 ]);
+const isSubDayUnit = (unit: TimeSeriesInterval["unit"]): unit is SubDayUnit =>
+  SUB_DAY_UNITS.has(unit);
 
 /**
  * The grid of labeled ticks for a tick interval: every `step` boundaries of
@@ -251,7 +254,7 @@ function isGridBoundary(
   if (!date.startOf(unit).isSame(date)) {
     return false;
   }
-  return SUB_DAY_UNITS.has(unit) ? date.get(unit) % step === 0 : true;
+  return isSubDayUnit(unit) ? date.get(unit) % step === 0 : true;
 }
 
 function findFirstBoundary(
@@ -294,7 +297,9 @@ export function getGridTickDates(
   }
 }
 
-// Counts the ticks the axis will label (see getTicksOptions).
+// Counts the ticks the axis will label (see getTicksOptions) without
+// materializing them: candidate intervals far finer than the range (seconds
+// over years) would otherwise allocate millions of dates.
 export function expectedTickCount(
   interval: TimeSeriesInterval,
   xDomain: ContinuousDomain,
@@ -309,7 +314,11 @@ export function expectedTickCount(
   }
   const start = dayjs.utc(xDomain[0]);
   const end = dayjs.utc(xDomain[1]);
-  return getGridTickDates(grid, start, end, start.day(), true).length;
+  const anchor = findFirstBoundary(start, grid, start.day(), true);
+  const stepsInRange = Math.floor(
+    end.diff(anchor, grid.unit, true) / grid.step,
+  );
+  return stepsInRange < 0 ? 0 : stepsInRange + 1;
 }
 
 /// Get the appropriate tick interval option from the TIMESERIES_INTERVALS above based on the xAxis bucketing

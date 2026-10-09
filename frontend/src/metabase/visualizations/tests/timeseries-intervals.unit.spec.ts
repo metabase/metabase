@@ -436,6 +436,20 @@ describe("timeseries intervals", () => {
         },
         { expectedUnit: "year", expectedCount: 1 },
       ],
+      // raw second-level timestamps over years must not materialize every
+      // candidate tick while searching for an interval that fits
+      [
+        {
+          xDomain: [
+            new Date("2025-04-30T18:56:13Z").getTime(),
+            new Date("2029-04-11T07:12:44Z").getTime(),
+          ],
+          xInterval: { unit: "second", count: 1 },
+          outerWidth: 1232,
+          xTickWidth: 80,
+        },
+        { expectedUnit: "quarter", expectedCount: 2 },
+      ],
     ];
 
     TEST_CASES.forEach(
