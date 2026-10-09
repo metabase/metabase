@@ -118,20 +118,27 @@ describe("static row chart with a dynamic goal", () => {
     expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(barX + barWidth / 2, 0);
   });
 
-  it.each([
-    ["has not answered", undefined],
-    ["reports as failed", createMockFailedReferencedEntitiesResults()],
-  ])(
-    "draws the goal line at 0 for a reference the dataset %s",
-    (_name, referencedEntities) => {
-      const root = setup({ referencedEntities });
-      const [goalLine] = getRowChartSymbols(root, "goal line");
+  it("draws the goal line at 0 for a reference the dataset has not answered", () => {
+    const root = setup();
+    const [goalLine] = getRowChartSymbols(root, "goal line");
 
-      expect(goalLine).toHaveTextContent(GOAL_LABEL);
-      expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
-        getExpectedRowChartGoalX(root, 0, MAX_COUNT),
-        0,
-      );
-    },
-  );
+    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(root, 0, MAX_COUNT),
+      0,
+    );
+  });
+
+  it("draws the goal line at 0 for a reference the dataset reports as failed", () => {
+    const root = setup({
+      referencedEntities: createMockFailedReferencedEntitiesResults(),
+    });
+    const [goalLine] = getRowChartSymbols(root, "goal line");
+
+    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(root, 0, MAX_COUNT),
+      0,
+    );
+  });
 });
