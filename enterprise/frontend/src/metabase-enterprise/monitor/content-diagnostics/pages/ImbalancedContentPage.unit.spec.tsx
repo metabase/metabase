@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import type { ComponentType } from "react";
 
 import {
+  setupInvalidateFindingsEndpoint,
   setupListImbalancedFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -179,17 +180,53 @@ describe("ImbalancedContentPage", () => {
     },
   );
 
-  it("has no bulk-trash selection on the Crowded tab", async () => {
+  it("offers dismissal without trash on the Crowded tab", async () => {
+    setupInvalidateFindingsEndpoint({
+      invalidated: [11],
+      skipped: [],
+    });
     setup({
       mode: "crowded",
       findings: [
-        createMockContentDiagnosticsImbalancedFinding({ can_write: true }),
+        createMockContentDiagnosticsImbalancedFinding({
+          id: 11,
+          entity_id: 101,
+          can_write: false,
+        }),
       ],
     });
 
     await screen.findByRole("treegrid");
-    expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Select all"));
+    expect(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Dismiss finding",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("content-diagnostics-bulk-actions"),
+      ).not.toBeInTheDocument(),
+    );
+    const calls = fetchMock.callHistory.calls(
+      "path:/api/ee/content-diagnostics/invalidate",
+    );
+    expect(calls).toHaveLength(1);
+    const [call] = calls;
+    const body: unknown = JSON.parse(String(call.options.body));
+    expect(body).toEqual({ ids: [11] });
   });
 
   it("pins the finding type to the tab's problem type", async () => {

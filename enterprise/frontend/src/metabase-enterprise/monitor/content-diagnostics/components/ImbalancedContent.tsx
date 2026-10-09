@@ -68,7 +68,6 @@ export function ImbalancedContent({
           {...props}
           mode={mode}
           emptyStateLabel={getImbalancedEmptyStateLabel(mode)}
-          enableSelection={mode !== "crowded"}
         />
       )}
       renderSidebar={(finding, onClose) => (

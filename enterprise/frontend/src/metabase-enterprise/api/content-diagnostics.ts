@@ -1,4 +1,6 @@
 import type {
+  InvalidateFindingsRequest,
+  InvalidateFindingsResponse,
   ListDuplicatedFindingsRequest,
   ListDuplicatedFindingsResponse,
   ListImbalancedFindingsRequest,
@@ -14,6 +16,17 @@ import { listTag } from "./tags";
 
 export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    invalidateFindings: builder.mutation<
+      InvalidateFindingsResponse,
+      InvalidateFindingsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/content-diagnostics/invalidate",
+        body,
+      }),
+      invalidatesTags: () => [listTag("content-diagnostics-finding")],
+    }),
     listStaleFindings: builder.query<
       ListStaleFindingsResponse,
       ListStaleFindingsRequest
@@ -62,6 +75,7 @@ export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useInvalidateFindingsMutation,
   useListStaleFindingsQuery,
   useListSlowFindingsQuery,
   useListDuplicatedFindingsQuery,

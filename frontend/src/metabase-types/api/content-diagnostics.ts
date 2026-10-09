@@ -164,8 +164,10 @@ export type ContentDiagnosticsEntityId =
   | DocumentId
   | TransformId;
 
+export type ContentDiagnosticsFindingId = number;
+
 export type ContentDiagnosticsBaseFinding = {
-  id: number;
+  id: ContentDiagnosticsFindingId;
   finding_type: ContentDiagnosticsFindingType;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
@@ -216,7 +218,7 @@ export type ContentDiagnosticsSlowUserParams = {
 };
 
 export type ContentDiagnosticsSlowEntity = {
-  id: number;
+  id: ContentDiagnosticsEntityId;
   name: string | null;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
@@ -266,7 +268,7 @@ export type ContentDiagnosticsDuplicatedUserParams = {
  * Transforms and collections have no view concept, hence the optional `view_count`.
  */
 export type ContentDiagnosticsDuplicateEntity = {
-  id: number;
+  id: ContentDiagnosticsEntityId;
   name: string | null;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
@@ -343,4 +345,13 @@ export type ListImbalancedFindingsResponse = {
   limit: number | null;
   offset: number | null;
   last_scan_at: string | null;
+};
+
+export type InvalidateFindingsRequest = {
+  ids: readonly ContentDiagnosticsFindingId[];
+};
+
+export type InvalidateFindingsResponse = {
+  invalidated: ContentDiagnosticsFindingId[];
+  skipped: ContentDiagnosticsFindingId[];
 };
