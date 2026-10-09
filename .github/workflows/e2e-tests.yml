@@ -34,9 +34,6 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
-      DISPLAY: ""
-      TERM: xterm
-      TZ: US/Pacific
       MB_EDITION: ee
       CYPRESS_VIDEO: "false"
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
@@ -112,9 +109,6 @@ jobs:
     needs:
       - e2e-matrix-builder
       - e2e-snapshots
-    # A skipped or failed matrix builder keeps this out: the strategy below cannot parse a matrix it
-    # never produced. The builder itself only runs when the gate says so.
-    if: ${{ !cancelled() && needs.e2e-matrix-builder.result == 'success' && needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
