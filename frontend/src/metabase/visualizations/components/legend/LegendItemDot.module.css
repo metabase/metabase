@@ -30,3 +30,11 @@
   border: 0;
   box-shadow: inset 0 0 0 0.5px var(--mb-color-shadow-default);
 }
+
+.rootButton:hover .innerCircle {
+  transform: scale(0.8);
+}
+
+.rootButton:hover .outerCircle {
+  transform: scale(1.3);
+}

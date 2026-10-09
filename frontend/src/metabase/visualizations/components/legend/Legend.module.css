@@ -19,10 +19,19 @@
   transition: opacity 0.25s linear;
 }
 
+.hoverableLabel:hover {
+  color: var(--mb-color-core-brand);
+}
+
 .itemTitle {
+  color: var(--mb-color-text-primary);
   overflow: hidden;
 }
 
-.clickableLabel {
+.clickableTitle {
   cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
 }
