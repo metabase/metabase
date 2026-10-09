@@ -76,6 +76,37 @@
                       [:> $id 50]
                       [:< $price 5]]})))))
 
+(deftest ^:parallel wrap-multiple-values-test
+  (testing "every value in := and :!= with more than one value should get wrapped (#23101)"
+    (doseq [tag [:= :!=]]
+      (testing tag
+        (is (= (lib.tu.macros/mbql-query venues
+                 {:filter [tag
+                           $price
+                           [:value 1 {:base_type     :type/Integer
+                                      :semantic_type :type/Category
+                                      :database_type "INTEGER"}]
+                           [:value 2 {:base_type     :type/Integer
+                                      :semantic_type :type/Category
+                                      :database_type "INTEGER"}]
+                           $id]})
+               (wrap-value-literals
+                (lib.tu.macros/mbql-query venues
+                  {:filter [tag $price 1 2 $id]}))))))))
+
+(deftest ^:parallel wrap-multiple-datetime-literal-strings-test
+  (testing "datetime literal strings in := with more than one value should get wrapped in `absolute-datetime` clauses"
+    (is (= (:query
+            (lib.tu.macros/mbql-query checkins
+              {:filter [:=
+                        !month.date
+                        [:absolute-datetime (t/local-date "2018-10-01") :month]
+                        [:absolute-datetime (t/local-date "2018-11-01") :month]]}))
+           (-> (lib.tu.macros/mbql-query checkins
+                 {:filter [:= !month.date "2018-10-01" "2018-11-01"]})
+               wrap-value-literals
+               :query)))))
+
 (defn- parse-with-timezone [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
     (binding [qp.timezone/*report-timezone-id-override* timezone-id]

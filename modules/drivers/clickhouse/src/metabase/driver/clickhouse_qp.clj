@@ -411,11 +411,24 @@
          (isa? (:base-type field-opts) :type/UUID)
          (string? valuevalue))))
 
+(defn- split-multiple-values?
+  "Whether to compile a `:=` or `:!=` clause with more than one value as several single-value comparisons rather than
+  `IN` or `NOT IN`, because some of its values need the special handling below."
+  [field values]
+  (some #(or (text-val? %) (uuid-comp? field %)) values))
+
 (defmethod sql.qp/->honeysql [:clickhouse :=]
-  [driver [_ _opts field value :as clause]]
+  [driver [_ _opts field value & more :as clause]]
   (let [hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
     (cond
+      (and (seq more)
+           (split-multiple-values? field (cons value more)))
+      (sql.qp/->honeysql driver (into [:or {}] (map #(vector := {} field %)) (cons value more)))
+
+      (seq more)
+      ((get-method sql.qp/->honeysql [:sql :=]) driver clause)
+
       (text-val? value)
       [:or
        [:= hsql-field hsql-value]
@@ -432,10 +445,17 @@
       :else ((get-method sql.qp/->honeysql [:sql :=]) driver clause))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
-  [driver [_ _opts field value :as clause]]
+  [driver [_ _opts field value & more :as clause]]
   (let [hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
     (cond
+      (and (seq more)
+           (split-multiple-values? field (cons value more)))
+      (sql.qp/->honeysql driver (into [:and {}] (map #(vector :!= {} field %)) (cons value more)))
+
+      (seq more)
+      ((get-method sql.qp/->honeysql [:sql :!=]) driver clause)
+
       (text-val? value)
       [:and
        [:!= hsql-field hsql-value]

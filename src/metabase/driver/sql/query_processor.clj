@@ -1888,24 +1888,56 @@
       (binding [*parent-honeysql-col-type-info* (parent-honeysql-col-type-info field field-honeysql)]
         [operator field-honeysql (->honeysql driver value)]))))
 
+(def ^:private max-in-list-size
+  "Maximum number of values to put in a single `IN (...)` or `NOT IN (...)` list. Oracle doesn't allow more than
+  1000. Longer lists get split into several lists, e.g. `x IN (...) OR x IN (...)`."
+  1000)
+
+(defn- multiple-values-equality
+  "Compile a `:=` or `:!=` clause with more than one value, e.g. `[:= {} field 1 2 3]`, to `field IN (1, 2, 3)` (or
+  `field NOT IN (1, 2, 3)`).
+
+  `nil` values have already been split out into their own clauses
+  by [[metabase.lib.filter.desugar/desugar-filter-clause]], since `field IN (NULL)` never matches anything."
+  [driver in-op compound-op field values]
+  (let [clauses (for [;; values that can't be compared to a UUID field as UUIDs get compared against the field cast to
+                      ;; text instead, see [[maybe-cast-uuid-for-equality]]
+                      [field' field-values] (group-by #(maybe-cast-uuid-for-equality driver field %) values)
+                      :let                  [field-honeysql (->honeysql driver field')]
+                      chunk                 (partition-all max-in-list-size field-values)]
+                  (binding [*parent-honeysql-col-type-info* (parent-honeysql-col-type-info field field-honeysql)]
+                    ;; use `:composite` rather than a plain vector so Honey SQL doesn't compile something like
+                    ;; `[:in x [:foo 1]]` as `x IN FOO(1)`
+                    [in-op field-honeysql (into [:composite] (map (partial ->honeysql driver)) chunk)]))]
+    (if (= (count clauses) 1)
+      (first clauses)
+      (into [compound-op] clauses))))
+
 (defmethod ->honeysql [:sql :=]
-  [driver [_ _opts field value]]
+  [driver [_ _opts field value & more]]
   (assert (some? field))
-  (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
-    (binding [*parent-honeysql-col-type-info* (parent-honeysql-col-type-info field field-honeysql)]
-      [:= field-honeysql (->honeysql driver value)])))
+  (if (seq more)
+    (multiple-values-equality driver :in :or field (cons value more))
+    (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
+      (binding [*parent-honeysql-col-type-info* (parent-honeysql-col-type-info field field-honeysql)]
+        [:= field-honeysql (->honeysql driver value)]))))
+
+(defn- or-field-is-null
+  "If any of the MBQL `args` compiled to `honeysql-clause` is a `:field` or `:expression`, return
+  `honeysql-clause OR <field> IS NULL`, so things like `x <> 1` include rows where `x` is `NULL`."
+  [driver args honeysql-clause]
+  (if-let [field-arg (match/match-one args
+                       [#{:field :expression} & _] &match)]
+    [:or
+     honeysql-clause
+     [:= (->honeysql driver field-arg) nil]]
+    honeysql-clause))
 
 (defn- correct-null-behaviour
   [driver [op & args :as _clause]]
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-  (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (match/match-one args
-                         [#{:field :expression} & _] &match)]
-      [:or
-       honeysql-clause
-       [:= (->honeysql driver field-arg) nil]]
-      honeysql-clause)))
+  (or-field-is-null driver args (into [op] (map (partial ->honeysql driver)) args)))
 
 (defn- unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
@@ -1915,9 +1947,16 @@
     _              maybe-value-form))
 
 (defmethod ->honeysql [:sql :!=]
-  [driver [_ _opts field value]]
-  (if (nil? (unwrap-value-literal value))
+  [driver [_ _opts field value & more]]
+  (cond
+    (seq more)
+    (let [values (cons value more)]
+      (or-field-is-null driver (cons field values) (multiple-values-equality driver :not-in :and field values)))
+
+    (nil? (unwrap-value-literal value))
     [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
+
+    :else
     (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
 
 (defmethod ->honeysql [:sql :and]

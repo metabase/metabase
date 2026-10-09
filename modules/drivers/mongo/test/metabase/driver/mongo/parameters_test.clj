@@ -276,31 +276,22 @@
   (testing "operators"
     (testing "variadic operators"
       (testing :string/=
-        ;; this could be optimized to {:description {:in ["foo" "bar"}}?
-        (is (= (strip (to-bson [{:$match {"$or" [{"description" "foo"}
-                                                 {"description" "bar"}]}}]))
+        (is (= (strip (to-bson [{:$match {"description" {"$in" ["foo" "bar"]}}}]))
                (strip
                 (substitute {"desc" (field-filter "description" :type/Text :string/= ["foo" "bar"])}
                             ["[{$match: " (lib/parsed-param "desc") "}]"])))))
       (testing :string/!=
-        ;; this could be optimized to {:description {:in ["foo" "bar"}}?  one thing is that we pass it through the
-        ;; desugar middleware that does this [:= 1 2] -> [:or [:= 1] [:= 2]] which makes for more complicated (or just
-        ;; verbose?) query where. perhaps we can introduce some notion of what is sugar and what isn't. I bet the line
-        ;; between what the desugar "optimizes" and what the query processors optimize might be a bit blurry
-        (is (= (strip (to-bson [{:$match {"$and" [{"description" {"$ne" "foo"}}
-                                                  {"description" {"$ne" "bar"}}]}}]))
+        (is (= (strip (to-bson [{:$match {"description" {"$nin" ["foo" "bar"]}}}]))
                (strip
                 (substitute {"desc" (field-filter "description" :type/Text :string/!= ["foo" "bar"])}
                             ["[{$match: " (lib/parsed-param "desc") "}]"])))))
       (testing :number/=
-        (is (= (strip (to-bson [{:$match {"$or" [{"price" 1}
-                                                 {"price" 2}]}}]))
+        (is (= (strip (to-bson [{:$match {"price" {"$in" [1 2]}}}]))
                (strip
                 (substitute {"price" (field-filter "price" :type/Integer :number/= [1 2])}
                             ["[{$match: " (lib/parsed-param "price") "}]"])))))
       (testing :number/!=
-        (is (= (strip (to-bson [{:$match {"$and" [{"price" {"$ne" 1}}
-                                                  {"price" {"$ne" 2}}]}}]))
+        (is (= (strip (to-bson [{:$match {"price" {"$nin" [1 2]}}}]))
                (strip
                 (substitute {"price" (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (lib/parsed-param "price") "}]"]))))))))

@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [some mapv empty? get-in update-keys])
+  (:refer-clojure :exclude [some mapv empty? every? get-in update-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -14,10 +14,11 @@
    [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and
                                             $avg $concat $cond $dayOfMonth
                                             $dayOfWeek $dayOfYear $divide $eq
-                                            $expr $group $gt $gte $hour $limit
-                                            $literal $lookup $lt $lte $match
-                                            $max $min $minute $mod $month
-                                            $multiply $ne $not $or $project
+                                            $expr $group $gt $gte $hour $in
+                                            $limit $literal $lookup $lt $lte
+                                            $match $max $min $minute $mod
+                                            $month $multiply $ne $nin $not
+                                            $or $project
                                             $regexMatch $second
                                             $setWindowFields $size $skip $sort
                                             $strcasecmp $subtract $sum
@@ -42,7 +43,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [empty? get-in mapv some update-keys]])
+   [metabase.util.performance :as perf :refer [empty? every? get-in mapv some update-keys]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -1241,16 +1242,32 @@ function(bin) {
   (or (driver-api/is-clause? :value value)
       (not (lib/clause? value))))
 
+(defn- literal-value-rvalue?
+  "Whether `value-rvalue`, the compiled literal `value`, is a string like `\"$abc\"` that would be mistaken for a field
+  path or variable in an aggregation expression unless it's wrapped in `$literal`."
+  [value value-rvalue]
+  (and (literal-value? value)
+       (string? value-rvalue)
+       (str/starts-with? value-rvalue "$")))
+
+(defn- direct-comparison?
+  "Whether we can compare `field-rvalue` against `value` with a clause like `{field {$lte 100}}` instead of `$expr`."
+  [field-rvalue value value-rvalue]
+  (and (rvalue-is-field? field-rvalue)
+       (or (literal-value-rvalue? value value-rvalue)
+           (and (not (rvalue-is-field? value-rvalue))
+                (rvalue-can-be-compared-directly? value-rvalue)))))
+
+(defn- expr-value-rvalue
+  "`value-rvalue` for use in an aggregation expression, wrapped in `$literal` if needed."
+  [value value-rvalue]
+  (cond->> value-rvalue
+    (literal-value-rvalue? value value-rvalue) (array-map $literal)))
+
 (defn- filter-expr [query stage-number operator field value]
-  (let [field-rvalue          (->rvalue query stage-number field)
-        value-rvalue          (->rvalue query stage-number value)
-        literal-value-rvalue? (and (literal-value? value)
-                                   (string? value-rvalue)
-                                   (str/starts-with? value-rvalue "$"))]
-    (if (and (rvalue-is-field? field-rvalue)
-             (or literal-value-rvalue?
-                 (and (not (rvalue-is-field? value-rvalue))
-                      (rvalue-can-be-compared-directly? value-rvalue))))
+  (let [field-rvalue (->rvalue query stage-number field)
+        value-rvalue (->rvalue query stage-number value)]
+    (if (direct-comparison? field-rvalue value value-rvalue)
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
       ;;    {field {$lte 100}}
@@ -1262,16 +1279,35 @@ function(bin) {
       ;; if we need to do something fancy then we have to use `$expr` e.g.
       ;;
       ;;    {$expr {$lte [{$add [$field 1]} 100]}}
-      {$expr {operator [field-rvalue (cond->> value-rvalue
-                                       literal-value-rvalue? (array-map $literal))]}})))
+      {$expr {operator [field-rvalue (expr-value-rvalue value value-rvalue)]}})))
+
+(defn- filter-in-expr
+  "Like [[filter-expr]], but for `:=` or `:!=` with more than one value, e.g. `[:= {} field 1 2 3]`, which compiles to
+  something like `{field {$in [1 2 3]}}` (or `$nin` if `in?` is false)."
+  [query stage-number in? field values]
+  (let [field-rvalue  (->rvalue query stage-number field)
+        value-rvalues (mapv (partial ->rvalue query stage-number) values)]
+    (if (every? identity (map (partial direct-comparison? field-rvalue) values value-rvalues))
+      ;;    {field {$in [1 2 3]}}
+      {(str/replace-first field-rvalue #"^\$" "")
+       {(if in? $in $nin) value-rvalues}}
+      ;; there's no aggregation expression version of `$nin`, so use `$not` instead e.g.
+      ;;
+      ;;    {$expr {$not [{$in [{$add [$field 1]} [1 2 3]]}]}}
+      (let [in-expr {$in [field-rvalue (mapv expr-value-rvalue values value-rvalues)]}]
+        {$expr (if in? in-expr {$not [in-expr]})}))))
 
 (defmethod compile-filter :=
-  [query stage-number [_ _opts field value]]
-  (filter-expr query stage-number $eq field value))
+  [query stage-number [_ _opts field value & more]]
+  (if (seq more)
+    (filter-in-expr query stage-number true field (cons value more))
+    (filter-expr query stage-number $eq field value)))
 
 (defmethod compile-filter :!=
-  [query stage-number [_ _opts field value]]
-  (filter-expr query stage-number $ne field value))
+  [query stage-number [_ _opts field value & more]]
+  (if (seq more)
+    (filter-in-expr query stage-number false field (cons value more))
+    (filter-expr query stage-number $ne field value)))
 
 (defmethod compile-filter :<
   [query stage-number [_ _opts field value]]
@@ -1408,12 +1444,17 @@ function(bin) {
             (->rvalue query stage-number value))))
 
 (mu/defmethod compile-cond :=
-  [query stage-number [_ _opts field value] :- :mbql.clause/=]
-  {$eq [(->rvalue query stage-number field) (->rvalue query stage-number value)]})
+  [query stage-number [_ _opts field value & more] :- :mbql.clause/=]
+  (if (seq more)
+    {$in [(->rvalue query stage-number field) (mapv (partial ->rvalue query stage-number) (cons value more))]}
+    {$eq [(->rvalue query stage-number field) (->rvalue query stage-number value)]}))
 
 (mu/defmethod compile-cond :!=
-  [query stage-number [_ _opts field value] :- :mbql.clause/!=]
-  {$ne [(->rvalue query stage-number field) (->rvalue query stage-number value)]})
+  [query stage-number [_ _opts field value & more] :- :mbql.clause/!=]
+  (if (seq more)
+    ;; there's no aggregation expression version of `$nin`
+    {$not [{$in [(->rvalue query stage-number field) (mapv (partial ->rvalue query stage-number) (cons value more))]}]}
+    {$ne [(->rvalue query stage-number field) (->rvalue query stage-number value)]}))
 
 (mu/defmethod compile-cond :<
   [query stage-number [_ _opts field value] :- :mbql.clause/<]

@@ -33,8 +33,9 @@
   [[_tag _opts & subclauses]]
   (apply lib.filter/and (map negate* subclauses)))
 
-(defmethod negate* :=  [[_tag _opts x value]] (lib.filter/!= x value))
-(defmethod negate* :!= [[_tag _opts x value]] (lib.filter/=  x value))
+;;; `:=` and `:!=` can have more than one value, e.g. `[:= {} x 1 2 3]` (`x IN (1, 2, 3)`)
+(defmethod negate* :=  [[_tag _opts x & values]] (apply lib.filter/!= x values))
+(defmethod negate* :!= [[_tag _opts x & values]] (apply lib.filter/=  x values))
 (defmethod negate* :>  [[_tag _opts x value]] (lib.filter/<= x value))
 (defmethod negate* :<  [[_tag _opts x value]] (lib.filter/>= x value))
 (defmethod negate* :>= [[_tag _opts x value]] (lib.filter/<  x value))

@@ -10,6 +10,37 @@ title: Driver interface changelog
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.
 
+- Drivers must now be able to compile `:=` and `:!=` clauses with more than one value, e.g.
+
+  ```clj
+  [:= {} x 1 2 3]
+  ```
+
+  Previously, `metabase.lib.filter.desugar` (`driver-api/desugar-filter-clause`) rewrote these as compound filters
+  before they got to drivers:
+
+  ```clj
+  [:or {} [:= {} x 1] [:= {} x 2] [:= {} x 3]]
+  ```
+
+  and did the same for `:!=` with `:and`. This generated slow SQL like `x = 1 OR x = 2 OR x = 3` (see
+  [#23101](https://github.com/metabase/metabase/issues/23101)). Now these clauses are passed to drivers as-is, and
+  SQL drivers compile them to `x IN (1, 2, 3)` and `x NOT IN (1, 2, 3)`. Like the single-value version of `:!=`,
+  `:!=` with more than one value should also match rows where `x` is `NULL`, e.g. `x NOT IN (1, 2, 3) OR x IS NULL`.
+  `driver-api/negate-boolean-expression` now negates `[:= {} x 1 2 3]` to `[:!= {} x 1 2 3]` as well.
+
+  A few cases still get desugared, so drivers won't see them:
+
+  - Comparisons against temporal values, e.g. against a column bucketed by `:month`, are still rewritten as compound
+    filters, so the query processor can optimize each comparison into a range.
+  - `nil` values get split out into their own clause, e.g. `[:= {} x nil 1 2]` becomes
+    `[:or {} [:= {} x nil] [:= {} x 1 2]]`, since `x IN (NULL)` never matches anything in SQL.
+
+  The default `:sql` implementations of `metabase.driver.sql.query-processor/->honeysql` for `:=` and `:!=` handle this
+  for you, so `:sql`-based drivers don't need to change anything unless they have their own `->honeysql`
+  implementation for `:=` or `:!=`. Drivers that do, and non-SQL drivers, need to update their compilation of these
+  clauses; for example, the MongoDB driver now compiles them to `$in` and `$nin`.
+
 ## Metabase 0.64.0
 
 - Date and time functions that depended on the `start-of-week` setting now take a `time-config` map as their first
