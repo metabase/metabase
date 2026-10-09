@@ -287,18 +287,9 @@
   (when-not (inherited-transaction-ended?)
     *transaction-state*))
 
-(defn do-before-commit
-  "Run `thunk` just before the current outermost transaction commits — while the transaction is still
-  open, so any DB writes it makes commit atomically with it, and a throw from it rolls the whole
-  transaction back. Outside a transaction, runs `thunk` immediately. Mirror of [[do-after-commit]] for
-  work that must land *inside* the committing transaction."
+(defn- call-outside-transaction
+  "Call `thunk` with every transaction-scoped binding cleared, and return its result."
   [thunk]
-  ;; A thread that outlived its transaction still has the callbacks bound, but they have already run.
-  (if-let [callbacks (when-not (inherited-transaction-ended?) *before-commit-callbacks*)]
-    (do (swap! callbacks conj thunk) nil)
-    (thunk)))
-
-(defn- run-after-commit-callback! [thunk]
   ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
   ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
   ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
@@ -312,8 +303,27 @@
             *transaction-state*           nil
             *rollback-required*           nil
             *open-savepoints*             nil]
-    ;; the transaction already committed; a failing callback must not unwind it
-    (try (thunk) (catch Throwable t (log/errorf "after-commit callback failed: %s" (ex-message t))))))
+    (thunk)))
+
+(defn do-before-commit
+  "Run `thunk` just before the current outermost transaction commits — while the transaction is still
+  open, so any DB writes it makes commit atomically with it, and a throw from it rolls the whole
+  transaction back. Outside a transaction, runs `thunk` immediately. Mirror of [[do-after-commit]] for
+  work that must land *inside* the committing transaction."
+  [thunk]
+  (cond
+    ;; A thread that outlived its transaction still has the callbacks bound, but they have already run.
+    ;; Its connection has gone too, so the thunk must find its own.
+    (inherited-transaction-ended?) (call-outside-transaction thunk)
+    *before-commit-callbacks*      (do (swap! *before-commit-callbacks* conj thunk) nil)
+    :else                          (thunk)))
+
+(defn- run-after-commit-callback! [thunk]
+  ;; the transaction already committed; a failing callback must not unwind it
+  (try
+    (call-outside-transaction thunk)
+    (catch Throwable t
+      (log/errorf "after-commit callback failed: %s" (ex-message t)))))
 
 (defn do-after-commit
   "Run `thunk` after the current outermost transaction commits successfully — never on rollback.

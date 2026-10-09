@@ -299,17 +299,22 @@
   (letfn [(transaction-view []
             {:in-transaction?    (mdb.connection/in-transaction?)
              :transaction-state? (some? (mdb.connection/transaction-state))
-             :before-commit-ran? (let [ran? (atom false)]
-                                   (mdb.connection/do-before-commit (fn [] (reset! ran? true)))
-                                   @ran?)})]
+             :before-commit      (let [outcome (atom :deferred)]
+                                   (mdb.connection/do-before-commit
+                                    #(reset! outcome (if t2.connection/*current-connectable*
+                                                       :ran-on-the-old-connection
+                                                       :ran-outside-a-transaction)))
+                                   @outcome)})]
     (doseq [[outer-end rolls-back?] {"committed" false, "rolled back" true}]
       (testing (str "after the transaction " outer-end)
         (let [[inside view-afterwards] (do-transaction-ending
                                         nil rolls-back?
                                         (fn []
                                           [(transaction-view) (bound-fn [] (transaction-view))]))]
-          (is (= {:inside     {:in-transaction? true, :transaction-state? true, :before-commit-ran? false}
-                  :afterwards {:in-transaction? false, :transaction-state? false, :before-commit-ran? true}}
+          (is (= {:inside     {:in-transaction? true, :transaction-state? true, :before-commit :deferred}
+                  :afterwards {:in-transaction?    false
+                               :transaction-state? false
+                               :before-commit      :ran-outside-a-transaction}}
                  {:inside     inside
                   :afterwards (view-afterwards)})))))))
 
