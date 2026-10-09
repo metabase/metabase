@@ -1384,4 +1384,20 @@
     (is (nil? (get-in (#'agent/error-part (ex-info "boom" {:some :data}) "anthropic/claude-sonnet-4-6")
                       [:error :error-code])))
     (is (nil? (get-in (#'agent/error-part (RuntimeException. "npe-ish") "anthropic/claude-sonnet-4-6")
-                      [:error :error-code])))))
+                      [:error :error-code]))))
+  (testing "a misconfigured connection gets no code either: neither its message nor a retry would help"
+    (is (nil? (get-in (#'agent/error-part (self.core/missing-api-key-ex "anthropic") "anthropic/claude-sonnet-4-6")
+                      [:error :error-code])))
+    (is (nil? (get-in (#'agent/error-part (ex-info "No LLM provider connection named \"anthropic\" is configured."
+                                                   {:status-code 400 :api-error true :error-code :llm-not-configured})
+                                          "anthropic/claude-sonnet-4-6")
+                      [:error :error-code]))))
+  (testing "a prompt the provider refused with an HTTP error is a blocked prompt, the same as when it streams one"
+    (is (= "prompt_blocked"
+           (get-in (#'agent/error-part (ex-info "OpenAI API error (HTTP 400) — Invalid prompt"
+                                                {:api-error true
+                                                 :status    400
+                                                 :provider  "openai"
+                                                 :body      {:error {:code "invalid_prompt" :message "Invalid prompt"}}})
+                                       "openai/gpt-5.4")
+                   [:error :error-code])))))

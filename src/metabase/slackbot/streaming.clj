@@ -217,16 +217,6 @@
   {:type     "context"
    :elements [{:type "mrkdwn" :text (str "_" no-response-copy "_")}]})
 
-(def ^:private provider-config-error-codes
-  "Error codes that mean the LLM provider connection is misconfigured.
-
-   Thrown by [[metabase.metabot.self/parse-provider-model]] and by the provider
-   adapters' own setup validation; all deserve the same check-your-AI-settings copy."
-  #{"llm-not-configured" "api-key-missing" "credentials-unavailable" "base-url-missing"
-    "model-missing" "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
-    "not-a-service-account-key" "invalid-location" "project-id-required"
-    "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
-
 (defn- known-error-message
   "User-facing copy for a failure this namespace recognizes, or nil.
 
@@ -238,19 +228,22 @@
    everything else, raw provider errors and permission keywords included, must stay out
    of shared Slack channels."
   [error]
-  (let [code (some-> (or (:error-code error) (get-in error [:data :error-code])) name)]
+  (let [codes (into #{} (keep #(some-> % name)) [(get-in error [:data :error-code]) (:error-code error)])]
     (cond
-      (or (= code "permission_denied")
+      (or (contains? codes "permission_denied")
           (= :metabot/permission-denied (:type error))
           (= :metabot/permission-denied (get-in error [:data :type])))
       "You do not have permission to use the AI assistant."
 
-      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
-         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} code)
+      (some #{"metabase_ai_managed_locked" "ai_usage_limit_reached"
+              "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} codes)
       (:message error)
 
-      (provider-config-error-codes code)
+      (some metabot.self/provider-config-error-codes codes)
       "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."
+
+      (contains? codes "prompt_blocked")
+      "The AI provider declined to answer this message. Try rephrasing it."
 
       :else nil)))
 

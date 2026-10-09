@@ -11,6 +11,8 @@
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.google.stream-generate-content :as sgc]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
@@ -388,11 +390,32 @@
                                                 :required-permission :permission/metabot-nlq}}})]
       (is (str/includes? text "You do not have permission to use the AI assistant."))))
   (testing "a provider config error the agent loop caught becomes check-your-settings copy"
-    (let [text (dm-error-part-appended-text!
-                {:type :error :error {:message "No LLM provider connection named \"anthropic\" is configured."
-                                      :type    "clojure.lang.ExceptionInfo"
-                                      :data    {:status-code 400 :api-error true :error-code :llm-not-configured}}})]
-      (is (str/includes? text "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."))))
+    (doseq [e [(ex-info "No LLM provider connection named \"anthropic\" is configured."
+                        {:status-code 400 :api-error true :error-code :llm-not-configured})
+               (self.core/missing-api-key-ex "anthropic")]]
+      (let [part (#'agent/error-part e "anthropic/claude-sonnet-4-6")]
+        (doseq [part [part (#'agent/user-facing-error-part false part)]]
+          (is (str/includes? (dm-error-part-appended-text! part)
+                             "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings.")
+              (ex-message e))))))
+  (testing "a blocked prompt gets fixed copy, never the provider's own text, streamed or thrown"
+    (let [streamed (some #(when (= :error (:type %)) %)
+                         (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf))
+                               [{:responseId "r1" :promptFeedback {:blockReason "PROHIBITED_CONTENT"}}]))
+          thrown   (#'agent/error-part
+                    (ex-info "OpenAI API error (HTTP 400) — Invalid prompt: flagged as potentially violating our usage policy."
+                             {:api-error  true
+                              :status     400
+                              :provider   "openai"
+                              :error-code :provider-api-error
+                              :body       {:error {:code    "invalid_prompt"
+                                                   :message "Invalid prompt: flagged as potentially violating our usage policy."}}})
+                    "openai/gpt-5.4")]
+      (doseq [part [streamed thrown (#'agent/user-facing-error-part false thrown)]]
+        (let [text (dm-error-part-appended-text! part)]
+          (is (str/includes? text "The AI provider declined to answer this message. Try rephrasing it."))
+          (is (not (str/includes? text "PROHIBITED_CONTENT")))
+          (is (not (str/includes? text "usage policy")))))))
   (testing "a provider failure the customer can fix keeps the message the agent loop wrote for it"
     (doseq [code ["ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"]]
       (let [text (dm-error-part-appended-text!

@@ -54,6 +54,15 @@
           (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
           models)))
 
+(def provider-config-error-codes
+  "Error codes that mean the LLM provider connection is misconfigured.
+
+   Thrown by [[parse-provider-model]] and by the provider adapters' own setup validation."
+  #{"llm-not-configured" "api-key-missing" "credentials-unavailable" "base-url-missing"
+    "model-missing" "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
+    "not-a-service-account-key" "invalid-location" "project-id-required"
+    "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
+
 (defn- parse-provider-model
   "Resolve a `connection-key/model` string into the adapter, model, and credentials needed to serve it.
   Throws a 400 when the string names a connection that is not configured, so a stale

@@ -544,30 +544,39 @@
   [message]
   {:type :text, :id (str (random-uuid)), :text message})
 
+(defn- provider-error-code
+  [data]
+  (when (and (:api-error data)
+             (not (contains? self/provider-config-error-codes (some-> (:error-code data) name))))
+    (if (= "invalid_prompt" (get-in data [:body :error :code]))
+      "prompt_blocked"
+      "provider_error")))
+
 (defn- error-part
   "The `:error` part a turn ends on when `e` escaped the LLM call.
 
-  An exception the provider adapters tagged `:api-error` carries a message written for a person
-  (see `rethrow-api-error!`) and gets an `:error-code` so the client can tell \"the provider turned
-  us down\" — worth showing, and worth retrying now that the failure is recorded and a retry would
-  resolve to the fallback — from an internal failure it can only report generically."
+  An exception the provider adapters tagged `:api-error`, other than a misconfigured connection, carries a message
+  written for a person (see `rethrow-api-error!`) and gets an `:error-code` so the client can tell \"the provider
+  turned us down\" — worth showing, and worth retrying now that the failure is recorded and a retry would resolve to
+  the fallback — from an internal failure it can only report generically."
   [^Exception e model-ref]
-  (let [data (ex-data e)]
+  (let [data (ex-data e)
+        code (provider-error-code data)]
     {:type  :error
      :error (or (self/byok-provider-error e model-ref)
                 (cond-> {:message (.getMessage e), :type (str (type e)), :data data}
-                  (:api-error data) (assoc :error-code "provider_error")))}))
+                  code (assoc :error-code code)))}))
 
 (defn- user-facing-error-part
   [admin? part]
-  (if (or admin? (not= :error (:type part)))
-    part
-    (case (get-in part [:error :error-code])
-      "provider_error" (assoc-in part [:error :message]
-                                 (tru "The AI provider could not complete the request. Please try again."))
-      "prompt_blocked" (assoc-in part [:error :message]
-                                 (tru "The AI provider declined to answer this message. Try rephrasing it."))
-      part)))
+  (if-let [message (and (not admin?)
+                        (= :error (:type part))
+                        (case (get-in part [:error :error-code])
+                          "provider_error" (tru "The AI provider could not complete the request. Please try again.")
+                          "prompt_blocked" (tru "The AI provider declined to answer this message. Try rephrasing it.")
+                          nil))]
+    (assoc-in part [:error :message] message)
+    part))
 
 (defn- accumulate-usage-xf
   "Transducer that merges each `:usage` part into the cumulative usage atom
