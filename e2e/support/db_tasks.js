@@ -85,6 +85,37 @@ export async function resetWritableDb({ type = "postgres" }) {
   return null;
 }
 
+export async function createWritableDb({ type = "postgres" }) {
+  const connectionConfig = {
+    postgres: QA_DB_CONFIG.postgres,
+    mysql: {
+      ...QA_DB_CONFIG.mysql,
+      connection: { ...QA_DB_CONFIG.mysql.connection, user: "root" },
+    },
+  }[type];
+
+  const dbName = WRITABLE_DB_CONFIG[type].connection.database;
+
+  const dbCheckQuery = {
+    postgres: `SELECT FROM pg_database WHERE datname = '${dbName}';`,
+    mysql: `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${dbName}'`,
+  }[type];
+
+  const { rows } = await connectAndQueryDB({
+    connectionConfig,
+    query: dbCheckQuery,
+  });
+
+  if (!rows.length) {
+    await connectAndQueryDB({
+      connectionConfig,
+      query: `CREATE DATABASE ${dbName};`,
+    });
+  }
+
+  return null;
+}
+
 export async function resetTable({ type = "postgres", table = "testTable1" }) {
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
   return testTables?.[table]?.(dbClient);

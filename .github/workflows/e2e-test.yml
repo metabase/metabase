@@ -19,6 +19,10 @@ on:
         description: "ID of this run's test-plan.json artifact, '' to use the default spec pattern."
         type: string
         default: ""
+      snapshots-artifact:
+        description: "Name of this run's default snapshots artifact, '' to generate all snapshots in this job."
+        type: string
+        default: ""
       tags:
         required: false
         type: string
@@ -185,7 +189,21 @@ jobs:
       # steps below. DEV-1999.
       - uses: ./.github/actions/resolve-job-id
 
+      - name: Download database snapshots
+        id: snapshots
+        if: ${{ inputs.snapshots-artifact != '' && inputs.edition == 'ee' }}
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: ${{ inputs.snapshots-artifact }}
+          path: e2e
+
+      - name: Create writable_db in QA databases
+        if: ${{ steps.snapshots.outcome == 'success' }}
+        run: bun e2e/support/create-writable-dbs.ts
+
       - name: Generate database snapshots
+        if: ${{ steps.snapshots.outcome != 'success' }}
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot
