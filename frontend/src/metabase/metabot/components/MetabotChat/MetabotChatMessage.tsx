@@ -121,7 +121,7 @@ const CopyAction = ({ text }: { text: string }) => {
     <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
       <ActionIcon
         variant="subtle"
-        size="1.5rem"
+        size="sm"
         data-testid="metabot-chat-message-copy"
         onClick={() => clipboard.copy(text)}
       >
@@ -190,7 +190,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
         variant="subtle"
         onClick={onClick}
         disabled={disabled}
-        size="1.5rem"
+        size="sm"
         {...props}
         ref={ref}
       >
@@ -341,7 +341,7 @@ const MessageActions = ({
         <ActionIcon
           variant="subtle"
           onClick={onRetry}
-          size="1.5rem"
+          size="sm"
           data-testid="metabot-chat-message-retry"
         >
           <Icon name="revert" size="0.9rem" c="icon-primary" />
@@ -359,7 +359,7 @@ const MessageActions = ({
       <Tooltip key="fork" label={t`Fork conversation`}>
         <ActionIcon
           variant="subtle"
-          size="1.5rem"
+          size="sm"
           data-testid="metabot-chat-message-fork"
           loading={isForking}
           disabled={isForking}

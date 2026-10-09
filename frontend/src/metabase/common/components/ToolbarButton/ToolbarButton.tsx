@@ -60,7 +60,6 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
         base: visibleOnSmallScreen ? "flex" : "none",
         sm: "flex",
       }}
-      size="2rem"
       aria-label={
         ariaLabel ??
         (typeof tooltipLabel === "string" ? tooltipLabel : undefined)

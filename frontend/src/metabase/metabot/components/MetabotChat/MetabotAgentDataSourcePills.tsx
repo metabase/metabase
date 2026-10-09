@@ -218,7 +218,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is correct`}>
         <ActionIcon
           aria-label={t`Source is correct`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}
@@ -232,7 +232,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is wrong`}>
         <ActionIcon
           aria-label={t`Source is wrong`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}

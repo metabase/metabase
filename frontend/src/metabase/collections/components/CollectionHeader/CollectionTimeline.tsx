@@ -17,7 +17,7 @@ const CollectionTimeline = ({
   return (
     <Tooltip label={t`Events`} position="bottom">
       <div>
-        <ActionIcon variant="subtle" size="2rem" component={Link} to={url}>
+        <ActionIcon variant="subtle" component={Link} to={url}>
           <Icon name="calendar" />
         </ActionIcon>
       </div>

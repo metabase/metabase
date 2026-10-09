@@ -199,7 +199,7 @@ function DismissButton({ onDismiss }: { onDismiss: () => void }) {
   return (
     <ActionIcon
       ml="auto"
-      size="1.5rem"
+      size="sm"
       radius="xl"
       variant="subtle"
       c="text-disabled"

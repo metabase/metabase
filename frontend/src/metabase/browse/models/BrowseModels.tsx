@@ -99,7 +99,6 @@ export const BrowseModels = () => {
                   <ActionIcon
                     variant="subtle"
                     aria-label={t`Create a new model`}
-                    size={32}
                     component={ForwardRefLink}
                     to="/model/new"
                     onClick={() => trackNewModelInitiated()}
