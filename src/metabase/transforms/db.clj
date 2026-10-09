@@ -717,7 +717,8 @@
 (defn- root-run-order-by
   "Standard `:order-by` clause for a paged root-run listing. Sorts by `sort-column` (`:start_time` or `:end_time`;
   anything else — including nil — falls back to ordering by start_time then end_time) in `sort-direction`
-  (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) always ordered last."
+  (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) ordered as the most recent: last
+  ascending, first descending."
   [sort-column sort-direction]
   (let [sort-direction            (or (keyword sort-direction) :desc)
         sort-direction-with-nulls (case sort-direction
