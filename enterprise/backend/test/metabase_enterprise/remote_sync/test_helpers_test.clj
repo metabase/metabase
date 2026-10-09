@@ -130,11 +130,15 @@
           (th/clean-remote-sync-state
            (fn []
              (let [coll-id (t2/insert-returning-pk! :model/Collection {:name "Imported" :location "/"})
+                   ;; an action without a model can only go in a Collection of the data actions namespace
+                   acts-id (t2/insert-returning-pk! :model/Collection {:name      "Imported actions"
+                                                                       :location  "/"
+                                                                       :namespace "data-actions"})
                    ;; this action has no model, so no cascade from a deleted card removes it
                    act-id  (action/insert! (lib/normalize ::actions.schema/action.for-insert
                                                           {:type          :query
                                                            :name          "No model"
-                                                           :collection_id coll-id
+                                                           :collection_id acts-id
                                                            :database_id   (mt/id)
                                                            :dataset_query (mt/native-query {:query "select 1"})}))
                    doc-id  (t2/insert-returning-pk! :model/Document
@@ -144,15 +148,16 @@
                    app     (t2/insert-returning-instance! :model/DataApp {:name         "imported-app"
                                                                           :display_name "Imported app"
                                                                           :bundle_path  "app.js"})]
-               (reset! ids {:collection coll-id
-                            :action     act-id
+               (reset! ids {:collection         coll-id
+                            :actions-collection acts-id
+                            :action             act-id
                             :document   doc-id
                             :data-app   (:id app)
                             :group      (t2/select-one-fn :permission_group_id :model/DataApp :id (:id app))}))))
-          (let [{:keys [collection action document data-app]} @ids]
-            (testing "the collection is gone"
-              (is (not (t2/exists? :model/Collection :id collection))))
-            (testing "a model-less action in the collection is gone"
+          (let [{:keys [collection actions-collection action document data-app]} @ids]
+            (testing "the collections are gone"
+              (is (not (t2/exists? :model/Collection :id [:in [collection actions-collection]]))))
+            (testing "a model-less action in a collection is gone"
               (is (not (t2/exists? :model/Action :id action))))
             (testing "a document in the collection is gone"
               (is (not (t2/exists? :model/Document :id document))))
