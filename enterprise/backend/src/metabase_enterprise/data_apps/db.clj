@@ -41,31 +41,6 @@
              (cond-> {:order-by [[:display_name :asc]]}
                available? (assoc :where [:= :enabled true]))))
 
-(defn- read-scope-clause
-  [scope]
-  (if (= scope :all)
-    [:= 1 1]
-    [:in :id ^:allow-subquery
-     {:select [:assignment.data_app_id]
-      :from [[:data_app_group_assignment :assignment]]
-      :join [[:permissions_group_membership :pgm] [:= :pgm.group_id :assignment.permission_group_id]
-             [:core_user :u] [:= :u.id :pgm.user_id]]
-      :where [:and [:= :u.id (:user-id scope)] [:= :u.tenant_id nil]]}]))
-
-(mu/defn non-blob-data-apps
-  "DataApps in the read scope without bundles, ordered by display name. Optionally restrict to enabled apps."
-  [scope :- [:or [:= :all] [:map {:closed true} [:user-id ms/PositiveInt]]]
-   available? :- [:maybe :boolean]]
-  (t2/select non-blob-model
-             {:order-by [[:display_name :asc]]
-              :where (cond-> [:and (read-scope-clause scope)]
-                       available? (conj [:= :enabled true]))}))
-
-(defn readable-data-app?
-  "Whether the app exists in the read scope."
-  [scope app-id]
-  (t2/exists? :model/DataApp :id app-id {:where (read-scope-clause scope)}))
-
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]

@@ -30,7 +30,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (is (mi/can-read? app)))))
 
-(deftest app-list-authorizes-in-one-query-test
+(deftest app-list-filters-readable-apps-test
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                  :model/DataApp disabled {:name "disabled" :display_name "Disabled" :bundle_path "disabled.js"
                                           :enabled false}
@@ -47,9 +47,7 @@
         (doseq [[query expected] [[{} [{:name "birds" :display_name "Birds"}
                                        {:name "disabled" :display_name "Disabled"}]]
                                   [{:available true} [{:name "birds" :display_name "Birds"}]]]]
-          (t2/with-call-count [call-count]
-            (is (= expected (list-apps {} query)))
-            (is (= 1 (call-count)))))))))
+          (is (= expected (list-apps {} query))))))))
 
 (deftest read-access-agrees-across-entry-points-test
   (mt/with-premium-features #{:data-apps :tenants}
@@ -77,11 +75,12 @@
             (mt/user-http-request user-id :get (if allowed? 200 403) "apps/birds/bundle")
             (mt/with-current-user user-id
               (is (= allowed? (boolean (mi/can-read? app)))))
-            (let [request {:route-params {:name "birds"} :metabase-user-id user-id :is-superuser? admin?}]
-              (if allowed?
-                (is (true? (data-apps/check-data-app-access! request)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
-                                      (data-apps/check-data-app-access! request)))))))))))
+            (mt/with-current-user user-id
+              (let [request {:route-params {:name "birds"} :metabase-user-id user-id :is-superuser? admin?}]
+                (if allowed?
+                  (is (true? (data-apps/check-data-app-access! request)))
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
+                                        (data-apps/check-data-app-access! request))))))))))))
 
 (deftest group-api-test
   (mt/with-premium-features #{:data-apps}
@@ -203,8 +202,9 @@
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (mt/with-current-user (mt/user->id :rasta)
         (is (mi/can-read? app)))
-      (is (true? (data-apps/check-data-app-access!
-                  {:route-params {:name "birds"} :metabase-user-id (mt/user->id :rasta)}))))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (true? (data-apps/check-data-app-access!
+                    {:route-params {:name "birds"} :metabase-user-id (mt/user->id :rasta)})))))))
 
 (deftest group-endpoints-require-feature-test
   (mt/with-premium-features #{:data-apps}
