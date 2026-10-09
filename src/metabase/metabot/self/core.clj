@@ -120,7 +120,6 @@
   Object keys are strings from `json/decode` (replayed history) or keywords from `json/decode+kw` (the stream)."
   [:or
    :string
-   :keyword
    number?
    :boolean
    :nil

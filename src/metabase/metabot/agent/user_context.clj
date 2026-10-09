@@ -5,6 +5,7 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.query-export :as query-export]
@@ -249,28 +250,67 @@
 
 ;;; Viewing Context Formatting
 
-(defn- exported-query-text
-  "The client-supplied query rendered for the LLM, only when the current user can read its
-  database and query the tables it references. The database refusal is audited for the same
-  reason the query's card ids get the audited store: the id is the caller's own."
+(defn- client-query-export
+  "[[shared.content-store/query-for-export]] for a client-supplied query, nil when the current user
+  may not see it. The refusal is audited for the same reason the query's card ids get the audited
+  store: the ids are the caller's own. Refusals aren't cached, so call this once per query - each
+  call audits again."
   [query]
-  (some-> (shared.content-store/query-for-export query true)
-          (query-export/export->text shared.content-store/audited-store)))
+  (shared.content-store/query-for-export query true))
+
+(defn- exported-query-text
+  "The client-supplied query rendered for the LLM from its [[client-query-export]], when the
+  current user can read its database and query the tables it references."
+  [export]
+  (some-> export (query-export/export->text shared.content-store/audited-store)))
+
+(defn- query-column-line
+  [col]
+  (str "- "
+       (when-let [join-alias (lib/current-join-alias col)]
+         (str "[join-alias " (pr-str join-alias) "] "))
+       (:name col) ": " (pr-str (or (:lib/original-display-name col) (:display-name col)))
+       (when-let [column-type (or (:effective-type col) (:base-type col))]
+         (str " (" (u/qualified-name column-type) ")"))))
+
+(defn- query-columns-text
+  "The columns the client-supplied query can reference in its last stage - machine name, display
+  name, type, and join alias - so a column the user names by its UI label can be found. Read from
+  the same [[client-query-export]] as [[exported-query-text]]; nil unless it cleared the query
+  with a metadata provider, i.e. whenever the query isn't shown in full."
+  [{cleared :query, :keys [mp]}]
+  (when mp
+    (try
+      (let [cols (lib/visible-columns (lib/query mp cleared) -1
+                                      {:include-implicitly-joinable?                 false
+                                       :include-implicitly-joinable-for-source-card? false})]
+        (when (seq cols)
+          (let [[listed more] (repr.repair/listed-columns cols)]
+            (te/lines
+             (map query-column-line listed)
+             (when (pos? more)
+               (format "- ... and %d more" more))))))
+      (catch Exception e
+        (log/debug e "Could not list the viewed query's columns")
+        nil))))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
   (if (native-query-item? item)
     (format-native-query item)
-    (te/lines "The user is currently in the notebook editor viewing a query."
-              (te/field "Query ID" (:id item))
-              (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (exported-query-text (:query item)))
-              (when-let [config-ids (format-chart-config-ids item)]
-                (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-              (te/field "Tables used" (some->> (:used_tables item)
-                                               (map format-entity)
-                                               te/lines)))))
+    (let [export (client-query-export (:query item))]
+      (te/lines "The user is currently in the notebook editor viewing a query."
+                (te/field "Query ID" (:id item))
+                (te/field "Database ID" (get-in item [:query :database]))
+                (te/field "Query" (exported-query-text export))
+                (te/field "Columns available in the query's last stage (name: display name (type); a joined column is referenced with its join-alias)"
+                          (query-columns-text export))
+                (when-let [config-ids (format-chart-config-ids item)]
+                  (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+                (te/field "Tables used" (some->> (:used_tables item)
+                                                 (map format-entity)
+                                                 te/lines))))))
 
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]
