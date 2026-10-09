@@ -55,7 +55,6 @@ export function AliasInput({
           <ActionIcon
             onClick={() => onChange(defaultAlias)}
             aria-label={t`Reset alias to default`}
-            color="text-disabled"
             variant="subtle"
           >
             <Icon name="refresh" size={12} />

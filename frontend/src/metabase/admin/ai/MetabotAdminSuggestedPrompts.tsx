@@ -233,6 +233,7 @@ const SuggestedPromptRow = ({
           {metabotId === FIXED_METABOT_IDS.DEFAULT ? (
             <Tooltip label={t`Run prompt`}>
               <ActionIcon
+                variant="subtle"
                 component={ForwardRefLink}
                 to={Urls.newMetabotConversation({ prompt: row.prompt })}
                 data-testid="prompt-run"
@@ -245,6 +246,7 @@ const SuggestedPromptRow = ({
           ) : (
             <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy prompt`}>
               <ActionIcon
+                variant="subtle"
                 onClick={() => clipboard.copy(row.prompt)}
                 data-testid="prompt-copy"
                 h="sm"
@@ -254,7 +256,12 @@ const SuggestedPromptRow = ({
             </Tooltip>
           )}
           <Tooltip label={t`Remove prompt`}>
-            <ActionIcon onClick={onDelete} data-testid="prompt-remove" h="sm">
+            <ActionIcon
+              variant="subtle"
+              onClick={onDelete}
+              data-testid="prompt-remove"
+              h="sm"
+            >
               <Icon name="trash" size="1rem" />
             </ActionIcon>
           </Tooltip>

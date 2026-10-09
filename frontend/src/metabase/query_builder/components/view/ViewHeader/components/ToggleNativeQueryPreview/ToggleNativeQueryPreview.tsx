@@ -58,10 +58,9 @@ export const ToggleNativeQueryPreview = ({
   return (
     <Tooltip label={buttonText} position="top">
       <ActionIcon
+        variant="subtle"
         aria-label={buttonText}
-        size={32}
         role="switch"
-        variant="viewHeader"
         onClick={handleClick}
       >
         <Icon name="sql" />

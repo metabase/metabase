@@ -66,11 +66,10 @@ function SidebarToggleButton({
   return (
     <Tooltip label={label} openDelay={1000}>
       <ActionIcon
+        variant="subtle"
         aria-label={label}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         data-testid="exploration-sidebar-toggle"
-        size="2rem"
-        variant="viewFooter"
       >
         <Icon name={isSidebarOpen ? "sidebar_closed" : "sidebar_open"} />
       </ActionIcon>

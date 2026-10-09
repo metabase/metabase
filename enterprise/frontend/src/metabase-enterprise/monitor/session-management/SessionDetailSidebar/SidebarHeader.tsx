@@ -41,6 +41,7 @@ export const SidebarHeader = ({
       </Group>
       <Group gap="sm">
         <ActionIcon
+          variant="subtle"
           aria-label={t`Copy link to clipboard`}
           size="lg"
           c="icon-primary"
@@ -49,6 +50,7 @@ export const SidebarHeader = ({
           <Icon name="link" />
         </ActionIcon>
         <ActionIcon
+          variant="subtle"
           aria-label={t`Close`}
           size="lg"
           c="icon-primary"

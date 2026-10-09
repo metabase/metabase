@@ -83,11 +83,7 @@ export function ConversationHeader({
             {conversation.user && (
               <Menu shadow="sm" position="bottom-start" withinPortal>
                 <Menu.Target>
-                  <ActionIcon
-                    variant="subtle"
-                    color="text-secondary"
-                    aria-label={t`User actions`}
-                  >
+                  <ActionIcon variant="subtle" aria-label={t`User actions`}>
                     <Icon name="ellipsis" size={16} />
                   </ActionIcon>
                 </Menu.Target>

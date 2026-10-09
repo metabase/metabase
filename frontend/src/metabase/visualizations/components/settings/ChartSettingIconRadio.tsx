@@ -1,8 +1,6 @@
 import { ActionIcon, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import S from "./ChartSettingIconRadio.module.css";
-
 interface ChartSettingIconRadioProps {
   value: string;
   onChange: (val: string | null) => void;
@@ -27,9 +25,7 @@ export const ChartSettingIconRadio = ({
       {options.map((option) => (
         <ActionIcon
           key={`radio-icon-${option.iconName}`}
-          className={S.iconButton}
-          variant={option.value === value ? "filled" : "default"}
-          size="2rem"
+          variant={option.value === value ? "light" : "default"}
           ml="sm"
           onClick={() => handleClick(option.value)}
         >

@@ -159,6 +159,7 @@ export function QuestionList({
             />
             <Tooltip label={t`Visualize another way`}>
               <ActionIcon
+                variant="transparent"
                 className={S.VisualizerButton}
                 size="41px"
                 aria-label={t`Visualize another way`}

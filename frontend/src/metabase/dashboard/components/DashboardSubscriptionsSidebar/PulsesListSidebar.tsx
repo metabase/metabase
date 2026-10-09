@@ -10,7 +10,7 @@ import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Card, Flex, Icon, Tooltip } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
@@ -78,28 +78,26 @@ function _PulsesListSidebar({
 
         <Flex align="center">
           <Tooltip label={createSubscriptionLabel}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
               aria-label={createSubscriptionLabel}
-              leftSection={<Icon name="add" />}
               mr="1rem"
               onClick={createSubscription}
-            />
+            >
+              <Icon name="add" />
+            </ActionIcon>
           </Tooltip>
 
           <Tooltip label={closeSidebarLabel}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
               aria-label={closeSidebarLabel}
-              leftSection={<Icon name="close" />}
               onClick={onCancel}
-            />
+            >
+              <Icon name="close" />
+            </ActionIcon>
           </Tooltip>
         </Flex>
       </div>

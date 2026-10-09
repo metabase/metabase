@@ -303,7 +303,7 @@ function ProviderConnectionRow({
           {!isEnvManaged && (
             <Menu position="bottom-end">
               <Menu.Target>
-                <ActionIcon aria-label={t`Provider options`}>
+                <ActionIcon variant="subtle" aria-label={t`Provider options`}>
                   <Icon name="ellipsis" />
                 </ActionIcon>
               </Menu.Target>

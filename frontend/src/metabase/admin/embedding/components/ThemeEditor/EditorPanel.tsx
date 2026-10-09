@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
 import {
+  ActionIcon,
   Box,
   Button,
   Card,
@@ -105,15 +106,14 @@ export function EditorPanel({
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
                 <Tooltip label={t`Reset main colors to defaults`}>
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    color="neutral"
                     size="sm"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
-                    leftSection={<Icon name="revert" />}
-                  />
+                  >
+                    <Icon name="revert" />
+                  </ActionIcon>
                 </Tooltip>
               )}
             </Flex>
@@ -150,15 +150,14 @@ export function EditorPanel({
                 <Tooltip
                   label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    color="neutral"
                     size="sm"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}
-                    leftSection={<Icon name="revert" />}
-                  />
+                  >
+                    <Icon name="revert" />
+                  </ActionIcon>
                 </Tooltip>
               )}
             </Flex>

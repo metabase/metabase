@@ -1,84 +1,120 @@
 .root {
+  --ai-size-xs: 16px;
+  --ai-size-sm: 24px;
+  --ai-size-md: 32px;
+  --ai-size-lg: 40px;
+  --mb-ai-radius: 6px;
+  --mb-ai-icon-size: 16px;
+
+  border-radius: var(--ai-radius, var(--mb-ai-radius));
+
+  &:active {
+    transform: none;
+  }
+
+  &[data-size="xs"],
+  &[data-size="sm"] {
+    --mb-ai-radius: 4px;
+    --mb-ai-icon-size: 12px;
+  }
+
+  &[data-size="lg"] {
+    --mb-ai-radius: 8px;
+  }
+
+  &[data-size="xs"],
+  &[data-size="sm"],
+  &[data-size="md"],
+  &[data-size="lg"] {
+    .icon > svg {
+      width: var(--mb-ai-icon-size);
+      height: var(--mb-ai-icon-size);
+    }
+  }
+
   &[data-disabled] {
     color: var(--mb-color-icon-disabled);
     pointer-events: all;
   }
+}
 
-  &[data-variant="subtle"] {
-    color: var(--mb-color-text-disabled);
+.root[data-variant="default"] {
+  --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
+  --mb-ai-bd-color: var(--mb-color-border-neutral-strong);
 
-    &:hover {
-      color: var(--mb-color-text-secondary);
-      background-color: var(--mb-color-background_page-secondary);
-    }
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.root[data-variant="light"] {
+  --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
+}
+
+.root[data-variant="subtle"] {
+  --mb-ai-disabled-bg: var(--mb-ai-bg);
+}
+
+.root[data-variant="default"],
+.root[data-variant="light"],
+.root[data-variant="subtle"] {
+  color: var(--mb-ai-color);
+  background-color: var(--mb-ai-bg);
+  border: 0.5px solid var(--mb-ai-bd-color, transparent);
+
+  &:hover:not([data-loading], :disabled, [data-disabled]) {
+    color: var(--mb-ai-hover-color);
+    background-color: var(--mb-ai-hover);
   }
 
-  /* To be able to seamlessly support color property across variants we need
-      to implement variantColorResolver. Same thing is pointed out in Button component. */
-  &[data-variant="info"] {
-    color: var(--mb-color-core-brand);
-    background-color: transparent;
-
-    &:hover,
-    &:active,
-    &[data-is-active="true"] {
-      background-color: var(--mb-color-background_surface-brand-subtle);
-    }
+  &:active:not([data-loading], :disabled, [data-disabled]) {
+    color: var(--mb-ai-hover-color);
+    background-color: var(--mb-ai-pressed);
+    box-shadow: none;
   }
 
-  &[data-variant="warning"] {
-    color: var(--mb-color-feedback-warning);
-    background-color: transparent;
+  &:disabled:not([data-loading]),
+  &[data-disabled]:not([data-loading]) {
+    color: var(--mb-color-icon-disabled);
+    background-color: var(--mb-ai-disabled-bg);
+    border-color: transparent;
+    box-shadow: none;
+  }
+}
 
-    &:hover,
-    &:active,
-    &[data-is-active="true"] {
-      background-color: var(--mb-color-background_surface-warning);
-    }
+:global(.mb-mantine-ActionIconGroup-group) {
+  &:has(> .root) {
+    --ai-border-width: 0px;
+
+    width: fit-content;
+    overflow: hidden;
+    border: 0.5px solid var(--mb-color-border-neutral-strong);
+    border-radius: 6px;
+    box-shadow: var(--mantine-shadow-xs);
   }
 
-  &[data-variant="error"] {
-    color: var(--mb-color-feedback-negative);
-    background-color: transparent;
-
-    &:hover,
-    &:active,
-    &[data-is-active="true"] {
-      background-color: var(--mb-color-background_surface-error);
-    }
+  &:has(> .root[data-size="lg"]) {
+    border-radius: 8px;
   }
 
-  &[data-variant="viewHeader"] {
-    color: var(--mb-color-text-primary);
-    background-color: transparent;
-    border: 1px solid transparent;
-    transition: all 300ms linear;
+  & > .root[data-variant] {
+    --mb-ai-disabled-bg: var(--mb-color-background_surface-disabled);
 
-    &:hover {
-      color: var(--mb-color-core-brand);
-      background-color: var(--mb-color-background_page-tertiary);
-      border: 1px solid transparent;
+    width: auto;
+    min-width: auto;
+    padding-inline: 16px;
+    border-width: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+
+    &[data-size="lg"] {
+      padding-inline: 24px;
     }
 
-    &:disabled,
-    &[data-disabled] {
-      color: var(--mb-color-text-disabled);
-      background-color: transparent;
-    }
-  }
-
-  &[data-variant="viewFooter"] {
-    color: var(--mb-color-text-secondary);
-    background-color: transparent;
-
-    &:hover {
-      color: var(--mb-color-core-brand);
-    }
-
-    &:disabled,
-    &[data-disabled] {
-      color: var(--mb-color-text-disabled);
-      background-color: transparent;
+    &:not(:first-child)::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-inline-start: 0.5px solid var(--mb-color-border-neutral-strong);
     }
   }
 }

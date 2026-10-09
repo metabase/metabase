@@ -18,7 +18,6 @@ export const SidebarNavButton = ({
   <ActionIcon
     aria-label={label}
     size="lg"
-    variant="default"
     className={S.navButton}
     disabled={disabled}
     onClick={onClick}

@@ -249,6 +249,7 @@ export const DatabaseCachingEditor = () => {
               {overriddenDatabaseIds.length > 0 && (
                 <Tooltip label={t`Reset all to default`}>
                   <ActionIcon
+                    variant="subtle"
                     size="lg"
                     c="icon-primary"
                     bd="1px solid var(--mb-color-border-neutral)"

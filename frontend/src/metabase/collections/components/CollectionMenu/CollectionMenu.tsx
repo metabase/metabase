@@ -152,7 +152,7 @@ export const CollectionMenu = ({
                 offset={6}
                 data-testid="menu-indicator-root"
               >
-                <ActionIcon size={32} variant="viewHeader">
+                <ActionIcon variant="subtle">
                   <Icon name="ellipsis" c="text-primary" />
                 </ActionIcon>
               </Indicator>

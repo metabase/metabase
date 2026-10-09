@@ -58,6 +58,7 @@ const ToolCallSection = ({
         </Flex>
         <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
           <ActionIcon
+            variant="subtle"
             h="sm"
             aria-label={copyLabel}
             onClick={() => clipboard.copy(value)}
@@ -203,6 +204,7 @@ export const AgentToolCallPart = ({
         <Flex align="center" gap="xxs" className={Styles.agentPartActions}>
           <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
             <ActionIcon
+              variant="subtle"
               h="sm"
               aria-label={t`Copy tool call JSON`}
               onClick={(e) => {

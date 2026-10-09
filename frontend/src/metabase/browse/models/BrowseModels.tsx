@@ -97,9 +97,8 @@ export const BrowseModels = () => {
               {canCreateNewModel && (
                 <Tooltip label={t`Create a new model`} position="bottom">
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Create a new model`}
-                    size={32}
-                    variant="viewHeader"
                     component={ForwardRefLink}
                     to="/model/new"
                     onClick={() => trackNewModelInitiated()}

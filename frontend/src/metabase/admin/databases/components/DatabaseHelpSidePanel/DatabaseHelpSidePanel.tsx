@@ -63,7 +63,11 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
           <Title order={2} size="h4">
             {c("{0} is the database engine name").t`Add ${driverName}`}
           </Title>
-          <ActionIcon aria-label={t`Close panel`} onClick={onClose}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Close panel`}
+            onClick={onClose}
+          >
             <Icon name="close" />
           </ActionIcon>
         </Flex>

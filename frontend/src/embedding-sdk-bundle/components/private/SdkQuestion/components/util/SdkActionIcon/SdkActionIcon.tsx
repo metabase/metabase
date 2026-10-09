@@ -55,7 +55,6 @@ export const SdkActionIcon = forwardRef<
         }
         size="lg"
         className={cx(S.sdkActionIcon, className)}
-        variant="default"
         {...actionIconProps}
       >
         <Icon name={icon} />

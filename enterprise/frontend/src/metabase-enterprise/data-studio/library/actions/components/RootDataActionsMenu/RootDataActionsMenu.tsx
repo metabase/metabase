@@ -25,7 +25,7 @@ export function RootDataActionsMenu() {
           onClick={(event) => event.stopPropagation()}
           openDelay={1000}
         >
-          <ActionIcon aria-label={optionsLabel} size="md">
+          <ActionIcon variant="subtle" aria-label={optionsLabel} size="md">
             <FixedSizeIcon name="ellipsis" size={16} />
           </ActionIcon>
         </Tooltip>

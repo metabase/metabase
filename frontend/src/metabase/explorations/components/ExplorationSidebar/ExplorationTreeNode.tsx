@@ -309,8 +309,9 @@ function ExplorationGroupMenu({
     <Menu>
       <Menu.Target>
         <ActionIcon
+          variant="subtle"
           className={S.groupMenuTrigger}
-          size="1rem"
+          size="xs"
           c="icon-primary"
           aria-label={t`Group actions`}
           onClick={(e) => e.stopPropagation()}

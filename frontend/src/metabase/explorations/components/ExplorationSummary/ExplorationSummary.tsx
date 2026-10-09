@@ -160,6 +160,7 @@ export function ExplorationSummary({
                 {documentData && (
                   <Tooltip label={t`Revision history`}>
                     <ActionIcon
+                      variant="subtle"
                       size="md"
                       aria-label={t`Revision history`}
                       onClick={handleShowHistory}

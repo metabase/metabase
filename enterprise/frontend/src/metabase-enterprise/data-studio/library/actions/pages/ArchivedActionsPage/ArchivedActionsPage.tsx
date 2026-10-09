@@ -178,6 +178,7 @@ function ArchivedItemMenu({
   return (
     <Tooltip label={t`Unarchive action`}>
       <ActionIcon
+        variant="subtle"
         aria-label={t`Unarchive action`}
         size="md"
         onClick={(event) => {

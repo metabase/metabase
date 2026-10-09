@@ -196,6 +196,9 @@ const getActualColors = (brand: BrandRamp) => ({
   "button-subtle-positive-default": baseColors.transparent,
   "button-subtle-positive-hover": baseColors.palmAlpha[20],
   "button-subtle-positive-pressed": baseColors.palmAlpha[30],
+  "button-subtle-warning-default": baseColors.transparent,
+  "button-subtle-warning-hover": baseColors.dubloon[10],
+  "button-subtle-warning-pressed": baseColors.dubloon[20],
   "button_label-default-neutral-default": baseColors.orionAlpha[80], // Matches text-primary
   "button_label-filled-brand-default": baseColors.white,
   "button_label-filled-filter-default": baseColors.white,
@@ -221,6 +224,8 @@ const getActualColors = (brand: BrandRamp) => ({
   "button_label-subtle-neutral-default": baseColors.orionAlpha[80], // Matches text-primary
   "button_label-subtle-positive-default": baseColors.palm[70],
   "button_label-subtle-positive-hover": baseColors.palm[80],
+  "button_label-subtle-warning-default": baseColors.dubloon[70],
+  "button_label-subtle-warning-hover": baseColors.dubloon[80],
   "core-blue-saturated": baseColors.ocean[60],
   "core-brand-hover": brand[50],
   "core-filter-strong": baseColors.filter[50],

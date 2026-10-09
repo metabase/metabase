@@ -79,7 +79,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
 
   if (isLoading) {
     return (
-      <ActionIcon disabled variant="transparent">
+      <ActionIcon variant="subtle" disabled>
         <Loader size="xs" />
       </ActionIcon>
     );
@@ -88,11 +88,11 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   return (
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
+        variant="subtle"
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}
         c={table.visibility_type != null ? "text-secondary" : undefined}
         className={className}
         disabled={isLoading}
-        variant="transparent"
         onClick={handleClick}
       >
         <Icon name={isHidden ? "eye_crossed_out" : "eye"} />

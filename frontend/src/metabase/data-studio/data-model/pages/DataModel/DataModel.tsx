@@ -27,8 +27,8 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
+  ActionIcon,
   Box,
-  Button,
   Flex,
   Group,
   Icon,
@@ -248,22 +248,21 @@ function DataModelContent() {
               px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
-              {/* TODO: replace with ActionIcon (GDGT-2457) */}
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" />}
                 onClick={() => {
                   closePreview();
                   resetSelection();
                 }}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
@@ -315,10 +314,8 @@ function DataModelContent() {
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
-              {/* TODO: replace with ActionIcon (GDGT-2457) */}
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
@@ -326,9 +323,10 @@ function DataModelContent() {
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" />}
                 onClick={closePreview}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>

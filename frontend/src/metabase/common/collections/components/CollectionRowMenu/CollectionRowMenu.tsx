@@ -133,6 +133,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
     return (
       <Tooltip label={label}>
         <ActionIcon
+          variant="subtle"
           aria-label={label}
           size="md"
           onClick={(event) => {
@@ -163,7 +164,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
             onClick={(e) => e.stopPropagation()}
             openDelay={1000}
           >
-            <ActionIcon aria-label={optionsLabel} size="md">
+            <ActionIcon variant="subtle" aria-label={optionsLabel} size="md">
               <FixedSizeIcon name="ellipsis" size={16} />
             </ActionIcon>
           </Tooltip>

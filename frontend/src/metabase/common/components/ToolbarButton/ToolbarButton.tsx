@@ -52,6 +52,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
 
   const actionButton = (
     <ActionIcon
+      variant="subtle"
       data-testid="toolbar-button"
       data-is-active={isActive}
       ref={ref}
@@ -59,8 +60,6 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
         base: visibleOnSmallScreen ? "flex" : "none",
         sm: "flex",
       }}
-      size="2rem"
-      variant="viewHeader"
       aria-label={
         ariaLabel ??
         (typeof tooltipLabel === "string" ? tooltipLabel : undefined)

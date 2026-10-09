@@ -48,6 +48,7 @@ export function RunCancelButton({
       {isRunning && (
         <Tooltip label={t`Cancel`} position="bottom">
           <ActionIcon
+            variant="subtle"
             aria-label={t`Cancel run`}
             onClickCapture={(evt) => {
               evt.stopPropagation();

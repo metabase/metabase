@@ -61,6 +61,7 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
               ) : (
                 <Tooltip label={t`Copy to clipboard`}>
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Copy to clipboard`}
                     onClick={async () => {
                       try {

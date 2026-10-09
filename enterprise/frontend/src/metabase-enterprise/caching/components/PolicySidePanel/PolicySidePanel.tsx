@@ -37,6 +37,7 @@ export const PolicySidePanel = ({
       {(onPrevious !== undefined || onNext !== undefined) && (
         <Group gap="sm">
           <ActionIcon
+            variant="subtle"
             size="lg"
             className={S.navButton}
             disabled={onPrevious === undefined}
@@ -46,6 +47,7 @@ export const PolicySidePanel = ({
             <Icon name="chevronup" />
           </ActionIcon>
           <ActionIcon
+            variant="subtle"
             size="lg"
             className={S.navButton}
             disabled={onNext === undefined}

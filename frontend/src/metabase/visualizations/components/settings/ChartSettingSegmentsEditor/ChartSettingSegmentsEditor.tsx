@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import { ActionIcon, Box, Button, Icon, NumberInput, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
@@ -96,17 +96,16 @@ export const ChartSettingSegmentsEditor = ({
                   />
                 </td>
                 <td>
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   {(segments.length > 1 || canRemoveAll) && (
-                    <Button
+                    <ActionIcon
                       variant="subtle"
-                      color="neutral"
                       size="sm"
-                      leftSection={<Icon name="trash" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
-                    />
+                    >
+                      <Icon name="trash" />
+                    </ActionIcon>
                   )}
                 </td>
               </tr>
