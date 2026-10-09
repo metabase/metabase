@@ -84,7 +84,7 @@
   (testing "a server that ignores tool_choice, as Ollama does"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"^The server answered with text when tool_choice required a tool call"
+         #"^The server answered with text when tool_choice required a tool call\..* If this is an Ollama server, add an Ollama provider instead\.$"
          (connect! no-model-list (fn [{[{:keys [content]}] :messages}]
                                    (if (re-find #"table name" content)
                                      tool-call

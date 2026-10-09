@@ -27,7 +27,7 @@
     :reasoning-as-text       #(tru "{0} writes its reasoning into its answers, where it would show up in Metabot''s replies. Use a model or server setting that returns reasoning separately." %)
     :invalid-tool-arguments  #(tru "{0} returned a tool call whose arguments are not valid JSON. Check that the server supports tool calling for this model." %)
     :answered-with-text      #(tru "{0} answered with text instead of calling a tool. Check that the server supports tool calling for this model." %)
-    :forced-call-ignored     #(tru "The server answered with text when tool_choice required a tool call. Metabot needs forced tool calls for conversation titles and SQL generation.")
+    :forced-call-ignored     #(tru "The server answered with text when tool_choice required a tool call. Metabot needs forced tool calls for conversation titles and SQL generation. If this is an Ollama server, add an Ollama provider instead.")
     :connection-test-timeout #(tru "The server did not answer the connection test within {0}ms. A server this slow to answer a short prompt can''t run Metabot." %)
     :request-timeout         #(tru "The server did not respond within {0}ms. Check that it is not overloaded." %)
     :stopped-responding      #(tru "The server stopped responding after {0}ms. Try again, or use a faster model." %)
