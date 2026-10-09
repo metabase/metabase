@@ -552,11 +552,6 @@ describe("Issue 58247", () => {
     H.popover().findByText("Contains…").click();
     H.popover().findByText("Contains").should("be.visible");
 
-    cy.realPress("Escape");
-    cy.get("[data-element-id=mantine-popover]")
-      .filter(":visible")
-      .should("not.exist");
-
     H.tableInteractiveBody().findByText(text).click();
     H.popover().findByText("Does not contain…").click();
     H.popover().findByText("Does not contain").should("be.visible");

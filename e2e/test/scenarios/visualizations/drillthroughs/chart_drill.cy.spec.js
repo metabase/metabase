@@ -65,9 +65,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     cy.realPress("Escape");
-    cy.get("[data-element-id=mantine-popover]")
-      .filter(":visible")
-      .should("not.exist");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
     H.echartsTriggerBlur();
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
@@ -915,7 +913,5 @@ function assertSeriesDrills({ cardIndex, color, underlyingRecords }) {
     cy.findByText(underlyingRecords).should("be.visible");
   });
   cy.realPress("Escape");
-  cy.get("[data-element-id=mantine-popover]")
-    .filter(":visible")
-    .should("not.exist");
+  H.popover({ skipVisibilityCheck: true }).should("not.exist");
 }
