@@ -345,9 +345,7 @@ describe("table.striped", () => {
         { display: "table" },
         {
           data: {
-            cols: [
-              createMockNumericColumn({ display_name: "id", name: "id" }),
-            ],
+            cols: [createMockNumericColumn({ display_name: "id", name: "id" })],
             rows: [[1], [2], [3], [4]],
           },
         },
