@@ -85,7 +85,7 @@
       (and is-react-sdk? (not (embed.settings/enable-embedding-sdk)))
       (throw-react-sdk-embedding-disabled)
 
-      (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-simple)))
+      (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-modular)))
       (throw-simple-embedding-disabled)
 
       (and is-modular-embedding? jwt)
