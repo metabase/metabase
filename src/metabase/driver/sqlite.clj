@@ -83,14 +83,16 @@
             (str/includes? line "This file contains an SQLite"))))))
 
 (defmethod driver/validate-db-details! :sqlite
-  [_driver _details]
-  ;; On hosted Metabase, SQLite is only valid for the bundled Sample Database. The internal flows that need to test
-  ;; connections to that DB (sync, schema refresh, fingerprinting, etc.) wrap their calls in
-  ;; `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`. Mirrors the H2 pattern.
-  (when (and (driver-api/is-hosted?)
-             (not driver.settings/*allow-testing-sqlite-connections*))
-    (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
-                    {:status-code 400}))))
+  [_driver {:keys [db]}]
+  ;; The bundled Sample Database is always permitted. It may sit outside the `readable-paths` allowlist (e.g. the
+  ;; plugins dir on a hosted instance, whose allowlist defaults to just `/tmp`), so it is exempt from the checks below.
+  (when-not (driver.settings/sqlite-path-allowed? db)
+    (if (driver-api/is-hosted?)
+      (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
+                      {:status-code 400}))
+      (when (string? db)
+        (driver-api/ensure-readable-path! db)
+        nil))))
 
 (defmethod driver/can-connect? :sqlite
   [driver details]

@@ -6,6 +6,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -21,6 +22,39 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest hosted-sqlite-path-guard-test
+  (testing "On a hosted instance, the SQLite driver only opens the registered Sample Database file (SEC-1175). A
+            Database row carrying an attacker-chosen `:db` -- e.g. from a serialization import, which never tests the
+            connection -- must not be openable by sync, which binds *allow-testing-sqlite-connections* for every DB."
+    (let [sample      (doto (java.io.File/createTempFile "sample-database" ".sqlite") (.deleteOnExit))
+          sample-path (.getPath sample)]
+      (driver.settings/register-allowed-sqlite-path! sample-path)
+      (testing "self-hosted: SQLite is unrestricted, so any path validates"
+        (mt/with-premium-features #{}
+          (is (nil? (driver/validate-db-details! :sqlite {:db "/etc/hosts"})))))
+      (testing "hosted: a non-sample path is refused"
+        (mt/with-premium-features #{:hosting}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
+                                (driver/validate-db-details! :sqlite {:db "/etc/hosts"})))))
+      (testing "hosted: the sync binding does not let can-connect? open a non-sample file"
+        (mt/with-premium-features #{:hosting}
+          (binding [driver.settings/*allow-testing-sqlite-connections* true]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
+                                  (driver/can-connect? :sqlite {:db "/etc/hosts"}))))))
+      (testing "hosted: the registered Sample Database path is permitted"
+        (mt/with-premium-features #{:hosting}
+          (is (nil? (driver/validate-db-details! :sqlite {:db sample-path})))))
+      (testing "self-hosted: SQLite opens honor the readable-paths allowlist, like DB secret file paths"
+        (mt/with-premium-features #{}
+          (mt/with-temp-env-var-value! [mb-readable-paths "/var/data"]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (driver/validate-db-details! :sqlite {:db "/etc/hosts"}))))
+          (mt/with-temp-env-var-value! [mb-readable-paths "/etc"]
+            (is (nil? (driver/validate-db-details! :sqlite {:db "/etc/hosts"}))))
+          (testing "the Sample Database stays exempt even when the allowlist is NONE"
+            (mt/with-temp-env-var-value! [mb-readable-paths "NONE"]
+              (is (nil? (driver/validate-db-details! :sqlite {:db sample-path}))))))))))
 
 (deftest default-schema-test
   (mt/test-driver :sqlite
