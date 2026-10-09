@@ -105,6 +105,121 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
+(defn- filter->where [table filter-clause]
+  (-> (lib.tu.macros/mbql-query nil
+        {:source-table (meta/id table)
+         :aggregation  [[:count]]
+         :filter       filter-clause})
+      mbql->native
+      sql.qp-test-util/sql->sql-map
+      :where))
+
+(deftest ^:parallel equals-multiple-values-test
+  (testing ":= and :!= with more than one value should get compiled to IN and NOT IN (#23101)"
+    (lib.tu.macros/$ids venues
+      (are [filter-clause expected] (= expected
+                                       (filter->where :venues filter-clause))
+        [:= $price 1 2 3]
+        '[VENUES.PRICE IN (1 2 3)]
+
+        [:in $price 1 2 3]
+        '[VENUES.PRICE IN (1 2 3)]
+
+        [:!= $price 1 2 3]
+        '[(VENUES.PRICE NOT IN (1 2 3)) OR (VENUES.PRICE IS NULL)]
+
+        [:not-in $price 1 2 3]
+        '[(VENUES.PRICE NOT IN (1 2 3)) OR (VENUES.PRICE IS NULL)]
+
+        [:= [:+ $price 1] 2 3]
+        '[(VENUES.PRICE + 1) IN (2 3)]
+
+        [:!= [:+ $price 1] 2 3]
+        '[((VENUES.PRICE + 1) NOT IN (2 3)) OR (VENUES.PRICE IS NULL)]
+
+        [:= $price $category-id $id]
+        '[VENUES.PRICE IN (VENUES.CATEGORY_ID VENUES.ID)]))))
+
+(deftest ^:parallel equals-multiple-values-params-test
+  (testing ":= with more than one value should pass each value as a parameter (#23101)"
+    (is (= {:query  ["SELECT"
+                     "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\""
+                     "FROM"
+                     "  \"PUBLIC\".\"VENUES\""
+                     "WHERE"
+                     "  \"PUBLIC\".\"VENUES\".\"NAME\" IN (?, ?)"
+                     "LIMIT"
+                     "  1048575"]
+            :params ["Red Medicine" "Stout Burgers & Beers"]}
+           (-> (qp.store/with-metadata-provider meta/metadata-provider
+                 (driver/with-driver :h2
+                   (sql.qp/mbql->native :h2 (qp.preprocess/preprocess
+                                             (lib.tu.macros/mbql-query venues
+                                               {:fields [$id]
+                                                :filter [:= $name "Red Medicine" "Stout Burgers & Beers"]})))))
+               (update :query #(str/split-lines (driver/prettify-native-form :h2 %)))
+               (update :params vec))))))
+
+(deftest ^:parallel equals-multiple-values-with-nil-test
+  (testing "nil values in := and :!= with more than one value should get compiled separately, since x IN (NULL) never matches"
+    (lib.tu.macros/$ids venues
+      (are [filter-clause expected] (= expected
+                                       (filter->where :venues filter-clause))
+        [:= $name "A" "B" nil]
+        '[(VENUES.NAME IS NULL) OR (VENUES.NAME IN (? ?))]
+
+        [:!= $name "A" "B" nil]
+        '[(VENUES.NAME IS NOT NULL) AND ((VENUES.NAME NOT IN (? ?)) OR (VENUES.NAME IS NULL))]
+
+        [:= $price 1 nil]
+        '[(VENUES.PRICE IS NULL) OR (VENUES.PRICE = 1)]))))
+
+(deftest ^:parallel equals-multiple-temporal-values-test
+  (lib.tu.macros/$ids checkins
+    (testing (str ":= and :!= with more than one value against a bucketed temporal column should still get compiled "
+                  "to range comparisons for each value")
+      (are [filter-clause expected] (= expected
+                                       (filter->where :checkins filter-clause))
+        [:= !month.date "2014-01-01" "2014-02-01"]
+        '[((CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)) OR ((CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?))]
+
+        [:!= !month.date "2014-01-01" "2014-02-01"]
+        '[((CHECKINS.DATE < ?) OR (CHECKINS.DATE >= ?)) AND ((CHECKINS.DATE < ?) OR (CHECKINS.DATE >= ?))]))
+    (testing "Extracted temporal units like :month-of-year are just numbers, so they should be compiled to IN"
+      (is (= '[extract (month from CHECKINS.DATE) IN (1 12)]
+             (filter->where :checkins [:= !month-of-year.date 1 12]))))))
+
+(deftest ^:parallel equals-many-values-test
+  (testing "Long lists of values should be split into several IN lists, since Oracle doesn't allow more than 1000"
+    (let [values (range 2001)]
+      (is (= [(list 'VENUES.PRICE 'IN (take 1000 values))
+              'OR
+              (list 'VENUES.PRICE 'IN (take 1000 (drop 1000 values)))
+              'OR
+              (list 'VENUES.PRICE 'IN [2000])]
+             (filter->where :venues (into [:= [:field (meta/id :venues :price) nil]] values)))))))
+
+(deftest ^:parallel equals-multiple-uuid-values-test
+  (testing "Values that aren't valid UUIDs should get compared against a UUID column cast to text"
+    (let [opts       (fn [] {:lib/uuid (str (random-uuid)), :base-type :type/UUID, :effective-type :type/UUID})
+          uuid-field [:field (opts) "user_id"]
+          value      (fn [s] [:value (opts) s])
+          ->sql      (fn [clause]
+                       (driver/with-driver :h2
+                         (qp.store/with-metadata-provider meta/metadata-provider
+                           (sql.qp/format-honeysql :h2 (sql.qp/->honeysql :h2 clause)))))
+          uuid-1     "4652b2e7-d940-4d55-a971-7e484566663e"
+          uuid-2     "5652b2e7-d940-4d55-a971-7e484566663e"]
+      (is (= ["(\"user_id\" IN (?, ?))" (parse-uuid uuid-1) (parse-uuid uuid-2)]
+             (->sql [:= {:lib/uuid (str (random-uuid))} uuid-field (value uuid-1) (value uuid-2)])))
+      (is (= ["((\"user_id\" IN (?)) OR (CAST(\"user_id\" AS text) IN (?, ?)))" (parse-uuid uuid-1) "x" "y"]
+             (->sql [:= {:lib/uuid (str (random-uuid))} uuid-field (value uuid-1) (value "x") (value "y")])))
+      (is (= [(str "(((\"user_id\" NOT IN (?)) AND (CAST(\"user_id\" AS text) NOT IN (?)))"
+                   " OR (\"user_id\" IS NULL))")
+              (parse-uuid uuid-1)
+              "x"]
+             (->sql [:!= {:lib/uuid (str (random-uuid))} uuid-field (value uuid-1) (value "x")]))))))
+
 (deftest ^:parallel case-test
   (testing "Test that boolean case defaults are kept (#24100)"
     (is (= [[1 1 true]

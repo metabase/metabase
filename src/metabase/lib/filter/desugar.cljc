@@ -1,5 +1,5 @@
 (ns metabase.lib.filter.desugar
-  (:refer-clojure :exclude [some mapv])
+  (:refer-clojure :exclude [some mapv empty?])
   (:require
    #?@(:clj ([metabase.lib.filter.desugar.jvm :as lib.filter.desugar.jvm]
              [metabase.util.i18n :as i18n])
@@ -17,7 +17,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [some mapv]]
+   [metabase.util.performance :refer [some mapv empty?]]
    [metabase.util.time :as u.time]))
 
 (mr/def ::clause
@@ -201,13 +201,77 @@
                             (lib.options/update-options #(merge opts %))))
         (merge-options opts))))
 
-(mu/defn- desugar-multi-argument-comparisons :- ::clause
-  "`:=`, `!=`, `:contains`, `:does-not-contain`, `:starts-with` and `:ends-with` clauses with more than 2 args
-  automatically get rewritten as compound filters.
+(defn- nil-value? [x]
+  (or (nil? x)
+      (and (lib.util/clause-of-type? x :value)
+           (nil? (get x 2)))))
 
-     [:= field x y]                -> [:or  [:=  field x] [:=  field y]]
-     [:!= field x y]               -> [:and [:!= field x] [:!= field y]]
+(def ^:private extraction-units
+  "Temporal units that extract a number from a temporal value (e.g. `:day-of-week`), as opposed to truncating it.
+  (`:year` is a truncation unit too.)"
+  (disj lib.schema.temporal-bucketing/datetime-extraction-units :year))
+
+(defn- temporal? [x]
+  (isa? (lib.schema.expression/type-of-resolved x) :type/Temporal))
+
+(defn- temporal-range-comparison?
+  "Whether a `:=` or `:!=` comparing `x` against `values` is one the QP might optimize into a range comparison against
+  an unbucketed column, e.g. `x >= '2026-10-01' AND x < '2026-11-01'` instead of `date_trunc('month', x) =
+  '2026-10-01'`. Comparing `x` against something extracted like `:day-of-week` compares numbers, so that's not one."
+  [x values]
+  (or (and (temporal? x)
+           (not (contains? extraction-units (:temporal-unit (lib.options/options x)))))
+      (some temporal? values)))
+
+(mu/defn- desugar-multi-argument-equality :- ::clause
+  "Drivers compile `:=` and `:!=` clauses with more than 2 args to something like `IN` or `NOT IN` (#23101), with a
+  couple of exceptions:
+
+  1. Temporal comparisons that the QP might optimize into ranges (see [[temporal-range-comparison?]]) get rewritten as
+     compound filters, since you can't do range comparisons with `IN`:
+
+       [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
+       [:!= field x y] -> [:and [:!= field x] [:!= field y]]
+
+  2. `nil` values get split out into their own clause, since `x IN (NULL)` never matches anything in SQL:
+
+       [:= field nil x y]  -> [:or  [:=  field nil] [:=  field x y]]
+       [:!= field nil x y] -> [:and [:!= field nil] [:!= field x y]]"
+  [expr :- ::clause]
+  (match/replace expr
+    [(op :guard #{:= :!=}) opts x a b & more]
+    (let [values                      (list* a b more)
+          [compound-filter f]         (case op
+                                        :=  [lib.filter/or lib.filter/=]
+                                        :!= [lib.filter/and lib.filter/!=])
+          {nils true, non-nils false} (group-by nil-value? values)]
+      (cond
+        (temporal-range-comparison? x values)
+        (-> (apply compound-filter (map (fn [value]
+                                          (f (lib.util/fresh-uuids x) value))
+                                        values))
+            (merge-options opts))
+
+        (empty? nils)
+        &match
+
+        (empty? non-nils)
+        (-> (f x nil)
+            (merge-options opts))
+
+        :else
+        (-> (compound-filter (f x nil)
+                             (apply f (lib.util/fresh-uuids x) non-nils))
+            (merge-options opts))))))
+
+(mu/defn- desugar-multi-argument-comparisons :- ::clause
+  "`:contains`, `:does-not-contain`, `:starts-with` and `:ends-with` clauses with more than 2 args automatically get
+  rewritten as compound filters.
+
+     [:contains field x y]         -> [:or  [:contains field x] [:contains field y]]
      [:does-not-contain field x y] -> [:and [:does-not-contain field x] [:does-not-contain field y]]
+
+  `:=` and `:!=` clauses with more than 2 args are handled by [[desugar-multi-argument-equality]] instead.
 
   Note that the optional options map is in different positions for `:contains`, `:does-not-contain`, `:starts-with` and
   `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
@@ -215,18 +279,6 @@
   `[:contains {} field x y z]`."
   [expr :- ::clause]
   (match/replace expr
-    [:= opts field a b & more]
-    (-> (apply lib.filter/or (map (fn [expr]
-                                    (lib.filter/= (lib.util/fresh-uuids field) expr))
-                                  (list* a b more)))
-        (merge-options opts))
-
-    [:!= opts field a b & more]
-    (-> (apply lib.filter/and (map (fn [expr]
-                                     (lib.filter/!= (lib.util/fresh-uuids field) expr))
-                                   (list* a b more)))
-        (merge-options opts))
-
     [(op :guard #{:contains :does-not-contain :starts-with :ends-with})
      (opts :guard map?)
      field a b & more]
@@ -360,6 +412,7 @@
   (let [filter-clause (-> filter-clause
                           desugar-current-relative-datetime
                           desugar-in
+                          desugar-multi-argument-equality
                           desugar-multi-argument-comparisons
                           desugar-does-not-contain
                           desugar-time-interval
