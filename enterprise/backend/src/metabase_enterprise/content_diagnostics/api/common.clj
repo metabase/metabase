@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -105,11 +106,11 @@
   which no personal prefix can match (a personal root is caught by its own `personal_owner_id` instead).
 
   Standard SQL, because H2, Postgres and MySQL agree on `SUBSTRING`, `POSITION` and `CONCAT` but not on
-  `SPLIT_PART`, `LOCATE`, `STRPOS` or `CAST(… AS INTEGER)`. `POSITION` needs `:raw` since Honey SQL emits the
-  comma form, which Postgres rejects; only that constant is spliced and Honey SQL still quotes the column.
-  Comparing strings rather than ints avoids a dialect-specific cast."
+  `SPLIT_PART`, `LOCATE`, `STRPOS` or `CAST(… AS INTEGER)`. Funny SQL compiles `:position` to the standard
+  `POSITION(… IN …)` form; the `/` is spliced as a literal rather than bound. Comparing strings rather than ints
+  avoids a dialect-specific cast."
   [:substring :location [:inline 1]
-   [:+ ^:allow-raw-sql [:raw ["POSITION('/' IN " [:substring :location [:inline 2]] ")"]]
+   [:+ [:position (h2x/literal "/") [:substring :location [:inline 2]]]
     [:inline 1]]])
 
 (defn- personal-collection-clause

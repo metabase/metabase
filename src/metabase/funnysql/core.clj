@@ -1065,6 +1065,19 @@
   (append-sql! context " ESCAPE ")
   (compile! escape-chars context))
 
+(defn- position!
+  "`[:position <substring> <string>]` compiles to `position(<substring> IN <string>)`, the 1-based index of the first
+  occurrence of `substring` in `string`, or `0` if there isn't one. H2, Postgres and MySQL all accept this standard
+  form, but Postgres rejects the comma form `position(<substring>, <string>)` that Honey SQL emits."
+  [[substring s :as args] context]
+  (when-not (= (count args) 2)
+    (throw (ex-info "Wrong number of args to :position (expected 2 args)" {:args args})))
+  (append-sql! context "position(")
+  (infix-operand! substring context)
+  (append-sql! context " IN ")
+  (infix-operand! s context)
+  (append-sql! context ")"))
+
 (defn- postgres-full-text-search-match [[lhs rhs] context]
   (check-identifier-form lhs)
   (check-identifier-form rhs)
@@ -1100,6 +1113,7 @@
     :or                (compound! " OR " false args context)
     :over              (over! (first args) context)
     :param             (param! (first args) context)
+    :position          (position! args context)
     :timestampdiff     (timestamp-diff! args context)
 
     (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
