@@ -723,6 +723,42 @@ describe("issue 31628", () => {
     display: "smartscalar",
   };
 
+  const TREND_QUESTION = {
+    display: "smartscalar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count"],
+        ["sum", ["field", ORDERS.TOTAL, null]],
+        [
+          "aggregation-options",
+          ["*", ["count"], 10000],
+          { name: "Mega Count", "display-name": "Mega Count" },
+        ],
+      ],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "scalar.comparisons": [
+        {
+          id: "fecd2c69-4d43-57d0-6d60-6781a54beceb",
+          type: "previousPeriod",
+        },
+        {
+          id: "e8b8d831-d2a9-9fd7-17a7-db8b4834ac5a",
+          type: "periodsAgo",
+          value: 2,
+        },
+        {
+          id: "9712f309-6849-20ba-7cef-54ae899a0e41",
+          type: "anotherColumn",
+          label: "Sum of Total",
+          column: "sum",
+        },
+      ],
+    },
+  };
+
   const OVERFLOW_CHECKED_TEST_IDS = {
     scalar: ["scalar-container", "scalar-title"],
     smartscalar: ["scalar-container", "scalar-title", "scalar-previous-value"],
@@ -754,13 +790,18 @@ describe("issue 31628", () => {
     smart2x2: { display: "smartscalar", size_x: 2, size_y: 2, row: 0, col: 9 },
     smart7x3: { display: "smartscalar", size_x: 7, size_y: 3, row: 0, col: 11 },
     smart7x4: { display: "smartscalar", size_x: 7, size_y: 4, row: 4, col: 0 },
+    trend4x3: { display: "trend", size_x: 4, size_y: 3, row: 4, col: 7 },
   };
 
   const setupDashboard = (cards) => {
     H.createDashboardWithQuestions({
-      questions: [SCALAR_QUESTION, SMART_SCALAR_QUESTION],
-    }).then(({ dashboard, questions: [scalar, smartScalar] }) => {
-      const cardIds = { scalar: scalar.id, smartscalar: smartScalar.id };
+      questions: [SCALAR_QUESTION, SMART_SCALAR_QUESTION, TREND_QUESTION],
+    }).then(({ dashboard, questions: [scalar, smartScalar, trend] }) => {
+      const cardIds = {
+        scalar: scalar.id,
+        smartscalar: smartScalar.id,
+        trend: trend.id,
+      };
       H.updateDashboardCards({
         dashboard_id: dashboard.id,
         cards: cards.map(({ display, ...layout }) => ({
@@ -849,7 +890,7 @@ describe("issue 31628", () => {
     });
   });
 
-  it("should follow truncation rules for scalar and smart scalar cards (metabase#31628)", () => {
+  it("should follow truncation rules for scalar, smart scalar and trend cards (metabase#31628)", () => {
     const cards = Object.values(TRUNCATION_CARDS);
     const card = (key) => getCard(cards.indexOf(TRUNCATION_CARDS[key]));
 
@@ -970,6 +1011,20 @@ describe("issue 31628", () => {
       previousValue(card(key)).realHover();
       cy.findByRole("tooltip").should("not.exist");
       moveMouseAway();
+    });
+
+    cy.log(
+      "trend 4x3: extra comparisons should only be shown in the hover panel",
+    );
+    previousValue(card("trend4x3"))
+      .should("contain", "-34.72%")
+      .and("not.contain", "36.65%")
+      .and("not.contain", "98.88%");
+    previousValue(card("trend4x3")).realHover();
+    H.tooltip().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("be.visible");
+      cy.findByText("98.88%").should("be.visible");
     });
   });
 });

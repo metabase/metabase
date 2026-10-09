@@ -8,32 +8,6 @@ describe("scenarios > dashboard cards > visualization options", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow empty card title (metabase#12013, metabase#36788)", () => {
-    const originalCardTitle = "Orders";
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    cy.findByTestId("legend-caption")
-      .should("contain", originalCardTitle)
-      .and("be.visible");
-
-    H.editDashboard();
-    H.showDashboardCardActions();
-    cy.icon("palette").click();
-
-    H.modal().within(() => {
-      cy.findByDisplayValue(originalCardTitle).click().clear().blur();
-      cy.button("Done").click();
-    });
-
-    cy.findByTestId("legend-caption").should("not.contain", originalCardTitle);
-    H.saveDashboard();
-    H.getDashboardCard().realHover();
-    H.getDashboardCardMenu().click();
-    H.popover()
-      .should("contain", "Edit question")
-      .and("contain", "Download results");
-  });
-
   it("should show the ellipsis even with an empty card title on visualizations with noHeader (metabase#46897)", () => {
     const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -71,7 +45,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
       .and("contain", "Download results");
   });
 
-  it("should hide visualization options while the card loads, then toggle column settings and reorder columns (metabase#21830, metabase#30966, metabase#16229)", () => {
+  it("should hide visualization options while the card loads, toggle column settings, reorder columns and allow an empty card title (metabase#21830, metabase#30966, metabase#16229, metabase#12013, metabase#36788)", () => {
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept(
       {
@@ -144,5 +118,29 @@ describe("scenarios > dashboard cards > visualization options", () => {
     });
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
     H.modal().findAllByRole("columnheader").first().contains("User ID");
+    H.modal().button("Cancel").click();
+    H.modal().should("not.exist");
+
+    cy.log("metabase#12013, metabase#36788");
+    const originalCardTitle = "Orders";
+    cy.findByTestId("legend-caption")
+      .should("contain", originalCardTitle)
+      .and("be.visible");
+
+    H.showDashboardCardActions();
+    cy.icon("palette").click();
+
+    H.modal().within(() => {
+      cy.findByDisplayValue(originalCardTitle).click().clear().blur();
+      cy.button("Done").click();
+    });
+
+    cy.findByTestId("legend-caption").should("not.contain", originalCardTitle);
+    H.saveDashboard();
+    H.getDashboardCard().realHover();
+    H.getDashboardCardMenu().click();
+    H.popover()
+      .should("contain", "Edit question")
+      .and("contain", "Download results");
   });
 });
