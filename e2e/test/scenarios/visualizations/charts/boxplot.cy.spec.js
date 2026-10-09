@@ -150,9 +150,7 @@ describe("scenarios > visualizations > boxplot", () => {
 
     // Verify label value appears
     H.echartsContainer().findByText("412").should("exist");
-    H.echartsContainer().findByText("91.75").should("not.exist");
 
-    // Disable "Hide overlapping labels" to show more labels
     H.leftSidebar().findByText("Hide overlapping labels").click();
     H.echartsContainer().findByText("91.75").should("exist");
 

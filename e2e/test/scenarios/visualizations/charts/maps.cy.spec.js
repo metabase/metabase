@@ -78,11 +78,8 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.button("Visualization").click();
-
-    cy.findByTestId("display-options-sensible")
-      .findByTestId("Map-button")
-      .should("be.visible");
+    // A saved question resets to the default display on load when its display is not sensible
+    H.queryBuilderMain().find(".leaflet-marker-icon").should("have.length", 10);
   });
 
   it("should wrap markers around the international date line correctly (metabase#5369)", () => {
@@ -292,15 +289,8 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
-    // Ensure chart is rendered
-    cy.get(".leaflet-interactive");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
-
-    cy.findByTestId("display-options-sensible")
-      .findByTestId("Map-button")
-      .should("be.visible");
+    // An ad-hoc question resets to the default display when its display is not sensible
+    H.queryBuilderMain().find(".leaflet-interactive").should("exist");
   });
 
   it("should display pins when a breakout column sets a base-type and support the pin type viz setting (metabase#40999) (metabase#59984)", () => {

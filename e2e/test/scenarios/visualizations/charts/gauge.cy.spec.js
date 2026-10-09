@@ -33,7 +33,10 @@ describe("scenarios > visualizations > gauge chart", () => {
     // Hover a segment without a label, then a segment with a label
     H.getDashboardCard().findByTestId("gauge-arc-0").trigger("mousemove");
 
-    H.getDashboardCard().findByTestId("gauge-arc-1").trigger("mousemove");
+    // The value text covers the center of this arc
+    H.getDashboardCard()
+      .findByTestId("gauge-arc-1")
+      .trigger("mousemove", { force: true });
     H.tooltip().should("contain", "Goal").and("contain", "10,000 - 30,000");
 
     H.getDashboardCard().findByTestId("gauge-arc-1").should("be.visible");
