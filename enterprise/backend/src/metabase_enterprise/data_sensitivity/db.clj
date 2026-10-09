@@ -6,7 +6,9 @@
    [metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion :as suggestion]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -153,3 +155,56 @@
             (t2/insert! :model/MetadataGenerationSuggestion suggestions))
           true)
       false)))
+
+;;; Review
+
+(mu/defn run-table-status-counts :- [:sequential [:map {:closed true}
+                                                  [:table_id ms/PositiveInt]
+                                                  [:status   ::suggestion/status]
+                                                  [:source   ::suggestion/source]
+                                                  [:n        :int]]]
+  "One row per table, status and source, with the number of suggestions of run `run-id`."
+  [run-id :- ms/PositiveInt]
+  (mapv (fn [row]
+          (-> row
+              (update :status keyword)
+              (update :source keyword)
+              (update :n int)))
+        (t2/query {:select   [:table_id :status :source [:%count.* :n]]
+                   :from     [:metadata_generation_suggestion]
+                   :where    [:= :run_id run-id]
+                   :group-by [:table_id :status :source]})))
+
+(mu/defn table-suggestions :- [:sequential (ms/InstanceOf :model/MetadataGenerationSuggestion)]
+  "The suggestions of run `run-id` for `table-id`, with the field's `field_name` and `field_display_name`, ordered by
+  field position, field id and attribute."
+  [run-id   :- ms/PositiveInt
+   table-id :- ::lib.schema.id/table]
+  (t2/select :model/MetadataGenerationSuggestion
+             {:select   [:s.* [:f.name :field_name] [:f.display_name :field_display_name]]
+              :from     [[:metadata_generation_suggestion :s]]
+              :join     [(warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :s.field_id]]
+              :where    [:and [:= :s.run_id run-id] [:= :s.table_id table-id]]
+              :order-by [[:f.position :asc] [:f.id :asc] [:s.attribute :asc]]}))
+
+(mr/def ::selection
+  [:map {:closed true}
+   [:suggestion-ids {:optional true} [:sequential {:min 1} ms/PositiveInt]]
+   [:table-ids      {:optional true} [:sequential {:min 1} ::lib.schema.id/table]]
+   [:exclude-human? {:optional true} :boolean]])
+
+(mu/defn decide-suggestions! :- :int
+  "Set `status` on the suggestions of run `run-id` that match `selection` and whose status is one of `from-statuses`.
+  An empty `selection` matches every suggestion of the run. Records `user-id` and the time. Returns the number of rows
+  updated."
+  [run-id                                          :- ms/PositiveInt
+   {:keys [suggestion-ids table-ids exclude-human?]} :- ::selection
+   from-statuses                                   :- [:set ::suggestion/status]
+   status                                          :- ::suggestion/status
+   user-id                                         :- ms/PositiveInt]
+  (apply t2/update! :model/MetadataGenerationSuggestion
+         (concat [:run_id run-id :status [:in from-statuses]]
+                 (when suggestion-ids [:id [:in suggestion-ids]])
+                 (when table-ids      [:table_id [:in table-ids]])
+                 (when exclude-human? [:source [:not= :human]])
+                 [{:status status :decided_by user-id :decided_at (mi/now)}])))

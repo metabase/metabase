@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
+   [metabase-enterprise.data-sensitivity.review :as review]
    [metabase-enterprise.data-sensitivity.runner :as runner]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -71,6 +72,35 @@
   (let [run      (api/check-404 (db/run id))
         database (api/check-404 (db/database (:database_id run)))]
     (runner/retry-failed! database run api/*current-user-id*)))
+
+(api.macros/defendpoint :get "/runs/:id/tables" :- [:sequential ::review/run-table]
+  "The tables that have suggestions in the run, with the number of suggestions by status and the number of pending
+  suggestions that would replace a value a person set."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (db/run id))
+  (review/run-tables id))
+
+(api.macros/defendpoint :get "/runs/:id/tables/:table-id/suggestions" :- [:sequential ::review/suggestion]
+  "The suggestions of the run for one table, in field order. `current_value` and `source` are the effective value and
+  its layer when the run read the field."
+  [{:keys [id table-id]} :- [:map {:closed true}
+                             [:id       ms/PositiveInt]
+                             [:table-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (db/run id))
+  (db/table-suggestions id table-id))
+
+(api.macros/defendpoint :post "/runs/:id/decisions" :- [:map [:updated ms/IntGreaterThanOrEqualToZero]]
+  "Accept or reject suggestions of the run: those in `suggestion_ids`, those of the tables in `table_ids`, or `all`.
+  Give exactly one. Accept by table or for the whole run leaves out suggestions that would replace a value a person
+  set, unless `include_human_set` is true. Stale and applied suggestions do not change. Writes no field metadata."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params
+   body :- ::review/decision-request]
+  (api/check-superuser)
+  (api/check-404 (db/run id))
+  (review/decide! id body api/*current-user-id*))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the metadata generation run API."
