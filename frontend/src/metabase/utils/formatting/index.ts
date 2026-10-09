@@ -32,6 +32,7 @@ export {
   conjunct,
   humanize,
   inflect,
+  normalizeNewLines,
   pluralize,
   removeNewLines,
   singularize,
