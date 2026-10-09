@@ -506,6 +506,12 @@ describe("CollectionItemsTable", () => {
       event_detail: "search",
       target_id: collection.id,
     });
+
+    // The last debounce fires a third search, and its response rerenders the
+    // table after this test would otherwise have finished.
+    await waitFor(() => {
+      expect(getSearchCalls()).toHaveLength(3);
+    });
   });
 
   it("clears the search and restores the unfiltered list", async () => {

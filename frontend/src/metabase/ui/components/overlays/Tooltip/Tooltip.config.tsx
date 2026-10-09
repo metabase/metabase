@@ -4,6 +4,8 @@ import {
   getDefaultZIndex,
 } from "@mantine/core";
 
+import { isTest } from "metabase/env";
+
 import { PORTAL_CONTAINER_ID } from "../PortalContainer/constants";
 
 import TooltipStyles from "./Tooltip.module.css";
@@ -30,7 +32,10 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
       },
       transitionProps: {
         transition: "fade",
-        duration: 200,
+        // Mantine drives a non-zero duration with two animation frames and a
+        // timeout, which land state updates after a test has finished. At 0 it
+        // sets the status synchronously instead.
+        duration: isTest ? 0 : 200,
       },
       events: {
         hover: true,

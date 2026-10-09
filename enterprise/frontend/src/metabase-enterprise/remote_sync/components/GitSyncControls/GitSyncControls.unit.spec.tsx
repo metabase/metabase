@@ -5,7 +5,13 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -427,19 +433,21 @@ describe("GitSyncControls", () => {
 
       // Simulate the polled export task coming back in conflict (what the middleware dispatches when a
       // push loses the preflight->execute race). GitSyncControls observes it and toasts via useToast.
-      store.dispatch(
-        taskUpdated({
-          id: 77,
-          sync_task_type: "export",
-          status: "conflict",
-          progress: 1,
-          started_at: "2026-01-01T00:00:00Z",
-          ended_at: "2026-01-01T00:00:01Z",
-          last_progress_report_at: null,
-          error_message: null,
-          initiated_by: 0,
-        }),
-      );
+      act(() => {
+        store.dispatch(
+          taskUpdated({
+            id: 77,
+            sync_task_type: "export",
+            status: "conflict",
+            progress: 1,
+            started_at: "2026-01-01T00:00:00Z",
+            ended_at: "2026-01-01T00:00:01Z",
+            last_progress_report_at: null,
+            error_message: null,
+            initiated_by: 0,
+          }),
+        );
+      });
 
       await waitFor(() => {
         const messages = store.getState().undo.map((u) => String(u.message));

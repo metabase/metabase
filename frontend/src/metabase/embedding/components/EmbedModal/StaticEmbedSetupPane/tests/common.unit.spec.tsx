@@ -84,7 +84,9 @@ describe("Static Embed Setup phase", () => {
           activeTab: "Overview",
         });
 
-        expect(screen.getByText("Setting up a static embed")).toBeVisible();
+        expect(
+          await screen.findByText("Setting up a static embed"),
+        ).toBeVisible();
 
         expect(
           screen.getByText(
@@ -124,7 +126,7 @@ describe("Static Embed Setup phase", () => {
           });
 
           expect(
-            screen.getByText(
+            await screen.findByText(
               "You can also hide or lock any of the dashboard’s parameters.",
             ),
           ).toBeVisible();

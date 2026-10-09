@@ -47,8 +47,10 @@ function setup({
 
 describe("PythonEditorBody", () => {
   describe("view mode (not editing)", () => {
-    it("should not render run button when not in edit mode", () => {
+    it("should not render run button when not in edit mode", async () => {
       setup({ isEditMode: false });
+      // The editor loads lazily, so assert absence only once it is up.
+      await screen.findByTestId("python-editor");
       expect(screen.queryByTestId("run-button")).not.toBeInTheDocument();
     });
 

@@ -90,8 +90,9 @@ describe("TransformSettingsSection", () => {
   });
 
   describe("when remote sync is read-only", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setup({ remoteSyncReadOnly: true });
+      await screen.findByRole("switch", { name: /Only process new data/ });
     });
 
     it("does not show the change target button", () => {

@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, render, screen } from "__support__/ui";
-import { delay } from "__support__/utils";
+import { delay, waitForRequestsToSettle } from "__support__/utils";
 import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
@@ -376,7 +376,7 @@ describe("DataSelector", () => {
     expect(getIcon("chevrondown")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -389,7 +389,7 @@ describe("DataSelector", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Sample Database" }),
+      await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
   });
 
@@ -441,7 +441,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
+  it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -450,6 +450,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForRequestsToSettle();
 
     expect(
       screen.getByText("To pick some data, you'll need to add some first"),

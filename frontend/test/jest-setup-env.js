@@ -15,12 +15,14 @@ const fetchMock = fetchMockModule;
 // A passing wait is not affected, and no test relies on the timeout to pass.
 configure({ asyncUtilTimeout: 10000 });
 
-const REACT_KEY_WARNING_PATTERNS = [
+const FAILING_REACT_WARNING_PATTERNS = [
   /Each child in a list should have a unique "key" prop/,
   /Encountered two children with the same key/,
+  /was not wrapped in act\(/,
+  /not configured to support act\(/,
 ];
 
-const reactKeyWarnings = [];
+const reactWarnings = [];
 const originalConsoleError = console.error;
 
 // Throwing here would land inside React's render, where an error boundary can
@@ -29,21 +31,24 @@ console.error = (...args) => {
   originalConsoleError(...args);
 
   const [template] = args;
-  const isReactKeyWarning =
+  const isFailingReactWarning =
     typeof template === "string" &&
-    REACT_KEY_WARNING_PATTERNS.some((pattern) => pattern.test(template));
+    FAILING_REACT_WARNING_PATTERNS.some((pattern) => pattern.test(template));
 
-  if (isReactKeyWarning) {
-    reactKeyWarnings.push(format(...args));
+  if (isFailingReactWarning) {
+    reactWarnings.push(format(...args));
   }
 };
 
 afterEach(() => {
-  const warnings = reactKeyWarnings.splice(0);
+  const warnings = reactWarnings.splice(0);
 
   if (warnings.length > 0) {
     throw new Error(
-      `Test completed with React key warnings:\n${warnings.join("\n")}`,
+      `Test completed with React warnings:\n${warnings.join("\n")}\n` +
+        "A warning can come from work that an earlier test left pending. If this " +
+        "test passes on its own, look at the test before it for a render or a " +
+        "request that nothing awaits.",
     );
   }
 });

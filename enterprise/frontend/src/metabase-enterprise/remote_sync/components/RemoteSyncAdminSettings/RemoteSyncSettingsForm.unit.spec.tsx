@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
 
@@ -434,7 +435,7 @@ describe("RemoteSyncSettingsForm", () => {
       PLUGIN_TRANSFORMS.isEnabled = false;
     });
 
-    it("should not display transforms toggle when transforms feature is disabled", () => {
+    it("should not display transforms toggle when transforms feature is disabled", async () => {
       setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
@@ -444,6 +445,10 @@ describe("RemoteSyncSettingsForm", () => {
       expect(
         screen.queryByLabelText("Sync Transforms"),
       ).not.toBeInTheDocument();
+
+      // The form finishes loading with nothing this test can observe, so flush
+      // that update rather than leaving it for the next test.
+      await waitForRequestsToSettle();
     });
 
     it("should display transforms row in collections list when transforms feature is enabled", async () => {
