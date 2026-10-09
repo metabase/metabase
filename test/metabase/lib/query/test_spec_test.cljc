@@ -1319,21 +1319,19 @@
       (is (=? [[:desc {} [:field {} "sum B"]]]
               (lib/order-bys query 1))))))
 
-(deftest ^:parallel test-query-later-stage-tells-joined-result-columns-apart-by-fk-test
-  (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; a later stage picks one by its field id"
-    (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
-            (lib/filters
-             (orders-then {:aggregations [{:type :operator :operator :count :args []}]
-                           :breakouts    [{:type :column :name "ID" :source-field-id (meta/id :orders :product-id)}
-                                          {:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}]}
-                          {:filters [{:type     :operator
-                                      :operator :<
-                                      :args     [{:type :column :field-id (meta/id :people :id)}
-                                                 {:type :literal :value 10}]}]})
-             1)))))
+(deftest ^:parallel test-query-later-stage-refuses-joined-result-columns-of-same-name-test
+  (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; a later stage refuses either, even by its field id"
+    (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Ambiguous column"
+                          (orders-then {:aggregations [{:type :operator :operator :count :args []}]
+                                        :breakouts    [{:type :column :name "ID" :source-field-id (meta/id :orders :product-id)}
+                                                       {:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}]}
+                                       {:filters [{:type     :operator
+                                                   :operator :<
+                                                   :args     [{:type :column :field-id (meta/id :people :id)}
+                                                              {:type :literal :value 10}]}]})))))
 
 (deftest ^:parallel test-query-joined-result-column-through-card-test
-  (testing "a saved card stores the second joined ID as ID_2, and that name picks it"
+  (testing "a saved card stores the second joined ID as ID_2, and that name is refused as ambiguous"
     (let [card-query (lib.query.test-spec/test-query
                       meta/metadata-provider
                       {:stages [{:source       {:type :table :id (meta/id :orders)}
@@ -1345,15 +1343,15 @@
                       meta/metadata-provider 1 card-query
                       {:result-metadata (mapv #(assoc % :name (:lib/deduplicated-name %))
                                               (lib/returned-columns card-query))})
-          query      (lib.query.test-spec/test-query
-                      mp
-                      {:stages [{:source {:type :card :id 1}}
-                                {:filters [{:type     :operator
-                                            :operator :<
-                                            :args     [{:type :column :name "ID_2"}
-                                                       {:type :literal :value 10}]}]}]})]
-      (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
-              (lib/filters query 1))))))
+          query      #(lib.query.test-spec/test-query
+                       mp
+                       {:stages [{:source {:type :card :id 1}}
+                                 {:filters [{:type     :operator
+                                             :operator :<
+                                             :args     [{:type :column :name "ID_2"}
+                                                        {:type :literal :value 10}]}]}]})]
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Ambiguous column"
+                            (query))))))
 
 (def ^:private two-fks-to-products-provider
   "ORDERS with USER_ID as a second FK into PRODUCTS."
@@ -1516,3 +1514,63 @@
              (map :name (lib/returned-columns query 0))))
       (is (=? [[:field {} "created_year"]]
               (lib/breakouts query 1))))))
+
+(def ^:private two-ids-stage
+  {:source {:type :table :id (meta/id :orders)}
+   :fields [{:type :column :name "ID" :field-id (meta/id :orders :id)}
+            {:type            :column
+             :name            "ID"
+             :field-id        (meta/id :products :id)
+             :source-field-id (meta/id :orders :product-id)}]})
+
+(deftest ^:parallel test-query-refuses-ambiguous-column-in-later-stage-test
+  (testing "column only a deduplication suffix tells apart from another one of the previous stage is ambiguous"
+    (doseq [[label mp first-stage]
+            [["after a table query" meta/metadata-provider two-ids-stage]
+             ["on a saved question"
+              (lib.tu/metadata-provider-with-card-from-query
+               meta/metadata-provider 1 (lib.query.test-spec/test-query meta/metadata-provider {:stages [two-ids-stage]}))
+              {:source {:type :card :id 1}}]]
+            column [{:type :column :name "ID"}
+                    {:type :column :name "ID_2"}
+                    {:type :column :name "ID" :field-id (meta/id :orders :id)}]]
+      (testing (str label " " (pr-str column))
+        (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Ambiguous column"
+                              (lib.query.test-spec/test-query
+                               mp
+                               {:stages [first-stage
+                                         {:filters [{:type     :operator
+                                                     :operator :>
+                                                     :args     [column {:type :literal :value 1}]}]}]})))))))
+
+(deftest ^:parallel test-query-refuses-bucketed-column-of-previous-stage-test
+  (testing "previous stage's column bucketed two ways is ambiguous, whatever unit the spec asks for"
+    (let [created-at {:type :column :name "CREATED_AT"}]
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"Ambiguous column"
+                            (lib.query.test-spec/test-query
+                             meta/metadata-provider
+                             {:stages [{:source       {:type :table :id (meta/id :orders)}
+                                        :breakouts    [(assoc created-at :unit :month) (assoc created-at :unit :year)]
+                                        :aggregations [{:type :operator :operator :count}]}
+                                       {:order-bys [(assoc created-at :unit :year)]}]}))))))
+
+(deftest ^:parallel test-query-finds-table-column-among-joinable-ones-test
+  (testing "in a table stage, the table's own column is found, not an implicitly joinable one of the same name"
+    (doseq [column [{:type :column :name "ID"}
+                    {:type :column :name "ID" :field-id (meta/id :orders :id)}]]
+      (is (=? [[:field {} (meta/id :orders :id)]]
+              (lib/fields (lib.query.test-spec/test-query
+                           meta/metadata-provider
+                           {:stages [{:source {:type :table :id (meta/id :orders)}
+                                      :fields [column]}]})))))))
+
+(deftest ^:parallel test-query-orders-by-one-of-two-breakouts-of-a-field-test
+  (testing "two breakouts of a field in the same stage are told apart by unit"
+    (let [created-at {:type :column :name "CREATED_AT"}]
+      (is (=? [[:asc {} [:field {:temporal-unit :year} (meta/id :orders :created-at)]]]
+              (lib/order-bys (lib.query.test-spec/test-query
+                              meta/metadata-provider
+                              {:stages [{:source       {:type :table :id (meta/id :orders)}
+                                         :breakouts    [(assoc created-at :unit :month) (assoc created-at :unit :year)]
+                                         :aggregations [{:type :operator :operator :count}]
+                                         :order-bys    [(assoc created-at :unit :year)]}]})))))))

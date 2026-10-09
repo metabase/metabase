@@ -44,16 +44,40 @@
     :table (lib.metadata/table metadata-providerable spec-id)
     :card  (lib.metadata/card metadata-providerable spec-id)))
 
-(mu/defn- matches-column? :- :boolean
-  [{:keys [name field-id join-alias source-field-id source-field-join-alias]}
-   :- ::lib.schema.test-spec/test-order-by-spec
-   column :- ::lib.schema.metadata/column]
-  (and (if field-id
-         (= field-id (:id column))
-         (= name ((some-fn :lib/deduplicated-name :name) column)))
-       (= join-alias (lib.join.util/current-join-alias column))
+(defn- deduplicated-name [column]
+  ((some-fn :lib/deduplicated-name :name) column))
+
+(defn- original-name [column]
+  ((some-fn :lib/original-name :name) column))
+
+(mu/defn- matches-join-and-fk? :- :boolean
+  [{:keys [join-alias source-field-id source-field-join-alias]} :- ::lib.schema.test-spec/test-order-by-spec
+   column                                                        :- ::lib.schema.metadata/column]
+  (and (= join-alias (lib.join.util/current-join-alias column))
        (= source-field-id (:fk-field-id column))
        (= source-field-join-alias (:fk-join-alias column))))
+
+(mu/defn- matches-column? :- :boolean
+  [{:keys [name field-id] :as column-spec} :- ::lib.schema.test-spec/test-order-by-spec
+   column                                  :- ::lib.schema.metadata/column]
+  (and (if field-id
+         (= field-id (:id column))
+         (= name (deduplicated-name column)))
+       (matches-join-and-fk? column-spec column)))
+
+(mu/defn- check-unambiguous-name :- :nil
+  "Throws when `column` shares its original name with another of `available-columns` that only a deduplication
+  suffix tells apart from it."
+  [available-columns :- [:sequential ::lib.schema.metadata/column]
+   column-spec       :- ::lib.schema.test-spec/test-order-by-spec
+   column            :- ::lib.schema.metadata/column]
+  (when-let [others (seq (filter #(and (= (original-name column) (original-name %))
+                                       (not= (deduplicated-name column) (deduplicated-name %))
+                                       (matches-join-and-fk? column-spec %))
+                                 available-columns))]
+    (throw (ex-info (str "Ambiguous column: " (count others) " other column(s) are also named "
+                         (pr-str (original-name column)))
+                    {:column-spec column-spec, :columns (cons column others)}))))
 
 (mu/defn- matches-bucketing? :- :boolean
   [{:keys [unit binning]} :- ::lib.schema.test-spec/test-order-by-spec
@@ -66,8 +90,10 @@
              (== (strategy binning) (strategy column-binning))))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
-  "Finds the column a spec names. A column already bucketed more than one way, like a breakout by month and by year,
-  is told apart by the spec's `:unit` or `:binning`."
+  "Finds the column a spec names, by field ID or else by deduplicated name. A column is refused when another column
+  shares its original name and only a deduplication suffix tells them apart, like a previous stage's `ID` and `ID_2`.
+  A column already bucketed more than one way, like a breakout by month and by year, is told apart by the spec's
+  `:unit` or `:binning`."
   [_query            :- ::lib.schema/query
    _stage-number     :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
@@ -79,7 +105,9 @@
                    matching)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
-      1 (first columns)
+      1 (let [column (first columns)]
+          (check-unambiguous-name available-columns column-spec column)
+          column)
       (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
 
 (mu/defn- append-fields :- ::lib.schema/query

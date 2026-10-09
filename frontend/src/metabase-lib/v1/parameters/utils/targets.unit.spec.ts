@@ -775,7 +775,7 @@ function createComplex2StageQuery() {
                 operator: "=",
                 left: {
                   type: "column",
-                  name: "CREATED_AT",
+                  name: "User's 18th birthday",
                 },
                 right: {
                   type: "column",
