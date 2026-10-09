@@ -1,7 +1,4 @@
-import {
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
@@ -31,7 +28,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     H.mockEmbedJsToDevServer();
   });
 
-  it("should close wizard when clicking `close` button on the modal", () => {
+  it("should close wizard when clicking `close` button on the modal and `Done` button on the last step", () => {
     navigateToEntitySelectionStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -45,9 +42,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
 
     H.modal().should("not.exist");
     cy.findAllByTestId("sdk-setting-card").should("be.visible");
-  });
 
-  it("should close wizard when clicking `Done` button on the last step", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -96,20 +91,15 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
   });
 
   describe("auth type switch", () => {
-    it("allows to select the `guest` item even when static embedding setting is disabled", () => {
+    it("allows to select the `guest` item when static embedding setting is disabled and the `Metabase Account` item when simple embedding setting is disabled", () => {
       H.updateSetting("enable-embedding-static", false);
-
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       visitNewEmbedPage({ waitForResource: false });
 
       cy.findByLabelText("Guest").should("be.enabled");
-    });
 
-    it("allows to select the `Metabase Account` item even when simple embedding setting is disabled", () => {
+      H.updateSetting("enable-embedding-static", true);
       H.updateSetting("enable-embedding-simple", false);
-
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       visitNewEmbedPage({ waitForResource: false });
 
@@ -181,7 +171,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
         assertCheckedAuth("guest");
       });
 
-      it("defaults to Guest from all entry points when SSO is not configured", () => {
+      it("defaults to Guest from all entry points when SSO is not configured, and does not reset experience when changing auth type from an entity page", () => {
         openFromCommandPalette();
         assertCheckedAuth("guest");
 
@@ -191,39 +181,79 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
         openFromSharingMenu();
         assertCheckedAuth("guest");
 
+        getEmbedSidebar().within(() => {
+          H.waitForSimpleEmbedIframesToLoad();
+
+          H.getSimpleEmbedIframeContent().within(() => {
+            cy.findByText("Orders").should("be.visible");
+          });
+
+          cy.findByText("Set default values").should("be.visible");
+
+          cy.findByLabelText("Metabase account (SSO)").click();
+
+          H.waitForSimpleEmbedIframesToLoad();
+
+          H.getSimpleEmbedIframeContent().within(() => {
+            cy.findByText("Orders").should("be.visible");
+          });
+
+          cy.findByText("Set default values").should("be.visible");
+
+          cy.findByLabelText("Guest").click();
+
+          H.waitForSimpleEmbedIframesToLoad();
+
+          H.getSimpleEmbedIframeContent().within(() => {
+            cy.findByText("Orders").should("be.visible");
+          });
+
+          cy.findByText("Set default values").should("be.visible");
+        });
+
         openFromAdminGuestEmbeds();
         assertCheckedAuth("guest");
       });
     });
-
-    it("should not reset experience when changing auth type for Embed JS wizard opened from an entity page", () => {
-      H.visitQuestion(ORDERS_QUESTION_ID);
-
-      H.openSharingMenu("Embed");
-
-      getEmbedSidebar().within(() => {
-        H.waitForSimpleEmbedIframesToLoad();
-
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.findByText("Orders").should("be.visible");
-        });
-
-        cy.findByLabelText("Metabase account (SSO)").click();
-
-        H.waitForSimpleEmbedIframesToLoad();
-
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.findByText("Orders").should("be.visible");
-        });
-
-        cy.findByLabelText("Guest").click();
-
-        H.waitForSimpleEmbedIframesToLoad();
-
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.findByText("Orders").should("be.visible");
-        });
-      });
-    });
   });
+});
+
+describe("scenarios > embedding > sdk iframe embed setup > common (oss and starter)", () => {
+  describe("OSS", { tags: "@OSS" }, () =>
+    runOssAndStarterTests({ token: null }),
+  );
+
+  describe("Starter", () => runOssAndStarterTests({ token: "starter" }));
+
+  function runOssAndStarterTests({ token }: { token: "starter" | null }) {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      if (token) {
+        H.activateToken(token);
+      }
+
+      H.enableTracking();
+
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+
+      H.mockEmbedJsToDevServer();
+    });
+
+    it("allows to select the `guest` item when static embedding setting is disabled, but not the `Metabase Account` item when token feature is missing", () => {
+      H.updateSetting("enable-embedding-static", false);
+
+      visitNewEmbedPage({ waitForResource: false });
+
+      cy.findByLabelText("Guest").should("be.enabled");
+
+      H.updateSetting("enable-embedding-static", true);
+      H.updateSetting("enable-embedding-simple", false);
+
+      visitNewEmbedPage({ waitForResource: false });
+
+      cy.findByLabelText("Metabase account (SSO)").should("be.disabled");
+    });
+  }
 });

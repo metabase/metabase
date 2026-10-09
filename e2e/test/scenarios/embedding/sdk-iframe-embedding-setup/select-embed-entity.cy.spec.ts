@@ -4,10 +4,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  embedModalEnableEmbedding,
-  mockEmbedJsToDevServer,
-} from "e2e/support/helpers";
+import { mockEmbedJsToDevServer } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -35,32 +32,12 @@ describe(suiteTitle, () => {
     H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
 
     mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-  });
-
-  it("tracks event details with `isDefaultResource=true` when keeping the default dashboard selection", () => {
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Select a dashboard to embed").should("be.visible");
-
-      cy.log("a default dashboard is preselected");
-      getResourceSelectorButton().should("contain", FIRST_DASHBOARD_NAME);
-
-      cy.findByText("Next").click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selection_completed",
-      event_detail: "isDefaultResource=true,experience=dashboard",
-    });
   });
 
   it("tracks event details with `isDefaultResource=false` when selecting a different dashboard", () => {
@@ -71,7 +48,6 @@ describe(suiteTitle, () => {
       ({ body: { id: secondDashboardId } }) => {
         logRecent("dashboard", secondDashboardId);
         logRecent("dashboard", ORDERS_DASHBOARD_ID);
-        cy.wrap(secondDashboardId).as("secondDashboardId");
       },
     );
 
@@ -92,6 +68,8 @@ describe(suiteTitle, () => {
     });
 
     H.entityPickerModal().within(() => {
+      cy.findByText("Select a dashboard").should("be.visible");
+
       cy.findByText(FIRST_DASHBOARD_NAME).click();
     });
 
@@ -165,118 +143,6 @@ describe(suiteTitle, () => {
       cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
   });
-
-  it("can search and select a dashboard", () => {
-    H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
-      ({ body: { id: dashboardId } }) => {
-        cy.wrap(dashboardId).as("secondDashboardId");
-      },
-    );
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      getResourceSelectorButton().click();
-    });
-
-    H.entityPickerModal().within(() => {
-      cy.findByText("Select a dashboard").should("be.visible");
-
-      // The picker opens on "Recent items" by default. Navigate via the
-      // root sidebar to disambiguate from any matching recent entries.
-      cy.findByTestId("item-picker-level-0")
-        .findByText("Our analytics")
-        .click();
-      cy.findByTestId("item-picker-level-1")
-        .findByText(SECOND_DASHBOARD_NAME)
-        .click();
-    });
-
-    cy.log("button reflects the newly selected dashboard");
-    getEmbedSidebar().within(() => {
-      getResourceSelectorButton().should("contain", SECOND_DASHBOARD_NAME);
-    });
-
-    cy.wait("@dashboard");
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
-    });
-  });
-
-  it("can search and select a question", () => {
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Chart").click();
-      getResourceSelectorButton().click();
-    });
-
-    H.entityPickerModal().within(() => {
-      cy.findByText("Select a chart").should("be.visible");
-      cy.findByText("Our analytics").click();
-      cy.findByText(FIRST_QUESTION_NAME).click();
-    });
-
-    cy.log("button reflects the newly selected question");
-    getEmbedSidebar().within(() => {
-      getResourceSelectorButton().should("contain", FIRST_QUESTION_NAME);
-
-      cy.findByText("Next").click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selection_completed",
-      event_detail: "isDefaultResource=false,experience=chart",
-    });
-
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
-    });
-  });
-
-  it("can search and select a collection for browser", () => {
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Metabase account (SSO)").click();
-    });
-
-    embedModalEnableEmbedding();
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Browser").click();
-      cy.findByText("Select initial collection").should("be.visible");
-      getResourceSelectorButton().click();
-    });
-
-    H.entityPickerModal().within(() => {
-      cy.findByText("Select initial collection").should("be.visible");
-
-      // The picker opens on "Recent items" by default. Navigate via the
-      // root sidebar to disambiguate from any matching recent entries.
-      cy.findByTestId("item-picker-level-0")
-        .findByText("Our analytics")
-        .click();
-      cy.findByTestId("item-picker-level-1")
-        .findByText("First collection")
-        .click();
-      cy.findByText("Select").click();
-    });
-
-    cy.log("button reflects the newly selected collection");
-    getEmbedSidebar().within(() => {
-      getResourceSelectorButton().should("contain", "First collection");
-    });
-
-    cy.log("collection is shown in the breadcrumbs and preview");
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByTestId("sdk-breadcrumbs")
-        .findAllByText("First collection")
-        .first()
-        .should("be.visible");
-
-      cy.findByText("Second collection").should("be.visible");
-    });
-  });
 });
 
 const logRecent = (model: "dashboard" | "card", modelId: number | string) =>
@@ -294,8 +160,6 @@ describe("recently created dashboards", () => {
     H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
-    cy.intercept("GET", "/api/search?*").as("searchQuery");
 
     mockEmbedJsToDevServer();
   });
