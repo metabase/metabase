@@ -189,8 +189,8 @@
 
 (def ^:private doc-generators
   "The commands that `all-documentation` runs, in order.
-  The two settings generators load every Metabase namespace, so they run last. Each command before them then sees only
-  what its own namespaces load, the same as when it runs alone."
+  Commands that load only their own namespaces run first. The two settings generators load every Metabase namespace,
+  so they run last and cannot change the output of the others."
   [#'mcp-tools-documentation
    #'ai-providers-documentation
    #'api-documentation

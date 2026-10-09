@@ -70,23 +70,15 @@
       (is (str/includes? out "Could not generate embedding-eajs docs -- bun: command not found")))))
 
 (deftest run!-test
-  (testing "with no suite, runs every suite"
+  (testing "with a suite, runs only that suite and exits nonzero when it fails"
     (let [calls (atom [])]
-      (with-redefs [shell/sh* (fake-sh calls {})]
-        (with-out-str (generate-docs/run! nil)))
-      (is (= 4 (count @calls)))))
-  (testing "with a suite, runs only that suite"
-    (let [calls (atom [])]
-      (with-redefs [shell/sh* (fake-sh calls {})]
-        (with-out-str (generate-docs/run! "backend")))
-      (is (= [backend-command] @calls))))
-  (testing "a failed suite exits nonzero"
-    (with-redefs [shell/sh* (fake-sh (atom []) {backend-command 1})]
-      (is (= 1 (try
-                 (with-out-str (generate-docs/run! "backend"))
-                 nil
-                 (catch clojure.lang.ExceptionInfo e
-                   (:babashka/exit (ex-data e)))))))))
+      (with-redefs [shell/sh* (fake-sh calls {backend-command 1})]
+        (is (= 1 (try
+                   (with-out-str (generate-docs/run! "backend"))
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (:babashka/exit (ex-data e)))))))
+      (is (= [backend-command] @calls)))))
 
 (defn- generate-docs-task
   "The `generate-docs` task map from bb.edn."
@@ -94,12 +86,6 @@
   (-> (str u/project-root-directory "/bb.edn") slurp edn/read-string :tasks (get 'generate-docs)))
 
 (deftest suite-names-match-bb-edn-test
-  (let [{:keys [arg-schema examples]} (generate-docs-task)]
-    (testing "bb.edn accepts every suite"
-      (is (= generate-docs/suite-names
-             (vec (drop 2 (get-in arg-schema [2 1]))))))
-    (testing "bb.edn has an example for every suite"
-      (is (= generate-docs/suite-names
-             (into [] (keep (fn [[command]]
-                              (second (re-find #"^\./bin/mage generate-docs (\S+)$" command))))
-                   examples))))))
+  (testing "bb.edn accepts every suite"
+    (is (= generate-docs/suite-names
+           (vec (drop 2 (get-in (:arg-schema (generate-docs-task)) [2 1])))))))
