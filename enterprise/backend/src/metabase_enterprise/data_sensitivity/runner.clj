@@ -66,7 +66,34 @@
   (atom {}))
 
 (def ^:private zero-usage
-  {:input_tokens 0 :output_tokens 0 :cache_read_tokens 0 :cache_creation_tokens 0 :total_tokens 0})
+  {:input_tokens 0 :output_tokens 0 :cache_read_tokens 0 :cache_creation_tokens 0 :total_tokens 0 :cost_usd 0.0})
+
+;;; Cost
+
+(def ^:private price-per-million-tokens
+  "USD per million tokens, keyed by a substring of the model name. Anthropic list prices, as of 2026-10-09."
+  {"claude-haiku-4-5"  {:input 1.00 :output 5.00 :cache_write 1.25 :cache_read 0.10}
+   "claude-sonnet-4-6" {:input 3.00 :output 15.00 :cache_write 3.75 :cache_read 0.30}})
+
+(defn- call-cost
+  "USD cost of `usage` on `model`, or nil when `model` has no price. `:input_tokens` includes both cache buckets."
+  [model {:keys [input_tokens output_tokens cache_read_tokens cache_creation_tokens]}]
+  (when-let [{:keys [input output cache_write cache_read]}
+             (some (fn [[k v]] (when (and model (str/includes? model k)) v)) price-per-million-tokens)]
+    (/ (+ (* (- input_tokens cache_read_tokens cache_creation_tokens) input)
+          (* cache_creation_tokens cache_write)
+          (* cache_read_tokens cache_read)
+          (* output_tokens output))
+       1e6)))
+
+(defn- add-usage
+  "Add the usage of one table, classified on `model`, to the run's `usage`. `:cost_usd` stays nil once a table used
+  a model with no price."
+  [usage model table-usage]
+  (let [cost (call-cost model table-usage)]
+    (-> (merge-with + (dissoc usage :cost_usd) table-usage)
+        (assoc :cost_usd (when (and cost (:cost_usd usage))
+                           (+ (:cost_usd usage) cost))))))
 
 ;;; Scope
 
@@ -277,6 +304,7 @@
                         (check-stop! ctx)
                         (let [{:keys [packet classification]} (classify-table ctx database table packet-opts)]
                           {:usage       (:usage classification)
+                           :model       (:model classification)
                            :suggestions (table-suggestions run-id attributes packet (:fields classification))})
                         (catch Exception e
                           (cond
@@ -301,7 +329,7 @@
             :else
             (let [state (-> state
                             (update :done inc)
-                            (update :usage #(merge-with + % (:usage outcome))))]
+                            (update :usage add-usage (:model outcome) (:usage outcome)))]
               (if (db/record-table! run-id (progress state) (:suggestions outcome))
                 (recur state more)
                 (assoc state :end [:stopped :gone] :remaining more)))))))))

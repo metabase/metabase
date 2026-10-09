@@ -8,6 +8,7 @@
    [metabase-enterprise.data-sensitivity.runner :as runner]
    [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
@@ -76,7 +77,7 @@
                        :table_errors  []
                        :started_at    some?
                        :ended_at      some?
-                       :usage         {:input_tokens 300 :output_tokens 60 :total_tokens 360}}
+                       :usage         {:input_tokens 300 :output_tokens 60 :total_tokens 360 :cost_usd nil}}
                       ended)))
             (is (= (set (for [table tables
                               [attribute proposed] [[:data_sensitivity "PII"] [:semantic_type "type/Name"]]]
@@ -95,6 +96,21 @@
                                                            :model/Field :table_id (:id table))))
                         tables)
                 "a run writes no field metadata"))))))))
+
+(deftest run-cost-test
+  (testing "a run on a priced model records the USD cost of its token usage"
+    (do-with-temp-tables
+     3
+     (fn [db _tables]
+       (core-test/do-with-llm!
+        (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+        (fn []
+          (mt/with-dynamic-fn-redefs [metabot.settings/llm-mini-model (constantly "anthropic/claude-haiku-4-5")]
+            ;; Per table: 95 uncached input at $1, 5 cache-read at $0.10 and 20 output at $5 per million tokens.
+            (is (=? {:status :succeeded
+                     :usage  {:total_tokens 360
+                              :cost_usd     #(< (abs (- % (* 3 195.5e-6))) 1e-12)}}
+                    (wait-ended (:id (start! db {}))))))))))))
 
 (deftest semantic-type-suggestion-rules-test
   (mt/with-temp [:model/Database db    {}
