@@ -179,6 +179,20 @@ function ensureNavigationSidebarOpen(attempt = 0) {
   });
 }
 
+/**
+ * Collapse the main navigation sidebar through the store, without touching the UI.
+ *
+ * The app keeps the navbar open until the user closes it. Most specs were
+ * written for the full-width layout of questions, dashboards and documents, so
+ * the shared `visit*` helpers call this right after loading the page. Specs
+ * that care about the navbar's default state should use `cy.visit` directly.
+ */
+export function collapseNavigationSidebar() {
+  cy.window({ log: false })
+    .its("Metabase.store", { log: false })
+    .invoke("dispatch", { type: "metabase/app/CLOSE_NAVBAR" });
+}
+
 export function closeNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
   navigationSidebar().should("not.be.visible");

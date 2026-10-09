@@ -1561,6 +1561,7 @@ describe("scenarios > embedding > full app", () => {
       cy.log("Navigate to a dashboard via in-app navigation");
       H.navigationSidebar().findByText("Our analytics").click();
       cy.findByRole("main").findByText(dashboardDetails.name).click();
+      H.collapseNavigationSidebar();
       H.navigationSidebar()
         .findByText("Our analytics")
         .should("not.be.visible");
@@ -1694,6 +1695,7 @@ describe("scenarios > embedding > full app", () => {
             cy.spy(window.parent, "postMessage").as("postMessage");
           },
         });
+        H.collapseNavigationSidebar();
       });
 
       // TODO: Find a way to assert that this is the last call.
@@ -1986,11 +1988,13 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
 
 const visitQuestionUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
+  H.collapseNavigationSidebar();
   cy.wait("@getCardQuery");
 };
 
 const visitDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
+  H.collapseNavigationSidebar();
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };

@@ -1,5 +1,9 @@
 import { pickEntity } from "./e2e-collection-helpers";
-import { modal, undoToast } from "./e2e-ui-elements-helpers";
+import {
+  collapseNavigationSidebar,
+  modal,
+  undoToast,
+} from "./e2e-ui-elements-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -130,6 +134,7 @@ function visitQuestionById(id, { onBeforeLoad } = {}) {
     url: `/question/${id}`,
     onBeforeLoad,
   });
+  collapseNavigationSidebar();
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
@@ -152,6 +157,7 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
   }
 
   cy.visit(`/model/${id}`);
+  collapseNavigationSidebar();
 
   cy.wait("@" + alias);
 }
@@ -240,6 +246,7 @@ function visitDashboardById(dashboard_id, config) {
         url: `/dashboard/${dashboard_id}`,
         qs: config.params,
       });
+      collapseNavigationSidebar();
 
       // dashcardTimeout lets callers widen the per-query wait window for dashboards with
       // many cards, whose tail queries stagger past cy.wait's 5s default under CPU load
@@ -253,6 +260,7 @@ function visitDashboardById(dashboard_id, config) {
       //  - the one which user doesn't have access to
       // the last request will always be `GET /api/dashboard/:dashboard_id`
       cy.visit(`/dashboard/${dashboard_id}`);
+      collapseNavigationSidebar();
 
       cy.wait(`@${dashboardAlias}`);
     }
