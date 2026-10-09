@@ -518,36 +518,6 @@
           (testing "returns nil when no AuthIdentity exists"
             (is (nil? (#'slackbot/slack-id->user-id slack-id)))))))))
 
-(deftest disconnect-duplicate-slack-account-sends-auth-link-test
-  (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
-    (doseq [disconnect-first? [true false]
-            other-version [1 0]]
-      (testing (str "Disconnect first user=" disconnect-first? ", newest link version=" other-version)
-        (mt/with-temp [:model/User {user-id :id} {}
-                       :model/User {other-user-id :id} {}
-                       :model/AuthIdentity _ {:user_id user-id
-                                              :provider "slack-connect"
-                                              :provider_id "U-DUPLICATE"
-                                              :created_at (java.time.Instant/parse "2026-01-01T00:00:00Z")
-                                              :metadata {:signing_secret_version 1}}
-                       :model/AuthIdentity _ {:user_id other-user-id
-                                              :provider "slack-connect"
-                                              :provider_id "U-DUPLICATE"
-                                              :created_at (java.time.Instant/parse "2026-01-02T00:00:00Z")
-                                              :metadata {:signing_secret_version other-version}}]
-          (is (= (when (= other-version 1) other-user-id) (#'slackbot/slack-id->user-id "U-DUPLICATE")))
-          (let [disconnect-user-id (if disconnect-first? user-id other-user-id)]
-            (mt/user-http-request disconnect-user-id :delete 204 (str "user/" disconnect-user-id "/slack")))
-          (doseq [event [(:event tu/base-dm-event) (:event tu/base-mention-event)]]
-            (let [post-calls (atom [])
-                  ephemeral-calls (atom [])]
-              (mt/with-dynamic-fn-redefs [slackbot.client/post-message (fn [_ payload] (swap! post-calls conj payload))
-                                          slackbot.client/post-ephemeral-message (fn [_ payload] (swap! ephemeral-calls conj payload))]
-                (is (nil? (#'slackbot/require-authenticated-slack-user! {} (assoc event :user "U-DUPLICATE"))))
-                (is (=? [{:text #"Connect your Slack account to Metabase.*"
-                          :blocks [{:type "section"} {:type "actions"}]}]
-                        (if (= "im" (:channel_type event)) @post-calls @ephemeral-calls)))))))))))
-
 (deftest disconnect-slack-account-sends-auth-link-test
   (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
     (mt/with-temp [:model/User {user-id :id} {}

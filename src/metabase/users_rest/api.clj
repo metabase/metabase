@@ -416,7 +416,7 @@
 (api.macros/defendpoint :delete "/:id/slack" :- [:map {:closed true}
                                                  [:status [:= 204]]
                                                  [:body :nil]]
-  "Remove every Slack Connect link for the current user's Slack ID, on every Metabase account."
+  "Remove the current user's Slack Connect link."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-403 (= id api/*current-user-id*))

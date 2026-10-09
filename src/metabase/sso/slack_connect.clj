@@ -21,7 +21,6 @@
       "inactive")))
 
 (defn disconnect-slack-account!
-  "Remove every Slack link for the Slack account linked to `user-id`."
+  "Remove the Slack link of the user with `user-id`."
   [user-id]
-  (when-let [slack-user-id (:provider_id (sso.db/slack-connect-identity user-id))]
-    (sso.db/delete-slack-connect-identities! slack-user-id)))
+  (sso.db/delete-slack-connect-identity! user-id))
