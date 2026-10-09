@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import { useSetArchive } from "metabase/archive/hooks";
@@ -228,7 +229,7 @@ function LibraryMoveModal({
     [movingCollectionIds],
   );
 
-  if (section === "snippets") {
+  if (section === "snippets" || section === "actions") {
     return (
       <CollectionPickerModal
         title={t`Move to…`}
@@ -237,7 +238,7 @@ function LibraryMoveModal({
           onMove(destination.id === "root" ? null : destination.id)
         }
         onClose={onClose}
-        namespaces={["snippets"]}
+        namespaces={[section === "snippets" ? "snippets" : "data-actions"]}
         isDisabledItem={isDisabledItem}
         options={{
           hasPersonalCollections: false,
@@ -272,7 +273,11 @@ function LibraryMoveModal({
         hasConfirmButtons: true,
         confirmButtonText: t`Move`,
       }}
-      entityType={section === "data" ? "table" : "metric"}
+      entityType={match(section)
+        .with("data", () => "table" as const)
+        .with("metrics", () => "metric" as const)
+        .with("dashboards", () => "dashboard" as const)
+        .exhaustive()}
     />
   );
 }

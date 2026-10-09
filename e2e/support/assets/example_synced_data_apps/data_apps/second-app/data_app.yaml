@@ -2,6 +2,7 @@ version: 1
 name: Second App
 slug: second-app
 path: ./index.js
+collection: secondAppCollection00
 entity_id: A-0Jd9Jt80EIbt1hOavWS
 serdes/meta:
 - model: DataApp

@@ -124,26 +124,30 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-schema-tool-choice-test
-  (testing "the structured-output forced tool call is downgraded to auto for qwen3.8-max"
-    (let [body (openrouter/openrouter-request-body
-                {:model  "qwen/qwen3.8-max-0902"
-                 :input  [{:role :user :content "hi"}]
-                 :schema {:type "object" :properties {:answer {:type "string"}}}})]
-      (is (=? {:tool_choice "auto"
-               :tools       [{:function {:name "structured_output"}}]}
-              body)))))
+  (testing "the structured-output forced tool call is downgraded to auto"
+    (doseq [model ["qwen/qwen3.8-max-0902" "anthropic/claude-fable-5.1"]]
+      (testing model
+        (let [body (openrouter/openrouter-request-body
+                    {:model  model
+                     :input  [{:role :user :content "hi"}]
+                     :schema {:type "object" :properties {:answer {:type "string"}}}})]
+          (is (=? {:tool_choice "auto"
+                   :tools       [{:function {:name "structured_output"}}]}
+                  body)))))))
 
 (deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-explicit-tool-choice-test
   (testing "an explicit tool_choice required is downgraded too"
-    (let [body (openrouter/openrouter-request-body
-                {:model       "qwen/qwen3.8-max-0902"
-                 :input       [{:role :user :content "hi"}]
-                 :tools       [{:tool-name "get_thing"
-                                :doc       "Get a thing."
-                                :schema    [:=> [:cat [:map [:id :int]]] :any]
-                                :fn        identity}]
-                 :tool_choice "required"})]
-      (is (= "auto" (:tool_choice body))))))
+    (doseq [model ["qwen/qwen3.8-max-0902" "anthropic/claude-fable-5.1"]]
+      (testing model
+        (let [body (openrouter/openrouter-request-body
+                    {:model       model
+                     :input       [{:role :user :content "hi"}]
+                     :tools       [{:tool-name "get_thing"
+                                    :doc       "Get a thing."
+                                    :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                    :fn        identity}]
+                     :tool_choice "required"})]
+          (is (= "auto" (:tool_choice body))))))))
 
 (deftest ^:parallel request-body-no-required-tool-choice-model-leaves-auto-tool-choice-test
   (testing "a tool_choice that is already auto is left alone for qwen3.8-max"
@@ -159,7 +163,7 @@
 
 (deftest ^:parallel request-body-other-models-keep-required-tool-choice-test
   (testing "models that accept a forced tool call keep tool_choice required"
-    (doseq [model ["anthropic/claude-haiku-4.5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
+    (doseq [model ["anthropic/claude-haiku-4.5" "anthropic/claude-fable-5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
       (testing model
         (let [body (openrouter/openrouter-request-body
                     {:model  model
@@ -240,10 +244,11 @@
     ;; safety net — its reasoning cannot be disabled and bills against the same budget as the
     ;; tool call; theory vs practice in openrouter/forced-tool-call-token-floor
     (are [expected opts] (= expected (:max_tokens (body-for (assoc opts :model "qwen/qwen3.8-max-0902"))))
-      2048 {:schema {:type "object"} :max-tokens 512}
-      4096 {:schema {:type "object"} :max-tokens 4096}
-      nil  {:schema {:type "object"}}
-      512  {:max-tokens 512}))
+      2048  {:schema {:type "object"} :max-tokens 512}
+      4096  {:schema {:type "object"} :max-tokens 4096}
+      ;; uncapped by the caller, so the default cap applies — already far above the floor
+      32000 {:schema {:type "object"}}
+      512   {:max-tokens 512}))
   (testing "a non-mandatory model keeps its cap — it got the disable instead"
     (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :schema {:type "object"} :max-tokens 512})]
       (is (= 512 (:max_tokens body)))
@@ -262,8 +267,9 @@
 
 (deftest ^:parallel reasoning-class-partition-test
   (testing "every whitelisted model is deliberately classified, and the class drives the body"
-    (let [renderable         #{"anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
-                               "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6" "anthropic/claude-sonnet-5"
+    (let [renderable         #{"anthropic/claude-fable-5.1" "anthropic/claude-fable-5" "anthropic/claude-opus-5"
+                               "anthropic/claude-opus-4.8" "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6"
+                               "anthropic/claude-sonnet-5"
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
                                "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
                                "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max-0902" "z-ai/glm-5.3" "z-ai/glm-5.2"}

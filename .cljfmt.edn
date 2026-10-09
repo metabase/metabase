@@ -36,6 +36,7 @@
   metabase.driver-api.core/match-many                                    :all
   metabase.driver-api.core/match-one                                     :all
   metabase.driver-api.core/replace                                       :all
+  metabase.driver-api.core/replace-all                                   :all
   metabase.driver-api.core/replace-in                                    :all
   metabase.lib.drill-thru.test-util/test-drill-variants-with-merged-args :all
   metabase.lib.drill-thru.test-util/test-returns-drill                   :all
@@ -206,6 +207,7 @@
   metabase.util.match/match-one                                                               [[:inner 0]]
   metabase.util.match/match-many                                                              [[:inner 0]]
   metabase.util.match/replace                                                                 [[:inner 0]]
+  metabase.util.match/replace-all                                                             [[:inner 0]]
   metabase.util.match/replace-in                                                              [[:inner 0]]
   metabase.models.interface/define-batched-hydration-method                                   [[:inner 0]]
   metabase.models.interface/define-simple-hydration-method                                    [[:inner 0]]

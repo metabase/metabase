@@ -101,7 +101,7 @@
   (testing "Snippets are NOT writable when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
             (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                            :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
@@ -115,7 +115,7 @@
   (testing "Snippets cannot be created when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
             (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}]
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
@@ -128,7 +128,7 @@
   (testing "Snippets cannot be updated when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
             (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                            :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
@@ -142,7 +142,7 @@
   (testing "Snippets are still readable when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
             (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                            :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
@@ -170,7 +170,7 @@
   (testing "Snippets ARE writable in read-only mode when library is NOT synced"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-not-synced
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
             (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                            :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
@@ -186,7 +186,7 @@
   (testing "batched-hydrate :can_write respects remote-sync read-only mode"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
             (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                            :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id (:id collection)}
@@ -225,7 +225,7 @@
   (testing "batched-hydrate :can_write allows writes when library is not synced"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-not-synced
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
             (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                            :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id (:id collection)}

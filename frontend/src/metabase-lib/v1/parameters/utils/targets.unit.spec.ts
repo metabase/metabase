@@ -31,6 +31,7 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
@@ -73,7 +74,6 @@ const queryNonDateBreakout = Lib.createTestQuery(provider, {
         {
           type: "column",
           name: "QUANTITY",
-          sourceName: "ORDERS",
         },
       ],
     },
@@ -89,7 +89,6 @@ const query1DateBreakout = Lib.createTestQuery(SAMPLE_PROVIDER, {
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "ORDERS",
           unit: "month",
         },
       ],
@@ -106,13 +105,12 @@ const query2DateBreakouts = Lib.createTestQuery(SAMPLE_PROVIDER, {
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "ORDERS",
           unit: "month",
         },
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "PRODUCTS",
+          sourceFieldId: ORDERS.PRODUCT_ID,
           unit: "month",
         },
       ],
@@ -129,7 +127,6 @@ const queryDateBreakoutsMultiStage = Lib.createTestQuery(SAMPLE_PROVIDER, {
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "ORDERS",
           unit: "month",
         },
       ],
@@ -139,7 +136,6 @@ const queryDateBreakoutsMultiStage = Lib.createTestQuery(SAMPLE_PROVIDER, {
       breakouts: [
         {
           type: "column",
-          sourceName: "ORDERS",
           name: "CREATED_AT",
           unit: "year",
         },
@@ -618,6 +614,7 @@ function createComplex1StageQuery() {
         joins: [
           {
             source: { type: "table", id: REVIEWS_ID },
+            alias: "Reviews - Product",
             strategy: "left-join",
             conditions: [
               {
@@ -625,12 +622,10 @@ function createComplex1StageQuery() {
                 left: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "ORDERS",
                 },
                 right: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "REVIEWS",
                 },
               },
             ],
@@ -643,7 +638,11 @@ function createComplex1StageQuery() {
               type: "operator",
               operator: "datetime-add",
               args: [
-                { type: "column", name: "BIRTH_DATE", sourceName: "PEOPLE" },
+                {
+                  type: "column",
+                  name: "BIRTH_DATE",
+                  sourceFieldId: ORDERS.USER_ID,
+                },
                 { type: "literal", value: 18 },
                 { type: "literal", value: "year" },
               ],
@@ -655,27 +654,25 @@ function createComplex1StageQuery() {
           {
             type: "operator",
             operator: "sum",
-            args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+            args: [{ type: "column", name: "TOTAL" }],
           },
         ],
         breakouts: [
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "ORDERS",
             unit: "month",
           },
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "PRODUCTS",
+            sourceFieldId: ORDERS.PRODUCT_ID,
             unit: "year",
-            index: 0,
           },
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "REVIEWS",
+            joinAlias: "Reviews - Product",
             unit: "quarter",
           },
           {
@@ -696,6 +693,7 @@ function createComplex2StageQuery() {
         joins: [
           {
             source: { type: "table", id: REVIEWS_ID },
+            alias: "Reviews - Product",
             strategy: "left-join",
             conditions: [
               {
@@ -703,12 +701,10 @@ function createComplex2StageQuery() {
                 left: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "ORDERS",
                 },
                 right: {
                   type: "column",
                   name: "PRODUCT_ID",
-                  sourceName: "REVIEWS",
                 },
               },
             ],
@@ -721,7 +717,11 @@ function createComplex2StageQuery() {
               type: "operator",
               operator: "datetime-add",
               args: [
-                { type: "column", name: "BIRTH_DATE", sourceName: "PEOPLE" },
+                {
+                  type: "column",
+                  name: "BIRTH_DATE",
+                  sourceFieldId: ORDERS.USER_ID,
+                },
                 { type: "literal", value: 18 },
                 { type: "literal", value: "year" },
               ],
@@ -737,7 +737,6 @@ function createComplex2StageQuery() {
               {
                 type: "column",
                 name: "TOTAL",
-                sourceName: "ORDERS",
               },
             ],
           },
@@ -746,19 +745,17 @@ function createComplex2StageQuery() {
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "ORDERS",
             unit: "month",
           },
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "ORDERS",
             unit: "year",
           },
           {
             type: "column",
             name: "CREATED_AT",
-            sourceName: "REVIEWS",
+            joinAlias: "Reviews - Product",
             unit: "quarter",
           },
           {
@@ -771,6 +768,7 @@ function createComplex2StageQuery() {
         joins: [
           {
             source: { type: "table", id: REVIEWS_ID },
+            alias: "Reviews - Product",
             strategy: "left-join",
             conditions: [
               {
@@ -778,13 +776,10 @@ function createComplex2StageQuery() {
                 left: {
                   type: "column",
                   name: "CREATED_AT",
-                  sourceName: "ORDERS",
-                  index: 0,
                 },
                 right: {
                   type: "column",
                   name: "CREATED_AT",
-                  sourceName: "REVIEWS",
                 },
               },
             ],

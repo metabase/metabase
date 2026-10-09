@@ -13,18 +13,19 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at :draft])
+  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :model_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
   [:maybe [:map-of ConditionKey [:maybe [:or :string :int :boolean :keyword sequential?]]]])
 
 (def ^:private RemovalOpts
-  "The `:scope-key`, `:synced-collection-ids`, `:entity-ids`, and `:removal-conditions` describing which rows an
-  import removes (see [[removal-exprs]])."
+  "The `:scope-key`, `:synced-collection-ids`, `:unscoped-conditions`, `:entity-ids`, and `:removal-conditions`
+  describing which rows an import removes (see [[removal-exprs]])."
   [:map {:closed true}
    [:scope-key             [:maybe :keyword]]
    [:synced-collection-ids [:maybe [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
+   [:unscoped-conditions   Conditions]
    [:entity-ids            [:maybe [:or [:set :string] [:sequential :string]]]]
    [:removal-conditions    Conditions]])
 
@@ -58,6 +59,13 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn instances-where
+  "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
+  or nil for every instance)."
+  [model-key  :- :keyword
+   conditions :- Conditions]
+  (apply t2/select model-key (mapcat identity conditions)))
+
 (mu/defn entity-id-where :- [:maybe :string]
   "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
   [model-key :- :keyword
@@ -83,16 +91,30 @@
       (vector? v)                        [:in k v]
       :else                              [:= k v])))
 
+(defn- scope-expr
+  "The `:where` fragment keeping the rows in `synced-collection-ids` or matching `unscoped-conditions`, or nil when
+  neither is given."
+  [scope-key synced-collection-ids unscoped-conditions]
+  (let [scoped   (when (seq synced-collection-ids)
+                   [:in scope-key synced-collection-ids])
+        unscoped (when (seq unscoped-conditions)
+                   (into [:and] (removal-condition-exprs unscoped-conditions)))]
+    (if (and scoped unscoped)
+      [:or scoped unscoped]
+      (or scoped unscoped))))
+
 (defn- removal-exprs
   "The `:where` fragments (see [[removal-condition-exprs]]) selecting the `model-key` rows an import removes:
-  scoped to `synced-collection-ids` (when `scope-key` is given), excluding `entity-ids`, and matching
-  `removal-conditions`. Returns nil for a scoped model with no synced collections (removes nothing)."
-  [{:keys [scope-key synced-collection-ids entity-ids removal-conditions]}]
-  (when-not (and scope-key (empty? synced-collection-ids))
-    (cond-> []
-      scope-key        (conj [:in scope-key synced-collection-ids])
-      (seq entity-ids) (conj [:not-in :entity_id entity-ids])
-      :always          (into (removal-condition-exprs removal-conditions)))))
+  scoped to `synced-collection-ids` or `unscoped-conditions` (when `scope-key` is given), excluding `entity-ids`,
+  and matching `removal-conditions`. Returns nil for a scoped model with neither (removes nothing)."
+  [{:keys [scope-key synced-collection-ids unscoped-conditions entity-ids removal-conditions]}]
+  (let [scope (when scope-key
+                (scope-expr scope-key synced-collection-ids unscoped-conditions))]
+    (when-not (and scope-key (nil? scope))
+      (cond-> []
+        scope            (conj scope)
+        (seq entity-ids) (conj [:not-in :entity_id entity-ids])
+        :always          (into (removal-condition-exprs removal-conditions))))))
 
 (mu/defn delete-removed-instances!
   "Deletes the `model-key` rows an import removes (see [[removal-exprs]]); a no-op for a scoped model with no
@@ -417,6 +439,27 @@
   [library-type :- :string]
   (t2/select-one :model/Collection :type library-type))
 
+(mu/defn collections-with-names-in-namespace
+  "The `:id` and `:name` of the Collections of `namespace-name`."
+  [namespace-name :- :string]
+  (t2/select [:model/Collection :id :name] :namespace namespace-name))
+
+(mu/defn action-model-ids
+  "The model Card id, or nil, of each existing Action with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn :model_id [:model/Action :id :model_id] :id [:in action-ids]))
+
+(mu/defn actions-without-model-in
+  "The `:id`, `:name`, and `:collection_id` of the Actions without a model outside of any Collection or in the
+  Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Action :id :name :collection_id]
+             {:where [:and
+                      [:= :model_id nil]
+                      (if (seq collection-ids)
+                        [:or [:= :collection_id nil] [:in :collection_id collection-ids]]
+                        [:= :collection_id nil])]}))
+
 (mu/defn snippet-collections
   "The `:id` and `:name` of the Collections of the snippets namespace."
   []
@@ -436,6 +479,12 @@
   "The IDs of the Collections of `namespace-name`."
   [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
+
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, nil for the default namespace or no such Collection."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (when collection-id
+    (t2/select-one-fn :namespace :model/Collection :id collection-id)))
 
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."

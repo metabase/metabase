@@ -9,10 +9,6 @@
     }
   }
 
-  .QuestionListItemLabel {
-    overflow: hidden;
-  }
-
   .QuestionListItemIcon {
     color: var(--mb-color-core-brand);
   }

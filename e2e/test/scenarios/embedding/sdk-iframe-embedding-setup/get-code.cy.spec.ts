@@ -21,9 +21,8 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     H.enableTracking();
     // Accept the embedding terms up front so the wizard never shows the
     // Agree CTA — its flow is covered by embed-flow-enable-embed-js-*.
-    H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("show-simple-embed-terms", false);
-    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("enable-embedding-modular", true);
+    H.updateSetting("show-modular-embed-terms", false);
     H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");

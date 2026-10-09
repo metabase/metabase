@@ -609,7 +609,7 @@
 
 (deftest export-errors-in-read-only-mode-test
   (testing "POST /api/ee/remote-sync/export errors when in read-only sync mode"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
         (let [mock-source (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -1509,6 +1509,7 @@
   (testing "GHY-4650: a public link change on a read-only instance does not mark the synced item dirty, since it cannot be pushed"
     (test-helpers/with-clean-object
       (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-url       "https://github.com/test/repo.git"
                                          remote-sync-type      :read-only]
         (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
                        :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}
@@ -1857,7 +1858,7 @@
                                        {:remote-sync-type :read-only
                                         :collections {synced-coll-id false}}))))
         (testing "rejects collection changes when remote-sync-type is already read-only (default)"
-          (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
             (is (= "Cannot change synced collections when remote-sync-type is read-only."
                    (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:collections {coll-id true}})))))))))
@@ -2438,23 +2439,6 @@
                 "no new branch should be pushed to the source when the guard fires")
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
-
-(deftest moving-an-action-out-from-under-a-synced-dashboard-test
-  (testing "an action a synced dashboard uses cannot move out of the synced collections"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-temp [:model/Collection    {synced-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
-                       :model/Collection    {plain-id :id}    {:name "Plain" :location "/"}
-                       :model/Action        {action-id :id}   {:type :query :name "No model" :model_id nil
-                                                               :collection_id synced-id}
-                       :model/QueryAction   _                 {:action_id     action-id
-                                                               :dataset_query (mt/native-query {:query "select 1"})}
-                       :model/Dashboard     {dashboard-id :id} {:collection_id synced-id}
-                       :model/DashboardCard _                 {:dashboard_id dashboard-id :action_id action-id}]
-          (is (= "Used by remote synced content."
-                 (:message (mt/user-http-request :crowberto :put 400 (str "action/" action-id)
-                                                 {:collection_id plain-id}))))
-          (is (= synced-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
 
 (deftest archiving-a-synced-model-with-actions-test
   (testing "a model in a synced collection can be archived although it has actions, which are archived with it"

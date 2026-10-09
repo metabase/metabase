@@ -795,7 +795,7 @@
                               :target_db_id       db-id
                               :table              target-table}]
           (testing "when user CAN read the target, it appears in the output"
-            (with-redefs [transforms.core/get-transform (constantly stub-transform)]
+            (mt/with-dynamic-fn-redefs [transforms.core/get-transform (constantly stub-transform)]
               (let [{:keys [output]} (read-resource/read-resource
                                       {:uris ["metabase://transform/999/target"]})]
                 (is (str/includes? output "TARGET-TABLE")

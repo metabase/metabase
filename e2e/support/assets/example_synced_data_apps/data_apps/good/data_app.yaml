@@ -3,6 +3,7 @@ name: Good App
 slug: good
 description: A well-formed app that syncs cleanly
 path: ./index.js
+collection: goodAppCollection0000
 entity_id: Ioxf30LzIQCGwbCNtaG62
 serdes/meta:
 - model: DataApp
