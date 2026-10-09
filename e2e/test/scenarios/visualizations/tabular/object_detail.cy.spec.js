@@ -31,12 +31,6 @@ const TEST_QUESTION = {
   },
 };
 
-const TEST_PEOPLE_QUESTION = {
-  query: {
-    "source-table": PEOPLE_ID,
-  },
-};
-
 describe("scenarios > question > object details", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
@@ -215,36 +209,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     assertUserDetailView({ id: 2500, heading: "Kenny Schmidt" });
     getPreviousObjectDetailButton().should("not.exist");
     getNextObjectDetailButton().should("not.exist");
-  });
-
-  it.skip("handles opening a filtered out record", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    const FILTERED_OUT_ID = 1;
-
-    H.createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}/${FILTERED_OUT_ID}`);
-      cy.wait("@cardQuery");
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(/We're a little lost/i);
-      });
-    });
-  });
-
-  it.skip("can view details of an out-of-range record", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    // since we only fetch 2000 rows, this ID is out of range
-    // and has to be fetched separately
-    const OUT_OF_RANGE_ID = 2150;
-
-    H.createQuestion(TEST_PEOPLE_QUESTION).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}/${OUT_OF_RANGE_ID}`);
-      cy.wait("@cardQuery");
-      cy.findByTestId("object-detail").within(() => {
-        cy.findByRole("heading", { name: "Marcelina Kuhn" }).should(
-          "be.visible",
-        );
-      });
-    });
   });
 
   it("should allow to browse linked entities by FKs (metabase#21757)", () => {
