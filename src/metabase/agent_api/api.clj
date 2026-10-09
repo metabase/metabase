@@ -707,7 +707,13 @@
   caller has every tool its text names. This API publishes `search` (see `/v1/search` below), so the
   \"find it with search\" steps survive here. Renaming that endpoint's tool drops those steps rather
   than sending the caller at something it does not have, which is the point of `:uses`."
-  {:tool-names #{"search"}})
+  {:tool-names        #{"search"}
+   ;; This endpoint answers per URI: one HTTP status for the call, an `:error` on each item that
+   ;; could not be read. A single-URI request that missed is "every item failed", and turning that
+   ;; into an HTTP error would change a documented 200 response into one with no `:resources` at
+   ;; all. The agent loop takes the opposite default, because it decides whether a call worked by
+   ;; the absence of an `:error`.
+   :all-items-failed  :compose})
 
 (api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.

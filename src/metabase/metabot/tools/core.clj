@@ -254,6 +254,20 @@
            :failed? true}
           (throw e))))))
 
+(defrecoverable all-items-failed!
+  "Every item in a batched call failed, so the call has nothing to report but its failures."
+  {:payload [:map {:closed true}
+             [:count  :int]
+             ;; What `compose` produced, rendered. Carried rather than rebuilt so the model reads
+             ;; exactly what a call that lost all but one item would have shown it.
+             [:output :string]]}
+  [{:keys [output]}]
+  ;; The composed text is the whole message. Each item's own recovery steps are already inside it —
+  ;; `entry` rendered them through `recoverable-text` for this profile — so there is nothing to add
+  ;; here, and a step of our own would be advice about a call rather than about any of its items.
+  {:message  output
+   :recovery []})
+
 (defn run-batched
   "Perform `tool`'s batched call and return one [[::result]].
 
@@ -261,15 +275,36 @@
   takes one item's args and returns an [[::entry]]; it defaults to [[entry]], and a consumer with its
   own error vocabulary passes its own.
 
-  A declared recoverable error from one item becomes that item's contribution. Anything else is
-  rethrown, so an undeclared exception fails the whole call and discards the items that did load.
-  That is deliberate: a bug is not a partial result."
+  A declared recoverable error from one item becomes that item's contribution — unless every item
+  failed, which by default is a failed call and throws [[all-items-failed!]]. A call that produced
+  nothing must not report success to the agent loop, which decides whether a call worked by the
+  absence of an `:error`: five failures dressed as a result are counted as a success by the provider
+  adapters, by `successful-tool-output?` and by telemetry alike. The model reads the same per-item
+  text either way, so this changes who is told the call failed, not what it is told.
+
+  Whether that is the right answer is the *consumer's* question, not the tool's, so `ctx` decides it:
+  `:all-items-failed :compose` keeps the composed result. The Agent API's `/v1/read-resource` is the
+  case — a batch endpoint whose published contract is one HTTP status for the call and an `:error`
+  per item, where a single-URI request that missed counts as every item failing and must still be a
+  200. Anything other than `:compose`, a typo included, gets the failing default.
+
+  Anything other than a declared recoverable error is rethrown, so an undeclared exception fails the
+  whole call and discards the items that did load. That is deliberate: a bug is not a partial
+  result."
   ([tool args ctx]
    (run-batched tool args ctx #(entry tool % ctx)))
   ([tool args ctx entry-fn]
    (let [item-args (batched-args tool args)]
      (around-batch tool item-args ctx
-                   #(compose tool (mapv entry-fn item-args) ctx)))))
+                   (fn []
+                     (let [entries (mapv entry-fn item-args)
+                           result  (compose tool entries ctx)]
+                       (if (and (seq entries)
+                                (every? :failed? entries)
+                                (not= :compose (:all-items-failed ctx)))
+                         (all-items-failed! {:count  (count entries)
+                                             :output (render-text (:output result))})
+                         result)))))))
 
 (defn batched?
   "Whether `tool` can be called for several items at once.
