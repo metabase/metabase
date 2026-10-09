@@ -6,6 +6,8 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.test :as mt]))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -26,7 +28,7 @@
             (messages/input-message->parts {:role :assistant :content "Hi there"}))))
   (testing "assistant with tool_calls (OpenAI style)"
     (is (=? [{:type :text :text "Searching..."}
-             {:type :tool-input :id "t1" :function "search" :arguments {"q" "test"}}]
+             {:type :tool-input :id "t1" :function "search" :arguments {:q "test"}}]
             (messages/input-message->parts
              {:role       :assistant
               :content    "Searching..."
@@ -72,6 +74,21 @@
              {:role    :user
               :content [{:type "tool_result" :tool_use_id "t1" :content "Result 1"}
                         {:type "tool_result" :tool_use_id "t2" :content "Result 2"}]})))))
+
+(deftest ^:parallel persisted-tool-call-replays-into-adapter-test
+  (testing "a stored tool call replays with keyword argument names and string nested keys, and the adapter accepts it"
+    (let [stored {:type       "tool-construct_notebook_query"
+                  :toolCallId "call-1"
+                  :state      "output-available"
+                  :input      {:query {:stages [{:source-table 1}]} :limit 5}
+                  :output     {:output "ok"}}
+          parts  (into [] (mapcat messages/input-message->parts)
+                       (metabot.persistence/tool-part->llm-messages stored))]
+      (is (= {:query {"stages" [{"source-table" 1}]} :limit 5}
+             (:arguments (first parts))))
+      (is (=? {:messages [{:role "assistant" :tool_calls [{:id "call-1" :function {:arguments string?}}]}
+                          {:role "tool" :tool_call_id "call-1"}]}
+              (chat-completions/request-body {:model "some/model" :input parts}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; build-message-history

@@ -130,10 +130,12 @@
    [:map-of [:or :string :keyword] [:ref ::decoded-json]]])
 
 (def ^:private ToolCallArguments
-  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
-  string keys off the wire, keyword keys when built in Clojure."
+  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by its argument names as keywords.
+
+  `{:query {\"stages\" []}}` passes and `{\"query\" {\"stages\" []}}` does not. Only the top-level keys must be
+  keywords: the values are `::decoded-json`, so nested keys keep the type their decoder gave them."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::decoded-json])
+   :keyword ::decoded-json])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by

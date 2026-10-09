@@ -261,15 +261,18 @@
                             :id        "call-1"
                             :function  "f"
                             :arguments arguments}]}))]
-    (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
+    (testing "decoded JSON replays at any depth, with keyword argument names and nested keys of either type"
       (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
                            (replay arguments))
         ;; keyword keys at every depth, as Clojure builds them
         {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
-        ;; string keys, as replayed history decodes them
-        {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
+        ;; string keys below the argument names, as the stream parser and replayed history decode them
+        {:a {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
         ;; both
         {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+    (testing "a string argument name is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {"a" 1}))))
     (testing "a value JSON cannot hold is rejected, however deep"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
                             (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
