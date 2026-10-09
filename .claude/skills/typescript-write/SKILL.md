@@ -15,6 +15,7 @@ Before frontend edits, including test-only changes, read `frontend/CLAUDE.md`, `
 
 - **New, moved, or otherwise edited code must not contain `any`, explicit or implicit.** No `any` annotations, no `as any` / `as unknown as`, no untyped parameters or returns that infer `any`, no implicitly-`any` destructures or array/object literals.
 - **Stop untyped values at the boundary.** Use canonical types, typed wrappers, or `unknown` with validation or narrowing. Check library defaults and inferred types: a passing type-check does not guarantee that `any` hasn't propagated into your code. For example, capture untyped `JSON.parse` and response `.json()` results as `unknown`; narrow or validate before accessing fields or passing to typed callers.
+- **Type the captured value, not only its eventual result.** A return annotation doesn't change the inferred types of parameters or destructured bindings. Capture untyped data as `unknown`, then narrow or validate before destructuring or accessing fields.
 - **Mandatory type verification.** Before finishing a TS/TSX change, run `bun run type-check-pure`. If TypeScript LSP tools are available, also inspect changed symbols with hover and go-to-definition; otherwise skip LSP check.
 
 ## Type tightening
@@ -96,9 +97,11 @@ Before frontend edits, including test-only changes, read `frontend/CLAUDE.md`, `
 
 ## Test authoring
 
+Tests should verify expected user-visible behavior or the public contract of a function or component, not its internal implementation. A refactor that preserves that contract should not break the tests.
+
 For new or edited tests, including Jest and Cypress:
 
-1. **Understand the behavior.** Read the requirements and relevant source paths, including conditions, event handlers, async operations, and error handling.
+1. **Identify the expected contract.** Start from the requirements: what should the user or caller observe? Read the relevant source to understand setup prerequisites and execution paths, not to treat the current implementation as the definition of correct behavior.
 2. **Set up realistic fixtures.** Supply the props, state, mocked data, and providers needed to reach the behavior under test. Data in a mocked endpoint doesn't satisfy a condition on a component prop.
 3. **Plan coverage.** Identify each case's prerequisites, actions, and observable outcomes. For complex scenarios, a short case map can help organize coverage.
 4. **Write the tests** following the rules below.
@@ -110,8 +113,9 @@ For new or edited tests, including Jest and Cypress:
 - **Type fixtures against the owning contract.** Use canonical response types for mock data and deferred promises. Deriving a type from the fixture itself doesn't establish compatibility with the API. Apply the boundary rule to parsed or intercepted request/response bodies: capture untyped results as `unknown` before using them, including in assertions. Comparing an `unknown` value with an independent expected object doesn't require narrowing it.
 - **Reuse test infrastructure.** Search shared test support before adding providers, server mocks, or async helpers. Use shared [server-mock helpers](../../../docs/developers-guide/frontend.md#request-mocking) for endpoints and, when suitable, `defer<T>()` from `metabase/utils/promise` for controlled async completion. Preserve other callers when extending shared helpers.
 - **Exercise what the test claims.** Repeat actions to test repetition. When checking pending behavior or ordering, control async completion and assert at the relevant intermediate states, not only after everything settles. Check expected effects and the absence of unwanted effects relevant to the contract. If call counts matter, assert them as well as arguments; `toHaveBeenCalledWith` permits extra calls. Before testing a retry, wait for the failure to become observable.
-- **Derive assertions from the actual UI contract.** Read the rendering and event paths: an element that unmounts is absent, not merely hidden; a disabled action and an action that ignores repeated attempts have different observable behavior. Reuse the applicable testing conventions rather than copying a nearby assertion blindly.
-- **Preserve the intended coverage when repairing a test.** Correct an ambiguous selector or faulty setup without dropping the behavior the test was meant to exercise. If the assertion itself misstates the contract, correct it against the implementation and requirements.
+- **Assert observable outcomes.** Check rendered behavior, return values, or externally observable effects required by the contract. Assert callback arguments, call counts, or ordering only when they are part of that contract, not to mirror internal helper calls or component state. Reuse the applicable testing conventions rather than copying a nearby assertion blindly.
+- **Challenge the assertions.** If the expected behavior were missing or wrong, would this test fail? For multi-step interactions, verify the observable transition between steps—not just the final state.
+- **Preserve the intended coverage when repairing a test.** Correct an ambiguous selector or faulty setup without dropping the behavior the test was meant to exercise. If the assertion itself misstates the expected contract, correct it against the requirements; don't weaken it merely to match the current implementation.
 
 ## Verify before done
 
