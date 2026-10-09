@@ -250,7 +250,10 @@
                 ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model
                 ;; not served in given region" errors.
                 (let [{:keys [status status-code]} (ex-data e)]
-                  {:models (or config-models []) :error (.getMessage e) :status (or status status-code)}))
+                  {:models         (or config-models [])
+                   :error          (.getMessage e)
+                   :status         (or status status-code)
+                   :misconfigured? (llm.health/misconfigured? e)}))
               (throw e))))))))
 
 (def ^:private models-cache-ttl-ms
@@ -288,11 +291,13 @@
   Fatality follows the HTTP status with the same classification inference uses, so a rate-limited listing — 429
   when an admin page load fans out — expires like any transient failure instead of pinning the connection on the
   fallback after the limit clears."
-  [{conn-key :key :keys [type]} {:keys [error transient? status] :as result}]
+  [{conn-key :key :keys [type]} {:keys [error transient? status misconfigured?] :as result}]
   (when (and error (not (llm.provider/managed-type? type)))
     (llm.health/record-failure! conn-key error (and (not transient?)
-                                                    (or (nil? status) (llm.health/fatal-status? status)))))
-  (dissoc result :status))
+                                                    (or misconfigured?
+                                                        (nil? status)
+                                                        (llm.health/fatal-status? status)))))
+  (dissoc result :status :misconfigured?))
 
 (defn- connection-models-response
   "List `conn`'s models for the client, reporting a failure to [[metabase.llm.health]]."

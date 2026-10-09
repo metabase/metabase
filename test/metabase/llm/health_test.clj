@@ -53,6 +53,23 @@
     (llm.health/record-exception! "classified-status-code" (ex-info "no credit" {:status-code 402}))
     (is (= {:message "no credit" :fatal? true :status 402} (recorded "classified-status-code")))))
 
+(deftest record-exception-holds-an-adapters-own-configuration-against-the-connection-test
+  (testing "an adapter refusing the connection's configuration is fatal: a retry sends the same configuration"
+    (llm.health/record-exception! "misconfigured-conn"
+                                  (ex-info "Invalid AWS Bedrock region \"mars-north-1\""
+                                           {:api-error true :error-code :invalid-region :status-code 400}))
+    (is (=? {:fatal? true :status 400} (recorded "misconfigured-conn"))))
+  (testing "a provider's own 400 still says nothing about the connection"
+    (llm.health/record-exception! "rejected-request-conn"
+                                  (ex-info "prompt is too long" {:api-error true :status 400}))
+    (is (true? (llm.health/healthy? "rejected-request-conn"))))
+  (testing "an adapter error that never reached its server is transient: the network says nothing about the configuration"
+    (llm.health/record-exception! "unreachable-conn"
+                                  (ex-info "Could not obtain a Google access token: oauth2.googleapis.com"
+                                           {:api-error true :error-code :google-token-refresh-failed :status-code 400}
+                                           (java.net.UnknownHostException. "oauth2.googleapis.com")))
+    (is (=? {:fatal? false} (recorded "unreachable-conn")))))
+
 (deftest transient-failures-expire-test
   (let [an-hour-from-now (+ (System/currentTimeMillis) (* 60 60 1000))]
     (testing "a transient failure stops counting once it is old enough, so recovery needs no intervention"

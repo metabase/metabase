@@ -7,7 +7,8 @@
   [[metabase.llm.provider/first-model-ref]], which skips a failing connection when picking what Metabot runs on.
 
   A failure is *fatal* when the provider answered with a status that says the connection cannot work as configured —
-  a rejected key, an account that cannot pay, a model the account cannot reach. Those are recorded until the
+  a rejected key, an account that cannot pay, a model the account cannot reach — or when an adapter refused the
+  connection's own configuration before asking the provider anything. Those are recorded until the
   connection is edited or a later inference succeeds, because retrying changes nothing. A 5xx, a rate limit, a
   timeout or a refused connection is transient and expires on its own after [[transient-failure-ttl-ms]], so an
   outage takes the connection out of rotation without an admin having to put it back.
@@ -69,6 +70,26 @@
        (not (fatal-status? status))
        (not (contains? retryable-statuses status))))
 
+(def ^:private unreachable-exceptions
+  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
+   java.net.SocketTimeoutException java.net.http.HttpTimeoutException])
+
+(defn- unreachable?
+  [e]
+  (some (fn [^Throwable t] (some #(instance? % t) unreachable-exceptions))
+        (take 10 (take-while some? (iterate #(.getCause ^Throwable %) e)))))
+
+(defn misconfigured?
+  "Whether `e` is an adapter refusing its own configuration, such as a disabled service account or an unknown region,
+  rather than a provider's answer. Adapters tag those `:status-code`; only a provider's answer carries `:status`."
+  [e]
+  (let [{:keys [status status-code]} (ex-data e)]
+    (boolean (and (nil? status)
+                  (number? status-code)
+                  (<= 400 status-code 499)
+                  (not (contains? retryable-statuses status-code))
+                  (not (unreachable? e))))))
+
 (defn- expired?
   [{:keys [fatal? recorded-at]}]
   (and (not fatal?)
@@ -101,12 +122,14 @@
 
 (defn record-exception!
   "Record that a request to `conn-key` failed with `e`, classifying it by the HTTP status the provider answered with.
-  A status that rejects the request itself records nothing."
+  A status that rejects the request itself records nothing; an adapter refusing the connection's own configuration
+  (see [[misconfigured?]]) is fatal."
   [conn-key e]
-  (let [status (exception-status e)]
-    (when (and conn-key (not (request-rejected-status? status)))
+  (let [status         (exception-status e)
+        misconfigured? (misconfigured? e)]
+    (when (and conn-key (not (request-rejected-status? (:status (ex-data e)))))
       (swap! failures assoc conn-key {:message     (or (ex-message e) "The provider could not be reached.")
-                                      :fatal?      (fatal-status? status)
+                                      :fatal?      (or misconfigured? (fatal-status? status))
                                       :status      status
                                       :recorded-at (now-ms)})
       ;; the message, not the throwable: its ex-data deliberately carries the raw response body — kept out of
