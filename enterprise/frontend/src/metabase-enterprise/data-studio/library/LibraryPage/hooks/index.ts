@@ -1,3 +1,3 @@
-export { useLibraryCollections } from "./useLibraryCollections";
-export { useLibraryCollectionTree } from "./useLibraryCollectionTree";
-export { useLibrarySearch } from "./useLibrarySearch";
+export { useLibraryCollections } from "./use-library-collections";
+export { useLibraryCollectionTree } from "./use-library-collection-tree";
+export { useLibrarySearch } from "./use-library-search";

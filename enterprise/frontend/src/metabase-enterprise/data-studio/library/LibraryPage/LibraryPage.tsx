@@ -25,7 +25,7 @@ import {
   useLibraryCollections,
   useLibrarySearch,
 } from "./hooks";
-import type { LibrarySearchModel } from "./hooks/useLibrarySearch";
+import type { LibrarySearchModel } from "./hooks/use-library-search";
 import {
   getArchiveLibraryCollectionsMessage,
   getWritableCollection,
