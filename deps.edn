@@ -34,6 +34,8 @@
                                              :exclusions [com.sun.mail/jakarta.mail]}
   com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.7"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
   com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.7"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
+  com.fasterxml.jackson.dataformat/jackson-dataformat-cbor  {:mvn/version "2.21.7"} ; pinned: cheshire pulls 2.21.1
+  com.fasterxml.jackson.dataformat/jackson-dataformat-smile {:mvn/version "2.21.7"} ; pinned: cheshire pulls 2.21.1
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
@@ -137,8 +139,8 @@
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
-  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.85"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.85.2"}
+  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.86"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.86"}
   org.clj-commons/claypoole                 {:mvn/version "1.2.2"}              ; Threadpool tools for Clojure
   org.clj-commons/dirigiste                 {:mvn/version "1.0.4"}              ; Instrumented object pooling
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
