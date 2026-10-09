@@ -91,6 +91,16 @@ export const Toast = ({
         </Text>
         {hasActions && (
           <Group gap="sm" align="center" wrap="nowrap">
+            {secondaryText && onSecondary && (
+              <Button
+                variant={isColored ? "default" : "on-dark-secondary"}
+                size="sm"
+                onClick={onSecondary}
+                aria-label={secondaryAriaLabel}
+              >
+                {secondaryText}
+              </Button>
+            )}
             {onConfirm && (
               <Button
                 variant={isColored ? "filled" : "on-dark-primary"}
@@ -100,16 +110,6 @@ export const Toast = ({
                 aria-label={confirmAriaLabel}
               >
                 {confirmText}
-              </Button>
-            )}
-            {secondaryText && onSecondary && (
-              <Button
-                variant={isColored ? "default" : "on-dark-secondary"}
-                size="sm"
-                onClick={onSecondary}
-                aria-label={secondaryAriaLabel}
-              >
-                {secondaryText}
               </Button>
             )}
             {rightSection}

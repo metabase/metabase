@@ -190,17 +190,6 @@ function UndoToast({
           )}
         </Flex>
         <Flex className={S.controls} align="center" gap="sm" flex="0 0 auto">
-          {undo.actions && undo.actions.length > 0 && (
-            <Button
-              className={S.actionButton}
-              variant={getPrimaryButtonVariant(variant, dark)}
-              color={isColored ? variant : undefined}
-              size="sm"
-              onClick={onUndo}
-            >
-              {undo.actionLabel ?? t`Undo`}
-            </Button>
-          )}
           {undo.extraAction && (
             <Button
               className={S.actionButton}
@@ -214,6 +203,17 @@ function UndoToast({
               }}
             >
               {undo.extraAction.label}
+            </Button>
+          )}
+          {undo.actions && undo.actions.length > 0 && (
+            <Button
+              className={S.actionButton}
+              variant={getPrimaryButtonVariant(variant, dark)}
+              color={isColored ? variant : undefined}
+              size="sm"
+              onClick={onUndo}
+            >
+              {undo.actionLabel ?? t`Undo`}
             </Button>
           )}
           {undo.canDismiss && (
