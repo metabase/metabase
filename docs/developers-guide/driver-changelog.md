@@ -6,6 +6,13 @@ title: Driver interface changelog
 
 ## Metabase 0.65.0
 
+- `metabase.driver.sql-jdbc.sync/describe-nested-field-columns-for-fields` replaces
+  `metabase.driver.sql-jdbc.sync/describe-nested-field-columns`, which is deprecated and will be removed in a future
+  release. The new method also receives `fields`, the table's column metadata that sync just fetched, so it doesn't
+  need to list the table's columns again. Drivers that support `:nested-field-columns` should implement
+  `describe-nested-field-columns-for-fields`. Until the old method is removed, drivers that only implement
+  `describe-nested-field-columns` keep working: Metabase calls it in place of the new method.
+
 - `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.

@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -108,7 +109,7 @@
                   :json-unfolding false,
                   :visibility-type :normal,
                   :nfc-path [:json_bit "title"]}}
-               (sql-jdbc.sync/describe-nested-field-columns
+               (sql-jdbc.tx/describe-nested-field-columns
                 driver/*driver*
                 (mt/db)
                 {:name "json" :id (mt/id "json")})))))))
@@ -120,7 +121,7 @@
       json
       (testing "Nested field column listing, but big"
         (is (= sql-jdbc.describe-table/max-nested-field-columns
-               (count (sql-jdbc.sync/describe-nested-field-columns
+               (count (sql-jdbc.tx/describe-nested-field-columns
                        driver/*driver*
                        (mt/db)
                        {:name "big_json" :id (mt/id "big_json")}))))))))

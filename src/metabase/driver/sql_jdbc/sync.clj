@@ -23,6 +23,7 @@
   database-type->base-type
   db-default-timezone
   describe-nested-field-columns
+  describe-nested-field-columns-for-fields
   excluded-schemas
   fallback-metadata-query
   filtered-syncable-schemas

@@ -38,7 +38,7 @@
   (let [driver (driver.u/database->driver database)]
     (cond-> fields
       (driver.u/supports? driver :nested-field-columns database)
-      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
+      (set/union (sql-jdbc.sync/describe-nested-field-columns-for-fields driver database table fields)))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's

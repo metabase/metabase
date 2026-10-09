@@ -5,6 +5,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
@@ -20,6 +22,22 @@
   (initialize/initialize-if-needed! :plugins)
   (driver/add-parent! driver :sql-jdbc/test-extensions)
   (log/infof "Added SQL JDBC test extensions for %s ➕" driver))
+
+(defn table-fields
+  "The column metadata of `table` that sync passes to [[sql-jdbc.sync/describe-nested-field-columns-for-fields]].
+  `table` only needs `:name` and, for drivers with schemas, `:schema`."
+  [driver database table]
+  (if (driver.u/supports? driver :describe-fields database)
+    (into #{} (driver/describe-fields driver database
+                                      :table-names  [(:name table)]
+                                      :schema-names (some-> (:schema table) vector)))
+    (:fields (driver/describe-table driver database table))))
+
+(defn describe-nested-field-columns
+  "Call [[sql-jdbc.sync/describe-nested-field-columns-for-fields]] for `table` with the column metadata sync would pass
+  it. `table` only needs `:id`, `:name` and, for drivers with schemas, `:schema`."
+  [driver database table]
+  (sql-jdbc.sync/describe-nested-field-columns-for-fields driver database table (table-fields driver database table)))
 
 (mu/defmethod tx/dataset-already-loaded? :sql-jdbc/test-extensions
   [driver :- :keyword

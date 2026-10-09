@@ -105,10 +105,33 @@
 
 (defmulti describe-nested-field-columns
   "Return information about the nestable columns in a `table`. Required for drivers that support
-  `:nested-field-columns`. Results should match the [[metabase.sync.interface/NestedFCMetadata]] schema."
-  {:added "0.43.0", :arglists '([driver database table])}
+  `:nested-field-columns`. Results should match the [[metabase.sync.interface/NestedFCMetadata]] schema.
+
+  DEPRECATED: implement [[describe-nested-field-columns-for-fields]] instead, which is given the Table's column
+  metadata rather than listing the columns again."
+  {:added "0.43.0", :arglists '([driver database table]), :deprecated "0.65.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti describe-nested-field-columns-for-fields
+  "Return information about the nestable columns in a `table`, given `fields`: the Table's column metadata that sync
+  just fetched from the warehouse (via [[metabase.driver/describe-fields]] or [[metabase.driver/describe-table]]), so
+  implementations don't need to list the columns again. Results should match the
+  [[metabase.sync.interface/NestedFCMetadata]] schema.
+
+  Drivers that support `:nested-field-columns` should implement this. Until the deprecated
+  [[describe-nested-field-columns]] is removed, drivers that only implement it keep working: it is called in place of
+  this method."
+  {:added "0.65.0", :arglists '([driver database table fields])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+;; used for compatibility with drivers only implementing describe-nested-field-columns
+;; remove when describe-nested-field-columns is deleted
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod describe-nested-field-columns-for-fields ::driver/driver
+  [driver database table _fields]
+  (describe-nested-field-columns driver database table))
 
 (defmulti current-user-table-privileges
   "Returns the rows of data as arrays needed to populate the table_privileges table

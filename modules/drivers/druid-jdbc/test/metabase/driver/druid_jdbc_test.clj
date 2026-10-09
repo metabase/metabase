@@ -10,7 +10,6 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -21,6 +20,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -151,7 +151,7 @@
       (mt/with-temporary-setting-values [driver.settings/nested-field-columns-value-length-limit 10]
         (testing "nested fields when length limit is exceeded"
           (is (= #{}
-                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))
+                 (sql-jdbc.tx/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))
       (testing "nested fields when length limit is exceeded"
         (is (= #{{:name "json_bit → noop",
                   :database-type "timestamp",
@@ -216,7 +216,7 @@
                   :json-unfolding false,
                   :visibility-type :normal,
                   :nfc-path [:json_bit "title"]}}
-               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))))
+               (sql-jdbc.tx/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))))
 
 (defn- db-dbms-version [db-or-id]
   (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
