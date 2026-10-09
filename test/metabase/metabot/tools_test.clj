@@ -124,12 +124,18 @@
     (is (empty? tools))))
 
 (deftest ^:parallel get-tools-for-profile-metadata-test
-  (let [tools (tools-for-profile :embedding_next)]
-    (doseq [[tool-name tool-var] tools]
-      (is (var? tool-var))
-      (is (string? tool-name))
-      (is (= tool-name (:tool-name (meta tool-var))))
-      (is (some? (:schema (meta tool-var)))))))
+  (testing "a profile's registry is keyed by the name each tool declares, whether that tool is a
+           record or still an `mu/defn` var. The declaration is the source of truth either way —
+           reading `:tool-name` off the var only worked while every tool was the second kind."
+    (let [tools (tools-for-profile :embedding_next)]
+      (is (seq tools))
+      (doseq [[tool-name tool-var] tools]
+        (is (var? tool-var))
+        (is (string? tool-name))
+        (let [{declared-name :name :keys [description args]} (tools.legacy/declaration-of tool-var)]
+          (is (= tool-name declared-name))
+          (is (string? description))
+          (is (some? args)))))))
 
 (deftest search-tool-test
   (testing "search-tool var has valid metadata"

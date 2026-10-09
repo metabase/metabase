@@ -27,6 +27,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
@@ -678,9 +679,12 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map {:closed true}
-   [:uris [:sequential ms/NonBlankString]]])
+  "Request shape for /v1/read-resource: the tool's own published arguments.
+
+  Taken from the tool rather than written out again, so this endpoint and the agent loop offer the
+  same shape and the same limits. Before, this was a hand-written copy that had already lost the
+  5-URI cap the tool enforces."
+  (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)))
 
 (mr/def ::read-resource-item
   "One fetched resource. Either `:content` (success) or `:error` (failure) is present."
@@ -696,12 +700,22 @@
    [:resources [:sequential ::read-resource-item]]
    [:output    :string]])
 
+(def ^:private read-resource-ctx
+  "The tool context for this endpoint.
+
+  `:tool-names` decides which recovery steps a per-URI failure keeps: a step is dropped unless the
+  caller has every tool its text names. This API publishes `search` (see `/v1/search` below), so the
+  \"find it with search\" steps survive here. Renaming that endpoint's tool drops those steps rather
+  than sending the caller at something it does not have, which is the point of `:uses`."
+  {:tool-names #{"search"}})
+
 (api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.
 
-  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,
-  which validates URIs, fetches entities with per-URI permission checks, and
-  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call."
+  Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent
+  loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
+  A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
+  that did read. Up to 5 URIs per call, rejected as a 400 by `::read-resource-request`."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
@@ -712,15 +726,10 @@
   [_route-params
    _query-params
    body :- ::read-resource-request]
-  (try
-    (metabot-resources/read-resource body)
-    (catch clojure.lang.ExceptionInfo e
-      ;; The Metabot dispatcher's "too many URIs" guard throws ex-info without a
-      ;; :status-code. Surface it as a 400 to the HTTP boundary rather than the
-      ;; default 500.
-      (throw (ex-info (ex-message e)
-                      (merge {:status-code 400} (ex-data e))
-                      e)))))
+  ;; Only the two keys this endpoint publishes: the tool also returns `:structured-output` and a
+  ;; `:data-parts` title, which are the agent loop's to read.
+  (select-keys (tools.core/call metabot-resources/read-resource-tool body read-resource-ctx)
+               [:resources :output]))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 

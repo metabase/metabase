@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -107,6 +108,22 @@
         result (-> (into [] (self.core/tool-executor-xf tools) chunks) last :result)]
     (when (:error result)
       (:output result))))
+
+(defn call-tool
+  "Call `tool` with `arguments` and return its `tools.core/result`.
+
+  What a test uses in place of invoking a tool var as a function. A converted tool is a record, so
+  `(the-tool args)` no longer works and the caller should not have to know whether this one does one
+  item or several — `tools.core/call` decides that. `tool` may be the record, or a var holding one.
+
+  `tool-names` is the profile the recovery steps are filtered against; it defaults to a profile that
+  has `search`, since most steps offer it. Pass a smaller set to assert a step disappears.
+
+  This is not the agent boundary: arguments are not validated and the scope is not checked. Use
+  [[tool-boundary-error]] for those."
+  ([tool arguments] (call-tool tool arguments #{"search"}))
+  ([tool arguments tool-names]
+   (tools.core/call (cond-> tool (var? tool) deref) arguments {:tool-names tool-names})))
 
 (defn mock-llm-response
   "Create a mock LLM response (reducible) from high-level parts."
