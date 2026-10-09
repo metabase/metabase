@@ -233,6 +233,10 @@
      :deletion-conflicts     (into (spec/check-deletion-conflicts imported-data)
                                    (spec/check-content-deletion-conflicts imported-data))}))
 
+(def app-db-batch-size
+  "Max rows per select/update batch, to keep IN-lists and CASE expressions bounded."
+  500)
+
 (defn- import-content-metadata
   "Content-hash entries for imported `rows` ({:model_type :model_id}), re-serializing each entity once to hash
   it. `repo-paths` supplies the real repo path for entity-id models (else the freshly computed one).
@@ -287,13 +291,13 @@
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
   [rows repo-paths]
   (serdes/with-cache
-    (doseq [chunk (partition-all remote-sync.db/app-db-batch-size rows)]
+    (doseq [chunk (partition-all app-db-batch-size rows)]
       (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
 
 (defn- in-batches
-  "The concatenated results of `f` called on `ids` in batches of [[remote-sync.db/app-db-batch-size]]."
+  "The concatenated results of `f` called on `ids` in batches of [[app-db-batch-size]]."
   [f ids]
-  (into [] (mapcat #(f (vec %))) (partition-all remote-sync.db/app-db-batch-size ids)))
+  (into [] (mapcat #(f (vec %))) (partition-all app-db-batch-size ids)))
 
 (defn- remove-unsynced-user-settings!
   "Deletes the TableUserSettings, FieldUserSettings, and Dimensions of the Tables published in
@@ -312,15 +316,15 @@
           kept-dims     (into (imported "Dimension") (keep #(:id (serdes/load-find-local %))) (get paths "Field"))]
       (doseq [batch (->> (in-batches remote-sync.db/table-ids-with-user-settings table-ids)
                          (remove kept-tables)
-                         (partition-all remote-sync.db/app-db-batch-size))]
+                         (partition-all app-db-batch-size))]
         (remote-sync.db/delete-table-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings (remove legacy-tables table-ids))
                          (remove kept-fields)
-                         (partition-all remote-sync.db/app-db-batch-size))]
+                         (partition-all app-db-batch-size))]
         (remote-sync.db/delete-field-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-dimensions table-ids)
                          (remove kept-dims)
-                         (partition-all remote-sync.db/app-db-batch-size))]
+                         (partition-all app-db-batch-size))]
         (remote-sync.db/delete-dimensions! (vec batch)))
       table-ids)))
 
@@ -351,7 +355,7 @@
                       :model_table_name    table_name
                       :status              "synced"
                       :status_changed_at   timestamp})]
-    (doseq [batch (partition-all remote-sync.db/app-db-batch-size (concat table-rows field-rows))]
+    (doseq [batch (partition-all app-db-batch-size (concat table-rows field-rows))]
       (remote-sync.db/insert-rsos! (vec batch)))))
 
 (defn- branch-changed-since-scheduling?
@@ -913,7 +917,7 @@
   "Builds chunks of maximum size based on model type."
   [rows]
   (for [[model-type rows] (group-by :model_type rows)
-        chunk-rows (partition-all remote-sync.db/app-db-batch-size rows)]
+        chunk-rows (partition-all app-db-batch-size rows)]
     {:model_type model-type :rows chunk-rows}))
 
 (defn- extract-chunk
@@ -1187,7 +1191,7 @@
   scope: the incremental export passes only its write set, a full export passes every RemoteSyncObject id."
   [ids synced sync-timestamp]
   (let [by-id (u/index-by :id synced)]
-    (doseq [id-chunk (partition-all remote-sync.db/app-db-batch-size ids)]
+    (doseq [id-chunk (partition-all app-db-batch-size ids)]
       (remote-sync.db/mark-rsos-synced! id-chunk (select-keys by-id id-chunk) sync-timestamp))))
 
 (defn- full-export!

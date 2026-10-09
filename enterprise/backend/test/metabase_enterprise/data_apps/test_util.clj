@@ -5,7 +5,6 @@
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.actions.core :as actions]
    [metabase.collections.core :as collections]
-   [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -203,13 +202,3 @@
       (finally
         (when-not existing
           (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
-
-(defn do-with-synced-library!
-  "Calls `f` with the root data and metrics library IDs, with Git sync enabled for the call."
-  [f]
-  (do-with-library!
-   (fn [{:keys [data-id metrics-id] :as library}]
-     (with-library-synced
-       (mt/with-temp-vals-in-db :model/Collection data-id {:is_remote_synced true}
-         (mt/with-temp-vals-in-db :model/Collection metrics-id {:is_remote_synced true}
-           (f library)))))))

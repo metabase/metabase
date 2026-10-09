@@ -3,12 +3,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.db :as remote-sync.db]))
 
-(defenterprise previously-synced-ids
-  "Returns ids with last-known Git presence, including pending edits with stored representation metadata."
-  metabase-enterprise.remote-sync.core
-  [_model-key _ids]
-  #{})
-
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
 

@@ -17,7 +17,6 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -96,51 +95,49 @@
     (is (= #{10} @library-tables))))
 
 (deftest full-pipeline-end-to-end-test
-  (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
-    (mt/dataset test-data
-      (mt/with-temp-copy-of-db
-        (mt/with-actions-enabled
-          (data-apps.tu/do-with-synced-library!
-           (fn [{:keys [data-id metrics-id]}]
-             (let [mp            (mt/metadata-provider)
-                   orders-query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                   revenue-query (lib/aggregate orders-query
-                                                (lib/sum (lib.metadata/field mp (mt/id :orders :total))))]
-               (t2/update! :model/Table (mt/id :orders) {:is_published true, :collection_id data-id})
-               (mt/with-temp [:model/Collection synced {:namespace "data-actions", :is_remote_synced true}
-                              :model/Card _metric {:name "Order revenue", :database_id (mt/id), :table_id (mt/id :orders)
-                                                   :type :metric, :display :scalar, :collection_id metrics-id
-                                                   :dataset_query revenue-query}
-                              :model/Card model {:name "Order model", :database_id (mt/id), :table_id (mt/id :orders)
-                                                 :type :model
-                                                 :dataset_query orders-query
-                                                 :result_metadata [{:name "total", :display_name "Total"
-                                                                    :base_type :type/Float
-                                                                    :field_ref [:field (mt/id :orders :total) nil]
-                                                                    :id (mt/id :orders :total)}]}
-                              :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
-                              :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}
-                              :model/Action standalone {:name "Discount order", :type :query, :collection_id (:id synced)}
-                              :model/QueryAction _ {:action_id     (:id standalone)
-                                                    :dataset_query (lib/native-query mp "UPDATE orders SET discount = 0 WHERE id = {{id}}")}]
-                 (mt/with-current-user (mt/user->id :crowberto)
-                   (let [schema (schemas/create-schema (schemas/fetch-items) test-info)
-                         body   (schemas/render-typescript schema)]
-                     (testing "the library's table and metric and the model-less action land in the schema with their real relationships"
-                       (is (=? {:generatedAt "2026-01-01T00:00:00Z"
-                                :metabase    {:instanceUrl "https://metabase.example.com"}
-                                :tables      {"orders" {:fields {"total" {:jsType "number"}}}}
-                                :metrics     {"orderRevenue" {:mappedTableIds [(mt/id :orders)]
-                                                              :columns        [{:displayName "Sum of Total"
-                                                                                :jsType      "number"}]}}
-                                :actions     {"discountOrder" {:kind "action", :id (:id standalone), :type "query"}}}
-                               schema)))
-                     (testing "saved questions are absent from the schema"
-                       (is (not (contains? schema :questions))))
-                     (testing "an action that belongs to a model stays out"
-                       (is (not (str/includes? body "updateOrder"))))
-                     (testing "the rendered module carries the real entities"
-                       (is (str/includes? body "orders: {"))
-                       (is (str/includes? body "name: \"Order revenue\""))
-                       (is (str/includes? body "discountOrder: {"))
-                       (is (str/ends-with? body "export default schema;\n"))))))))))))))
+  (mt/dataset test-data
+    (mt/with-temp-copy-of-db
+      (mt/with-actions-enabled
+        (data-apps.tu/do-with-library!
+         (fn [{:keys [data-id metrics-id]}]
+           (let [mp            (mt/metadata-provider)
+                 orders-query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                 revenue-query (lib/aggregate orders-query
+                                              (lib/sum (lib.metadata/field mp (mt/id :orders :total))))]
+             (t2/update! :model/Table (mt/id :orders) {:is_published true, :collection_id data-id})
+             (mt/with-temp [:model/Card _metric {:name "Order revenue", :database_id (mt/id), :table_id (mt/id :orders)
+                                                 :type :metric, :display :scalar, :collection_id metrics-id
+                                                 :dataset_query revenue-query}
+                            :model/Card model {:name "Order model", :database_id (mt/id), :table_id (mt/id :orders)
+                                               :type :model
+                                               :dataset_query orders-query
+                                               :result_metadata [{:name "total", :display_name "Total"
+                                                                  :base_type :type/Float
+                                                                  :field_ref [:field (mt/id :orders :total) nil]
+                                                                  :id (mt/id :orders :total)}]}
+                            :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
+                            :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}
+                            :model/Action standalone {:name "Discount order", :type :query}
+                            :model/QueryAction _ {:action_id     (:id standalone)
+                                                  :dataset_query (lib/native-query mp "UPDATE orders SET discount = 0 WHERE id = {{id}}")}]
+               (mt/with-current-user (mt/user->id :crowberto)
+                 (let [schema (schemas/create-schema (schemas/fetch-items) test-info)
+                       body   (schemas/render-typescript schema)]
+                   (testing "the library's table and metric and the model-less action land in the schema with their real relationships"
+                     (is (=? {:generatedAt "2026-01-01T00:00:00Z"
+                              :metabase    {:instanceUrl "https://metabase.example.com"}
+                              :tables      {"orders" {:fields {"total" {:jsType "number"}}}}
+                              :metrics     {"orderRevenue" {:mappedTableIds [(mt/id :orders)]
+                                                            :columns        [{:displayName "Sum of Total"
+                                                                              :jsType      "number"}]}}
+                              :actions     {"discountOrder" {:kind "action", :id (:id standalone), :type "query"}}}
+                             schema)))
+                   (testing "saved questions are absent from the schema"
+                     (is (not (contains? schema :questions))))
+                   (testing "an action that belongs to a model stays out"
+                     (is (not (str/includes? body "updateOrder"))))
+                   (testing "the rendered module carries the real entities"
+                     (is (str/includes? body "orders: {"))
+                     (is (str/includes? body "name: \"Order revenue\""))
+                     (is (str/includes? body "discountOrder: {"))
+                     (is (str/ends-with? body "export default schema;\n")))))))))))))

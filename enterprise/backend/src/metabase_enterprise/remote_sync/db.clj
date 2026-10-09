@@ -870,25 +870,3 @@
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))
-
-(def app-db-batch-size
-  "Max rows per select/update batch, to keep IN-lists and CASE expressions bounded."
-  500)
-
-(mu/defn previously-synced-ids
-  "Returns tracked ids with evidence of a successful synchronization."
-  [model-type :- :string
-   ids        :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :model_id :model/RemoteSyncObject
-                    {:where [:and
-                             [:= :model_type model-type]
-                             [:in :model_id ids]
-                             [:or
-                              [:= :status "synced"]
-                              [:and [:= :status "update"]
-                                ; path to serialized representation should exist for a successful sync
-                               [:not= :file_path nil]
-                               [:not= :file_path ""]
-                               ; a content hash should exist for a successful sync
-                               [:not= :content_hash nil]
-                               [:not= :content_hash ""]]]]}))
