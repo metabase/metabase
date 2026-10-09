@@ -16,6 +16,7 @@ import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+import { GoalLineWarnings } from "metabase/visualizations/visualizations/CartesianChart/GoalLineWarnings";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 import {
   extractRemappings,
@@ -25,6 +26,7 @@ import {
   getBoxPlotTooltipOption,
   getChartLayout,
   getDashboardAdjustedSettings,
+  getGoalLineParams,
   getLegendItems,
   useClickedStateTooltipSync,
   useCloseTooltipOnScroll,
@@ -83,11 +85,11 @@ function BoxPlotInner({
     [originalSettings, height, width, autoAdjustSettings],
   );
 
-  const { status: goalStatus, settings } = useResolvedGoalSettings(
-    card,
-    rawSeries[0].data,
-    adjustedSettings,
-  );
+  const {
+    status: goalStatus,
+    settings,
+    errors: goalErrors,
+  } = useResolvedGoalSettings(card, rawSeries[0].data, adjustedSettings);
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
@@ -251,6 +253,21 @@ function BoxPlotInner({
               isVisualizer={isVisualizer}
               chartInstance={chartInstance}
             />
+            {isQueryBuilder && goalErrors.length > 0 && (
+              <GoalLineWarnings
+                chartInstance={chartInstance}
+                errors={goalErrors}
+                goalLineParams={getGoalLineParams({
+                  ...chartModel,
+                  dataset: chartModel.boxDataset,
+                })}
+                panelCount={1}
+                plotLeft={layoutModel.adjustedPadding.left}
+                plotRight={chartSize.width - layoutModel.adjustedPadding.right}
+                renderingContext={renderingContext}
+                settings={settings}
+              />
+            )}
           </ResponsiveEChartsRenderer>
         </CartesianChartLegendLayout>
       )}

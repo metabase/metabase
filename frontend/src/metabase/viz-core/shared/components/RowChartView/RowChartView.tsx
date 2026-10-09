@@ -36,9 +36,11 @@ export interface RowChartViewProps<TDatum> {
   xTicks: number[];
   goal: {
     label: string;
+    labelWidth: number;
     value: number;
     position: "left" | "right";
   } | null;
+  goalAdornment?: React.ReactNode;
   theme: RowChartTheme;
   margin: Margin;
   innerWidth: number;
@@ -70,6 +72,7 @@ const RowChartView = <TDatum,>({
   yScale,
   seriesData,
   goal,
+  goalAdornment,
   theme,
   margin,
   labelsFormatter,
@@ -223,8 +226,10 @@ const RowChartView = <TDatum,>({
             x={goalLineX}
             height={innerHeight}
             label={goal.label}
+            labelWidth={goal.labelWidth}
             style={theme.goal}
             position={goal.position}
+            adornment={goalAdornment}
           />
         )}
 

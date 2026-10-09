@@ -53,6 +53,32 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
   };
 }
 
+export type GoalLineLabelLayout = {
+  x: number;
+  y: number;
+  align: "left" | "right";
+};
+
+export function getGoalLineLabelLayout({
+  goalY,
+  plotLeft,
+  plotRight,
+  labelOnLeft,
+  fontSize,
+}: {
+  goalY: number;
+  plotLeft: number;
+  plotRight: number;
+  labelOnLeft: boolean;
+  fontSize: number;
+}): GoalLineLabelLayout {
+  return {
+    x: labelOnLeft ? plotLeft : plotRight,
+    y: goalY - fontSize - CHART_STYLE.goalLine.label.margin,
+    align: labelOnLeft ? "left" : "right",
+  };
+}
+
 export function getGoalLineSeriesOption(
   { dataset, isNormalized, toEChartsAxisValue, labelOnLeft }: GoalLineParams,
   settings: ComputedVisualizationSettings,
@@ -104,21 +130,25 @@ export function getGoalLineSeriesOption(
         },
       };
 
-      const align = labelOnLeft ? ("left" as const) : ("right" as const);
-      const labelX = labelOnLeft ? xStart : xEnd;
-      const labelY = y - fontSize - CHART_STYLE.goalLine.label.margin;
+      const labelLayout = getGoalLineLabelLayout({
+        goalY: y,
+        plotLeft: xStart,
+        plotRight: xEnd,
+        labelOnLeft,
+        fontSize,
+      });
 
       const label = {
         type: "text" as const,
-        x: labelX,
-        y: labelY,
+        x: labelLayout.x,
+        y: labelLayout.y,
         blur: {
           style: {
             opacity: 1,
           },
         },
         style: {
-          align,
+          align: labelLayout.align,
           text: settings["graph.goal_label"] ?? "",
           fontFamily: renderingContext.fontFamily,
           fontSize,

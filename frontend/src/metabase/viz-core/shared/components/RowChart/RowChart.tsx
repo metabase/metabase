@@ -1,5 +1,5 @@
 import type { NumberValue } from "d3-scale";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
@@ -35,6 +35,8 @@ export interface RowChartProps<TDatum> {
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
 
   goal?: ChartGoal | null;
+  // drawn next to the goal label
+  goalAdornment?: ReactNode;
   theme: RowChartTheme;
   stackOffset: StackOffset;
   labelledSeries?: string[] | null;
@@ -76,6 +78,7 @@ export const RowChart = <TDatum,>({
   seriesColors,
 
   goal,
+  goalAdornment,
   theme,
   stackOffset,
   labelledSeries,
@@ -266,6 +269,7 @@ export const RowChart = <TDatum,>({
       xScale={paddedXScale}
       yScale={yScale}
       goal={rowChartGoal}
+      goalAdornment={goalAdornment}
       hoveredData={hoveredData}
       yTickFormatter={yTickFormatter}
       xTickFormatter={xTickFormatter}

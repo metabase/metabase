@@ -107,6 +107,7 @@ export const getRowChartGoal = (
 
   return {
     ...goal,
+    labelWidth,
     position,
   };
 };

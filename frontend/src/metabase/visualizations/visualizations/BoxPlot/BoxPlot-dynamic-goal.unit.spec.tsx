@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
@@ -34,6 +35,7 @@ const ROWS = [
 ];
 
 const GOAL_LABEL = "Target";
+const GOAL_ERROR = "Couldn't load this value";
 
 const ANSWERED = createMockReferencedEntitiesResults({
   column: "goal",
@@ -42,9 +44,11 @@ const ANSWERED = createMockReferencedEntitiesResults({
 
 const FAILED = createMockFailedReferencedEntitiesResults();
 
-async function setup(rawSeries: RawSeries) {
+async function setup(rawSeries: RawSeries, { isQueryBuilder = false } = {}) {
   jest.useFakeTimers();
-  renderWithProviders(<Visualization rawSeries={rawSeries} />);
+  renderWithProviders(
+    <Visualization rawSeries={rawSeries} isQueryBuilder={isQueryBuilder} />,
+  );
   // ExplicitSize sets the chart dimensions after mounting
   await act(async () => {
     jest.advanceTimersByTime(0);
@@ -92,22 +96,29 @@ describe("box plot dynamic goal", () => {
     });
   });
 
-  it("draws the goal line at 0 when fetching the reference fails", async () => {
+  it("draws the goal line at 0 with a warning in the query builder when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
 
-    await setup(createSeries());
+    await setup(createSeries(), { isQueryBuilder: true });
 
-    expect(await screen.findByText(GOAL_LABEL)).toBeInTheDocument();
+    expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
+    expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
     expect(screen.getByText("Gadget")).toBeInTheDocument();
+
+    await userEvent
+      .setup({ advanceTimers: jest.advanceTimersByTime })
+      .hover(screen.getByLabelText("Goal warning"));
+    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
   });
 
-  it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
+  it("draws the goal line at 0 without a warning outside the query builder", async () => {
     await setup(createSeries(FAILED));
 
     expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
     expect(screen.getByText("Gadget")).toBeInTheDocument();
     // the answered goal would stretch the y-axis up to it
     expect(screen.queryByText("250")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });
