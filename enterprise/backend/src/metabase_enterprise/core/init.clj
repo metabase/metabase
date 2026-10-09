@@ -15,6 +15,7 @@
    [metabase-enterprise.custom-viz-plugin.init]
    [metabase-enterprise.data-apps.init]
    [metabase-enterprise.data-complexity-score.init]
+   [metabase-enterprise.data-sensitivity.init]
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.entity-retrieval.init]

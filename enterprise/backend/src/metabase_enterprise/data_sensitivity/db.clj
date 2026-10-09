@@ -2,9 +2,12 @@
   "Application database queries for the data-sensitivity module. Every function here is a direct Toucan 2 call
   with no additional logic."
   (:require
+   [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
+   [metabase-enterprise.data-sensitivity.models.metadata-generation-suggestion :as suggestion]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -75,3 +78,64 @@
   (t2/with-transaction [_conn]
     (doseq [[label field-ids] field-ids-by-label]
       (t2/update! :model/Field :id [:in field-ids] {:data_sensitivity label}))))
+
+;;; Metadata generation runs
+
+(mu/defn insert-run! :- (ms/InstanceOf :model/MetadataGenerationRun)
+  "Insert a MetadataGenerationRun and return it."
+  [run :- ::run/new-run]
+  (t2/insert-returning-instance! :model/MetadataGenerationRun run))
+
+(mu/defn run :- [:maybe (ms/InstanceOf :model/MetadataGenerationRun)]
+  "The MetadataGenerationRun with `run-id`, or nil."
+  [run-id :- ms/PositiveInt]
+  (t2/select-one :model/MetadataGenerationRun :id run-id))
+
+(mu/defn run-status :- [:maybe :keyword]
+  "The status of the MetadataGenerationRun with `run-id`, or nil when it does not exist."
+  [run-id :- ms/PositiveInt]
+  (t2/select-one-fn :status :model/MetadataGenerationRun :id run-id))
+
+(mu/defn active-run :- [:maybe (ms/InstanceOf :model/MetadataGenerationRun)]
+  "The active MetadataGenerationRun of `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/MetadataGenerationRun :database_id database-id :is_active true))
+
+(mu/defn latest-runs :- [:sequential (ms/InstanceOf :model/MetadataGenerationRun)]
+  "The 20 newest MetadataGenerationRuns of `database-id`, newest first."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select :model/MetadataGenerationRun :database_id database-id {:order-by [[:id :desc]] :limit 20}))
+
+(mu/defn update-run-with-status! :- :int
+  "Apply `changes` to the MetadataGenerationRun with `run-id` when its status is `status`. Returns the number of rows
+  updated."
+  [run-id  :- ms/PositiveInt
+   status  :- :keyword
+   changes :- ::run/changes]
+  (t2/update! :model/MetadataGenerationRun :id run-id :status status changes))
+
+(mu/defn update-active-run! :- :int
+  "Apply `changes` to the MetadataGenerationRun with `run-id` when it is active. Returns the number of rows updated."
+  [run-id  :- ms/PositiveInt
+   changes :- ::run/changes]
+  (t2/update! :model/MetadataGenerationRun :id run-id :is_active true changes))
+
+(mu/defn canceling-run-ids :- [:set ms/PositiveInt]
+  "The ids among `run-ids` of the MetadataGenerationRuns whose status is `canceling`."
+  [run-ids :- [:sequential ms/PositiveInt]]
+  (if (seq run-ids)
+    (set (t2/select-pks-set :model/MetadataGenerationRun :id [:in run-ids] :status :canceling))
+    #{}))
+
+(mu/defn record-table! :- :boolean
+  "In one transaction, apply `changes` to the active MetadataGenerationRun with `run-id` and insert `suggestions`.
+  When the run is not active, writes nothing and returns false."
+  [run-id      :- ms/PositiveInt
+   changes     :- ::run/changes
+   suggestions :- [:sequential ::suggestion/new-suggestion]]
+  (t2/with-transaction [_conn]
+    (if (pos? (update-active-run! run-id changes))
+      (do (when (seq suggestions)
+            (t2/insert! :model/MetadataGenerationSuggestion suggestions))
+          true)
+      false)))

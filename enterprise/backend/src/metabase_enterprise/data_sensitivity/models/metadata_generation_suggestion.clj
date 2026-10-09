@@ -44,6 +44,19 @@
    [:created_at     some?]
    [:updated_at     some?]])
 
+(mr/def ::new-suggestion
+  "The columns a run sets when it inserts a suggestion."
+  [:map {:closed true}
+   [:run_id         ms/PositiveInt]
+   [:table_id       ms/PositiveInt]
+   [:field_id       ms/PositiveInt]
+   [:attribute      ::run/attribute]
+   [:source         ::source]
+   [:current_value  [:maybe :string]]
+   [:proposed_value :string]
+   [:confidence     [:maybe ::confidence]]
+   [:reasoning      [:maybe :string]]])
+
 (t2/deftransforms :model/MetadataGenerationSuggestion
   {:attribute  mi/transform-keyword
    :source     mi/transform-keyword

@@ -252,7 +252,7 @@
                    (.initCause e))))
         (or (ex-message e) (str (class e)))))))
 
-(defn- sample-connection-error
+(defn sample-connection-error
   "When `opts` ask for values and `database` cannot connect, the connection error; otherwise nil. Tested once per run
   so a dead database costs one connection timeout rather than one per table."
   [database opts]
@@ -263,7 +263,7 @@
 
 ;;; Classify
 
-(defn- assert-unique-names!
+(defn assert-unique-names!
   "Throw when two packet fields share a name. The model keys its entries by name, so a duplicate would join one
   entry to two fields."
   [table fields]

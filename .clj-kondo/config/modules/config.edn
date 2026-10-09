@@ -3789,7 +3789,7 @@
 
   enterprise/data-sensitivity
   {:team "Graphy"
-   :api  #{metabase-enterprise.data-sensitivity.api}
+   :api  #{metabase-enterprise.data-sensitivity.api metabase-enterprise.data-sensitivity.init}
    :uses #{api
            database-routing
            driver
@@ -3798,6 +3798,9 @@
            models
            permissions
            query-processor
+           request
+           run-tracking
+           task
            util
            util.config
            warehouse-schema-overlay
