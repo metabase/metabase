@@ -21,7 +21,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { ActionsPage } from "./ActionsPage";
+import { ActionListPage } from "./ActionListPage";
 
 type SetupOpts = {
   databases?: Database[];
@@ -46,7 +46,7 @@ function setup({ databases = [ACTIONS_DATABASE], actions = [] }: SetupOpts) {
     ],
   });
 
-  renderWithProviders(<Route path="/" element={<ActionsPage />} />, {
+  renderWithProviders(<Route path="/" element={<ActionListPage />} />, {
     withRouter: true,
     storeInitialState: createMockState({
       currentUser: createMockUser({ is_superuser: true }),
@@ -54,7 +54,7 @@ function setup({ databases = [ACTIONS_DATABASE], actions = [] }: SetupOpts) {
   });
 }
 
-describe("ActionsPage", () => {
+describe("ActionListPage", () => {
   beforeEach(() => {
     mockGetBoundingClientRect({ width: 1000, height: 1000 });
   });

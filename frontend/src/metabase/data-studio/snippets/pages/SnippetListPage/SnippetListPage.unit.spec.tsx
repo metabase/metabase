@@ -23,7 +23,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { SnippetsPage } from "./SnippetsPage";
+import { SnippetListPage } from "./SnippetListPage";
 
 type SetupOpts = {
   isEnterprise?: boolean;
@@ -73,13 +73,13 @@ function setup({ isEnterprise = false, user = NATIVE_WRITE_USER }: SetupOpts) {
     setupEnterpriseOnlyPlugin("snippets");
   }
 
-  renderWithProviders(<Route path="/" element={<SnippetsPage />} />, {
+  renderWithProviders(<Route path="/" element={<SnippetListPage />} />, {
     withRouter: true,
     storeInitialState: state,
   });
 }
 
-describe("SnippetsPage", () => {
+describe("SnippetListPage", () => {
   beforeEach(() => {
     reinitialize();
     mockGetBoundingClientRect({ width: 1000, height: 1000 });

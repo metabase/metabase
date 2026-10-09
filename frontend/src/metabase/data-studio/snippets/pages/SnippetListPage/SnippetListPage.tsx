@@ -32,7 +32,7 @@ const SNIPPET_COLLECTION_PICKER_OPTIONS = {
   canCreateCollections: false,
 };
 
-export function SnippetsPage() {
+export function SnippetListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { tree, isLoading, error } = useBuildSnippetTree();
   useErrorHandling(error);

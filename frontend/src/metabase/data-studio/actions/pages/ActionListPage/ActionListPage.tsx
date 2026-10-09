@@ -27,7 +27,7 @@ import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useBuildActionTree } from "../../hooks/use-build-action-tree";
 import { canCreateActions } from "../../utils";
 
-export function ActionsPage() {
+export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,

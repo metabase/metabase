@@ -8,8 +8,8 @@ import { Route } from "metabase/router";
  */
 const snippetsPage = () =>
   import(
-    /* webpackChunkName: "data-studio-snippets" */ "./pages/SnippetsPage"
-  ).then(({ SnippetsPage }) => ({ Component: SnippetsPage }));
+    /* webpackChunkName: "data-studio-snippets" */ "./pages/SnippetListPage"
+  ).then(({ SnippetListPage }) => ({ Component: SnippetListPage }));
 
 const newSnippetPage = () =>
   import(

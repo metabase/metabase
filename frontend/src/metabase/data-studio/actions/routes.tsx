@@ -5,8 +5,8 @@ import { Route } from "metabase/router";
  * The action pages, in one chunk, so moving between an action's tabs costs no fetch.
  */
 const actionsPage = () =>
-  import(/* webpackChunkName: "data-actions" */ "./pages/ActionsPage").then(
-    ({ ActionsPage }) => ({ Component: ActionsPage }),
+  import(/* webpackChunkName: "data-actions" */ "./pages/ActionListPage").then(
+    ({ ActionListPage }) => ({ Component: ActionListPage }),
   );
 
 const archivedActionsPage = () =>
