@@ -9,7 +9,10 @@ import { renderWithProviders } from "__support__/ui";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { Query } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { createMockModelResult } from "metabase-types/api/mocks";
+import {
+  createMockModelResult,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -19,10 +22,13 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
+import { EmbeddingDataPickerContextProvider } from "../context";
 
 interface SetupOpts {
   hasModels?: boolean;
+  hasMetrics?: boolean;
   entityTypes?: EmbeddingEntityType[];
+  contextEntityTypes?: EmbeddingEntityType[];
 }
 
 const DEFAULT_OPTS: Partial<SetupOpts> = {
@@ -31,30 +37,45 @@ const DEFAULT_OPTS: Partial<SetupOpts> = {
 
 export function setup({
   hasModels = DEFAULT_OPTS.hasModels,
+  hasMetrics = false,
   entityTypes,
+  contextEntityTypes,
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
 
   setupEmbeddingDataPickerDecisionEndpoints("staged");
 
-  if (hasModels) {
-    setupSearchEndpoints(createSearchResults());
-  } else {
-    setupSearchEndpoints([]);
-  }
+  setupSearchEndpoints([
+    ...(hasModels ? createModelSearchResults() : []),
+    ...(hasMetrics ? createMetricSearchResults() : []),
+  ]);
   setupDatabasesEndpoints([createDatabase()]);
 
-  renderWithProviders(
+  const picker = (
     <EmbeddingDataPicker
       query={query}
       stageIndex={0}
       canChangeDatabase={true}
+      hasMetrics={true}
       isDisabled={false}
       onChange={jest.fn()}
       title="Pick your starting data"
       placeholder="Pick your starting data"
       table={undefined}
-    />,
+    />
+  );
+
+  renderWithProviders(
+    contextEntityTypes ? (
+      <EmbeddingDataPickerContextProvider
+        entityTypes={contextEntityTypes}
+        dataPicker="staged"
+      >
+        {picker}
+      </EmbeddingDataPickerContextProvider>
+    ) : (
+      picker
+    ),
     entityTypes
       ? {
           storeInitialState: createMockState({
@@ -78,7 +99,7 @@ function createDatabase() {
   });
 }
 
-function createSearchResults() {
+function createModelSearchResults() {
   return [
     createMockModelResult({
       id: 1,
@@ -87,6 +108,16 @@ function createSearchResults() {
     createMockModelResult({
       id: 2,
       name: "People model",
+    }),
+  ];
+}
+
+function createMetricSearchResults() {
+  return [
+    createMockSearchResult({
+      id: 3,
+      name: "Revenue",
+      model: "metric",
     }),
   ];
 }

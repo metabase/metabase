@@ -23,6 +23,7 @@ type EmbeddingDataPickerProps = {
   title: string;
   placeholder: string;
   canChangeDatabase: boolean;
+  hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
 };
@@ -33,6 +34,7 @@ export function EmbeddingDataPicker({
   title,
   placeholder,
   canChangeDatabase,
+  hasMetrics,
   isDisabled,
   onChange,
 }: EmbeddingDataPickerProps) {
@@ -141,6 +143,7 @@ export function EmbeddingDataPicker({
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
+      canSelectMetric={hasMetrics && entityTypes.includes("metric")}
       popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget

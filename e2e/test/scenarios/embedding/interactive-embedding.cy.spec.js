@@ -1364,8 +1364,41 @@ describe("scenarios > embedding > full app", () => {
         }).as("getDatabases");
       });
 
-      it("should not be able to select a metric", () => {
+      it("should select a metric as the starting data source", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        cy.wait("@getDatabases");
+        selectCard({
+          cardName: ordersCountCardDetails.name,
+          cardType: "metric",
+          collectionNames: [],
+        });
+
+        // A metric becomes the aggregation on the table it is built from,
+        // rather than the source card a model or a question would become.
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText(ordersCountCardDetails.name)
+          .should("be.visible");
+      });
+
+      it("should not be able to join a metric", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        cy.wait("@getDatabases");
+        selectTable({ tableName: "Orders" });
+
+        H.getNotebookStep("data").button("Join data").click();
+        goBackToBucketStep();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("not.exist");
+        });
+      });
+
+      it('should not show metrics when they are left out of "entity_types"', () => {
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: { entity_types: "table,model" },
+        });
         cy.wait("@getDatabases");
         H.popover().within(() => {
           cy.findByText("Models").should("be.visible");
@@ -1390,7 +1423,13 @@ describe("scenarios > embedding > full app", () => {
         });
       });
 
-      it('should show models and tables as a default value when not providing "entity_types"', () => {
+      it('should show models, tables, and metrics as a default value when not providing "entity_types"', () => {
+        H.createQuestion({
+          ...ordersCountCardDetails,
+          type: "metric",
+          collection_id: null,
+        });
+
         cy.log("Test providing `entity_types` as an empty string");
         startNewEmbeddingQuestion({
           isMultiStageDataPicker: true,
@@ -1401,6 +1440,7 @@ describe("scenarios > embedding > full app", () => {
         H.popover().within(() => {
           cy.findByText("Models").should("be.visible");
           cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("be.visible");
         });
 
         cy.log("Test not providing `entity_types`");
@@ -1410,6 +1450,7 @@ describe("scenarios > embedding > full app", () => {
         H.popover().within(() => {
           cy.findByText("Models").should("be.visible");
           cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("be.visible");
         });
       });
     });
