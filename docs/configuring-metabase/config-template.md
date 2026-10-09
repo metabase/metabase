@@ -147,7 +147,9 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
-    enable-embedding-modular: false
+    enable-embedding-sdk: false
+    enable-embedding-simple: false
+    enable-embedding-static: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
@@ -163,7 +165,6 @@ config:
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
     hide-stacktraces: false
-    http-channel-allowed-networks: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
@@ -186,7 +187,7 @@ config:
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
-    ldap-attribute-firstname: givenName
+    ldap-attribute-firstname: givenname
     ldap-attribute-lastname: sn
     ldap-bind-dn: null
     ldap-enabled: false
@@ -251,7 +252,6 @@ config:
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
-    map-tile-server-allowed-networks: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
@@ -282,7 +282,6 @@ config:
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
-    oidc-allowed-networks: allow-all
     oidc-providers: []
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
@@ -382,5 +381,4 @@ config:
     use-native-pivot-tables: false
     use-tenants: false
     user-visibility: all
-    warehouse-allowed-networks: null
 ```
