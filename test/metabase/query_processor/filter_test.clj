@@ -737,8 +737,10 @@
     (testing "more values than some databases allow in a single IN list (Oracle allows 1000)"
       (is (= 100
              (count-with-filter-clause (into [:= $id] (range 1 1101)))))
-      (is (= 0
-             (count-with-filter-clause (into [:!= $id] (range 1 1101))))))))
+      ;; exclude everything but ID 1 rather than everything, since Mongo returns no rows instead of 0 for an empty
+      ;; count (#5419)
+      (is (= 1
+             (count-with-filter-clause (into [:!= $id] (range 2 1101))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   NOT FILTER                                                   |
