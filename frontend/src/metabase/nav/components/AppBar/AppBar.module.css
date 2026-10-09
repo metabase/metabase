@@ -1,49 +1,49 @@
-.AppBarRoot {
+.appBarRoot {
   position: relative;
   z-index: 4;
 }
 
-.AppBarRoot[data-with-border="true"] {
+.appBarRoot[data-with-border="true"] {
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 @media print {
-  .AppBarRoot {
+  .appBarRoot {
     display: none;
   }
 }
 
-/* Border and fade states for the bars; classes, so the transitions and visibility timing stay together */
-.borderBottom {
+/* Border and fade states of the bars; classes, so the transitions and the visibility timing stay together */
+.navBar {
   border-bottom: 1px solid transparent;
-}
 
-.borderBottomVisible {
-  border-bottom-color: var(--mb-color-border-neutral);
-}
+  &.withBorder {
+    border-bottom-color: var(--mb-color-border-neutral);
+  }
 
-.borderBottomAnimated {
-  transition: border-bottom-color 200ms ease;
+  &.withTransition {
+    transition: border-bottom-color 200ms ease;
+  }
 }
 
 .fade {
   transition: opacity 0.5s;
-}
 
-.fadeOut {
-  visibility: hidden;
-  transition:
-    opacity 0.5s,
-    visibility 0s;
+  &.hidden {
+    visibility: hidden;
+    transition:
+      opacity 0.5s,
+      visibility 0s;
+  }
 }
 
 .logoFade {
   transition: opacity 0.3s linear 0.2s;
-}
 
-.logoFadeOut {
-  visibility: hidden;
-  transition: none;
+  &.hidden {
+    visibility: hidden;
+    transition: none;
+  }
 }
 
 .translateCenter {

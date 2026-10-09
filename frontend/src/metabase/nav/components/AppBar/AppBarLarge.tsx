@@ -71,8 +71,8 @@ export const AppBarLarge = ({
 
   return (
     <Flex
-      className={cx(S.borderBottom, S.borderBottomAnimated, {
-        [S.borderBottomVisible]:
+      className={cx(S.navBar, S.withTransition, {
+        [S.withBorder]:
           isNavBarVisible ||
           isMetabotVisible ||
           isDocumentSidebarOpen ||
@@ -98,7 +98,7 @@ export const AppBarLarge = ({
         />
         <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <Flex
-          className={cx(S.fade, { [S.fadeOut]: !isInfoVisible })}
+          className={cx(S.fade, { [S.hidden]: !isInfoVisible })}
           opacity={isInfoVisible ? 1 : 0}
           miw={0}
         >

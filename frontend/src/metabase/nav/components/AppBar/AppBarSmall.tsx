@@ -71,8 +71,8 @@ export const AppBarSmall = ({
     <Box bg="background_page-primary">
       {isHeaderVisible && (
         <Box
-          className={cx(S.borderBottom, {
-            [S.borderBottomVisible]: !isSubheaderVisible,
+          className={cx(S.navBar, {
+            [S.withBorder]: !isSubheaderVisible,
           })}
           pos="relative"
           h={APP_BAR_HEIGHT}
@@ -106,7 +106,7 @@ export const AppBarSmall = ({
           </Flex>
           <Box
             className={cx(S.translateCenter, S.logoFade, {
-              [S.logoFadeOut]: !isLogoShown,
+              [S.hidden]: !isLogoShown,
             })}
             opacity={isLogoShown ? 1 : 0}
             pos="absolute"
@@ -124,8 +124,8 @@ export const AppBarSmall = ({
       )}
       {isSubheaderVisible && (
         <Box
-          className={cx(S.borderBottom, S.borderBottomAnimated, {
-            [S.borderBottomVisible]: isNavBarVisible,
+          className={cx(S.navBar, S.withTransition, {
+            [S.withBorder]: isNavBarVisible,
           })}
           h={APP_SUBHEADER_HEIGHT}
           py="lg"
