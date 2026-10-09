@@ -673,6 +673,7 @@
   (let [card    (api/write-check :model/Card id)
         ;; the database deletes the card's actions through the foreign key, with no events of their own
         actions (queries-rest.db/actions-for-model id)]
+    (queries/check-allowed-to-delete-card! card)
     (queries-rest.db/delete-card! id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*})
     (doseq [action actions]
@@ -716,7 +717,9 @@
     (api/write-check :model/Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
+    (let [cards  (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil) ; poisioned NULLs = ick
+          ;; whole, as the update event's previous object: a listener reads a card's metadata from it
+          before (when (seq cards) (queries-rest.db/cards-by-id (map u/the-id cards)))]
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
@@ -732,14 +735,18 @@
         ;; are gone and update the position in the new collection
         (when-let [cards-with-position (seq (filter :collection_position cards))]
           (update-collection-positions! new-collection-id-or-nil cards-with-position))
-        ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
-        (when-let [cards-without-position (seq (for [card cards
-                                                     :when (not (:collection_position card))]
-                                                 (u/the-id card)))]
-          (queries-rest.db/set-cards-collection-raw! (set cards-without-position) new-collection-id-or-nil)
-          (queries/move-actions-of-models! (set cards-without-position) new-collection-id-or-nil))
+        ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already,
+        ;; through the model, so that each card's checks run and its hooks move what moves with it
+        (doseq [card  cards
+                :when (not (:collection_position card))]
+          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))
         (doseq [card cards]
-          (collection/check-for-remote-sync-update card)))))
+          (collection/check-for-remote-sync-update card)))
+      ;; what a single card's update publishes too: remote sync listens to learn what entered or left its scope
+      (doseq [card cards]
+        (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
+                                                   :previous-object (get before (u/the-id card))
+                                                   :user-id         api/*current-user-id*}))))
 
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))

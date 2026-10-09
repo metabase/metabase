@@ -862,6 +862,11 @@
                     :model/Query
                     :model/User}}
 
+  data-apps
+  {:team "Embedding"
+   :api #{metabase.data-apps.core}
+   :uses #{premium-features}}
+
   data-studio
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
@@ -911,6 +916,8 @@
            query-permissions
            query-processor
            search
+           settings
+           staleness
            util
            warehouse-schema-overlay}
    :model-exports #{:model/Document}
@@ -2017,10 +2024,8 @@
 
   product-feedback
   {:team "UX West"
-   :api  #{metabase.product-feedback.api
-           metabase.product-feedback.init}
+   :api  #{metabase.product-feedback.init}
    :uses #{analytics
-           api
            app-db
            channel
            premium-features
@@ -2590,6 +2595,7 @@
            app-db
            appearance
            core.initialization-status
+           data-apps
            driver
            embedding
            lib.be
@@ -2910,11 +2916,14 @@
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
+                    :model/Document
                     :model/MetabotConversation
                     :model/MetabotMessage
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/SecurityAdvisory
+                    :model/Transform
+                    :model/TransformRun
                     :model/User}}
 
   tiles
@@ -2993,6 +3002,7 @@
            run-tracking
            search
            settings
+           staleness
            task
            task.history
            tracing
@@ -3105,6 +3115,7 @@
   {:team "Embedding"
    :api #{metabase.typed-schemas.core}
    :uses #{actions
+           audit-app
            collections
            lib
            lib.be
@@ -3112,8 +3123,8 @@
            lib.types
            metabot
            metrics
-           models
            permissions
+           premium-features
            queries
            system
            util
@@ -3736,6 +3747,35 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/content-diagnostics
+  {:team "Gadget"
+   :api  #{metabase-enterprise.content-diagnostics.api
+           metabase-enterprise.content-diagnostics.init}
+   :uses #{analytics.interface
+           api
+           app-db
+           collections
+           documents
+           events
+           lib.schema
+           models
+           permissions
+           premium-features
+           queries
+           request
+           settings
+           task
+           task.history
+           tracing
+           util
+           enterprise/staleness}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/TaskHistory
+                    :model/Transform
+                    :model/User}}
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.routes}
@@ -3782,13 +3822,16 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
-   :uses #{api
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.core metabase-enterprise.data-apps.init}
+   :uses #{actions
+           api
            api-scope
            collections
+           driver
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            permissions
@@ -3797,15 +3840,17 @@
            request
            settings
            util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Card
+           warehouse-schema-overlay
+           enterprise/serialization}
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/DataPermissions
                     :model/Database
+                    :model/Field
                     :model/Permissions
-                    :model/PermissionsGroup
-                    :model/Table
-                    :model/User}
+                    :model/QueryAction
+                    :model/Table}
    :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
@@ -4230,6 +4275,7 @@
            task.history
            util
            warehouse-schema-overlay
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4449,8 +4495,7 @@
   enterprise/staleness
   {:team "UX West"
    :ns-prefix "metabase-enterprise.stale"
-   :api  #{metabase-enterprise.stale.api
-           metabase-enterprise.stale.init}
+   :api  #{metabase-enterprise.stale.api metabase-enterprise.stale.impl metabase-enterprise.stale.init}
    :uses #{analytics
            api
            collections

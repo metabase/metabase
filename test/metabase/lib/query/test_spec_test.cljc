@@ -43,15 +43,13 @@
                  {:stages [{:source {:type :table
                                      :id   (meta/id :orders)}
                             :fields [{:type :column
-                                      :name "ID"
-                                      :source-name "ORDERS"}
-                                     ;; column without source-name can be found if it is unambiguous
+                                      :name "ID"}
                                      {:type :column
                                       :name "TOTAL"}
                                      ;; implicitly joined column
                                      {:type :column
                                       :name "NAME"
-                                      :source-name "PEOPLE"}]}]})]
+                                      :source-field-id (meta/id :orders :user-id)}]}]})]
       (is (=? [[:field {} (meta/id :orders :id)]
                [:field {} (meta/id :orders :total)]
                [:field {} (meta/id :people :name)]]
@@ -155,9 +153,9 @@
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
-                            :breakouts [{:type :column
-                                         :name "PRICE"
-                                         :bins 10}]}]})]
+                            :breakouts [{:type    :column
+                                         :name    "PRICE"
+                                         :binning {:strategy :num-bins :num-bins 10}}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :num-bins :num-bins 10}}
                 (meta/id :venues :price)]]
@@ -169,12 +167,42 @@
                  meta/metadata-provider
                  {:stages [{:source    {:type :table
                                         :id   (meta/id :venues)}
-                            :breakouts [{:type      :column
-                                         :name      "LATITUDE"
-                                         :bin-width 20}]}]})]
+                            :breakouts [{:type    :column
+                                         :name    "LATITUDE"
+                                         :binning {:strategy :bin-width :bin-width 20}}]}]})]
       (is (=? [[:field
                 {:binning {:strategy :bin-width :bin-width 20.0}}
                 (meta/id :venues :latitude)]]
+              (lib/breakouts query))))))
+
+(deftest ^:parallel test-query-with-default-binning-breakout-test
+  (testing "test-query adds breakouts with default binning"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source    {:type :table
+                                        :id   (meta/id :venues)}
+                            :breakouts [{:type    :column
+                                         :name    "PRICE"
+                                         :binning {:strategy :default}}]}]})]
+      (is (=? [[:field
+                {:binning {:strategy :default}}
+                (meta/id :venues :price)]]
+              (lib/breakouts query))))))
+
+(deftest ^:parallel test-query-with-camel-case-binning-test
+  (testing "test-query reads camelCase binning keys and string strategies"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {"stages" [{"source"    {"type" "table"
+                                          "id"   (meta/id :venues)}
+                             "breakouts" [{"type"    "column"
+                                           "name"    "PRICE"
+                                           "binning" {"strategy" "num-bins" "numBins" 10}}
+                                          {"type"    "column"
+                                           "name"    "LATITUDE"
+                                           "binning" {"strategy" "bin-width" "binWidth" 20}}]}]})]
+      (is (=? [[:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]
+               [:field {:binning {:strategy :bin-width :bin-width 20.0}} (meta/id :venues :latitude)]]
               (lib/breakouts query))))))
 
 (deftest ^:parallel test-query-with-order-bys-test
@@ -243,11 +271,9 @@
                                       :conditions [{:operator :=
                                                     :left     {:type :column
                                                                :name "LAST_LOGIN"
-                                                               :source-name "USERS"
                                                                :unit :month}
                                                     :right    {:type :column
                                                                :name "DATE"
-                                                               :source-name "CHECKINS"
                                                                :unit :month}}]}]}]})]
       (is (=? [{:strategy :left-join
                 :conditions [[:= {}
@@ -335,20 +361,16 @@
 
 (deftest ^:parallel test-query-error-multiple-columns-found-test
   (testing "test-query throws when multiple columns match"
-    ;; This test would need a scenario where the same column name appears multiple times
-    ;; For example, after a join. Let's test this with a join scenario
     (is (thrown-with-msg?
          #?(:clj Exception :cljs js/Error)
          #"Multiple columns found"
          (lib.query.test-spec/test-query
           meta/metadata-provider
-          {:stages [{:source {:type :table
-                              :id   (meta/id :venues)}
-                     :joins  [{:source   {:type :table
-                                          :id   (meta/id :categories)}
-                               :strategy :left-join}]
-                     :fields [{:type :column
-                               :name "ID"}]}]})))))
+          {:stages [{:source    {:type :table
+                                 :id   (meta/id :checkins)}
+                     :breakouts [{:type :column :name "DATE" :unit :month}
+                                 {:type :column :name "DATE" :unit :year}]
+                     :order-bys [{:type :column :name "DATE"}]}]})))))
 
 (deftest ^:parallel test-query-aggregation-with-args-test
   (testing "test-query handles aggregations with column arguments"
@@ -417,12 +439,12 @@
                                                    :id   (meta/id :venues)}
                                       :strategy   :left-join
                                       :conditions [{:operator  :=
-                                                    :left      {:type      :column
-                                                                :name      "LATITUDE"
-                                                                :bin-width 20}
-                                                    :right     {:type      :column
-                                                                :name      "LONGITUDE"
-                                                                :bin-width 20}}]}]}]})]
+                                                    :left      {:type    :column
+                                                                :name    "LATITUDE"
+                                                                :binning {:strategy :bin-width :bin-width 20}}
+                                                    :right     {:type    :column
+                                                                :name    "LONGITUDE"
+                                                                :binning {:strategy :bin-width :bin-width 20}}}]}]}]})]
       (is (=? [{:lib/type   :mbql/join
                 :strategy   :left-join
                 :conditions [[:= {}
@@ -464,7 +486,7 @@
                                          :unit :year}]
                             :order-bys [{:type         :column
                                          :name         "DATE"
-                                         :display-name "Date: Month"
+                                         :unit         :month
                                          :direction    :desc}]}]})]
       (is (=? [[:desc {}
                 [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
@@ -482,7 +504,7 @@
                                          :unit :year}]
                             :order-bys [{:type         :column
                                          :name         "DATE"
-                                         :display-name "Date: Year"
+                                         :unit         :year
                                          :direction     :desc}]}]})]
       (is (=? [[:desc {}
                 [:field {:temporal-unit :year} (meta/id :checkins :date)]]]
@@ -496,7 +518,7 @@
                                         :id   (meta/id :venues)}
                             :order-bys [{:type      :column
                                          :name      "PRICE"
-                                         :bins      10
+                                         :binning   {:strategy :num-bins :num-bins 10}
                                          :direction :asc}]}]})]
       (is (=? [[:asc {} [:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :venues :price)]]]
               (lib/order-bys query))))))
@@ -580,7 +602,7 @@
                                       :conditions [{:operator :=
                                                     :left {:type :column
                                                            :name "ID"
-                                                           :source-name "PRODUCTS"}
+                                                           :join-alias "Products"}
                                                     :right {:type :column
                                                             :name "PRODUCT_ID"}}]}]}]})]
       (is (=? [{:strategy :left-join
@@ -603,16 +625,16 @@
                                        :args     [{:type :literal
                                                    :value "Gadget"}
                                                   {:type :column
-                                                   :source-name "PRODUCTS"
+                                                   :source-field-id (meta/id :orders :product-id)
                                                    :name "CATEGORY"}]}]
 
                             :aggregations [{:type     :operator
                                             :operator :sum
                                             :args     [{:type :column
-                                                        :source-name "PRODUCTS"
+                                                        :source-field-id (meta/id :orders :product-id)
                                                         :name "PRICE"}]}]
                             :breakouts    [{:type :column
-                                            :source-name "PRODUCTS"
+                                            :source-field-id (meta/id :orders :product-id)
                                             :name "CREATED_AT"}]
 
                             :expressions [{:name  "Custom"
@@ -621,7 +643,8 @@
                                                    :args [{:type :literal
                                                            :value 42}
                                                           {:type :column
-                                                           :name "PRICE"}]}}]}]})]
+                                                           :name "PRICE"
+                                                           :source-field-id (meta/id :orders :product-id)}]}}]}]})]
       (is (=? [[:=
                 {} "Gadget"
                 [:field
@@ -660,7 +683,8 @@
                    {:stages [{:source {:type :table
                                        :id   (meta/id :orders)}
                               :order-bys [{:type :column
-                                           :name "PRICE"}]}]})]
+                                           :name "PRICE"
+                                           :source-field-id (meta/id :orders :product-id)}]}]})]
         (is (=? [[:asc {} [:field
                            {:source-field (meta/id :orders :product-id)}
                            (meta/id :products :price)]]]
@@ -717,7 +741,7 @@
                                                    :operator :*
                                                    :args     [{:type :column
                                                                :name "PRICE"
-                                                               :source-name "PRODUCTS"}
+                                                               :join-alias "Products"}
                                                               {:type  :literal
                                                                :value 0.9}]}}
                                           {:name  "double-discount"
@@ -742,7 +766,7 @@
                                                                :operator :=
                                                                :args     [{:type :column
                                                                            :name "CATEGORY"
-                                                                           :source-name "PRODUCTS"}
+                                                                           :join-alias "Products"}
                                                                           {:type  :literal
                                                                            :value "Widget"}]}
                                                               {:type     :operator
@@ -765,19 +789,17 @@
                                             :operator :avg
                                             :args     [{:type :column
                                                         :name "PRICE"
-                                                        :source-name "PRODUCTS"}]}]
+                                                        :join-alias "Products"}]}]
 
                             :breakouts [{:type        :column
                                          :name        "CREATED_AT"
-                                         :source-name "ORDERS"
                                          :unit        :month}
-                                        {:type :column
-                                         :name "QUANTITY"
-                                         :bins 10}]
+                                        {:type    :column
+                                         :name    "QUANTITY"
+                                         :binning {:strategy :num-bins :num-bins 10}}]
 
                             :order-bys [{:type        :column
                                          :name        "CREATED_AT"
-                                         :source-name "ORDERS"
                                          :direction   :desc}]}
                            ;; Stage 1
                            {:expressions [{:name  "doubled-count"
@@ -874,7 +896,7 @@
                                                    :operator :*
                                                    :args     [{:type :column
                                                                :name "PRICE"
-                                                               :source-name "PRODUCTS"}
+                                                               :join-alias "Products"}
                                                               {:type  :literal
                                                                :value 0.9}]}}
                                           {:name  "double-discount"
@@ -899,7 +921,7 @@
                                                                :operator :=
                                                                :args     [{:type :column
                                                                            :name "CATEGORY"
-                                                                           :source-name "PRODUCTS"}
+                                                                           :join-alias "Products"}
                                                                           {:type  :literal
                                                                            :value "Widget"}]}
                                                               {:type     :operator
@@ -911,14 +933,13 @@
 
                             :order-bys [{:type        :column
                                          :name        "CREATED_AT"
-                                         :source-name "ORDERS"
                                          :direction   :desc}]
 
                             :fields [{:type :column
                                       :name "TOTAL"}
                                      {:type :column
                                       :name "CATEGORY"
-                                      :source-name "PRODUCTS"}
+                                      :join-alias "Products"}
                                      {:type :column
                                       :name "double-discount"}]}
                            ;; Stage 1
@@ -1247,7 +1268,7 @@
 
 (defn- orders-column
   [column-name]
-  {:type :column :name column-name :table-id (meta/id :orders)})
+  {:type :column :name column-name})
 
 (defn- orders-then
   [first-stage second-stage]
@@ -1299,7 +1320,7 @@
               (lib/order-bys query 1))))))
 
 (deftest ^:parallel test-query-later-stage-tells-joined-result-columns-apart-by-fk-test
-  (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; the FK they were reached through picks one"
+  (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; a later stage picks one by its field id"
     (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
             (lib/filters
              (orders-then {:aggregations [{:type :operator :operator :count :args []}]
@@ -1307,12 +1328,12 @@
                                           {:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}]}
                           {:filters [{:type     :operator
                                       :operator :<
-                                      :args     [{:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}
+                                      :args     [{:type :column :field-id (meta/id :people :id)}
                                                  {:type :literal :value 10}]}]})
              1)))))
 
 (deftest ^:parallel test-query-joined-result-column-through-card-test
-  (testing "a saved card stores the second joined ID as ID_2; its original name and FK still pick it"
+  (testing "a saved card stores the second joined ID as ID_2, and that name picks it"
     (let [card-query (lib.query.test-spec/test-query
                       meta/metadata-provider
                       {:stages [{:source       {:type :table :id (meta/id :orders)}
@@ -1329,7 +1350,100 @@
                       {:stages [{:source {:type :card :id 1}}
                                 {:filters [{:type     :operator
                                             :operator :<
-                                            :args     [{:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}
+                                            :args     [{:type :column :name "ID_2"}
                                                        {:type :literal :value 10}]}]}]})]
       (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
               (lib/filters query 1))))))
+
+(def ^:private two-fks-to-products-provider
+  "ORDERS with USER_ID as a second FK into PRODUCTS."
+  (lib.tu/merged-mock-metadata-provider
+   meta/metadata-provider
+   {:fields [{:id (meta/id :orders :user-id) :semantic-type :type/FK :fk-target-field-id (meta/id :products :id)}]}))
+
+(deftest ^:parallel test-query-implicit-joins-through-several-fks-test
+  (testing "the FK field picks between implicit joins into the same table"
+    (is (=? [[:field {:source-field (meta/id :orders :product-id)} (meta/id :products :title)]
+             [:field {:source-field (meta/id :orders :user-id)} (meta/id :products :title)]]
+            (lib/breakouts
+             (lib.query.test-spec/test-query
+              two-fks-to-products-provider
+              {:stages [{:source       {:type :table :id (meta/id :orders)}
+                         :aggregations [{:type :operator :operator :count}]
+                         :breakouts    [{:type :column :field-id (meta/id :products :title)
+                                         :source-field-id (meta/id :orders :product-id)}
+                                        {:type :column :name "TITLE" :source-field-id (meta/id :orders :user-id)}]}]})))))
+  (testing "a column without a source field is never an implicitly joined one"
+    (is (thrown-with-msg?
+         #?(:clj Exception :cljs js/Error)
+         #"No column found"
+         (lib.query.test-spec/test-query
+          two-fks-to-products-provider
+          {:stages [{:source    {:type :table :id (meta/id :orders)}
+                     :breakouts [{:type :column :name "TITLE"}]}]})))))
+
+(deftest ^:parallel test-query-implicit-join-through-joined-fk-test
+  (testing "the join alias of the FK picks between the base table's FK and a joined copy of it"
+    (is (=? [[:field {:join-alias "O1"} (meta/id :orders :id)]
+             [:field {:source-field (meta/id :orders :product-id) :source-field-join-alias missing-value}
+              (meta/id :products :title)]
+             [:field {:source-field (meta/id :orders :product-id) :source-field-join-alias "O1"}
+              (meta/id :products :title)]]
+            (lib/breakouts
+             (lib.query.test-spec/test-query
+              meta/metadata-provider
+              {:stages [{:source       {:type :table :id (meta/id :orders)}
+                         :joins        [{:source     {:type :table :id (meta/id :orders)}
+                                         :strategy   :left-join
+                                         :alias      "O1"
+                                         :conditions [{:operator := :left {:type :column :name "ID"} :right {:type :column :name "ID"}}]}]
+                         :aggregations [{:type :operator :operator :count}]
+                         :breakouts    [{:type :column :field-id (meta/id :orders :id) :join-alias "O1"}
+                                        {:type :column :name "TITLE" :source-field-id (meta/id :orders :product-id)}
+                                        {:type                    :column
+                                         :name                    "TITLE"
+                                         :source-field-id         (meta/id :orders :product-id)
+                                         :source-field-join-alias "O1"}]}]}))))))
+
+(deftest ^:parallel test-query-joined-card-columns-by-name-test
+  (testing "a joined card's columns are named with the join's alias; the condition's right side is not yet joined"
+    (let [card-query (lib/aggregate (lib/breakout (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                                  (meta/field-metadata :orders :product-id))
+                                    (lib/count))
+          query      (lib.query.test-spec/test-query
+                      (lib.tu/metadata-provider-with-card-from-query 1 card-query)
+                      {:stages [{:source    {:type :table :id (meta/id :products)}
+                                 :joins     [{:source     {:type :card :id 1}
+                                              :strategy   :left-join
+                                              :alias      "C"
+                                              :conditions [{:operator := :left {:type :column :name "ID"}
+                                                            :right {:type :column :name "PRODUCT_ID"}}]}]
+                                 :order-bys [{:type :column :name "count" :join-alias "C" :direction :desc}]}]})]
+      (is (=? [[:desc {} [:field {:join-alias "C"} "count"]]]
+              (lib/order-bys query))))))
+
+(deftest ^:parallel test-query-camel-case-column-keys-test
+  (testing "test-query reads camelCase column keys"
+    (is (=? [[:field {:source-field (meta/id :orders :product-id)} (meta/id :products :category)]]
+            (lib/breakouts
+             (lib.query.test-spec/test-query
+              meta/metadata-provider
+              {"stages" [{"source"       {"type" "table" "id" (meta/id :orders)}
+                          "aggregations" [{"type" "operator" "operator" "count"}]
+                          "breakouts"    [{"type"          "column"
+                                           "fieldId"       (meta/id :products :category)
+                                           "sourceFieldId" (meta/id :orders :product-id)}]}]}))))))
+
+(deftest ^:parallel test-query-expression-named-like-a-field-test
+  (testing "an expression named like a field of the stage is ambiguous"
+    (is (thrown-with-msg?
+         #?(:clj Exception :cljs js/Error)
+         #"Multiple columns found"
+         (lib.query.test-spec/test-query
+          meta/metadata-provider
+          {:stages [{:source       {:type :table :id (meta/id :orders)}
+                     :expressions  [{:name  "TOTAL"
+                                     :value {:type :operator :operator :+
+                                             :args [{:type :column :name "TOTAL"} {:type :literal :value 1}]}}]
+                     :aggregations [{:type :operator :operator :count}]
+                     :breakouts    [{:type :column :name "TOTAL"}]}]})))))

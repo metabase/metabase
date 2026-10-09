@@ -502,8 +502,7 @@ describe("issue 18454", () => {
     cy.findByTestId("dashcard-container").within(() => {
       cy.icon("info").trigger("mouseenter", { force: true });
     });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(CARD_DESCRIPTION);
+    H.tooltip().should("contain", CARD_DESCRIPTION);
   });
 });
 
@@ -631,7 +630,7 @@ describe("issue 29304", () => {
     display: "smartscalar",
   };
 
-  const SMART_SCALAR_QUESTION_CARD = SCALAR_QUESTION_CARD;
+  const SMART_SCALAR_QUESTION_CARD = { ...SCALAR_QUESTION_CARD, col: 4 };
 
   // Use full-app embedding to test because `ExplicitSize` checks for `isCypressActive`,
   // which checks `window.Cypress`, and will disable the refresh mode on Cypress test.
@@ -648,92 +647,54 @@ describe("issue 29304", () => {
     });
   };
 
-  describe("display: scalar", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      cy.intercept("api/dashboard/*/dashcard/*/card/*/query").as(
-        "getDashcardQuery",
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("api/dashboard/*/dashcard/*/card/*/query").as(
+      "getDashcardQuery",
+    );
+    cy.intercept("api/dashboard/*").as("getDashboard");
+    cy.clock();
+  });
+
+  it("should render scalar and smart scalar with correct size on the first render (metabase#29304)", () => {
+    H.createDashboard().then(({ body: dashboard }) => {
+      H.createQuestionAndAddToDashboard(
+        SCALAR_QUESTION,
+        dashboard.id,
+        SCALAR_QUESTION_CARD,
       );
-      cy.intercept("api/dashboard/*").as("getDashboard");
-      cy.clock();
-    });
+      H.createQuestionAndAddToDashboard(
+        SMART_SCALAR_QUESTION,
+        dashboard.id,
+        SMART_SCALAR_QUESTION_CARD,
+      );
 
-    it("should render scalar with correct size on the first render (metabase#29304)", () => {
-      H.createDashboard().then(({ body: dashboard }) => {
-        H.createQuestionAndAddToDashboard(
-          SCALAR_QUESTION,
-          dashboard.id,
-          SCALAR_QUESTION_CARD,
-        );
+      visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboard.id}` });
 
-        visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboard.id}` });
+      cy.wait("@getDashboard");
+      cy.wait(["@getDashcardQuery", "@getDashcardQuery"]);
+      // This extra 1ms is crucial, without this the test would fail.
+      cy.tick(WAIT_TIME + 1);
 
-        cy.wait("@getDashboard");
-        cy.wait("@getDashcardQuery");
-        // This extra 1ms is crucial, without this the test would fail.
-        cy.tick(WAIT_TIME + 1);
-
-        const expectedWidth = 100;
-        cy.findByTestId("scalar-value").should(([$scalarValue]) => {
-          expect($scalarValue.offsetWidth).to.be.closeTo(
-            expectedWidth,
-            expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
-          );
-        });
-      });
-    });
-
-    it("should render smart scalar with correct size on the first render (metabase#29304)", () => {
-      H.createDashboard().then(({ body: dashboard }) => {
-        H.createQuestionAndAddToDashboard(
-          SMART_SCALAR_QUESTION,
-          dashboard.id,
-          SMART_SCALAR_QUESTION_CARD,
-        );
-
-        visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboard.id}` });
-
-        cy.wait("@getDashboard");
-        cy.wait("@getDashcardQuery");
-        // This extra 1ms is crucial, without this the test would fail.
-        cy.tick(WAIT_TIME + 1);
-
-        const expectedWidth = 47;
-        cy.findByTestId("scalar-value").should(([$scalarValue]) => {
-          expect($scalarValue.offsetWidth).to.be.closeTo(
-            expectedWidth,
-            expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
-          );
-        });
+      [
+        { index: 0, expectedWidth: 100 },
+        { index: 1, expectedWidth: 47 },
+      ].forEach(({ index, expectedWidth }) => {
+        H.getDashboardCard(index)
+          .findByTestId("scalar-value")
+          .should(([$scalarValue]) => {
+            expect($scalarValue.offsetWidth).to.be.closeTo(
+              expectedWidth,
+              expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
+            );
+          });
       });
     });
   });
 });
 
-/**
- * This test suite reduces the number of "it" calls for performance reasons.
- * Every block with JSDoc within "it" callbacks should ideally be a separate "it" call.
- * @see https://github.com/metabase/metabase/pull/31722#discussion_r1246165418
- */
 describe("issue 31628", () => {
-  const createCardsRow = ({ size_y }) => [
-    { size_x: 6, size_y, row: 0, col: 0 },
-    { size_x: 5, size_y, row: 0, col: 6 },
-    { size_x: 4, size_y, row: 0, col: 11 },
-    { size_x: 3, size_y, row: 0, col: 15 },
-    { size_x: 2, size_y, row: 0, col: 18 },
-  ];
-
-  const VIEWPORTS = [
-    // { width: 375, height: 667, openSidebar: false },
-    // { width: 820, height: 800, openSidebar: true },
-    // { width: 820, height: 800, openSidebar: false },
-    // { width: 1200, height: 800, openSidebar: true },
-    { width: 1440, height: 800, openSidebar: true },
-    // { width: 1440, height: 800, openSidebar: false },
-  ];
-
   const SCALAR_QUESTION = {
     name: "31628 Question - This is a rather lengthy question name",
     description: "This is a rather lengthy question description",
@@ -744,18 +705,10 @@ describe("issue 31628", () => {
     display: "scalar",
   };
 
-  const SCALAR_QUESTION_CARDS = [
-    { cards: createCardsRow({ size_y: 2 }), name: "cards 2 cells high" },
-    { cards: createCardsRow({ size_y: 3 }), name: "cards 3 cells high" },
-    { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
-  ];
-
   const SMART_SCALAR_QUESTION = {
-    name: "31628 Question - This is a rather lengthy question name",
-    description: "This is a rather lengthy question description",
+    ...SCALAR_QUESTION,
     query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
+      ...SCALAR_QUESTION.query,
       breakout: [
         [
           "field",
@@ -770,329 +723,308 @@ describe("issue 31628", () => {
     display: "smartscalar",
   };
 
-  const SMART_SCALAR_QUESTION_CARDS = [
-    { cards: createCardsRow({ size_y: 2 }), name: "cards 2 cells high" },
-    // { cards: createCardsRow({ size_y: 3 }), name: "cards 3 cells high" },
-    // { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
+  const TREND_QUESTION = {
+    display: "smartscalar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count"],
+        ["sum", ["field", ORDERS.TOTAL, null]],
+        [
+          "aggregation-options",
+          ["*", ["count"], 10000],
+          { name: "Mega Count", "display-name": "Mega Count" },
+        ],
+      ],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+    visualization_settings: {
+      "scalar.comparisons": [
+        {
+          id: "fecd2c69-4d43-57d0-6d60-6781a54beceb",
+          type: "previousPeriod",
+        },
+        {
+          id: "e8b8d831-d2a9-9fd7-17a7-db8b4834ac5a",
+          type: "periodsAgo",
+          value: 2,
+        },
+        {
+          id: "9712f309-6849-20ba-7cef-54ae899a0e41",
+          type: "anotherColumn",
+          label: "Sum of Total",
+          column: "sum",
+        },
+      ],
+    },
+  };
+
+  const OVERFLOW_CHECKED_TEST_IDS = {
+    scalar: ["scalar-container", "scalar-title"],
+    smartscalar: ["scalar-container", "scalar-title", "scalar-previous-value"],
+  };
+
+  const ROW_WIDTHS = [6, 5, 4, 3, 2];
+
+  const OVERFLOW_ROWS = [
+    { display: "scalar", size_y: 2, row: 0 },
+    { display: "scalar", size_y: 3, row: 2 },
+    { display: "scalar", size_y: 4, row: 5 },
+    { display: "smartscalar", size_y: 2, row: 9 },
   ];
 
-  const setupDashboardWithQuestionInCards = (question, cards) => {
-    H.createDashboard().then(({ body: dashboard }) => {
-      H.cypressWaitAll(
-        cards.map((card) => {
-          return H.createQuestionAndAddToDashboard(
-            question,
-            dashboard.id,
-            card,
-          );
-        }),
-      );
+  const OVERFLOW_CARDS = OVERFLOW_ROWS.flatMap(({ display, size_y, row }) =>
+    ROW_WIDTHS.map((size_x, index) => ({
+      display,
+      size_x,
+      size_y,
+      row,
+      col: ROW_WIDTHS.slice(0, index).reduce((sum, width) => sum + width, 0),
+    })),
+  );
 
+  const TRUNCATION_CARDS = {
+    scalar1x2: { display: "scalar", size_x: 1, size_y: 2, row: 0, col: 0 },
+    scalar2x2: { display: "scalar", size_x: 2, size_y: 2, row: 0, col: 1 },
+    scalar6x3: { display: "scalar", size_x: 6, size_y: 3, row: 0, col: 3 },
+    smart2x2: { display: "smartscalar", size_x: 2, size_y: 2, row: 0, col: 9 },
+    smart7x3: { display: "smartscalar", size_x: 7, size_y: 3, row: 0, col: 11 },
+    smart7x4: { display: "smartscalar", size_x: 7, size_y: 4, row: 4, col: 0 },
+    trend4x3: { display: "trend", size_x: 4, size_y: 3, row: 4, col: 7 },
+  };
+
+  const setupDashboard = (cards) => {
+    H.createDashboardWithQuestions({
+      questions: [SCALAR_QUESTION, SMART_SCALAR_QUESTION, TREND_QUESTION],
+    }).then(({ dashboard, questions: [scalar, smartScalar, trend] }) => {
+      const cardIds = {
+        scalar: scalar.id,
+        smartscalar: smartScalar.id,
+        trend: trend.id,
+      };
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: cards.map(({ display, ...layout }) => ({
+          card_id: cardIds[display],
+          ...layout,
+        })),
+      }).then(({ body: { dashcards } }) => {
+        cy.wrap(
+          cards.map(
+            ({ row, col }) =>
+              dashcards.find(
+                (dashcard) => dashcard.row === row && dashcard.col === col,
+              ).id,
+          ),
+        ).as("dashcardIds");
+      });
       H.visitDashboard(dashboard.id);
     });
   };
 
-  const assertDescendantsNotOverflowDashcards = (descendantsSelector) => {
-    cy.findAllByTestId("dashcard").should((dashcards) => {
-      dashcards.each((dashcardIndex, dashcard) => {
-        const descendants = dashcard.querySelectorAll(descendantsSelector);
+  const getCard = (index) =>
+    cy
+      .get("@dashcardIds")
+      .then((ids) => cy.get(`[data-dashcard-key="${ids[index]}"]`));
 
-        descendants.forEach((descendant) => {
-          H.assertDescendantNotOverflowsContainer(
-            descendant,
-            dashcard,
-            `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
-          );
-        });
-      });
-    });
+  const scalarContainer = (card) => card.findByTestId("scalar-container");
+  const previousValue = (card) => card.findByTestId("scalar-previous-value");
+
+  const moveMouseAway = () => {
+    H.dashboardHeader().realHover({ position: "left" });
+    cy.findByRole("tooltip").should("not.exist");
   };
 
-  describe("display: scalar", () => {
-    const descendantsSelector = [
-      "[data-testid='scalar-container']",
-      "[data-testid='scalar-title']",
-      "[data-testid='scalar-description']",
-    ].join(",");
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
 
-    VIEWPORTS.forEach(({ width, height, openSidebar }) => {
-      SCALAR_QUESTION_CARDS.forEach(({ cards, name }) => {
-        const sidebar = openSidebar ? "sidebar open" : "sidebar closed";
+  it("should render descendants of scalar and smart scalar cards without overflowing them (metabase#31628)", () => {
+    cy.viewport(1440, 800);
+    setupDashboard(OVERFLOW_CARDS);
+    H.getDashboardCards().should("have.length", OVERFLOW_CARDS.length);
 
-        describe(`${width}x${height} - ${sidebar} - ${name}`, () => {
-          beforeEach(() => {
-            H.restore();
-            cy.viewport(width, height);
-            cy.signInAsAdmin();
-            setupDashboardWithQuestionInCards(SCALAR_QUESTION, cards);
+    cy.wait(100);
+    H.openNavigationSidebar();
 
-            if (openSidebar) {
-              cy.wait(100);
-              H.openNavigationSidebar();
-            }
-          });
+    cy.log("The dashboard fits the viewport, so no scrollbar narrows the grid");
+    cy.get("main").should(([main]) => {
+      expect(main.scrollHeight).to.be.at.most(main.clientHeight);
+    });
 
-          it("should render descendants of a 'scalar' without overflowing it (metabase#31628)", () => {
-            assertDescendantsNotOverflowDashcards(descendantsSelector);
+    cy.get("@dashcardIds").then((ids) => {
+      cy.findAllByTestId("dashcard").should((dashcards) => {
+        OVERFLOW_CARDS.forEach(({ display, size_x, size_y }, index) => {
+          const dashcard = dashcards.filter(
+            `[data-dashcard-key="${ids[index]}"]`,
+          )[0];
+          const label = `${display} ${size_x}x${size_y}`;
+
+          expect(
+            dashcard.querySelectorAll("[data-testid='scalar-container']"),
+            `${label} scalar-container`,
+          ).to.have.length(1);
+          if (display === "smartscalar") {
+            expect(
+              dashcard.querySelectorAll(
+                "[data-testid='scalar-previous-value']",
+              ),
+              `${label} scalar-previous-value`,
+            ).to.have.length(1);
+          }
+
+          OVERFLOW_CHECKED_TEST_IDS[display].forEach((testId) => {
+            dashcard
+              .querySelectorAll(`[data-testid='${testId}']`)
+              .forEach((descendant) => {
+                H.assertDescendantNotOverflowsContainer(
+                  descendant,
+                  dashcard,
+                  `${label} [data-testid="${testId}"]`,
+                );
+              });
           });
         });
-      });
-    });
-
-    describe("1x2 card", () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
-          { size_x: 1, size_y: 2, row: 0, col: 0 },
-        ]);
-      });
-
-      it("should follow truncation rules", () => {
-        cy.log("should truncate value and show value tooltip on hover");
-
-        scalarContainer().then(($element) =>
-          H.assertIsEllipsified($element[0]),
-        );
-        //TODO: Need to hover on the actual text, not just the container. This is a weird one
-        scalarContainer().realHover({ position: "bottom" });
-
-        cy.findByRole("tooltip").findByText("18,760").should("exist");
-      });
-    });
-
-    describe("2x2 card", () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
-          { size_x: 2, size_y: 2, row: 0, col: 0 },
-        ]);
-      });
-
-      it("should follow truncation rules", () => {
-        cy.log("should not truncate value");
-        scalarContainer().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-
-        cy.log(
-          "should show the title tooltip on hover because the smallest cards hide the inline title",
-        );
-        scalarContainer().realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-      });
-    });
-
-    describe("5x3 card", () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
-          { size_x: 6, size_y: 3, row: 0, col: 0 },
-        ]);
-      });
-
-      it("should follow truncation rules", () => {
-        cy.log(
-          "should not truncate value and should not show value tooltip on hover",
-        );
-        scalarContainer().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-        scalarContainer().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
       });
     });
   });
 
-  describe("display: smartscalar", () => {
-    const descendantsSelector = [
-      "[data-testid='scalar-title']",
-      "[data-testid='scalar-container']",
-      "[data-testid='scalar-previous-value']",
-    ].join(",");
+  it("should follow truncation rules for scalar, smart scalar and trend cards (metabase#31628)", () => {
+    const cards = Object.values(TRUNCATION_CARDS);
+    const card = (key) => getCard(cards.indexOf(TRUNCATION_CARDS[key]));
 
-    VIEWPORTS.forEach(({ width, height, openSidebar }) => {
-      SMART_SCALAR_QUESTION_CARDS.forEach(({ cards, name }) => {
-        const sidebar = openSidebar ? "sidebar open" : "sidebar closed";
+    setupDashboard(cards);
+    H.getDashboardCards().should("have.length", cards.length);
 
-        describe(`${width}x${height} - ${sidebar} - ${name}`, () => {
-          beforeEach(() => {
-            H.restore();
-            cy.viewport(width, height);
-            cy.signInAsAdmin();
-            setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, cards);
+    cy.log("scalar 1x2: should truncate value and show value tooltip on hover");
+    scalarContainer(card("scalar1x2")).then(($element) =>
+      H.assertIsEllipsified($element[0]),
+    );
+    //TODO: Need to hover on the actual text, not just the container. This is a weird one
+    scalarContainer(card("scalar1x2")).realHover({ position: "bottom" });
+    cy.findByRole("tooltip").findByText("18,760").should("exist");
+    moveMouseAway();
 
-            if (openSidebar) {
-              H.openNavigationSidebar();
-            }
-          });
+    cy.log("scalar 2x2: should not truncate value");
+    scalarContainer(card("scalar2x2")).then(($element) =>
+      H.assertIsNotEllipsified($element[0]),
+    );
+    cy.log(
+      "scalar 2x2: should show the title tooltip on hover because the smallest cards hide the inline title",
+    );
+    scalarContainer(card("scalar2x2")).realHover();
+    cy.findByRole("tooltip").findByText(SCALAR_QUESTION.name).should("exist");
+    moveMouseAway();
 
-          it("should render descendants of a 'smartscalar' without overflowing it (metabase#31628)", () => {
-            assertDescendantsNotOverflowDashcards(descendantsSelector);
-          });
-        });
-      });
+    cy.log(
+      "scalar 6x3: should not truncate value and should not show value tooltip on hover",
+    );
+    scalarContainer(card("scalar6x3")).then(($element) =>
+      H.assertIsNotEllipsified($element[0]),
+    );
+    scalarContainer(card("scalar6x3")).realHover();
+    cy.findByRole("tooltip").should("not.exist");
+    moveMouseAway();
+
+    cy.log("smart scalar 2x2: should not truncate value");
+    scalarContainer(card("smart2x2")).then(($element) =>
+      H.assertIsNotEllipsified($element[0]),
+    );
+    cy.log(
+      "smart scalar 2x2: should show the title tooltip on hover because the smallest cards hide the inline title",
+    );
+    scalarContainer(card("smart2x2")).realHover();
+    cy.findByRole("tooltip")
+      .findByText(SMART_SCALAR_QUESTION.name)
+      .should("exist");
+    moveMouseAway();
+
+    cy.log(
+      "smart scalar 2x2: should not display the period, which wider cards show",
+    );
+    card("smart7x3")
+      .findByTestId("scalar-period")
+      .should("have.text", "Apr 2029");
+    card("smart2x2").findByTestId("scalar-period").should("not.exist");
+
+    cy.log(
+      "smart scalar 2x2: should show the previous value as a percentage only (without truncation)",
+    );
+    previousValue(card("smart2x2"))
+      .should("contain", "-34.72%")
+      .and("not.contain", "527");
+    previousValue(card("smart2x2")).then(($element) =>
+      H.assertIsNotEllipsified($element[0]),
+    );
+
+    cy.log(
+      "smart scalar 2x2: should show the full comparison in a panel on hover",
+    );
+    previousValue(card("smart2x2")).realHover();
+    cy.findByRole("tooltip").within(() => {
+      cy.contains("34.72%").should("exist");
+      cy.contains("vs. previous month").should("exist");
+      cy.contains("527").should("exist");
+    });
+    moveMouseAway();
+
+    ["smart7x3", "smart7x4"].forEach((key) => {
+      cy.log(`${key}: should truncate the inline title and show it on hover`);
+      card(key).findByTestId("scalar-title").realHover();
+      cy.findByRole("tooltip")
+        .findByText(SMART_SCALAR_QUESTION.name)
+        .should("exist");
+      moveMouseAway();
+
+      cy.log(`${key}: should show description tooltip on hover`);
+      card(key).findByTestId("scalar-title").icon("info").realHover();
+      cy.findByRole("tooltip")
+        .findByText(SMART_SCALAR_QUESTION.description)
+        .should("exist");
+      moveMouseAway();
+
+      cy.log(
+        `${key}: should not truncate value and should not show value tooltip on hover`,
+      );
+      scalarContainer(card(key)).then(($element) =>
+        H.assertIsNotEllipsified($element[0]),
+      );
+      scalarContainer(card(key)).realHover();
+      cy.findByRole("tooltip").should("not.exist");
+      moveMouseAway();
+
+      cy.log(`${key}: should display the period as part of the comparison`);
+      previousValue(card(key)).should("contain", "Apr 2029");
+
+      cy.log(`${key}: should show previous value in full`);
+      previousValue(card(key))
+        .should("contain", "-34.72% MoM")
+        .and("contain", "(527)");
+      previousValue(card(key)).then(($element) =>
+        H.assertIsNotEllipsified($element[0]),
+      );
+
+      cy.log(
+        `${key}: should not show a panel for a single fully-displayed comparison`,
+      );
+      previousValue(card(key)).realHover();
+      cy.findByRole("tooltip").should("not.exist");
+      moveMouseAway();
     });
 
-    describe("2x2 card", () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, [
-          { size_x: 2, size_y: 2, row: 0, col: 0 },
-        ]);
-      });
-
-      it("should follow truncation rules", () => {
-        cy.log("it should not truncate value");
-        scalarContainer().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-
-        cy.log(
-          "it should show the title tooltip on hover because the smallest cards hide the inline title",
-        );
-        scalarContainer().realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SMART_SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("it should not display the period on dashboard cards");
-        cy.findByTestId("scalar-period").should("not.exist");
-
-        cy.log(
-          "it should show the previous value as a percentage only (without truncation)",
-        );
-        previousValue().should("contain", "-34.72%").and("not.contain", "527");
-
-        previousValue().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-
-        cy.log("it should show the full comparison in a panel on hover");
-        previousValue().realHover();
-
-        cy.findByRole("tooltip").within(() => {
-          cy.contains("34.72%").should("exist");
-          cy.contains("vs. previous month").should("exist");
-          cy.contains("527").should("exist");
-        });
-      });
-    });
-
-    describe("7x3 card", () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, [
-          { size_x: 7, size_y: 3, row: 0, col: 0 },
-        ]);
-      });
-
-      it("should follow truncation rules", () => {
-        cy.log(
-          "should not truncate value and should not show value tooltip on hover",
-        );
-        scalarContainer().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-        scalarContainer().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("it should display the period as part of the comparison");
-        previousValue().should("contain", "Apr 2029");
-
-        cy.log("should truncate the inline title and show it on hover");
-        cy.findByTestId("scalar-title").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SMART_SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-title").icon("info").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SMART_SCALAR_QUESTION.description)
-          .should("exist");
-
-        cy.log("should show previous value in full");
-        previousValue()
-          .should("contain", "-34.72% MoM")
-          .and("contain", "(527)");
-        previousValue().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-
-        cy.log(
-          "should not show a panel for a single fully-displayed comparison",
-        );
-        cy.findByTestId("scalar-previous-value").realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-      });
-    });
-
-    describe("7x4 card", () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, [
-          { size_x: 7, size_y: 4, row: 0, col: 0 },
-        ]);
-      });
-
-      it("should follow truncation rules", () => {
-        cy.log(
-          "should not truncate value and should not show value tooltip on hover",
-        );
-        scalarContainer().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-        scalarContainer().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("it should display the period as part of the comparison");
-        previousValue().should("contain", "Apr 2029");
-
-        cy.log("should truncate the inline title and show it on hover");
-        cy.findByTestId("scalar-title").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SMART_SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-title").icon("info").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SMART_SCALAR_QUESTION.description)
-          .should("exist");
-
-        cy.log("should show previous value in full");
-        previousValue()
-          .should("contain", "-34.72% MoM")
-          .and("contain", "(527)");
-        previousValue().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-
-        cy.log(
-          "should not show a panel for a single fully-displayed comparison",
-        );
-        cy.findByTestId("scalar-previous-value").realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-      });
+    cy.log(
+      "trend 4x3: extra comparisons should only be shown in the hover panel",
+    );
+    previousValue(card("trend4x3"))
+      .should("contain", "-34.72%")
+      .and("not.contain", "36.65%")
+      .and("not.contain", "98.88%");
+    previousValue(card("trend4x3")).realHover();
+    H.tooltip().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("be.visible");
+      cy.findByText("98.88%").should("be.visible");
     });
   });
 });
@@ -1200,20 +1132,7 @@ describe("issue 48878", () => {
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
-    let fetchCardRequestsCount = 0;
-
-    cy.intercept("GET", "/api/card/*", (request) => {
-      // we only want to simulate the race condition 4th time this request is triggered
-      if (fetchCardRequestsCount === 2) {
-        request.continue(
-          () => new Promise((resolve) => setTimeout(resolve, 2000)),
-        );
-      } else {
-        request.continue();
-      }
-
-      ++fetchCardRequestsCount;
-    }).as("fetchCard");
+    cy.intercept("GET", "/api/card/*").as("fetchCard");
     setup();
   });
 
@@ -1225,16 +1144,6 @@ describe("issue 48878", () => {
   });
 
   function setup() {
-    cy.log("create dummy model");
-
-    // Create a dummy model so that GET /api/search does not return the model want to test.
-    // If we don't do this, GET /api/search will return and put card object with dataset_query
-    // attribute in the redux store (entity framework) which would prevent the issue from happening.
-    createModel({
-      name: "Dummy model",
-      query: "select 1",
-    });
-
     cy.log("create model");
 
     createModel({
@@ -1392,9 +1301,6 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
   });
 });
 
-const scalarContainer = () => cy.findByTestId("scalar-container");
-const previousValue = () => cy.findByTestId("scalar-previous-value");
-
 describe("issue 67432", () => {
   beforeEach(() => {
     H.restore();
@@ -1440,66 +1346,55 @@ describe("issue 67432", () => {
       .icon("chevrondown")
       .should("exist");
 
-    // Collect the visual order of categories from the table
-    const visualCategories = [];
+    // Products 1-5 sorted by Category descending; equal categories keep their row order
+    const EXPECTED_ROWS = [
+      ["Rustic Paper Wallet", "Gizmo"],
+      ["Enormous Marble Wallet", "Gadget"],
+      ["Small Marble Shoes", "Doohickey"],
+      ["Synergistic Granite Chair", "Doohickey"],
+      ["Enormous Aluminum Shirt", "Doohickey"],
+    ];
+
     H.tableInteractiveBody()
       .find('[data-column-id="CATEGORY"]')
-      .each(($cell) => {
-        visualCategories.push($cell.text());
-      })
-      .then(() => {
-        // Select multiple cells across rows by dragging
-        const getNonPKCells = () =>
-          H.tableInteractiveBody().find(
-            '[data-selectable-cell]:not([data-column-id="ID"])',
-          );
-
-        // Select cells in first two rows (4 cells: Title+Category for 2 rows)
-        getNonPKCells()
-          .eq(0)
-          .trigger("mousedown", { which: 1 })
-          .then(() => {
-            const lastCellIndex = ROWS_LIMIT * 2 - 1;
-            getNonPKCells()
-              .should("have.length", ROWS_LIMIT * 2)
-              .eq(lastCellIndex)
-              .trigger("mouseover", { buttons: 1 });
-            getNonPKCells()
-              .should("have.length", ROWS_LIMIT * 2)
-              .eq(lastCellIndex)
-              .trigger("mouseup");
-          });
-
-        // Copy to clipboard
-        cy.realPress(["Meta", "c"]);
-
-        // Verify clipboard content has rows in sorted order
-        H.readClipboard().then((clipboardText) => {
-          // The clipboard should contain properly tab-separated content
-          // with newlines between rows (not a single cell)
-          const lines = clipboardText.split("\n");
-
-          // Should have header row + data rows (at least 6 lines: header + 5 data rows)
-          expect(lines.length).to.be.eq(ROWS_LIMIT + 1);
-
-          // Header should be tab-separated with both columns
-          const headerCells = lines[0].split("\t");
-          expect(headerCells).to.include("Title");
-          expect(headerCells).to.include("Category");
-
-          // Verify each data row is tab-separated and in the correct sorted order
-          const clipboardCategories = lines.slice(1).map((line) => {
-            const cells = line.split("\t");
-            // Category is the second column
-            return cells[1];
-          });
-
-          // The categories in clipboard should match the visual order
-          for (let i = 0; i < clipboardCategories.length; i++) {
-            expect(clipboardCategories[i]).to.equal(visualCategories[i]);
-          }
-        });
+      .should(($cells) => {
+        expect($cells.toArray().map((cell) => cell.textContent)).to.deep.equal(
+          EXPECTED_ROWS.map(([, category]) => category),
+        );
       });
+
+    // Select multiple cells across rows by dragging
+    const getNonPKCells = () =>
+      H.tableInteractiveBody().find(
+        '[data-selectable-cell]:not([data-column-id="ID"])',
+      );
+
+    // Select Title and Category cells in every row
+    getNonPKCells()
+      .eq(0)
+      .trigger("mousedown", { which: 1 })
+      .then(() => {
+        const lastCellIndex = ROWS_LIMIT * 2 - 1;
+        getNonPKCells()
+          .should("have.length", ROWS_LIMIT * 2)
+          .eq(lastCellIndex)
+          .trigger("mouseover", { buttons: 1 });
+        getNonPKCells()
+          .should("have.length", ROWS_LIMIT * 2)
+          .eq(lastCellIndex)
+          .trigger("mouseup");
+      });
+
+    // Copy to clipboard
+    cy.realPress(["Meta", "c"]);
+
+    // The clipboard holds tab-separated rows in the sorted order
+    H.readClipboard().should(
+      "equal",
+      [["Title", "Category"], ...EXPECTED_ROWS]
+        .map((cells) => cells.join("\t"))
+        .join("\n"),
+    );
   });
 });
 
@@ -1583,6 +1478,9 @@ describe("issue 63416", () => {
 
     cy.log("Make this a visualizer card");
     H.saveDashcardVisualizerModal();
+
+    H.showDashboardCardActions(0);
+    H.getDashboardCard(0).findByLabelText("Edit visualization").should("exist");
 
     H.saveDashboard();
 

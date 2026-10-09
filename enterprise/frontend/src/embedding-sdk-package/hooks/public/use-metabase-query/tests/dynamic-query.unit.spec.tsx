@@ -1,6 +1,12 @@
 // Register mocks before loading the modules under test.
 // oxfmt-ignore
-import { createMockStore, resetTestState, stagesOf } from "./setup";
+import {
+  PUBLISHED_QUESTION_ENTITY_ID,
+  createMockStore,
+  mockRunRtkEndpoint,
+  resetTestState,
+  stagesOf,
+} from "./setup";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
@@ -17,7 +23,7 @@ afterEach(() => {
 
 const STATIC_QUERY = {
   source: TEST_SCHEMA.tables.orders,
-  savedQuestionSourceId: 41,
+  savedQuestionEntityId: PUBLISHED_QUESTION_ENTITY_ID,
 };
 
 const statusFilter = filter(
@@ -26,36 +32,68 @@ const statusFilter = filter(
   "paid",
 );
 
-describe("an unsynchronized table source", () => {
-  const UNSYNCHRONIZED_QUERY = { source: TEST_SCHEMA.tables.orders };
+describe("a table source without a saved question", () => {
+  const QUERY_WITHOUT_SAVED_QUESTION = { source: TEST_SCHEMA.tables.orders };
 
   it("is refused in a deployed data app", async () => {
     EMBEDDING_SDK_CONFIG.isDataApp = true;
 
     await expect(
-      resolveDatasetQueryInBundle(createMockStore())(UNSYNCHRONIZED_QUERY),
-    ).rejects.toThrow("has not been synchronized");
+      resolveDatasetQueryInBundle(createMockStore())(
+        QUERY_WITHOUT_SAVED_QUESTION,
+      ),
+    ).rejects.toThrow(
+      "This query has no saved question. Write it to the app's collection under `collections/data_apps/`",
+    );
   });
 
-  it("still runs in the dev preview, before the first sync", async () => {
+  it("still runs in the dev preview, before the app's resources exist", async () => {
     EMBEDDING_SDK_CONFIG.isDataApp = true;
     EMBEDDING_SDK_CONFIG.isDataAppDev = true;
 
-    const datasetQuery =
-      await resolveDatasetQueryInBundle(createMockStore())(
-        UNSYNCHRONIZED_QUERY,
-      );
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      QUERY_WITHOUT_SAVED_QUESTION,
+    );
 
     expect(stagesOf(datasetQuery)).toMatchObject([{ "source-table": 1 }]);
   });
 
   it("still runs outside a data app, where the SDK addresses tables directly", async () => {
-    const datasetQuery =
-      await resolveDatasetQueryInBundle(createMockStore())(
-        UNSYNCHRONIZED_QUERY,
-      );
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      QUERY_WITHOUT_SAVED_QUESTION,
+    );
 
     expect(stagesOf(datasetQuery)).toMatchObject([{ "source-table": 1 }]);
+  });
+});
+
+describe("a table source backed by a saved question in a deployed data app", () => {
+  beforeEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+  });
+
+  it("looks the published card up by its entity ID", async () => {
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(STATIC_QUERY);
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({ "source-card": 41 });
+    expect(mockRunRtkEndpoint).toHaveBeenCalledWith(
+      { id: PUBLISHED_QUESTION_ENTITY_ID },
+      expect.anything(),
+      expect.objectContaining({ name: "getCard" }),
+      { forceRefetch: false },
+    );
+  });
+
+  it("explains a published card the instance hasn't imported yet", async () => {
+    mockRunRtkEndpoint.mockRejectedValueOnce({
+      status: 404,
+      data: "Not found.",
+    });
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(STATIC_QUERY),
+    ).rejects.toThrow("This app's saved questions have not been imported.");
   });
 });
 
@@ -116,7 +154,7 @@ describe("dynamic query clauses", () => {
       source: TEST_SCHEMA.tables.orders,
       aggregations: [count()],
       breakouts: [TEST_SCHEMA.tables.orders.fields.status],
-      savedQuestionSourceId: 41,
+      savedQuestionEntityId: PUBLISHED_QUESTION_ENTITY_ID,
     };
 
     const production = await resolveDatasetQueryInBundle(createMockStore())(
