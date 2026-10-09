@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { type ReactNode, useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
@@ -10,14 +12,8 @@ import type { SearchResult } from "metabase-types/api";
 import { AppSwitcher } from "../AppSwitcher";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
+import S from "./AppBar.module.css";
 import { AppBarLogo } from "./AppBarLogo";
-import {
-  AppBarHeader,
-  AppBarLogoContainer,
-  AppBarSearchContainer,
-  AppBarSubheader,
-  AppBarToggleContainer,
-} from "./AppBarSmall.styled";
 import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarSmallProps {
@@ -60,6 +56,7 @@ export const AppBarSmall = ({
   const isHeaderVisible =
     isLogoVisible || isNavBarEnabled || isSearchVisible || isAppSwitcherVisible;
   const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
+  const isLogoShown = isLogoVisible && !isSearchActive;
 
   const handleSearchActive = useCallback(() => {
     setSearchActive(true);
@@ -73,17 +70,24 @@ export const AppBarSmall = ({
   return (
     <Box bg="background_page-primary">
       {isHeaderVisible && (
-        <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
+        <Box
+          className={cx(S.navBar, {
+            [S.withBorder]: !isSubheaderVisible,
+          })}
+          pos="relative"
+          h={APP_BAR_HEIGHT}
+          px="lg"
+        >
           <Flex justify="space-between" align="center" gap="sm" h="100%">
-            <AppBarToggleContainer>
+            <Box flex="0 0 auto">
               <AppBarToggle
                 isSmallAppBar
                 isNavBarEnabled={isNavBarEnabled}
                 isNavBarOpen={isNavBarVisible}
                 onToggleClick={onToggleNavbar}
               />
-            </AppBarToggleContainer>
-            <AppBarSearchContainer>
+            </Box>
+            <Box flex="1 1 auto">
               {isSearchVisible &&
                 (isEmbeddingIframe ? (
                   <SearchBar
@@ -96,22 +100,38 @@ export const AppBarSmall = ({
                     <SearchButton />
                   </Flex>
                 ))}
-            </AppBarSearchContainer>
+            </Box>
             {!isEmbeddingIframe && <MetabotAppBarButton />}
             {isAppSwitcherVisible && <AppSwitcher />}
           </Flex>
-          <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
+          <Box
+            className={cx(S.translateCenter, S.logoFade, {
+              [S.hidden]: !isLogoShown,
+            })}
+            opacity={isLogoShown ? 1 : 0}
+            pos="absolute"
+            top="50%"
+            left="50%"
+          >
             <AppBarLogo
               isSmallAppBar
               isLogoVisible={isLogoVisible}
               isNavBarEnabled={isNavBarEnabled}
               onLogoClick={onCloseNavbar}
             />
-          </AppBarLogoContainer>
-        </AppBarHeader>
+          </Box>
+        </Box>
       )}
       {isSubheaderVisible && (
-        <AppBarSubheader isNavBarOpen={isNavBarVisible}>
+        <Box
+          className={cx(S.navBar, S.withTransition, {
+            [S.withBorder]: isNavBarVisible,
+          })}
+          h={APP_SUBHEADER_HEIGHT}
+          py="lg"
+          pr="lg"
+          pl="1.25rem"
+        >
           {detailView ? (
             <DetailViewNav
               rowName={detailView.rowName}
@@ -122,7 +142,7 @@ export const AppBarSmall = ({
           ) : isCollectionPathVisible ? (
             collectionBreadcrumbs
           ) : null}
-        </AppBarSubheader>
+        </Box>
       )}
     </Box>
   );
