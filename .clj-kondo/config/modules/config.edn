@@ -264,6 +264,7 @@
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{api-scope
+           app-db
            events
            lib.schema
            models

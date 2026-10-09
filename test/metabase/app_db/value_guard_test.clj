@@ -4,6 +4,8 @@
    [honey.sql :as sql]
    [metabase.app-db.value-guard :as value-guard]))
 
+(set! *warn-on-reflection* true)
+
 (defn- formatted
   "Lift the markers in `query` and compile it, as the app-DB compile step does."
   [query]
@@ -146,3 +148,35 @@
                          (catch clojure.lang.ExceptionInfo e (:type (ex-data e)))))
       {:select [:*] :from [[[:auto/param "t"] :a]]}
       {:select [:*] :from [:t] :join [[[:auto/param "u"] :a] [:= 1 1]]})))
+
+(deftest ^:parallel mark-condition-values-test
+  (testing "GHY-4481: a plain scalar value is marked for binding; keys and everything else are left alone"
+    (let [uuid (random-uuid)
+          date (java.time.LocalDate/of 2026 1 2)]
+      (is (= [:name   [:auto/param "x' OR '1'='1"]
+              :id     [:auto/param 5]
+              :uuid   [:auto/param uuid]
+              :date   [:auto/param date]
+              :nil    nil
+              :flag   false
+              :type   :model
+              :public [:not= nil]
+              :ids    [:in [1 2]]]
+             (value-guard/mark-condition-values
+              [:name   "x' OR '1'='1"
+               :id     5
+               :uuid   uuid
+               :date   date
+               :nil    nil
+               :flag   false
+               :type   :model
+               :public [:not= nil]
+               :ids    [:in [1 2]]])))))
+  (testing "GHY-4481: a leading positional primary key is passed through, and the pairs after it are still marked"
+    (is (= [5 :name [:auto/param "x"]]
+           (value-guard/mark-condition-values [5 :name "x"])))
+    (is (= [[1 2] :name [:auto/param "x"] :archived false]
+           (value-guard/mark-condition-values [[1 2] :name "x" :archived false]))))
+  (testing "GHY-4481: a trailing query map is passed through"
+    (is (= [:name [:auto/param "x"] {:order-by [[:id :asc]]}]
+           (value-guard/mark-condition-values [:name "x" {:order-by [[:id :asc]]}])))))

@@ -267,25 +267,25 @@
   [{:keys [started-at-start started-at-end ended-at-start ended-at-end run-methods transform-ids
            transform-tag-ids statuses user-id]}]
   (let [where-cond (cond-> []
-                     started-at-start (conj [:>= :start_time started-at-start])
-                     started-at-end   (conj [:<  :start_time started-at-end])
-                     ended-at-start   (conj [:>= :end_time ended-at-start])
-                     ended-at-end     (conj [:<  :end_time ended-at-end])
+                     started-at-start (conj [:>= :start_time [:auto/param started-at-start]])
+                     started-at-end   (conj [:<  :start_time [:auto/param started-at-end]])
+                     ended-at-start   (conj [:>= :end_time [:auto/param ended-at-start]])
+                     ended-at-end     (conj [:<  :end_time [:auto/param ended-at-end]])
 
                      (seq run-methods)
-                     (conj [:in :run_method (set run-methods)])
+                     (conj [:in :run_method [:auto/param (set run-methods)]])
 
                      (seq transform-ids)
-                     (conj [:in :transform_id transform-ids])
+                     (conj [:in :transform_id (mapv long transform-ids)])
 
                      (seq transform-tag-ids)
                      (conj [:in :transform_id ^:allow-subquery
                             {:select [:transform_id]
                              :from   [:transform_transform_tag]
-                             :where  [:in :tag_id transform-tag-ids]}])
+                             :where  [:in :tag_id (mapv long transform-tag-ids)]}])
 
                      (seq statuses)
-                     (conj [:in :status (set statuses)])
+                     (conj [:in :status [:auto/param (set statuses)]])
 
                      ;; optimization: is_active condition for started status
                      (and (= (first statuses) "started")
@@ -293,7 +293,7 @@
                      (conj [:= :is_active true])
 
                      (some? user-id)
-                     (conj [:= :user_id user-id]))]
+                     (conj [:= :user_id (long user-id)]))]
     (when (seq where-cond)
       (into [:and] where-cond))))
 
@@ -559,12 +559,12 @@
 (defn- job-run-where
   [job-id status run-method started-at-start started-at-end]
   (let [conditions (cond-> []
-                     job-id             (conj [:= :job_id job-id])
-                     status             (conj [:= :status status])
+                     job-id             (conj [:= :job_id (long job-id)])
+                     status             (conj [:= :status [:auto/param status]])
                      (= status "started") (conj [:= :is_active true])
-                     run-method         (conj [:= :run_method run-method])
-                     started-at-start   (conj [:>= :start_time started-at-start])
-                     started-at-end     (conj [:< :start_time started-at-end]))]
+                     run-method         (conj [:= :run_method [:auto/param run-method]])
+                     started-at-start   (conj [:>= :start_time [:auto/param started-at-start]])
+                     started-at-end     (conj [:< :start_time [:auto/param started-at-end]]))]
     (when (seq conditions)
       (into [:and] conditions))))
 
@@ -683,7 +683,7 @@
                                         :from   [[:transform_run :member]]
                                         :where  [:and
                                                  [:= :member.job_run_id :transform_job_run.id]
-                                                 [:in :member.transform_id transform-ids]]}]
+                                                 [:in :member.transform_id (mapv long transform-ids)]]}]
              true)})
 
 (defn- dag-run-subquery [transform-ids]
@@ -703,7 +703,7 @@
                                         :from   [[:transform_run :member]]
                                         :where  [:and
                                                  [:= :member.dag_run_id :transform_dag_run.id]
-                                                 [:in :member.transform_id transform-ids]]}]
+                                                 [:in :member.transform_id (mapv long transform-ids)]]}]
              true)})
 
 (defn- transform-run-subquery [transform-ids]
@@ -722,7 +722,7 @@
    :where  (cond-> [:and
                     [:= :job_run_id nil]
                     [:= :dag_run_id nil]]
-             (seq transform-ids) (conj [:in :transform_id transform-ids]))})
+             (seq transform-ids) (conj [:in :transform_id (mapv long transform-ids)]))})
 
 (defn- union-subquery
   "The UNION ALL of the branches selected by `types` (a subset of `#{:job :dag :transform}`), each optionally
@@ -738,14 +738,14 @@
 (defn- root-run-summaries-where
   [statuses run-methods started-at-start started-at-end ended-at-start ended-at-end]
   (let [where (into [:and] (remove nil?)
-                    [(when (seq statuses)    [:in :status (set statuses)])
+                    [(when (seq statuses)    [:in :status [:auto/param (set statuses)]])
                      ;; started ⇒ still active, as in the per-table run listings
                      (when (= (set statuses) #{"started"}) [:= :is_active true])
-                     (when (seq run-methods) [:in :run_method (set run-methods)])
-                     (when started-at-start [:>= :start_time started-at-start])
-                     (when started-at-end   [:<  :start_time started-at-end])
-                     (when ended-at-start   [:>= :end_time ended-at-start])
-                     (when ended-at-end     [:<  :end_time ended-at-end])])]
+                     (when (seq run-methods) [:in :run_method [:auto/param (set run-methods)]])
+                     (when started-at-start [:>= :start_time [:auto/param started-at-start]])
+                     (when started-at-end   [:<  :start_time [:auto/param started-at-end]])
+                     (when ended-at-start   [:>= :end_time [:auto/param ended-at-start]])
+                     (when ended-at-end     [:<  :end_time [:auto/param ended-at-end]])])]
     (when (> (count where) 1) where)))
 
 (defn- root-run-order-by

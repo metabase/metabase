@@ -210,8 +210,8 @@
                                            [:type        {:optional true} [:maybe [:or :keyword :string]]]
                                            [:is-active?  {:optional true} [:maybe :boolean]]]]]
   (apply t2/select-one (into [:model/User] columns)
-         :id id
-         (concat (when type [:type type])
+         :id (long id)
+         (concat (when type [:type [:auto/param type]])
                  (when (some? is-active?) [:is_active is-active?]))))
 
 (mu/defn user-email-exists?
