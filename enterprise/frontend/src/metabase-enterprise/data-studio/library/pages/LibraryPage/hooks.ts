@@ -83,6 +83,7 @@ export function useLibraryCollectionTree(
   const getIcon = useGetIcon();
   const models = SECTION_ITEM_MODELS[sectionType];
 
+  // 1. Fetch top-level items
   const {
     data: topLevelItems,
     isLoading,
@@ -99,6 +100,7 @@ export function useLibraryCollectionTree(
 
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
+  // 2. Expanded subcollection items, subscribed to the API cache
   const [expandedCollectionIds, setExpandedCollectionIds] = useState<
     CollectionId[]
   >([]);
@@ -158,6 +160,7 @@ export function useLibraryCollectionTree(
     [expandedCollectionIds, expandedCollectionItems],
   );
 
+  // 3. Build tree
   const tree = useMemo((): TreeItem[] => {
     if (isLoading || !topLevelItems || !collection) {
       return [];
@@ -199,6 +202,7 @@ export function useLibraryCollectionTree(
     isRemoteSyncReadOnly,
   ]);
 
+  // 4. Watch rows for expanded-but-empty collections → subscribe to their items
   const watchRows = useCallback((rows: Row<TreeItem>[]) => {
     const collectionIdsToLoad = rows.flatMap((row) => {
       const { original } = row;
@@ -224,6 +228,7 @@ export function useLibraryCollectionTree(
     });
   }, []);
 
+  // 5. isChildrenLoading for the spinner
   const isChildrenLoading = useCallback(
     (row: Row<TreeItem>): boolean =>
       row.getIsExpanded() &&
