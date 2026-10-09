@@ -373,3 +373,13 @@
   "The Collections with `entity-ids`."
   [entity-ids :- [:set :string]]
   (t2/select :model/Collection :entity_id [:in entity-ids]))
+
+(mu/defn synced-library-collections
+  "The unarchived, Git-synced library collections among `collection-ids`."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select [:model/Collection :id :type]
+               :id [:in collection-ids]
+               :archived false
+               :is_remote_synced true)
+    []))

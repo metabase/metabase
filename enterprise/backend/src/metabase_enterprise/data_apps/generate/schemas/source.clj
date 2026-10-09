@@ -36,8 +36,8 @@
   (let [roots       (filter #(contains? collection/library-collection-types (:type %))
                             (when (:is_remote_synced (collections/library-collection))
                               (data-apps.db/collections-with-entity-ids library-root-entity-ids)))
-        collections (filter #(and (:is_remote_synced %) (not (:archived %)))
-                            (concat roots (when (seq roots) (collection/descendants-flat-for roots))))
+        collections (data-apps.db/synced-library-collections
+                     (into #{} (map :id) (concat roots (when (seq roots) (collection/descendants-flat-for roots)))))
         ids-of-type (fn [collection-type]
                       (into #{} (comp (filter #(= (:type %) collection-type)) (map :id)) collections))]
     {:data-collection-ids   (ids-of-type collection/library-data-collection-type)

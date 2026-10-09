@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.data-apps.generate.schemas :as schemas]
+   [metabase-enterprise.data-apps.generate.schemas.source :as source]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.actions.core :as actions]
@@ -12,15 +14,9 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase-enterprise.data-apps.generate.schemas :as schemas]
-   [metabase-enterprise.data-apps.generate.schemas.source :as source]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-(use-fixtures :each
-  (fn [f]
-    (data-apps.tu/do-with-library! (fn [_] (f)))))
 
 (deftest previously-synced-ids-test
   (doseq [[status metadata qualifies?]
@@ -65,93 +61,98 @@
       (is (empty? @calls)))))
 
 (deftest curated-tables-test
-  (with-library [{:keys [data]}]
-    (with-library-synced
-      (mt/with-temp-vals-in-db :model/Collection (:id data) {:is_remote_synced true}
-        (mt/with-temp [:model/Database db {}
-                       :model/Table table {:db_id (:id db), :name "widgets", :display_name "Widgets"
-                                           :is_published true, :collection_id (:id data)}
-                       :model/Field _ {:table_id (:id table), :name "price", :base_type :type/Float}
-                       :model/RemoteSyncObject tracking {:model_type "Table", :model_id (:id table)
-                                                         :model_name "Widgets", :status "synced"
-                                                         :status_changed_at (t/offset-date-time)}]
-          (mt/with-test-user :crowberto
-            (testing "programmatic generation applies curation"
-              (is (= #{(:id table)}
-                     (into #{} (map :id) (:tables (schemas/fetch-items))))))
-            (testing "the REST route applies the same curation"
-              (mt/with-premium-features #{:data-apps}
-                (let [body (:body (mt/user-http-request-full-response
-                                   :crowberto :get 200 "apps/generate/schemas"))]
-                  (is (str/includes? body "widgets: {")))))
-            (testing "pending edits use the current local definition"
-              (t2/update! :model/RemoteSyncObject (:id tracking)
-                          {:status "update", :file_path "tables/widgets.yaml", :content_hash "old-hash"})
-              (mt/with-temp-vals-in-db :model/Table (:id table) {:description "Edited widgets"}
-                (is (= ["Edited widgets"]
-                       (map :description (source/tables source/app-db-source #{(:id table)}))))))
-            (testing "selected but never synchronized content is excluded"
-              (t2/update! :model/RemoteSyncObject (:id tracking) {:status "create"})
-              (is (= [] (source/tables source/app-db-source #{(:id table)}))))
-            (t2/update! :model/RemoteSyncObject (:id tracking) {:status "synced"})
-            (testing "Git presence does not grant read permission"
-              (mt/with-no-data-perms-for-all-users!
-                (mt/with-test-user :rasta
-                  (is (= [] (source/tables source/app-db-source #{(:id table)}))))))
-            (testing "publication and current sync scope still apply"
-              (mt/with-temp-vals-in-db :model/Table (:id table) {:is_published false}
-                (is (= [] (source/tables source/app-db-source #{(:id table)}))))
-              (mt/with-temp-vals-in-db :model/Table (:id table) {:collection_id nil}
-                (is (= [] (source/tables source/app-db-source #{(:id table)}))))
-              (with-library-not-synced
-                (is (= [] (source/tables source/app-db-source #{(:id table)})))))))))))
+  (data-apps.tu/do-with-library!
+   (fn [_]
+     (with-library [{:keys [data]}]
+       (with-library-synced
+         (mt/with-temp-vals-in-db :model/Collection (:id data) {:is_remote_synced true}
+           (mt/with-temp [:model/Database db {}
+                          :model/Table table {:db_id (:id db), :name "widgets", :display_name "Widgets"
+                                              :is_published true, :collection_id (:id data)}
+                          :model/Field _ {:table_id (:id table), :name "price", :base_type :type/Float}
+                          :model/RemoteSyncObject tracking {:model_type "Table", :model_id (:id table)
+                                                            :model_name "Widgets", :status "synced"
+                                                            :status_changed_at (t/offset-date-time)}]
+             (mt/with-test-user :crowberto
+               (testing "programmatic generation applies curation"
+                 (is (= #{(:id table)}
+                        (into #{} (map :id) (:tables (schemas/fetch-items))))))
+               (testing "the REST route applies the same curation"
+                 (mt/with-premium-features #{:data-apps}
+                   (let [body (:body (mt/user-http-request-full-response
+                                      :crowberto :get 200 "apps/generate/schemas"))]
+                     (is (str/includes? body "widgets: {")))))
+               (testing "pending edits use the current local definition"
+                 (t2/update! :model/RemoteSyncObject (:id tracking)
+                             {:status "update", :file_path "tables/widgets.yaml", :content_hash "old-hash"})
+                 (mt/with-temp-vals-in-db :model/Table (:id table) {:description "Edited widgets"}
+                   (is (= ["Edited widgets"]
+                          (map :description (source/tables source/app-db-source #{(:id table)}))))))
+               (testing "selected but never synchronized content is excluded"
+                 (t2/update! :model/RemoteSyncObject (:id tracking) {:status "create"})
+                 (is (= [] (source/tables source/app-db-source #{(:id table)}))))
+               (t2/update! :model/RemoteSyncObject (:id tracking) {:status "synced"})
+               (testing "Git presence does not grant read permission"
+                 (mt/with-no-data-perms-for-all-users!
+                   (mt/with-test-user :rasta
+                     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
+                                           (source/tables source/app-db-source #{(:id table)}))))))
+               (testing "publication and current sync scope still apply"
+                 (mt/with-temp-vals-in-db :model/Table (:id table) {:is_published false}
+                   (is (= [] (source/tables source/app-db-source #{(:id table)}))))
+                 (mt/with-temp-vals-in-db :model/Table (:id table) {:collection_id nil}
+                   (is (= [] (source/tables source/app-db-source #{(:id table)}))))
+                 (with-library-not-synced
+                   (is (= [] (source/tables source/app-db-source #{(:id table)})))))))))))))
 
 (deftest curated-metrics-do-not-require-curated-backing-tables-test
-  (mt/dataset test-data
-    (with-library [{:keys [data metrics]}]
-      (with-library-synced
-        (mt/with-temp-vals-in-db :model/Collection (:id metrics) {:is_remote_synced true}
-          (let [mp (mt/metadata-provider)
-                query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                     (lib/sum (lib.metadata/field mp (mt/id :orders :total))))]
-            (mt/with-temp [:model/Card metric {:name "Curated revenue", :type :metric, :display :scalar
-                                               :database_id (mt/id), :collection_id (:id metrics)
-                                               :dataset_query query}
-                           :model/RemoteSyncObject tracking {:model_type "Card", :model_id (:id metric)
-                                                             :model_name "Revenue", :status "synced"
-                                                             :status_changed_at (t/offset-date-time)}]
-              (mt/with-test-user :crowberto
-                (testing "an unpublished out-of-library backing table does not hide the metric or become an export"
-                  (let [schema (schemas/create-schema (schemas/fetch-items))]
-                    (is (= {} (:tables schema)))
-                    (is (=? {"curatedRevenue" {:id (:id metric), :mappedTableIds [(mt/id :orders)]}}
-                            (:metrics schema)))))
-                (testing "unpublished and unsynced library backing tables do not hide the metric"
-                  (doseq [published? [false true]]
-                    (mt/with-temp-vals-in-db :model/Table (mt/id :orders)
-                                             {:collection_id (:id data), :is_published published?}
-                      (is (= [(:id metric)]
-                             (map :id (source/metrics source/app-db-source #{(:id metrics)})))))))
-                (testing "metric scope filters still narrow eligible content"
-                  (is (= [] (source/metrics source/app-db-source #{}))))
-                (testing "an unsynced library returns no metrics"
-                  (with-library-not-synced
-                    (is (= [] (source/metrics source/app-db-source #{(:id metrics)})))))
-                (testing "pending metric edits remain visible"
-                  (t2/update! :model/RemoteSyncObject (:id tracking)
-                              {:status "update", :file_path "metrics/revenue.yaml", :content_hash "old-hash"})
-                  (mt/with-temp-vals-in-db :model/Card (:id metric) {:name "Edited revenue"}
-                    (is (= ["Edited revenue"]
-                           (map :name (source/metrics source/app-db-source #{(:id metrics)}))))))
-                (testing "never-synchronized metrics are excluded"
-                  (t2/update! :model/RemoteSyncObject (:id tracking) {:status "create"})
-                  (is (= [] (source/metrics source/app-db-source #{(:id metrics)}))))))))))))
+  (data-apps.tu/do-with-library!
+   (fn [_]
+     (mt/dataset test-data
+       (with-library [{:keys [data metrics]}]
+         (with-library-synced
+           (mt/with-temp-vals-in-db :model/Collection (:id metrics) {:is_remote_synced true}
+             (let [mp (mt/metadata-provider)
+                   query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                        (lib/sum (lib.metadata/field mp (mt/id :orders :total))))]
+               (mt/with-temp [:model/Card metric {:name "Curated revenue", :type :metric, :display :scalar
+                                                  :database_id (mt/id), :collection_id (:id metrics)
+                                                  :dataset_query query}
+                              :model/RemoteSyncObject tracking {:model_type "Card", :model_id (:id metric)
+                                                                :model_name "Revenue", :status "synced"
+                                                                :status_changed_at (t/offset-date-time)}]
+                 (mt/with-test-user :crowberto
+                   (testing "an unpublished out-of-library backing table does not hide the metric or become an export"
+                     (let [schema (schemas/create-schema (schemas/fetch-items))]
+                       (is (= {} (:tables schema)))
+                       (is (=? {"curatedRevenue" {:id (:id metric), :mappedTableIds [(mt/id :orders)]}}
+                               (:metrics schema)))))
+                   (testing "unpublished and unsynced library backing tables do not hide the metric"
+                     (doseq [published? [false true]]
+                       (mt/with-temp-vals-in-db :model/Table (mt/id :orders)
+                                                {:collection_id (:id data), :is_published published?}
+                         (is (= [(:id metric)]
+                                (map :id (source/metrics source/app-db-source #{(:id metrics)})))))))
+                   (testing "metric scope filters still narrow eligible content"
+                     (is (= [] (source/metrics source/app-db-source #{}))))
+                   (testing "an unsynced library returns no metrics"
+                     (with-library-not-synced
+                       (is (= [] (source/metrics source/app-db-source #{(:id metrics)})))))
+                   (testing "pending metric edits remain visible"
+                     (t2/update! :model/RemoteSyncObject (:id tracking)
+                                 {:status "update", :file_path "metrics/revenue.yaml", :content_hash "old-hash"})
+                     (mt/with-temp-vals-in-db :model/Card (:id metric) {:name "Edited revenue"}
+                       (is (= ["Edited revenue"]
+                              (map :name (source/metrics source/app-db-source #{(:id metrics)}))))))
+                   (testing "never-synchronized metrics are excluded"
+                     (t2/update! :model/RemoteSyncObject (:id tracking) {:status "create"})
+                     (is (= [] (source/metrics source/app-db-source #{(:id metrics)}))))))))))))))
 
 (deftest curated-actions-test
   (mt/dataset test-data
     (mt/with-actions-enabled
-      (mt/with-temp [:model/Collection synced {:is_remote_synced true}
-                     :model/Collection unsynced {}
+      (mt/with-temp [:model/Collection synced {:namespace "data-actions", :is_remote_synced true}
+                     :model/Collection unsynced {:namespace "data-actions"}
                      :model/Action action {:name "Update order", :collection_id (:id synced), :type :query
                                            :parameters [{:id "total", :type :number}]}
                      :model/QueryAction _ {:action_id (:id action)

@@ -10,12 +10,11 @@
    [metabase-enterprise.data-apps.generate.schemas.source :as schemas.source]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
@@ -23,63 +22,54 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(use-fixtures :each
-  (fn [f]
-    (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
-      (data-apps.tu/do-with-library!
-       (fn [{:keys [data-id metrics-id]}]
-         (with-library-synced
-           (mt/with-temp-vals-in-db :model/Collection data-id {:is_remote_synced true}
-             (mt/with-temp-vals-in-db :model/Collection metrics-id {:is_remote_synced true}
-               (f)))))))))
-
-
 (deftest library-scope-and-library-tables-test
-  (data-apps.tu/do-with-library!
-   (fn [{:keys [data-id metrics-id]}]
-     (mt/with-temp [:model/Collection data-child {:is_remote_synced true
-                                                  :name     "Data child"
-                                                  :type     "library-data"
-                                                  :location (collection/children-location (t2/select-one :model/Collection :id data-id))}
-                    :model/Collection plain-collection {:name "Not A Library"}
-                    :model/Database db {}
-                    :model/Table published {:db_id (:id db), :name "published_table", :active true
-                                            :is_published true, :collection_id data-id}
-                    :model/Table nested {:db_id (:id db), :name "nested_table", :active true
-                                         :is_published true, :collection_id (:id data-child)}
-                    :model/Table _unpublished {:db_id (:id db), :name "unpublished_table", :active true
-                                               :is_published false, :collection_id data-id}
-                    :model/Table _elsewhere {:db_id (:id db), :name "elsewhere_table", :active true
-                                             :is_published true, :collection_id (:id plain-collection)}]
-       (mt/with-current-user (mt/user->id :crowberto)
-         (let [scope (schemas.source/library-scope schemas.source/app-db-source)]
-           (testing "library scope classifies the root libraries' collections by type"
-             (is (mr/validate schemas.source/LibraryScope scope))
-             (is (= {:data-collection-ids   #{data-id (:id data-child)}
-                     :metric-collection-ids #{metrics-id}}
-                    scope)))
-           (testing "library tables are the published tables in the data collections and their descendants"
-             (is (= #{(:id published) (:id nested)}
-                    (into #{}
-                          (map :id)
-                          (schemas.source/library-tables schemas.source/app-db-source (:data-collection-ids scope)))))
-             (is (= [] (schemas.source/library-tables schemas.source/app-db-source #{}))))))))))
+  (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
+    (data-apps.tu/do-with-synced-library!
+     (fn [{:keys [data-id metrics-id]}]
+       (mt/with-temp [:model/Collection data-child {:is_remote_synced true
+                                                    :name     "Data child"
+                                                    :type     "library-data"
+                                                    :location (collection/children-location (t2/select-one :model/Collection :id data-id))}
+                      :model/Collection plain-collection {:name "Not A Library"}
+                      :model/Database db {}
+                      :model/Table published {:db_id (:id db), :name "published_table", :active true
+                                              :is_published true, :collection_id data-id}
+                      :model/Table nested {:db_id (:id db), :name "nested_table", :active true
+                                           :is_published true, :collection_id (:id data-child)}
+                      :model/Table _unpublished {:db_id (:id db), :name "unpublished_table", :active true
+                                                 :is_published false, :collection_id data-id}
+                      :model/Table _elsewhere {:db_id (:id db), :name "elsewhere_table", :active true
+                                               :is_published true, :collection_id (:id plain-collection)}]
+         (mt/with-current-user (mt/user->id :crowberto)
+           (let [scope (schemas.source/library-scope schemas.source/app-db-source)]
+             (testing "library scope classifies the root libraries' collections by type"
+               (is (mr/validate schemas.source/LibraryScope scope))
+               (is (= {:data-collection-ids   #{data-id (:id data-child)}
+                       :metric-collection-ids #{metrics-id}}
+                      scope)))
+             (testing "library tables are the published tables in the data collections and their descendants"
+               (is (= #{(:id published) (:id nested)}
+                      (into #{}
+                            (map :id)
+                            (schemas.source/library-tables schemas.source/app-db-source (:data-collection-ids scope)))))
+               (is (= [] (schemas.source/library-tables schemas.source/app-db-source #{})))))))))))
 
 (deftest metrics-honour-collection-ids-test
-  (data-apps.tu/do-with-library!
-   (fn [{:keys [metrics-id]}]
-     (mt/with-temp [:model/Collection child {:is_remote_synced true
-                                             :name     "Child"
-                                             :type     "library-metrics"
-                                             :location (collection/children-location (t2/select-one :model/Collection :id metrics-id))}
-                    :model/Card _metric     {:name          "Library revenue"
-                                             :type          :metric
-                                             :collection_id (:id child)}]
-       (mt/with-test-user :crowberto
-         (let [{:keys [metric-collection-ids]} (schemas.source/library-scope schemas.source/app-db-source)]
-           (is (some #{"libraryRevenue"}
-                     (map :key (schemas.source/metrics schemas.source/app-db-source metric-collection-ids))))
-           (is (= [] (schemas.source/metrics schemas.source/app-db-source #{})))))))))
+  (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
+    (data-apps.tu/do-with-synced-library!
+     (fn [{:keys [metrics-id]}]
+       (mt/with-temp [:model/Collection child {:is_remote_synced true
+                                               :name     "Child"
+                                               :type     "library-metrics"
+                                               :location (collection/children-location (t2/select-one :model/Collection :id metrics-id))}
+                      :model/Card _metric     {:name          "Library revenue"
+                                               :type          :metric
+                                               :collection_id (:id child)}]
+         (mt/with-test-user :crowberto
+           (let [{:keys [metric-collection-ids]} (schemas.source/library-scope schemas.source/app-db-source)]
+             (is (some #{"libraryRevenue"}
+                       (map :key (schemas.source/metrics schemas.source/app-db-source metric-collection-ids))))
+             (is (= [] (schemas.source/metrics schemas.source/app-db-source #{}))))))))))
 
 (deftest tables-test
   (mt/with-temp [:model/Database db {}
@@ -99,49 +89,51 @@
   {:id "id", :slug "id", :type :number/=, :target [:variable [:template-tag "id"]], :required true})
 
 (deftest actions-test
-  (mt/with-temp [:model/Collection {collection-id :id} {:name "Actions" :namespace "data-actions" :is_remote_synced true}
-                 :model/Collection {app-collection-id :id} {:name "Data App: orders" :namespace "data-apps" :is_remote_synced true}
-                 :model/Card       {model-id :id} {:type          :model
-                                                   :dataset_query (lib/query (mt/metadata-provider)
-                                                                             (lib.metadata/table (mt/metadata-provider)
-                                                                                                 (mt/id :categories)))}
-                 :model/Action     {standalone :id} {:type :query, :name "Touch category", :collection_id collection-id, :parameters [id-parameter]}
-                 :model/QueryAction _ {:action_id standalone, :dataset_query (touch-category-query)}
-                 :model/Action     {archived :id} {:type :query, :name "Archived", :collection_id collection-id, :archived true}
-                 :model/QueryAction _ {:action_id archived, :dataset_query (touch-category-query)}
-                 :model/Action     {in-collection :id} {:type :query, :name "In a collection", :collection_id collection-id}
-                 :model/QueryAction _ {:action_id in-collection, :dataset_query (touch-category-query)}
-                 :model/Action     {on-model :id} {:type :query, :name "On a model", :collection_id collection-id, :model_id model-id}
-                 :model/QueryAction _ {:action_id on-model, :dataset_query (touch-category-query)}
-                 :model/Action     {app-copy :id} {:type :query, :name "App copy", :collection_id app-collection-id}
-                 :model/QueryAction _ {:action_id app-copy, :dataset_query (touch-category-query)}]
-    (let [action-ids (fn [] (into #{} (map :id) (schemas.source/actions schemas.source/app-db-source)))
-          ours       #{standalone archived in-collection on-model app-copy}]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (testing "returns the unarchived actions without a model"
-          (is (= #{standalone in-collection app-copy} (set/intersection ours (action-ids)))))
-        (testing "leaves out the copies a data app owns"
-          (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{app-collection-id})]
-            (is (= #{standalone in-collection} (set/intersection ours (action-ids))))))
-        (testing "an action renders with its parameters typed from the template tag"
-          (is (=? [{:kind       "action"
-                    :key        "touchCategory"
-                    :id         standalone
-                    :type       "query"
-                    :parameters [{:slug "id", :jsType "number", :required true}]}]
-                  (filter #(= standalone (:id %)) (schemas.source/actions schemas.source/app-db-source)))))))))
+  (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Actions" :namespace "data-actions" :is_remote_synced true}
+                   :model/Collection {app-collection-id :id} {:name "Data App: orders" :namespace "data-apps" :is_remote_synced true}
+                   :model/Card       {model-id :id} {:type          :model
+                                                     :dataset_query (lib/query (mt/metadata-provider)
+                                                                               (lib.metadata/table (mt/metadata-provider)
+                                                                                                   (mt/id :categories)))}
+                   :model/Action     {standalone :id} {:type :query, :name "Touch category", :collection_id collection-id, :parameters [id-parameter]}
+                   :model/QueryAction _ {:action_id standalone, :dataset_query (touch-category-query)}
+                   :model/Action     {archived :id} {:type :query, :name "Archived", :collection_id collection-id, :archived true}
+                   :model/QueryAction _ {:action_id archived, :dataset_query (touch-category-query)}
+                   :model/Action     {in-collection :id} {:type :query, :name "In a collection", :collection_id collection-id}
+                   :model/QueryAction _ {:action_id in-collection, :dataset_query (touch-category-query)}
+                   :model/Action     {on-model :id} {:type :query, :name "On a model", :collection_id collection-id, :model_id model-id}
+                   :model/QueryAction _ {:action_id on-model, :dataset_query (touch-category-query)}
+                   :model/Action     {app-copy :id} {:type :query, :name "App copy", :collection_id app-collection-id}
+                   :model/QueryAction _ {:action_id app-copy, :dataset_query (touch-category-query)}]
+      (let [action-ids (fn [] (into #{} (map :id) (schemas.source/actions schemas.source/app-db-source)))
+            ours       #{standalone archived in-collection on-model app-copy}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (testing "returns the unarchived actions without a model"
+            (is (= #{standalone in-collection app-copy} (set/intersection ours (action-ids)))))
+          (testing "leaves out the copies a data app owns"
+            (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{app-collection-id})]
+              (is (= #{standalone in-collection} (set/intersection ours (action-ids))))))
+          (testing "an action renders with its parameters typed from the template tag"
+            (is (=? [{:kind       "action"
+                      :key        "touchCategory"
+                      :id         standalone
+                      :type       "query"
+                      :parameters [{:slug "id", :jsType "number", :required true}]}]
+                    (filter #(= standalone (:id %)) (schemas.source/actions schemas.source/app-db-source))))))))))
 
 (deftest actions-leave-out-those-backed-by-a-routing-destination-test
-  (mt/with-temp [:model/Collection synced {:is_remote_synced true}
-                 :model/Database {router-id :id}      {}
-                 :model/Database {destination-id :id} {:router_database_id router-id}
-                 :model/Action    {open :id}          {:type :query, :name "Open action", :collection_id (:id synced)}
-                 :model/QueryAction _ {:action_id open, :dataset_query (touch-category-query)}
-                 :model/Action    {routed :id}        {:type :query, :name "Routed action", :collection_id (:id synced)}
-                 :model/QueryAction _ {:action_id      routed
-                                       :dataset_query (lib/native-query (lib-be/application-database-metadata-provider destination-id)
-                                                                        "UPDATE categories SET name = name")}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (let [ids (into #{} (map :id) (schemas.source/actions schemas.source/app-db-source))]
-        (is (contains? ids open))
-        (is (not (contains? ids routed)))))))
+  (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
+    (mt/with-temp [:model/Collection synced {:namespace "data-actions", :is_remote_synced true}
+                   :model/Database {router-id :id}      {}
+                   :model/Database {destination-id :id} {:router_database_id router-id}
+                   :model/Action    {open :id}          {:type :query, :name "Open action", :collection_id (:id synced)}
+                   :model/QueryAction _ {:action_id open, :dataset_query (touch-category-query)}
+                   :model/Action    {routed :id}        {:type :query, :name "Routed action", :collection_id (:id synced)}
+                   :model/QueryAction _ {:action_id      routed
+                                         :dataset_query (lib/native-query (lib-be/application-database-metadata-provider destination-id)
+                                                                          "UPDATE categories SET name = name")}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [ids (into #{} (map :id) (schemas.source/actions schemas.source/app-db-source))]
+          (is (contains? ids open))
+          (is (not (contains? ids routed))))))))
