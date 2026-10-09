@@ -9,32 +9,175 @@ const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const PROVIDER_PATH = "/api/mock-guest-token-provider";
 const PROVIDER_INTERCEPT = { method: "POST", pathname: PROVIDER_PATH } as const;
 
-type SignJwtParams = (
-  | { dashboardId: number; questionId?: never }
-  | { questionId: number; dashboardId?: never }
-) & { expirationSeconds: number; params?: Record<string, unknown> };
+const HTTP_ERROR_MESSAGE =
+  "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.";
+const WRONG_SHAPE_MESSAGE =
+  /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/;
 
-function signJwt({
-  dashboardId,
-  questionId,
-  expirationSeconds,
-  params = {},
-}: SignJwtParams): Cypress.Chainable<string> {
-  const resource =
-    dashboardId !== undefined
-      ? { dashboard: dashboardId }
-      : { question: questionId };
+type Resource = { type: "dashboard" | "question"; id: number };
+type TokenMode = "refresh-only" | "initial-token";
 
-  return cy
-    .task<string>("signJwt", {
+const COMPONENT_BY_TYPE = {
+  dashboard: "metabase-dashboard",
+  question: "metabase-question",
+} as const;
+
+function signJwt(
+  resource: Resource,
+  expirationSeconds: number,
+): Cypress.Chainable<string> {
+  return cy.then(() =>
+    cy.task<string>("signJwt", {
       payload: {
-        resource,
-        params,
+        resource: { [resource.type]: resource.id },
+        params: {},
         exp: Math.round(Date.now() / 1000) + expirationSeconds,
       },
       secret: JWT_SHARED_SECRET,
-    })
-    .then((token) => token);
+    }),
+  );
+}
+
+function mockTokenProvider(
+  alias: string,
+  reply: { statusCode: number; body?: Record<string, unknown> },
+) {
+  cy.intercept(PROVIDER_INTERCEPT, (req) => {
+    req.reply(reply);
+  }).as(alias);
+}
+
+function loadGuestEmbed(
+  resource: Resource,
+  attributes: Record<string, unknown>,
+) {
+  H.loadSdkIframeEmbedTestPage({
+    metabaseConfig: {
+      isGuest: true,
+      guestEmbedProviderUri: PROVIDER_PATH,
+    },
+    elements: [{ component: COMPONENT_BY_TYPE[resource.type], attributes }],
+  });
+}
+
+function loadGuestEmbedForMode(resource: Resource, mode: TokenMode) {
+  if (mode === "initial-token") {
+    loadGuestEmbed(resource, { [`${resource.type}-id`]: resource.id });
+    return;
+  }
+
+  signJwt(resource, -60).then((expiredToken) => {
+    loadGuestEmbed(resource, { token: expiredToken });
+  });
+}
+
+function forceTokenRefreshOnNextRequest() {
+  cy.get("iframe[data-metabase-embed]")
+    .its("0.contentWindow")
+    .should("exist")
+    .then((contentWindow) => {
+      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
+    });
+}
+
+function checkProviderErrors(resource: Resource, mode: TokenMode) {
+  cy.log("the provider returns an HTTP error");
+  mockTokenProvider("httpErrorProvider", { statusCode: 500 });
+  loadGuestEmbedForMode(resource, mode);
+  cy.wait("@httpErrorProvider");
+  H.getSimpleEmbedIframeContent()
+    .findByText(HTTP_ERROR_MESSAGE)
+    .should("be.visible");
+
+  cy.log("the provider returns a wrong response shape");
+  signJwt(resource, 600).then((freshToken) => {
+    mockTokenProvider("wrongShapeProvider", {
+      statusCode: 200,
+      body: { token: freshToken },
+    });
+  });
+  loadGuestEmbedForMode(resource, mode);
+  cy.wait("@wrongShapeProvider");
+  H.getSimpleEmbedIframeContent()
+    .findByText(WRONG_SHAPE_MESSAGE)
+    .should("be.visible");
+}
+
+function loadWithShortLivedToken(resource: Resource, alias: string) {
+  signJwt(resource, 5).then((shortLivedToken) => {
+    signJwt(resource, 600).then((freshToken) => {
+      mockTokenProvider(alias, {
+        statusCode: 200,
+        body: { jwt: freshToken },
+      });
+      loadGuestEmbed(resource, { token: shortLivedToken });
+    });
+  });
+}
+
+type FilterCheckOptions = {
+  resource: Resource;
+  columns: string[];
+  waitForLoad: () => void;
+};
+
+function checkNumberFilterAfterRefresh({
+  resource,
+  columns,
+  waitForLoad,
+}: FilterCheckOptions) {
+  cy.log("number filter after a token refresh");
+  loadWithShortLivedToken(resource, "numberFilterProvider");
+
+  H.getSimpleEmbedIframeContent().within(waitForLoad);
+
+  forceTokenRefreshOnNextRequest();
+
+  H.getSimpleEmbedIframeContent().within(() => {
+    cy.findByLabelText("Price greater than").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("50{enter}");
+    });
+    cy.log("ensure the token is refreshed after applying a filter value");
+    cy.wait("@numberFilterProvider");
+
+    H.assertTableData({
+      columns,
+      firstRows: [["2", "Small Marble Shoes", "70.08"]],
+    });
+  });
+}
+
+function checkCategoryFilterAfterRefresh({
+  resource,
+  columns,
+  waitForLoad,
+}: FilterCheckOptions) {
+  cy.log("category filter after a token refresh");
+  loadWithShortLivedToken(resource, "categoryFilterProvider");
+
+  H.getSimpleEmbedIframeContent().within(waitForLoad);
+
+  forceTokenRefreshOnNextRequest();
+
+  H.getSimpleEmbedIframeContent().within(() => {
+    cy.findByLabelText("Category").click();
+
+    cy.log(
+      "ensure the token is refreshed after the filter values endpoint is called",
+    );
+    cy.wait("@categoryFilterProvider");
+
+    H.popover().within(() => {
+      cy.findByRole("checkbox", { name: "Doohickey" }).click();
+      cy.button("Add filter").click();
+    });
+
+    H.assertTableData({
+      columns,
+      firstRows: [["2", "Small Marble Shoes", "Doohickey"]],
+    });
+  });
 }
 
 const PRICE_DASHBOARD_PARAMETER = {
@@ -94,7 +237,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           name: "Guest Token Refresh Dashboard with Price Filter",
           parameters: [PRICE_DASHBOARD_PARAMETER],
         }).then(({ body: dashboard }) => {
-          cy.wrap(dashboard.id).as("dashboardId");
+          cy.wrap(dashboard.id).as("priceDashboardId");
 
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             enable_embedding: true,
@@ -146,7 +289,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           name: "Guest Token Refresh Dashboard with Category Filter",
           parameters: [CATEGORY_DASHBOARD_PARAMETER],
         }).then(({ body: dashboard }) => {
-          cy.wrap(dashboard.id).as("dashboardId");
+          cy.wrap(dashboard.id).as("categoryDashboardId");
 
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             enable_embedding: true,
@@ -220,7 +363,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
       embedding_params: { price: "enabled" },
       embedding_type: "guest-embed",
     }).then(({ body: question }) => {
-      cy.wrap(question.id).as("questionId");
+      cy.wrap(question.id).as("priceQuestionId");
     });
   }
 
@@ -246,873 +389,267 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
       embedding_params: { category: "enabled" },
       embedding_type: "guest-embed",
     }).then(({ body: question }) => {
-      cy.wrap(question.id).as("questionId");
+      cy.wrap(question.id).as("categoryQuestionId");
     });
   }
 
-  describe("dashboard refresh-only", () => {
-    describe("happy path", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createDashboardWithQuestion,
-        });
-      });
-
-      it("calls guestEmbedProviderUri with { entityType, entityId } and loads dashboard after token refresh", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          signJwt({ dashboardId, expirationSeconds: -60 }).then(
-            (expiredToken) => {
-              signJwt({ dashboardId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
-                  }).as("guestTokenProvider");
-
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-dashboard",
-                        attributes: {
-                          token: expiredToken,
-                          "custom-context":
-                            '{"param":"value","nested":{"a":1}}',
-                        },
-                      },
-                    ],
-                  });
-
-                  cy.wait("@guestTokenProvider").then((interception) => {
-                    expect(interception.request.body).to.deep.include({
-                      entityType: "dashboard",
-                      entityId: dashboardId,
-                      customContext: { param: "value", nested: { a: 1 } },
-                    });
-                  });
-
-                  H.getSimpleEmbedIframeContent().should("contain", "Orders");
-                },
-              );
-            },
-          );
-        });
+  describe("dashboard", () => {
+    beforeEach(() => {
+      H.prepareGuestEmbedSdkIframeEmbedTest({
+        onPrepare: () => {
+          createDashboardWithQuestion();
+          createDashboardWithPriceFilter();
+          createDashboardWithCategoryFilter();
+        },
       });
     });
 
-    describe("provider error shows error state", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createDashboardWithQuestion,
-        });
-      });
+    it("refresh-only: refreshes an expired token, shows provider errors, and keeps filters working after a refresh", () => {
+      cy.get<number>("@dashboardId").then((dashboardId) => {
+        const resource: Resource = { type: "dashboard", id: dashboardId };
 
-      it("shows an error when the provider returns an HTTP error", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          signJwt({ dashboardId, expirationSeconds: -60 }).then(
-            (expiredToken) => {
-              cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                req.reply({ statusCode: 500 });
-              }).as("guestTokenProvider");
+        cy.log("the provider returns a fresh token");
+        signJwt(resource, -60).then((expiredToken) => {
+          signJwt(resource, 600).then((freshToken) => {
+            mockTokenProvider("guestTokenProvider", {
+              statusCode: 200,
+              body: { jwt: freshToken },
+            });
 
-              H.loadSdkIframeEmbedTestPage({
-                metabaseConfig: {
-                  isGuest: true,
-                  guestEmbedProviderUri: PROVIDER_PATH,
-                },
-                elements: [
-                  {
-                    component: "metabase-dashboard",
-                    attributes: { token: expiredToken },
-                  },
-                ],
-              });
-
-              cy.wait("@guestTokenProvider");
-              H.getSimpleEmbedIframeContent()
-                .findByText(
-                  "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
-                )
-                .should("be.visible");
-            },
-          );
-        });
-      });
-
-      it("shows an error when the provider returns a wrong response shape", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          signJwt({ dashboardId, expirationSeconds: -60 }).then(
-            (expiredToken) => {
-              signJwt({ dashboardId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({
-                      statusCode: 200,
-                      body: { token: freshToken },
-                    });
-                  }).as("guestTokenProvider");
-
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-dashboard",
-                        attributes: { token: expiredToken },
-                      },
-                    ],
-                  });
-
-                  cy.wait("@guestTokenProvider");
-                  H.getSimpleEmbedIframeContent()
-                    .findByText(
-                      /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
-                    )
-                    .should("be.visible");
-                },
-              );
-            },
-          );
-        });
-      });
-    });
-
-    describe("number filter interaction after token refresh", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createDashboardWithPriceFilter,
-        });
-      });
-
-      it("applying a number filter after token refresh returns filtered results", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          signJwt({ dashboardId, expirationSeconds: 5 }).then(
-            (shortLivedToken) => {
-              signJwt({ dashboardId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
-                  }).as("guestTokenProvider");
-
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-dashboard",
-                        attributes: { token: shortLivedToken },
-                      },
-                    ],
-                  });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByLabelText("Price greater than").should(
-                      "be.visible",
-                    );
-                  });
-
-                  cy.get("iframe[data-metabase-embed]")
-                    .its("0.contentWindow")
-                    .should("exist")
-                    .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
-                    });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByLabelText("Price greater than").click();
-                    H.popover().within(() => {
-                      cy.findByPlaceholderText("Enter a number").type(
-                        "50{enter}",
-                      );
-                    });
-                    cy.log(
-                      "ensure the token is refreshed after applying a filter value",
-                    );
-                    cy.wait("@guestTokenProvider");
-
-                    H.assertTableData({
-                      columns: ["ID", "Title", "Price"],
-                      firstRows: [["2", "Small Marble Shoes", "70.08"]],
-                    });
-                  });
-                },
-              );
-            },
-          );
-        });
-      });
-    });
-
-    describe("category filter interaction after token refresh", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createDashboardWithCategoryFilter,
-        });
-      });
-
-      it("applying a category filter after token refresh returns filtered results", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          signJwt({ dashboardId, expirationSeconds: 5 }).then(
-            (shortLivedToken) => {
-              signJwt({ dashboardId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
-                  }).as("guestTokenProvider");
-
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-dashboard",
-                        attributes: { token: shortLivedToken },
-                      },
-                    ],
-                  });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByLabelText("Category").should("be.visible");
-                  });
-
-                  cy.get("iframe[data-metabase-embed]")
-                    .its("0.contentWindow")
-                    .should("exist")
-                    .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
-                    });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByLabelText("Category").click();
-
-                    cy.log(
-                      "ensure the token is refreshed after the filter values endpoint is called",
-                    );
-                    cy.wait("@guestTokenProvider");
-
-                    H.popover().within(() => {
-                      cy.findByRole("checkbox", {
-                        name: "Doohickey",
-                      }).click();
-                      cy.button("Add filter").click();
-                    });
-
-                    H.assertTableData({
-                      columns: ["ID", "Title", "Category"],
-                      firstRows: [["2", "Small Marble Shoes", "Doohickey"]],
-                    });
-                  });
-                },
-              );
-            },
-          );
-        });
-      });
-    });
-  });
-
-  describe("dashboard initial-token", () => {
-    describe("happy path", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createDashboardWithQuestion,
-        });
-      });
-
-      it("calls guestEmbedProviderUri with { entityType, entityId } and loads dashboard (initial token fetch)", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          signJwt({ dashboardId, expirationSeconds: 600 }).then(
-            (freshToken) => {
-              cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                req.reply({ statusCode: 200, body: { jwt: freshToken } });
-              }).as("guestTokenProvider");
-
-              H.loadSdkIframeEmbedTestPage({
-                metabaseConfig: {
-                  isGuest: true,
-                  guestEmbedProviderUri: PROVIDER_PATH,
-                },
-                elements: [
-                  {
-                    component: "metabase-dashboard",
-                    attributes: {
-                      "dashboard-id": dashboardId,
-                      "custom-context": "test-custom-context",
-                    },
-                  },
-                ],
-              });
-
-              cy.wait("@guestTokenProvider").then((interception) => {
-                expect(interception.request.url).to.include("response=json");
-                expect(interception.request.body).to.deep.include({
-                  entityType: "dashboard",
-                  entityId: dashboardId,
-                  customContext: "test-custom-context",
-                });
-              });
-
-              H.getSimpleEmbedIframeContent().should("contain", "Orders");
-            },
-          );
-        });
-      });
-    });
-
-    describe("provider error shows error state", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createDashboardWithQuestion,
-        });
-      });
-
-      it("shows an error when the provider returns an HTTP error", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          cy.intercept(PROVIDER_INTERCEPT, (req) => {
-            req.reply({ statusCode: 500 });
-          }).as("guestTokenProvider");
-
-          H.loadSdkIframeEmbedTestPage({
-            metabaseConfig: {
-              isGuest: true,
-              guestEmbedProviderUri: PROVIDER_PATH,
-            },
-            elements: [
-              {
-                component: "metabase-dashboard",
-                attributes: { "dashboard-id": dashboardId },
-              },
-            ],
+            loadGuestEmbed(resource, {
+              token: expiredToken,
+              "custom-context": '{"param":"value","nested":{"a":1}}',
+            });
           });
-
-          cy.wait("@guestTokenProvider");
-          H.getSimpleEmbedIframeContent()
-            .findByText(
-              "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
-            )
-            .should("be.visible");
         });
+
+        cy.wait("@guestTokenProvider").then((interception) => {
+          expect(interception.request.body).to.deep.include({
+            entityType: "dashboard",
+            entityId: dashboardId,
+            customContext: { param: "value", nested: { a: 1 } },
+          });
+        });
+
+        H.getSimpleEmbedIframeContent().should("contain", "Orders");
+
+        checkProviderErrors(resource, "refresh-only");
       });
 
-      it("shows an error when the provider returns a wrong response shape", () => {
-        cy.get<number>("@dashboardId").then((dashboardId) => {
-          signJwt({ dashboardId, expirationSeconds: 600 }).then(
-            (freshToken) => {
-              cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                req.reply({
-                  statusCode: 200,
-                  body: { token: freshToken },
-                });
-              }).as("guestTokenProvider");
-
-              H.loadSdkIframeEmbedTestPage({
-                metabaseConfig: {
-                  isGuest: true,
-                  guestEmbedProviderUri: PROVIDER_PATH,
-                },
-                elements: [
-                  {
-                    component: "metabase-dashboard",
-                    attributes: { "dashboard-id": dashboardId },
-                  },
-                ],
-              });
-
-              cy.wait("@guestTokenProvider");
-              H.getSimpleEmbedIframeContent()
-                .findByText(
-                  /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
-                )
-                .should("be.visible");
-            },
-          );
-        });
-      });
-    });
-  });
-
-  describe("question refresh-only", () => {
-    describe("happy path", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createStandaloneQuestion,
-        });
-      });
-
-      it("calls guestEmbedProviderUri with { entityType: question, entityId } and loads question after token refresh", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          signJwt({ questionId, expirationSeconds: -60 }).then(
-            (expiredToken) => {
-              signJwt({ questionId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
-                  }).as("guestTokenProvider");
-
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-question",
-                        attributes: {
-                          token: expiredToken,
-                          "custom-context": "test-custom-context",
-                        },
-                      },
-                    ],
-                  });
-
-                  cy.wait("@guestTokenProvider").then((interception) => {
-                    expect(interception.request.body).to.deep.include({
-                      entityType: "question",
-                      entityId: questionId,
-                      customContext: "test-custom-context",
-                    });
-                  });
-
-                  H.getSimpleEmbedIframeContent()
-                    .findByTestId("visualization-root")
-                    .should("exist");
-                },
-              );
-            },
-          );
-        });
-      });
-    });
-
-    describe("provider returns a different resource", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: () => {
-            createQuestionWithCategoryFilter();
-            createOtherStandaloneQuestion();
+      cy.get<number>("@priceDashboardId").then((priceDashboardId) => {
+        checkNumberFilterAfterRefresh({
+          resource: { type: "dashboard", id: priceDashboardId },
+          columns: ["ID", "Title", "Price"],
+          waitForLoad: () => {
+            cy.findByLabelText("Price greater than").should("be.visible");
           },
         });
       });
 
-      it("switches to the question the refreshed token names", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          cy.get<number>("@otherQuestionId").then((otherQuestionId) => {
-            signJwt({ questionId, expirationSeconds: 600 }).then(
-              (initialToken) => {
-                signJwt({
-                  questionId: otherQuestionId,
-                  expirationSeconds: 600,
-                }).then((freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
-                  }).as("guestTokenProvider");
+      cy.get<number>("@categoryDashboardId").then((categoryDashboardId) => {
+        checkCategoryFilterAfterRefresh({
+          resource: { type: "dashboard", id: categoryDashboardId },
+          columns: ["ID", "Title", "Category"],
+          waitForLoad: () => {
+            cy.findByLabelText("Category").should("be.visible");
+          },
+        });
+      });
+    });
 
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-question",
-                        attributes: { token: initialToken },
-                      },
-                    ],
-                  });
+    it("initial-token: fetches the first token and shows provider errors", () => {
+      cy.get<number>("@dashboardId").then((dashboardId) => {
+        const resource: Resource = { type: "dashboard", id: dashboardId };
 
-                  // Apply a filter value so the question runs with a parameter
-                  // set, which is the state that has to survive the swap.
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByLabelText("Category").click();
-                    H.popover().within(() => {
-                      cy.findByRole("checkbox", { name: "Doohickey" }).click();
-                      cy.button("Add filter").click();
-                    });
-
-                    H.assertTableData({
-                      columns: ["ID", "TITLE", "CATEGORY"],
-                    });
-                  });
-
-                  cy.get("iframe[data-metabase-embed]")
-                    .its("0.contentWindow")
-                    .should("exist")
-                    .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
-                    });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    // The refresh only fires on the next request, so re-running
-                    // the query with a new filter value is what triggers it.
-                    cy.findByLabelText("Category").click();
-                    H.popover().within(() => {
-                      cy.findByRole("checkbox", { name: "Gadget" }).click();
-                      cy.button("Update filter").click();
-                    });
-
-                    cy.wait("@guestTokenProvider");
-                  });
-
-                  // The refreshed token names a question that takes no
-                  // parameters, so the old filter value must not be sent along
-                  // with it.
-                  H.getSimpleEmbedIframeContent()
-                    .findByText(/Unknown parameter/)
-                    .should("not.exist");
-
-                  // "Vendor" is only on the question the refreshed token names.
-                  H.getSimpleEmbedIframeContent()
-                    .findByText("Vendor")
-                    .should("exist");
-                });
-              },
-            );
+        cy.log("the provider returns a fresh token");
+        signJwt(resource, 600).then((freshToken) => {
+          mockTokenProvider("guestTokenProvider", {
+            statusCode: 200,
+            body: { jwt: freshToken },
           });
         });
-      });
-    });
 
-    describe("provider error shows error state", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createStandaloneQuestion,
+        loadGuestEmbed(resource, {
+          "dashboard-id": dashboardId,
+          "custom-context": "test-custom-context",
         });
-      });
 
-      it("shows an error when the provider returns an HTTP error", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          signJwt({ questionId, expirationSeconds: -60 }).then(
-            (expiredToken) => {
-              cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                req.reply({ statusCode: 500 });
-              }).as("guestTokenProvider");
-
-              H.loadSdkIframeEmbedTestPage({
-                metabaseConfig: {
-                  isGuest: true,
-                  guestEmbedProviderUri: PROVIDER_PATH,
-                },
-                elements: [
-                  {
-                    component: "metabase-question",
-                    attributes: { token: expiredToken },
-                  },
-                ],
-              });
-
-              cy.wait("@guestTokenProvider");
-              H.getSimpleEmbedIframeContent()
-                .findByText(
-                  "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
-                )
-                .should("be.visible");
-            },
-          );
+        cy.wait("@guestTokenProvider").then((interception) => {
+          expect(interception.request.url).to.include("response=json");
+          expect(interception.request.body).to.deep.include({
+            entityType: "dashboard",
+            entityId: dashboardId,
+            customContext: "test-custom-context",
+          });
         });
-      });
 
-      it("shows an error when the provider returns a wrong response shape", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          signJwt({ questionId, expirationSeconds: -60 }).then(
-            (expiredToken) => {
-              signJwt({ questionId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({
-                      statusCode: 200,
-                      body: { token: freshToken },
-                    });
-                  }).as("guestTokenProvider");
+        H.getSimpleEmbedIframeContent().should("contain", "Orders");
 
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-question",
-                        attributes: { token: expiredToken },
-                      },
-                    ],
-                  });
-
-                  cy.wait("@guestTokenProvider");
-                  H.getSimpleEmbedIframeContent()
-                    .findByText(
-                      /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
-                    )
-                    .should("be.visible");
-                },
-              );
-            },
-          );
-        });
-      });
-    });
-
-    describe("number filter interaction after token refresh", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createQuestionWithPriceFilter,
-        });
-      });
-
-      it("applying a number filter after token refresh returns filtered results", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          signJwt({ questionId, expirationSeconds: 5 }).then(
-            (shortLivedToken) => {
-              signJwt({ questionId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
-                  }).as("guestTokenProvider");
-
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-question",
-                        attributes: { token: shortLivedToken },
-                      },
-                    ],
-                  });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByText("Products with price filter").should(
-                      "be.visible",
-                    );
-                  });
-
-                  cy.get("iframe[data-metabase-embed]")
-                    .its("0.contentWindow")
-                    .should("exist")
-                    .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
-                    });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByLabelText("Price greater than").click();
-                    H.popover().within(() => {
-                      cy.findByPlaceholderText("Enter a number").type(
-                        "50{enter}",
-                      );
-                    });
-                    cy.log(
-                      "ensure the token is refreshed after applying a filter value",
-                    );
-                    cy.wait("@guestTokenProvider");
-
-                    H.assertTableData({
-                      columns: ["ID", "TITLE", "PRICE"],
-                      firstRows: [["2", "Small Marble Shoes", "70.08"]],
-                    });
-                  });
-                },
-              );
-            },
-          );
-        });
-      });
-    });
-
-    describe("category filter interaction after token refresh", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createQuestionWithCategoryFilter,
-        });
-      });
-
-      it("applying a category filter after token refresh returns filtered results", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          signJwt({ questionId, expirationSeconds: 5 }).then(
-            (shortLivedToken) => {
-              signJwt({ questionId, expirationSeconds: 600 }).then(
-                (freshToken) => {
-                  cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                    req.reply({ statusCode: 200, body: { jwt: freshToken } });
-                  }).as("guestTokenProvider");
-
-                  H.loadSdkIframeEmbedTestPage({
-                    metabaseConfig: {
-                      isGuest: true,
-                      guestEmbedProviderUri: PROVIDER_PATH,
-                    },
-                    elements: [
-                      {
-                        component: "metabase-question",
-                        attributes: { token: shortLivedToken },
-                      },
-                    ],
-                  });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByText("Products with category filter").should(
-                      "be.visible",
-                    );
-                  });
-
-                  cy.get("iframe[data-metabase-embed]")
-                    .its("0.contentWindow")
-                    .should("exist")
-                    .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
-                    });
-
-                  H.getSimpleEmbedIframeContent().within(() => {
-                    cy.findByLabelText("Category").click();
-
-                    cy.log(
-                      "ensure the token is refreshed after the filter values endpoint is called",
-                    );
-                    cy.wait("@guestTokenProvider");
-
-                    H.popover().within(() => {
-                      cy.findByRole("checkbox", {
-                        name: "Doohickey",
-                      }).click();
-                      cy.button("Add filter").click();
-                    });
-
-                    H.assertTableData({
-                      columns: ["ID", "TITLE", "CATEGORY"],
-                      firstRows: [["2", "Small Marble Shoes", "Doohickey"]],
-                    });
-                  });
-                },
-              );
-            },
-          );
-        });
+        checkProviderErrors(resource, "initial-token");
       });
     });
   });
 
-  describe("question initial-token", () => {
-    describe("happy path", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createStandaloneQuestion,
+  describe("question", () => {
+    beforeEach(() => {
+      H.prepareGuestEmbedSdkIframeEmbedTest({
+        onPrepare: () => {
+          createStandaloneQuestion();
+          createOtherStandaloneQuestion();
+          createQuestionWithPriceFilter();
+          createQuestionWithCategoryFilter();
+        },
+      });
+    });
+
+    it("refresh-only: refreshes an expired token, shows provider errors, and keeps filters working after a refresh", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        const resource: Resource = { type: "question", id: questionId };
+
+        cy.log("the provider returns a fresh token");
+        signJwt(resource, -60).then((expiredToken) => {
+          signJwt(resource, 600).then((freshToken) => {
+            mockTokenProvider("guestTokenProvider", {
+              statusCode: 200,
+              body: { jwt: freshToken },
+            });
+
+            loadGuestEmbed(resource, {
+              token: expiredToken,
+              "custom-context": "test-custom-context",
+            });
+          });
+        });
+
+        cy.wait("@guestTokenProvider").then((interception) => {
+          expect(interception.request.body).to.deep.include({
+            entityType: "question",
+            entityId: questionId,
+            customContext: "test-custom-context",
+          });
+        });
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("visualization-root")
+          .should("exist");
+
+        checkProviderErrors(resource, "refresh-only");
+      });
+
+      cy.get<number>("@priceQuestionId").then((priceQuestionId) => {
+        checkNumberFilterAfterRefresh({
+          resource: { type: "question", id: priceQuestionId },
+          columns: ["ID", "TITLE", "PRICE"],
+          waitForLoad: () => {
+            cy.findByText("Products with price filter").should("be.visible");
+          },
         });
       });
 
-      it("calls guestEmbedProviderUri with { entityType: question, entityId } and loads question (initial token fetch)", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          signJwt({ questionId, expirationSeconds: 600 }).then((freshToken) => {
-            cy.intercept(PROVIDER_INTERCEPT, (req) => {
-              req.reply({ statusCode: 200, body: { jwt: freshToken } });
-            }).as("guestTokenProvider");
-
-            H.loadSdkIframeEmbedTestPage({
-              metabaseConfig: {
-                isGuest: true,
-                guestEmbedProviderUri: PROVIDER_PATH,
-              },
-              elements: [
-                {
-                  component: "metabase-question",
-                  attributes: {
-                    "question-id": questionId,
-                    "custom-context": "test-custom-context",
-                  },
-                },
-              ],
-            });
-
-            cy.wait("@guestTokenProvider").then((interception) => {
-              expect(interception.request.url).to.include("response=json");
-              expect(interception.request.body).to.deep.include({
-                entityType: "question",
-                entityId: questionId,
-                customContext: "test-custom-context",
-              });
-            });
-
-            H.getSimpleEmbedIframeContent()
-              .findByTestId("visualization-root")
-              .should("exist");
-          });
+      cy.get<number>("@categoryQuestionId").then((categoryQuestionId) => {
+        checkCategoryFilterAfterRefresh({
+          resource: { type: "question", id: categoryQuestionId },
+          columns: ["ID", "TITLE", "CATEGORY"],
+          waitForLoad: () => {
+            cy.findByText("Products with category filter").should("be.visible");
+          },
         });
       });
     });
 
-    describe("provider error shows error state", () => {
-      beforeEach(() => {
-        H.prepareGuestEmbedSdkIframeEmbedTest({
-          onPrepare: createStandaloneQuestion,
-        });
-      });
+    it("refresh-only: switches to the question the refreshed token names", () => {
+      cy.get<number>("@categoryQuestionId").then((categoryQuestionId) => {
+        cy.get<number>("@otherQuestionId").then((otherQuestionId) => {
+          const resource: Resource = {
+            type: "question",
+            id: categoryQuestionId,
+          };
 
-      it("shows an error when the provider returns an HTTP error", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          cy.intercept(PROVIDER_INTERCEPT, (req) => {
-            req.reply({ statusCode: 500 });
-          }).as("guestTokenProvider");
+          signJwt(resource, 600).then((initialToken) => {
+            signJwt({ type: "question", id: otherQuestionId }, 600).then(
+              (freshToken) => {
+                mockTokenProvider("guestTokenProvider", {
+                  statusCode: 200,
+                  body: { jwt: freshToken },
+                });
 
-          H.loadSdkIframeEmbedTestPage({
-            metabaseConfig: {
-              isGuest: true,
-              guestEmbedProviderUri: PROVIDER_PATH,
-            },
-            elements: [
-              {
-                component: "metabase-question",
-                attributes: { "question-id": questionId },
+                loadGuestEmbed(resource, { token: initialToken });
               },
-            ],
+            );
           });
 
-          cy.wait("@guestTokenProvider");
-          H.getSimpleEmbedIframeContent()
-            .findByText(
-              "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
-            )
-            .should("be.visible");
-        });
-      });
+          // Apply a filter value so the question runs with a parameter
+          // set, which is the state that has to survive the swap.
+          H.getSimpleEmbedIframeContent().within(() => {
+            cy.findByLabelText("Category").click();
+            H.popover().within(() => {
+              cy.findByRole("checkbox", { name: "Doohickey" }).click();
+              cy.button("Add filter").click();
+            });
 
-      it("shows an error when the provider returns a wrong response shape", () => {
-        cy.get<number>("@questionId").then((questionId) => {
-          signJwt({ questionId, expirationSeconds: 600 }).then((freshToken) => {
-            cy.intercept(PROVIDER_INTERCEPT, (req) => {
-              req.reply({
-                statusCode: 200,
-                body: { token: freshToken },
-              });
-            }).as("guestTokenProvider");
+            H.assertTableData({
+              columns: ["ID", "TITLE", "CATEGORY"],
+            });
+          });
 
-            H.loadSdkIframeEmbedTestPage({
-              metabaseConfig: {
-                isGuest: true,
-                guestEmbedProviderUri: PROVIDER_PATH,
-              },
-              elements: [
-                {
-                  component: "metabase-question",
-                  attributes: { "question-id": questionId },
-                },
-              ],
+          forceTokenRefreshOnNextRequest();
+
+          H.getSimpleEmbedIframeContent().within(() => {
+            // The refresh only fires on the next request, so re-running
+            // the query with a new filter value is what triggers it.
+            cy.findByLabelText("Category").click();
+            H.popover().within(() => {
+              cy.findByRole("checkbox", { name: "Gadget" }).click();
+              cy.button("Update filter").click();
             });
 
             cy.wait("@guestTokenProvider");
-            H.getSimpleEmbedIframeContent()
-              .findByText(
-                /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
-              )
-              .should("be.visible");
+          });
+
+          // The refreshed token names a question that takes no
+          // parameters, so the old filter value must not be sent along
+          // with it.
+          H.getSimpleEmbedIframeContent()
+            .findByText(/Unknown parameter/)
+            .should("not.exist");
+
+          // "Vendor" is only on the question the refreshed token names.
+          H.getSimpleEmbedIframeContent().findByText("Vendor").should("exist");
+        });
+      });
+    });
+
+    it("initial-token: fetches the first token and shows provider errors", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        const resource: Resource = { type: "question", id: questionId };
+
+        cy.log("the provider returns a fresh token");
+        signJwt(resource, 600).then((freshToken) => {
+          mockTokenProvider("guestTokenProvider", {
+            statusCode: 200,
+            body: { jwt: freshToken },
           });
         });
+
+        loadGuestEmbed(resource, {
+          "question-id": questionId,
+          "custom-context": "test-custom-context",
+        });
+
+        cy.wait("@guestTokenProvider").then((interception) => {
+          expect(interception.request.url).to.include("response=json");
+          expect(interception.request.body).to.deep.include({
+            entityType: "question",
+            entityId: questionId,
+            customContext: "test-custom-context",
+          });
+        });
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("visualization-root")
+          .should("exist");
+
+        checkProviderErrors(resource, "initial-token");
       });
     });
   });
