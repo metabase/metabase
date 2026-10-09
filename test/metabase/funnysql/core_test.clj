@@ -1375,7 +1375,12 @@
       (are [v] (= [v]
                   (rest (funnysql/format {:where [:= :key [:param :p]]} :h2 {:params {:p v}})))
         false
-        nil))))
+        nil)
+      (testing "including in an `:in` list"
+        (are [v] (= ["WHERE \"KEY\" IN ?" v]
+                    (funnysql/format {:where [:in :key [:param :p]]} :h2 {:params {:p v}}))
+          false
+          nil)))))
 
 (deftest ^:parallel over-test
   (are [form expected] (= expected

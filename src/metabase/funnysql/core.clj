@@ -44,6 +44,13 @@
   (and (vector? x)
        (keyword? (get x 0))))
 
+(defn- fn-call-of-type? [x k-or-k-set]
+  (and (fn-call? x)
+       (let [f (get x 0)]
+         (if (set? k-or-k-set)
+           (contains? k-or-k-set f)
+           (= f k-or-k-set)))))
+
 (defn- object! [x context]
   (append-sql! context "?")
   (append-arg! context x))
@@ -122,8 +129,7 @@
   tagged form."
   [x]
   (or (keyword? x)
-      (and (vector? x)
-           (= (get x 0) ::h2x/identifier))))
+      (fn-call-of-type? x ::h2x/identifier)))
 
 (defn- check-identifier-form
   "Table/column-name positions must never silently fall through to [[object!]]'s `?`-parameter handling just
@@ -473,8 +479,7 @@
       (interpose-fn subclauses subclause! #(append-sql! context ", ")))))
 
 (defn- inline? [x]
-  (and (vector? x)
-       (= (get x 0) :inline)))
+  (fn-call-of-type? x :inline))
 
 (defn- limit!
   [n context]
@@ -731,21 +736,23 @@
   `:params` in the options map."
   [k context]
   {:pre [(keyword? k)]}
-  (let [v (or (get-in (options context) [:params k])
-              (throw (ex-info "Missing value for :param" {:param k})))]
-    ;; anything that looks like an identifier or function call needs to get lifted, do not allow injecting these with
-    ;; `:param`
-    (letfn [(lift [x]
-              (cond
-                ((some-fn fn-call? keyword?) x)
-                [:lift x]
+  ;; look the key up with a sentinel rather than testing the value for truthiness -- `false` and `nil` are both
+  ;; legitimate parameter values.
+  (let [v (get-in (options context) [:params k] ::not-found)]
+    (when (= v ::not-found)
+      (throw (ex-info "Missing value for :param" {:param k})))
+    v))
 
-                ((some-fn sequential? set?) x)
-                (into (empty x) (map lift) x)
+(defn- lift-value [x]
+  (cond
+    ((some-fn fn-call? keyword?) x)
+    [:lift x]
 
-                :else
-                x))]
-      (lift v))))
+    ((some-fn sequential? set?) x)
+    (into (empty x) (map lift-value) x)
+
+    :else
+    x))
 
 (defn- in-values
   "The values side of an `:in`/`:not-in` form, with a `[:param k]` naming a collection resolved to
@@ -760,13 +767,12 @@
   value slot. A scalar is not a list of values, and a map must stay one bound value rather than
   become a list of its entries -- `metabase.app-db.honeysql-guard` is what refuses an unmarked one."
   [vs context]
-  (if-not (and (fn-call? vs)
-               (= :param (first vs)))
-    vs
-    (let [v (param-value (second vs) context)]
+  (if (fn-call-of-type? vs :param)
+    (let [v (lift-value (param-value (second vs) context))]
       (if (or (sequential? v) (set? v))
         v
-        vs))))
+        vs))
+    vs))
 
 (defn- in! [f [lhs vs] context]
   (let [vs (in-values vs context)]
@@ -902,13 +908,6 @@
   (append-sql! context ")"))
 
 (defn- param! [k context]
-  {:pre [(keyword? k)]}
-  ;; look the key up with a sentinel rather than testing the value for truthiness -- `false` and `nil` are both
-  ;; legitimate parameter values.
-  (let [v (get-in (options context) [:params k] ::not-found)]
-    (when (= v ::not-found)
-      (throw (ex-info "Missing value for :param" {:param k})))
-    (object! v context)))
 
 (def ^:private binary-arithmetic-operators
   #{:+ :- :/ :* :%})
@@ -916,6 +915,7 @@
 (defn- binary-arithmetic-call? [x]
   (and (fn-call? x)
        (binary-arithmetic-operators (get x 0))))
+  (object! (param-value k context) context))
 
 (defn- unary-binary-operator! [f x context]
   (case f
