@@ -180,6 +180,7 @@
 ;; Accumulate 0-arity thunks to run just before / just after the outermost transaction commits. Each is
 ;; bound to a fresh atom when the outermost transaction starts (see [[do-with-transaction]]) and shared by
 ;; the whole nested-transaction tree; nil outside any transaction.
+;; The after-commit atom holds `::already-run` once its callbacks have run, see [[pending-callbacks]].
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -271,11 +272,11 @@
     (thunk)))
 
 (defn- pending-callbacks
-  "Return the after-commit `callbacks` still waiting to run, or nil once they have run.
-  The atom then holds `::already-run`, so read its value through this."
-  [callbacks]
-  (when (vector? callbacks)
-    callbacks))
+  "Return `cbs`, the value of the after-commit callbacks atom, if they are still waiting to run, else nil.
+  Once they have run the atom holds `::already-run`, so read its value through this."
+  [cbs]
+  (when (vector? cbs)
+    cbs))
 
 (defn- run-after-commit-callback! [thunk]
   ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work

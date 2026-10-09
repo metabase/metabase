@@ -269,7 +269,7 @@
         committed   (promise)]
     (t2/with-connection [conn]
       (let [worker (t2/with-transaction [_conn conn]
-                     (let [worker (future
+                     (let [nested (future
                                     (try
                                       (t2/with-transaction [_conn]
                                         (deliver nested-open true)
@@ -278,7 +278,7 @@
                                       (catch Exception e
                                         (:rollback-error (ex-data e)))))]
                        (deref nested-open 1000 ::timed-out)
-                       worker))]
+                       nested))]
         (deliver committed true)
         (is (instance? SQLException (deref worker 1000 ::timed-out)))))))
 
