@@ -13,6 +13,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
@@ -743,6 +744,32 @@
               (serdes/load-one! ingested table)
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
+
+(defn- load-table-and-user-settings!
+  "Load a repo Table file with raw `description` \"Repo comment\" and a repo TableUserSettings file without a
+  description, in `order`, onto a target Table whose raw description is \"target raw comment\" and whose user
+  description is \"Repo comment\". Returns the description the target Table shows afterwards."
+  [order]
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id db-id :schema "PUBLIC" :name "overlay_t"
+                                                 :description "target raw comment"}]
+    (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "T One" :description "Repo comment"})
+    (let [table-file (assoc (serdes/extract-one "Table" {} (t2/select-one :model/Table :id table-id))
+                            :description "Repo comment")
+          tus-file   (-> (first (into [] (serdes/extract-all "TableUserSettings" {:filter-ids [table-id]})))
+                         (dissoc :description)
+                         (assoc :description_set false))
+          files      {:table table-file :user-settings tus-file}]
+      (doseq [file (map files order)]
+        (serdes/load-one! file (serdes/load-find-local (serdes/path file))))
+      (:description (warehouse-schema.db/table table-id)))))
+
+(deftest load-table-writes-raw-column-equal-to-user-value-test
+  (testing "the repo raw value wins when the repo user settings drop the user value"
+    (testing "Table file loads first"
+      (is (= "Repo comment" (load-table-and-user-settings! [:table :user-settings]))))
+    (testing "TableUserSettings file loads first"
+      (is (= "Repo comment" (load-table-and-user-settings! [:user-settings :table]))))))
 
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
