@@ -7,6 +7,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
+import { getTenantsBasePath } from "metabase/common/tenants";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -14,6 +15,7 @@ import { useNavigate } from "metabase/router";
 import { isSsoEnabled } from "metabase/selectors/settings";
 import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword } from "../people";
@@ -40,7 +42,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
   const navigate = useNavigate();
 
   const handleClose = () => {
-    navigate(isExternalUser ? "/admin/people/tenants/people" : "/admin/people");
+    navigate(
+      isExternalUser ? `${getTenantsBasePath()}/people` : "/admin/people",
+    );
   };
 
   useEffect(() => {
@@ -51,7 +55,7 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   useEffect(() => {
     if (isExternalUser && !temporaryPassword) {
-      navigate("/admin/people/tenants/people", { replace: true });
+      navigate(`${getTenantsBasePath()}/people`, { replace: true });
     }
   }, [isExternalUser, temporaryPassword, navigate]);
 
@@ -97,7 +101,7 @@ const EmailSuccess = ({
       )} with instructions to log in. If this user is unable to authenticate then you can ${(
         <Link
           key="link"
-          to={`/admin/people/${user.id}/reset`}
+          to={Urls.resetPassword(user)}
           className={CS.link}
         >{t`reset their password.`}</Link>
       )}`}</div>

@@ -79,7 +79,7 @@ async function toSourceInput(
   if (entityId === undefined) {
     // An app's viewers can only read the published cards, so a table source 403s.
     throw new Error(
-      "This query has no saved question. Write it to the app's collection under `collections/data_apps/`, set its `savedQuestionEntityId` in `defineQuery(...)` in `queries/`, run `npm run check-resources`, commit, and rebuild.",
+      "This query has no saved question. Set its `savedQuestionEntityId` in `defineQuery(...)` in `queries/`, run `npm run write-resources` and `npm run check-resources`, commit, and rebuild.",
     );
   }
 
@@ -187,15 +187,14 @@ function toResultColumnStageSpec({
   };
 }
 
-// A card stage exposes the saved question's result columns, so they are looked
-// up by name. `sourceName` and `displayName` describe the table field rather
-// than the result column and stop it matching, so they are dropped. `tableId`
-// and `sourceFieldId` stay: a result column keeps both, and they tell it apart
-// from a same-named column reachable through an FK.
+// A card stage exposes the saved question's result columns, which are no
+// longer joined, so the join and foreign key keys are dropped; the field ID or
+// the name still finds the column.
 function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   const {
-    sourceName: _sourceName,
-    displayName: _displayName,
+    joinAlias: _joinAlias,
+    sourceFieldId: _sourceFieldId,
+    sourceFieldJoinAlias: _sourceFieldJoinAlias,
     ...resultColumn
   } = spec;
 

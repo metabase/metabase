@@ -1587,7 +1587,7 @@ Backed by the moonshot connection in the admin AI settings provider list: reads 
 
 The base URL of your Ollama server's OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.
 
-Backed by the Ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
 
 ### `MB_LLM_OLLAMA_API_KEY`
 
@@ -1595,9 +1595,9 @@ Backed by the Ollama connection in the admin AI settings provider list: reads an
 - Default: `null`
 - [Configuration file name](./config-file.md): `llm-ollama-api-key`
 
-The API key for Ollama Cloud, with `MB_LLM_OLLAMA_API_BASE_URL` set to https://ollama.com/v1. For self-hosted servers, only needed behind an authenticated proxy.
+The API key for Ollama Cloud, with MB_LLM_OLLAMA_API_BASE_URL set to https://ollama.com/v1. For self-hosted servers, only needed behind an authenticated proxy.
 
-Backed by the Ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_OLLAMA_REQUEST_TIMEOUT_MS`
 
@@ -1845,6 +1845,13 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 - [Configuration file name](./config-file.md): `metabot-advanced-permissions`
 
 Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
+
+### `MB_METABOT_CHAT_TURN_ASYNC_TIMEOUT_MS`
+
+- Type: positive-integer
+- Default: `1800000`
+
+Maximum duration of a Metabot chat turn in milliseconds.
 
 ### `MB_METABOT_ENABLED`
 
@@ -3315,7 +3322,7 @@ Type: integer<br>
 Default: `600000`<br>
 Since: v35.0
 
-Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
+Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might. Metabot chat responses aren't bound by this timeout.
 
 ### `MB_JETTY_DAEMON`
 

@@ -1,30 +1,31 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { serializeResources } from "../serialize";
+import { exportNameToCardName, writeResources } from "../serialize";
 
-import { makeApp, setupResourceTests, writeAction, writeQuery } from "./setup";
+import {
+  COLLECTION,
+  makeApp,
+  setupResourceTests,
+  writeAction,
+  writeQuery,
+  writeResource,
+} from "./setup";
 
 const QUESTION = "questionEntityId00010";
 const ACTION_COPY = "actionCopyEntityId001";
 
-const COLLECTION = "appCollectionEntity01";
+const COLLECTION_DIR = "collections/data_apps/data_app";
+const QUESTION_PATH = `${COLLECTION_DIR}/orders_${QUESTION}.yaml`;
+const ACTION_PATH = `${COLLECTION_DIR}/create_${ACTION_COPY}.yaml`;
+const METRIC_PATH = `${COLLECTION_DIR}/revenue_metricCopyEntityId0001.yaml`;
 
 const SERIALIZED = {
-  queries: [
-    {
-      export: "Orders",
-      entity: {
-        entity_id: QUESTION,
-        collection_id: COLLECTION,
-        name: "Orders",
-        dataset_query: { database: "Sample Database" },
-      },
-      metrics: [],
-    },
+  queries: [{ file: `orders_${QUESTION}.yaml`, yaml: "name: Orders\n" }],
+  actions: [{ file: `create_${ACTION_COPY}.yaml`, yaml: "name: Create\n" }],
+  metrics: [
+    { file: "revenue_metricCopyEntityId0001.yaml", yaml: "name: Revenue\n" },
   ],
-  actions: [{ id: 51, entity: { entity_id: "sourceActionEntity051" } }],
-  metrics: [],
 };
 
 function appWithDefinitions() {
@@ -55,7 +56,7 @@ function mockSerialization(response: Response) {
 describe("serializing what resources are written from", () => {
   setupResourceTests();
 
-  it("refuses to print before the manifest names the app's collection", async () => {
+  it("refuses to write before the manifest names the app's collection", async () => {
     const appRoot = appWithDefinitions();
     fs.writeFileSync(
       path.join(appRoot, "data_app.yaml"),
@@ -65,13 +66,13 @@ describe("serializing what resources are written from", () => {
       new Response(JSON.stringify(SERIALIZED)),
     );
 
-    await expect(serializeResources(appRoot)).rejects.toThrow(
+    await expect(writeResources(appRoot)).rejects.toThrow(
       "names the app's collection",
     );
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("refuses to print a query that has no saved question ID yet", async () => {
+  it("refuses to write a query that has no saved question ID yet", async () => {
     const appRoot = appWithDefinitions();
     fs.appendFileSync(
       path.join(appRoot, "queries/orders.query.ts"),
@@ -81,82 +82,176 @@ describe("serializing what resources are written from", () => {
       new Response(JSON.stringify(SERIALIZED)),
     );
 
-    await expect(serializeResources(appRoot)).rejects.toThrow(
+    await expect(writeResources(appRoot)).rejects.toThrow(
       "queries/orders.query.ts:Products has no savedQuestionEntityId.",
     );
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("sends the definitions with their IDs, the app's collection, and the action IDs in one request, and prints the serialization beside each definition", async () => {
+  it("refuses to write an action that has no copied action ID yet", async () => {
+    const appRoot = appWithDefinitions();
+    writeAction(
+      appRoot,
+      `export const Create = defineAction({ action: { id: 51, parameters: [] } });`,
+    );
+    const fetchSpy = mockSerialization(
+      new Response(JSON.stringify(SERIALIZED)),
+    );
+
+    await expect(writeResources(appRoot)).rejects.toThrow(
+      "actions/orders.action.ts:Create has no copiedActionEntityId.",
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("sends the definitions with their IDs and the app's collection in one request, and writes every returned file at its path", async () => {
     const appRoot = appWithDefinitions();
     const fetchSpy = mockSerialization(
       new Response(JSON.stringify(SERIALIZED)),
     );
 
-    const printed = JSON.parse(await serializeResources(appRoot));
+    const output = await writeResources(appRoot);
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("http://metabase.test/api/apps/serialize-resources");
+    expect(url).toBe("http://metabase.test/api/apps/generate/resources");
     expect(init?.headers).toEqual({
       "Content-Type": "application/json",
       "X-API-Key": "mb_test_key",
     });
     expect(JSON.parse(String(init?.body))).toEqual({
-      collection: COLLECTION,
       queries: [
         {
-          export: "Orders",
-          entity_id: QUESTION,
+          name: "Orders",
           query: { stages: [{ source: { type: "table", id: 1 }, limit: 5 }] },
-        },
-      ],
-      actions: [51],
-    });
-    expect(printed).toEqual({
-      queries: [
-        {
-          export: "Orders",
-          file: "queries/orders.query.ts",
-          savedQuestionEntityId: QUESTION,
-          entity: SERIALIZED.queries[0].entity,
-          metrics: [],
+          entity_id: QUESTION,
+          collection_id: COLLECTION,
         },
       ],
       actions: [
-        {
-          export: "Create",
-          file: "actions/orders.action.ts",
-          copiedActionEntityId: ACTION_COPY,
-          id: 51,
-          entity: { entity_id: "sourceActionEntity051" },
-        },
+        { action_id: 51, entity_id: ACTION_COPY, collection_id: COLLECTION },
       ],
-      metrics: [],
     });
+    expect(output).toBe(
+      [QUESTION_PATH, ACTION_PATH, METRIC_PATH]
+        .map((written) => `Wrote ${written}`)
+        .join("\n"),
+    );
+    expect(fs.readFileSync(path.join(appRoot, QUESTION_PATH), "utf8")).toBe(
+      "name: Orders\n",
+    );
+    expect(fs.readFileSync(path.join(appRoot, ACTION_PATH), "utf8")).toBe(
+      "name: Create\n",
+    );
+    expect(fs.readFileSync(path.join(appRoot, METRIC_PATH), "utf8")).toBe(
+      "name: Revenue\n",
+    );
   });
 
-  it("sends only the definitions in the given file", async () => {
+  it("writes into the repository above an app under data_apps/", async () => {
+    const appRoot = makeApp({ underDataApps: true });
+    fs.writeFileSync(
+      path.join(appRoot, ".env.local"),
+      "DATA_APP_MB_URL=http://metabase.test/\nDATA_APP_MB_API_KEY=mb_test_key\n",
+    );
+    writeQuery(
+      appRoot,
+      `export const Orders = defineQuery({ savedQuestionEntityId: "${QUESTION}", source: { type: "table", id: 1 } });`,
+    );
+    mockSerialization(
+      new Response(JSON.stringify({ ...SERIALIZED, actions: [], metrics: [] })),
+    );
+
+    await writeResources(appRoot);
+
+    expect(fs.existsSync(path.join(appRoot, "..", "..", QUESTION_PATH))).toBe(
+      true,
+    );
+  });
+
+  it("replaces the cards and actions the collection held", async () => {
     const appRoot = appWithDefinitions();
+    const stale = writeResource(appRoot, "other_place/stale.yaml", {
+      name: "Stale",
+      type: "question",
+      entity_id: "staleEntityId0000001",
+      "serdes/meta": [{ model: "Card", id: "staleEntityId0000001" }],
+    });
+    mockSerialization(new Response(JSON.stringify(SERIALIZED)));
+
+    await writeResources(appRoot);
+
+    expect(fs.existsSync(stale)).toBe(false);
+    expect(
+      fs.existsSync(path.join(appRoot, "collections/data_apps/data_app.yaml")),
+    ).toBe(true);
+  });
+
+  it("writes nothing and throws every per-item error", async () => {
+    const appRoot = appWithDefinitions();
+    const stale = writeResource(appRoot, "stale.yaml", {
+      name: "Stale",
+      type: "question",
+      entity_id: "staleEntityId0000001",
+      "serdes/meta": [{ model: "Card", id: "staleEntityId0000001" }],
+    });
+    mockSerialization(
+      new Response(
+        JSON.stringify({
+          queries: [{ error: "Unknown database" }],
+          actions: [{ file: `create_${ACTION_COPY}.yaml`, yaml: "x: 1\n" }],
+          metrics: [{ error: "Unknown metric" }],
+        }),
+      ),
+    );
+
+    await expect(writeResources(appRoot)).rejects.toThrow(
+      [
+        "queries/orders.query.ts:Orders: Unknown database",
+        "A metric: Unknown metric",
+      ].join("\n"),
+    );
+    expect(fs.existsSync(stale)).toBe(true);
+    expect(fs.existsSync(path.join(appRoot, ACTION_PATH))).toBe(false);
+  });
+
+  it("refuses a returned file that would leave the collection's folder", async () => {
+    const appRoot = appWithDefinitions();
+    const stale = writeResource(appRoot, "stale.yaml", {
+      name: "Stale",
+      type: "question",
+      entity_id: "staleEntityId0000001",
+      "serdes/meta": [{ model: "Card", id: "staleEntityId0000001" }],
+    });
+    mockSerialization(
+      new Response(
+        JSON.stringify({
+          ...SERIALIZED,
+          queries: [{ file: "../escaped.yaml", yaml: "name: Orders\n" }],
+        }),
+      ),
+    );
+
+    await expect(writeResources(appRoot)).rejects.toThrow(
+      "The serialization holds a file outside the collection: ../escaped.yaml",
+    );
+    expect(
+      fs.existsSync(path.join(appRoot, "collections/data_apps/escaped.yaml")),
+    ).toBe(false);
+    expect(fs.existsSync(stale)).toBe(true);
+  });
+
+  it("refuses to write before the collection has a file", async () => {
+    const appRoot = appWithDefinitions();
+    fs.rmSync(path.join(appRoot, "collections"), { recursive: true });
     const fetchSpy = mockSerialization(
-      new Response(JSON.stringify({ ...SERIALIZED, actions: [] })),
+      new Response(JSON.stringify(SERIALIZED)),
     );
 
-    await serializeResources(appRoot, "queries/orders.query.ts");
-
-    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({
-      collection: COLLECTION,
-      queries: [expect.objectContaining({ export: "Orders" })],
-      actions: [],
-    });
-  });
-
-  it("fails for a file with no definitions", async () => {
-    const appRoot = appWithDefinitions();
-
-    await expect(serializeResources(appRoot, "src/App.tsx")).rejects.toThrow(
-      "src/App.tsx has no defineQuery or defineAction definitions.",
+    await expect(writeResources(appRoot)).rejects.toThrow(
+      `No file under collections/data_apps/ holds the collection ${COLLECTION}`,
     );
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("fails without the Metabase instance and API key", async () => {
@@ -171,7 +266,7 @@ describe("serializing what resources are written from", () => {
     delete process.env.DATA_APP_MB_API_KEY;
 
     try {
-      await expect(serializeResources(appRoot)).rejects.toThrow(
+      await expect(writeResources(appRoot)).rejects.toThrow(
         "DATA_APP_MB_URL and DATA_APP_MB_API_KEY must be set, in the repo-root .env.local or the environment.",
       );
     } finally {
@@ -184,25 +279,14 @@ describe("serializing what resources are written from", () => {
     }
   });
 
-  it("fails when the response has a query too few", async () => {
+  it("fails when the response doesn't answer every definition", async () => {
     const appRoot = appWithDefinitions();
     mockSerialization(
       new Response(JSON.stringify({ ...SERIALIZED, queries: [] })),
     );
 
-    await expect(serializeResources(appRoot)).rejects.toThrow(
-      "The serialization response holds 0 queries; 1 were requested.",
-    );
-  });
-
-  it("fails when the response lacks a requested action", async () => {
-    const appRoot = appWithDefinitions();
-    mockSerialization(
-      new Response(JSON.stringify({ ...SERIALIZED, actions: [] })),
-    );
-
-    await expect(serializeResources(appRoot)).rejects.toThrow(
-      "The serialization response is missing action 51.",
+    await expect(writeResources(appRoot)).rejects.toThrow(
+      "The serialization response doesn't answer every definition.",
     );
   });
 
@@ -210,8 +294,13 @@ describe("serializing what resources are written from", () => {
     const appRoot = appWithDefinitions();
     mockSerialization(new Response("Unauthenticated", { status: 401 }));
 
-    await expect(serializeResources(appRoot)).rejects.toThrow(
+    await expect(writeResources(appRoot)).rejects.toThrow(
       "The serialization request failed (401): Unauthenticated",
     );
+  });
+
+  it("turns an export name into a card name", () => {
+    expect(exportNameToCardName("OrdersByMonth")).toBe("Orders by month");
+    expect(exportNameToCardName("monthly_revenue")).toBe("Monthly revenue");
   });
 });

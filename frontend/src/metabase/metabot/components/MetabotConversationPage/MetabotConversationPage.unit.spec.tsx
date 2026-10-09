@@ -4,11 +4,14 @@ import { assocIn } from "icepick";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotGeneratedCardPart,
   createMockMetabotMessage,
   createMockMetabotTextMessage,
+  setupCardDataset,
   setupDatabaseListEndpoint,
   setupGetMetabotConversationEndpoint,
   setupListMetabotConversationsEndpoint,
+  setupTableEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -16,7 +19,7 @@ import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 
 import { FIXED_METABOT_IDS } from "../../constants";
 import { MetabotProvider } from "../../context";
@@ -31,10 +34,16 @@ import {
   MetabotConversationPage,
 } from "./MetabotConversationPage";
 
+jest.mock("metabase/visualizations/components/Visualization", () => ({
+  __esModule: true,
+  default: () => <div data-testid="visualization" />,
+}));
+
 const ASYNC_TIMEOUT = 3000;
 const CONVERSATION_ROUTE = "/metabot/conversation/:convoId";
 const CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
 const OTHER_CONVERSATION_ID = "22222222-2222-2222-2222-222222222222";
+const TABLE_ID = 2;
 
 const GREETING_TITLE =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
@@ -182,6 +191,31 @@ describe("MetabotConversationPage", () => {
     expect(
       fetchMock.callHistory.calls(detailPath(CONVERSATION_ID)),
     ).toHaveLength(0);
+  });
+
+  it("renders generated charts inline", async () => {
+    setupCardDataset();
+    setupTableEndpoints(createMockTable({ id: TABLE_ID }));
+    mockConversationDetail(
+      createMockMetabotConversationDetail({
+        conversation_id: CONVERSATION_ID,
+        messages: [
+          createMockMetabotTextMessage("user", "Chart of orders"),
+          createMockMetabotMessage({
+            role: "agent",
+            parts: [createMockMetabotGeneratedCardPart({ tableId: TABLE_ID })],
+          }),
+        ],
+      }),
+    );
+
+    setup({
+      metabotInitialState: stateWithConversation(),
+    });
+
+    expect(
+      await screen.findByTestId("metabot-inline-chart"),
+    ).toBeInTheDocument();
   });
 
   it("shows an error when the conversation cannot be loaded", async () => {

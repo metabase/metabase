@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
+   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
@@ -102,12 +103,10 @@
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
     (contains? app :table_ids)     (update :table_ids #(or % []))))
 
-;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
-;; endpoints mean reaching a read check already implies authentication. See the
-;; README's permissions section for why this is safe.
 (defmethod mi/can-read? :model/DataApp
-  ([_instance]   true)
-  ([_model _pk]  true))
+  ([app] (mi/can-read? :model/DataApp (:id app)))
+  ([_model pk]
+   (data-app.access/can-read? {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} pk)))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -155,7 +154,7 @@
                ;; set by the import itself
                :bundle_hash
                ;; server-managed resources, recreated on import
-               :permission_group_id :table_ids]
+               :table_ids]
    :transform {:created_at   (serdes/date)
                ;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
@@ -211,13 +210,6 @@
     (when maybe-local
       (data-app.resources/ensure-resources! app))
     app))
-
-(defenterprise data-app-group-ids
-  "The data-app permission groups (those flagged `is_data_app_group`). SSO group sync must never touch
-   their membership."
-  :feature :none
-  []
-  (data-apps.db/data-app-group-ids))
 
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."

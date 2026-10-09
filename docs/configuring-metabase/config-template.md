@@ -258,6 +258,7 @@ config:
     mcp-apps-cors-enabled-clients: []
     metabot-advanced-permissions: false
     metabot-chat-system-prompt: ''
+    metabot-chat-turn-async-timeout-ms: 1800000
     metabot-enabled: true
     metabot-icon: metabot
     metabot-limit-reset-rate: monthly

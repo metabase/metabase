@@ -59,9 +59,17 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DIFF_BASE: ${{ needs.gate.outputs.diff-base }}
         run: |
-          # Fetch the base branch to ensure its history is available for diffing
-          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          # Fetch what we diff against so its tree is available: the gate's diff-base on the top of
+          # a stack, the base branch otherwise.
+          if [ -n "$DIFF_BASE" ]; then
+            git fetch --depth=1 origin "$DIFF_BASE"
+          else
+            git fetch --depth=1 origin "$BASE_REF:$BASE_REF"
+          fi
       - name: Determine which drivers should run
         id: driver-decisions
         run: |
@@ -83,7 +91,7 @@ jobs:
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
-          BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          BASE_REF: ${{ needs.gate.outputs.diff-base || github.event.pull_request.base.ref || github.ref_name }}
           FORCE_RUN: ${{ needs.gate.outputs.force-run == 'true' }}
         shell: bash
 
