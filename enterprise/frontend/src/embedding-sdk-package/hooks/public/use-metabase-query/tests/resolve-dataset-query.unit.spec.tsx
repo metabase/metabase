@@ -830,6 +830,30 @@ describe("resolveDatasetQuery aggregation column names", () => {
   });
 });
 
+describe("resolveDatasetQuery time-interval filters", () => {
+  it("passes a relative date window as an amount and a unit", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      filters: [
+        filter(TEST_SCHEMA.tables.orders.fields.createdAt, "time-interval", [
+          -24,
+          "month",
+        ]),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].filters).toEqual([
+      [
+        "time-interval",
+        expect.anything(),
+        ["field", expect.anything(), 103],
+        -24,
+        "month",
+      ],
+    ]);
+  });
+});
+
 describe("resolveDatasetQuery named breakouts", () => {
   const orders = TEST_SCHEMA.tables.orders;
   const createdMonth = breakout(orders.fields.createdAt, {

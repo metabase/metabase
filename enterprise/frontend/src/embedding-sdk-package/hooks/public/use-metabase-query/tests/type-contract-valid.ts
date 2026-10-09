@@ -362,7 +362,10 @@ function ValidTypeFixtures() {
 
   useMetabaseQuery(pickedOrdersQuery, {
     filters: [
-      filter({ type: "column", name: "CREATED_AT" }, "time-interval", "x"),
+      filter({ type: "column", name: "CREATED_AT" }, "time-interval", [
+        -24,
+        "month",
+      ]),
     ],
   });
 

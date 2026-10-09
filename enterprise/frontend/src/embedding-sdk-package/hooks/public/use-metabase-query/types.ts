@@ -251,6 +251,7 @@ export type FilterOperator =
 
 type UnaryFilterOperator = "is-empty" | "not-empty" | "is-null" | "not-null";
 type BetweenFilterOperator = "between";
+type TimeIntervalFilterOperator = "time-interval";
 type StringFilterOperator = LibStringFilterOperator | DefaultFilterOperator;
 type DateFilterOperator =
   | SpecificDateFilterOperator
@@ -284,9 +285,14 @@ export type BetweenFilterOperatorForDimension<TDimension> = Extract<
   BetweenFilterOperator
 >;
 
+export type TimeIntervalFilterOperatorForDimension<TDimension> = Extract<
+  FilterOperatorForDimension<TDimension>,
+  TimeIntervalFilterOperator
+>;
+
 export type ValueFilterOperatorForDimension<TDimension> = Exclude<
   FilterOperatorForDimension<TDimension>,
-  UnaryFilterOperator | BetweenFilterOperator
+  UnaryFilterOperator | BetweenFilterOperator | TimeIntervalFilterOperator
 >;
 
 export type FilterForOperator<

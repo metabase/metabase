@@ -118,6 +118,15 @@ const _invalidMetricSourceQuery = {
   source: TEST_SCHEMA.metrics.revenue,
 } satisfies MetabaseQueryOptions;
 
+// @ts-expect-error a time interval takes an amount and a unit
+filter(TEST_SCHEMA.tables.orders.fields.createdAt, "time-interval", -24);
+
+// @ts-expect-error only a date dimension takes a time interval
+filter(TEST_SCHEMA.tables.orders.fields.status, "time-interval", [
+  -24,
+  "month",
+]);
+
 // @ts-expect-error `unit` buckets a date, so only a date dimension offers it
 breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
 

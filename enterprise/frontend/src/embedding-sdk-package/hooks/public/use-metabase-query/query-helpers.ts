@@ -2,6 +2,7 @@ import {
   isNamedBreakout,
   isUnaryOperator,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import type { TemporalUnit } from "metabase-types/api";
 
 import type { SchemaColumn } from "../data-schema";
 
@@ -14,6 +15,7 @@ import type {
   FilterOperator,
   MetabaseOrderByDirection,
   NamedBreakout,
+  TimeIntervalFilterOperatorForDimension,
   UnaryFilterOperatorForDimension,
   ValueFilterOperatorForDimension,
 } from "./types";
@@ -44,6 +46,15 @@ export function filter<
 
 export function filter<
   const TDimension,
+  TOperator extends TimeIntervalFilterOperatorForDimension<TDimension>,
+>(
+  dimension: TDimension,
+  operator: TOperator,
+  interval: readonly [amount: number, unit: TemporalUnit],
+): FilterForOperator<TDimension, TOperator>;
+
+export function filter<
+  const TDimension,
   TOperator extends UnaryFilterOperatorForDimension<TDimension>,
 >(
   dimension: TDimension,
@@ -64,6 +75,18 @@ export function filter(
       type: "operator",
       operator,
       args: [dimension, toFilterLiteral(min), toFilterLiteral(max)],
+    };
+  }
+
+  if (operator === "time-interval") {
+    // The `time-interval` overload takes an `[amount, unit]` tuple, but the
+    // implementation signature shared by all overloads widens `value` to `unknown`.
+    const [amount, unit] = value as readonly [number, TemporalUnit];
+
+    return {
+      type: "operator",
+      operator,
+      args: [dimension, toFilterLiteral(amount), toFilterLiteral(unit)],
     };
   }
 
