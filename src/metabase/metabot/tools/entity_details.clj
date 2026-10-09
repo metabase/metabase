@@ -375,7 +375,9 @@
          ;; Definition query (WITH the metric's own joins) — surfaces FK-less join dimensions that
          ;; the consumer-framed `base-query` drops. Built from the card's `:dataset-query`, not from
          ;; `metric-query`, which frames the metric as a source and hides its definition joins.
-         join-required-dims (when (and query-needed? with-queryable-dimensions?)
+         ;; Only a metric's definition joins are dimensions to offer; a question or model read through the
+         ;; metric path exposes its results, as through its own URI, not the tables its definition reads.
+         join-required-dims (when (and query-needed? with-queryable-dimensions? (= :metric (:type metric-card)))
                               (metric-join-required-dimensions
                                metadata-provider
                                (some->> (:dataset-query metric-card) (lib/query metadata-provider))

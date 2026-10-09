@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
@@ -93,7 +94,13 @@
 (defn- card-field-stats
   [card-id field-id limit card-type]
   (try
-    (let [query        (or (metabot.tools.u/card-query card-id)
+    (let [;; A curated-only read may see what a curated card exposes, its result columns and their FK neighbours,
+          ;; which is what `construct_notebook_query` lets a curated card cover (see
+          ;; `metabase.metabot.curation`). The definition of a question reads more: a verified `count` over a raw
+          ;; table would otherwise serve every column of that table.
+          query        (or (if (shared/curated-only?)
+                             (metabot.tools.u/card-results-query card-id)
+                             (metabot.tools.u/card-query card-id))
                            (throw (ex-info (str "No " card-type " found with ID " card-id)
                                            {:agent-error? true :status-code 404})))
           visible-cols (lib/visible-columns query)

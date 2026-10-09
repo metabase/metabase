@@ -61,6 +61,12 @@
   [metabot-id]
   (metabot.db/metabot-id-by-entity-id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
 
+(defn metabot-by-id
+  "The Metabot row for `metabot-id` — a key of [[metabot-config]] or a Metabot entity id — or nil."
+  [metabot-id]
+  (when metabot-id
+    (metabot.db/metabot-by-entity-id (get-in metabot-config [metabot-id :entity-id] metabot-id))))
+
 (defn resolve-dynamic-metabot-id
   "Resolve dynamic metabot ID with logical fall backs
    Precedence: explicit metabot-id > env metabot-id > default (internal)"
