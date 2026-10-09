@@ -15,7 +15,7 @@ import type {
 import { Stack, Text } from "metabase/ui";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
-import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
+import { SettingsTabLayout } from "./SettingsTabLayout";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 export interface OverviewSettingsProps {
@@ -66,20 +66,18 @@ export const OverviewSettings = ({
         <StaticEmbedSetupPaneSettingsContentSection
           title={t`Setting up a static embed`}
         >
-          <Text>{t`To embed this ${resourceType} in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.`}</Text>
-          <br />
-          {resourceType === "dashboard" && (
-            <>
+          <Stack gap="lg">
+            <Text>{t`To embed this ${resourceType} in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.`}</Text>
+            {resourceType === "dashboard" && (
               <Text>{t`You can also hide or lock any of the dashboard’s parameters.`}</Text>
-              <br />
-            </>
-          )}
-          <Text>{jt`Check out the ${(
-            <ExternalLink
-              key="doc"
-              href={docsUrl}
-            >{t`documentation`}</ExternalLink>
-          )} for more.`}</Text>
+            )}
+            <Text>{jt`Check out the ${(
+              <ExternalLink
+                key="doc"
+                href={docsUrl}
+              >{t`documentation`}</ExternalLink>
+            )} for more.`}</Text>
+          </Stack>
         </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={

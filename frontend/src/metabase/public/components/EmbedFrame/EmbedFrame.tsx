@@ -13,10 +13,9 @@ import { FilterApplyToast } from "metabase/dashboard/components/FilterApplyToast
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
-  ActionButtonsContainer,
+  EmbeddingFooter,
   type FooterVariant,
-} from "metabase/embedding/components/EmbedFooter.styled";
-import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
+} from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import EmbedThemeS from "metabase/embedding/theme.module.css";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
@@ -25,7 +24,7 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
 import {
@@ -45,16 +44,6 @@ import type {
 import type { DashboardUrlHashOptions } from "../../../dashboard/types";
 
 import EmbedFrameS from "./EmbedFrame.module.css";
-import {
-  Body,
-  ContentContainer,
-  DashboardTabsContainer,
-  Header,
-  Root,
-  Separator,
-  TitleAndButtonsContainer,
-  TitleAndDescriptionContainer,
-} from "./EmbedFrame.styled";
 import { useGlobalTheme } from "./useGlobalTheme";
 
 export type EmbedFrameBaseProps = Partial<{
@@ -181,19 +170,27 @@ export const EmbedFrame = ({
   const hasDashboardTabs = dashboard?.tabs && dashboard.tabs.length > 1;
 
   return (
-    <Root
-      hasScroll={hasFrameScroll}
-      isBordered={bordered}
-      hasVisibleOverflowWhenPriting={isPublicDashboard}
-      className={cx(className, EmbedThemeS.EmbedFrame, {
-        [EmbedThemeS.NoBackground]: !background,
-      })}
+    <Stack
+      className={cx(
+        className,
+        EmbedFrameS.overflowAuto,
+        EmbedThemeS.EmbedFrame,
+        {
+          [EmbedThemeS.NoBackground]: !background,
+          [EmbedFrameS.border]: bordered,
+          [EmbedFrameS.printOverflowVisible]: isPublicDashboard,
+        },
+      )}
+      gap={0}
+      pos={hasFrameScroll ? "absolute" : undefined}
+      inset={hasFrameScroll ? 0 : undefined}
       data-testid="embed-frame"
       data-embed-theme={theme}
     >
-      <ContentContainer
+      <Stack
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-        className={cx(contentClassName, {
+        // flex stays a class, so a contentClassName can still override it
+        className={cx(contentClassName, CS.flexFull, {
           [EmbedThemeS.ContentContainer]: true,
           [EmbedThemeS.WithThemeBackground]: true,
 
@@ -201,18 +198,25 @@ export const EmbedFrame = ({
           [CS.hoverParent]: question,
           [CS.hoverVisibility]: question,
         })}
+        gap={0}
+        pos="relative"
       >
         {hasHeader && (
-          <Header
+          <Stack
+            component="header"
             className={cx(
               EmbedThemeS.EmbedFrameHeader,
               SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS,
             )}
+            gap={0}
             data-testid="embed-frame-header"
           >
             {(finalName || pdfDownloadsEnabled) && (
-              <TitleAndDescriptionContainer hasTitle={!!finalName}>
-                <TitleAndButtonsContainer
+              <FullWidthContainer
+                mt={finalName ? { base: "sm", sm: "lg", lg: "xl" } : "sm"}
+              >
+                <FixedWidthContainer
+                  className={cx(CS.flex, CS.alignCenter)}
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
@@ -235,22 +239,30 @@ export const EmbedFrame = ({
                     />
                   )}
                   {headerButtons}
-                </TitleAndButtonsContainer>
-              </TitleAndDescriptionContainer>
+                </FixedWidthContainer>
+              </FullWidthContainer>
             )}
             {dashboardTabs && (
-              <DashboardTabsContainer narrow={!titled && pdfDownloadsEnabled}>
+              <FullWidthContainer
+                className={cx(EmbedFrameS.dashboardTabs, {
+                  [EmbedFrameS.narrowTabs]: !titled && pdfDownloadsEnabled,
+                })}
+              >
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-tabs"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   {dashboardTabs}
                 </FixedWidthContainer>
-              </DashboardTabsContainer>
+              </FullWidthContainer>
             )}
 
-            {finalName && <Separator className={EmbedThemeS.Separator} />}
-          </Header>
+            {finalName && (
+              <div
+                className={cx(EmbedThemeS.Separator, EmbedFrameS.borderBottom)}
+              />
+            )}
+          </Stack>
         )}
 
         {/* show floating header buttons if there is no title */}
@@ -289,8 +301,10 @@ export const EmbedFrame = ({
             </FixedWidthContainer>
           </FullWidthContainer>
         )}
-        <Body>{children}</Body>
-      </ContentContainer>
+        <Stack component="main" gap={0} flex="1 0 auto" pos="relative">
+          {children}
+        </Stack>
+      </Stack>
 
       {dashboard && <FilterApplyToast position="fixed" />}
       {isFooterEnabled && (
@@ -299,12 +313,14 @@ export const EmbedFrame = ({
           isDarkMode={theme === "night"}
           hasEmbedBranding={hasEmbedBranding}
         >
-          {actionButtons && (
-            <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
+          {actionButtons && footerVariant === "default" && (
+            <Box c="text-secondary" ml="auto">
+              {actionButtons}
+            </Box>
           )}
         </EmbeddingFooter>
       )}
-    </Root>
+    </Stack>
   );
 };
 
