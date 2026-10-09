@@ -360,7 +360,6 @@ const HOOK_TIMEOUT = Number(process.env.NT_HOOK_TIMEOUT ?? 8000);
 // Node's own timers, taken before any fake clock can replace them, so a deadline
 // still fires while a test has the clock faked.
 const realSetTimeout = globalThis.setTimeout;
-const realSetImmediate = globalThis.setImmediate;
 const realClearTimeout = globalThis.clearTimeout;
 const realSetInterval = globalThis.setInterval;
 const realClearInterval = globalThis.clearInterval;
@@ -496,20 +495,8 @@ const runSuite = async (suite, t, outer) => {
       let failure;
       if (actEnvironmentForFile !== undefined) globalThis.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
       const idleAtStart = process.env.NT_IDLE_LOG ? [realPerformance.eventLoopUtilization(), realPerformance.now()] : null;
-      currentTest = child.name;
       // jest joins the describe path and the test name with single spaces.
       expect.setState({ snapshotState, currentTestName: [...(child.path ?? []), child.name].join(" ") });
-      if (globalThis.__nodeTestSpike.cleanupInterrupted) {
-        globalThis.__nodeTestSpike.cleanupInterrupted = false;
-        try {
-          const fetchMock = require("fetch-mock").default;
-          fetchMock.removeRoutes();
-          fetchMock.callHistory.clear();
-        } catch {}
-        try { require(bunModule("@testing-library/react")).cleanup(); } catch {}
-        globalThis.document.body.innerHTML = "";
-        resetFocus();
-      }
       try {
         // Work that outlives a test keeps fetching in the gap before this one
         // starts, where the routes are already gone. Those calls belong to the
@@ -626,7 +613,6 @@ const evictProjectModules = () => {
 };
 let preloadMocks = null;
 let currentFile = "";
-let currentTest = "";
 // user-event installs a getter-only navigator.clipboard, and the setup chain
 // assigns to that property, so re-running the chain throws unless it is dropped.
 // sinon's uninstall deletes a timer global when it believes it was not an own
@@ -1031,7 +1017,6 @@ Object.assign(globalThis, structuredClone(project.globals));
       try { Object.defineProperty(win, key, { configurable: true, get: () => globalThis[key], set: (value) => { globalThis[key] = value; } }); } catch {}
     }
   };
-  globalThis.__nodeTestSpike.mirrorGlobalsOntoWindow = mirrorGlobalsOntoWindow;
   globalThis.__nodeTestSpike.remirror = () => { packagesLoadedSinceMirror = true; mirrorGlobalsOntoWindow(); };
   {
     const compileAny = NodeModule.prototype._compile;
