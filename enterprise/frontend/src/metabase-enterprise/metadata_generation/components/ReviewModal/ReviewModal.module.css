@@ -6,7 +6,29 @@
 
 .suggestions {
   width: 100%;
+  min-width: 48rem;
+  table-layout: fixed;
   border-collapse: collapse;
+}
+
+.fieldColumn {
+  width: 10rem;
+}
+
+.attributeColumn {
+  width: 9rem;
+}
+
+.currentColumn {
+  width: 20%;
+}
+
+.reasoningColumn {
+  width: 2.5rem;
+}
+
+.decisionColumn {
+  width: 11rem;
 }
 
 .suggestions th {
@@ -39,7 +61,6 @@
 }
 
 .value {
-  max-width: 20rem;
   overflow-wrap: anywhere;
 }
 

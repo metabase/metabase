@@ -46,8 +46,6 @@ import {
   getApplyFailureReasonLabel,
   getApplySummary,
   getBulkAcceptable,
-  getConfidenceColor,
-  getConfidenceLabel,
   getFieldLabel,
   getHumanSetAcceptable,
   getRejectable,
@@ -418,13 +416,21 @@ function TableReview({ runId, table, isDeciding, decide }: TableReviewProps) {
           className={S.suggestions}
           data-testid="metadata-generation-suggestions"
         >
+          <colgroup>
+            <col className={S.fieldColumn} />
+            <col className={S.attributeColumn} />
+            <col className={S.currentColumn} />
+            <col />
+            <col className={S.reasoningColumn} />
+            <col className={S.decisionColumn} />
+          </colgroup>
           <thead>
             <tr>
               <th>{t`Field`}</th>
               <th>{t`Attribute`}</th>
               <th>{t`Current`}</th>
               <th>{t`Proposed`}</th>
-              <th>{t`Confidence`}</th>
+              <th aria-label={t`Reasoning`} />
               <th>{t`Decision`}</th>
             </tr>
           </thead>
@@ -471,6 +477,8 @@ function SuggestionRow({
     suggestion.attribute,
     suggestion.proposed_value,
   );
+  const fieldLabel = getFieldLabel(suggestion);
+  const attributeLabel = getAttributeLabel(suggestion.attribute);
 
   return (
     <tr
@@ -478,10 +486,16 @@ function SuggestionRow({
       data-testid="metadata-generation-suggestion"
     >
       <td>
-        {isFirstOfField && <Text fw="bold">{getFieldLabel(suggestion)}</Text>}
+        {isFirstOfField && (
+          <Text fw="bold" title={fieldLabel} truncate>
+            {fieldLabel}
+          </Text>
+        )}
       </td>
       <td>
-        <Text>{getAttributeLabel(suggestion.attribute)}</Text>
+        <Text title={attributeLabel} truncate>
+          {attributeLabel}
+        </Text>
       </td>
       <td className={S.value}>
         <Stack gap={4} align="flex-start">
@@ -499,29 +513,18 @@ function SuggestionRow({
         </Stack>
       </td>
       <td className={S.value}>
-        <Group gap="xs" wrap="nowrap" align="flex-start">
-          <Text>{proposed}</Text>
-          {suggestion.reasoning && (
-            <Tooltip label={suggestion.reasoning} maw="25rem" multiline>
-              <Icon
-                className={S.noShrink}
-                name="info"
-                c="text-secondary"
-                aria-label={t`Reasoning`}
-                aria-hidden={false}
-              />
-            </Tooltip>
-          )}
-        </Group>
+        <Text>{proposed}</Text>
       </td>
       <td>
-        {suggestion.confidence && (
-          <Badge
-            variant="light"
-            color={getConfidenceColor(suggestion.confidence)}
-          >
-            {getConfidenceLabel(suggestion.confidence)}
-          </Badge>
+        {suggestion.reasoning && (
+          <Tooltip label={suggestion.reasoning} maw="25rem" multiline>
+            <Icon
+              name="info"
+              c="text-secondary"
+              aria-label={t`Reasoning`}
+              aria-hidden={false}
+            />
+          </Tooltip>
         )}
       </td>
       <td className={S.decision}>

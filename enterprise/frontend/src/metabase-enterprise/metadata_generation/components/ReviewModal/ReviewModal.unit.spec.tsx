@@ -147,6 +147,25 @@ describe("ReviewModal", () => {
     ).toHaveTextContent("Accepted");
   });
 
+  it("shows the reasoning icon in its own column and no confidence column", async () => {
+    setup();
+
+    const table = await screen.findByTestId("metadata-generation-suggestions");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Field", "Attribute", "Current", "Proposed", "", "Decision"]);
+    expect(within(table).queryByText("High")).not.toBeInTheDocument();
+
+    const rows = within(table).getAllByTestId("metadata-generation-suggestion");
+    const reasoningCell = within(rows[0]).getAllByRole("cell")[4];
+    expect(
+      within(reasoningCell).getByLabelText("Reasoning"),
+    ).toBeInTheDocument();
+    expect(within(rows[1]).getAllByRole("cell")[4]).toBeEmptyDOMElement();
+  });
+
   it("accepts one suggestion by id", async () => {
     setup();
 

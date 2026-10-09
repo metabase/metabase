@@ -9,7 +9,6 @@ import {
   type MetadataGenerationApplyFailureReason,
   type MetadataGenerationApplyResult,
   type MetadataGenerationAttribute,
-  type MetadataGenerationConfidence,
   type MetadataGenerationRunTable,
   type MetadataGenerationStatusCounts,
   type MetadataGenerationSuggestion,
@@ -126,32 +125,6 @@ export function formatSuggestionValue(
       return getSemanticTypeName(value) ?? value;
     case "description":
       return value;
-  }
-}
-
-export function getConfidenceLabel(
-  confidence: MetadataGenerationConfidence,
-): string {
-  switch (confidence) {
-    case "high":
-      return t`High`;
-    case "medium":
-      return t`Medium`;
-    case "low":
-      return t`Low`;
-  }
-}
-
-export function getConfidenceColor(
-  confidence: MetadataGenerationConfidence,
-): BadgeColor {
-  switch (confidence) {
-    case "high":
-      return "positive";
-    case "medium":
-      return "warning";
-    case "low":
-      return "negative";
   }
 }
 
