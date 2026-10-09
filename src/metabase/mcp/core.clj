@@ -93,6 +93,6 @@
   mcp.paths/v2-surface-scopes)
 
 (defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] a client is told to request when it first connects."
+  "The subset of [[v2-scopes]] the consent page always grants."
   []
   mcp.paths/v2-baseline-scopes)

@@ -194,14 +194,14 @@
 (def ^:private default-ask-scopes
   "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
   inside the OAuth server's default grant ceiling."
-  ;; Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
-  ;; `insufficient_scope` naming the union of held and required scopes, so a client steps up to the rest of the surface
-  ;; rather than being granted it up front. Each tool also declares its scope in `securitySchemes`, which is draft
-  ;; SEP-1488 (modelcontextprotocol issue 1488) and supported by ChatGPT; it is not in MCP 2025-03-26, the version this
-  ;; server reports, so other clients learn the missing scope from the 403. The surface still accepts all of
-  ;; [[metabase.mcp.paths/v2-surface-scopes]]. A scope outside the ceiling is answered "Invalid scope" for a client that
-  ;; follows the challenge.
-  mcp.paths/v2-baseline-scopes)
+  ;; The whole surface, not the baseline (ENG-11089). A client whose step-up is lossy, such as a manual reconnect from
+  ;; Claude's connector settings, registers a fresh client and asks for exactly this. When this was the baseline, that
+  ;; reconnect never offered the write scopes, so the user had no way to grant them. The consent page starts every
+  ;; requested scope ticked and lets the user untick any outside the baseline, so a narrower grant is still one
+  ;; untick away. A call needing a scope the token lacks is still answered with a 403 `insufficient_scope`, for
+  ;; clients that step up. A scope outside the ceiling is answered "Invalid scope" for a client that follows the
+  ;; challenge.
+  mcp.paths/v2-surface-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."
