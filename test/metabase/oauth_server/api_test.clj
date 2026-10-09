@@ -51,12 +51,13 @@
                      :scopes_supported         sequential?}
                     response))))))))
 
-(deftest protected-resource-metadata-advertises-the-baseline-test
-  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the baseline. Claude
-            Code and the Claude connectors take their first-login scope from `scopes_supported` here; every tool is
-            still listed, and a call needing more is answered with a 403 `insufficient_scope` step-up. The baseline
-            must be accepted by the `:resource` the document names, or the first login is narrowed away; asserted
-            against that `:resource` rather than the URL requested, so the two cannot drift."
+(deftest protected-resource-metadata-advertises-every-v2-scope-test
+  (testing "ENG-11089: every protected-resource endpoint, including the bare one, advertises every v2 scope. Claude
+            Code and the Claude connectors take their first-login scope from `scopes_supported` here, and a manual
+            reconnect from the connector settings asks for exactly this list, so a scope left out is one that client
+            can never be granted. Every advertised scope must be accepted by the `:resource` the document names, or
+            the first login is narrowed away; asserted against that `:resource` rather than the URL requested, so the
+            two cannot drift."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [url [".well-known/oauth-protected-resource"
                    ".well-known/oauth-protected-resource/api/metabase-mcp"
@@ -64,7 +65,8 @@
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
-            (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+            (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+                     "agent:sql:run" "agent:delivery:write" "agent:resource:read"}
                    (set (:scopes_supported response))))
             (is (empty? (remove (set (oauth-server/mcp-resource-scopes resource-path))
                                 (:scopes_supported response))))))))))
@@ -91,9 +93,10 @@
                  :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))
-        (testing "the bare path is the one clients probe, so it advertises the same baseline as the canonical
+        (testing "the bare path is the one clients probe, so it advertises the same scopes as the canonical
                   path it names, and none of the retired per-entity agent-API scopes"
-          (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+          (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+                   "agent:sql:run" "agent:delivery:write" "agent:resource:read"}
                  (set (:scopes_supported response))))
           (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 

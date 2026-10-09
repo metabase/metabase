@@ -49,12 +49,13 @@
       (testing "and the authorization-server metadata set"
         (is (empty? (remove ceiling (oauth-server/supported-scopes))))))))
 
-(deftest v2-default-ask-is-the-baseline-and-is-requestable-test
-  (testing "GHY-4543: the v2 401 challenge asks an uninstructed client for the baseline only: reading and querying,
-            but not SQL, writes or delivery. Every tool is listed whatever the token holds, and a call needing more is
-            answered with a 403 `insufficient_scope` step-up, so asking for less degrades to a consent prompt rather
-            than a hidden tool."
-    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"} (set @#'v2.api/default-ask-scopes)))
+(deftest v2-default-ask-is-the-whole-surface-and-is-requestable-test
+  (testing "ENG-11089: the v2 401 challenge asks an uninstructed client for every v2 scope. A manual reconnect from
+            Claude's connector settings asks for exactly this, so a baseline-only challenge left SQL, writes and
+            delivery unreachable. The user can still untick each one outside the baseline on the consent page."
+    (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+             "agent:sql:run" "agent:delivery:write" "agent:resource:read"}
+           (set @#'v2.api/default-ask-scopes)))
     (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
       (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
                           @#'v2.api/default-ask-scopes))))
@@ -73,7 +74,7 @@
             advertised twice.
 
             GHY-4543: the protected-resource metadata advertises `mcp-resource-advertised-scopes`, a vector copied
-            from the `v2-baseline-scopes` literal, so a scope repeated there is repeated on the wire. The accepted
+            from the `v2-surface-scopes` literal, so a scope repeated there is repeated on the wire. The accepted
             set, `mcp-resource-scopes`, is built through a `sorted-set` and cannot repeat by construction; it is
             checked too, alongside the literals both are built from, where a duplicate would be silently swallowed."
     (let [duplicates (fn [scopes] (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))]
@@ -197,8 +198,8 @@
                                 [mcp-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
           (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
-      (testing "GHY-4543: every v2 scope survives narrowing on every alias, although the resource metadata
-                advertises only the baseline — otherwise a step-up for a write scope is stripped at consent"
+      (testing "GHY-4543: every v2 scope survives narrowing on every alias — otherwise a first connect or a
+                step-up for a write scope is stripped at consent"
         (let [v2-scopes ["agent:content:read" "agent:content:write" "agent:query:run"
                          "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
           (doseq [path (mcp/mcp-endpoint-paths)]
