@@ -287,11 +287,9 @@
 (deftest ^:parallel duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (is (= '{:select   [__mb_source.CATEGORY AS CATEGORY
-                          COUNT (*)         AS count]
-               :from     [{:select [products.category || ? AS CATEGORY]
-                           :from   [products]}
-                          AS __mb_source]
+      (is (= '{:with     [__mb_stage_0 AS {:select [products.category || ? AS CATEGORY] :from [products]}]
+               :select   [__mb_source.CATEGORY AS CATEGORY COUNT (*) AS count]
+               :from     [__mb_stage_0 AS __mb_source]
                :group-by [__mb_source.CATEGORY]
                :order-by [__mb_source.CATEGORY ASC]
                :limit    [1]}

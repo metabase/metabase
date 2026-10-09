@@ -2312,7 +2312,7 @@
            [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
 
 (defn- stage-cte
-  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes\" __mb_stage_N AS (SELECT a FROM t)\".
+  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
   Applies the fix for duplicate column names similar to `stage-source-form`."
   [level stage-idx hsql stage]
   (let [cte-name         (stage-cte-name level stage-idx)
