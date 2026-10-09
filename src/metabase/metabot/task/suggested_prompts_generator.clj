@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.request.core :as request]
@@ -26,9 +25,7 @@
   []
   ;; Internal and embedded both serve prompts from the same per-`metabot_id` endpoint, so each
   ;; enabled bot needs its own seed.
-  (cond-> []
-    (metabot.settings/metabot-enabled?)          (conj metabot.config/internal-metabot-id)
-    (metabot.settings/embedded-metabot-enabled?) (conj metabot.config/embedded-metabot-id)))
+  (vec (metabot.config/enabled-builtin-metabot-ids)))
 
 (defn- generate-suggested-prompts-for-metabot! [config-id]
   (let [metabot-id (metabot.db/metabot-id-by-entity-id config-id)]

@@ -26,6 +26,21 @@
   (is (= "Unknown Metabot."
          (mt/user-http-request :rasta :get 404 "metabot/metabot/nonexistent-entity-id/prompt-suggestions"))))
 
+(deftest prompt-suggestions-delete-by-entity-id-test
+  (testing "the DELETE prompt-suggestion routes take an entity ID as well as a primary key"
+    (mt/with-temp [:model/Metabot {:keys [id entity_id]} {:name "Prompt sources"}
+                   :model/Card {card-id :id} {:type :metric}
+                   :model/MetabotPrompt {prompt-id :id} {:metabot_id id
+                                                         :prompt     "one"
+                                                         :model      :metric
+                                                         :card_id    card-id}]
+      (mt/user-http-request :crowberto :delete 204
+                            (format "metabot/metabot/%s/prompt-suggestions/%d" entity_id prompt-id))
+      (is (not (t2/exists? :model/MetabotPrompt :id prompt-id)))
+      (mt/user-http-request :crowberto :delete 204 (format "metabot/metabot/%s/prompt-suggestions" entity_id))
+      (is (= "Unknown Metabot."
+             (mt/user-http-request :crowberto :delete 404 "metabot/metabot/nonexistent-entity-id/prompt-suggestions"))))))
+
 (defmacro with-clean-metabots
   "Macro to reset the Metabots table to an empty state before a test and restore it after the test runs."
   [& body]

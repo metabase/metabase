@@ -439,7 +439,8 @@
     ;; The engine reads an empty type list as every Metabot search model, transforms included.
     {:rows [] :total 0}
     (let [results (metabot.search/search
-                   (cond-> {:term-queries     (vec term_queries)
+                   (cond-> {:scope            {:kind :unscoped}
+                            :term-queries     (vec term_queries)
                             :semantic-queries (vec semantic_queries)
                             :entity-types     (vec entity-types)
                             :archived         (true? archived)

@@ -67,7 +67,7 @@
                                              :context {}
                                              :conversation_id (str (random-uuid))}
                                       request-id (assoc :metabot_id request-id)))
-              (is (= (t2/select-one :model/Metabot :entity_id entity-id)
+              (is (= (metabot.config/resolve-metabot entity-id)
                      (:metabot @received)))
               (is (= (:metabot @received) (:metabot @received-context)))
               (is (= profile-id (:profile-id @received))))))))))
@@ -93,6 +93,12 @@
                                      ["source-feedback" {:positive true :source_id 42 :source_type "table"}]]]
           (mt/user-http-request :rasta :post 204 (str "metabot/" endpoint)
                                 (assoc feedback :metabot_id metabot-id :message_id "test-message")))))))
+
+(deftest feedback-unknown-metabot-test
+  (mt/with-dynamic-fn-redefs [metabot.feedback/persist-feedback! (constantly nil)]
+    (is (= "Unknown Metabot."
+           (mt/user-http-request :rasta :post 400 "metabot/feedback"
+                                 {:metabot_id "nosuchmetabotnosuchmb" :message_id "test-message" :positive true})))))
 
 (deftest native-agent-streaming-test
   (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
@@ -1455,7 +1461,7 @@
                                   :state           {}
                                   :debug           false}
                                  {:origin nil :referer nil :user-agent nil :ip-address nil})
-          (is (= (t2/select-one :model/Metabot :entity_id test-metabot-id)
+          (is (= (metabot.config/resolve-metabot test-metabot-id)
                  (:metabot @captured-args))))))))
 
 (deftest streaming-request-ip-address-test

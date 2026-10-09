@@ -16,6 +16,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
@@ -704,7 +705,7 @@
   [opts :- [:map {:closed true}
             [:messages ::messages]
             [:profile-id ::profile-id]
-            [:metabot ::metabot.schema/metabot]
+            [:metabot ::metabot.config/resolved-metabot]
             [:conversation-id {:optional true} [:maybe :string]]
             [:state {:optional true} [:maybe ::metabot.schema/state]]
             [:context {:optional true} [:maybe ::context]]

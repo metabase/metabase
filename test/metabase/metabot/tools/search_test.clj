@@ -10,6 +10,7 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -182,7 +183,7 @@
                     ;; that reports total over the (already fused + deduped) ranking it is handed.
                     search-core/search-results (fn [_ctx _model-set ranked]
                                                  {:data (vec ranked) :total (count ranked)})]
-        (let [results (search/search {:term-queries ["a" "b"] :entity-types ["question"] :limit 10})]
+        (let [results (search/search {:scope {:kind :unscoped} :term-queries ["a" "b"] :entity-types ["question"] :limit 10})]
           ;; three distinct items survive fusion; total counts them once, not 2+2=4
           (is (= 3 (:total (meta results))))
           (is (= #{1 2 3} (set (map :id results)))))))))
@@ -403,17 +404,20 @@
         (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                  (is (true? (:search-native-query context)))
                                                                  [])]
-          (search/search {:term-queries ["test"]
+          (search/search {:scope {:kind :unscoped}
+                          :term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
       (testing ":search-native-query is not included in context when nil or false"
         (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                  (is (not (contains? context :search-native-query)))
                                                                  [])]
-          (search/search {:term-queries ["test"]
+          (search/search {:scope {:kind :unscoped}
+                          :term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query false})
-          (search/search {:term-queries ["test"]
+          (search/search {:scope {:kind :unscoped}
+                          :term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query nil}))))))
 
@@ -422,7 +426,8 @@
     (mt/with-test-user :rasta
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
-                    api/*current-user-id* 1]
+                    api/*current-user-id* 1
+                    shared/*metabot* (metabot.config/resolve-metabot nil)]
         (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
@@ -468,7 +473,8 @@
     (mt/with-test-user :rasta
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
-                    api/*current-user-id* 1]
+                    api/*current-user-id* 1
+                    shared/*metabot* (metabot.config/resolve-metabot nil)]
         (testing "default limit is 10 when not provided"
           (let [captured (atom nil)]
             ;; limit/offset moved out of the per-query ranked-results context into the single
@@ -536,7 +542,7 @@
                          :model/Dashboard  {dash-id-3 :id}      {:name "Your Dashboard", :collection_id others-coll-id}]
             (let [test-dashboard-ids #{dash-id-1 dash-id-2 dash-id-3}]
               (is (= #{"Our Dashboard" "My Dashboard"}
-                     (->> (search/search {:term-queries ["Dashboard"]})
+                     (->> (search/search {:scope {:kind :unscoped} :term-queries ["Dashboard"]})
                           (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
                           (map :name)
                           (set)))))))))))
@@ -547,7 +553,8 @@
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Document {document-id :id}
                        {:name "Quarterly planning sh1b0le#doc"}]
-          (let [result (->> (search/search {:term-queries ["sh1b0le#doc"]
+          (let [result (->> (search/search {:scope {:kind :unscoped}
+                                            :term-queries ["sh1b0le#doc"]
                                             :entity-types ["document"]})
                             (filter #(= document-id (:id %)))
                             first)]
@@ -609,7 +616,7 @@
                        :model/Dashboard {dash-3-id :id} {:name "No Desc Dashboard"
                                                          :collection_id no-desc-coll-id}]
           (testing "search results include collection descriptions"
-            (let [results (search/search {:term-queries ["Dashboard"]})
+            (let [results (search/search {:scope {:kind :unscoped} :term-queries ["Dashboard"]})
                   test-dashboard-ids #{dash-1-id dash-2-id dash-3-id}
                   test-results (->> results
                                     (filter (fn [{:keys [id type]}]
@@ -645,7 +652,7 @@
                                                                                 :type     :query
                                                                                 :query    {:source-table (mt/id :orders)}}}
                        :model/Dashboard {dash-id :id} {:name "PortableEID Sample Dashboard"}]
-          (let [results      (search/search {:term-queries ["PortableEID Sample"]})
+          (let [results      (search/search {:scope {:kind :unscoped} :term-queries ["PortableEID Sample"]})
                 by-id        (into {} (map (juxt (juxt :id :type) identity)) results)
                 question-res (get by-id [q-id "question"])
                 model-res    (get by-id [m-id "model"])
@@ -738,7 +745,7 @@
                                                      :type     :query
                                                      :query    {:source-table (mt/id :orders)
                                                                 :aggregation  [[:count]]}}}]
-          (let [results   (search/search {:term-queries ["BaseTable Sample Metric"]})
+          (let [results   (search/search {:scope {:kind :unscoped} :term-queries ["BaseTable Sample Metric"]})
                 by-id     (into {} (map (juxt (juxt :id :type) identity)) results)
                 metric-res (get by-id [metric-id "metric"])
                 db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
@@ -765,7 +772,7 @@
                                                                       :type     :query
                                                                       :query    {:source-table (mt/id :orders)
                                                                                  :aggregation  [[:count]]}}}]
-            (let [results    (search/search {:term-queries ["Restricted Base Table Metric"]})
+            (let [results    (search/search {:scope {:kind :unscoped} :term-queries ["Restricted Base Table Metric"]})
                   metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
               (is (some? metric-res) "collection access still makes the metric searchable")
               (is (not-any? #(contains? metric-res %)
@@ -792,11 +799,20 @@
                   search-args {:term-queries ["Embedded report"]
                                :entity-types ["dashboard"]
                                :collection-id elsewhere-id
-                               :metabot metabot}]
+                               :scope {:kind :metabot, :metabot metabot}}]
               (is (= #{included-id draft-id}
-                     (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
+                     (into #{} (map :id) (search/search (assoc-in search-args [:scope :metabot :use_verified_content] false)))))
               (is (= [included-id]
                      (mapv :id (search/search search-args)))))))))))
+
+(deftest search-requires-scope-test
+  (testing "search has no default scope: a caller must say whether a Metabot runs it"
+    (is (thrown? IllegalArgumentException
+                 (search/search {:term-queries ["anything"]}))))
+  (testing "a :metabot scope without a resolved Metabot throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no known :kind"
+                          (search/search {:scope        {:kind :metabot, :metabot nil}
+                                          :term-queries ["anything"]})))))
 
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
@@ -817,7 +833,8 @@
                                    (search/search (merge {:term-queries ["anything"]
                                                           :entity-types ["dashboard"]
                                                           :profile-id   "nlq"
-                                                          :metabot      metabot}
+                                                          :scope        {:kind    :metabot
+                                                                         :metabot (metabot.config/resolve-metabot (:id metabot))}}
                                                          search-args)))
                                  @captured))]
           (testing "with no collection-id, the metabot's own collection scopes the search"
@@ -826,7 +843,8 @@
             (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
           (testing "an unconfined metabot still honours an explicit collection-id"
             (mt/with-temp [:model/Metabot open-metabot {:name "open bot" :collection_id nil}]
-              (is (= elsewhere-id (collection-for {:metabot       open-metabot
+              (is (= elsewhere-id (collection-for {:scope         {:kind    :metabot
+                                                                   :metabot (metabot.config/resolve-metabot (:id open-metabot))}
                                                    :collection-id elsewhere-id}))))))))))
 
 (deftest transform-visibility-is-superuser-only-test
@@ -866,7 +884,8 @@
                                                                (fn [context]
                                                                  (reset! captured (:models context))
                                                                  [])]
-                                     (search/search {:term-queries ["anything"]
+                                     (search/search {:scope {:kind :unscoped}
+                                                     :term-queries ["anything"]
                                                      :entity-types ["transform" "dashboard"]}))))
                                @captured))]
             (testing "a superuser's search reaches the engine with transforms in scope"
@@ -912,7 +931,7 @@
                        :model/Dashboard  {id-1 :id}    {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id}
                        :model/Dashboard  {id-2 :id}    {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id}
                        :model/DashboardBookmark _      {:dashboard_id id-2, :user_id api/*current-user-id*}]
-          (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
+          (let [base-query   {:scope {:kind :unscoped}, :term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
                 test-entity? (comp #{id-1 id-2} :id)
                 query        (fn [& [weights]]
                                (->> (search/search (assoc base-query :weights weights))

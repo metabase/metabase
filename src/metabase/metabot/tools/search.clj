@@ -286,6 +286,10 @@
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic.
 
+  `scope` is required. It is `{:kind :metabot :metabot <resolved Metabot>}` when a Metabot runs the search, so the
+  Metabot's verified-content flag and collection confinement apply, or `{:kind :unscoped}` for callers that are not a
+  Metabot (MCP, the Agent API).
+
   Optional filter keys threaded straight into the search context: `created-by` (set of user ids),
   `archived`, `collection-id` (numeric, scopes to the collection subtree; overrides the metabot's
   own confined collection), `offset`. `filters-only?` makes a call with no queries run a single
@@ -296,7 +300,7 @@
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
   `:total` metadata."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot profile-id search-native-query weights
+           entity-types limit scope profile-id search-native-query weights
            created-by archived collection-id offset filters-only?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
@@ -304,7 +308,7 @@
               :database-id          database-id
               :entity-types         entity-types
               :limit                limit
-              :metabot-id           (:entity_id metabot)
+              :metabot-id           (:entity_id (:metabot scope))
               :profile-id           profile-id
               :search-native-query  search-native-query
               :weights              weights
@@ -317,13 +321,16 @@
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
+        {:keys [metabot confined?]} (case (:kind scope)
+                                      :metabot  {:metabot   (:metabot scope)
+                                                 :confined? (:confined? (metabot.config/kind-config (:metabot scope)))}
+                                      :unscoped {})
         use-verified?   (:use_verified_content metabot)
-        embedded-metabot? (= (:entity_id metabot) metabot.config/embedded-metabot-id)
-        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
+        ;; A confined metabot (a kind with `:confined?`, or the nlq profile) may only search inside its own
         ;; collection. That is a containment boundary, not a default, so a caller-supplied
         ;; collection-id — which the v2 search tool fills from a request filter — can never
         ;; replace it. Unconfined, the caller's collection-id applies.
-        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
+        confined-id     (when (or confined? (= profile-id "nlq"))
                           (:collection_id metabot))
         collection-id   (or confined-id collection-id)
         limit           (or limit 50)
@@ -592,7 +599,7 @@
     (let [results (search (merge {:semantic-queries semantic_queries
                                   :term-queries    keyword_queries
                                   :entity-types    (or (seq entity_types) (vec allowed-types))
-                                  :metabot         shared/*metabot*
+                                  :scope           {:kind :metabot, :metabot shared/*metabot*}
                                   :limit           (min max-search-limit
                                                         (or limit default-search-limit))}
                                  search-opts))]

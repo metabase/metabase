@@ -10,10 +10,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.parameters.schema :as parameters.schema]
@@ -429,7 +429,7 @@
   "Create a tool context."
   [context :- ::context
    opts    :- [:map {:closed true}
-               [:metabot ::metabot.schema/metabot]
+               [:metabot ::metabot.config/resolved-metabot]
                [:profile-id {:optional true} [:maybe :keyword]]
                [:date-format {:optional true} [:maybe (ms/InstanceOfClass DateTimeFormatter)]]]]
   (metabot.perms/with-cache

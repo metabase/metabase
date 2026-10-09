@@ -11956,6 +11956,17 @@
         "required" : [ "id", "name", "table_id", "definition", "archived", "creator_id", "created_at", "updated_at" ],
         "type" : "object"
       },
+      "metabase.metabot.config.metabot-ref" : {
+        "anyOf" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "minimum" : 1,
+          "type" : "integer"
+        }, {
+          "minLength" : 1,
+          "type" : "string"
+        } ],
+        "description" : "How a request names a Metabot: a primary key, an entity ID, or a legacy UUID from [[legacy-metabot-ids]]."
+      },
       "metabase.metabot.context.context" : {
         "allOf" : [ {
           "additionalProperties" : { },
@@ -35732,13 +35743,7 @@
                     "type" : "string"
                   },
                   "metabot_id" : {
-                    "anyOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "minimum" : 1,
-                      "type" : "integer"
-                    }, {
-                      "type" : "string"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.metabot.config.metabot-ref"
                   },
                   "positive" : {
                     "type" : "boolean"
@@ -35880,15 +35885,14 @@
     },
     "/api/metabot/metabot/{id}/prompt-suggestions" : {
       "delete" : {
-        "description" : "Delete all prompt suggestions for the metabot instance with `id`.",
+        "description" : "Delete all prompt suggestions for a Metabot primary key or entity ID.",
         "operationId" : "delete-api-metabot-metabot-id-prompt-suggestions",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
           "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
+            "$ref" : "#/components/schemas/metabase.metabot.config.metabot-ref"
           }
         } ],
         "responses" : {
@@ -35913,12 +35917,7 @@
           "name" : "id",
           "required" : true,
           "schema" : {
-            "anyOf" : [ {
-              "minimum" : 1,
-              "type" : "integer"
-            }, {
-              "type" : "string"
-            } ]
+            "$ref" : "#/components/schemas/metabase.metabot.config.metabot-ref"
           }
         }, {
           "in" : "query",
@@ -35961,15 +35960,14 @@
     },
     "/api/metabot/metabot/{id}/prompt-suggestions/regenerate" : {
       "post" : {
-        "description" : "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.\n   The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,\n   `:no-library-content` when the Metabot has no models or metrics to summarize, or\n   `:ai-produced-no-prompts` when generation produced nothing.\n   Returns a 402 if the instance has reached its managed-AI usage limit.",
+        "description" : "Remove any existing prompt suggestions for a Metabot primary key or entity ID and generate new ones.\n   The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,\n   `:no-library-content` when the Metabot has no models or metrics to summarize, or\n   `:ai-produced-no-prompts` when generation produced nothing.\n   Returns a 402 if the instance has reached its managed-AI usage limit.",
         "operationId" : "post-api-metabot-metabot-id-prompt-suggestions-regenerate",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
           "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
+            "$ref" : "#/components/schemas/metabase.metabot.config.metabot-ref"
           }
         } ],
         "responses" : {
@@ -36027,15 +36025,14 @@
     },
     "/api/metabot/metabot/{id}/prompt-suggestions/{prompt-id}" : {
       "delete" : {
-        "description" : "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`.",
+        "description" : "Delete the prompt suggestion with ID `prompt-id` for a Metabot primary key or entity ID.",
         "operationId" : "delete-api-metabot-metabot-id-prompt-suggestions-prompt-id",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
           "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
+            "$ref" : "#/components/schemas/metabase.metabot.config.metabot-ref"
           }
         }, {
           "in" : "path",
@@ -36479,13 +36476,7 @@
                     "type" : "string"
                   },
                   "metabot_id" : {
-                    "anyOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "minimum" : 1,
-                      "type" : "integer"
-                    }, {
-                      "type" : "string"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.metabot.config.metabot-ref"
                   },
                   "positive" : {
                     "type" : "boolean"

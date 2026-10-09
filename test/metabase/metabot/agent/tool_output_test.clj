@@ -8,9 +8,11 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.resources :as resource-tools]
    [metabase.metabot.tools.search :as search-tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -194,10 +196,11 @@
     (mt/test-driver :h2
       (search/init-index! {:force-reset? false :re-populate? true})
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (search-tools/search-tool
-                      {:semantic_queries ["orders"]
-                       :keyword_queries  ["orders"]
-                       :entity_types     ["table"]})]
+        (let [result (binding [shared/*metabot* (metabot.config/resolve-metabot nil)]
+                       (search-tools/search-tool
+                        {:semantic_queries ["orders"]
+                         :keyword_queries  ["orders"]
+                         :entity_types     ["table"]}))]
           (assert-formatted-structured result "search: tables" #"<search-results\b"))))))
 
 (deftest search-tool-with-models-structured-output-test
@@ -214,10 +217,11 @@
                                                       :name          "Searchable Test Model"
                                                       :type          :model}]
             (search/init-index! {:force-reset? false :re-populate? true})
-            (let [result (search-tools/search-tool
-                          {:semantic_queries ["Searchable Test Model"]
-                           :keyword_queries  ["Searchable Test Model"]
-                           :entity_types     ["model"]})]
+            (let [result (binding [shared/*metabot* (metabot.config/resolve-metabot nil)]
+                           (search-tools/search-tool
+                            {:semantic_queries ["Searchable Test Model"]
+                             :keyword_queries  ["Searchable Test Model"]
+                             :entity_types     ["model"]}))]
               (assert-formatted-structured
                result "search: model" #"<search-results\b"))))))))
 

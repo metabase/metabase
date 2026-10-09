@@ -221,7 +221,7 @@
                 (is (contains? ks table*)))))
           (testing "use_verified_content=true -> filters recents to curated content"
             (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {} {:metabot metabot})
+              (let [items (-> (context/create-context {} {:metabot (metabot.config/resolve-metabot (:id metabot))})
                               :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (not (contains? ks table*)) "a plain table is not curated, so it is filtered out")
@@ -237,7 +237,7 @@
           (testing "filtering is gated on the setting, not the :content-verification feature — curated is
                     precomputed at ingestion, so recents still filter without the feature (matches search)"
             (mt/with-premium-features #{}
-              (let [items (-> (context/create-context {} {:metabot metabot})
+              (let [items (-> (context/create-context {} {:metabot (metabot.config/resolve-metabot (:id metabot))})
                               :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (not (contains? ks uq*)))
@@ -261,7 +261,7 @@
                                       :moderator_id        (mt/user->id :crowberto)
                                       :status              nil})
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
-          (let [items (-> (context/create-context {} {:metabot metabot})
+          (let [items (-> (context/create-context {} {:metabot (metabot.config/resolve-metabot (:id metabot))})
                           :user_recently_viewed)
                 ids   (set (map :id items))]
             (is (not (contains? ids card-id))

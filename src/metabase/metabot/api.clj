@@ -429,12 +429,13 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:metabot_id        [:or ms/PositiveInt :string]]
+            [:metabot_id        ::metabot.config/metabot-ref]
             [:message_id        ms/NonBlankString]
             [:positive          :boolean]
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
+  (metabot.config/resolve-metabot (:metabot_id body))
   (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
@@ -445,12 +446,13 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:metabot_id   [:or ms/PositiveInt :string]]
+            [:metabot_id   ::metabot.config/metabot-ref]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]
             [:source_type  [:enum "table" "card" "model"]]
             [:positive     :boolean]]]
   (metabot.config/check-metabot-enabled!)
+  (metabot.config/resolve-metabot (:metabot_id body))
   (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
 

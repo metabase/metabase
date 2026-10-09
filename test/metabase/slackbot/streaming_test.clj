@@ -492,7 +492,7 @@
           (u/poll {:thunk #(pos? (count @stop-stream-calls))
                    :done? true?
                    :timeout-ms 5000})
-          (is (= (t2/select-one :model/Metabot :entity_id metabot.config/internal-metabot-id)
+          (is (= (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
                  (:metabot (last @ai-request-calls)))))))))
 
 (deftest ^:synchronized slackbot-streaming-seeds-state-from-db-test

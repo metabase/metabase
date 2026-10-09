@@ -176,7 +176,8 @@
                            :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]]
   (let [results (metabot-search/search
-                 {:term-queries     (or (coerce-query-list term-queries) [])
+                 {:scope            {:kind :unscoped}
+                  :term-queries     (or (coerce-query-list term-queries) [])
                   :semantic-queries (or (coerce-query-list semantic-queries) [])
                   :entity-types     ["table" "metric" "model" "question" "dashboard" "collection"]
                   :limit            (or (request/limit) 50)})]
