@@ -24,8 +24,10 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
+  EventsSidebarState,
   State,
   StoreDashboard,
+  StoreDashcard,
 } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
@@ -47,6 +49,7 @@ import type {
   DashboardParameterMapping,
   DashboardTabId,
   EmbeddingParameterVisibility,
+  Parameter,
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
@@ -75,6 +78,15 @@ function isClickBehaviorSidebar(
 ): sidebar is ClickBehaviorSidebarState {
   return sidebar.name === SIDEBAR_NAME.clickBehavior;
 }
+
+function isEventsSidebar(sidebar: SidebarState): sidebar is EventsSidebarState {
+  return sidebar.name === SIDEBAR_NAME.events;
+}
+
+export const getEventsSidebarProps = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isEventsSidebar(sidebar) ? sidebar.props : null;
+};
 
 function isEditParameterSidebar(
   sidebar: SidebarState,
@@ -180,6 +192,96 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
+
+const EMPTY_DASHCARDS: StoreDashcard[] = [];
+const EMPTY_PARAMETERS: Parameter[] = [];
+
+/**
+ * The dashboard as we last saw it, looked up by id in the in-memory Redux
+ * cache. Unlike `getDashboard`, it survives the reset of the active
+ * `dashboardId` while a dashboard (re)loads, so a dashboard seen earlier in
+ * this session can draw its real layout as a skeleton. Undefined on any fresh
+ * page load.
+ */
+export const getLastSeenDashboard = (
+  state: State,
+  dashboardId: DashboardId | null,
+): StoreDashboard | undefined =>
+  dashboardId == null ? undefined : getDashboardById(state, dashboardId);
+
+/**
+ * Whether the dashboard as last seen is fixed width. Without it in the cache,
+ * assume it is, since fixed is the default width for dashboards.
+ */
+export const getIsLastSeenDashboardFixedWidth = (
+  state: State,
+  dashboardId: DashboardId | null,
+): boolean =>
+  (getLastSeenDashboard(state, dashboardId)?.width ?? "fixed") === "fixed";
+
+/**
+ * The dashcards of the tab the user is landing on, in the dashboard as last
+ * seen. The tab is chosen the way `getSelectedTabId` chooses it on load.
+ */
+export const getLastSeenTabDashcards = createSelector(
+  [
+    getLastSeenDashboard,
+    getDashcards,
+    getIsWebApp,
+    (state: State) => getSetting(state, "site-url"),
+    (state: State & Partial<SdkSharedStoreState>) =>
+      state.sdk?.initialDashboardTabId,
+  ],
+  (
+    dashboard,
+    dashcardMap,
+    isWebApp,
+    siteUrl,
+    sdkInitialDashboardTabId,
+  ): StoreDashcard[] => {
+    if (!dashboard) {
+      return EMPTY_DASHCARDS;
+    }
+
+    const dashboardWithVisibleTabs = {
+      ...dashboard,
+      tabs: dashboard.tabs?.filter((tab) => !tab.isRemoved),
+    };
+    const tabId = isEmbeddingSdk()
+      ? getSdkInitialDashboardTabId(
+          dashboardWithVisibleTabs,
+          sdkInitialDashboardTabId,
+        )
+      : getInitialSelectedTabId(dashboardWithVisibleTabs, siteUrl, isWebApp);
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter((dc): dc is StoreDashcard => isNotNull(dc) && !dc.isRemoved);
+    return tabId == null
+      ? dashcards
+      : dashcards.filter((dc) => dc.dashboard_tab_id === tabId);
+  },
+);
+
+/**
+ * The filters shown in the header of the dashboard as last seen: its
+ * parameters except those placed inline on a dashcard.
+ */
+export const getLastSeenDashboardHeaderParameters = createSelector(
+  [getLastSeenDashboard, getDashcards],
+  (dashboard, dashcardMap): Parameter[] => {
+    if (!dashboard?.parameters) {
+      return EMPTY_PARAMETERS;
+    }
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter(isNotNull);
+    return dashboard.parameters.filter(
+      (parameter) => !isDashcardInlineParameter(parameter.id, dashcards),
+    );
+  },
+);
 
 export const getLinkTargetEntities = (state: State) =>
   state.dashboard.linkTargets;

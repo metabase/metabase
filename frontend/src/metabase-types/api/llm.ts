@@ -46,6 +46,7 @@ export type LlmProviderTypeName =
   | "azure"
   | "bedrock"
   | "vllm"
+  | "ollama"
   | "openai-compatible"
   | "metabase";
 

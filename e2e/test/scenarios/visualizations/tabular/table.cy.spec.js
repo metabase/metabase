@@ -6,6 +6,8 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
+const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     H.restore();
@@ -461,6 +463,20 @@ describe("scenarios > visualizations > table", () => {
     H.clickActionsPopover({ skipVisibilityCheck: true }).should("not.exist");
   });
 
+  it("should be able to close a header popover using Escape (metabase#55673)", () => {
+    H.openOrdersTable();
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
+  });
+
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
     H.openPeopleTable();
     H.tableHeaderClick("Password");
@@ -525,6 +541,195 @@ describe("scenarios > visualizations > table", () => {
     cy.log("but should hide it once a valid option is selected");
     H.popover().findByText("Symbol ($)").click();
     H.popover().findByText("Local symbol ($)").should("not.exist");
+  });
+
+  it("should not crash when the table viz gets automatically pivoted (metabase#45481)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("User ID").click();
+    H.getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .icon("add")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Category").click();
+    });
+    H.visualize();
+    H.tableInteractive().should("be.visible");
+  });
+
+  describe("issue 56094", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
+    it("should allow to switch between automatic pivot table and usual table visualization (metabase#56094)", () => {
+      H.visitQuestionAdhoc({
+        name: "56094",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                {
+                  "base-type": "type/Text",
+                },
+              ],
+              [
+                "field",
+                PRODUCTS.RATING,
+                {
+                  binning: {
+                    strategy: "default",
+                  },
+                },
+              ],
+            ],
+
+            limit: 20,
+          },
+        },
+      });
+
+      H.tableInteractiveHeader().should("contain", "Doohickey");
+
+      H.queryBuilderFooter().findByLabelText("Switch to data").click();
+
+      H.queryBuilderFooterDisplayToggle().should("exist");
+      H.tableInteractiveHeader()
+        .should("contain", "Count")
+        .and("not.contain", "Doohickey");
+
+      H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+
+      H.queryBuilderFooterDisplayToggle().should("exist");
+      H.tableInteractiveHeader()
+        .should("contain", "Doohickey")
+        .and("not.contain", "Count");
+    });
+  });
+
+  describe("issue 18976, 18817", () => {
+    const questionDetails = {
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: {
+          query: "select 'a', 'b'",
+          "template-tags": {},
+        },
+      },
+      visualization_settings: {
+        "table.pivot": true,
+        "table.pivot_column": "'a'",
+        "table.cell_column": "1",
+      },
+    };
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
+    it("should display a pivot table as regular one when pivot columns are missing (metabase#18976)", () => {
+      H.visitQuestionAdhoc(questionDetails);
+
+      H.tableInteractiveHeader().should("contain", "'a'").and("contain", "'b'");
+      H.tableInteractive().findByText("a").should("be.visible");
+    });
+
+    it("should not keep orphan columns rendered after switching from pivot to regular table (metabase#18817)", () => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": PEOPLE_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PEOPLE.NAME],
+              ["field", PEOPLE.SOURCE],
+            ],
+            limit: 5,
+          },
+          database: SAMPLE_DB_ID,
+          display: "table",
+        },
+        { visitQuestion: true },
+      );
+
+      cy.findByTestId("qb-header")
+        .button(/Summarize/)
+        .click();
+      H.rightSidebar()
+        .findByLabelText("Source")
+        .findByRole("button", { name: "Remove dimension" })
+        .click();
+
+      cy.findAllByTestId("header-cell")
+        .should("have.length", 2)
+        .and("contain", "Name")
+        .and("contain", "Count");
+    });
+  });
+
+  describe("issue 56771", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
+    it("should apply correct column widths after changing query (metabase#56771)", () => {
+      H.openOrdersTable();
+      cy.log(
+        "Resize a column first to make width stored in the visualization settings",
+      );
+      H.resizeTableColumn("ID", 100);
+
+      H.openNotebook();
+      H.join();
+      H.joinTable("Products");
+      H.visualize();
+
+      cy.findAllByTestId("header-cell")
+        .filter(":contains(Products → Category)")
+        .should(($cell) => {
+          const width = $cell[0].getBoundingClientRect().width;
+          expect(width).to.be.greaterThan(160);
+        });
+    });
+  });
+
+  describe("issue 57685", () => {
+    beforeEach(() => {
+      H.createNativeQuestion(
+        {
+          display: "table",
+          native: {
+            query: 'SELECT id as "" FROM PRODUCTS',
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    it("should handle empty column names without error (metabase#57685)", () => {
+      H.tableInteractive().should("be.visible");
+      cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+
+      cy.findByTestId("qb-header-action-panel")
+        .findByText("Explore results")
+        .click();
+
+      H.tableInteractive().should("be.visible");
+    });
   });
 });
 

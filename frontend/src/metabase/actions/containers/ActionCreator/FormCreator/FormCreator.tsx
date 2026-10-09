@@ -9,8 +9,9 @@ import type {
   RenderItemProps,
 } from "metabase/common/components/Sortable";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
-import { Flex, Icon, UnstyledButton } from "metabase/ui";
+import { Box, Flex, Icon, Stack, UnstyledButton } from "metabase/ui";
 import type {
   ActionFormSettings,
   FieldSettings,
@@ -27,12 +28,8 @@ import { syncFieldsWithParameters } from "../utils";
 
 import { Description } from "./Description";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
-import {
-  FormContainer,
-  FormFieldEditorDragContainer,
-  WarningBanner,
-} from "./FormCreator.styled";
-import FormFieldEditor from "./FormFieldEditor";
+import S from "./FormCreator.module.css";
+import { FormFieldEditor } from "./FormFieldEditor";
 import { reorderFields } from "./utils";
 
 // FormEditor's can't be submitted as it serves as a form preview
@@ -142,7 +139,7 @@ export function FormCreator({
       key={id}
       id={id}
       disabled={!isEditable}
-      as={FormFieldEditorDragContainer}
+      className={CS.mb1}
       draggingStyle={{ opacity: 0.5 }}
     >
       {({ dragHandleRef, dragHandleListeners }) => (
@@ -161,7 +158,7 @@ export function FormCreator({
   if (!parameters.length) {
     return (
       <SidebarContent>
-        <FormContainer>
+        <Stack gap="lg" px="xl" pb="lg" bg="background_page-primary">
           {onClose && (
             /* We want to avoid absolute positioning, so we use margin with z-index since
                it's covered by the next element with padding */
@@ -177,7 +174,7 @@ export function FormCreator({
             </Flex>
           )}
           <EmptyFormPlaceholder />
-        </FormContainer>
+        </Stack>
       </SidebarContent>
     );
   }
@@ -204,13 +201,18 @@ export function FormCreator({
 
   return (
     <SidebarContent title={t`Action parameters`} onClose={onClose}>
-      <FormContainer>
+      <Stack gap="lg" px="xl" pb="lg" bg="background_page-primary">
         <Description />
         {showWarning && (
-          <WarningBanner>
+          <Box
+            className={S.warningBorder}
+            p="lg"
+            bg="background_surface-warning"
+            lh="lg"
+          >
             <b>{t`Heads up.`}</b>{" "}
             {t`Your action has a hidden required field with no default value. There's a good chance this will cause the action to fail.`}
-          </WarningBanner>
+          </Box>
         )}
         <FormProvider
           enableReinitialize
@@ -227,7 +229,7 @@ export function FormCreator({
             />
           </Form>
         </FormProvider>
-      </FormContainer>
+      </Stack>
     </SidebarContent>
   );
 }

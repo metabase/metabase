@@ -14,6 +14,7 @@ import { defineAction } from "@metabase/embedding-sdk-react/data-app";
 import schema from "../src/metabase.data";
 
 export const CreateOrder = defineAction({
+  copiedActionEntityId: "<entity ID of the copy in the app's collection>",
   action: schema.actions.createOrder,
 });
 ```
@@ -51,16 +52,21 @@ export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
 
 Rules:
 
-- This directory sits beside `package.json`, not under `src/`. Synchronization
-  (`npm run sync-resources`, run by `npm run build`) scans only `queries/` and
-  `actions/`, so a definition anywhere else is never synchronized, and the
-  authored action is refused for the app's viewers in production.
-- Actions exist only when the generated schema includes actions
-  (`include-actions=true`). Synchronization copies actions; it never creates
-  them, and a missing one is created as a query action without a model.
+- This directory sits beside `package.json`, not under `src/`. The CLI scans
+  only `queries/` and `actions/`, so a definition anywhere else never gets a
+  copy, and the authored action is refused for the app's viewers in production.
+- The generated schema lists every query action that belongs to no model.
+  The app runs a copy of each action, written by
+  `npm run write-resources`; it never creates actions.
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.
-- `copiedActionId` is written by synchronization. Never add, edit, or remove it
-  by hand; commit it together with `resources_metadata.json`.
+- `copiedActionEntityId` is the entity ID of the action's copy in the app's
+  collection, under the repo's `collections/data_apps/`. After adding a
+  definition, run `npm run write-resources` to write the copy there, then
+  `npm run check-resources`, and commit
+  the definitions and the collection files together. `npm run build` fails
+  until they match.
+- Never copy a `copiedActionEntityId` to another definition, or remove it while
+  its copy exists.
 - After `execute` resolves, refresh every query on screen the action could have
   changed.

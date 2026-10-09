@@ -221,9 +221,8 @@
   "Handle processing for a generic read event notification"
   [topic {:keys [object] :as event}]
   (try
-    ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
-    ;; other models.
-    (when (#{:model/Card :model/Dashboard} (t2/model object))
+    ;; Only log permission check failures for models whose successful reads are view-logged too.
+    (when (#{:model/Card :model/Dashboard :model/Exploration} (t2/model object))
       (-> event
           generate-view
           record-views!))

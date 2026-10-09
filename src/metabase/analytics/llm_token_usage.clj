@@ -13,12 +13,14 @@
 (def ^:private snowplow-arg-keys
   [:request-id :model-id :total-tokens :prompt-tokens :completion-tokens :estimated-costs-usd
    :cache-creation-tokens :cache-read-tokens :user-id :duration-ms :source :tag :session-id :profile
-   :hashed-metabase-license-token])
+   :hashed-metabase-license-token :provider :model-name])
 
 (def ^:private SnowplowArgs
   [:map {:closed true}
    [:request-id                                     :string]
    [:model-id                                       :string]
+   [:provider                                       :string]
+   [:model-name                                     :string]
    [:total-tokens                                   ms/IntGreaterThanOrEqualToZero]
    [:prompt-tokens                                  ms/IntGreaterThanOrEqualToZero]
    [:completion-tokens                              ms/IntGreaterThanOrEqualToZero]
@@ -35,7 +37,7 @@
 
 (mu/defn track-snowplow!
   "Track snowplow token_usage event."
-  [{:keys [request-id model-id total-tokens prompt-tokens completion-tokens
+  [{:keys [request-id model-id provider model-name total-tokens prompt-tokens completion-tokens
            cache-creation-tokens cache-read-tokens
            estimated-costs-usd user-id duration-ms source tag session-id profile
            hashed-metabase-license-token]}
@@ -45,6 +47,8 @@
                                                                     (analytics.util/hashed-metabase-token-or-uuid))
                                  :request-id                    request-id
                                  :model-id                      model-id
+                                 :provider                      provider
+                                 :model-name                    model-name
                                  :total-tokens                  total-tokens
                                  :prompt-tokens                 prompt-tokens
                                  :completion-tokens             completion-tokens

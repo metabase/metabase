@@ -226,6 +226,7 @@ const StrategyFormBody = ({
             [PerformanceAppStyles.FormBoxSidebar]: layout === "sidebar",
             [S.modalBody]: layout === "modal",
           })}
+          pt={layout === "default" ? "xxxl" : undefined}
         >
           {shouldShowName && (
             <Box lh="1rem" pt="lg" c="text-secondary">

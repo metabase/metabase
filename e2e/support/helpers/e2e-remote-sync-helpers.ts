@@ -21,6 +21,9 @@ export const SYNCED_TRANSFORMS_COLLECTION_FIXTURE_PATH =
   "/e2e/support/assets/example_synced_transforms_collection";
 export const SYNCED_LIBRARY_FIXTURE_PATH =
   Cypress.config("projectRoot") + "/e2e/support/assets/example_synced_library";
+export const SYNCED_STUB_DATABASE_FIXTURE_PATH =
+  Cypress.config("projectRoot") +
+  "/e2e/support/assets/example_synced_stub_database";
 
 // Copy the sample synced collection from the fixture folder to the working directory
 export const copySyncedCollectionFixture = () => {
@@ -40,6 +43,14 @@ export const copySyncedTransformsCollectionFixture = () => {
 export const copySyncedLibraryFixture = () => {
   cy.task("copyDirectory", {
     source: SYNCED_LIBRARY_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
+};
+
+// Copy a synced collection whose card references a database the instance doesn't have
+export const copySyncedStubDatabaseFixture = () => {
+  cy.task("copyDirectory", {
+    source: SYNCED_STUB_DATABASE_FIXTURE_PATH,
     destination: LOCAL_GIT_PATH,
   });
 };
@@ -340,7 +351,10 @@ export const closeSyncResultModal = () => {
   cy.findByTestId("sync-success-close-button").click();
 };
 
-const TASK_POLL_LIMIT = 30;
+// An import's first native SQL parse starts the Python parser, which on a slow runner takes longer than the
+// fifteen seconds thirty polls allow. Giving up while the import still runs is worse than waiting: a retry
+// restores the app DB under the live import, which then dies on a closed connection.
+const TASK_POLL_LIMIT = 120;
 
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },

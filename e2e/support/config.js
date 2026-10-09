@@ -22,17 +22,17 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
-import { requestAsAdmin } from "./helpers/e2e-admin-request-tasks";
+import {
+  backendRequest,
+  requestAsAdmin,
+} from "./helpers/e2e-admin-request-tasks";
 import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
 import {
   buildDataApp,
-  removeDataAppDeclaration,
   removeDataAppPaths,
-  scaffoldDataApp,
-  syncDataApp,
   writeDataAppFiles,
 } from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
@@ -303,6 +303,7 @@ const defaultConfig = {
       copyDirectory,
       removeDirectory,
       signJwt,
+      backendRequest,
       requestAsAdmin,
       startMockLlmServer,
       stopMockLlmServer,
@@ -311,10 +312,7 @@ const defaultConfig = {
       startCustomVizDevServer,
       stopCustomVizDevServer,
       buildDataApp,
-      syncDataApp,
-      scaffoldDataApp,
       writeDataAppFiles,
-      removeDataAppDeclaration,
       removeDataAppPaths,
       ...perTestCaptureTasks,
     });

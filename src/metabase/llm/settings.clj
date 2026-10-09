@@ -58,8 +58,6 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
-;; TODO (Chris 2026-08-17) -- BOT-2005: semantic search reads these settings directly, so deleting the
-;; connection it keys off turns it off. It should name a connection instead.
 (defn- connection-field-getter
   "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list."
   [setting-kw]
@@ -413,6 +411,35 @@
   :visibility :settings-manager
   :export?    false)
 
+;;; -------------------------------------------------- Ollama ---------------------------------------------------
+
+(defsetting llm-ollama-api-base-url
+  (deferred-tru "The base URL of your Ollama server''s OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-ollama-api-base-url)
+  :setter     (connection-field-setter :llm-ollama-api-base-url)
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.")
+
+(defsetting llm-ollama-api-key
+  (deferred-tru (str "The API key for Ollama Cloud, with MB_LLM_OLLAMA_API_BASE_URL set to https://ollama.com/v1. "
+                     "For self-hosted servers, only needed behind an authenticated proxy."))
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-ollama-api-key)
+  :setter     (connection-field-setter :llm-ollama-api-key)
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-ollama-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for requests to your Ollama server.")
+  ;; Self-hosted TTFT is bounded by the operator's hardware, as it is for vLLM.
+  :type       :integer
+  :default    300000
+  :visibility :settings-manager
+  :export?    false)
+
 ;;; --------------------------------------------- OpenAI-compatible ---------------------------------------------
 
 (defsetting llm-openai-compatible-api-base-url
@@ -467,13 +494,6 @@
   :visibility :public
   :default    true
   :export?    true)
-
-(defsetting llm-max-tokens
-  (deferred-tru "Maximum tokens for LLM responses.")
-  :type :integer
-  :default 4096
-  :visibility :settings-manager
-  :export? false)
 
 (defsetting llm-request-timeout-ms
   (deferred-tru

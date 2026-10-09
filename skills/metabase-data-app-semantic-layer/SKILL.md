@@ -1,6 +1,8 @@
 ---
 name: metabase-data-app-semantic-layer
 description: Use when building, creating, or editing data apps that should query Metabase tables and metrics through generated schema files like metabase.data.ts or *.metabase.data.ts.
+metadata:
+  version: master
 ---
 
 # Metabase Data App Semantic Layer
@@ -9,15 +11,15 @@ description: Use when building, creating, or editing data apps that should query
 
 Keep the semantic layer and presentation layer separate.
 
-- All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
+- All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts` (its runtime object and the `/* metadata: {...} */` block an entry opens with when it has context to give), and the files of the app's collection must come from `npm run write-resources`. Never from Metabase YAML in the repository, and never from your own API calls.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Every query is a `defineQuery(...)` named export in the root-level `queries/` directory, and every action a `defineAction(...)` named export in the root-level `actions/` directory, both beside `package.json`. Create both directories before writing the first hook call; the template ships them, each with a README. The hooks enforce this at compile time: `useMetabaseQuery`, `useMetabaseQueryObject`, and `useAction` reject an inline object, a `satisfies MetabaseQueryOptions` object, and a spread copy of a definition. The error reads `Property 'definedWithDefineQuery' is missing` (or `'definedWithDefineAction'`); the fix is always to move the object into `queries/` or `actions/` as a definition and import it, never a cast.
-- Never remove, edit, or copy a generated `savedQuestionSourceId` or `copiedActionId`, even if it appears unused. Preserve it during refactors; use `npm run sync-resources` to repair or replace generated IDs.
+- Every `savedQuestionEntityId` and `copiedActionEntityId` names a file in the app's collection (see *Write every query and action into the app's collection*). Keep it through refactors and renames, never copy it to another definition, and never remove it while its file exists.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
-- Do not use existing saved questions as `useMetabaseQuery` or `useMetabaseQueryObject` sources. Typed schemas do not expose `schema.questions` or support `question-collections` while data-app reconciliation cannot copy existing saved questions into the app collection.
+- Do not use existing saved questions as `useMetabaseQuery` or `useMetabaseQueryObject` sources. Typed schemas do not expose `schema.questions` or support `question-collections`, since an app's resources can't copy existing saved questions.
 - Prefer semantically rich table queries over shallow table dumps. Use curated table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows. Both belong to the static query only — the dynamic second argument cannot take them, see *Static and dynamic query parts*.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
@@ -45,31 +47,14 @@ Keep the semantic layer and presentation layer separate.
 
 ## Generate Schema
 
-If the schema file already exists, use it. If it is missing or stale, treat schema generation as semantic-layer curation for this data app, not a mechanical export.
+If the schema file already exists and covers what the app needs, use it. Otherwise generate it.
 
-Choose the export scope before generating:
-
-1. Honor an explicit scope. Otherwise infer the required content types from the app's purpose: tables, curated metrics, or actions. For example, "show orders" needs tables; row counts and sums can also use table aggregations.
-2. Choose the narrowest supported scope that covers those needs, using collection IDs and database names or IDs from the request or project context. When the library type is clear but a narrower collection is unknown, use that library's whole tree.
-3. Ask only for context needed to select a scope, such as which database to use when the request requires a database scope but does not identify one. Once the scope is determined, state it briefly and generate without waiting for confirmation.
-
-Scope parameters:
-
-- `include-data-library=true` for the whole `Library / Data` tree.
-- `include-metric-library=true` for the whole `Library / metrics` tree.
-- `library-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
-- `include-actions=true` for the actions the app can run, under `schema.actions`. When combined with `database=<name-or-id>`, it includes that database's actions only.
-- `database=<name-or-id>` when the app should use tables from one database. Use it separately from library scopes; the API rejects that combination.
-
-Combine library scopes when the app needs both tables and curated metrics.
-
-Use `include-actions=true` when the app needs any saved action under `schema.actions`; it includes all readable actions, unless `database` scopes them to one database. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
-
-If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-actions=true` in the typed-schema URL. Do this even when the user names one specific action, because actions are only discoverable through the generated schema.
+The schema always covers the same content: the published tables of the `Library / Data` tree, the metrics of the `Library / Metrics` tree (with the tables they map), and every query action that belongs to no model, under `schema.actions`. There is no scope to choose. When the app needs a table, metric, or action the schema lacks, ask the user to publish the table to the Data library, move the metric into the Metrics library, or create the action as a query action without a model, then regenerate.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
-from the app dir, not in the app dir). The command below `source`s that file so
+from the app dir, not in the app dir). The key must be one in the Administrators group:
+the schema answers only an admin, and any other key gets a `403`. The command below `source`s that file so
 the shell substitutes the values straight into `curl` — you never read, extract,
 or handle the credentials yourself.
 
@@ -80,9 +65,7 @@ or handle the credentials yourself.
 > or still set to the default `mb_replace_me` placeholder after sourcing, ask
 > the user to add real values themselves, then continue.
 
-Source the credentials from the repo-root `.env.local` and generate the scoped
-schema. The example below exports table data from the Data library; replace its
-query parameters with the scope chosen above:
+Source the credentials from the repo-root `.env.local` and generate the schema:
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -103,34 +86,66 @@ fi
     -o src/metabase.data.ts \
     -H "x-api-key: $DATA_APP_MB_API_KEY" \
     -H "Accept: text/typescript" \
-    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?include-data-library=true"
+    "$DATA_APP_MB_URL/api/apps/generate/schemas"
 )
 ```
 
-After a successful export, verify that the schema contains every entity needed for the requested app. If any are missing, revise the scope using available context or ask for the missing context before building the UI.
+An entry in the generated file opens with a `/* metadata: {...} */` block of JSON, before its runtime properties, when it has context to give for writing the app: such as a field's display name, description, and semantic type, a table's database, schema, and real name, and a metric's description, filters, and whether it's verified. It is a comment, so it never reaches the bundle and the app never imports it; read it, and never edit or reformat the file.
+
+After a successful export, verify that the schema contains every entity needed for the requested app. If any are missing, tell the user what to publish to the library before building the UI.
 
 If schema generation fails, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing ids, names, and message when present.
 
-## Synchronize every query and action
+## Write every query and action into the app's collection
 
-Everything an end-to-end prototype runs is permission-bound: it runs against a copy in the app's own collection; read access to that collection lets viewers run the app's cards, but they see the data only if they already have access to the underlying tables — the app grants the collection, not the tables. Declare each one as a named export in a root-level directory beside `package.json` — `queries/` for `defineQuery(...)`, `actions/` for `defineAction(...)`. `npm run sync-resources` scans only those two directories, so a definition under `src/queries/`, `src/actions/`, or any other source directory is silently never synchronized. Discovery covers `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts`.
+Every query and action a data app runs goes through a copy in the app's own collection: read access to that collection lets viewers run the app's cards, but they see data only from tables they can already read, since the app grants the collection, not the tables. Declare each one as a named export in a root-level directory beside `package.json` — `queries/` for `defineQuery(...)`, `actions/` for `defineAction(...)`. The CLI scans only those two directories, so a definition under `src/queries/`, `src/actions/`, or any other source directory is never seen. Discovery covers `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts`.
 
 ```ts
 import { defineAction, defineQuery } from "@metabase/embedding-sdk-react/data-app";
 import schema from "../src/metabase.data";
 
 // queries/revenue.query.ts
-export const RevenueQuery = defineQuery({ source: schema.tables.orders });
+export const RevenueQuery = defineQuery({
+  savedQuestionEntityId: "<entity ID of its saved question>",
+  source: schema.tables.orders,
+});
 
 // actions/orders.action.ts
 export const CreateOrder = defineAction({
+  copiedActionEntityId: "<entity ID of its copied action>",
   action: schema.actions.createOrder,
 });
 ```
 
-One `sync-resources` run reconciles both. For a query it materializes the authored table query as a saved question and injects `savedQuestionSourceId`. For an action it copies the action into the app collection and injects `copiedActionId`; the copy disappears with its declaration. Never copy an action into the app collection by hand.
+Each definition is backed by serialized Metabase YAML that `npm run write-resources` writes into the repository's `collections/data_apps/` directory, where the collections of the `data-apps` namespace live, as Metabase exports them. Nothing changes in Metabase until the repository is pulled; the pull loads the files into the app's collection as serialized content, like everything else the repository holds, so write the files instead of creating anything in that collection by hand. From the app's directory, `data_apps/<slug>/`, that directory is `../../collections/data_apps/`.
 
-Pass the definition itself to the hook and let the SDK resolve what runs — a production build runs the copy, while the dev preview runs the authored table or action, so an app works before its first synchronization:
+```
+data_apps/<slug>/data_app.yaml                     collection: <entity ID of the app's collection>
+collections/data_apps/<collection>.yaml            the app's collection, a root collection of the data-apps namespace
+collections/data_apps/<collection>/<name>.yaml     a saved question per query, copies of the metrics they use, and a copy of each action the app runs
+```
+
+`<collection>` is the collection's name as Metabase slugs it: `data_app__sales` for `Data App: Sales`. The pull and the CLI find the app's files by content, not by path: the collection whose `entity_id` the manifest names, and the cards and actions whose `collection_id` is it.
+
+Metabase writes every file of the app's collection: setting up the app writes the collection's own file, and `npm run write-resources` the rest. Never write or edit one yourself. Generate every new entity ID with `npx representations generate-entity-id` (`--count <n>` for several), from the app's own dev dependencies; never invent one, reuse one from another app, or keep a source entity's ID on its copy.
+
+1. **Collection.** Setting up the app writes the collection's file under `collections/data_apps/` and names it in `data_app.yaml` as `collection: <id>`, through `POST /api/apps/generate/app` (see the setup skill). The pull refuses a manifest without `collection:`, and one whose collection has no file in the repository.
+
+2. **Entity IDs.** Every `defineQuery` carries a `savedQuestionEntityId`, the entity ID of its saved question, and every `defineAction` a `copiedActionEntityId`, the entity ID of its copy, generated with `npx representations generate-entity-id`. The command refuses a definition without one and names it.
+
+3. **Write the files.** `npm run write-resources` sends the app's definitions to Metabase, using `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, and regenerates the app's collection folder (`collections/data_apps/<collection>/`): it deletes the cards and actions the collection held and writes what comes back, each file with the text a Metabase export writes. No pull is needed first. It writes: a saved question per query (named after the export, in the app's collection, with its `savedQuestionEntityId`, holding the query the dev preview runs), a copy of each action the app runs, and a copy of each metric a query aggregates, which the question already references. It prints a `Wrote <path>` line per file.
+
+   The command answers only an admin, so the API key must be one in the Administrators group. With any other key it fails with `403`: stop and tell the user, and never write the files another way.
+
+   An item that can't be built or copied fails the whole command with its error, and nothing is written or deleted (for example a field the query names that doesn't exist, an action that belongs to a model, or a metric or action that reads another card); stop and tell the user. Run it again after any definition changes; it regenerates the folder.
+
+Never write or edit a saved question, an action copy or a metric copy yourself, never copy one from YAML (not the repository's exported collections or its top-level `actions/`, not another app's collection, not git history), and never from your own API calls: a hand-written file differs from what Metabase serializes, and the query is what the dev preview ran, so any difference changes what production runs.
+
+If a source the app needs isn't in `src/metabase.data.ts`, stop and tell the user; never write a replacement from scratch. After a source changes in Metabase, run `npm run write-resources` again.
+
+Run `npm run check-resources`, and fix what it reports by changing the definitions or `data_app.yaml` and running `npm run write-resources` again, never by editing a generated file. It fails, listing every problem, when the definitions and the files of the app's collection disagree: a manifest naming no collection or one without a file, a definition without its entity ID or naming one no file holds, a query naming a card that isn't a question, or a question or action no definition names; then it validates every Metabase YAML file in the repository, the app's collection files included, against the format's schema. `npm run build` runs the first check. `write-resources` removes a metric copy once nothing uses it. `check-resources` never calls Metabase. The next pull validates everything again, and refuses the app's resources with a message naming the file, shown on the Data apps admin page. Fix the definition or source it names, run `npm run write-resources`, and push again.
+
+Pass the definition itself to the hook and let the SDK resolve what runs — a production build runs the copy, while the dev preview runs the authored table or action, so an app works before its resources exist:
 
 ```ts
 const { data } = useMetabaseQuery(RevenueQuery, {
@@ -140,17 +155,13 @@ const { data } = useMetabaseQuery(RevenueQuery, {
 const { execute, isExecuting, error } = useAction(CreateOrder);
 ```
 
-Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionSourceId`, `copiedActionId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary. TypeScript rejects most of these: the hooks accept only what `defineQuery`/`defineAction` returned, so an inline object, a `satisfies`-typed object, a spread copy, and `schema.actions.<action>` all fail to compile. When `tsc` reports `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing`, the argument is not a definition: move it into `queries/` or `actions/` and import the export. Do not silence it with a cast or by wrapping the inline object in `defineQuery(...)` at the call site, which compiles but leaves the query unsynchronized. Keep fixed permission-boundary filters, aggregations, and breakouts inside `defineQuery` — synchronization bakes them into the saved question, so don't apply them again outside it, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
+Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionEntityId`, `copiedActionEntityId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary. TypeScript rejects most of these: the hooks accept only what `defineQuery`/`defineAction` returned, so an inline object, a `satisfies`-typed object, a spread copy, and `schema.actions.<action>` all fail to compile. When `tsc` reports `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing`, the argument is not a definition: move it into `queries/` or `actions/` and import the export. Do not silence it with a cast or by wrapping the inline object in `defineQuery(...)` at the call site, which compiles but is never backed by a saved question. Keep fixed permission-boundary filters, aggregations, and breakouts inside `defineQuery` — they are baked into the saved question, so don't apply them again outside it, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
 
-Wire `package.json` with `"sync-resources": "embedding-sdk-react data-apps sync-resources"` and `"build": "npm run sync-resources && vite build"`, then run `npm run build` after adding, changing, renaming, or removing any definition; run `sync-resources` directly only to inspect generated state before a build. It reads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`.
-
-Inline generated IDs and `resources_metadata.json` are generated state: never delete or hand-edit either. A missing ID is restored automatically when the definition still identifies its resource — a query by its table and authored hash matching one unclaimed lockfile entry, an action by declaring the same source action — while a duplicated ID fails the run. Do not test or hand off the app until `npm run build` succeeds, every live definition carries a positive generated ID, and `resources_metadata.json` holds its matching entry. Commit every generated change. The build stops before bundling when synchronization fails.
-
-If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card or action creation, deletion, ID replacement, or lockfile editing. Treat a successful run that discovers nothing as a failure when the app has queries or actions. Synchronization copies actions but never creates them, so an action the app needs must already exist in Metabase, without a model, and be picked up by a regenerated schema; if the run reports that actions are not enabled for the database, stop and tell the user to enable them rather than working around it.
+Wire `package.json` with `"write-resources": "embedding-sdk-react data-apps write-resources"`, `"check-resources": "embedding-sdk-react data-apps check-resources && representations validate-schema --folder ../.."` (with `@metabase/representations` as a dev dependency), and `"build": "vite build"`. After adding, changing, renaming, or removing any definition, run `npm run write-resources`, then `npm run check-resources` and `npm run build`. Do not test or hand off the app until `npm run build` succeeds. Commit `data_app.yaml`, the app's files under `collections/data_apps/`, and the definitions together; the app picks them up when Metabase pulls the repository.
 
 ## Standard pattern
 
-Two files per query: the definition in `queries/`, the hook call in the component.
+Two files per query: the definition in `queries/`, the hook call in the component. The examples from here on leave out `savedQuestionEntityId` to stay short; every real definition carries it (see *Write every query and action into the app's collection*).
 
 ```ts
 // queries/orders.query.ts
@@ -248,7 +259,7 @@ const { data } = useMetabaseQuery(CompletedOrders, {
 
 If a control must switch a segment on and off, that is a choice between static queries, not a dynamic clause: define one query per state and pick the query, or express the same condition as a filter on a result column.
 
-Do not remove or hand-edit `savedQuestionSourceId` if you find it on a query object, or `copiedActionId` on an action definition. Both are generated synchronization state — see *Synchronize every query and action*.
+Do not remove `savedQuestionEntityId` if you find it on a query object, or `copiedActionEntityId` on an action definition. Each names the definition's file in the app's collection — see *Write every query and action into the app's collection*.
 
 ## Table query recipes
 
@@ -400,7 +411,7 @@ Hook typing:
 - Both hooks take a `defineQuery` export imported from `queries/` and nothing else; an inline object is a compile error. Write no generics on the hooks.
 - `useMetabaseQuery(...)` infers typed row data from the definition. Put `defineQuery<typeof table>` on the definition when ownership validation matters.
 - `useMetabaseQueryObject(...)` returns `{ query, error, isLoading }`. Pass the `query` property to `card={{ query }}`.
-- Do not use `as Parameters<typeof useMetabaseQuery>[0]` or `as DefinedQuery` to quiet query typing errors. The first hides invalid table fields, metric aggregations, and breakouts; the second hides an unsynchronized query that fails in production.
+- Do not use `as Parameters<typeof useMetabaseQuery>[0]` or `as DefinedQuery` to quiet query typing errors. The first hides invalid table fields, metric aggregations, and breakouts; the second hides a query without a saved question, which fails in production.
 
 The basic prop contract is:
 
@@ -511,7 +522,7 @@ filter(ordersTable.fields.status, "not-empty");
 
 breakout(ordersTable.fields.createdAt, { unit: "month" });
 breakout(ordersTable.fields.amount, {
-  binning: { strategy: "num-bins", "num-bins": 10 },
+  binning: { strategy: "num-bins", numBins: 10 },
 });
 breakout(ordersTable.fields.state);
 
@@ -685,7 +696,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Run `npm run typecheck`. `Property 'definedWithDefineQuery' is missing` or `Property 'definedWithDefineAction' is missing` means a hook received something other than a `queries/` or `actions/` export; move the object there and import it.
 - Search touched files for `useMetabaseQuery(`, `useMetabaseQueryObject(`, and `useAction(`. The first argument must be an identifier imported from `queries/` or `actions/`; a `{`, a `defineQuery(`, a `defineAction(`, or a spread there is wrong even when it compiles. The second argument of the query hooks is the dynamic object and is written inline.
 - Confirm `queries/` and `actions/` sit beside `package.json`, not under `src/`, and that every definition the app renders lives there.
-- Run `npm run build`; it synchronizes queries before producing the bundle.
+- Confirm every definition has its entity ID, and run `npm run write-resources`, then `npm run check-resources` and `npm run build`; both fail when the app's collection files no longer back the definitions.
 - Keep TypeScript diagnostics compact in the chat or handoff. Use the full output locally to fix the app, but report grouped root causes and only a few representative diagnostics instead of pasting the entire `tsc` output.
 - Verify every rendered value can be traced to a returned row property, schema field, measure, or deterministic transform.
 - Search touched files for `row[0]`, `row[1]`, `row.orderedAt`, `row.orderDate`, `as unknown as`, `DisplayRow`, `<select`, `margin`, `rate`, `score`, `percent`, `%`, `* 100`, and `.toFixed`; fix positional rows, result-key guesses, entity `<select>` filters, and unsupported business-field interpretations.
@@ -695,10 +706,12 @@ If no curated schema entry supports the intended UI, leave the section out or as
 
 ## Common Mistakes
 
-- Creating or searching for Metabase content during app building.
+- Creating or searching for Metabase content during app building. The files of the app's collection are written by `npm run write-resources`, never created in Metabase.
+- Copying a metric or action from Metabase YAML in the repository (its exports, its top-level `actions/`, or git history), or from your own API calls, instead of letting `npm run write-resources` write it.
+- Writing or editing a saved question, action copy or metric copy yourself instead of running `npm run write-resources`.
 - Writing the query object at the hook call instead of exporting it from `queries/` with `defineQuery`, or the action at `useAction` instead of from `actions/` with `defineAction`. Both are compile errors now; the fix is the directory, not a cast.
-- Wrapping the inline object in `defineQuery(...)` or `defineAction(...)` at the call site. It compiles, but `sync-resources` never sees it, so it is refused in production.
-- Putting definitions under `src/queries/` or `src/actions/`, where `sync-resources` never looks.
+- Wrapping the inline object in `defineQuery(...)` or `defineAction(...)` at the call site. It compiles, but it is never backed by a saved question, so it is refused in production.
+- Putting definitions under `src/queries/` or `src/actions/`, where the CLI never looks.
 - Importing older hooks instead of `useMetabaseQuery`.
 - Copying raw numeric IDs into constants instead of using generated schema objects.
 - Inventing ad hoc measure objects such as `{ name: "count" }` or `{ name: "sum", field: fieldId }`.

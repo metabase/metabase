@@ -27,6 +27,7 @@
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
+   [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
    [metabase.explorations.api]
    [metabase.frontend-errors.api]
@@ -50,7 +51,6 @@
    [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
    [metabase.premium-features.rest.api]
-   [metabase.product-feedback.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
    [metabase.queries-rest.api]
@@ -58,6 +58,7 @@
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.rest.api]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -71,7 +72,6 @@
    [metabase.transforms-rest.api.transform]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
-   [metabase.typed-schemas-rest.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -115,7 +115,6 @@
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
-         metabase.product-feedback.api/keep-me
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
@@ -128,7 +127,6 @@
          metabase.transforms-rest.api.transform/keep-me
          metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me
-         metabase.typed-schemas-rest.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -155,9 +153,29 @@
   (cond-> x
     (simple-symbol? x) api.macros/ns-handler))
 
+(defn- sanitize-streaming-errors
+  "Middleware that reduces any error written by a streaming response body to
+  [[metabase.public-sharing-rest.api/error-response]]. The public and embedding route wrappers catch and genericize
+  exceptions thrown by the handler, but a streaming body runs after the handler has returned, so a query failure --
+  or an exception attaching the Card's query as `ex-data` -- would otherwise reach an unauthenticated client as-is.
+
+  This lives here rather than next to those wrappers in [[metabase.api.routes.common]] because the `api` module can't
+  depend on `server` (which depends on the query processor, which depends on `api`)."
+  [handler]
+  (fn [request respond raise]
+    (handler request
+             (fn [response]
+               (respond (streaming-response/with-error-response-fn
+                          response
+                          metabase.public-sharing-rest.api/error-response)))
+             raise)))
+
+(def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
+  (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
+
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
-(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
-(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
+(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (+sanitize-streaming-errors (->handler handler))))
+(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (+sanitize-streaming-errors (->handler handler))))
 
 (declare routes)
 
@@ -207,6 +225,7 @@
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
+   "/embedding-hub"        metabase.embedding-hub.api/routes
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
@@ -237,7 +256,6 @@
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
-   "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
@@ -257,7 +275,6 @@
    "/transform-dag-run"    (+auth metabase.transforms-rest.api.transform/transform-dag-run-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
-   "/typed-schemas"        (+auth 'metabase.typed-schemas-rest.api)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)

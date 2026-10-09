@@ -19,19 +19,19 @@ describe("issue 26470", { tags: "@external" }, () => {
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
-    cy.findByTestId("database-model-features-section")
+    cy.findByTestId("database-model-persistence-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked")
       .click({ force: true });
     cy.wait("@persist").its("response.statusCode").should("eq", 204);
 
-    cy.findByTestId("database-model-features-section")
+    cy.findByTestId("database-model-persistence-section")
       .findByLabelText("Model persistence")
       .should("be.checked")
       .click({ force: true });
     cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
 
-    cy.findByTestId("database-model-features-section")
+    cy.findByTestId("database-model-persistence-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked");
   });
