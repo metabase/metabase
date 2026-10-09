@@ -92,8 +92,8 @@
                 [endpoint feedback] [["feedback" {:positive true}]
                                      ["source-feedback" {:positive true :source_id 42 :source_type "table"}]]]
           (is (nil? (mt/user-http-request :rasta :post 204 (str "metabot/" endpoint)
-                                         (cond-> (assoc feedback :message_id "test-message")
-                                           metabot-id (assoc :metabot_id metabot-id))))))))))
+                                          (cond-> (assoc feedback :message_id "test-message")
+                                            metabot-id (assoc :metabot_id metabot-id))))))))))
 
 (deftest native-agent-streaming-test
   (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
