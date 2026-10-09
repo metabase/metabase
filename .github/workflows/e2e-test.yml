@@ -200,32 +200,7 @@ jobs:
 
       - name: Create writable_db in QA databases
         if: ${{ steps.snapshots.outcome == 'success' }}
-        working-directory: e2e/test/scenarios
-        shell: bash
-        run: |
-          set -euo pipefail
-          psql_sample() {
-            docker compose exec -T -e PGPASSWORD=metasample123 postgres-sample \
-              psql -h 127.0.0.1 -U metabase -d sample -v ON_ERROR_STOP=1 "$@"
-          }
-          mysql_root() {
-            docker compose exec -T -e MYSQL_PWD=metasample123 mysql-sample \
-              mysql -h 127.0.0.1 -uroot "$@"
-          }
-          for attempt in $(seq 1 60); do
-            if psql_sample -c "SELECT 1" >/dev/null 2>&1 && mysql_root -e "SELECT 1" >/dev/null 2>&1; then
-              break
-            fi
-            if [ "$attempt" = 60 ]; then
-              echo "::error::QA Postgres or MySQL did not accept connections"
-              exit 1
-            fi
-            sleep 2
-          done
-          if ! psql_sample -tAc "SELECT 1 FROM pg_database WHERE datname = 'writable_db'" | grep -q 1; then
-            psql_sample -c "CREATE DATABASE writable_db"
-          fi
-          mysql_root -e "CREATE DATABASE IF NOT EXISTS writable_db"
+        run: bun e2e/support/create-writable-dbs.ts
 
       - name: Generate database snapshots
         if: ${{ steps.snapshots.outcome != 'success' }}
