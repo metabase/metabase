@@ -412,7 +412,10 @@
                           (query-item "Nothing" {:stages [{:source {:type :table :id Integer/MAX_VALUE}}]})]})))
       (let [logged (filter #(str/includes? (:message %) "Could not serialize a data app resource") (messages))]
         (is (= 1 (count logged)))
-        (is (str/includes? (:message (first logged)) "Broken"))))))
+        (testing "naming the query by its entity ID, without its definition"
+          (is (str/includes? (:message (first logged)) ":query"))
+          (is (not (str/includes? (:message (first logged)) "NOT_A_COLUMN")))
+          (is (not (str/includes? (:message (first logged)) "Broken"))))))))
 
 (deftest refuses-archived-sources-test
   (testing "the pull refuses an archived resource, so the serialization refuses an archived source"

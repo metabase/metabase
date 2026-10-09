@@ -217,6 +217,12 @@ describe("serializing what resources are written from", () => {
 
   it("refuses a returned file that would leave the collection's folder", async () => {
     const appRoot = appWithDefinitions();
+    const stale = writeResource(appRoot, "stale.yaml", {
+      name: "Stale",
+      type: "question",
+      entity_id: "staleEntityId0000001",
+      "serdes/meta": [{ model: "Card", id: "staleEntityId0000001" }],
+    });
     mockSerialization(
       new Response(
         JSON.stringify({
@@ -232,6 +238,7 @@ describe("serializing what resources are written from", () => {
     expect(
       fs.existsSync(path.join(appRoot, "collections/data_apps/escaped.yaml")),
     ).toBe(false);
+    expect(fs.existsSync(stale)).toBe(true);
   });
 
   it("refuses to write before the collection has a file", async () => {

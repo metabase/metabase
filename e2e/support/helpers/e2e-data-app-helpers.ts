@@ -428,18 +428,24 @@ export function serializeDataAppActions(
   collection: string,
 ) {
   return cy
-    .request<{ actions: Array<{ file: string; yaml: string }> }>(
-      "POST",
-      "/api/apps/generate/resources",
-      {
-        actions: copies.map(({ sourceActionId, entityId }) => ({
-          action_id: sourceActionId,
-          entity_id: entityId,
-          collection_id: collection,
-        })),
-      },
-    )
-    .its("body.actions");
+    .request<{
+      actions: Array<{ file: string; yaml: string } | { error: string }>;
+    }>("POST", "/api/apps/generate/resources", {
+      actions: copies.map(({ sourceActionId, entityId }) => ({
+        action_id: sourceActionId,
+        entity_id: entityId,
+        collection_id: collection,
+      })),
+    })
+    .then(({ body }) =>
+      body.actions.map((answer) => {
+        if ("error" in answer) {
+          throw new Error(answer.error);
+        }
+
+        return answer;
+      }),
+    );
 }
 
 /**
@@ -456,7 +462,11 @@ export function serializeDataAppActionCopies(
       files.map(({ yaml: text }): ResourceEntity => {
         const entity = yaml.load(text);
 
-        return isObject(entity) ? entity : {};
+        if (!isObject(entity)) {
+          throw new Error(`Generated an action copy that isn't a map: ${text}`);
+        }
+
+        return entity;
       }),
       { log: false },
     ),

@@ -40,11 +40,11 @@
                         (throw (ex-info (tru "Pass a slug: \"{0}\" is not a valid one." slug) {:status-code 400})))
         app-id        (u/generate-nano-id)
         collection-id (u/generate-nano-id)
-        collection    {:name        (str "Data App: " app-name)
+        collection    {:name        (str "Data App: " slug)
                        :namespace   "data-apps"
                        :entity_id   collection-id
                        :serdes/meta [{:model "Collection" :id collection-id
-                                      :label (serialization/slugify-name (str "Data App: " app-name))}]}
+                                      :label (serialization/slugify-name (str "Data App: " slug))}]}
         app           (m/assoc-some {:version     data-app.config/supported-app-version
                                      :name        app-name
                                      :slug        slug

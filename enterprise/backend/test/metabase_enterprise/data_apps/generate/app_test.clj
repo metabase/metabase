@@ -18,7 +18,7 @@
 (deftest generates-the-manifest-and-the-collection-file-test
   (let [result        (generate.app/generate {:name "Sales Ops"})
         app           (file-yaml result "data_apps/sales-ops/data_app.yaml")
-        collection-id (:entity_id (file-yaml result (data-apps.tu/collection-path "Data App: Sales Ops")))]
+        collection-id (:entity_id (file-yaml result (data-apps.tu/collection-path "Data App: sales-ops")))]
     (testing "a manifest and a collection file, each at the path a remote-sync export writes it"
       (is (= ["data_apps/sales-ops/data_app.yaml" "collections/data_apps/data_app__sales_ops.yaml"]
              (map :path (:files result)))))
@@ -32,8 +32,8 @@
                :serdes/meta [{:model "DataApp"}]}
               app))
       (is (not (contains? app :description))))
-    (testing "the collection is in the data-apps namespace, named after the app"
-      (is (=? {:name        "Data App: Sales Ops"
+    (testing "the collection is in the data-apps namespace, named after the app's slug as the instance names it"
+      (is (=? {:name        "Data App: sales-ops"
                :namespace   "data-apps"
                :entity_id   string?
                :serdes/meta [{:model "Collection"}]}
@@ -47,8 +47,8 @@
   (let [result (generate.app/generate {:name "Sales Ops" :slug "ops" :description "Pipeline health"})]
     (is (=? {:slug "ops" :description "Pipeline health"}
             (file-yaml result "data_apps/ops/data_app.yaml")))
-    (testing "the collection is still named after the app, not its slug"
-      (is (some? (file-yaml result "collections/data_apps/data_app__sales_ops.yaml"))))))
+    (testing "the collection is named after the slug, so apps sharing a display name don't share a collection file"
+      (is (=? {:name "Data App: ops"} (file-yaml result "collections/data_apps/data_app__ops.yaml"))))))
 
 (deftest derives-the-slug-from-the-name-test
   (are [app-name slug] (some? (file-yaml (generate.app/generate {:name app-name})

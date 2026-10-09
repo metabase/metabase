@@ -37,6 +37,6 @@ deletes the alias bumps the contract version and ships the upgrade.
    `sandbox.ts` fallback point; that removal is the breaking change.
 7. `enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md`: a "Data apps
    contract v<N+1>" entry linking the upgrade guide.
-8. Run `./bin/test-agent :only '[metabase-enterprise.data-apps.config-test]'`.
-   Two tests fail until steps 1, 2, and 4 agree: the template must declare the
-   supported version, and the upgrade guides must cover every version from 1 up to it.
+8. Run `./bin/test-agent :only '[metabase-enterprise.data-apps.schema-test]'`.
+   It fails until steps 1 and 4 agree: the upgrade guides must cover every
+   version from 1 up to the supported one.

@@ -113,7 +113,7 @@ function collectionDirectory(appRoot: string, collection: string) {
   };
 }
 
-function writeFile(directory: string, file: { file: string; yaml: string }) {
+function targetFile(directory: string, file: { file: string; yaml: string }) {
   const target = path.join(directory, file.file);
 
   if (path.dirname(target) !== directory) {
@@ -122,9 +122,7 @@ function writeFile(directory: string, file: { file: string; yaml: string }) {
     );
   }
 
-  fs.writeFileSync(target, file.yaml);
-
-  return target;
+  return { target, yaml: file.yaml };
 }
 
 /**
@@ -200,13 +198,15 @@ export async function writeResources(appDirectory: string) {
     throw new Error(errors.join("\n"));
   }
 
-  existing.forEach((filePath) => fs.rmSync(filePath));
-  fs.mkdirSync(directory, { recursive: true });
+  const targets = labelled.flatMap(({ result }) =>
+    "error" in result ? [] : [targetFile(directory, result)],
+  );
 
-  return labelled
-    .flatMap(({ result }) =>
-      "error" in result ? [] : [writeFile(directory, result)],
-    )
-    .map((target) => `Wrote ${path.relative(repoRootOf(appRoot), target)}`)
+  existing.forEach((filePath) => fs.rmSync(filePath, { force: true }));
+  fs.mkdirSync(directory, { recursive: true });
+  targets.forEach(({ target, yaml }) => fs.writeFileSync(target, yaml));
+
+  return targets
+    .map(({ target }) => `Wrote ${path.relative(repoRootOf(appRoot), target)}`)
     .join("\n");
 }

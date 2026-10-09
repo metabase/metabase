@@ -204,7 +204,7 @@
                            {:file (str (unique-name (:entity_id entity) (serialization/slugify-name (:name entity))) ".yaml")
                             :yaml (serialization/entity-yaml entity)})
           built          (mapv (fn [{:keys [query] :as item}]
-                                 (merge item (with-item-error item #(hash-map :built (build-query query)))))
+                                 (merge item (with-item-error {:query (:entity_id item)} #(hash-map :built (build-query query)))))
                                queries)
           copies         (metric-copies built)
           actions-by-id  (into {} (map (juxt :id identity))
