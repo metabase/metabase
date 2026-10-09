@@ -27,8 +27,9 @@
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
 (def ^:private message-delay-ms
-  "The time a message should wait before coming off the queue.
-  This delay exists to ensure the data is fully committed before indexing."
+  "The time a message waits before coming off the queue.
+  Updates made in a transaction are queued when it commits, see [[ingest-maybe-async!]].
+  The delay covers writes in a transaction that `mdb/do-after-commit` cannot see, such as one opened with raw JDBC."
   100)
 
 (def ^:private listener-name
@@ -293,8 +294,7 @@
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
   Can also be forced to run synchronously for testing.
-  Async updates are only queued once the current transaction commits, since the worker reads the rows back on its own
-  connection and would otherwise miss any that are not yet committed."
+  Async updates are queued when the current transaction commits, and dropped if it rolls back."
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
@@ -302,6 +302,7 @@
      (if sync?
        (bulk-ingest! updates)
        (do
+         ;; The worker reads rows back on its own connection, so it cannot see them before the commit.
          (mdb/do-after-commit
           (fn []
             (doseq [update updates]
