@@ -33,11 +33,21 @@ To connect Claude Code:
 
 1. Run a command to add the MCP server.
 
+To use Metabase in all your projects, add `--scope user`:
+
+```
+claude mcp add --scope user --transport http metabase https://{your-metabase-url}/api/metabase-mcp
+```
+
+To use Metabase only in the current project, leave out `--scope`:
+
 ```
 claude mcp add --transport http metabase https://{your-metabase-url}/api/metabase-mcp
 ```
 
 Replace `{your-metabase-url}` with your Metabase address.
+
+Without `--scope`, Claude Code adds the server only to the directory you ran the command in, so Metabase won't show up if you start Claude Code from a different directory. To check where you added it, run `claude mcp get metabase`. See [MCP installation scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
 2. Start Claude Code with `claude`.
 
