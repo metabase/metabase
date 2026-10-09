@@ -66,9 +66,9 @@
   2.0)
 
 (def ^:private statements-per-card
-  "The measured statement count per card, by app DB. MySQL and MariaDB send one statement more than H2 and
-  Postgres per entity."
-  {:h2 15.0 :postgres 15.0 :mysql 16.0 :mariadb 16.0})
+  "The measured statement count per card, by app DB type. MySQL and MariaDB (app DB type `:mysql`) send one
+  statement more than H2 and Postgres per entity."
+  {:h2 15.0 :postgres 15.0 :mysql 16.0})
 
 (deftest forced-reload-round-trips-per-card-test
   (testing "A forced reload of unchanged MBQL cards: per card, no connection check-outs and at most the measured
@@ -82,8 +82,8 @@
           (pr-str cost)))))
 
 (def ^:private statements-per-dashboard
-  "The measured statement count per changed dashboard, by app DB."
-  {:h2 32.0 :postgres 32.0 :mysql 33.0 :mariadb 33.0})
+  "The measured statement count per changed dashboard, by app DB type."
+  {:h2 32.0 :postgres 32.0 :mysql 33.0})
 
 (deftest incremental-pull-round-trips-per-dashboard-test
   (testing "An incremental pull where only dashboards changed. Each dashboard has 4 dashboard cards on the same 4
