@@ -366,7 +366,7 @@
 (deftest run-query-viewed-saved-question-test
   (mt/with-temp [:model/Card {notebook-card :id}    {:dataset_query (venues-count)}
                  :model/Card {metabot-sql-card :id} {:dataset_query (venues-sql)}]
-    (mark-saved-by-metabot! metabot-sql-card)
+    (mark-saved-by-metabot! [metabot-sql-card])
     (let [run-viewing! (fn [viewing query-id]
                          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
                            (call-tool! {:state   {:queries {}}
