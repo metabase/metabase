@@ -262,12 +262,7 @@ const FieldSourceModal = ({
             {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
           </ModalEmptyState>
         ) : (
-          <ModalTextArea
-            aria-label={t`Values`}
-            value={valuesText}
-            readOnly
-            fullWidth
-          />
+          <ModalTextArea aria-label={t`Values`} value={valuesText} readOnly />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -417,12 +412,7 @@ const CardSourceModal = ({
         ) : isError ? (
           <ModalEmptyState>{t`An error occurred in your query`}</ModalEmptyState>
         ) : (
-          <ModalTextArea
-            aria-label={t`Values`}
-            value={valuesText}
-            readOnly
-            fullWidth
-          />
+          <ModalTextArea aria-label={t`Values`} value={valuesText} readOnly />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -565,7 +555,6 @@ const ListSourceModal = ({
       <ModalMain>
         <ModalTextArea
           defaultValue={getValuesText(sourceConfig.values)}
-          fullWidth
           onChange={handleValuesChange}
         />
       </ModalMain>
