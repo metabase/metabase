@@ -14,7 +14,10 @@ const { pathToFileURL, fileURLToPath } = require("node:url");
 const jestConfig = require("./jest-config.cjs");
 const { root } = jestConfig;
 // A worker serves one jest project, with that project's setup files.
-const project = jestConfig.projects.find(({ name }) => name === (process.env.NT_PROJECT ?? "core"));
+// Under the pool that project is named. Run directly, it is the project of the
+// first file.
+const firstFile = process.argv.slice(2).find((argument) => !argument.startsWith("@"));
+const project = jestConfig.projects.find(({ name }) => name === process.env.NT_PROJECT) ?? (firstFile && jestConfig.projectOf(firstFile)) ?? jestConfig.projects[0];
 const abs = (p) => path.join(root, p);
 const bunModule = (name) => {
   const dir = fs.readdirSync(abs("node_modules/.bun")).find((d) => d.startsWith(name.replace("/", "+") + "@"));
@@ -723,7 +726,7 @@ const fileCleanup = async () => {
   globalThis.__nodeTestSpike.restoreSharedPackages?.();
   restoreSetupMocks();
   globalThis.__nodeTestSpike.betweenFiles?.();
-  resetDayjsLocale();
+  betweenFilesInRepository();
   mocks.clear();
   for (const [key, factory] of preloadMocks) mocks.set(key, factory);
   state.mockExports.clear();
@@ -1176,32 +1179,17 @@ globalThis.__nodeTestSpike.restoreEnvironment = () => {
   for (const key of Object.keys(process.env)) if (!(key in environmentBaseline)) delete process.env[key];
   for (const [key, value] of Object.entries(environmentBaseline)) if (process.env[key] !== value) process.env[key] = value;
 };
-// dayjs is one instance for the whole process, and the order its plugins are
-// installed in changes what format() returns. Loading the app's own entry first
-// gives every file the order the app has, whichever spec ran before it.
-let resetDayjsLocale = () => {};
-try {
-  // The locale table is on that one instance too. A spec that switches the
-  // language or edits a locale would otherwise change date text for every
-  // later file, so the table is put back to what the app's entry left.
-  const { dayjs } = require("metabase/dayjs");
-  const baselineLocale = dayjs.locale();
-  const baselineTable = new Map(Object.entries(dayjs.Ls).map(([name, definition]) => [name, { ...definition }]));
-  resetDayjsLocale = () => {
-    for (const [name, definition] of baselineTable) {
-      const live = dayjs.Ls[name];
-      if (!live) { dayjs.Ls[name] = { ...definition }; continue; }
-      for (const key of Object.keys(live)) if (!(key in definition)) delete live[key];
-      Object.assign(live, definition);
-    }
-    if (dayjs.locale() !== baselineLocale) dayjs.locale(baselineLocale);
-  };
-} catch {}
-// The translation library is a shared package, so the locale a spec selects
-// would stay for every later file.
-const resetTranslationLocale = () => {
-  try { requireFromRoot("ttag").useLocale("en"); } catch {}
-};
+// What the repository itself has to put back between files: the state its code
+// keeps in packages, which stay loaded for the life of the worker. The file
+// sits next to the setup files, and its prepareBetweenFiles returns the
+// function to call.
+const betweenFilesInRepository = (() => {
+  for (const directory of new Set(SETUP_CHAIN.map((file) => path.dirname(file)))) {
+    const file = path.join(directory, "harness-between-files.js");
+    if (fs.existsSync(file)) return require(file).prepareBetweenFiles();
+  }
+  return () => {};
+})();
 // The chart library keeps one canvas context for measuring text. Its methods
 // are mocks from jest-canvas-mock, and a spec's resetAllMocks strips their
 // implementations for good. Each context's mocks are remembered as it is
@@ -1270,5 +1258,5 @@ const resetTestingLibraryConfig = () => {
   } catch {}
 };
 resetTestingLibraryConfig();
-globalThis.__nodeTestSpike.betweenFiles = () => { resetTranslationLocale(); restoreCanvasMocks(); wrapCanvasGetContext(); resetTestingLibraryConfig(); };
+globalThis.__nodeTestSpike.betweenFiles = () => { restoreCanvasMocks(); wrapCanvasGetContext(); resetTestingLibraryConfig(); };
 wrapCanvasGetContext();
