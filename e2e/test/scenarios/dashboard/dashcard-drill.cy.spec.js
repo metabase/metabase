@@ -71,7 +71,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       );
     });
 
-    it("when clicking on the field value (metabase#13062-1)", () => {
+    it("when clicking on the field value and on the card title (metabase#13062)", () => {
       cy.findByTestId("dashcard").findByText("xavier").click();
       H.popover().findByText("Is xavier").click();
 
@@ -86,9 +86,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         .should("be.visible");
 
       H.assertQueryBuilderRowCount(1);
-    });
 
-    it("when clicking on the card title (metabase#13062-2)", () => {
+      cy.log("when clicking on the card title (metabase#13062-2)");
+      cy.go("back");
+      H.filterWidget().findByText("2 selections").should("be.visible");
+
       cy.findByTestId("dashcard").findByText(questionDetails.name).click();
       cy.findByTestId("qb-filters-panel")
         .findByText("Rating is equal to 2 selections")
@@ -543,7 +545,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
-    it("should correctly drill-through on Orders filter (metabase#11503-1)", () => {
+    it("should correctly drill-through on Orders and on Products filter (metabase#11503)", () => {
       setFilterValue(ordersIdFilter.name);
 
       drillThroughCardTitle("Orders");
@@ -557,9 +559,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
       H.assertQueryBuilderRowCount(2);
 
       postDrillAssertion("ID is 2 selections");
-    });
 
-    it("should correctly drill-through on Products filter (metabase#11503-2)", () => {
+      cy.log("should correctly drill-through on Products filter (metabase#11503-2)");
+      cy.go("back");
+      H.filterWidget().eq(0).should("contain", "2 selections");
+      H.clearFilterWidget(0);
+      H.filterWidget().eq(0).should("contain", ordersIdFilter.name);
       setFilterValue(productsIdFilter.name);
 
       drillThroughCardTitle("Orders");
