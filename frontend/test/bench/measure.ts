@@ -12,8 +12,15 @@
  * The first load fills the HTTP cache, the second fills V8's code cache, and the
  * loads after that are the steady state a returning user sees. Both are
  * reported, because a chunk layout can help one and hurt the other.
+ *
+ * The network is shaped with tc netem rather than by the browser, because
+ * browser throttling is applied per request and so prices every byte at the
+ * bandwidth rate wherever it sits in the response. A layout that pushes the
+ * script tags past the initial congestion window costs a whole round trip
+ * instead, which only packet-level shaping reproduces. Linux only, and it needs
+ * root: this runs on a CI runner.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 
@@ -38,6 +45,85 @@ if (!url) {
     "env: CPU_THROTTLE NETWORK_MBPS NETWORK_LATENCY WARM PORT_OFFSET SESSION_COOKIE",
   );
   process.exit(1);
+}
+
+const backendPort = Number(new URL(url).port || 80);
+const shapeNetwork = mbps > 0 || latency > 0;
+
+/** What a real link carries. Loopback defaults to 65536. */
+const LOOPBACK_MTU = 1500;
+const LOOPBACK_MTU_DEFAULT = 65536;
+
+const privileged = (process.getuid?.() ?? 0) === 0 ? [] : ["sudo"];
+
+function asRoot(command: string): { ok: boolean; stderr: string } {
+  const [executable, ...args] = [...privileged, "sh", "-c", command];
+  const result = spawnSync(executable, args, { encoding: "utf8" });
+  return { ok: result.status === 0, stderr: (result.stderr || "").trim() };
+}
+
+function shellOutput(command: string): string {
+  return spawnSync("sh", ["-c", command], { encoding: "utf8" }).stdout || "";
+}
+
+/**
+ * The window is counted in segments, so loopback's 65536-byte MTU makes the
+ * initial ten-segment window about 640 kB. Every document this harness loads
+ * fits in one flight at that size, and the reading comes out the same whatever
+ * the layout does. Forcing 1500 is what makes the boundary observable.
+ */
+function shapeLoopback(): void {
+  // A packet crosses lo's egress once in each direction, so the round trip is
+  // twice the one-way delay netem is given.
+  const perDirectionMs = Math.round(latency / 2);
+  const bitsPerSecond = mbps * 1024 * 1024;
+
+  asRoot(`ip link set dev lo mtu ${LOOPBACK_MTU}`);
+  // Nothing to delete on a fresh runner, so this one is allowed to fail.
+  asRoot("tc qdisc del dev lo root");
+
+  const steps = [
+    "tc qdisc add dev lo root handle 1: prio bands 3",
+    `tc qdisc add dev lo parent 1:1 handle 10: netem delay ${perDirectionMs}ms rate ${bitsPerSecond}bit`,
+    // Only the backend is shaped. The harness drives Chrome over CDP on
+    // loopback as well, and delaying that channel would move the moment each
+    // reading is taken without moving the load the reading describes.
+    ...["dport", "sport"].flatMap((direction) => [
+      `tc filter add dev lo parent 1: protocol ip prio 1 u32 match ip ${direction} ${backendPort} 0xffff flowid 1:1`,
+      `tc filter add dev lo parent 1: protocol ipv6 prio 2 u32 match ip6 ${direction} ${backendPort} 0xffff flowid 1:1`,
+    ]),
+  ];
+
+  for (const step of steps) {
+    const { ok, stderr } = asRoot(step);
+    if (!ok) {
+      console.error(`could not shape the network: ${step}\n${stderr}`);
+      process.exit(1);
+    }
+  }
+
+  // An unshaped run still reports plausible times, so a shaping failure would
+  // read as a result rather than as an error. Check it took.
+  const link = shellOutput("ip link show lo");
+  const qdisc = shellOutput("tc qdisc show dev lo");
+  const problems = [
+    !link.includes(`mtu ${LOOPBACK_MTU}`) &&
+      `lo is not at mtu ${LOOPBACK_MTU}: ${link.split("\n")[0].trim()}`,
+    !qdisc.includes("netem") && `no netem qdisc on lo: ${qdisc.trim()}`,
+    perDirectionMs > 0 &&
+      !qdisc.includes(`delay ${perDirectionMs}ms`) &&
+      `netem is not delaying ${perDirectionMs}ms: ${qdisc.trim()}`,
+  ].filter(Boolean);
+
+  if (problems.length > 0) {
+    console.error(`the network shaping did not take:\n${problems.join("\n")}`);
+    process.exit(1);
+  }
+}
+
+function unshapeLoopback(): void {
+  asRoot("tc qdisc del dev lo root");
+  asRoot(`ip link set dev lo mtu ${LOOPBACK_MTU_DEFAULT}`);
 }
 
 /** What READ_METRICS evaluates to in the page. */
@@ -205,15 +291,6 @@ async function loadOnce() {
   await session.send("Network.setCacheDisabled", { cacheDisabled: !keepCache });
   await session.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
 
-  if (mbps > 0) {
-    await session.send("Network.emulateNetworkConditions", {
-      offline: false,
-      latency,
-      downloadThroughput: (mbps * 1024 * 1024) / 8,
-      uploadThroughput: (mbps * 1024 * 1024) / 8,
-    });
-  }
-
   if (sessionCookie) {
     await session.send("Network.setCookie", {
       name: "metabase.SESSION",
@@ -317,6 +394,12 @@ function timings(run: Run) {
 }
 
 (async () => {
+  if (shapeNetwork) {
+    shapeLoopback();
+    // Registered on exit so the early returns below put lo back too.
+    process.on("exit", unshapeLoopback);
+  }
+
   const chrome = await launchChrome();
   const results = [];
 
