@@ -3,7 +3,8 @@
   tests of each namespace with that namespace's fixtures, and compares these rows before and after the namespace: the
   stored `remote-sync%` setting rows (reported by key only: the values can carry secrets), the RemoteSyncObject rows,
   the RemoteSyncTask ids, and the ids of the content models of `rs.test/imported-content-models` (personal
-  collections excluded).
+  collections excluded). The shared fixture deletes the remote-sync rows from before the test, so the first namespace
+  that uses it reports those rows as removed.
 
   Run it from a REPL; it runs every test of the module:
 

@@ -8,10 +8,8 @@
    [mb.hawk.parallel]
    [metabase-enterprise.remote-sync.isolation-check-test-util :as isolation-check]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
-   [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,16 +46,14 @@
 
 (defn- once-fixtures-store-remote-sync-setting!
   "Whether the `:once` fixtures of `ns-sym` store a `remote-sync%` setting row while they run, from an app DB with no
-  such row. Puts back the stored rows afterwards."
+  such row. Deletes every stored `remote-sync%` row before and after it runs the `:once` fixtures."
   [ns-sym]
-  ;; the row that a `:once` binding of a remote-sync setting stores outlives the namespace, and a stored row makes
-  ;; the shared fixture refuse every later test
+  ;; the shared fixture deletes the row that a `:once` binding stores before each test, so the tests of the namespace
+  ;; lose the binding, and the row that the end of the binding stores outlives the namespace
   (let [once   (join-fixtures (-> (find-ns ns-sym) meta :clojure.test/once-fixtures))
         stored (volatile! nil)]
     (rs.test/clean-remote-sync-settings
      (fn []
-       (t2/query-one {:delete-from :setting :where [:like :key "remote-sync%"]})
-       (setting/restore-cache!)
        (once (fn [] (vreset! stored (seq (rs.test/stored-remote-sync-setting-rows)))))))
     (some? @stored)))
 

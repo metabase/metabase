@@ -273,9 +273,6 @@
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
       (do-with-remote-sync-state-restored!
        (fn []
-         (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
-                                     {:key "remote-sync-url" :value "https://example.com/a.git"}])
-         (setting/restore-cache!)
          (let [delete! (mt/original-fn #'th/delete-remote-sync-setting-row!)
                error   (try
                          (mt/with-dynamic-fn-redefs [th/delete-remote-sync-setting-row!
@@ -283,7 +280,12 @@
                                                        (if (= "remote-sync-url" k)
                                                          (throw (ex-info "delete failed" {}))
                                                          (delete! k)))]
-                           (th/clean-remote-sync-settings (fn [])))
+                           (th/clean-remote-sync-settings
+                            (fn []
+                              ;; inside the test: the fixture deletes the rows from before the test
+                              (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                                          {:key "remote-sync-url" :value "https://example.com/a.git"}])
+                              (setting/restore-cache!))))
                          nil
                          (catch clojure.lang.ExceptionInfo e
                            e))]
@@ -488,16 +490,18 @@
       (testing (str "order " order)
         (do-with-remote-sync-state-restored!
          (fn []
-           ;; through the model, so that the rows stay readable under an encryption key
-           (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
-                                       {:key "remote-sync-url" :value "https://example.com/a.git"}])
-           (setting/restore-cache!)
            (is (= {:proceed ::cleanup-blocked :cleanup nil :writer :committed :after true}
                   (cleanup-against-a-two-row-writer!
                    th/clean-remote-sync-settings
-                   ;; the cleanup deletes both keys. Both writer orders run, so one of them is opposite to the
-                   ;; order in which a statement over both rows locks them.
-                   (fn [] ["remote-sync-type" "remote-sync-url"])
+                   ;; inside the test: the fixture deletes the rows from before the test. The cleanup deletes both
+                   ;; keys. Both writer orders run, so one of them is opposite to the order in which a statement over
+                   ;; both rows locks them.
+                   (fn []
+                     ;; through the model, so that the rows stay readable under an encryption key
+                     (t2/insert! :model/Setting [{:key "remote-sync-type" :value "read-write"}
+                                                 {:key "remote-sync-url" :value "https://example.com/a.git"}])
+                     (setting/restore-cache!)
+                     ["remote-sync-type" "remote-sync-url"])
                    #(set-setting-value! % "w")
                    #(set-setting-value! % "w")
                    (fn [ids] (not (some #(t2/exists? :setting :key %) ids)))
@@ -691,13 +695,57 @@
 
 (deftest clean-remote-sync-state-keeps-the-content-rows-from-before-the-test-test
   (testing (str "the content cleanup deletes only rows above the id that it saved at the start, so content that "
-                "existed before the test stays")
+                "existed before the test, and that the test linked to no new row, stays")
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Left over" :location "/"}]
       (mt/with-temp [:model/Card {card-id :id} (merge (mt/with-temp-defaults :model/Card)
                                                       {:name "Left over" :collection_id coll-id})]
         (th/clean-remote-sync-state (fn []))
         (is (t2/exists? :model/Collection :id coll-id))
         (is (t2/exists? :model/Card :id card-id))))))
+
+(deftest clean-remote-sync-state-changes-or-deletes-the-older-rows-that-link-to-new-content-test
+  (testing (str "the foreign keys of the content that the cleanup deletes change or delete the rows from before the "
+                "test that the test linked to it, as the clean-imported-content docstring says")
+    (mt/with-temp [:model/Collection    {child-id :id} {:name "Old child" :location "/"}
+                   :model/Timeline      {tl-id :id}    {:name "Old timeline"}
+                   :model/Card          {card-id :id}  {:name "Old card"}
+                   :model/Dashboard     {dash-id :id}  {:name "Old dashboard"}
+                   :model/DashboardCard {dc-id :id}    {:dashboard_id dash-id :card_id card-id}]
+      (let [new-coll (volatile! nil)]
+        (th/clean-remote-sync-state-without-reindex
+         (fn []
+           (let [coll-id  (t2/insert-returning-pk! :model/Collection {:name "New" :location "/"})
+                 new-card (t2/insert-returning-pk! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                                      {:name "New card"}))]
+             (vreset! new-coll coll-id)
+             ;; raw updates: no model hook moves the rows back or checks the move
+             (t2/query-one {:update :timeline :set {:collection_id coll-id} :where [:= :id tl-id]})
+             (t2/query-one {:update :report_card :set {:collection_id coll-id} :where [:= :id card-id]})
+             (t2/query-one {:update :report_dashboard :set {:collection_id coll-id} :where [:= :id dash-id]})
+             (t2/query-one {:update :collection :set {:location (str "/" coll-id "/")} :where [:= :id child-id]})
+             (t2/query-one {:update :report_dashboardcard :set {:card_id new-card} :where [:= :id dc-id]}))))
+        (testing "an old Timeline in a new Collection is deleted"
+          (is (not (t2/exists? :model/Timeline :id tl-id))))
+        (testing "an old dashcard that shows a new Card is deleted"
+          (is (not (t2/exists? :model/DashboardCard :id dc-id))))
+        (testing "an old Card and an old Dashboard in a new Collection get collection_id NULL"
+          (is (= [nil nil]
+                 [(t2/select-one-fn :collection_id :report_card :id card-id)
+                  (t2/select-one-fn :collection_id :report_dashboard :id dash-id)])))
+        (testing "an old Collection under a new Collection keeps a location that names the deleted Collection"
+          (is (= (str "/" @new-coll "/")
+                 (t2/select-one-fn :location :collection :id child-id))))))))
+
+(deftest clean-remote-sync-state-deletes-the-snippets-in-a-snippets-collection-test
+  (testing (str "clean-remote-sync-state deletes a Collection of the snippets namespace from before the test, and the "
+                "snippets in it")
+    (mt/with-temp [:model/Collection         {coll-id :id} {:name "Old snippets" :location "/" :namespace "snippets"}
+                   :model/NativeQuerySnippet {sn-id :id}   {:name          (mt/random-name)
+                                                            :content       "1"
+                                                            :collection_id coll-id}]
+      (th/clean-remote-sync-state-without-reindex (fn []))
+      (is (not (t2/exists? :model/Collection :id coll-id)))
+      (is (not (t2/exists? :model/NativeQuerySnippet :id sn-id))))))
 
 (deftest clean-object-names-the-table-when-its-delete-after-the-test-fails-test
   (testing "clean-object throws an exception that names the table when its delete after the test fails"
@@ -718,9 +766,9 @@
 
 (defn- do-with-an-unrelated-lock-wait!
   "MySQL and MariaDB only. Calls `(thunk id)` while one app DB session waits for a lock on a scratch setting row that a
-second session holds. `id` is the session id of a third session with an open transaction that holds the lock of
-another scratch row, which no session waits for. Throws when the wait does not start within 4 s. Ends the wait and
-the transactions, and deletes the scratch rows, before it returns."
+  second session holds. `id` is the session id of a third session with an open transaction that holds the lock of
+  another scratch row, which no session waits for. Throws when the wait does not start within 4 s. Ends the wait and
+  the transactions, and deletes the scratch rows, before it returns."
   [thunk]
   (let [held        "t2-lock-held"
         own         "t2-lock-own"

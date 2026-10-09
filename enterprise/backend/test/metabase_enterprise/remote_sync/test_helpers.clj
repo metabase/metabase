@@ -407,7 +407,7 @@ width: fixed
 (defn- do-with-empty-table
   "Run `f` with `table` empty, then delete every row that the test left, one row for each statement, outside a
   transaction. Restores nothing. A failed delete throws and names `table`."
-  ^String [table f]
+  [table f]
   ;; the table, not the model: the delete runs no model hook
   (delete-rows-one-by-one! table)
   (try
@@ -444,7 +444,8 @@ width: fixed
 
 (defn- delete-optional-feature-rows!
   "Delete every Transform, every TransformTag that is not built in, every PythonLibrary, and every Collection of the
-  transforms and snippets namespaces, with the rows that their delete hooks and foreign keys remove."
+  transforms and snippets namespaces and the snippets in those Collections, with the rows that their delete hooks and
+  foreign keys remove."
   []
   (rethrow-naming-table :transform_tag #(t2/delete! :model/TransformTag :built_in_type nil))
   (rethrow-naming-table :transform #(t2/delete! :model/Transform))
@@ -452,11 +453,13 @@ width: fixed
   (rethrow-naming-table :collection #(t2/delete! :model/Collection :namespace [:in ["transforms" "snippets"]])))
 
 (defn clean-optional-feature-models
-  "Test fixture that empties the Transform, TransformTag (not the built-in ones), PythonLibrary and namespace
-  Collection tables before the test, and deletes every row that the test left after it. Makes the built-in
-  common.py PythonLibrary again after the test, so the next test can create its own common.py. Restores nothing:
-  run it only on a test app DB."
+  "Test fixture that, before and after the test, deletes every Transform, TransformTag (not the built-in ones) and
+  PythonLibrary row, and every Collection of the transforms and snippets namespaces and the snippets in those
+  Collections. Makes the built-in common.py PythonLibrary again after the test. Restores nothing: run it only on a
+  test app DB."
   [f]
+  ;; the delete before the test lets a test create its own common.py; the insert after it puts back the row of the
+  ;; migration for the code that runs next
   (delete-optional-feature-rows!)
   (try
     (f)
@@ -500,10 +503,11 @@ width: fixed
 (defn clean-imported-content
   "Test fixture that, after the test, deletes each row of [[imported-content-models]] with an id above the largest id
   at the start, from any writer (another thread, a dev server on the same app DB), except the test users' personal
-  collections. Foreign keys extend the delete to rows that the test linked to a deleted row: a Card in a new
-  Dashboard or Document and an Action on a new model are deleted, and content that the test moved into a new
-  Collection gets `collection_id` NULL. Keeps the permission group of a deleted DataApp: the raw delete runs no
-  hook. Reindexes search iff it deleted a row or the index holds a document of a new row. Throws, keeping the
+  collections. Foreign keys change or delete the rows from before the test that the test linked to a deleted row: a
+  Card in a new Dashboard or Document, an Action on a new model, a Timeline in a new Collection and a dashcard that
+  shows a new Card are deleted, and a Card or Dashboard that the test moved into a new Collection gets
+  `collection_id` NULL. A Collection that the test moved under a new Collection keeps a `location` that names the
+  deleted Collection. Keeps the permission group of a deleted DataApp: the raw delete runs no hook. Reindexes search iff it deleted a row or the index holds a document of a new row. Throws, keeping the
   Collection, when a Table is published into a new Collection (the foreign key of `metabase_table.collection_id`
   blocks the delete).
 
@@ -570,14 +574,18 @@ width: fixed
                       (second (first failed)))))))
 
 (defn clean-remote-sync-settings
-  "Test fixture that deletes, after the test, every stored `remote-sync%` setting row, each with one statement outside
-  a transaction, then restores the settings cache and deletes the Transforms RemoteSyncObject rows that the
+  "Test fixture that deletes every stored `remote-sync%` setting row before and after the test, each with one statement
+  outside a transaction, then restores the settings cache and deletes the Transforms RemoteSyncObject rows that the
   `:on-change` hook of `remote-sync-transforms` wrote. Restores nothing: run it only on a test app DB. When the delete
-  of a key fails, deletes the other keys and throws an exception whose `:keys` names the failed keys.
+  of a key fails, deletes the other keys and throws an exception whose `:keys` names the failed keys; a failure before
+  the test does not run the test.
 
   Compose inside [[clean-object]]: the cache restore can write a Transforms RemoteSyncObject row, and [[clean-object]],
   whose cleanup runs after this fixture's, deletes every ledger row."
   [f]
+  ;; a value that an earlier run stored, for example `remote-sync-transforms`, would otherwise reach the test, and the
+  ;; first cache restore in the test would run its `:on-change` hook
+  (delete-remote-sync-setting-rows!)
   (try
     (f)
     (finally
@@ -607,18 +615,20 @@ width: fixed
     (log/warnf (str "A started Quartz scheduler can run jobs that write the app DB during a remote-sync test. After "
                     "each test, clean-remote-sync-state deletes every RemoteSyncObject, RemoteSyncTask, Transform, "
                     "PythonLibrary and TransformTag row (not the built-in TransformTags), every Collection of the "
-                    "transforms and snippets namespaces, and every stored remote-sync%% setting row, and each %s "
-                    "row that any writer added during the test. It restores nothing. This warning is logged once "
-                    "per JVM.")
+                    "transforms and snippets namespaces and the snippets in those Collections, every stored "
+                    "remote-sync%% setting row, and each %s row that any writer added during the test, except the "
+                    "test users' personal collections. Foreign keys also change or delete older rows that link to a "
+                    "deleted row. It restores nothing. This warning is logged once per JVM.")
                (str/join ", " (map name imported-content-models))))
   (f))
 
 (def clean-remote-sync-state
   "Composed test fixture for the remote-sync module. These tests delete remote-sync content from the app DB that they
-  run on; do not run them against an app DB that serves an instance. After each test, the fixture deletes every
-  RemoteSyncObject, RemoteSyncTask, Transform, TransformTag (not the built-in ones), PythonLibrary, Collection of the
-  transforms and snippets namespaces and stored `remote-sync%` setting row, and each new row of
-  [[imported-content-models]] (see [[clean-imported-content]]). It restores nothing, also not the remote-sync rows
+  run on; do not run them against an app DB that serves an instance. Before and after each test, the fixture deletes
+  every RemoteSyncObject, RemoteSyncTask, Transform, TransformTag (not the built-in ones), PythonLibrary, Collection of
+  the transforms and snippets namespaces (and the snippets in those Collections) and stored `remote-sync%` setting
+  row. After each test, it deletes each new row of [[imported-content-models]] and changes or deletes the older rows
+  that foreign keys link to them (see [[clean-imported-content]]). It restores nothing, also not the remote-sync rows
   that existed before the test. Logs one WARN line per JVM when a started Quartz scheduler can write the app DB
   during the test.
 
