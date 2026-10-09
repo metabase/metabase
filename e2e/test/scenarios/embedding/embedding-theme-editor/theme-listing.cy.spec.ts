@@ -6,7 +6,6 @@ import {
   clickThemeMenuItem,
   createThemeViaApi,
   deleteAllThemes,
-  openThemeActionMenu,
 } from "./helpers";
 
 describe(
@@ -49,42 +48,6 @@ describe(
       cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
     });
 
-    it("does not create a theme when cancelling from the draft editor", () => {
-      cy.intercept("POST", "/api/embed-theme").as("createTheme");
-      cy.visit("/admin/embedding/themes");
-
-      H.main()
-        .findByRole("button", { name: /New theme/ })
-        .click();
-
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
-
-      cy.findByRole("button", { name: /Cancel/ }).click();
-
-      cy.log("navigates back to the listing");
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
-
-      cy.log("new theme card is still visible");
-      H.main()
-        .findByRole("button", { name: /New theme/ })
-        .should("be.visible");
-
-      cy.log("no POST was issued");
-      cy.get("@createTheme.all").should("have.length", 0);
-    });
-
-    it("navigates to theme editor when clicking an existing theme card", () => {
-      createThemeViaApi("My theme");
-      cy.visit("/admin/embedding/themes");
-
-      H.main().within(() => {
-        cy.findByText("My theme").click();
-      });
-
-      cy.log("navigates to the theme editor page");
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
-    });
-
     it("uses white-labeled colors as a base for creating themes", () => {
       const whitelabelColors = {
         brand: "#8e44ad",
@@ -99,6 +62,43 @@ describe(
 
       cy.intercept("POST", "/api/embed-theme").as("createTheme");
       cy.visit("/admin/embedding/themes");
+
+      cy.log("nav label has no upsell gem");
+      cy.findByTestId("admin-layout-sidebar")
+        .findByRole("link", { name: /Themes/ })
+        .within(() => {
+          cy.icon("gem").should("not.exist");
+        });
+
+      H.main().within(() => {
+        cy.log("theme listing is rendered");
+        cy.findByRole("heading", { name: "Themes" }).should("be.visible");
+
+        cy.log("upsell copy is absent");
+        cy.findByText("Metabase Pro").should("not.exist");
+        cy.findByRole("heading", { name: "Create custom themes" }).should(
+          "not.exist",
+        );
+
+        cy.findByRole("button", { name: /New theme/ }).click();
+      });
+
+      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+
+      cy.log("the draft editor has no delete button");
+      cy.findByLabelText("Theme name").should("be.visible");
+      cy.findByRole("button", { name: /Delete theme/ }).should("not.exist");
+
+      cy.findByRole("button", { name: /Cancel/ }).click();
+
+      cy.log("navigates back to the listing");
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+
+      cy.log("cancelling does not create a theme");
+      H.main()
+        .findByRole("button", { name: /New theme/ })
+        .should("be.visible");
+      cy.get("@createTheme.all").should("have.length", 0);
 
       H.main()
         .findByRole("button", { name: /New theme/ })
@@ -124,13 +124,17 @@ describe(
       );
     });
 
-    it("can duplicate a theme", () => {
+    it("can duplicate and delete themes, and open a theme from its card", () => {
       createThemeViaApi("Untitled theme");
       cy.visit("/admin/embedding/themes");
 
-      H.main().within(() => {
-        cy.findByText("Untitled theme").should("be.visible");
-      });
+      cy.log("clicking a theme card opens the theme editor");
+      H.main().findByText("Untitled theme").click();
+      cy.url().should("match", /\/admin\/embedding\/themes\/\d+$/);
+      cy.findByLabelText("Theme name").should("have.value", "Untitled theme");
+
+      cy.findByRole("button", { name: /Cancel/ }).click();
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
 
       cy.log("duplicate a theme");
       clickThemeMenuItem("Untitled theme", "Duplicate");
@@ -142,16 +146,9 @@ describe(
         cy.findByText("Untitled theme").scrollIntoView().should("be.visible");
         cy.findByText("Copy of Untitled theme").should("be.visible");
       });
-    });
 
-    it("can delete a theme with confirmation", () => {
-      createThemeViaApi("Untitled theme");
-      cy.visit("/admin/embedding/themes");
-
-      H.main().findByText("Untitled theme").should("be.visible");
-
-      cy.log("delete a theme");
-      clickThemeMenuItem("Untitled theme", "Delete");
+      cy.log("delete the copy");
+      clickThemeMenuItem("Copy of Untitled theme", "Delete");
 
       cy.log("delete confirmation modal should appear");
       cy.findByRole("dialog").within(() => {
@@ -166,26 +163,26 @@ describe(
       });
 
       cy.log("theme should still exist");
-      H.main().findByText("Untitled theme").should("be.visible");
-
-      openThemeActionMenu("Untitled theme");
+      H.main().findByText("Copy of Untitled theme").should("be.visible");
 
       cy.log("confirm deletion");
-      cy.findByRole("menuitem", { name: /Delete/ }).click();
+      clickThemeMenuItem("Copy of Untitled theme", "Delete");
       cy.findByRole("dialog").within(() => {
         cy.findByRole("button", { name: /Delete/ }).click();
       });
 
-      H.undoToast().findByText("Theme deleted successfully").should("exist");
+      // The duplicate toast may still be on screen, so use the toast list
+      // (plural) and filter by text — `undoToast()` (singular) yields
+      // undefined when multiple toasts match.
+      H.undoToastList().contains("Theme deleted successfully").should("exist");
 
       H.main().within(() => {
-        cy.log(
-          "deleted theme is gone; default themes and new theme card remain",
-        );
-        cy.findByText("Untitled theme").should("not.exist");
+        cy.log("deleted theme is gone; other themes and new theme card remain");
+        cy.findByText("Copy of Untitled theme").should("not.exist");
+        cy.findByText("Untitled theme").should("be.visible");
+        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
         cy.findByText("Light").should("be.visible");
         cy.findByText("Dark").should("be.visible");
-        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
       });
     });
   },

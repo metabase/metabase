@@ -63,6 +63,8 @@ describe(
     });
 
     it("loads the theme editor page and shows the theme name", () => {
+      H.updateSetting("enable-embedding-simple", false);
+
       createThemeViaApi("My custom theme").then((theme) => {
         visitThemeEditor(theme.id);
       });
@@ -75,90 +77,29 @@ describe(
 
       cy.log("save button should be disabled when no changes");
       cy.findByRole("button", { name: /Save theme/ }).should("be.disabled");
-    });
 
-    it("can edit and save a theme name", () => {
-      createThemeViaApi("Original name").then((theme) => {
-        visitThemeEditor(theme.id);
-      });
-
-      cy.log("change the theme name");
-      cy.findByLabelText("Theme name").clear().type("Updated name");
-
-      cy.log("save button should be enabled");
-      cy.findByRole("button", { name: /Save theme/ }).should("be.enabled");
-
-      cy.log("save the theme");
-      cy.findByRole("button", { name: /Save theme/ }).click();
-
-      // An earlier undo toast may still be on screen, so use the toast list
-      // (plural) and filter by text — `undoToast()` (singular) yields
-      // undefined when multiple toasts match.
-      H.undoToastList().contains("Theme saved").should("be.visible");
-    });
-
-    it("can cancel and navigate back to listing", () => {
-      createThemeViaApi("A theme").then((theme) => {
-        visitThemeEditor(theme.id);
-      });
-
-      cy.findByRole("button", { name: /Cancel/ }).click();
-
-      cy.log("should navigate back to the themes listing");
-      cy.url().should("include", "/admin/embedding/themes");
-      cy.url().should("not.match", /\/themes\/\d+/);
-    });
-
-    it("shows not found for invalid theme id", () => {
-      cy.visit("/admin/embedding/themes/99999");
-
-      H.main().findByText("We're a little lost...").should("be.visible");
-    });
-
-    it("can delete the theme from the editor with confirmation", () => {
-      createThemeViaApi("Theme to delete").then((theme) => {
-        visitThemeEditor(theme.id);
-      });
-
-      cy.log("delete button should be visible");
-      cy.findByRole("button", { name: /Delete theme/ })
-        .scrollIntoView()
+      cy.log("should show prompt to enable embedding");
+      H.main().findByText("Theme preview").should("be.visible");
+      H.main()
+        .findByText(
+          "Enable modular embedding to see a live preview of your theme.",
+        )
+        .should("be.visible");
+      H.main()
+        .findByRole("button", { name: /Enable modular embedding/ })
         .should("be.visible");
 
-      cy.log("open the delete confirmation modal");
-      cy.findByRole("button", { name: /Delete theme/ }).click();
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByText("Delete theme").should("be.visible");
-        cy.findByText(
-          "Are you sure you want to delete this theme? This action cannot be undone.",
-        ).should("be.visible");
-
-        cy.log("cancel the deletion");
-        cy.findByRole("button", { name: /Cancel/ }).click();
-      });
-
-      cy.log("should remain on the editor page after cancelling");
-      cy.url().should("match", /\/themes\/\d+/);
-
-      cy.log("confirm deletion");
-      cy.findByRole("button", { name: /Delete theme/ }).click();
-      cy.findByRole("dialog").within(() => {
-        cy.findByRole("button", { name: /Delete/ }).click();
-      });
-
-      H.undoToast().findByText("Theme deleted successfully").should("exist");
-
-      cy.log("should navigate back to the themes listing");
-      cy.url().should("include", "/admin/embedding/themes");
-      cy.url().should("not.match", /\/themes\/\d+/);
-
-      H.main().within(() => {
-        cy.findByText("Theme to delete").should("not.exist");
-      });
+      cy.log("cancel should navigate back to the themes listing");
+      cy.findByRole("button", { name: /Cancel/ }).click();
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      H.main().findByText("My custom theme").should("be.visible");
     });
 
     it("can delete a theme that has unsaved changes without getting stuck on a 404", () => {
+      cy.log("an unknown theme id shows the not found page");
+      cy.visit("/admin/embedding/themes/99999");
+      H.main().findByText("We're a little lost...").should("be.visible");
+
       // Repro of a bug where deleting a dirty theme would trigger the
       // unsaved-changes guard. The redirect to the theme list got blocked,
       // leaving the user on the now-deleted theme's URL — which 404s once
@@ -172,6 +113,29 @@ describe(
 
       cy.findByRole("button", { name: /Save theme/ }).should("be.enabled");
 
+      cy.log("open the delete confirmation modal");
+      cy.findByRole("button", { name: /Delete theme/ })
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Delete theme").should("be.visible");
+        cy.findByText(
+          "Are you sure you want to delete this theme? This action cannot be undone.",
+        ).should("be.visible");
+
+        cy.log("cancel the deletion");
+        cy.findByRole("button", { name: /Cancel/ }).click();
+      });
+
+      cy.log("should remain on the editor with the unsaved changes");
+      cy.findByRole("dialog").should("not.exist");
+      cy.findByLabelText("Theme name").should(
+        "have.value",
+        "Renamed but unsaved",
+      );
+
       cy.log("delete the theme");
       cy.findByRole("button", { name: /Delete theme/ }).click();
       cy.findByRole("dialog").within(() => {
@@ -181,16 +145,12 @@ describe(
       H.undoToast().findByText("Theme deleted successfully").should("exist");
 
       cy.log("should land on the themes listing — not 404 or leave-prompt");
-      cy.url().should("include", "/admin/embedding/themes");
-      cy.url().should("not.match", /\/themes\/\d+/);
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      H.main()
+        .findByRole("button", { name: /New theme/ })
+        .should("be.visible");
+      H.main().findByText("Dirty delete").should("not.exist");
       H.main().findByText("We're a little lost...").should("not.exist");
-    });
-
-    it("does not show the delete button when creating a new theme", () => {
-      cy.visit("/admin/embedding/themes/new");
-
-      cy.findByLabelText("Theme name").should("be.visible");
-      cy.findByRole("button", { name: /Delete theme/ }).should("not.exist");
     });
 
     describe("font settings", () => {
@@ -207,6 +167,12 @@ describe(
           cy.findByLabelText("Base font size").should("be.visible");
         });
 
+        cy.log("change the theme name");
+        cy.findByLabelText("Theme name").clear().type("Updated name");
+
+        cy.log("save button should be enabled");
+        cy.findByRole("button", { name: /Save theme/ }).should("be.enabled");
+
         cy.log("select a font family");
         H.main().findByLabelText("Font").click();
         cy.findByRole("option", { name: "Lato" }).click();
@@ -220,7 +186,8 @@ describe(
         });
 
         cy.wait("@updateTheme").then((interception) => {
-          const { settings } = interception.request.body;
+          const { name, settings } = interception.request.body;
+          expect(name).to.eq("Updated name");
           expect(settings.fontFamily).to.eq("Lato");
           expect(settings.fontSize).to.eq("16px");
         });
@@ -229,6 +196,10 @@ describe(
         // screen, so use the toast list (plural) and filter by text — using
         // `undoToast()` (singular) yields undefined when multiple toasts match.
         H.undoToastList().contains("Theme saved").should("be.visible");
+
+        cy.log("saving navigates back to the listing with the new name");
+        cy.url().should("match", /\/admin\/embedding\/themes$/);
+        H.main().findByText("Updated name").should("be.visible");
       });
     });
 
@@ -283,7 +254,9 @@ describe(
     });
 
     describe("additional colors", () => {
-      it("shows additional colors section when expanded", () => {
+      it("shows, reverts, edits, and saves additional colors", () => {
+        cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
+
         createThemeViaApi("Colors test").then((theme) => {
           visitThemeEditor(theme.id);
         });
@@ -304,15 +277,7 @@ describe(
           cy.log("collapse additional colors");
           cy.findByText("Show fewer colors").click();
           cy.findByText("Secondary text").should("not.be.visible");
-        });
-      });
 
-      it("can revert additional colors back to defaults", () => {
-        createThemeViaApi("Revert colors").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        H.main().within(() => {
           cy.findByText("Show more colors").click();
 
           cy.log(
@@ -327,18 +292,6 @@ describe(
 
           cy.log("revert button should disappear after resetting");
           cy.findByLabelText("Regenerate from brand color").should("not.exist");
-        });
-      });
-
-      it("can edit additional colors and save them", () => {
-        cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
-
-        createThemeViaApi("Edit colors").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        H.main().within(() => {
-          cy.findByText("Show more colors").click();
         });
 
         cy.log("edit the border color via its inline input");
@@ -360,39 +313,6 @@ describe(
         // screen, so use the toast list (plural) and filter by text — using
         // `undoToast()` (singular) yields undefined when multiple toasts match.
         H.undoToastList().contains("Theme saved").should("be.visible");
-      });
-    });
-
-    describe("preview panel", () => {
-      it("shows enable embedding prompt when embedding is not enabled", () => {
-        H.updateSetting("enable-embedding-simple", false);
-
-        createThemeViaApi("Preview test").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        cy.log("should show prompt to enable embedding");
-        H.main()
-          .findByText(
-            "Enable modular embedding to see a live preview of your theme.",
-          )
-          .should("be.visible");
-
-        H.main()
-          .findByRole("button", { name: /Enable modular embedding/ })
-          .should("be.visible");
-      });
-
-      it("shows theme preview when embedding is enabled", () => {
-        H.updateSetting("enable-embedding-simple", true);
-        H.updateSetting("show-simple-embed-terms", false);
-
-        createThemeViaApi("Preview test").then((theme) => {
-          visitThemeEditor(theme.id);
-        });
-
-        cy.log("should show the theme preview heading");
-        H.main().findByText("Theme preview").should("be.visible");
       });
     });
 
