@@ -558,10 +558,10 @@
                              :error        :unknown-database
                              :database     db-name}))
           1 (first ids)
-          (throw (ex-info (tru (str "Multiple databases share the name `{0}` (ids: {1}). The "
+          (throw (ex-info (tru (str "Multiple databases share the name `{0}`. The "
                                     "agent has no way to disambiguate; ask the user to rename "
                                     "one of the databases or use a more specific identifier.")
-                               db-name (pr-str (vec (sort ids))))
+                               db-name)
                           {:agent-error? true
                            :status-code  400
                            :error        :ambiguous-database-name

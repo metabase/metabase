@@ -430,9 +430,16 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error]} (ex-data e)
+      (let [{:keys [agent-error? status-code error] :as data} (ex-data e)
             code (pipeline-error-code error)]
         (cond
+          (and agent-error? (contains? recoverable.pipeline/unrecoverable error))
+          (tools.error/unrecoverable!
+           (keyword pipeline-ns (name error))
+           (let [user-message ((get recoverable.pipeline/unrecoverable error) data)]
+             (cond-> {:cause e :data {:error error}}
+               user-message (assoc :user-message user-message))))
+
           ;; `:agent-error?` *and* an `:error` key. The pipeline's `as-agent-input-error` stamps
           ;; `:agent-error?` onto foreign exceptions from lib, toucan2 and JDBC as well, and those
           ;; messages are not authored for anyone — only an `:error` code says "this sentence was
@@ -452,7 +459,10 @@
     (with-pipeline-errors
       (construct/execute-representations-query query))
 
-  Three cases:
+  Four cases:
+  - an `:agent-error?` exception whose `:error` code is listed in
+    `metabase.metabot.tools.recoverable.pipeline/unrecoverable` ends the turn, with that entry's
+    message for the user;
   - an `:agent-error?` exception whose ex-data carries an `:error` code declared in
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;

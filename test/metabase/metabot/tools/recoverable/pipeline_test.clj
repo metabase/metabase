@@ -57,20 +57,27 @@
               (map (comp keyword name)))
         (keys (tools.error/recoverables))))
 
+(defn- unrecoverable-codes
+  []
+  (set (keys pipeline/unrecoverable)))
+
 (deftest every-pipeline-error-code-has-a-declaration-test
-  (let [missing (set/difference (pipeline-codes) (declared-codes))]
+  (let [missing (set/difference (pipeline-codes) (declared-codes) (unrecoverable-codes))]
     (is (empty? missing)
         (str "These representations-pipeline :error codes have no declaration in "
              "metabase.metabot.tools.recoverable.pipeline, so `tools.core/with-pipeline-errors` "
              "will not convert them and they will end the turn instead of teaching the agent: "
              (pr-str (sort missing))
-             ". Add a `defpipeline-error` for each, or decide it really is unrecoverable and say so "
-             "in a comment there."))))
+             ". Add a `defpipeline-error` for each, or list it in `unrecoverable` if the model can't "
+             "fix it."))))
+
+(deftest no-code-is-both-recoverable-and-unrecoverable-test
+  (is (empty? (set/intersection (declared-codes) (unrecoverable-codes)))))
 
 (deftest no-stale-declarations-test
   (testing "a declaration for a code the pipeline no longer raises is dead text that nobody will
            notice has drifted"
-    (let [stale (set/difference (declared-codes) (pipeline-codes))]
+    (let [stale (set/difference (into (declared-codes) (unrecoverable-codes)) (pipeline-codes))]
       (is (empty? stale)
           (str "These declarations in metabase.metabot.tools.recoverable.pipeline match no `:error` "
                "code in the pipeline sources: " (pr-str (sort stale))
@@ -148,3 +155,21 @@
         (mt/with-current-user (mt/user->id :rasta)
           (is (= {:message "m"}
                  (pipeline/payload :unknown-table (ex-info "m" {:database-id db-id})))))))))
+
+(deftest unrecoverable-codes-end-the-turn-test
+  (letfn [(convert [data]
+            (try
+              (tools.core/with-pipeline-errors
+                (throw (ex-info "Multiple databases share the name `Sample`." data)))
+              (catch Throwable e
+                (tools.error/classify e))))]
+    (testing "an unfixable code ends the turn with a message for the user, not the pipeline's sentence"
+      (is (=? {:class        :unrecoverable
+               :code         ::pipeline/ambiguous-database-name
+               :user-message #"More than one database is named Sample.*"}
+              (convert {:agent-error? true :status-code 400 :error :ambiguous-database-name :database "Sample"}))))
+    (testing "an internal one gets the generic message"
+      (is (=? {:class :unrecoverable
+               :code  ::pipeline/missing-card-entity-id}
+              (convert {:agent-error? true :status-code 400 :error :missing-card-entity-id})))
+      (is (not (contains? (convert {:agent-error? true :error :missing-card-entity-id}) :user-message))))))

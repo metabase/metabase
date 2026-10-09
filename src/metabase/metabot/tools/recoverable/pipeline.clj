@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools.recoverable.pipeline
-  "One declared recoverable error per `:error` code the representations pipeline raises.
+  "What each `:error` code the representations pipeline raises becomes: a declared recoverable error, or,
+  for the few the model can't fix, an [[unrecoverable]] one.
 
   The pipeline (`metabase.agent-lib.representations*`, `metabase.metabot.tools.construct`,
   `metabase.models.serialization.resolve.mp`) throws a bare statement of what went wrong plus
@@ -22,6 +23,7 @@
   (:require
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.error :refer [defrecoverable]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -112,12 +114,6 @@
               "`metabase://metric/<metric_id>/dimensions`, which lists the exact `joins:` clause to paste "
               "and the columns it unlocks.")})
 
-(def ^:private card-entity-id-step
-  {:uses #{"read_resource"}
-   :text (str "Do not invent or guess entity_ids: call `read_resource` with "
-              "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the "
-              "exact `portable_entity_id` from the response into `source-card:`.")})
-
 (def ^:private content-entity-id-steps
   [{:uses #{"read_resource"}
     :text (str "Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>`, "
@@ -150,6 +146,27 @@
   {:uses #{}
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
+
+(def unrecoverable
+  "Pipeline `:error` codes the model can't fix by changing its query, each mapped to a function from the
+  error's ex-data to the message the user is shown, or to nil for the generic one.
+
+  They come from duplicate names in the app DB's metadata or from content that can't be exported, so
+  `tools.core/with-pipeline-errors` turns them into unrecoverable errors that end the turn instead of
+  sending the agent to retry."
+  {:ambiguous-database-name   (fn [{:keys [database]}]
+                                (tru "More than one database is named {0}, so Metabot can''t tell which one to query. An admin can rename one of them."
+                                     database))
+   :ambiguous-table           (fn [{[_db _schema table] :path}]
+                                (tru "This database has more than one table named {0}, so Metabot can''t tell which one to query."
+                                     table))
+   :ambiguous-field           (fn [{[_db _schema table] :path segment :segment}]
+                                (tru "The table {0} has more than one column named {1}, so Metabot can''t tell which one to use."
+                                     table segment))
+   :unknown-database-id       (constantly nil)
+   :missing-card-entity-id    (constantly nil)
+   :missing-measure-entity-id (constantly nil)
+   :missing-segment-entity-id (constantly nil)})
 
 ;;; ------------------------------------------- Declarations -------------------------------------------------------
 
@@ -184,24 +201,10 @@
                "`metabase://database/<numeric id>/tables` to find the table, then use its portable FK "
                "`[<db-name>, <schema>, <table-name>]` in `source-table:`.")}])
 
-(defpipeline-error ambiguous-table!
-  "A portable FK matched more than one table."
-  [{:uses #{"read_resource"}
-    :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the available "
-               "tables and retry with a more specific portable FK.")}])
-
 ;;; Database resolution
 
 (defpipeline-error unknown-database!
   "The database name in a portable FK matched no database."
-  [database-name-step])
-
-(defpipeline-error unknown-database-id!
-  "A numeric database id did not resolve."
-  [database-name-step])
-
-(defpipeline-error ambiguous-database-name!
-  "The database name in a portable FK matched more than one database."
   [database-name-step])
 
 ;;; Field resolution
@@ -215,10 +218,6 @@
 
 (defpipeline-error unknown-field-id!
   "A numeric field id did not resolve."
-  [list-fields-step])
-
-(defpipeline-error ambiguous-field!
-  "A field reference matched more than one column."
   [list-fields-step])
 
 (defpipeline-error invalid-field-fk!
@@ -260,10 +259,6 @@
   "A numeric card id did not resolve."
   content-entity-id-steps)
 
-(defpipeline-error missing-card-entity-id!
-  "A card reference carried no entity_id."
-  [card-entity-id-step])
-
 (defpipeline-error cross-database-card!
   "The referenced card belongs to a different database than the query."
   ;; No step: the fix is to pick a different source entirely, and which one depends on the question
@@ -278,10 +273,6 @@
   "A numeric measure id did not resolve."
   [measure-entity-id-step])
 
-(defpipeline-error missing-measure-entity-id!
-  "A measure reference carried no entity_id."
-  [measure-entity-id-step])
-
 (defpipeline-error cross-database-measure!
   "The referenced measure belongs to a different database than the query."
   [])
@@ -292,10 +283,6 @@
 
 (defpipeline-error unknown-segment-id!
   "A numeric segment id did not resolve."
-  [segment-entity-id-step])
-
-(defpipeline-error missing-segment-entity-id!
-  "A segment reference carried no entity_id."
   [segment-entity-id-step])
 
 (defpipeline-error cross-database-segment!
