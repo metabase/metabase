@@ -59,8 +59,6 @@ describe("useMetabaseQueryObject", () => {
 
     stubSdkBundle({ resolveDatasetQuery });
 
-    const consoleError = jest.spyOn(console, "error").mockImplementation();
-
     const { result } = renderHook(() => useMetabaseQueryObject(query));
 
     await waitFor(() =>
@@ -70,7 +68,6 @@ describe("useMetabaseQueryObject", () => {
         isLoading: false,
       }),
     );
-    expect(consoleError).toHaveBeenCalledWith(error);
   });
 
   it("waits for login before resolving the query", async () => {
@@ -245,20 +242,6 @@ describe("useMetabaseQueryObject", () => {
 });
 
 describe("useMetabaseQuery", () => {
-  it("returns and logs query creation errors", async () => {
-    const error = new Error("No column found");
-    const resolveDatasetQuery = jest.fn(() => () => Promise.reject(error));
-    const consoleError = jest.spyOn(console, "error").mockImplementation();
-
-    stubSdkBundle({ resolveDatasetQuery, queryDataset: jest.fn() });
-
-    const query = defineQuery({ source: TEST_SCHEMA.tables.orders });
-    const { result } = renderHook(() => useMetabaseQuery(query));
-
-    await waitFor(() => expect(result.current.error).toBe(error));
-    expect(consoleError).toHaveBeenCalledWith(error);
-  });
-
   it("ignores a stale response after the query changes", async () => {
     const firstQuery = defineQuery({
       source: TEST_SCHEMA.tables.orders,

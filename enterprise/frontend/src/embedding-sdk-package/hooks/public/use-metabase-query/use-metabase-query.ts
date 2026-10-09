@@ -103,12 +103,6 @@ const useMetabaseQueryImpl = <
     }
   }, [loginStatus?.status, queryKey, refetch]);
 
-  useEffect(() => {
-    if (error) {
-      console.error(error);
-    }
-  }, [error]);
-
   return {
     data,
     isLoading,
