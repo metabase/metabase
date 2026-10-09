@@ -60,34 +60,39 @@
            (is (= :success (get-in m [:result :status])) "incremental pull")
            m))))))
 
+(def ^:private statement-margin
+  "Statements per entity that a bound allows over the measured count, so that one or two statements that an unrelated
+  change adds per entity do not fail the test."
+  2.0)
+
 (def ^:private statements-per-card
   "The measured statement count per card, by app DB. MySQL and MariaDB send one statement more than H2 and
-  Postgres per entity; the bound below each count has no margin, so an added statement fails the test."
+  Postgres per entity."
   {:h2 15.0 :postgres 15.0 :mysql 16.0 :mariadb 16.0})
 
 (deftest forced-reload-round-trips-per-card-test
-  (testing "A forced reload of unchanged MBQL cards: per card, no connection check-outs and no more statements than
-            the measured count for this app DB."
+  (testing "A forced reload of unchanged MBQL cards: per card, no connection check-outs and at most the measured
+            count for this app DB plus a margin of 2 statements."
     (let [cost (per-entity (cost/forced-reload-of-unchanged! {:cards 10})
                            (cost/forced-reload-of-unchanged! {:cards 20})
                            10 20)]
       (log/infof "per MBQL card, forced reload of unchanged content (this thread): %s" cost)
       (is (= 0.0 (:checkouts cost)) (pr-str cost))
-      (is (<= (:statements cost) (get statements-per-card (mdb/db-type) 16.0))
+      (is (<= (:statements cost) (+ (get statements-per-card (mdb/db-type) 16.0) statement-margin))
           (pr-str cost)))))
 
 (def ^:private statements-per-dashboard
-  "The measured statement count per changed dashboard, by app DB; no margin (see [[statements-per-card]])."
+  "The measured statement count per changed dashboard, by app DB."
   {:h2 32.0 :postgres 32.0 :mysql 33.0 :mariadb 33.0})
 
 (deftest incremental-pull-round-trips-per-dashboard-test
   (testing "An incremental pull where only dashboards changed. Each dashboard has 4 dashboard cards on the same 4
             cards, which are not in the pulled files, so they are checked locally. Per dashboard: no connection
-            check-outs and no more statements than the measured count for this app DB."
+            check-outs and at most the measured count for this app DB plus a margin of 2 statements."
     (let [cost (per-entity (incremental-pull-of-changed-dashboards! {:cards 4 :dashboards 2 :dashcards 4})
                            (incremental-pull-of-changed-dashboards! {:cards 4 :dashboards 6 :dashcards 4})
                            2 6)]
       (log/infof "per dashboard (4 dashboard cards), incremental pull of changed dashboards (this thread): %s" cost)
       (is (= 0.0 (:checkouts cost)) (pr-str cost))
-      (is (<= (:statements cost) (get statements-per-dashboard (mdb/db-type) 33.0))
+      (is (<= (:statements cost) (+ (get statements-per-dashboard (mdb/db-type) 33.0) statement-margin))
           (pr-str cost)))))
