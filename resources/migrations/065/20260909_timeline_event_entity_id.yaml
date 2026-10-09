@@ -28,7 +28,7 @@ databaseChangeLog:
             columnName: entity_id
 
   - changeSet:
-      id: v65.2026-10-08T20:00:00
+      id: v65.m2xncr
       author: havenchyk
       comment: Remove ON UPDATE from timeline_event.timestamp on mysql, mariadb
       preConditions:

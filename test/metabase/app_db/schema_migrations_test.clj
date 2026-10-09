@@ -3731,8 +3731,8 @@
             (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))))))))
 
 (deftest timeline-event-timestamp-kept-on-update-test
-  (testing "v65.2026-10-08T20:00:00: updating a timeline event keeps its date"
-    (impl/test-migrations ["v65.2026-10-08T20:00:00"] [migrate!]
+  (testing "v65.m2xncr: updating a timeline event keeps its date"
+    (impl/test-migrations ["v65.m2xncr"] [migrate!]
       (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-cranes@example.com"
                                                              :password    "password"
                                                              :date_joined :%now
