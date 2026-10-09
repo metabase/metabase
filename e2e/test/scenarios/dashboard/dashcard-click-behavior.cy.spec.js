@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   NORMAL_USER_ID,
@@ -50,6 +54,7 @@ const {
   ORDERS,
   ORDERS_ID,
   PEOPLE,
+  PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
   REVIEWS,
@@ -3610,6 +3615,342 @@ describe("issue 15368", () => {
   });
 });
 
+describe("issue 13597", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+    H.createQuestion({
+      name: "13597",
+      query: {
+        "source-table": PEOPLE_ID,
+        limit: 2,
+      },
+      display: "map",
+    }).then(({ body: { id: questionId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
+        // add filter (ID) to the dashboard
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          parameters: [
+            {
+              id: "92eb69ea",
+              name: "ID",
+              sectionId: "id",
+              slug: "id",
+              type: "id",
+            },
+          ],
+        });
+
+        H.addOrUpdateDashboardCard({
+          card_id: questionId,
+          dashboard_id: dashboardId,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: "92eb69ea",
+                card_id: questionId,
+                target: ["dimension", ["field", PEOPLE.ID, null]],
+              },
+            ],
+            visualization_settings: {
+              // set click behavior to update filter (ID)
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  "92eb69ea": {
+                    id: "92eb69ea",
+                    source: { id: "ID", name: "ID", type: "column" },
+                    target: {
+                      id: "92eb69ea",
+                      type: "parameter",
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        H.visitDashboard(dashboardId);
+        H.mapPinIcon().eq(0).click({ force: true });
+        cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
+        cy.contains("Hudson Borer - 1");
+      });
+    });
+  });
+
+});
+
+describe("issue 14473", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display column options for cross-filter (metabase#14473)", () => {
+    const questionDetails = {
+      name: "14473",
+      native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
+    };
+
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        cy.log("Add 4 filters to the dashboard");
+
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [
+            { name: "ID", slug: "id", id: "729b6456", type: "id" },
+            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
+            {
+              name: "Category",
+              slug: "category",
+              id: "89873480",
+              type: "category",
+            },
+            {
+              name: "Category 1",
+              slug: "category_1",
+              id: "cbc045f2",
+              type: "category",
+            },
+          ],
+        });
+
+        H.visitDashboard(dashboard_id);
+      },
+    );
+
+    // Add cross-filter click behavior manually
+    cy.icon("pencil").click();
+    H.showDashboardCardActions();
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("click").click();
+    });
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("COUNT(*)").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Update a dashboard filter").click();
+
+    checkOptionsForFilter("ID");
+    checkOptionsForFilter("Category");
+  });
+
+});
+
+describe("issue 18067", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "should allow settings click behavior on boolean fields (metabase#18067)",
+    { tags: "@external" },
+    () => {
+      const dialect = "mysql";
+      const TEST_TABLE = "many_data_types";
+      H.restore(`${dialect}-writable`);
+      H.resetTestTable({ type: dialect, table: TEST_TABLE });
+      cy.signInAsAdmin();
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TEST_TABLE,
+        tableAlias: "testTable",
+      });
+
+      cy.get("@testTable").then((testTable) => {
+        const dashboardDetails = {
+          name: "18067 dashboard",
+        };
+        const questionDetails = {
+          name: "18067 question",
+          database: WRITABLE_DB_ID,
+          query: { "source-table": testTable.id },
+        };
+        H.createQuestionAndDashboard({
+          dashboardDetails,
+          questionDetails,
+        }).then(({ body: { dashboard_id } }) => {
+          H.visitDashboard(dashboard_id);
+        });
+      });
+
+      H.editDashboard();
+
+      cy.log('Select "click behavior" option');
+      H.showDashboardCardActions();
+      cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
+
+      H.sidebar().within(() => {
+        cy.findByText("Boolean").scrollIntoView().click();
+        cy.contains("Click behavior for Boolean").should("be.visible");
+      });
+    },
+  );
+});
+
+describe("issue 15993", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show filters defined on a question with filter pass-thru (metabase#15993)", () => {
+    H.createQuestion({
+      name: "15993",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    }).then(({ body: { id: question1Id } }) => {
+      H.createNativeQuestion({ native: { query: "select 0" } }).then(
+        ({ body: { id: nativeId } }) => {
+          H.createDashboard().then(({ body: { id: dashboardId } }) => {
+            // Add native question to the dashboard
+            H.addOrUpdateDashboardCard({
+              dashboard_id: dashboardId,
+              card_id: nativeId,
+              card: {
+                // Add click behavior to the dashboard card and point it to the question 1
+                visualization_settings: getVisualizationSettings(question1Id),
+              },
+            });
+            H.visitDashboard(dashboardId);
+          });
+        },
+      );
+    });
+
+    // Drill-through
+    cy.findAllByRole("gridcell").contains("0").realClick();
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Quantity is equal to 0");
+
+    const getVisualizationSettings = (targetId) => ({
+      column_settings: {
+        '["name","0"]': {
+          click_behavior: {
+            targetId,
+            parameterMapping: {
+              [`["dimension",["field",${ORDERS.QUANTITY},null]]`]: {
+                source: {
+                  type: "column",
+                  id: "0",
+                  name: "0",
+                },
+                target: {
+                  type: "dimension",
+                  id: [`["dimension",["field",${ORDERS.QUANTITY},null]]`],
+                  dimension: ["dimension", ["field", ORDERS.QUANTITY, null]],
+                },
+                id: [`["dimension",["field",${ORDERS.QUANTITY},null]]`],
+              },
+            },
+            linkType: "question",
+            type: "link",
+          },
+        },
+      },
+    });
+  });
+});
+
+describe("issue 13785", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should apply correct date range on a graph drill-through (metabase#13785)", () => {
+    cy.log("Create a question");
+
+    H.createQuestion({
+      name: "13785",
+      query: {
+        "source-table": REVIEWS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "bar",
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("Add filter to the dashboard");
+
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              id: "4ff53514",
+              name: "Date Filter",
+              slug: "date_filter",
+              type: "date/all-options",
+            },
+          ],
+        });
+
+        cy.log("Add question to the dashboard");
+        H.addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            // Set "Click behavior"
+            visualization_settings: {
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  "4ff53514": {
+                    source: {
+                      type: "column",
+                      id: "CREATED_AT",
+                      name: "Created At",
+                    },
+                    target: {
+                      type: "parameter",
+                      id: "4ff53514",
+                    },
+                    id: "4ff53514",
+                  },
+                },
+              },
+            },
+            // Connect filter and card
+            parameter_mappings: [
+              {
+                parameter_id: "4ff53514",
+                card_id: QUESTION_ID,
+                target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
+              },
+            ],
+          },
+        });
+
+        H.visitDashboard(DASHBOARD_ID);
+
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
+        ).as("cardQuery");
+
+        H.chartPathWithFillColor("#509EE3")
+          .eq(14) // August 2026 (Total of 12 reviews, 9 unique days)
+          .click();
+
+        cy.wait("@cardQuery");
+        cy.url().should("include", "2026-08");
+        H.chartPathWithFillColor("#509EE3").should("have.length", 1);
+        // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
+        // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
+        H.echartsContainer().get("text").contains("12");
+      });
+    });
+  });
+
+});
+
 const clickLineChartPoint = ({ dashcardIndex } = {}) => {
   if (dashcardIndex === undefined) {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -4147,4 +4488,16 @@ function setParamValue(paramName, text) {
     cy.findByPlaceholderText("Search the list").type(text);
     cy.findByText("Add filter").click();
   });
+}
+
+function checkOptionsForFilter(filter) {
+  cy.findByText("Available filters").parent().contains(filter).click();
+  H.selectDropdown()
+    .should("contain", "Columns")
+    .and("contain", "COUNT(*)")
+    .and("not.contain", "Dashboard filters");
+
+  // Get rid of the open popover to be able to select another filter
+  // Uses force: true because the popover is covering this text.
+  cy.findByText("Pick one or more filters to update").click({ force: true });
 }
