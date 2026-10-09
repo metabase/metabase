@@ -586,4 +586,5 @@
   ;; The same tool under the scope Metabot's SQL permission grants, for a profile whose users answer in SQL and may
   ;; not hold the NLQ permission that grants [[run-query-tool]]'s scope. That scope covers SQL only, so a query that
   ;; is not SQL, such as a notebook question the user is viewing, still needs the scope the NLQ permission grants.
+  ;; A query with SQL anywhere in it counts as SQL: whoever may run SQL could write its notebook stages as SQL too.
   (run-query args (api-scope/scope-matches? scope/*current-user-scope* scope/agent-query-run)))

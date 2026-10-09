@@ -722,5 +722,7 @@
     (testing "the same user is refused a query that is not SQL"
       (is (=? {:output #"You may only run SQL queries, and query q1 is not one\..*"}
               (run-as sql-only (venues-count)))))
+    (testing "a notebook stage over a SQL stage counts as SQL, so the same user runs it"
+      (is (=? {:structured-output {:returned 1}} (run-as sql-only (venues-sql-then-notebook)))))
     (testing "a user who also has the NLQ permission runs both"
       (is (=? {:structured-output {:returned 1}} (run-as scope/all-yes-permissions (venues-count)))))))
