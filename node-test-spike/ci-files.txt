@@ -2266,4 +2266,3 @@ frontend/src/metabase/viz-core/shared/utils/colors.unit.spec.ts
 frontend/src/metabase/viz-core/shared/utils/data.unit.spec.ts
 frontend/src/metabase/viz-core/shared/utils/size-in-px.unit.spec.ts
 frontend/test/i18n-import-time.unit.spec.ts
-node-test-spike/smoke.unit.spec.ts
