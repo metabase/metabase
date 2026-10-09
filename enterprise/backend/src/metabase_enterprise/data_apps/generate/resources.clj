@@ -104,9 +104,10 @@
 (defn- check-unique-column-names
   "Throws naming the breakouts and aggregations of `query` whose result columns share a name."
   [query]
-  (let [columns   (concat (for [breakout (lib/breakouts query)]
-                            {:name   (or (:name (lib/options breakout)) (:name (lib/breakout-column query breakout)))
-                             :clause breakout})
+  (let [columns   (concat (for [breakout (lib/breakouts query)
+                                :let [column (lib/breakout-column query breakout)]]
+                            {:name   (:name column)
+                             :clause column})
                           (for [aggregation (lib/aggregations query)]
                             {:name   (:name (lib/aggregation-column query aggregation))
                              :clause aggregation}))

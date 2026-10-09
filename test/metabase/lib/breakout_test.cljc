@@ -848,11 +848,18 @@
                          (lib/breakout (named (lib/with-temporal-bucket created-at :month) "created_month"))
                          (lib/breakout (named (lib/with-temporal-bucket created-at :year) "created_year"))
                          (lib/aggregate (lib/count)))]
-      (is (= ["created_month" "created_year" "count"]
-             (map :name (lib/returned-columns query))))
-      (testing "next stage sees the columns by those names"
-        (is (= ["created_month" "created_year" "count"]
-               (map :name (lib/visible-columns (lib/append-stage query)))))))))
+      (is (= [["created_month" "created_month"] ["created_year" "created_year"] ["count" "count"]]
+             (map (juxt :name :lib/original-name) (lib/returned-columns query))))
+      (testing "next stage sees the columns by those names, as their original names"
+        (is (= [["created_month" "created_month"] ["created_year" "created_year"] ["count" "count"]]
+               (map (juxt :name :lib/original-name) (lib/visible-columns (lib/append-stage query))))))
+      (testing "breakout-column gives the breakout's column its name, with its temporal bucket"
+        (is (=? [{:name "created_month" :lib/original-name "created_month" :lib/temporal-unit :month}
+                 {:name "created_year" :lib/original-name "created_year" :lib/temporal-unit :year}]
+                (map #(lib/breakout-column query %) (lib/breakouts query)))))
+      (testing "the SQL alias of the source column stays the field's own name"
+        (is (= ["CREATED_AT" "CREATED_AT"]
+               (map :lib/source-column-alias (take 2 (lib/returned-columns query)))))))))
 
 (deftest ^:parallel unnamed-breakout-column-name-test
   (testing "breakout ref without `:name` keeps the field's name, deduplicated"
@@ -861,4 +868,6 @@
                          (lib/breakout (lib/with-temporal-bucket created-at :month))
                          (lib/breakout (lib/with-temporal-bucket created-at :year)))]
       (is (= ["CREATED_AT" "CREATED_AT_2"]
-             (map :name (lib/returned-columns query)))))))
+             (map :name (lib/returned-columns query))))
+      (is (= ["CREATED_AT" "CREATED_AT"]
+             (map #(:name (lib/breakout-column query %)) (lib/breakouts query)))))))

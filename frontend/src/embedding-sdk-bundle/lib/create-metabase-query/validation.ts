@@ -527,8 +527,22 @@ function stageColumnNames(
   query: Lib.Query,
   stageIndex: number,
 ): StageColumnName[] {
-  const breakouts = Lib.breakouts(query, stageIndex).map((breakout) =>
-    Lib.displayInfo(query, stageIndex, breakout),
+  const breakouts = Lib.breakouts(query, stageIndex).reduce<StageColumnName[]>(
+    (columns, breakout) => {
+      const column = Lib.breakoutColumn(query, stageIndex, breakout);
+
+      if (column) {
+        const { name, displayName } = Lib.displayInfo(
+          query,
+          stageIndex,
+          column,
+        );
+        columns.push({ name, displayName });
+      }
+
+      return columns;
+    },
+    [],
   );
   const aggregations = Lib.aggregations(query, stageIndex).map(
     (aggregation) => ({

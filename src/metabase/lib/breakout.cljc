@@ -5,6 +5,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -147,7 +148,7 @@
     (existing-breakouts query stage-number column))))
 
 (mu/defn breakout-column :- ::lib.schema.metadata/column
-  "Returns the input column used for this breakout."
+  "Returns the input column used for this breakout, with its binning, temporal bucket, and name."
   ([query        :- ::lib.schema/query
     breakout-ref  :- ::lib.schema.ref/ref]
    (breakout-column query -1 breakout-ref))
@@ -157,11 +158,13 @@
    (when-let [column (lib.equality/find-matching-column breakout-ref
                                                         (breakoutable-columns query stage-number)
                                                         {:generous? true})]
-     (let [binning (lib.binning/binning breakout-ref)
-           bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
+     (let [binning  (lib.binning/binning breakout-ref)
+           bucket   (lib.temporal-bucket/temporal-bucket breakout-ref)
+           ref-name (:name (lib.options/options breakout-ref))]
        (cond-> column
-         binning (lib.binning/with-binning binning)
-         bucket  (lib.temporal-bucket/with-temporal-bucket bucket))))))
+         binning  (lib.binning/with-binning binning)
+         bucket   (lib.temporal-bucket/with-temporal-bucket bucket)
+         ref-name (assoc :name ref-name :lib/original-name ref-name))))))
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query
   "Remove all breakouts from a query stage."
