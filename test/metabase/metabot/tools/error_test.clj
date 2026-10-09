@@ -1,8 +1,11 @@
 (ns metabase.metabot.tools.error-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [malli.generator :as mg]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.recoverable.common]
    [metabase.metabot.tools.recoverable.pipeline]
    [metabase.metabot.tools.runtime :as tools.runtime]
@@ -202,6 +205,63 @@
               (testing "and rendering it passes the authored-text assertions, for any profile"
                 (doseq [tool-names [#{} #{"search"} #{"search" "read_resource"}]]
                   (is (some? (:output (tools.runtime/render error tool-names)))))))))))))
+
+(def ^:private every-tool-name
+  "Every model-facing tool name in the product, from the registered profiles.
+
+  The universe a declaration's text is checked against, rather than one profile's: a message naming
+  a tool is wrong wherever that tool is missing, and which profiles exist is not this test's
+  business."
+  (delay (into #{} (comp (mapcat :tools)
+                         (keep #(:name (tools.legacy/declaration-of %))))
+               (vals @@#'profiles/*profiles))))
+
+(defn- tools-named-in
+  "The tool names `text` names in backticks."
+  [text]
+  (into #{} (filter #(tools.error/names-a-tool? text %)) @every-tool-name))
+
+(deftest a-declarations-text-is-profile-neutral-test
+  (testing "checked once over the catalog rather than on every render, because it is a property of
+           the declaration and nothing about it can change at runtime"
+    (is (seq @every-tool-name) "no tool names to check against — are profiles registered?")
+    (doseq [[code {:keys [payload-schema]}] (tools.error/recoverables)
+            payload (mg/sample payload-schema {:size catalog-sample-count :seed catalog-seed})
+            :let    [{:keys [message recovery]} (-> (try (tools.error/throw-recoverable! code payload)
+                                                         (catch Throwable e e))
+                                                    tools.error/classify)]]
+      (testing (str code " / payload " (pr-str payload))
+        (testing "a message may not name a tool. The runtime can drop a recovery step for a profile
+                 that lacks its tool, but it cannot drop a message, so a message naming one would
+                 reach a profile where that tool does not exist."
+          (is (= #{} (tools-named-in message))
+              "move each of these into a recovery step that declares it in :uses"))
+        (testing "and a step may name only the tools it declares in :uses, or it would survive into
+                 a profile that has no such tool"
+          (doseq [{:keys [uses text]} recovery]
+            (is (= #{} (set/difference (tools-named-in text) (set uses)))
+                (str "add these to the :uses of the step " (pr-str text)))))))))
+
+(deftest the-naming-check-finds-something-test
+  (testing "a predicate that stopped matching would make the test above pass vacuously"
+    (is (contains? @every-tool-name "read_resource"))
+    (is (= #{"read_resource"}
+           (tools-named-in "Call `read_resource` with `metabase://database/1/tables`.")))
+    (testing "a step that names a tool it did not declare is what the check above catches"
+      (is (= #{"read_resource"}
+             (set/difference (tools-named-in "Call `read_resource`.") #{}))))
+    (testing "and one that declares it is not"
+      (is (= #{}
+             (set/difference (tools-named-in "Call `read_resource`.") #{"read_resource"}))))
+    (testing "and the catalog really does have steps that name tools, so the check above is
+             exercised by real declarations and not only by the string on the line above"
+      (is (seq (for [[code {:keys [payload-schema]}] (tools.error/recoverables)
+                     payload (mg/sample payload-schema {:size 1 :seed catalog-seed})
+                     step    (:recovery (-> (try (tools.error/throw-recoverable! code payload)
+                                                 (catch Throwable e e))
+                                            tools.error/classify))
+                     :when   (seq (tools-named-in (:text step)))]
+                 [code (:uses step)]))))))
 
 (deftest ^:parallel recoverable-codes-match-their-constructors-test
   (testing "a code is its constructor's name without the !, so a code says where to look"

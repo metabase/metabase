@@ -133,8 +133,7 @@
   [:map {:closed true}
    [:output            ::renderable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]
-   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
+   [:data-parts        {:optional true} [:sequential DataPart]]])
 
 (mr/def ::entry
   "One item's contribution, as [[compose]] sees it.
@@ -149,8 +148,7 @@
    [:failed?           :boolean]
    [:error             {:optional true} ::tools.error/recoverable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]
-   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
+   [:data-parts        {:optional true} [:sequential DataPart]]])
 
 ;;; ------------------------------------------------ Protocols -----------------------------------------------------
 
@@ -221,15 +219,14 @@
 
 (defn concatenated
   "The ordinary composition: the entries' `:output`s joined in order, their `:structured-output`s
-  collected into a vector, their `:data-parts` and `:resources` concatenated.
+  collected into a vector, their `:data-parts` concatenated.
 
   Failures land in position, because a failed entry's `:output` is its rendered failure text and this
   joins what it is given."
   [entries]
   (cond-> {:output (str/join "\n" (map :output entries))}
     (some :structured-output entries) (assoc :structured-output (mapv :structured-output entries))
-    (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))
-    (some :resources entries)         (assoc :resources (vec (mapcat :resources entries)))))
+    (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))))
 
 (defn entry
   "One item's [[::entry]]: the result of calling `tool`'s [[handle]] with `item-args`, or its declared
@@ -268,6 +265,30 @@
   {:message  output
    :recovery []})
 
+(defn with-batched-entries
+  "`f` applied to the entries of `tool`'s batched call — one [[::entry]] per item, in item order.
+  Returns whatever `f` returns. `around-batch` wraps both the item loading and `f`, so a tool that
+  prewarms a cache still holds it while `f` runs.
+
+  THE ONLY CALLER IS `metabase.agent-api.api`'s `POST /v1/read-resource`, and this function exists
+  for it alone. That endpoint publishes a different contract from the agent loop's: one HTTP status
+  for the whole call and an `:error` on each item that could not be read, so a single-URI request
+  that missed is still a 200 carrying one failed item. [[run-batched]] cannot serve that — it answers
+  with one [[::result]] and throws when nothing was delivered — and before this existed the endpoint
+  got its per-item data by having `read_resource`'s own `compose` build it, which left a tool
+  constructing one of its consumers' response shapes.
+
+  So if that endpoint goes away, delete this with it. Nothing else should reach for it: a consumer
+  that wants one result per call wants [[run-batched]], and a consumer that wants to change how an
+  entry is built passes `:entry-fn`.
+
+  `opts` may carry `:entry-fn`, which takes one item's args and returns an [[::entry]]; it defaults
+  to [[entry]]."
+  [tool args ctx {:keys [entry-fn]} f]
+  (let [item-args (batched-args tool args)
+        entry-fn  (or entry-fn #(entry tool % ctx))]
+    (around-batch tool item-args ctx #(f (mapv entry-fn item-args)))))
+
 (defn run-batched
   "Perform `tool`'s batched call and return one [[::result]].
 
@@ -276,35 +297,28 @@
   own error vocabulary passes its own.
 
   A declared recoverable error from one item becomes that item's contribution — unless every item
-  failed, which by default is a failed call and throws [[all-items-failed!]]. A call that produced
-  nothing must not report success to the agent loop, which decides whether a call worked by the
-  absence of an `:error`: five failures dressed as a result are counted as a success by the provider
-  adapters, by `successful-tool-output?` and by telemetry alike. The model reads the same per-item
-  text either way, so this changes who is told the call failed, not what it is told.
-
-  Whether that is the right answer is the *consumer's* question, not the tool's, so `ctx` decides it:
-  `:all-items-failed :compose` keeps the composed result. The Agent API's `/v1/read-resource` is the
-  case — a batch endpoint whose published contract is one HTTP status for the call and an `:error`
-  per item, where a single-URI request that missed counts as every item failing and must still be a
-  200. Anything other than `:compose`, a typo included, gets the failing default.
+  failed, which is a failed call and throws [[all-items-failed!]]. A call that produced nothing must
+  not report success: the agent loop decides whether a call worked by the absence of an `:error`, so
+  five failures dressed as a result are counted as a success by the provider adapters, by
+  `successful-tool-output?` and by telemetry alike. The model reads the same per-item text either
+  way, so this changes who is told the call failed, not what it is told. A consumer whose contract
+  says otherwise composes the entries itself through [[with-batched-entries]].
 
   Anything other than a declared recoverable error is rethrown, so an undeclared exception fails the
   whole call and discards the items that did load. That is deliberate: a bug is not a partial
   result."
   ([tool args ctx]
-   (run-batched tool args ctx #(entry tool % ctx)))
+   (run-batched tool args ctx nil))
   ([tool args ctx entry-fn]
-   (let [item-args (batched-args tool args)]
-     (around-batch tool item-args ctx
-                   (fn []
-                     (let [entries (mapv entry-fn item-args)
-                           result  (compose tool entries ctx)]
-                       (if (and (seq entries)
-                                (every? :failed? entries)
-                                (not= :compose (:all-items-failed ctx)))
-                         (all-items-failed! {:count  (count entries)
-                                             :output (render-text (:output result))})
-                         result)))))))
+   (with-batched-entries tool args ctx {:entry-fn entry-fn}
+     (fn [entries]
+       (let [result (compose tool entries ctx)]
+         (if (and (seq entries) (every? :failed? entries))
+           ;; The composed output, rendered, rather than a sentence of our own: the model reads
+           ;; exactly what a call that lost all but one item would have shown it.
+           (all-items-failed! {:count  (count entries)
+                               :output (render-text (:output result))})
+           result))))))
 
 (defn batched?
   "Whether `tool` can be called for several items at once.

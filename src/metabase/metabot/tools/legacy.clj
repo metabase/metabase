@@ -4,7 +4,7 @@
   A tool used to be an `mu/defn` var carrying `:tool-name`, `:schema` and friends in its metadata,
   called with one argument and returning a loose result: a string, or a map with any of `:output`,
   `:structured-output`, `:structured_output`, `:instructions`, `:terminal-error?`, `:status-code`,
-  `:data-parts`, `:resources`. Errors came back as a success-shaped `{:output \"…\"}` or escaped as
+  `:data-parts`. Errors came back as a success-shaped `{:output \"…\"}` or escaped as
   an `ex-info` with `:agent-error?` or `:terminal-error?` in its ex-data.
 
   [[adapt]] wraps such a var in a [[LegacyTool]], which implements `Tool`. A profile's tool list goes
@@ -72,13 +72,14 @@
 
   `:structured_output` is folded into `:structured-output`, `:instructions` into `:output`, and
   `:status-code` is dropped — it described the exception a tool had already caught, and a result does
-  not carry one."
+  not carry one. `:resources` is dropped too: `read_resource` was the only tool that returned one,
+  and now that it is converted the only consumer of per-item data reads it from the entries."
   [tool-name result]
   (cond
     (nil? result)   {:output ""}
     (string? result) {:output result}
     (map? result)
-    (let [{:keys [output structured-output structured_output instructions data-parts resources]} result]
+    (let [{:keys [output structured-output structured_output instructions data-parts]} result]
       (when (:terminal-error? result)
         ;; The old way to end a turn and show the user something. `:output` was the user-facing text,
         ;; which is exactly what `:user-message` is for.
@@ -88,8 +89,7 @@
       (cond-> {:output (with-instructions output instructions)}
         (or structured-output structured_output) (assoc :structured-output (or structured-output
                                                                                structured_output))
-        (seq data-parts)                         (assoc :data-parts (vec data-parts))
-        (seq resources)                          (assoc :resources (vec resources))))
+        (seq data-parts)                         (assoc :data-parts (vec data-parts))))
     :else           {:output (str result)}))
 
 (defn- adapt-throw

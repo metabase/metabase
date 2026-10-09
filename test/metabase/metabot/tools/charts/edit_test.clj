@@ -135,7 +135,10 @@
   (mt/with-current-user (test.users/user->id :crowberto)
     (let [table-fields-uri (str "metabase://table/" (mt/id :products) "/fields")
 
-          {[{{table :structured-output} :content}] :resources}
+          ;; One URI, so the composed `:structured-output` is a one-element vector. The per-URI
+          ;; `:resources` list this used to read is the Agent API's shape and the tool no longer
+          ;; builds it.
+          {[table] :structured-output}
           (test-util/call-tool tools.resources/read-resource-tool {:uris [table-fields-uri]})
 
           ;; Representations-format query: LLM-facing code should prefer the portable_fk path
@@ -309,11 +312,11 @@
                 "a JOIN and executes successfully against the app DB.")
     (mt/with-current-user (test.users/user->id :crowberto)
       (let [;; Discover portable FKs the same way the LLM does: via read_resource /fields.
-            {[{{orders-details :structured-output} :content}] :resources}
+            {[orders-details] :structured-output}
             (test-util/call-tool tools.resources/read-resource-tool
                                  {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
 
-            {[{{products-details :structured-output} :content}] :resources}
+            {[products-details] :structured-output}
             (test-util/call-tool tools.resources/read-resource-tool
                                  {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
 

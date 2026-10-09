@@ -339,24 +339,10 @@
              (tools.runtime/render {:class :validation :code :invalid-arguments :message message}
                                    all-tool-names)))))))
 
-(deftest ^:parallel render-rejects-a-message-that-names-a-tool-test
-  (testing "the runtime can drop a step but not a message, so a message must not name a tool"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"Only recovery steps name tools"
-         (tools.runtime/render {:class    :recoverable
-                                :code     ::x
-                                :message  "Call `search` instead."
-                                :recovery []}
-                               all-tool-names)))))
-
-(deftest ^:parallel render-rejects-a-step-that-hides-its-tool-test
-  (is (thrown-with-msg?
-       clojure.lang.ExceptionInfo #"without declaring it in :uses"
-       (tools.runtime/render {:class    :recoverable
-                              :code     ::x
-                              :message  "Nope."
-                              :recovery [{:uses #{} :text "Call `search`."}]}
-                             all-tool-names))))
+;; Whether a declaration's text names a tool it has not declared is a property of the declaration,
+;; not of a render, so `render` no longer checks it — see
+;; `metabase.metabot.tools.error-test/a-declarations-text-is-profile-neutral-test`, which checks the
+;; whole catalog against every tool name in the product rather than one call against one profile.
 
 (deftest ^:parallel render-caps-the-output-test
   (let [long-message (apply str (repeat 5000 "x"))

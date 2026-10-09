@@ -1258,22 +1258,14 @@
                                      (uri-label (:uri item) structured-output)))
                              (distinct))
                        entries)]
-      (cond-> {:output    (str "<resources>\n"
-                               (str/join "\n"
-                                         (for [{:keys [item output failed?]} entries]
-                                           (resource-element (:uri item)
-                                                             (if failed?
-                                                               (str "**Error:** " output)
-                                                               output))))
-                               "\n</resources>")
-               ;; The per-URI channel the Agent API reads. Built here and not in `handle` because a
-               ;; failed item never reached `handle` — it has no result to carry one — and the API's
-               ;; published item shape promises every URI it was given, in order.
-               :resources (mapv (fn [{:keys [item output failed? structured-output]}]
-                                  (if failed?
-                                    {:uri (:uri item) :error output}
-                                    {:uri (:uri item) :content {:structured-output structured-output}}))
-                                entries)}
+      (cond-> {:output (str "<resources>\n"
+                            (str/join "\n"
+                                      (for [{:keys [item output failed?]} entries]
+                                        (resource-element (:uri item)
+                                                          (if failed?
+                                                            (str "**Error:** " output)
+                                                            output))))
+                            "\n</resources>")}
         (some :structured-output entries)
         (assoc :structured-output (mapv :structured-output entries))
 

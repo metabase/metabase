@@ -707,13 +707,18 @@
   caller has every tool its text names. This API publishes `search` (see `/v1/search` below), so the
   \"find it with search\" steps survive here. Renaming that endpoint's tool drops those steps rather
   than sending the caller at something it does not have, which is the point of `:uses`."
-  {:tool-names        #{"search"}
-   ;; This endpoint answers per URI: one HTTP status for the call, an `:error` on each item that
-   ;; could not be read. A single-URI request that missed is "every item failed", and turning that
-   ;; into an HTTP error would change a documented 200 response into one with no `:resources` at
-   ;; all. The agent loop takes the opposite default, because it decides whether a call worked by
-   ;; the absence of an `:error`.
-   :all-items-failed  :compose})
+  {:tool-names #{"search"}})
+
+(defn- read-resource-item
+  "One [[::read-resource-item]] from the tool's entry for that URI.
+
+  This endpoint's published item shape, built here rather than by the tool: a URI that could not be
+  read is this item's `:error`, not the call's. The tool reports per item and leaves what that means
+  to its caller."
+  [{:keys [item output failed? structured-output]}]
+  (cond-> {:uri (:uri item)}
+    failed?       (assoc :error output)
+    (not failed?) (assoc :content {:structured-output structured-output})))
 
 (api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.
@@ -732,10 +737,18 @@
   [_route-params
    _query-params
    body :- ::read-resource-request]
-  ;; Only the two keys this endpoint publishes: the tool also returns `:structured-output` and a
-  ;; `:data-parts` title, which are the agent loop's to read.
-  (select-keys (tools.core/call metabot-resources/read-resource-tool body read-resource-ctx)
-               [:resources :output]))
+  ;; `with-batched-entries` rather than `tools.core/call`, because this endpoint's contract differs
+  ;; from the agent loop's in exactly one way: a call where no URI could be read is still a 200 with
+  ;; an `:error` per item, where the agent loop needs it to be a failed call. Composing the entries
+  ;; here is what lets both be true without the tool knowing either of us.
+  (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx nil
+    (fn [entries]
+      {:resources (mapv read-resource-item entries)
+       ;; The tool's own envelope, so the text is identical to what the agent loop reads. Its
+       ;; `:structured-output` and `:data-parts` title are not part of this response.
+       :output    (tools.core/render-text
+                   (:output (tools.core/compose metabot-resources/read-resource-tool entries
+                                                read-resource-ctx)))})))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
