@@ -1,15 +1,14 @@
-(ns metabase.typed-schemas.schema.metric
-  "Typed schema generation for metrics and metric dimensions."
+(ns metabase-enterprise.data-apps.generate.schemas.metric
+  "The schema of metrics, with their dimensions."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.generate.schemas.common :as schemas.common]
+   [metabase-enterprise.data-apps.generate.schemas.table :as schemas.table]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
-   [metabase.typed-schemas.common :as common]
-   [metabase.typed-schemas.db :as typed-schemas.db]
-   [metabase.typed-schemas.schema.common :as schema.common]
-   [metabase.typed-schemas.schema.table :as schema.table]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -18,7 +17,7 @@
 (defn- metric-result-column
   "Returns the metric aggregation result column inferred by Lib."
   [card]
-  (schema.common/aggregation-result-column (:database_id card) (:dataset_query card)))
+  (schemas.common/aggregation-result-column (:database_id card) (:dataset_query card)))
 
 (defn- metric-filters
   "Returns the display names of the filters `card`'s query applies. The schema exposes a metric only as an
@@ -68,7 +67,7 @@
 (defn- persisted-dimension->column
   "Converts persisted metric dimensions to column-shaped maps.
 
-  Persisted metric dimensions use kebab-case field/type keys, while [[common/column-schema]] expects
+  Persisted metric dimensions use kebab-case field/type keys, while [[schemas.common/column-schema]] expects
   result-column-style snake_case keys."
   [dimension]
   (let [field-id (some-> dimension :sources first :field-id)]
@@ -93,7 +92,7 @@
        (:table-id dimension)
        (if field-table-ids
          (get field-table-ids (dimension-field-id dimension))
-         (schema.table/table-by-field-id (dimension-field-id dimension))))))
+         (schemas.table/table-by-field-id (dimension-field-id dimension))))))
 
 (defn- field-table-ids
   "Returns backing table ids for dimensions that need field-based resolution."
@@ -105,7 +104,7 @@
     (when (seq field-ids)
       (into {}
             (map (juxt :id :table_id))
-            (typed-schemas.db/field-ids-and-table-ids field-ids)))))
+            (data-apps.db/field-ids-and-table-ids field-ids)))))
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
@@ -122,9 +121,9 @@
                         (persisted-dimension->column dimension)
                         dimension)]
      (m/assoc-some
-      (assoc (common/column-schema column)
+      (assoc (schemas.common/column-schema column)
              :type "column"
-             :key (common/generated-key (:name column) dimension-id)
+             :key (schemas.common/generated-key (:name column) dimension-id)
              :id (str dimension-id))
       :sourceName (when (integer? table-id)
                     (get table-source-name-by-id table-id))
@@ -160,14 +159,14 @@
   "Syncs and returns persisted metric dimensions with mapping metadata."
   [{:keys [id]}]
   (metrics/sync-dimensions! :metadata/metric id)
-  (let [{:keys [dimensions dimension_mappings]} (typed-schemas.db/card-dimensions id)]
+  (let [{:keys [dimensions dimension_mappings]} (data-apps.db/card-dimensions id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
 (defn- table-source-rows
   "Returns table rows for table-backed metric dimensions."
   [table-ids]
   (when (seq table-ids)
-    (typed-schemas.db/table-names table-ids)))
+    (data-apps.db/table-names table-ids)))
 
 (defn- table-key-disambiguators
   "Returns table display keys used to disambiguate compacted metric dimensions."
@@ -175,7 +174,7 @@
   (when (seq table-rows)
     (->> table-rows
          (map (fn [{:keys [id name display_name]}]
-                [id (common/pascal-case (common/generated-key (or display_name name) id))]))
+                [id (schemas.common/pascal-case (schemas.common/generated-key (or display_name name) id))]))
          (into {}))))
 
 (defn- table-source-names
@@ -261,13 +260,13 @@
   "Returns the schema for a metric and its queryable dimensions."
   [{:keys [id name description verified portable_entity_id base_table_portable_fk] :as details}
    card]
-  (let [result-column (or (some-> (metric-result-column card) common/column-schema)
+  (let [result-column (or (some-> (metric-result-column card) schemas.common/column-schema)
                           (fallback-metric-column details))
         source-card-id-value (source-card-id card)
         {:keys [dimension-schemas mapped-table-ids]} (metric-dimension-schemas id details source-card-id-value)]
     (m/assoc-some
      {:type    "metric"
-      :key     (common/generated-key name id)
+      :key     (schemas.common/generated-key name id)
       :id      id
       :name    name
       :columns [result-column]}
@@ -280,7 +279,7 @@
      :verified (when verified true)
      :sourceTable (source-table-schema base_table_portable_fk)
      :mappedTableIds (not-empty mapped-table-ids)
-     :dimensions (not-empty (common/keyed-map dimension-schemas)))))
+     :dimensions (not-empty (schemas.common/keyed-map dimension-schemas)))))
 
 (defn- references-saved-card?
   "Whether `metric`'s query depends on a saved card anywhere, not only as its stage-0 source.
@@ -294,10 +293,10 @@
          (boolean (seq (lib/all-source-card-ids query))))))
 
 (defn metric-schemas
-  "Returns metric schemas, with optional database and collection scopes."
-  [database-ids collection-ids]
+  "Returns the schemas of the metrics in the collections with `collection-ids`."
+  [collection-ids]
   (for [metric (remove source-card-id
-                       (schema.common/select-schema-cards :metric database-ids collection-ids))
+                       (schemas.common/without-unavailable-cards (data-apps.db/metric-cards-in-collections collection-ids)))
         ;; A data app can copy only metrics that resolve entirely from tables: a copy reading a
         ;; saved question references a card outside the app's resources, which the pull refuses.
         ;; `source-card-id` sees only stage 0, so a table-sourced metric joining a saved question

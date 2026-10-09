@@ -1,4 +1,4 @@
-(ns metabase.typed-schemas.javascript
+(ns metabase-enterprise.data-apps.generate.schemas.javascript
   "A small TypeScript AST encoded as tagged vectors, and a printer for it.
 
   The AST covers exactly the subset of TypeScript that typed-schema modules
@@ -53,7 +53,7 @@
 
   The printer is deliberately option-free and policy-free: decisions about
   *what* to emit (runtime keys, metadata, compaction) belong in
-  `metabase.typed-schemas.render`, which builds this AST. If the output needs
+  `metabase-enterprise.data-apps.generate.schemas.render`, which builds this AST. If the output needs
   new syntax, add a node type and its printer here rather than concatenating
   TypeScript strings elsewhere."
   (:require

@@ -7,13 +7,12 @@ fail on permissions.
 
 The files of the app's collection make that true. Under the repository's `collections/data_apps/`, the
 folder of the `data-apps` collection namespace, they hold serdes YAML for the app's collection, a saved
-question per query, and copies of the actions the app runs and of the metrics its queries use. The
-author (in practice, an agent following the data-app skills) writes that YAML from the app's
-definitions. Nothing changes in Metabase until the repository is pulled: the pull loads the files as
+question per query, and copies of the actions the app runs and of the metrics its queries use. Metabase
+serializes everything but the collection's own file from the app's definitions, and the CLI writes it. Nothing changes in Metabase until the repository is pulled: the pull loads the files as
 serialized content, like everything else the repository holds, so a local experiment can't break the
 running app, and the saved questions never get ahead of the app code that is deployed.
 
-`check-resources` reads nothing from Metabase; `print-resources` asks it for the serialization.
+`check-resources` reads nothing from Metabase; `write-resources` asks it for the files.
 
 ## What an app declares
 
@@ -44,25 +43,28 @@ app that isn't under `data_apps/` is its own root, so its files sit under its ow
 A data app runs only query actions that belong to no model, which the typed schema lists under
 `schema.actions`. Such an action's permissions resolve through its own collection, so making it
 reachable means copying it into the app's collection. Metrics a query uses are copied for the same
-reason, and the question reads the copy. Every saved question and copy is written from what
-`print-resources` prints, whose references are already in the form the YAML uses, with new entity IDs
-and references rewritten to the copies.
+reason, and the question reads the copy. Every saved question and copy is written by
+`write-resources`, with the entity IDs the definitions carry and the metric references already
+rewritten to the copies.
 
-## `print-resources`
+## `write-resources`
 
-`embedding-sdk-react data-apps print-resources [file]` (`serialize.ts`) sends the evaluated definitions (all
-of them, or those in `file`, relative to the app directory) to `POST /api/apps/serialize-resources`, with the
-instance and API key from `.env.local`, and prints the answer as JSON: the saved question Metabase
-writes for each `defineQuery` definition, each `defineAction`'s source action, and the metrics the
-queries aggregate, all as serialization writes them, each beside the definition's file and entity ID.
-An action that belongs to a model comes back with an error. The endpoint answers only a superuser, so
-the API key must be one in the Administrators group. The saved question is complete: named after the export, in the
-collection `data_app.yaml` names, with the definition's `savedQuestionEntityId`, created by the API
-key's user, and holding the query Metabase builds with the same `createTestQuery` code the dev preview
-runs. Every entity comes in the key order serialization writes a file and without the keys serialization
-leaves unset, which the format omits, so the author transcribes rather than composes. An item that can't
-be built or copied comes back with its `error`; the rest still come back. The command refuses to run
-before `data_app.yaml` names the app's collection, since the saved questions are written into it.
+`embedding-sdk-react data-apps write-resources` (`serialize.ts`) sends the evaluated definitions to
+`POST /api/apps/generate/resources`, with the instance and API key from `.env.local`, and regenerates the app's
+collection folder from the files it answers with: the saved question Metabase builds for each
+`defineQuery` definition, the copy of each `defineAction`'s action, and the copies of the metrics the
+queries aggregate. Each answer is a file name and the YAML text exactly as a remote-sync export writes it;
+the command writes it into the folder beside the collection's file (`<collection>/`). It first deletes every
+card and action file whose `collection_id` is the app's collection, wherever it sits under
+`collections/data_apps/`, so a copy no definition needs any more disappears, and a file name that would
+leave the folder is refused. It prints a `Wrote <path>` line per file. The collection's own file must exist
+already; the instance needs neither the collection nor a pull before the command runs. The endpoint
+answers only a superuser, so the API key must be one in the Administrators group. The saved question is
+named after the export, in the app's collection, with the definition's `savedQuestionEntityId`, and holds
+the query Metabase builds with the same `createTestQuery` code the dev preview runs. An action that belongs
+to a model, or an item that can't be built or copied, comes back with an `error`: then the command writes
+and deletes nothing and fails listing every error. It refuses to run before `data_app.yaml` names the
+app's collection, and before every definition carries its entity ID.
 
 ## `check-resources`
 
@@ -89,15 +91,16 @@ Nothing checks that a saved question's query matches its definition.
 evaluates it, and takes every exported object as a definition: `defineQuery` and `defineAction`
 return their argument as is, and the two directories hold nothing else. A definition a second file
 re-exports keeps its identity through the single bundle, so it counts once, for the first file that
-exports it; `print-resources <file>` reads that file's exports alone, so a barrel doesn't claim them.
+exports it.
 Anything that isn't a definition is rejected by the serialization endpoint's schema, not here.
 
 Discovery refuses what makes a definition unusable on its own or against the others: an action that
 doesn't reference a generated action, two definitions of one source action, two claiming one entity
-ID. Every command needs that, `print-resources` included. What a definition lacks against the app's
-collection files is `check-resources`' to report. A definition's own entity ID is the exception: the saved
-question is printed with it, so `print-resources` refuses a `defineQuery` without `savedQuestionEntityId`
-and names it, and the author generates the ID with `npx representations generate-entity-id` first.
+ID. Every command needs that, `write-resources` included. What a definition lacks against the app's
+collection files is `check-resources`' to report. A definition's own entity ID is the exception: its file is
+written with it, so `write-resources` refuses a `defineQuery` without `savedQuestionEntityId` or a
+`defineAction` without `copiedActionEntityId` and names it, and the author generates the ID with
+`npx representations generate-entity-id` first.
 
 ## Dev preview vs production build
 

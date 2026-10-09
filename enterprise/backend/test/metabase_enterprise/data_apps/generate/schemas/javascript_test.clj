@@ -1,15 +1,15 @@
-(ns metabase.typed-schemas.javascript-test
+(ns metabase-enterprise.data-apps.generate.schemas.javascript-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.typed-schemas.javascript :as javascript]
+   [metabase-enterprise.data-apps.generate.schemas.javascript :as schemas.javascript]
    [metabase.util.malli.registry :as mr]))
 
 (defn- render-lines
   "Renders a one-statement module and returns its lines, without the trailing
   newline, so goldens read naturally as vectors of lines."
   [statement]
-  (str/split-lines (javascript/render-js [:module statement])))
+  (str/split-lines (schemas.javascript/render-js [:module statement])))
 
 (deftest literal-expressions-test
   (are [expr rendered] (= [(str "const x = " rendered " as const;")]
@@ -97,7 +97,7 @@
 
 (deftest metadata-cannot-end-its-comment-early-test
   (testing "`*/` inside a value is written as `*\\/`, which JSON reads back as `*/`"
-    (let [rendered (javascript/render-js
+    (let [rendered (schemas.javascript/render-js
                     [:module [:const "x" [:obj ["orders" {:metadata {"description" "Paid orders /* see note */"}}
                                                 [:obj ["id" [:lit 1]]]]]]])]
       (is (str/includes? rendered "\"description\": \"Paid orders /* see note *\\/\""))
@@ -120,14 +120,14 @@
               "const schema = { } as const;\n"
               "\n"
               "export default schema;\n")
-         (javascript/render-js
+         (schemas.javascript/render-js
           [:module
            [:raw "function helper() {}"]
            [:const "schema" [:obj]]
            [:export-default [:ref "schema"]]]))))
 
 (deftest module-schema-accepts-the-grammar-test
-  (is (mr/validate javascript/Module
+  (is (mr/validate schemas.javascript/Module
                    [:module
                     [:raw "function helper() {}"]
                     [:const "tables"
@@ -137,7 +137,7 @@
                     [:export-default [:ref "schema"]]])))
 
 (deftest module-schema-rejects-unknown-nodes-test
-  (are [module] (not (mr/validate javascript/Module module))
+  (are [module] (not (mr/validate schemas.javascript/Module module))
     [:module [:const "x" [:string "not-a-node"]]]
     [:module [:const "x" [:obj ["key" {:metadataz {"typo" 1}} [:lit 1]]]]]
     ;; Comments were replaced by metadata blocks.
@@ -150,6 +150,6 @@
 (deftest metadata-inside-a-call-argument-is-refused-test
   (testing "a `:call` argument prints on one line, where a block can't go, so its metadata is an error, not dropped"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metadata can only be attached to an object"
-                          (javascript/render-js
+                          (schemas.javascript/render-js
                            [:module [:const "x" [:call "pickFields"
                                                  [:obj ["orders" {:metadata {"entityId" "abc"}} [:obj]]]]]])))))

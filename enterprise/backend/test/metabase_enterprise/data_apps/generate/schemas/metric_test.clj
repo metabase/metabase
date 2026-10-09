@@ -1,14 +1,13 @@
-(ns metabase.typed-schemas.schema.metric-test
+(ns metabase-enterprise.data-apps.generate.schemas.metric-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.generate.schemas.metric :as schemas.metric]
+   [metabase-enterprise.data-apps.generate.schemas.table :as schemas.table]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.typed-schemas.db :as typed-schemas.db]
-   [metabase.typed-schemas.schema.common :as schema.common]
-   [metabase.typed-schemas.schema.metric :as schema.metric]
-   [metabase.typed-schemas.schema.table :as schema.table]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -23,7 +22,7 @@
           :fieldId     3815
           :tableId     12
           :metricId    247}
-         (#'schema.metric/dimension-schema
+         (#'schemas.metric/dimension-schema
           {:id             "550e8400-e29b-41d4-a716-446655440001"
            :name           "category"
            :display-name   "Category"
@@ -35,7 +34,7 @@
 (deftest ^:parallel metric-dimension-schema-preserves-source-field-id-test
   (is (= 102
          (:sourceFieldId
-          (#'schema.metric/dimension-schema
+          (#'schemas.metric/dimension-schema
            {:id              "category-dimension"
             :name            "category"
             :source-field-id 102}
@@ -44,14 +43,14 @@
 (deftest ^:parallel metric-source-id-test
   (testing "integer source-table emits sourceTableId but not sourceCardId"
     (let [card {:dataset_query {:query {:source-table 10}}}]
-      (is (= 10 (#'schema.metric/source-table-id card)))
-      (is (nil? (#'schema.metric/source-card-id card)))))
+      (is (= 10 (#'schemas.metric/source-table-id card)))
+      (is (nil? (#'schemas.metric/source-card-id card)))))
   (testing "card source-table emits sourceCardId but not sourceTableId"
     (let [card {:dataset_query {:query {:source-table "card__42"}}}]
-      (is (nil? (#'schema.metric/source-table-id card)))
-      (is (= 42 (#'schema.metric/source-card-id card)))))
+      (is (nil? (#'schemas.metric/source-table-id card)))
+      (is (= 42 (#'schemas.metric/source-card-id card)))))
   (testing "stage source-card emits sourceCardId"
-    (is (= 42 (#'schema.metric/source-card-id
+    (is (= 42 (#'schemas.metric/source-card-id
                {:dataset_query {:stages [{:source-card 42}]}})))))
 
 (defn- orders-metric-query
@@ -76,14 +75,14 @@
                                                                :source-field-id (mt/id :orders :product_id)}
                                                               {:type :literal :value "Widget"}]}])}]
       (is (= ["Created At is greater than or equal to \"2025-01-01\"" "Category is Widget"]
-             (#'schema.metric/metric-filters card)))))
+             (#'schemas.metric/metric-filters card)))))
   (testing "a metric without filters has none"
     (mt/with-temp [:model/Card card {:type          :metric
                                      :database_id   (mt/id)
                                      :dataset_query (orders-metric-query [])}]
-      (is (nil? (#'schema.metric/metric-filters card)))))
+      (is (nil? (#'schemas.metric/metric-filters card)))))
   (testing "a card without a query has none"
-    (is (nil? (#'schema.metric/metric-filters {:id 247 :dataset_query {}})))))
+    (is (nil? (#'schemas.metric/metric-filters {:id 247 :dataset_query {}})))))
 
 (deftest metric-details-skips-default-temporal-breakout-test
   (let [requested (atom nil)]
@@ -92,7 +91,7 @@
                                   (reset! requested options)
                                   {:structured-output {:id 247}})]
       (is (= {:id 247}
-             (#'schema.metric/metric-details {:id 247})))
+             (#'schemas.metric/metric-details {:id 247})))
       (is (=? {:with-default-temporal-breakout? false}
               @requested)))))
 
@@ -101,9 +100,9 @@
                               (constantly {:output "Not found."
                                            :status-code 404})]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
-                                 (#'schema.metric/metric-details {:id 247
-                                                                  :name "Customer Lifetime Value"
-                                                                  :type :metric})))]
+                                 (#'schemas.metric/metric-details {:id 247
+                                                                   :name "Customer Lifetime Value"
+                                                                   :type :metric})))]
       (is (=? {:card-id       247
                :card-name     "Customer Lifetime Value"
                :card-type     :metric
@@ -112,7 +111,7 @@
               (ex-data exception))))))
 
 (deftest metric-schemas-excludes-card-sourced-metrics-test
-  (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+  (mt/with-dynamic-fn-redefs [data-apps.db/metric-cards-in-collections
                               (constantly [{:id 247
                                             :dataset_query {:lib/type :mbql/query
                                                             :database 1
@@ -122,13 +121,13 @@
                                             :dataset_query {:query {:source-table "card__42"}}}
                                            {:id 259
                                             :dataset_query {:stages [{:source-card 42}]}}])
-                              schema.metric/metric-details identity
-                              schema.metric/metric-schema (fn [details _card] (:id details))]
+                              schemas.metric/metric-details identity
+                              schemas.metric/metric-schema (fn [details _card] (:id details))]
     (is (= [247]
-           (vec (schema.metric/metric-schemas nil nil))))))
+           (vec (schemas.metric/metric-schemas #{1}))))))
 
 (deftest metric-schemas-excludes-metrics-that-reference-other-metrics-test
-  (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+  (mt/with-dynamic-fn-redefs [data-apps.db/metric-cards-in-collections
                               (constantly [{:id 247
                                             :dataset_query {:lib/type :mbql/query
                                                             :database 1
@@ -143,16 +142,16 @@
                                                                                      {:lib/uuid
                                                                                       "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
                                                                                      247]]}]}}])
-                              schema.metric/metric-details identity
-                              schema.metric/metric-schema (fn [details _card] (:id details))]
+                              schemas.metric/metric-details identity
+                              schemas.metric/metric-schema (fn [details _card] (:id details))]
     (is (= [247]
-           (vec (schema.metric/metric-schemas nil nil))))))
+           (vec (schemas.metric/metric-schemas #{1}))))))
 
 (deftest metric-schemas-excludes-metrics-that-join-a-saved-question-test
   ;; Metric 258 is table-sourced and joins a saved question, so `source-card-id` — which only reads
   ;; stage 0's source — passes it. A data app's copy of it would reference a saved question outside
   ;; the app's resources, which the pull refuses, so codegen has to drop it here as well.
-  (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+  (mt/with-dynamic-fn-redefs [data-apps.db/metric-cards-in-collections
                               (constantly [{:id 247
                                             :dataset_query {:lib/type :mbql/query
                                                             :database 1
@@ -172,16 +171,16 @@
                                                                                  {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
                                                                                  [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 11]
                                                                                  [:field {:lib/uuid "cccccccc-cccc-cccc-cccc-cccccccccccc"} 12]]]}]}]}}])
-                              schema.metric/metric-details identity
-                              schema.metric/metric-schema (fn [details _card] (:id details))]
+                              schemas.metric/metric-details identity
+                              schemas.metric/metric-schema (fn [details _card] (:id details))]
     (is (= [247]
-           (vec (schema.metric/metric-schemas nil nil))))))
+           (vec (schemas.metric/metric-schemas #{1}))))))
 
 (deftest metric-schema-keys-dimensions-test
-  (mt/with-dynamic-fn-redefs [schema.metric/metric-result-column (constantly nil)
-                              schema.metric/table-source-rows
+  (mt/with-dynamic-fn-redefs [schemas.metric/metric-result-column (constantly nil)
+                              schemas.metric/table-source-rows
                               (constantly [{:id 10 :name "orders" :display_name "Orders"}])
-                              schema.metric/sync-and-fetch-metric-dimensions!
+                              schemas.metric/sync-and-fetch-metric-dimensions!
                               (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
                                             :name           "orders"
                                             :display-name   "Orders"
@@ -208,23 +207,23 @@
                                        :fieldId     42
                                        :tableId     10
                                        :metricId    247}}}
-           (#'schema.metric/metric-schema
+           (#'schemas.metric/metric-schema
             {:id   247
              :name "Customer Lifetime Value"}
             {:id 247})))))
 
 (deftest metric-schema-reuses-table-source-rows-test
   (let [table-select-count (atom 0)]
-    (mt/with-dynamic-fn-redefs [schema.metric/metric-result-column (constantly nil)
-                                schema.metric/sync-and-fetch-metric-dimensions!
+    (mt/with-dynamic-fn-redefs [schemas.metric/metric-result-column (constantly nil)
+                                schemas.metric/sync-and-fetch-metric-dimensions!
                                 (constantly [{:id       "orders-dimension"
                                               :name     "orders"
                                               :table-id 10}])
-                                typed-schemas.db/table-names
+                                data-apps.db/table-names
                                 (fn [_table-ids]
                                   (swap! table-select-count inc)
                                   [{:id 10 :name "orders" :display_name "Orders"}])]
-      (#'schema.metric/metric-schema
+      (#'schemas.metric/metric-schema
        {:id   247
         :name "Customer Lifetime Value"}
        {:id 247})
@@ -237,23 +236,23 @@
                                :sources [{:type :field, :field-id 42}]}
                               {:id "people-dimension"
                                :sources [{:type :field, :field-id 84}]}]]
-    (mt/with-dynamic-fn-redefs [schema.metric/sync-and-fetch-metric-dimensions! (constantly dimensions)
-                                schema.table/table-by-field-id (fn [field-id]
-                                                                 (swap! field-lookup-attempts conj field-id)
-                                                                 ({42 10, 84 20} field-id))
-                                typed-schemas.db/field-ids-and-table-ids
+    (mt/with-dynamic-fn-redefs [schemas.metric/sync-and-fetch-metric-dimensions! (constantly dimensions)
+                                schemas.table/table-by-field-id (fn [field-id]
+                                                                  (swap! field-lookup-attempts conj field-id)
+                                                                  ({42 10, 84 20} field-id))
+                                data-apps.db/field-ids-and-table-ids
                                 (fn [_field-ids]
                                   (swap! field-select-count inc)
                                   [{:id 42 :table_id 10}
                                    {:id 84 :table_id 20}])]
       (is (= (mapv vector dimensions [10 20])
-             (#'schema.metric/metric-dimensions-with-table-ids {:id 247} nil)))
+             (#'schemas.metric/metric-dimensions-with-table-ids {:id 247} nil)))
       (is (= 1 @field-select-count))
       (is (empty? @field-lookup-attempts)))))
 
 (deftest source-card-metric-schema-omits-mapped-table-dimensions-test
-  (mt/with-dynamic-fn-redefs [schema.metric/metric-result-column (constantly nil)
-                              schema.metric/sync-and-fetch-metric-dimensions!
+  (mt/with-dynamic-fn-redefs [schemas.metric/metric-result-column (constantly nil)
+                              schemas.metric/sync-and-fetch-metric-dimensions!
                               (constantly [{:id   "count-dimension-uuid"
                                             :name "count"}
                                            {:id             "store-name-dimension-uuid"
@@ -275,7 +274,7 @@
                                     :key         "count"
                                     :id          "count-dimension-uuid"
                                     :metricId    259}}}
-           (#'schema.metric/metric-schema
+           (#'schemas.metric/metric-schema
             {:id   259
              :name "Stores with Over 5 Employees"}
             {:id            259

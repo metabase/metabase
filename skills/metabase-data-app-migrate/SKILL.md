@@ -64,12 +64,7 @@ grep -E '^version:' data_app.yaml || echo "version: 1"
 ls <skill-dir>/references/upgrades/ | sed -nE 's/^v[0-9]+-to-v([0-9]+)\.md$/\1/p' | sort -n | tail -1 | grep . || echo 1
 ```
 
-`<skill-dir>` is the directory this SKILL.md was loaded from. The target must
-equal the `version:` in the data-app scaffolding template installed alongside
-this skill (`<skills-dir>/*/template/data_app.yaml`), when one is present; if
-they differ, the skills come from different Metabase releases. **Stop** and tell
-the user to reinstall all data-app skills with the command shown under
-Admin > Data apps. Wait for the answer.
+`<skill-dir>` is the directory this SKILL.md was loaded from.
 
 Then decide:
 

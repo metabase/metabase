@@ -1,3 +1,5 @@
+import yaml from "js-yaml";
+
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
@@ -60,47 +62,42 @@ describe("Embedding SDK: data-app resources (queries)", () => {
   });
 
   describe("the CLI", () => {
-    it("prints the query Metabase builds from a definition, as an author writes the saved question from it", () => {
+    it("writes the saved question Metabase builds from a definition into the collection's folder", () => {
       const question = H.newEntityId();
       H.declareDataAppQueries(APP_ROOT(), [
         { name: "Orders", tableId: ORDERS_ID, savedQuestionEntityId: question },
       ]);
+      H.writeDataAppResources(APP_ROOT(), { collection: collection() });
 
       H.dataAppCliEnv().then((env) =>
-        H.runDataAppCli("print-resources", env).then(({ exitCode, stdout }) => {
+        H.runDataAppCli("write-resources", env).then(({ exitCode, stdout }) => {
           expect(exitCode, stdout).to.eq(0);
-          const printed = JSON.parse(stdout);
-          expect(printed).to.deep.include({
-            actions: [],
-            metrics: [],
+          const [, written] = stdout.match(/^Wrote (.+)$/m) ?? [];
+          expect(written).to.match(
+            /^collections\/data_apps\/data_app__[^\/]+\/orders\.yaml$/,
+          );
+          expect(stdout.trim().split("\n")).to.have.length(1);
+
+          cy.readFile(`${APP_ROOT()}/${written}`).then((text) => {
+            expect(yaml.load(text)).to.deep.include({
+              entity_id: question,
+              collection_id: COLLECTION,
+              name: "Orders",
+              type: "question",
+              display: "table",
+              dataset_query: {
+                "lib/type": "mbql/query",
+                database: "Sample Database",
+                stages: [
+                  {
+                    "lib/type": "mbql.stage/mbql",
+                    "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+                  },
+                ],
+              },
+              "serdes/meta": [{ model: "Card" }],
+            });
           });
-          const [query] = printed.queries;
-          expect(query).to.deep.include({
-            export: "Orders",
-            file: "queries/orders.query.ts",
-            savedQuestionEntityId: question,
-            metrics: [],
-          });
-          // The saved question is complete: the author writes it as it is.
-          expect(query.entity).to.deep.include({
-            entity_id: question,
-            collection_id: COLLECTION,
-            name: "Orders",
-            type: "question",
-            display: "table",
-            dataset_query: {
-              "lib/type": "mbql/query",
-              database: "Sample Database",
-              stages: [
-                {
-                  "lib/type": "mbql.stage/mbql",
-                  "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-                },
-              ],
-            },
-            "serdes/meta": [{ model: "Card", id: question, label: "orders" }],
-          });
-          expect(query.entity.creator_id).to.be.a("string");
         }),
       );
     });

@@ -1468,7 +1468,6 @@
               metabase.metabot.settings
               metabase.metabot.tools
               metabase.metabot.tools.construct
-              metabase.metabot.tools.entity-details
               metabase.metabot.tools.search}
    :module-exports #{metabot.agent-api
                      metabot.llm
@@ -3090,39 +3089,6 @@
                     :model/TransformRun
                     :model/TransformTag}}
 
-  typed-schemas
-  {:team "Embedding"
-   :api #{metabase.typed-schemas.core}
-   :uses #{actions
-           audit-app
-           collections
-           lib
-           lib.be
-           lib.schema
-           lib.types
-           metabot
-           metrics
-           permissions
-           premium-features
-           queries
-           system
-           util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Action
-                    :model/Card
-                    :model/Collection
-                    :model/Database
-                    :model/Field
-                    :model/Measure
-                    :model/QueryAction
-                    :model/Table}}
-
-  typed-schemas.rest
-  {:team "Embedding"
-   :ns-prefix "metabase.typed-schemas-rest"
-   :api #{metabase.typed-schemas-rest.api}
-   :uses #{api typed-schemas util}}
-
   upload
   {:team "Graphy"
    :api  #{metabase.upload.api
@@ -3805,6 +3771,7 @@
    :uses #{actions
            api
            api-scope
+           audit-app
            collections
            driver
            events
@@ -3812,12 +3779,17 @@
            lib.be
            lib.metadata
            lib.schema
+           lib.types
+           metabot
+           metrics
            models
            permissions
            premium-features
+           queries
            remote-sync
            request
            settings
+           system
            util
            warehouse-schema-overlay
            enterprise/serialization}
@@ -3827,6 +3799,7 @@
                     :model/DataPermissions
                     :model/Database
                     :model/Field
+                    :model/Measure
                     :model/Permissions
                     :model/QueryAction
                     :model/Table}

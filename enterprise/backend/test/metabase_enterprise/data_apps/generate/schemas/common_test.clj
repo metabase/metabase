@@ -1,12 +1,13 @@
-(ns metabase.typed-schemas.common-test
+(ns metabase-enterprise.data-apps.generate.schemas.common-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.generate.schemas.common :as schemas.common]
    [metabase.audit-app.core :as audit]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.config.core :as config]
    [metabase.test :as mt]
-   [metabase.typed-schemas.common :as typed-schemas.common]
-   [metabase.typed-schemas.schema.common :as schema.common]))
+   [toucan2.core :as t2]))
 
 (deftest column-schema-includes-description-test
   (is (= {:type          "column"
@@ -15,14 +16,14 @@
           :baseType      "type/Text"
           :jsType        "string"
           :description   "Name of the customer"}
-         (typed-schemas.common/column-schema {:name         "name"
-                                              :display_name "Name"
-                                              :base_type    "type/Text"
-                                              :description  "Name of the customer"}))))
+         (schemas.common/column-schema {:name         "name"
+                                        :display_name "Name"
+                                        :base_type    "type/Text"
+                                        :description  "Name of the customer"}))))
 
 (deftest column-schema-maps-metabase-types-test
   (are [column js-type] (= js-type
-                           (:jsType (typed-schemas.common/column-schema column)))
+                           (:jsType (schemas.common/column-schema column)))
     {:name "bool", :base_type :type/Boolean}        "boolean"
     {:name "int", :base_type :type/Integer}         "number"
     {:name "date", :base_type :type/DateTime}       "Date"
@@ -39,7 +40,7 @@
           "channelOrders"     {:key     "channelOrders"
                                :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
                                :tableId 167}}
-         (typed-schemas.common/keyed-map
+         (schemas.common/keyed-map
           [{:key     "channel"
             :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
             :tableId 167
@@ -56,7 +57,7 @@
           "channelOrders2" {:key     "channelOrders2"
                             :id      2
                             :tableId 168}}
-         (typed-schemas.common/keyed-map
+         (schemas.common/keyed-map
           [{:key     "channel"
             :id      1
             :tableId 167
@@ -66,25 +67,26 @@
             :tableId 168
             :keyDisambiguator "Orders"}]))))
 
-(deftest destination-db-ids-test
+(deftest destination-database-ids-test
   (testing "returns only the ids that back a destination (routed) database"
     (mt/with-temp [:model/Database {router-id :id}      {}
                    :model/Database {destination-id :id} {:router_database_id router-id}
                    :model/Database {open-id :id}         {}]
       (is (= #{destination-id}
-             (schema.common/destination-db-ids #{router-id destination-id open-id})))))
-  (testing "returns nil for an empty input, without querying"
-    (is (nil? (schema.common/destination-db-ids #{})))
-    (is (nil? (schema.common/destination-db-ids nil)))))
+             (data-apps.db/destination-database-ids #{router-id destination-id open-id})))))
+  (testing "returns an empty set for an empty input"
+    (is (= #{} (data-apps.db/destination-database-ids #{})))
+    (is (= #{} (data-apps.db/destination-database-ids nil)))))
 
-(deftest select-schema-cards-excludes-destination-database-cards-test
-  (testing "select-schema-cards excludes cards backed by a destination (routed) database, even for a superuser"
+(deftest without-unavailable-cards-excludes-destination-database-cards-test
+  (testing "cards backed by a destination (routed) database are left out, even for a superuser"
     (mt/with-temp [:model/Database {router-id :id}           {}
                    :model/Database {destination-id :id}      {:router_database_id router-id}
                    :model/Card     {open-card-id :id}        {:type :metric :database_id (mt/id)}
                    :model/Card     {destination-card-id :id} {:type :metric :database_id destination-id}]
       (mt/with-test-user :crowberto
-        (let [card-ids (into #{} (map :id) (schema.common/select-schema-cards :metric nil nil))]
+        (let [cards    (t2/select :model/Card :id [:in [open-card-id destination-card-id]])
+              card-ids (into #{} (map :id) (schemas.common/without-unavailable-cards cards))]
           (is (contains? card-ids open-card-id))
           (is (not (contains? card-ids destination-card-id))))))))
 
@@ -97,16 +99,16 @@
       (testing "a card in the audit collection 403s on its details lookup and one on the audit database has no table
                 while the feature is off, so the schema leaves both out rather than fail an unscoped request"
         (mt/with-premium-features #{}
-          (is (= [1] (map :id (#'schema.common/without-unavailable-cards cards))))))
+          (is (= [1] (map :id (schemas.common/without-unavailable-cards cards))))))
       ;; a premium feature is never on without the EE code, whatever the token says
       (when config/ee-available?
         (testing "with the feature on they are listed"
           (mt/with-premium-features #{:audit-app}
-            (is (= [1 2 3] (map :id (#'schema.common/without-unavailable-cards cards))))))))))
+            (is (= [1 2 3] (map :id (schemas.common/without-unavailable-cards cards))))))))))
 
 (deftest ^:parallel keyed-map-never-drops-an-entity-test
   (testing "a disambiguated key that equals another entity's own key is disambiguated again rather than overwriting it"
     (let [entities [{:key "step", :id 1} {:key "step", :id 23} {:key "step1", :id 7} {:key "step11", :id 40}]
-          result   (typed-schemas.common/keyed-map entities)]
+          result   (schemas.common/keyed-map entities)]
       (is (= 4 (count result)))
       (is (= #{1 23 7 40} (into #{} (map :id) (vals result)))))))

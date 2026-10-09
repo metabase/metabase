@@ -1,13 +1,13 @@
-(ns metabase.typed-schemas.schema.table-test
+(ns metabase-enterprise.data-apps.generate.schemas.table-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.generate.schemas.common :as schemas.common]
+   [metabase-enterprise.data-apps.generate.schemas.table :as schemas.table]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
    [metabase.test :as mt]
-   [metabase.typed-schemas.schema.common :as schema.common]
-   [metabase.typed-schemas.schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (def ^:private created-at-field
@@ -49,7 +49,7 @@
 
 (deftest field-schema-uses-field-id-test
   (is (= created-at-field-schema
-         (schema.table/field-schema created-at-field))))
+         (schemas.table/field-schema created-at-field))))
 
 (deftest table-schema-keys-fields-test
   (is (= {:type         "table"
@@ -59,7 +59,7 @@
           :databaseName "Boba"
           :tableName    "orders"
           :fields       {"createdAt" (assoc created-at-field-schema :sourceName "orders")}}
-         (schema.table/table-schema orders-table))))
+         (schemas.table/table-schema orders-table))))
 
 ; Avoid N+1 on table fields by re-using the known table id
 (deftest table-schema-uses-known-table-id-for-detail-fields-test
@@ -75,7 +75,7 @@
     (with-redefs [t2/select-one-fn (fn [& _]
                                      (swap! field-table-lookups inc)
                                      999)]
-      (let [schema (schema.table/table-schema (assoc orders-table :fields detail-fields))]
+      (let [schema (schemas.table/table-schema (assoc orders-table :fields detail-fields))]
         (is (= #{10} (->> (:fields schema) vals (map :tableId) set)))
         (is (zero? @field-table-lookups))))))
 
@@ -85,7 +85,7 @@
           :id      12
           :tableId 10
           :name    "Completed Orders"}
-         (schema.table/segment-schema
+         (schemas.table/segment-schema
           10
           {:id           12
            :name         "Completed Orders"
@@ -93,7 +93,7 @@
 
 (deftest measure-schema-uses-result-column-test
   (testing "measure result columns come from the measure definition when available"
-    (mt/with-dynamic-fn-redefs [schema.table/measure-result-column
+    (mt/with-dynamic-fn-redefs [schemas.table/measure-result-column
                                 (constantly {:name         "sum"
                                              :display_name "Sum of Total"
                                              :base_type    "type/Decimal"})]
@@ -103,19 +103,19 @@
                                :displayName "Sum of Total"
                                :baseType    "type/Decimal"
                                :jsType      "number"}])
-             (schema.table/measure-schema 10 2 total-revenue-measure)))))
+             (schemas.table/measure-schema 10 2 total-revenue-measure)))))
   (testing "measure result columns fall back to the measure name"
-    (mt/with-dynamic-fn-redefs [schema.table/measure-result-column (constantly nil)]
+    (mt/with-dynamic-fn-redefs [schemas.table/measure-result-column (constantly nil)]
       (is (= (assoc total-revenue-schema
                     :columns [{:type "column", :name "Total Revenue", :displayName "Total Revenue", :jsType "unknown"}])
-             (schema.table/measure-schema 10 2 total-revenue-measure))))))
+             (schemas.table/measure-schema 10 2 total-revenue-measure))))))
 
 (deftest table-schemas-surface-detail-error-responses-test
   (mt/with-dynamic-fn-redefs [metabot/get-table-details
                               (constantly {:output "Not found."
                                            :status-code 404})]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
-                                 (doall (schema.table/table-schemas [{:id 10 :name "Orders"}]))))]
+                                 (doall (schemas.table/table-schemas [{:id 10 :name "Orders"}]))))]
       (is (=? {:table-id      10
                :table-name    "Orders"
                :status-code   404
@@ -139,7 +139,7 @@
                                    :created_at :%now
                                    :updated_at :%now})]
         (mt/with-test-user :crowberto
-          (let [tables (schema.table/select-tables nil [open-table-id destination-table-id])]
+          (let [tables (schemas.table/select-tables #{open-table-id destination-table-id})]
             (is (= [open-table-id] (map :id tables)))))))))
 
 (deftest the-audit-databases-tables-are-left-out-without-the-audit-feature-test
@@ -147,12 +147,12 @@
     (testing "the table details lookup refuses the audit database's tables while the feature is off, so the schema
               leaves them out rather than fail an unscoped request"
       (mt/with-premium-features #{}
-        (is (= [1] (map :id (#'schema.table/without-unavailable-tables tables))))))
+        (is (= [1] (map :id (#'schemas.table/without-unavailable-tables tables))))))
     ;; a premium feature is never on without the EE code, whatever the token says
     (when config/ee-available?
       (testing "with the feature on they are listed"
         (mt/with-premium-features #{:audit-app}
-          (is (= [1 2] (map :id (#'schema.table/without-unavailable-tables tables)))))))))
+          (is (= [1 2] (map :id (#'schemas.table/without-unavailable-tables tables)))))))))
 
 ;; Batch measure definitions to avoid N+1 queries.
 (deftest table-schema-bulk-loads-measure-definitions-test
@@ -163,13 +163,13 @@
     (with-redefs [lib-be/application-database-metadata-provider (fn [_database-id]
                                                                   (swap! metadata-provider-count inc)
                                                                   :metadata-provider)
-                  schema.common/aggregation-result-column-with-metadata-provider (constantly nil)
+                  schemas.common/aggregation-result-column-with-metadata-provider (constantly nil)
                   t2/select (fn [columns & _args]
                               (when (= columns [:model/Measure :id :definition])
                                 (swap! measure-select-count inc)
                                 [{:id 1 :definition [:aggregation 1]}
                                  {:id 2 :definition [:aggregation 2]}]))]
-      (schema.table/table-schema (assoc orders-table :measures measures))
+      (schemas.table/table-schema (assoc orders-table :measures measures))
       (is (= 1 @measure-select-count))
       (is (= 1 @metadata-provider-count)))))
 
@@ -187,5 +187,5 @@
                                                        :weekday-distribution [0.1 0.1 0.1 0.1 0.2 0.2 0.2]
                                                        :hour-distribution (vec (repeat 24 (/ 1.0 24)))}}}}]
     (mt/with-test-user :crowberto
-      (let [schema (first (schema.table/table-schemas [table]))]
+      (let [schema (first (schemas.table/table-schemas [table]))]
         (is (= #{"customerId" "lastOrderedAt"} (set (keys (:fields schema)))))))))

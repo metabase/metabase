@@ -1,15 +1,11 @@
-(ns metabase.typed-schemas.render-test
+(ns metabase-enterprise.data-apps.generate.schemas.render-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.typed-schemas.core :as typed-schemas]
-   [metabase.typed-schemas.javascript :as javascript]
-   [metabase.typed-schemas.render :as render]
+   [metabase-enterprise.data-apps.generate.schemas :as schemas]
+   [metabase-enterprise.data-apps.generate.schemas.javascript :as schemas.javascript]
+   [metabase-enterprise.data-apps.generate.schemas.render :as schemas.render]
    [metabase.util.malli.registry :as mr]))
-
-(def ^:private orders-question
-  {:type        "card"
-   :description "Saved orders"})
 
 (def ^:private orders-table
   {:type   "table"
@@ -59,7 +55,6 @@
 
 (def ^:private compacting-schema
   {:schemaVersion 2
-   :questions     {"ordersQuestion" orders-question}
    :tables        {"orders"     orders-table
                    "franchises" franchises-table}
    :metrics       {"revenue" revenue-metric}})
@@ -75,18 +70,18 @@
                                                              :jsType   "Date"}}}}})
 
 (deftest typescript-renderer-emits-metadata-blocks-and-runtime-data-test
-  (let [body (typed-schemas/render-typescript compacting-schema)]
+  (let [body (schemas/render-typescript compacting-schema)]
     (testing "context for agents is a metadata block, never a line comment"
       (is (not (re-find #"(?m)^\s*//" body)))
       (testing "an entry opens with its block, so a reader meets the context before the data"
-        (is (re-find #"(?s)ordersQuestion: \{\n\s*/\* metadata: \{ \"description\": \"Saved orders\" \} \*/\n\s*type: \"card\"" body))
+        (is (re-find #"(?s)revenue: \{\n\s*/\* metadata: \{.*?\} \*/\n\s*type: \"metric\"" body))
         (is (str/includes? body "\"description\": \"Total order revenue\""))
         (is (str/includes? body (str "/* metadata: { \"displayName\": \"Payment Method\", "
                                      "\"semanticType\": \"type/Category\" } */\n        type: \"column\""))))
       (testing "a block with a nested value prints one array item per line"
         (is (re-find #"(?s)\"filters\": \[\n\s*\"Status is paid\",\n\s*\"Created At is in the previous 30 days\"\n\s*\]" body))))
     (testing "data for the Lib.createTestQuery DSL stays runtime"
-      (is (str/includes? body "ordersQuestion: {\n    /* metadata:"))
+      (is (str/includes? body "revenue: {\n    /* metadata:"))
       (is (str/includes? body "paymentMethod: {\n        /* metadata:"))
       (is (str/includes? body "databaseId: 1"))
       (is (str/includes? body "sourceTableId: 10"))
@@ -96,7 +91,7 @@
       (is (not (str/includes? body "filters:"))))))
 
 (deftest typescript-renderer-omits-what-a-metadata-block-has-nothing-to-say-test
-  (let [body (typed-schemas/render-typescript
+  (let [body (schemas/render-typescript
               {:schemaVersion 2
                :tables        {"orders" {:type        "table"
                                          :id          10
@@ -121,7 +116,7 @@
       (is (not (str/includes? body "description"))))))
 
 (deftest typescript-renderer-compacts-metric-dimensions-test
-  (let [body (typed-schemas/render-typescript compacting-schema)]
+  (let [body (schemas/render-typescript compacting-schema)]
     ;; Metric dimensions should compact into pickFields(...) references.
     (is (str/includes? body "function pickFields"))
     (is (str/includes? body "const field = fields[key] as { tableId?: number };"))
@@ -152,12 +147,12 @@
         (rest obj-node)))
 
 (deftest schema->ast-produces-valid-modules-test
-  (are [schema] (mr/validate javascript/Module (render/schema->ast schema))
+  (are [schema] (mr/validate schemas.javascript/Module (schemas.render/schema->ast schema))
     compacting-schema
     raw-dimensions-schema))
 
 (deftest schema->ast-compacts-metric-dimensions-test
-  (let [ast        (render/schema->ast compacting-schema)
+  (let [ast        (schemas.render/schema->ast compacting-schema)
         dimensions (-> (module-const ast "metrics")
                        (obj-entry "revenue")
                        (obj-entry :dimensions))]
@@ -172,7 +167,7 @@
            (obj-entry dimensions "franchises")))))
 
 (deftest schema->ast-splits-runtime-keys-from-metadata-test
-  (let [ast    (render/schema->ast compacting-schema)
+  (let [ast    (schemas.render/schema->ast compacting-schema)
         fields (-> (module-const ast "tables")
                    (obj-entry "orders")
                    (obj-entry :fields))
@@ -188,7 +183,7 @@
       (is (nil? (obj-entry field-node :displayName))))))
 
 (deftest typescript-renderer-omits-pick-fields-helper-for-raw-dimensions-test
-  (let [body (typed-schemas/render-typescript raw-dimensions-schema)]
+  (let [body (schemas/render-typescript raw-dimensions-schema)]
     ;; Dimensions that cannot be resolved to table fields stay as raw fields, so
     ;; the rendered module should not include the pickFields helper.
     (is (not (str/includes? body "function pickFields")))

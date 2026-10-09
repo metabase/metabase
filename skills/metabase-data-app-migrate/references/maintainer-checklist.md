@@ -20,8 +20,7 @@ deletes the alias bumps the contract version and ships the upgrade.
 
 1. `enterprise/backend/src/metabase_enterprise/data_apps/config.clj`:
    `supported-app-version` to `N+1`. `initial-app-version` stays 1.
-2. `skills/metabase-data-app-setup/template/data_app.yaml`: `version: N+1`.
-   Update the template's source if the contract change touches it.
+2. Update `skills/metabase-data-app-setup/template/` if the contract change touches it.
 3. Every e2e fixture manifest that declares a version
    (`e2e/support/assets/data-apps/*/data_app.yaml`,
    `e2e/support/assets/example_synced_data_apps/data_apps/*/data_app.yaml`,
@@ -38,6 +37,6 @@ deletes the alias bumps the contract version and ships the upgrade.
    `sandbox.ts` fallback point; that removal is the breaking change.
 7. `enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md`: a "Data apps
    contract v<N+1>" entry linking the upgrade guide.
-8. Run `./bin/test-agent :only '[metabase-enterprise.data-apps.config-test]'`.
-   Two tests fail until steps 1, 2, and 4 agree: the template must declare the
-   supported version, and the upgrade guides must cover every version from 1 up to it.
+8. Run `./bin/test-agent :only '[metabase-enterprise.data-apps.schema-test]'`.
+   It fails until steps 1 and 4 agree: the upgrade guides must cover every
+   version from 1 up to the supported one.

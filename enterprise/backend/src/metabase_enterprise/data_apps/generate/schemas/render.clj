@@ -1,12 +1,12 @@
-(ns metabase.typed-schemas.render
+(ns metabase-enterprise.data-apps.generate.schemas.render
   "Converts semantic schema values into the TypeScript AST.
 
   This is the pure policy stage of the typed-schema pipeline: it decides which
   schema keys become runtime data, which become `/* metadata */` blocks, and how
   metric dimensions compact into `pickFields(...)` calls. The output is the
-  tagged-vector AST described in [[metabase.typed-schemas.javascript]];
+  tagged-vector AST described in [[metabase-enterprise.data-apps.generate.schemas.javascript]];
   [[schema->ast]] produces it, and the public
-  [[metabase.typed-schemas.core/render-typescript]] composes it with the
+  [[metabase-enterprise.data-apps.generate.schemas/render-typescript]] composes it with the
   printer.
 
   Nothing here touches the database or builds strings: new rendering behavior
@@ -15,7 +15,7 @@
   structurally in tests."
   (:require
    [clojure.string :as str]
-   [metabase.typed-schemas.javascript :as javascript]))
+   [metabase-enterprise.data-apps.generate.schemas.javascript :as schemas.javascript]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,9 +25,7 @@
 ;;   entity for coding agents and humans, preserving useful context without
 ;;   making the runtime object larger or more ambiguous than the DSL needs.
 (def ^:private schema-render-policy
-  {:question         {:runtime  [:type :id :name :display :columns :parameters]
-                      :metadata [:entityId :description :verified]}
-   :table            {:runtime  [:type :id :name :fields :segments :measures]
+  {:table            {:runtime  [:type :id :name :fields :segments :measures]
                       :metadata [:entityId :description :databaseName :schemaName :tableName]}
    :field            {:runtime  [:type :name :sourceName :jsType :fieldId :tableId
                                  :baseType :effectiveType :defaultTemporalBucket]
@@ -50,8 +48,7 @@
 ;; special-cased in [[entity->node]] because compaction mixes call expressions
 ;; with nested dimension maps.
 (def ^:private entity-children
-  {:question {:columns :column}
-   :table    {:fields :field, :segments :segment, :measures :measure}
+  {:table    {:fields :field, :segments :segment, :measures :measure}
    :measure  {:columns :column}
    :metric   {:columns :column}})
 
@@ -98,7 +95,7 @@
   metadata) emit every key and no metadata block."
   [value]
   (cond
-    (javascript/expression? value) value
+    (schemas.javascript/expression? value) value
     (map? value)                   (into [:obj] (for [[entry-key entry-value] value]
                                                   [entry-key (generic->node entry-value)]))
     (sequential? value)            (into [:arr] (map generic->node) value)
@@ -132,7 +129,7 @@
   [dimensions]
   (into [:obj]
         (for [[entry-key group] dimensions]
-          [entry-key (if (javascript/expression? group)
+          [entry-key (if (schemas.javascript/expression? group)
                        group
                        (keyed-entities->obj group :metric-dimension))])))
 
@@ -321,17 +318,16 @@
   [schema]
   (boolean
    (some (fn [metric]
-           (some javascript/call? (vals (:dimensions metric))))
+           (some schemas.javascript/call? (vals (:dimensions metric))))
          (vals (:metrics schema)))))
 
 (def ^:private top-level-keys
-  [:questions :actions :tables :metrics])
+  [:actions :tables :metrics])
 
 (defn- section->node
   "Converts one top-level schema section into an object expression."
   [section-key section]
   (case section-key
-    :questions (keyed-entities->obj section :question)
     :actions   (generic->node section)
     :tables    (keyed-entities->obj section :table)
     :metrics   (keyed-entities->obj section :metric)))

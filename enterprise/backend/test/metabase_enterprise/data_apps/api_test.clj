@@ -118,8 +118,7 @@
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
-    (mt/user-http-request :crowberto :post 402 "apps/serialize-resources"
-                          {:collection "goodAppCollection0000" :queries [] :actions []})))
+    (mt/user-http-request :crowberto :post 402 "apps/generate/resources" {:queries [] :actions []})))
 
 (deftest assigned-group-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"

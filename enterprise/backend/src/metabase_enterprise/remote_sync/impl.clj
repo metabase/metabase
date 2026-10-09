@@ -964,7 +964,7 @@
                                       (catch Exception _ nil)))}))
 
 (defn- dependency->incremental-export-plan [snapshot opts [row entity]]
-  (let [path (source/entity->path opts entity)]
+  (let [path (serialization/entity-file-path opts entity)]
     (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
       {:writes [(assoc row :file_path path)]}
       :remote-sync/incremental-not-possible)))
@@ -1080,7 +1080,7 @@
       :remote-sync/incremental-not-possible ; extract-chunk omits gone entities; some row is unsyncable
       (->> found
            (map (fn [[row entity]]
-                  (row->incremental-export-plan row (entity-path-info snapshot (source/entity->path opts entity) (:entity_id entity)))))
+                  (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
 (defn- incremental-export-plan
@@ -1123,7 +1123,7 @@
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write [commit opts [row entity]]
-  (let [path  (or (:file_path row) (source/entity->path opts entity))
+  (let [path  (or (:file_path row) (serialization/entity-file-path opts entity))
         fspec (source/entity->file-spec-at path entity)]
     (run! #(source.p/stage-upsert! commit %) (source/file-specs fspec))
     (when (:id row)

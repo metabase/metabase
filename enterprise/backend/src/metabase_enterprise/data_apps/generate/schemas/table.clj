@@ -1,14 +1,13 @@
-(ns metabase.typed-schemas.schema.table
-  "Typed schema generation for tables, fields, segments and measures."
+(ns metabase-enterprise.data-apps.generate.schemas.table
+  "The schema of tables, with their fields, segments and measures."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.generate.schemas.common :as schemas.common]
    [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.typed-schemas.common :as common]
-   [metabase.typed-schemas.db :as typed-schemas.db]
-   [metabase.typed-schemas.schema.common :as schema.common]))
+   [metabase.premium-features.core :as premium-features]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,7 +15,7 @@
   "Returns the table for a given field id."
   [field-id]
   (when (integer? field-id)
-    (typed-schemas.db/field-table-id field-id)))
+    (data-apps.db/field-table-id field-id)))
 
 (defn field-schema
   "Returns the schema for a table field."
@@ -28,9 +27,9 @@
    (let [field-id (or id field_id)
          table-id (or table-id (:table_id field) (:table-id field) (table-by-field-id field-id))]
      (m/assoc-some
-      (assoc (common/column-schema field)
+      (assoc (schemas.common/column-schema field)
              :type "column"
-             :key (common/generated-key (:name field) field-id)
+             :key (schemas.common/generated-key (:name field) field-id)
              :id field-id)
       :sourceName source-name
       :fieldId (when (integer? field-id) field-id)
@@ -38,28 +37,24 @@
       :defaultTemporalBucket (:unit field)))))
 
 (defn- without-unavailable-tables
-  "`tables` without any backed by a destination (routed) database -- see [[schema.common/destination-db-ids]] -- and
-  without the audit database's while the audit feature is off, since the table details lookup refuses those."
+  "`tables` without any backed by a routing destination database, and without the audit database's while the audit
+  feature is off, since the table details lookup refuses those."
   [tables]
-  (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))
+  (let [destination-ids (data-apps.db/destination-database-ids (into #{} (keep :db_id) tables))
         audit-off?      (not (premium-features/enable-audit-app?))]
     (cond->> tables
       (seq destination-ids) (remove #(contains? destination-ids (:db_id %)))
       audit-off?            (remove #(= audit/audit-db-id (:db_id %))))))
 
 (defn select-tables
-  "Returns the active tables, with optional database and table-id scopes.
-
-  Library and database endpoint paths both need the same active-table rules;
-  only their id filters differ."
-  [database-ids table-ids]
-  (->> (typed-schemas.db/active-tables-in-scope database-ids table-ids)
-       (without-unavailable-tables)))
+  "Returns the active tables with `table-ids`."
+  [table-ids]
+  (without-unavailable-tables (data-apps.db/active-tables table-ids)))
 
 (defn select-library-tables
-  "Returns published tables from the library based on the given scope."
-  [{:keys [data-collection-ids]}]
-  (->> (typed-schemas.db/published-library-tables-in-collections data-collection-ids)
+  "Returns the published tables in the library collections with `collection-ids`."
+  [collection-ids]
+  (->> (data-apps.db/published-tables-in-collections collection-ids)
        (without-unavailable-tables)))
 
 (defn segment-schema
@@ -67,7 +62,7 @@
   [table-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
   (m/assoc-some
    {:type    "segment"
-    :key     (common/generated-key (or display-name name) id)
+    :key     (schemas.common/generated-key (or display-name name) id)
     :id      id
     :tableId table-id
     :name    name}
@@ -89,8 +84,8 @@
   measure remains usable with a fallback column."
   [database-id measure-id]
   (try
-    (when-let [definition (typed-schemas.db/measure-definition measure-id)]
-      (schema.common/aggregation-result-column database-id definition))
+    (when-let [definition (data-apps.db/measure-definition measure-id)]
+      (schemas.common/aggregation-result-column database-id definition))
     (catch Exception _
       nil)))
 
@@ -101,13 +96,13 @@
     (when (seq measure-ids)
       (let [definition-by-measure-id (into {}
                                            (map (juxt :id :definition))
-                                           (typed-schemas.db/measure-definitions measure-ids))]
+                                           (data-apps.db/measure-definitions measure-ids))]
         (try
           (let [metadata-provider (lib-be/application-database-metadata-provider database-id)]
             (into {}
                   (keep (fn [{:keys [id]}]
                           (when-let [definition (get definition-by-measure-id id)]
-                            [id (schema.common/aggregation-result-column-with-metadata-provider metadata-provider definition)])))
+                            [id (schemas.common/aggregation-result-column-with-metadata-provider metadata-provider definition)])))
                   measures))
           ;; Result-column inference is best effort; callers fall back to an unknown column.
           (catch Exception _
@@ -120,11 +115,11 @@
   ([table-id _database-id result-column {:keys [id name description display-name portable-entity-id portable_entity_id]}]
    (m/assoc-some
     {:type    "measure"
-     :key     (common/generated-key (or display-name name) id)
+     :key     (schemas.common/generated-key (or display-name name) id)
      :id      id
      :tableId table-id
      :name    name
-     :columns [(or (some-> result-column common/column-schema)
+     :columns [(or (some-> result-column schemas.common/column-schema)
                    (fallback-measure-column {:name (or display-name name)}))]}
     :entityId (or portable_entity_id portable-entity-id)
     :description description)))
@@ -132,20 +127,20 @@
 (defn table-schema
   "Returns the schema for a table."
   [{:keys [id name description display_name database_id database_name database_schema portable_entity_id fields segments measures]}]
-  (let [segments-map                 (common/keyed-map (map #(segment-schema id %) segments))
+  (let [segments-map                 (schemas.common/keyed-map (map #(segment-schema id %) segments))
         measure-result-column-by-id  (measure-result-columns database_id measures)
-        measures-map                 (common/keyed-map (map #(measure-schema id database_id
-                                                                             (get measure-result-column-by-id (:id %))
-                                                                             %)
-                                                            measures))]
+        measures-map                 (schemas.common/keyed-map (map #(measure-schema id database_id
+                                                                                     (get measure-result-column-by-id (:id %))
+                                                                                     %)
+                                                                    measures))]
     (m/assoc-some
      {:type         "table"
-      :key          (common/generated-key (or display_name name) id)
+      :key          (schemas.common/generated-key (or display_name name) id)
       :id           id
       :name         (or display_name name)
       :databaseName database_name
       :tableName    name
-      :fields       (common/keyed-map (map #(field-schema % name id) fields))}
+      :fields       (schemas.common/keyed-map (map #(field-schema % name id) fields))}
      :entityId portable_entity_id
      :description description
      :schemaName database_schema

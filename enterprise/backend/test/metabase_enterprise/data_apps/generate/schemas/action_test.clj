@@ -1,18 +1,18 @@
-(ns metabase.typed-schemas.schema.action-test
+(ns metabase-enterprise.data-apps.generate.schemas.action-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.generate.schemas.action :as schemas.action]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [metabase.typed-schemas.schema.action :as schema.action]))
+   [metabase.test :as mt]))
 
 (defn- standalone-action-schema
   "The schema entry for a model-less query action created from `action` and `dataset-query`."
   [action dataset-query]
   (mt/with-temp [:model/Action      {action-id :id} (merge {:type :query, :name "Update bird"} action)
                  :model/QueryAction _ {:action_id action-id, :dataset_query dataset-query}]
-    (schema.action/action-schema (actions/select-action :id action-id))))
+    (schemas.action/action-schema (actions/select-action :id action-id))))
 
 (deftest action-schema-types-a-parameter-from-its-template-tag-test
   (testing ":category has no JS type of its own, so the persisted template tag's type decides it"
@@ -44,13 +44,13 @@
 (deftest action-schema-tolerates-an-empty-query-test
   (testing "an action whose stored query degraded to {} still builds, typing parameters from their own types"
     (is (=? {:parameters [{:slug "name", :displayName "Name", :jsType "string"}]}
-            (schema.action/action-schema {:id 7, :name "Update bird", :dataset_query {}
-                                          :parameters [{:id "name", :name "Name", :type :text}]})))))
+            (schemas.action/action-schema {:id 7, :name "Update bird", :dataset_query {}
+                                           :parameters [{:id "name", :name "Name", :type :text}]})))))
 
 (deftest action-schema-leaves-out-hidden-parameters-test
   (testing "a parameter the action's form hides is left out, since execute refuses a value for it"
     (is (=? {:parameters [{:slug "name"}]}
-            (schema.action/action-schema
+            (schemas.action/action-schema
              {:id                     7
               :name                   "Update bird"
               :dataset_query          {}
@@ -58,7 +58,7 @@
                                        {:id "updated_by", :name "Updated by", :type :text, :required true}]
               :visualization_settings {:fields {"updated_by" {:id "updated_by", :hidden true}}}})))
     (is (= ["name"]
-           (map :slug (:parameters (schema.action/action-schema
+           (map :slug (:parameters (schemas.action/action-schema
                                     {:id 7, :name "Update bird", :dataset_query {}
                                      :parameters [{:id "name", :type :text} {:id "updated_by", :type :text}]
                                      :visualization_settings {:fields {"updated_by" {:id "updated_by", :hidden true}}}})))))))

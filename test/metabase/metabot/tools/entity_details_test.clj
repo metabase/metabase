@@ -603,7 +603,7 @@
                                            :dataset_query (mt/mbql-query venues
                                                             {:aggregation [[:count]]
                                                              :breakout    [$price]})}]
-          ;; Exercise `cards-details`, the batch path used by the typed-schemas endpoint. Calling
+          ;; Exercise `cards-details`, the batch path used by the data app schema endpoint. Calling
           ;; `get-table-details` for each Card would miss a failure that terminates the complete sequence.
           (let [details (->> (entity-details/cards-details :question (mt/id) [broken good] {})
                              (into [] (map #(select-keys % [:name :query_json]))))]
