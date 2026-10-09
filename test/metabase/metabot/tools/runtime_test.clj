@@ -86,7 +86,6 @@
           (assoc :description "Reads several cards.")
           (assoc :args [:map {:closed true} [:ids [:sequential {:min 1} :int]]])))
     (batched-args [_ {:keys [ids]}] (mapv (fn [id] {:id id}) ids))
-    (around-batch [_ _item-args _ctx run] (run))
     (compose [_ entries _ctx] (tools/concatenated entries))))
 
 (def ^:private entries
