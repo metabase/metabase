@@ -22,7 +22,7 @@ export function SlackAccount({
   const handleDisconnect = () =>
     show({
       title: t`Disconnect your Slack account?`,
-      message: t`Metabot won't be able to answer you in Slack until you connect again.`,
+      message: t`You'll need to connect again to use this account with Metabot in Slack.`,
       confirmButtonText: t`Disconnect`,
       onConfirm: onDisconnect,
     });
