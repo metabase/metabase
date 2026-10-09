@@ -597,11 +597,26 @@
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
-(defenterprise check-allowed-content
-  "Checks contents of a collection before saving it. The OSS implementation is a no-op."
+(defenterprise check-library-content
+  "Checks contents of a library collection before saving it. The OSS implementation is a no-op."
   metabase-enterprise.library.validation
   [_model-type _collection-id]
   true)
+
+(defn check-allowed-content
+  "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
+  content of `model-type`."
+  [model-type collection-id]
+  ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content.
+  ;; A load checks every question as a possible dashboard question before its dashboard is known, so that is a
+  ;; question here.
+  (when (and collection-id
+             (some? model-type)
+             (not= :model/CollectionBookmark model-type)
+             (not (contains? #{:question :dashboard-question :metric :action} (keyword model-type)))
+             (perms/data-app-collection? collection-id))
+    (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
+  (check-library-content model-type collection-id))
 
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed changes."
@@ -1846,6 +1861,9 @@
                        :new-location new-location})))
     (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
+    ;; an export writes a data app's collection under another as a file every pull refuses
+    (when (perms/data-app-collection? (:id collection))
+      (throw (ex-info "You cannot move a data app's collection." {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
@@ -1880,7 +1898,8 @@
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
+  ;; a collection without a type is a plain child collection, which a parent may refuse like any other content
+  (check-allowed-content (or (:type collection) :collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (u/prog1 (-> collection
                (assoc :slug (slugify collection-name))
                (cond->
@@ -2068,6 +2087,12 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
+    ;; an export leaves out a trashed collection, which would delete the app's resource files, and writes an
+    ;; official one into a file every pull refuses
+    (api/check
+     (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
+               (perms/data-app-collection? (:id collection-before-updates))))
+     [400 "You cannot move a data app's collection to the trash or make it official."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
@@ -2083,7 +2108,7 @@
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
     ;; (3.6) Check that the parent collection allows this collection to be there
-    (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
+    (check-allowed-content (or (:type collection) :collection) (when-let [location (:location collection)] (location-path->parent-id location)))
     ;; (3.7) Check if it's a semantic-library collection that can't be updated
     (check-library-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
@@ -2226,14 +2251,8 @@
     (merge child-colls dashboards cards documents timelines actions tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
-  (let [path      (get collections (:entity_id coll))
-        ns-folder (case (:namespace coll)
-                    :snippets     "snippets"
-                    :transforms   "transforms"
-                    :data-actions "data-actions"
-                    nil           "main"
-                    "main")]
-    (into [{:label "collections"} {:label ns-folder}] path)))
+  (into [{:label "collections"} {:label (serdes/collection-namespace-folder (:namespace coll))}]
+        (get collections (:entity_id coll))))
 
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id

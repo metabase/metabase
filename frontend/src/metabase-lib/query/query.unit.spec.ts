@@ -330,7 +330,6 @@ describe("createTestQuery", () => {
               {
                 type: "column",
                 name: "LATITUDE",
-                sourceName: "PEOPLE",
                 binning: { strategy: "bin-width", binWidth: 10 },
               },
             ],

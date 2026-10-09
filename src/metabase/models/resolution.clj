@@ -34,9 +34,11 @@
     :model/Comment                           metabase.comments.models.comment
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
+    :model/ContentDiagnosticsFinding         metabase-enterprise.content-diagnostics.models.finding
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/DataApp                           metabase-enterprise.data-apps.models.data-app
+    :model/DataAppGroupAssignment            metabase-enterprise.data-apps.models.data-app-group-assignment
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card

@@ -29,14 +29,16 @@
    [:card ::test-card-source-spec]])
 
 (mr/def ::test-column-spec
+  "A column of the stage: a field by `:field-id`, or else a column by its `:name`. Every other key is matched exactly:
+  a missing `:join-alias` means the column does not come from a join, a missing `:source-field-id` means it is not
+  implicitly joined."
   [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
-   [:name string?]
-   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
-   [:source-name {:optional true} [:maybe string?]]
+   [:name {:optional true} [:maybe string?]]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
    [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name {:optional true} [:maybe string?]]
-   [:index {:optional true} [:maybe pos-int?]]])
+   [:source-field-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]])
 
 (mr/def ::test-temporal-bucket-spec
   [:map
@@ -121,6 +123,7 @@
   [:map {:closed true}
    [:source     [:ref ::test-source-spec]]
    [:strategy   ::lib.schema.join/strategy]
+   [:alias      {:optional true} [:maybe ::lib.schema.join/alias]]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 
 (mr/def ::test-join-source-spec

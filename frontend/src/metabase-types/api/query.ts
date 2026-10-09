@@ -467,15 +467,11 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";
-  name: string;
-  tableId?: TableId;
-  sourceName?: string;
+  name?: string;
+  fieldId?: FieldId;
+  joinAlias?: string;
   sourceFieldId?: FieldId;
-  displayName?: string;
-
-  // When the columns cannot be disambiguated with name, sourceName and displayName
-  // use this index to pick one.
-  index?: number;
+  sourceFieldJoinAlias?: string;
 };
 
 export type TestExpressionSpec =
@@ -560,6 +556,7 @@ export type TestBreakoutSpec = TestColumnWithBinningSpec;
 export type TestJoinSpec = {
   source: TestSourceSpec;
   strategy: JoinStrategy;
+  alias?: string;
 
   // If not set we will use the suggested join conditions
   conditions?: TestJoinConditionSpec[];
