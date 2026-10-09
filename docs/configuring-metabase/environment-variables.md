@@ -86,7 +86,7 @@ Whether AI features are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
 - Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
-Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
+Number of days to retain rows in the ai_usage_log, metabot_conversation, metabot_message, agent_api_call_log, and api_key_usage_log tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
 Sets the maximum number of days Metabase preserves rows for the following application database tables:
 
@@ -94,6 +94,7 @@ Sets the maximum number of days Metabase preserves rows for the following applic
 - `metabot_conversation`
 - `metabot_message`
 - `agent_api_call_log`
+- `api_key_usage_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.
@@ -1522,14 +1523,6 @@ A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform
 
 Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
-### `MB_LLM_MAX_TOKENS`
-
-- Type: integer
-- Default: `4096`
-- [Configuration file name](./config-file.md): `llm-max-tokens`
-
-Maximum tokens for LLM responses.
-
 ### `MB_LLM_METABOT_PROVIDER`
 
 - Type: string
@@ -1585,6 +1578,34 @@ Backed by the moonshot connection in the admin AI settings provider list: reads 
 The Moonshot AI API Key.
 
 Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OLLAMA_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-base-url`
+
+The base URL of your Ollama server's OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.
+
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
+
+### `MB_LLM_OLLAMA_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-key`
+
+The API key for Ollama Cloud, with MB_LLM_OLLAMA_API_BASE_URL set to https://ollama.com/v1. For self-hosted servers, only needed behind an authenticated proxy.
+
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OLLAMA_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `llm-ollama-request-timeout-ms`
+
+Socket timeout in milliseconds for requests to your Ollama server.
 
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
@@ -1824,6 +1845,13 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 - [Configuration file name](./config-file.md): `metabot-advanced-permissions`
 
 Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
+
+### `MB_METABOT_CHAT_TURN_ASYNC_TIMEOUT_MS`
+
+- Type: positive-integer
+- Default: `1800000`
+
+Maximum duration of a Metabot chat turn in milliseconds.
 
 ### `MB_METABOT_ENABLED`
 
@@ -3294,7 +3322,7 @@ Type: integer<br>
 Default: `600000`<br>
 Since: v35.0
 
-Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
+Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might. Metabot chat responses aren't bound by this timeout.
 
 ### `MB_JETTY_DAEMON`
 

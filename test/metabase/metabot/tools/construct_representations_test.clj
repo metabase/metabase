@@ -84,17 +84,17 @@
   ([entity id & _conditions] {:model entity :id id}))
 
 (defn- with-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (defn- with-ambiguous-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (def ^:private mp-coerced
@@ -115,10 +115,10 @@
                 :effective-type :type/DateTime :coercion-strategy :Coercion/ISO8601->DateTime}]}))
 
 (defn- with-coerced-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (def ^:private mp-temporal
@@ -132,10 +132,10 @@
                {:id 104 :name "STATUS"     :table-id 10 :base-type :type/Text}]}))
 
 (defn- with-temporal-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-temporal)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-temporal)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (defn- query-data
@@ -257,17 +257,17 @@
     ;; This fixture's MP-name is "Sample Database". We DON'T stub `resolve-database-id-from-first-stage`
     ;; here - we want the actual function to run against `name = "Sample"` and observe the
     ;; not-found behaviour.
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
-                  construct/resolve-database-id-from-first-stage
-                  (fn [parsed]
-                    (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
-                      (if (= db-name "Sample Database")
-                        1
-                        (throw (ex-info (str "Unknown database: `" db-name "`.")
-                                        {:agent-error? true
-                                         :status-code  400
-                                         :error        :unknown-database
-                                         :database     db-name})))))]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
+                                construct/resolve-database-id-from-first-stage
+                                (fn [parsed]
+                                  (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
+                                    (if (= db-name "Sample Database")
+                                      1
+                                      (throw (ex-info (str "Unknown database: `" db-name "`.")
+                                                      {:agent-error? true
+                                                       :status-code  400
+                                                       :error        :unknown-database
+                                                       :database     db-name})))))]
       (let [query (query-data
                    {"lib/type" "mbql/query"
                     "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -436,17 +436,17 @@
                 "DB surfaces `:unknown-database` at the `resolve-database-id-from-first-stage`\n"
                 "step, reflagged `:agent-error?` for the LLM.")
     ;; No with-mp-and-stubs! - we want the DB-name-not-found path to trigger.
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                  construct/resolve-database-id-from-first-stage
-                  (fn [parsed]
-                    (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
-                      (if (= db-name "Sample")
-                        1
-                        (throw (ex-info (str "Unknown database: `" db-name "`.")
-                                        {:agent-error? true
-                                         :status-code  400
-                                         :error        :unknown-database
-                                         :database     db-name})))))]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
+                                construct/resolve-database-id-from-first-stage
+                                (fn [parsed]
+                                  (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
+                                    (if (= db-name "Sample")
+                                      1
+                                      (throw (ex-info (str "Unknown database: `" db-name "`.")
+                                                      {:agent-error? true
+                                                       :status-code  400
+                                                       :error        :unknown-database
+                                                       :database     db-name})))))]
       (try
         (construct/execute-representations-query
          (query-data
@@ -1198,10 +1198,10 @@
         record  (fn ([obj] obj)
                   ([entity id] (swap! checked conj [entity id]) {:model entity :id id})
                   ([entity id & _] (swap! checked conj [entity id]) {:model entity :id id}))]
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
-                  construct/resolve-database-id-from-first-stage (fn [_] 1)
-                  api/read-check  record
-                  api/query-check record]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                api/read-check  record
+                                api/query-check record]
       (f))
     (into #{} (comp (filter (fn [[m _]] (= m :model/Table))) (map second)) @checked)))
 
@@ -1238,10 +1238,10 @@
                              (if (and (= entity :model/Table) (= id 20))
                                (throw (ex-info "You don't have permissions to do that." {:status-code 403}))
                                {:model entity :id id})))]
-        (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
-                      construct/resolve-database-id-from-first-stage (fn [_] 1)
-                      api/read-check  deny-table-20
-                      api/query-check deny-table-20]
+        (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                                    construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                    api/read-check  deny-table-20
+                                    api/query-check deny-table-20]
           (try
             (construct/execute-representations-query
              (query-data

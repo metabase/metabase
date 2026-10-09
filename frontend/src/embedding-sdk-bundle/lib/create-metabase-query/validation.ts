@@ -481,10 +481,7 @@ function bucketOptionsMatch(left: unknown, right: Record<string, unknown>) {
   }
 
   return (
-    left.unit === right.unit &&
-    binningOptionsMatch(left.binning, right.binning) &&
-    left.bins === right.bins &&
-    left.binWidth === right.binWidth
+    left.unit === right.unit && binningOptionsMatch(left.binning, right.binning)
   );
 }
 
@@ -499,7 +496,7 @@ function binningOptionsMatch(left: unknown, right: unknown) {
 
   return (
     left.strategy === right.strategy &&
-    left["num-bins"] === right["num-bins"] &&
-    left["bin-width"] === right["bin-width"]
+    left.numBins === right.numBins &&
+    left.binWidth === right.binWidth
   );
 }

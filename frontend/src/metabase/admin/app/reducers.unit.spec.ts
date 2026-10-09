@@ -16,7 +16,6 @@ describe("getAdminPaths", () => {
     expect(getAdminPaths().map(({ key }) => key)).toEqual([
       "settings",
       "databases",
-      "embedding",
       "metabot",
       "data-model",
       "people",

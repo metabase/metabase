@@ -46,6 +46,7 @@
   shared-tenant-collection?
   transforms-ns
   data-apps-ns
+  data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
   annotate-dashboards])

@@ -18,9 +18,14 @@ import schema from "../src/metabase.data";
 
 const orders = schema.tables.orders;
 
-export const OrdersList = defineQuery({ source: orders, limit: 100 });
+export const OrdersList = defineQuery({
+  savedQuestionEntityId: "<entity ID of its saved question>",
+  source: orders,
+  limit: 100,
+});
 
 export const OrdersByMonth = defineQuery({
+  savedQuestionEntityId: "<entity ID of its saved question>",
   source: orders,
   aggregations: [aggregations.count()],
   breakouts: [breakout(orders.fields.createdAt, { unit: "month" })],
@@ -53,14 +58,20 @@ export function Overview() {
 
 Rules:
 
-- This directory sits beside `package.json`, not under `src/`. `npm run
-sync-resources` (run by `npm run build`) scans only `queries/` and `actions/`,
-  so a definition anywhere else is never synchronized and fails in production.
+- This directory sits beside `package.json`, not under `src/`. The CLI scans
+  only `queries/` and `actions/`, so a definition anywhere else never gets a
+  saved question and fails in production.
 - Keep a definition static. A clause whose value comes from a control (a
   selected filter, a date range, a search box) goes in the hook's second
   argument, never inside `defineQuery`.
 - One export per query the app renders. Filter-option queries, KPI queries, and
   helper queries are queries too.
 - Pass the export itself to the hook. Never spread or copy it.
-- `savedQuestionSourceId` is written by synchronization. Never add, edit, or
-  remove it by hand; commit it together with `resources_metadata.json`.
+- Each definition carries `savedQuestionEntityId`, the entity ID of its saved
+  question in the app's collection, under the repo's `collections/data_apps/`.
+  After adding or changing a definition, run `npm run write-resources` to
+  write that card. A metric it aggregates is copied into the app's collection
+  too, by the same command. Then run `npm run check-resources`, and commit the definitions and
+  the collection files together. `npm run build` fails until they match.
+- Never copy a `savedQuestionEntityId` to another definition, or remove it while
+  its card exists.

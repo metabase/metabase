@@ -6,7 +6,7 @@ only for a change an app author must act on. Decide the category first:
 | Change                                                                                                             | Bump?                              | Proven by                                                  | What the upgrade guide contains                                                |
 | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `@metabase/embedding-sdk-react/data-app` API: components, hooks, types, the bundle factory, `providerProps`        | yes, after one deprecation release | `npm run typecheck`                                        | the symbol table from the `.d.ts` diff, with replacements                      |
-| `data_app.yaml` fields, `queries/` and `actions/` conventions, generated-id keys, `resources_metadata.json` format | yes                                | `npm run build` (`sync-resources`)                         | mechanical steps; `sync-resources` upgrades the state it owns                  |
+| `data_app.yaml` fields, `queries/` and `actions/` conventions, entity-ID keys, the layout of the app's collection files                | yes                                | `npm run check-resources` and `npm run build`              | mechanical steps, including every edit to the app's collection files                         |
 | What an app may declare or run under the permission model                                                          | yes                                | the instance API, read by the agent with the app's API key | instance steps whose _Done when_ is an API response                            |
 | Instance-only changes: the app group's grants, collection layout, provisioning                                     | **no**                             | nothing app-side                                           | none; ship a backend migration and make provisioning converge on the next pull |
 
@@ -20,8 +20,7 @@ deletes the alias bumps the contract version and ships the upgrade.
 
 1. `enterprise/backend/src/metabase_enterprise/data_apps/config.clj`:
    `supported-app-version` to `N+1`. `initial-app-version` stays 1.
-2. `skills/metabase-data-app-setup/template/data_app.yaml`: `version: N+1`.
-   Update the template's source if the contract change touches it.
+2. Update `skills/metabase-data-app-setup/template/` if the contract change touches it.
 3. Every e2e fixture manifest that declares a version
    (`e2e/support/assets/data-apps/*/data_app.yaml`,
    `e2e/support/assets/example_synced_data_apps/data_apps/*/data_app.yaml`,
@@ -38,6 +37,6 @@ deletes the alias bumps the contract version and ships the upgrade.
    `sandbox.ts` fallback point; that removal is the breaking change.
 7. `enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md`: a "Data apps
    contract v<N+1>" entry linking the upgrade guide.
-8. Run `./bin/test-agent :only '[metabase-enterprise.data-apps.config-test]'`.
-   Two tests fail until steps 1, 2, and 4 agree: the template must declare the
-   supported version, and the upgrade guides must cover every version from 1 up to it.
+8. Run `./bin/test-agent :only '[metabase-enterprise.data-apps.schema-test]'`.
+   It fails until steps 1 and 4 agree: the upgrade guides must cover every
+   version from 1 up to the supported one.

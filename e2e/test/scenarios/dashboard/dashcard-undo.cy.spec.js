@@ -17,6 +17,28 @@ describe("scenarios > dashboard cards > undo", () => {
         H.getDashboardCard(3).findByText("Text card 4");
       };
 
+      const getPositions = ($grid) => {
+        const gridRect = $grid[0].getBoundingClientRect();
+        return $grid
+          .find("[data-testid='dashcard-container']")
+          .toArray()
+          .map((dashcard) => {
+            const rect = dashcard.getBoundingClientRect();
+            return {
+              left: Math.round(rect.left - gridRect.left),
+              top: Math.round(rect.top - gridRect.top),
+            };
+          });
+      };
+
+      const checkPositions = () => {
+        cy.get("@originalPositions").then((originalPositions) => {
+          H.dashboardGrid().should(($grid) => {
+            expect(getPositions($grid)).to.deep.equal(originalPositions);
+          });
+        });
+      };
+
       const cards = [
         H.getTextCardDetails({
           text: "Text card 1",
@@ -57,6 +79,7 @@ describe("scenarios > dashboard cards > undo", () => {
       checkOrder();
 
       H.editDashboard();
+      H.dashboardGrid().then(getPositions).as("originalPositions");
 
       for (let i = 0; i < cards.length; i++) {
         H.removeDashboardCard(i);
@@ -65,6 +88,7 @@ describe("scenarios > dashboard cards > undo", () => {
         H.undo();
         H.getDashboardCards().should("have.length", cards.length);
         checkOrder();
+        checkPositions();
         // Seems to be needed to allow the UI to catch up before hovering the next element.
         // TODO: improve this.
         cy.wait(200);
@@ -80,6 +104,7 @@ describe("scenarios > dashboard cards > undo", () => {
         H.undo();
         H.getDashboardCards().should("have.length", cards.length);
         checkOrder();
+        checkPositions();
         cy.wait(200);
       }
     },

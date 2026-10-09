@@ -221,9 +221,9 @@
   (t2/delete! model parent-column parent-id :entity_id [:not-in entity-ids]))
 
 (mu/defn collection-paths-columns
-  "The id, entity id, location, and name of every Collection."
+  "The id, entity id, location, name, and namespace of every Collection."
   []
-  (t2/select [:model/Collection :id :entity_id :location :name]))
+  (t2/select [:model/Collection :id :entity_id :location :name :namespace]))
 
 (mu/defn dashboard-entity-ids-and-names
   "The entity id and name of every Dashboard."
@@ -357,6 +357,11 @@
   "The id, entity id, and Table id of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
+
+(mu/defn timeline-ids-of-events
+  "The distinct Timeline ids of the TimelineEvents with `event-ids`."
+  [event-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
 
 (mu/defn entity-by-own-pk
   "The `model` row identified by `id`, using whatever column is that model's own primary key."

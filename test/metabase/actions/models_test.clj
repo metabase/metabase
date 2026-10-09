@@ -230,7 +230,7 @@
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "a query action can be inserted and updated without a model, and keeps its own collection"
-      (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
                                                          {:type          :query
@@ -447,3 +447,14 @@
                          :serdes/meta [{:model "Action" :id entity-id}]}
                         nil)
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
+
+(deftest storage-path-test
+  (testing "actions without a model in the data actions root or namespace are stored in the data-actions folder"
+    (mt/with-temp [:model/Collection {folder-eid :entity_id} {:namespace "data-actions"}
+                   :model/Collection {app-eid :entity_id}    {:namespace "data-apps"}]
+      (let [folder-label (fn [action]
+                           (:label (second (serdes/storage-path (assoc action :serdes/meta [{:model "Action"}]) {}))))]
+        (is (= "data-actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
+        (is (= "data-actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
+        (is (= "main" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
+        (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))
