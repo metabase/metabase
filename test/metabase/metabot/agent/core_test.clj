@@ -1090,11 +1090,14 @@
                        :data       (ex-data credit-error)
                        :error-code "provider_error"}}]
              (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
-    (testing "everyone but an admin gets a generic message rather than the provider's own text"
-      (is (=? [{:error {:error-code "provider_error"
-                        :message    "The AI provider could not complete the request. Please try again."}}]
-              (mt/with-current-user (mt/user->id :rasta)
-                (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
+    (testing "everyone but an admin gets a generic message rather than the provider's own text, and none of the
+              provider's response either"
+      (let [parts (mt/with-current-user (mt/user->id :rasta)
+                    (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit))]
+        (is (=? [{:error {:error-code "provider_error"
+                          :message    "The AI provider could not complete the request. Please try again."}}]
+                parts))
+        (is (not (contains? (:error (first parts)) :data)))))
     (testing "an outage says to try again later on either connection, whether the request failed or the stream did"
       (doseq [claude-fn [(fn [_] (throw (api-error 529 overloaded)))
                          (fn [_] (eduction (claude/claude->aisdk-chunks-xf)
