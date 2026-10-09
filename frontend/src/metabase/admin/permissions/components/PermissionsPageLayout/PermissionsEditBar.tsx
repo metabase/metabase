@@ -48,7 +48,7 @@ export function PermissionsEditBar({
   return (
     <>
       <EditBar
-        admin={!isEmbeddingHub}
+        location={isEmbeddingHub ? "embedding-hub" : "admin"}
         className={isEmbeddingHub ? S.hubEditBar : undefined}
         title={t`You've made changes to permissions.`}
         buttons={[cancelButton, saveButton]}

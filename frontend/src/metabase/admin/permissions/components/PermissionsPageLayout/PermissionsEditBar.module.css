@@ -12,15 +12,3 @@
   padding-left: 2.5rem;
   padding-right: 3.5rem;
 }
-
-/* Two attributes in the `:not` to beat EditBar's two-class `.root.brand` background, which paints `core-brand`. */
-.hubEditBar:not(
-  [data-css-specificity-hack="🌊"][data-css-specificity-hack="🌊"]
-) {
-  background-color: var(--mb-color-background_surface-secondary);
-}
-
-/* EditBar's pencil icon and title, which it paints `text-primary-inverse` for a dark bar. */
-.hubEditBar > :first-child > * {
-  color: var(--mb-color-text-primary);
-}
