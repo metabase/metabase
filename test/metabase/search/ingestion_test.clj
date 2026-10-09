@@ -266,12 +266,12 @@
                   result)))))))
 
 (defn- queued-updates!
-  "Run `f` with a fresh ingestion queue swapped in, and return what ends up on it."
+  "Run `f` with a fresh ingestion queue swapped in, and return the updates that end up on it."
   [f]
   (let [test-queue (queue/delay-queue)]
     (with-redefs [search.ingestion/queue test-queue]
       (f test-queue))
-    (vec test-queue)))
+    (mapv :value test-queue)))
 
 (deftest ingest-maybe-async!-queues-after-commit-test
   ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction
@@ -279,20 +279,23 @@
   ;; silently left out of the index (GDGT-3326).
   (let [update ["collection" [:= 1 :this.id]]]
     (testing "async updates made inside a transaction are only queued once it commits"
-      (is (= 1 (count (queued-updates!
-                       (fn [test-queue]
-                         (t2/with-transaction [_conn]
-                           (search.ingestion/ingest-maybe-async! [update] false)
-                           (testing "nothing is queued while the transaction is still open"
-                             (is (empty? test-queue))))))))))
+      (let [queued (queued-updates!
+                    (fn [test-queue]
+                      (t2/with-transaction [_conn]
+                        (search.ingestion/ingest-maybe-async! [update] false)
+                        (testing "nothing is queued while the transaction is still open"
+                          (is (empty? test-queue))))))]
+        (is (= [update] queued))))
     (testing "nothing is queued when the transaction rolls back"
-      (is (empty? (queued-updates!
-                   (fn [_test-queue]
-                     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback"
-                                           (t2/with-transaction [_conn]
-                                             (search.ingestion/ingest-maybe-async! [update] false)
-                                             (throw (ex-info "rollback" {}))))))))))
+      (let [queued (queued-updates!
+                    (fn [_test-queue]
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback"
+                                            (t2/with-transaction [_conn]
+                                              (search.ingestion/ingest-maybe-async! [update] false)
+                                              (throw (ex-info "rollback" {})))))))]
+        (is (= [] queued))))
     (testing "outside a transaction the update is queued immediately"
-      (is (= 1 (count (queued-updates!
-                       (fn [_test-queue]
-                         (search.ingestion/ingest-maybe-async! [update] false)))))))))
+      (is (= [update]
+             (queued-updates!
+              (fn [_test-queue]
+                (search.ingestion/ingest-maybe-async! [update] false))))))))
