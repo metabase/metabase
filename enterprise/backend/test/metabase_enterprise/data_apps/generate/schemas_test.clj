@@ -66,7 +66,7 @@
     (tables [_ table-ids] (filterv #(contains? table-ids (:id %)) tables))
     (library-tables [_ _] (vec library-tables))))
 
-(deftest fetch-items-includes-tables-mapped-by-library-metrics-test
+(deftest fetch-items-does-not-export-unpublished-metric-backing-tables-test
   (let [source (literal-source
                 {:library-scope  {:metric-collection-ids #{20}
                                   :data-collection-ids   #{10}}
@@ -77,8 +77,7 @@
                                   {:id 42, :type "table", :key "mappedTable"}
                                   {:id 99, :type "table", :key "notInScope"}]})]
     (is (= {:actions [{:kind "action", :key "shipOrder", :id 11}]
-            :tables  [{:id 10, :type "table", :key "publishedTable"}
-                      {:id 42, :type "table", :key "mappedTable"}]
+            :tables  [{:id 10, :type "table", :key "publishedTable"}]
             :metrics [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
            (schemas/fetch-items source)))))
 

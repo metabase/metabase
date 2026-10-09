@@ -5,7 +5,6 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -79,6 +78,4 @@
                    (is (str/includes? body "discountOrder"))
                    (is (not (str/includes? body "updateOrder"))))
                  (testing "a copy a data app owns stays out"
-                   (is (str/includes? body "copiedOrder"))
-                   (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{(:id copies)})]
-                     (is (not (str/includes? (:body (get-schemas :crowberto 200)) "copiedOrder"))))))))))))))
+                   (is (not (str/includes? body "copiedOrder")))))))))))))

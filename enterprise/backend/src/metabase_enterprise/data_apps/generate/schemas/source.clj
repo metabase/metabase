@@ -7,17 +7,15 @@
   `metabase-enterprise.data-apps.generate.schemas.*` builders, except [[library-tables]], which returns raw table rows
   (only `:id` is consumed)."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.generate.schemas.action :as schemas.action]
    [metabase-enterprise.data-apps.generate.schemas.metric :as schemas.metric]
    [metabase-enterprise.data-apps.generate.schemas.table :as schemas.table]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private library-root-entity-ids
-  "Entity ids of the root data library and root metrics library collections."
-  #{"librarylibrarydatadat" "librarylibrarymetrics"})
 
 (def LibraryScope
   "The library collection tree, classified by collection type: `:data-collection-ids` hold the published tables,
@@ -29,9 +27,10 @@
 (defn- app-db-library-scope
   "The [[LibraryScope]] of the root libraries and their descendants, empty where the instance has no library."
   []
-  (let [roots       (filter #(contains? collection/library-collection-types (:type %))
-                            (data-apps.db/collections-with-entity-ids library-root-entity-ids))
-        collections (concat roots (when (seq roots) (collection/descendants-flat-for roots)))
+  (let [library     (collections/library-collection)
+        descendants (when (and library (not (:archived library)))
+                      (collection/descendants-flat-for [library]))
+        collections (data-apps.db/unarchived-collections (into #{} (map :id) descendants))
         ids-of-type (fn [collection-type]
                       (into #{} (comp (filter #(= (:type %) collection-type)) (map :id)) collections))]
     {:data-collection-ids   (ids-of-type collection/library-data-collection-type)
@@ -50,6 +49,17 @@
   (library-tables [source collection-ids]
     "Published table rows in `collection-ids`."))
 
+(defn- curated-library-ids
+  [scope-key requested-ids]
+  (set/intersection (scope-key (app-db-library-scope)) requested-ids))
+
+(defn- curated-tables
+  [table-ids]
+  (let [collection-ids (:data-collection-ids (app-db-library-scope))
+        published-ids  (into #{} (map :id) (schemas.table/select-library-tables collection-ids))
+        table-ids      (set/intersection published-ids table-ids)]
+    (schemas.table/select-tables table-ids)))
+
 (def app-db-source
   "The production [[SchemaSource]], backed by the application database."
   (reify SchemaSource
@@ -58,8 +68,10 @@
     (actions [_]
       (schemas.action/action-schemas))
     (metrics [_ collection-ids]
-      (vec (schemas.metric/metric-schemas collection-ids)))
+      (vec (schemas.metric/metric-schemas
+            (curated-library-ids :metric-collection-ids collection-ids))))
     (tables [_ table-ids]
-      (vec (schemas.table/table-schemas (schemas.table/select-tables table-ids))))
+      (vec (schemas.table/table-schemas (curated-tables table-ids))))
     (library-tables [_ collection-ids]
-      (vec (schemas.table/select-library-tables collection-ids)))))
+      (vec (schemas.table/select-library-tables
+            (curated-library-ids :data-collection-ids collection-ids))))))

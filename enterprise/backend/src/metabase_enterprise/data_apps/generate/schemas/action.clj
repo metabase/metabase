@@ -78,8 +78,7 @@
      :entityId entity_id)))
 
 (defn action-schemas
-  "Returns schema entries for the query actions without a model, leaving out the copies data apps own and those a
-  routing destination backs."
+  "Returns standalone Data Action schemas, excluding data app copies and routing destinations."
   []
   (let [ids             (data-apps.db/model-less-query-action-ids (set (perms/data-app-collection-ids)))
         details-by-id   (when (seq ids) (u/index-by :id (actions/select-actions-for-ids nil ids)))

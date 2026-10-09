@@ -13,7 +13,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
@@ -71,11 +70,8 @@
                  :model/Table table {:db_id (:id db), :name "widgets", :display_name "Widgets", :active true}
                  :model/Field _ {:table_id (:id table), :name "price", :base_type :type/Float}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (testing "returns shaped table entities for the table ids"
-        (is (=? [{:type   "table"
-                  :key    "widgets"
-                  :fields {"price" {:jsType "number"}}}]
-                (schemas.source/tables schemas.source/app-db-source #{(:id table)}))))
+      (testing "explicit table ids do not bypass library publication"
+        (is (= [] (schemas.source/tables schemas.source/app-db-source #{(:id table)}))))
       (testing "an empty table-id set matches nothing"
         (is (= [] (schemas.source/tables schemas.source/app-db-source #{})))))))
 
@@ -106,11 +102,8 @@
     (let [action-ids (fn [] (into #{} (map :id) (schemas.source/actions schemas.source/app-db-source)))
           ours       #{standalone archived in-collection on-model app-copy}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (testing "returns the unarchived actions without a model"
-          (is (= #{standalone in-collection app-copy} (set/intersection ours (action-ids)))))
-        (testing "leaves out the copies a data app owns"
-          (mt/with-dynamic-fn-redefs [perms/data-app-collection-ids (constantly #{app-collection-id})]
-            (is (= #{standalone in-collection} (set/intersection ours (action-ids))))))
+        (testing "returns unarchived Data Actions without a model and excludes data app copies"
+          (is (= #{standalone in-collection} (set/intersection ours (action-ids)))))
         (testing "an action renders with its parameters typed from the template tag"
           (is (=? [{:kind       "action"
                     :key        "touchCategory"
