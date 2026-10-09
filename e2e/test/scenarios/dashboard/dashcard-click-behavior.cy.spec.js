@@ -1609,35 +1609,64 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("header").findByText(TARGET_QUESTION.name).should("not.exist");
     });
 
-    it("allows opening custom URL destination with parameters", () => {
+    it("allows opening custom URL destination with parameters and updating multiple dashboard filters", () => {
       const dashboardDetails = {
-        parameters: [DASHBOARD_FILTER_TEXT],
+        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
         enable_embedding: true,
         embedding_params: {
           [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+          [DASHBOARD_FILTER_TIME.slug]: "enabled",
         },
       };
+      const countParameterId = "1";
+      const createdAtParameterId = "2";
 
       H.createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: dashCard }) => {
-        H.addOrUpdateDashboardCard({
+        H.updateDashboardCards({
           dashboard_id: dashCard.dashboard_id,
-          card_id: dashCard.card_id,
-          card: {
-            id: dashCard.id,
-            parameter_mappings: [
-              createTextFilterMapping({ card_id: dashCard.card_id }),
-            ],
-            visualization_settings: {
-              click_behavior: {
-                type: "link",
-                linkType: "url",
-                linkTemplate: URL_WITH_PARAMS,
+          cards: [
+            {
+              card_id: dashCard.card_id,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashCard.card_id }),
+                createTimeFilterMapping({ card_id: dashCard.card_id }),
+              ],
+              visualization_settings: {
+                click_behavior: {
+                  type: "crossfilter",
+                  parameterMapping: {
+                    [countParameterId]: {
+                      source: COUNT_COLUMN_SOURCE,
+                      target: { type: "parameter", id: countParameterId },
+                      id: countParameterId,
+                    },
+                    [createdAtParameterId]: {
+                      source: CREATED_AT_COLUMN_SOURCE,
+                      target: { type: "parameter", id: createdAtParameterId },
+                      id: createdAtParameterId,
+                    },
+                  },
+                },
               },
             },
-          },
+            {
+              card_id: dashCard.card_id,
+              col: 12,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashCard.card_id }),
+              ],
+              visualization_settings: {
+                click_behavior: {
+                  type: "link",
+                  linkType: "url",
+                  linkTemplate: URL_WITH_PARAMS,
+                },
+              },
+            },
+          ],
         });
 
         H.visitEmbeddedPage({
@@ -1645,17 +1674,27 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           params: {},
         });
         cy.wait("@dashboard");
-        cy.wait("@cardQuery");
+        cy.wait(["@cardQuery", "@cardQuery"]);
       });
 
+      cy.log("custom URL destination with parameters");
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
         cy.findByPlaceholderText("Search the list").type(FILTER_VALUE);
         cy.button("Add filter").click();
       });
       H.stubAnchorClick();
-      clickLineChartPoint();
+      clickLineChartPoint({ dashcardIndex: 1 });
       H.assertAnchorClicked({ href: URL_WITH_FILLED_PARAMS });
+
+      cy.log("update multiple dashboard filters");
+      H.clearFilterWidget(0);
+      cy.button(DASHBOARD_FILTER_TEXT.name).should("be.visible");
+      clickLineChartPoint({ dashcardIndex: 0 });
+      cy.findAllByTestId("parameter-widget")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
     });
 
     it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
@@ -1700,66 +1739,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByRole("main")
         .findByText("The page you asked for couldn't be found.")
         .should("be.visible");
-    });
-
-    it("allows updating multiple dashboard filters", () => {
-      const dashboardDetails = {
-        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
-        enable_embedding: true,
-        embedding_params: {
-          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
-          [DASHBOARD_FILTER_TIME.slug]: "enabled",
-        },
-      };
-      const countParameterId = "1";
-      const createdAtParameterId = "2";
-
-      H.createQuestionAndDashboard({
-        questionDetails,
-        dashboardDetails,
-      }).then(({ body: dashCard }) => {
-        H.addOrUpdateDashboardCard({
-          dashboard_id: dashCard.dashboard_id,
-          card_id: dashCard.card_id,
-          card: {
-            id: dashCard.id,
-            parameter_mappings: [
-              createTextFilterMapping({ card_id: dashCard.card_id }),
-              createTimeFilterMapping({ card_id: dashCard.card_id }),
-            ],
-            visualization_settings: {
-              click_behavior: {
-                type: "crossfilter",
-                parameterMapping: {
-                  [countParameterId]: {
-                    source: COUNT_COLUMN_SOURCE,
-                    target: { type: "parameter", id: countParameterId },
-                    id: countParameterId,
-                  },
-                  [createdAtParameterId]: {
-                    source: CREATED_AT_COLUMN_SOURCE,
-                    target: { type: "parameter", id: createdAtParameterId },
-                    id: createdAtParameterId,
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        H.visitEmbeddedPage({
-          resource: { dashboard: dashCard.dashboard_id },
-          params: {},
-        });
-        cy.wait("@dashboard");
-        cy.wait("@cardQuery");
-      });
-
-      clickLineChartPoint();
-      cy.findAllByTestId("parameter-widget")
-        .should("have.length", 2)
-        .should("contain.text", POINT_COUNT)
-        .should("contain.text", POINT_CREATED_AT_FORMATTED);
     });
 
     it("should navigate to public link URL (metabase#38640)", () => {
