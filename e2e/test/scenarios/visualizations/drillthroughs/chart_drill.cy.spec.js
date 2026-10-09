@@ -146,18 +146,23 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should drill through combined cards with one or more added series (metabase#11442, metabase#13457)", () => {
-    H.createQuestion({
-      name: "Orders over 50 by year",
+    // Series colors come from a hash of the question names.
+    const ordersByYear = (name, filter) => ({
+      name,
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        filter: [">", ["field", ORDERS.TOTAL, null], 50],
+        filter,
       },
       display: "line",
-    }).then(({ body: { id: Q1_ID } }) => {
+    });
+
+    H.createQuestion(
+      ordersByYear("11442_Q1", [">", ["field", ORDERS.TOTAL, null], 50]),
+    ).then(({ body: { id: Q1_11442_ID } }) => {
       H.createQuestion({
-        name: "Products over 20 by year",
+        name: "11442_Q2",
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
@@ -167,45 +172,49 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           filter: [">", ["field", PRODUCTS.PRICE, null], 20],
         },
         display: "line",
-      }).then(({ body: { id: PRODUCTS_Q_ID } }) => {
-        H.createQuestion({
-          name: "Order averages by year",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["avg", ["field", ORDERS.DISCOUNT, null]],
-              ["avg", ["field", ORDERS.QUANTITY, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        }).then(({ body: { id: AVERAGES_Q_ID } }) => {
-          H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-            H.updateDashboardCards({
-              dashboard_id: DASHBOARD_ID,
-              cards: [
-                {
-                  card_id: Q1_ID,
-                  col: 0,
-                  size_x: 12,
-                  size_y: 10,
-                  series: [{ id: PRODUCTS_Q_ID, model: "card" }],
-                },
-                {
-                  card_id: Q1_ID,
-                  col: 12,
-                  size_x: 12,
-                  size_y: 10,
-                  series: [{ id: AVERAGES_Q_ID, model: "card" }],
-                },
-              ],
-            });
+      }).then(({ body: { id: Q2_11442_ID } }) => {
+        H.createQuestion(ordersByYear("13457_Q1")).then(
+          ({ body: { id: Q1_13457_ID } }) => {
+            H.createQuestion({
+              name: "13457_Q2",
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [
+                  ["avg", ["field", ORDERS.DISCOUNT, null]],
+                  ["avg", ["field", ORDERS.QUANTITY, null]],
+                ],
+                breakout: [
+                  ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+                ],
+              },
+              display: "line",
+            }).then(({ body: { id: Q2_13457_ID } }) => {
+              H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+                H.updateDashboardCards({
+                  dashboard_id: DASHBOARD_ID,
+                  cards: [
+                    {
+                      card_id: Q1_11442_ID,
+                      col: 0,
+                      size_x: 12,
+                      size_y: 10,
+                      series: [{ id: Q2_11442_ID, model: "card" }],
+                    },
+                    {
+                      card_id: Q1_13457_ID,
+                      col: 12,
+                      size_x: 12,
+                      size_y: 10,
+                      series: [{ id: Q2_13457_ID, model: "card" }],
+                    },
+                  ],
+                });
 
-            H.visitDashboard(DASHBOARD_ID);
-          });
-        });
+                H.visitDashboard(DASHBOARD_ID);
+              });
+            });
+          },
+        );
       });
     });
 
