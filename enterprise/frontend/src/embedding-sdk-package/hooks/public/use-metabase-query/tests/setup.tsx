@@ -100,9 +100,12 @@ export const TEST_DATASET_QUERY = createMockDatasetQuery([
   { "source-table": 1 },
 ]);
 
-export const mockPropsStore = (reduxStore: SdkStore) =>
+export const mockPropsStore = (
+  reduxStore: SdkStore,
+  dataApp?: { name: string; isDev?: boolean },
+) =>
   mockUseMetabaseProviderPropsStore.mockReturnValue({
-    state: { internalProps: { reduxStore }, props: null },
+    state: { internalProps: { reduxStore, dataApp }, props: null },
     store: ensureMetabaseProviderPropsStore(),
   });
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useAsyncFn } from "react-use";
 
+import { useDataAppDevLog } from "embedding-sdk-package/hooks/private/use-data-app-dev-log";
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
@@ -49,6 +50,7 @@ function useMetabaseQueryObjectImpl(
   const queryRef = useRef(query);
   const dynamicQueryRef = useRef(dynamicQuery);
   const pendingQueryKeyRef = useRef<string | null>(null);
+  const { logError } = useDataAppDevLog();
 
   useEffect(() => {
     queryRef.current = query;
@@ -63,18 +65,23 @@ function useMetabaseQueryObjectImpl(
         return null;
       }
 
-      const result = await resolveDatasetQuery(reduxStore)(
-        queryRef.current,
-        dynamicQueryRef.current,
-      );
+      try {
+        const result = await resolveDatasetQuery(reduxStore)(
+          queryRef.current,
+          dynamicQueryRef.current,
+        );
 
-      return {
-        // The bundle returns the opaque `DatasetQuery`; the public API publishes
-        // the structural `MetabaseQueryObject` instead (see its own docs for why).
-        query: result as MetabaseQueryObject,
-        queryKey,
-      };
-    }, [queryKey, reduxStore]);
+        return {
+          // The bundle returns the opaque `DatasetQuery`; the public API publishes
+          // the structural `MetabaseQueryObject` instead (see its own docs for why).
+          query: result as MetabaseQueryObject,
+          queryKey,
+        };
+      } catch (error) {
+        logError(error);
+        throw error;
+      }
+    }, [logError, queryKey, reduxStore]);
 
   useEffect(() => {
     if (
