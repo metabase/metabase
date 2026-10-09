@@ -18,11 +18,10 @@ const workers = Number(countArg ?? fastCores());
 const harness = path.join(__dirname, "hooks.cjs");
 const runner = path.join(__dirname, "run.cjs");
 
-// jest runs the SDK specs as a project of their own, with different setup files.
-// A worker loads one project's setup when it starts, so each worker serves one
-// project, and the pool moves workers to whichever project has files left.
-const SDK_PROJECT = /^(frontend\/src\/embedding-sdk-(bundle|shared)|enterprise\/frontend\/src\/embedding-sdk-(package|ee))\//;
-const projectOf = (file) => (SDK_PROJECT.test(path.relative(path.resolve(__dirname, ".."), path.resolve(file))) ? "sdk" : "core");
+// jest runs each project with its own setup files. A worker loads one
+// project's setup when it starts, so each worker serves one project, and the
+// pool moves workers to whichever project has files left.
+const { projects, projectOf } = require("./jest-config.cjs");
 // The slowest files go first. Taken in list order, a 20 second file can be the
 // last one picked up, and then one worker runs it while the others sit idle.
 // The times come from the previous run, and a file with no record goes first.
@@ -36,11 +35,18 @@ const durations = (() => {
   }
   return {};
 })();
-const queues = { core: [], sdk: [] };
-for (const file of files) queues[projectOf(file)].push(file);
+const queues = Object.fromEntries(projects.map(({ name }) => [name, []]));
+for (const file of files) {
+  const project = projectOf(file);
+  if (!project) {
+    console.error(`[pool] ${file} is in no jest project`);
+    process.exit(1);
+  }
+  queues[project.name].push(file);
+}
 for (const queue of Object.values(queues)) queue.sort((a, b) => (durations[b] ?? Infinity) - (durations[a] ?? Infinity));
 const measured = {};
-const serving = { core: 0, sdk: 0 };
+const serving = Object.fromEntries(projects.map(({ name }) => [name, 0]));
 
 let live = 0;
 let crashed = 0;

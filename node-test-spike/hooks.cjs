@@ -11,7 +11,10 @@ const path = require("node:path");
 const { registerHooks } = require("node:module");
 const { pathToFileURL, fileURLToPath } = require("node:url");
 
-const root = path.resolve(__dirname, "..");
+const jestConfig = require("./jest-config.cjs");
+const { root } = jestConfig;
+// A worker serves one jest project, with that project's setup files.
+const project = jestConfig.projects.find(({ name }) => name === (process.env.NT_PROJECT ?? "core"));
 const abs = (p) => path.join(root, p);
 const bunModule = (name) => {
   const dir = fs.readdirSync(abs("node_modules/.bun")).find((d) => d.startsWith(name.replace("/", "+") + "@"));
@@ -70,7 +73,8 @@ const transformSource = (file, source) => {
 };
 
 // --- resolution ----------------------------------------------------------------
-const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".json"];
+// jest's default moduleFileExtensions, in its order.
+const EXTENSIONS = [".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx", ".json", ".node"];
 // Every file loads the project's modules again, so the same lookups repeat for
 // the life of the process. Only hits are kept: a spec may create a file later.
 const foundFiles = new Map();
@@ -88,39 +92,18 @@ const findFile = (base) => {
   }
   return found;
 };
-const sourceRoots = ["frontend/src", "frontend/test", "enterprise/frontend/src"].map(abs);
+const sourceRoots = project.modulePaths;
 const topLevel = new Set(sourceRoots.flatMap((dir) => fs.readdirSync(dir)));
 const processDir = path.join(cacheDir, `process-${process.pid}`);
 fs.mkdirSync(processDir, { recursive: true });
 // A spec can emit "exit" on a live process, and the stubs must outlive that.
 // Under the pool the parent removes this directory once the worker is gone.
 if (process.env.NT_QUEUE !== "1") process.on("exit", () => fs.rmSync(processDir, { recursive: true, force: true }));
-const stub = (name, source) => { const file = path.join(processDir, name); fs.writeFileSync(file, source); return file; };
-const styleStub = stub("style-stub.cjs", "module.exports = {};");
-const fileStub = stub("file-stub.cjs", 'module.exports = "test-file-stub";');
-const mapped = [
-  [/\.(css|less)$/, () => styleStub],
-  [/\.svg\?(component|source)$/, () => abs("frontend/test/__mocks__/svgMock.tsx")],
-  [/\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)(\?url)?$/, () => fileStub],
-  [/^cljs\/(.*)$/, (m) => findFile(abs(`target/cljs_dev/${m[1]}`))],
-  [/^locales\/(.*)\.json$/, (m) => abs(`frontend/test/__mocks__/locales/${m[1]}.json`)],
-  [/^csv-parse\/browser\/esm\/sync$/, () => abs("node_modules/csv-parse/dist/cjs/sync.cjs")],
-  [/^csv-stringify\/browser\/esm\/sync$/, () => abs("node_modules/csv-stringify/dist/cjs/sync.cjs")],
-  // jest's moduleNameMapper keys are regular expressions without anchors, so
-  // they also catch a relative path that ends in one of these names.
-  [/sdk-ee-plugins/, () => abs("frontend/src/metabase/plugins/noop.ts")],
-  [/sdk-iframe-embedding-ee-plugins|ee-plugins|ee-overrides/, () => abs("frontend/src/metabase/utils/noop.ts")],
-  [/^docs\/embedding\/sdk\/snippets\//, () => fileStub],
-  [/^docs\/(.*)$/, (m) => abs(`docs/${m[1]}`)],
-  [/^build-configs\/(.*)$/, (m) => findFile(abs(`frontend/build/${m[1]}`))],
-  [/^jose$/, () => abs("node_modules/jose/dist/node/cjs/index.js")],
-  [/^remend$/, () => abs("node_modules/remend/dist/index.js")],
-];
 const resolveCache = new Map();
 const resolveProject = (specifier, parentFile) => {
-  for (const [pattern, target] of mapped) {
+  for (const [pattern, target] of project.moduleNameMapper) {
     const match = specifier.match(pattern);
-    if (match) return target(match);
+    if (match) return findFile(target.replace(/\$(\d+)/g, (_, group) => match[group] ?? ""));
   }
   if (specifier.startsWith(".") && parentFile && !parentFile.includes("/node_modules/")) {
     return findFile(path.resolve(path.dirname(parentFile), specifier));
@@ -163,9 +146,19 @@ const mockStub = (file) => {
   return mockStubs.get(file);
 };
 
-const isProjectSource = (file) =>
-  /\.(tsx?|jsx?)$/.test(file) && !file.includes("/node_modules/") && !file.includes("/target/cljs_dev/") && !file.startsWith(cacheDir) &&
-  (file.startsWith(abs("frontend/")) || file.startsWith(abs("enterprise/frontend/")) || file.startsWith(abs("e2e/support/")) || file.startsWith(abs("bin/")) || file.startsWith(abs("node-test-spike/")));
+// What jest would transform: everything its transform patterns name, minus the
+// ignore patterns. Packages are the exception. jest transforms the ES module
+// ones, and here Node loads those as they are.
+const projectSources = new Map();
+const isProjectSource = (file) => {
+  let known = projectSources.get(file);
+  if (known === undefined) {
+    known = file.startsWith(root + path.sep) && !file.includes("/node_modules/") &&
+      project.transform.some((pattern) => pattern.test(file)) && !project.transformIgnorePatterns.some((pattern) => pattern.test(file));
+    projectSources.set(file, known);
+  }
+  return known;
+};
 
 // jest's jsdom environment resolves packages with the conditions "require",
 // "default" and "browser". Node would use "node" and, for code it takes to be
@@ -359,7 +352,7 @@ process.setUncaughtExceptionCaptureCallback((error) => {
 });
 
 const realPerformance = require("node:perf_hooks").performance;
-const TIMEOUT = Number(process.env.NT_TIMEOUT ?? 30000);
+const TIMEOUT = Number(process.env.NT_TIMEOUT ?? jestConfig.testTimeout ?? 5000);
 const HOOK_TIMEOUT = Number(process.env.NT_HOOK_TIMEOUT ?? 8000);
 // Node's own timers, taken before any fake clock can replace them, so a deadline
 // still fires while a test has the clock faked.
@@ -593,28 +586,8 @@ const resetFocus = () => {
   } catch {}
 };
 
-// jest runs all of these for every file, so an evicted graph has to see them all.
-// setupFiles then setupFilesAfterEnv, as jest.config.js lists them for each
-// project. The SDK project has its own additions and leaves the core one out.
-const SETUP_CHAIN = process.env.NT_PROJECT === "sdk"
-  ? [
-      "frontend/test/jest-setup.js",
-      "frontend/test/metabase-bootstrap.js",
-      "frontend/test/register-visualizations.js",
-      "frontend/src/embedding-sdk-shared/jest/setup-env.ts",
-      "frontend/test/jest-setup-eager.js",
-      "frontend/test/jest-setup-env.js",
-      "frontend/src/embedding-sdk-shared/jest/setup-after-env.ts",
-      "frontend/src/embedding-sdk-shared/jest/console-restrictions.ts",
-    ]
-  : [
-      "frontend/test/jest-setup.js",
-      "frontend/test/metabase-bootstrap.js",
-      "frontend/test/register-visualizations.js",
-      "frontend/test/jest-setup-eager.js",
-      "frontend/test/jest-setup-env.js",
-      "frontend/test/jest-setup-env-core.js",
-    ];
+// jest runs all of these for every file: setupFiles, then setupFilesAfterEnv.
+const SETUP_CHAIN = project.setupFiles;
 
 const sharedGlobalKeys = new Set();
 let packageLoadDepth = 0;
@@ -846,7 +819,7 @@ const callerFile = () => {
     const match = frame.match(/\(?(?:file:\/\/)?(\/[^:)]+):\d+:\d+\)?$/);
     if (match && !match[1].endsWith("hooks.cjs") && !match[1].includes("node:")) return match[1];
   }
-  return abs("frontend/src/index.ts");
+  return path.join(root, "index.js");
 };
 const Module = require("node:module");
 const resolveFrom = (id, from) => {
@@ -931,7 +904,7 @@ const runSetupChain = () => {
   const listenersBefore = new Map(process.eventNames().map((event) => [event, new Set(process.rawListeners(event))]));
   setupMocksOpen = true;
   try {
-    for (const setupFile of SETUP_CHAIN) require(abs(setupFile));
+    for (const setupFile of SETUP_CHAIN) require(setupFile);
   } finally {
     for (const event of process.eventNames()) {
       for (const listener of process.rawListeners(event)) if (!listenersBefore.get(event)?.has(listener)) setupProcessListeners.push([event, listener]);
@@ -1015,7 +988,7 @@ globalThis.jest = {
   retryTimes: () => globalThis.jest,
   setTimeout: () => globalThis.jest,
 };
-globalThis.ga = {};
+Object.assign(globalThis, structuredClone(project.globals));
 
 // --- setupFiles + setupFilesAfterEnv, in jest order ---------------------------------
 {
@@ -1127,13 +1100,13 @@ globalThis.ga = {};
     }
   };
 }
+const requireFromRoot = Module.createRequire(path.join(root, "package.json"));
 // React's scheduler keeps the timer functions it finds when it loads. It is one
 // copy for the whole process, so it has to find Node's own: a timer of its that
 // was tracked would be cleared at the end of a file, and the scheduler would go
 // on believing that its callback is still due.
 {
-  const fromProject = Module.createRequire(abs("frontend/src/index.js"));
-  Module.createRequire(fromProject.resolve("react-dom"))("scheduler");
+  Module.createRequire(requireFromRoot.resolve("react-dom"))("scheduler");
 }
 trackTimers();
 runSetupChain();
@@ -1227,7 +1200,7 @@ try {
 // The translation library is a shared package, so the locale a spec selects
 // would stay for every later file.
 const resetTranslationLocale = () => {
-  try { Module.createRequire(abs("frontend/src/index.js"))("ttag").useLocale("en"); } catch {}
+  try { requireFromRoot("ttag").useLocale("en"); } catch {}
 };
 // The chart library keeps one canvas context for measuring text. Its methods
 // are mocks from jest-canvas-mock, and a spec's resetAllMocks strips their
@@ -1290,7 +1263,7 @@ patchCallHistory();
 let testingLibraryConfig = null;
 const resetTestingLibraryConfig = () => {
   try {
-    const library = Module.createRequire(abs("frontend/src/index.js"))("@testing-library/react");
+    const library = requireFromRoot("@testing-library/react");
     if (testingLibraryConfig === null) { testingLibraryConfig = { ...library.getConfig() }; return; }
     const current = library.getConfig();
     if (Object.keys(testingLibraryConfig).some((key) => current[key] !== testingLibraryConfig[key])) library.configure({ ...testingLibraryConfig });
