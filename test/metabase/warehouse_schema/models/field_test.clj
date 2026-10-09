@@ -316,12 +316,16 @@
       (t2/update! :model/Field field-id {:data_sensitivity :PHI})
       (is (= :PHI (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
       (is (= :PUBLIC (:data_sensitivity (warehouse-schema.db/field field-id))))))
-  (testing "upsert-user-settings with a nil value clears a previously set label on the mirror"
+  (testing "upsert-user-settings with a nil value records an explicit NULL that hides the Field's label"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
       (field-user-settings/upsert-user-settings field {:data_sensitivity nil})
-      (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))
-      (is (= :PII (:data_sensitivity (warehouse-schema.db/field field-id)))))))
+      (is (=? {:data_sensitivity nil :data_sensitivity_set true}
+              (t2/select-one :model/FieldUserSettings :field_id field-id)))
+      (is (nil? (:data_sensitivity (warehouse-schema.db/field field-id))))
+      (testing "and unset-user-settings! shows the Field's label again"
+        (field-user-settings/unset-user-settings! field [:data_sensitivity])
+        (is (= :PII (:data_sensitivity (warehouse-schema.db/field field-id))))))))
 
 (deftest field-user-settings-read-test
   (mt/with-temp [:model/Field {edited-id :id :as edited} {:display_name      "Sync Name"

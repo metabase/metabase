@@ -22,6 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]))
 
@@ -68,6 +69,7 @@
    [:display_name    [:maybe :string]]
    [:description     [:maybe :string]]
    [:base_type       :keyword]
+   [:effective_type  {:optional true} [:maybe :keyword]]
    [:database_type   [:maybe :string]]
    [:semantic_type   [:maybe :keyword]]
    [:position        [:maybe :int]]
@@ -75,6 +77,7 @@
    [:fk_target       [:maybe :string]]
    [:fingerprint     [:maybe ::fingerprint]]
    [:human_set       [:set :keyword]]
+   [:ai_set          {:optional true} [:set :keyword]]
    [:current         [:map {:closed true}
                       [:data_sensitivity [:maybe :keyword]]
                       [:human_set       :boolean]]]
@@ -98,8 +101,44 @@
              [:truncation :int]
              [:error      [:maybe :string]]]]])
 
+(defn- human-set?
+  "Whether a person set column `k` in `user-settings`. A column sync also writes has a `<col>_set` flag, which is true
+  for a cleared value too; any other column is set when its value is not nil. The same rule as
+  [[warehouse-schema-overlay/field-query]]."
+  [user-settings k]
+  (if-let [flag (warehouse-schema-overlay/field-user-settings-flags k)]
+    (true? (get user-settings flag))
+    (some? (get user-settings k))))
+
 (defn- human-set-keys [user-settings]
-  (into #{} (filter #(some? (get user-settings %))) field/field-user-settings))
+  (into #{} (filter #(human-set? user-settings %)) field/field-user-settings))
+
+(defn- ai-set-keys
+  "The columns whose readers see the accepted AI value in `user-settings`: an AI value is present and no person set the
+  column."
+  [user-settings human-set]
+  (into #{}
+        (keep (fn [[k ai-column]]
+                (when (and (some? (get user-settings ai-column)) (not (contains? human-set k)))
+                  k)))
+        warehouse-schema-overlay/field-ai-columns))
+
+(defn layer-source
+  "The layer that gives the value readers see for column `k`, when that value is `current-value`: `:human` when `k` is
+  in `human-set`, `:ai` when it is in `ai-set`, `:deterministic`, or `:none` when there is no value. The same rule as
+  [[warehouse-schema-overlay/field-query]]."
+  [human-set ai-set k current-value]
+  (cond
+    (contains? human-set k) :human
+    (contains? ai-set k)    :ai
+    (some? current-value)   :deterministic
+    :else                   :none))
+
+(defn value-source
+  "[[layer-source]] for column `k` of a field with `user-settings`."
+  [user-settings k current-value]
+  (let [human-set (human-set-keys user-settings)]
+    (layer-source human-set (ai-set-keys user-settings human-set) k current-value)))
 
 (defn- fk-targets
   "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields`."
@@ -228,17 +267,19 @@
     "this database uses database routing"))
 
 (defn- field-entry
-  "The packet entry for `field`, with its non-nil user-settings values taking precedence over the Field row.
-  `:human_set` names the columns a user has set."
+  "The packet entry for `field`, with the user-settings values a person set taking precedence over the Field row, a
+  cleared value included. `:human_set` names the columns a user has set, `:ai_set` the columns that show an accepted AI
+  value."
   [{:keys [id] :as field} {:keys [user-settings fk-targets cached sampled]}]
   (let [settings  (get user-settings id)
         human-set (human-set-keys settings)
-        field     (merge field (u/select-keys-when settings :non-nil field/field-user-settings))]
+        field     (merge field (select-keys settings human-set))]
     {:id              id
      :name            (:name field)
      :display_name    (:display_name field)
      :description     (:description field)
      :base_type       (:base_type field)
+     :effective_type  (:effective_type field)
      :database_type   (:database_type field)
      :semantic_type   (:semantic_type field)
      :position        (:position field)
@@ -246,6 +287,7 @@
      :fk_target       (some->> (:fk_target_field_id field) (get fk-targets))
      :fingerprint     (fingerprint-summary (:fingerprint field))
      :human_set       human-set
+     :ai_set          (ai-set-keys settings human-set)
      :current         {:data_sensitivity (:data_sensitivity field)
                        :human_set       (contains? human-set :data_sensitivity)}
      :cached_values   (get cached id)

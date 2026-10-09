@@ -3850,3 +3850,131 @@
           (migrate! :down 64)
           (is (not (contains? (message) :context_window_full)))
           (is (true? (:finished (message)))))))))
+
+(deftest field-user-settings-ai-values-migration-test
+  (testing "v65.2026-10-08T12:00:00 to 12:00:04: AI value columns and data_sensitivity_set, backfilled from data_sensitivity"
+    (impl/test-migrations ["v65.2026-10-08T12:00:00" "v65.2026-10-08T12:00:04"] [migrate!]
+      (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "FUS AI Test DB"
+                                                                       :engine     "h2"
+                                                                       :created_at :%now
+                                                                       :updated_at :%now
+                                                                       :details    "{}"})
+            table-id      (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                    :db_id      db-id
+                                                                    :name       "a table"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now})
+            insert-field! (fn [name]
+                            (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                      :name          name
+                                                                      :active        true
+                                                                      :base_type     "type/Text"
+                                                                      :database_type "TEXT"
+                                                                      :created_at    :%now
+                                                                      :updated_at    :%now}))
+            labelled-id   (insert-field! "labelled")
+            unlabelled-id (insert-field! "unlabelled")]
+        (t2/insert! :metabase_field_user_settings {:field_id labelled-id :data_sensitivity "PII"})
+        (t2/insert! :metabase_field_user_settings {:field_id unlabelled-id :description "a description"})
+        (migrate!)
+        (testing "a row with a data_sensitivity is flagged as set"
+          (is (=? {:data_sensitivity "PII" :data_sensitivity_set true}
+                  (t2/select-one :metabase_field_user_settings :field_id labelled-id))))
+        (testing "a row without one is not, and the AI columns start NULL"
+          (is (=? {:data_sensitivity_set false :ai_semantic_type nil :ai_description nil :ai_data_sensitivity nil}
+                  (t2/select-one :metabase_field_user_settings :field_id unlabelled-id))))
+        (testing "the AI columns take values"
+          (t2/update! :metabase_field_user_settings :field_id unlabelled-id
+                      {:ai_semantic_type "type/Name" :ai_description "ai" :ai_data_sensitivity "PHI"})
+          (is (=? {:ai_semantic_type "type/Name" :ai_description "ai" :ai_data_sensitivity "PHI"}
+                  (t2/select-one :metabase_field_user_settings :field_id unlabelled-id))))
+        (testing "rolling back drops the new columns and keeps the rows"
+          (migrate! :down 64)
+          (is (= #{"PII" nil} (t2/select-fn-set :data_sensitivity :metabase_field_user_settings)))
+          (is (thrown? Exception (t2/query "SELECT ai_semantic_type FROM metabase_field_user_settings")))
+          (is (thrown? Exception (t2/query "SELECT data_sensitivity_set FROM metabase_field_user_settings"))))))))
+
+(deftest metadata-generation-tables-test
+  (testing "v65.2026-10-09T00:00:00 thru v65.2026-10-09T00:00:11: metadata_generation_run and
+           metadata_generation_suggestion"
+    (impl/test-migrations ["v65.2026-10-09T00:00:00" "v65.2026-10-09T00:00:11"] [migrate!]
+      (migrate!)
+      (let [user-id       (t2/insert-returning-pk! :core_user {:first_name    "Metadata"
+                                                               :last_name     "Generation"
+                                                               :email         "metadata-generation@test.com"
+                                                               :date_joined   :%now
+                                                               :password      "password"
+                                                               :password_salt "salt"
+                                                               :entity_id     (u/generate-nano-id)})
+            db-id         (t2/insert-returning-pk! :metabase_database {:name       "Metadata Generation Test DB"
+                                                                       :engine     "h2"
+                                                                       :created_at :%now
+                                                                       :updated_at :%now
+                                                                       :details    "{}"})
+            insert-table! (fn [table-name]
+                            (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                      :db_id      db-id
+                                                                      :name       table-name
+                                                                      :created_at :%now
+                                                                      :updated_at :%now}))
+            insert-field! (fn [table-id field-name]
+                            (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                      :name          field-name
+                                                                      :active        true
+                                                                      :base_type     "type/Text"
+                                                                      :database_type "TEXT"
+                                                                      :created_at    :%now
+                                                                      :updated_at    :%now}))
+            insert-run!   (fn [status active?]
+                            (t2/insert-returning-pk! :metadata_generation_run
+                                                     {:database_id db-id
+                                                      :scope       "{\"type\":\"database\"}"
+                                                      :attributes  "[\"data_sensitivity\"]"
+                                                      :status      status
+                                                      :is_active   active?
+                                                      :creator_id  user-id}))
+            table-id      (insert-table! "orders")
+            field-a       (insert-field! table-id "email")
+            field-b       (insert-field! table-id "name")
+            run-id        (insert-run! "running" true)
+            insert-suggestion! (fn [field-id attribute]
+                                 (t2/insert-returning-pk! :metadata_generation_suggestion
+                                                          {:run_id         run-id
+                                                           :table_id       table-id
+                                                           :field_id       field-id
+                                                           :attribute      attribute
+                                                           :source         "none"
+                                                           :proposed_value "PII"
+                                                           :decided_by     user-id}))
+            suggestion-a  (insert-suggestion! field-a "data_sensitivity")
+            suggestion-b  (insert-suggestion! field-b "data_sensitivity")
+            suggestion    #(t2/select-one :metadata_generation_suggestion :id %)]
+        (testing "defaults: zero table counts on a run, pending status on a suggestion"
+          (is (=? {:total_tables 0 :done_tables 0 :failed_tables 0 :created_at some? :updated_at some?}
+                  (t2/select-one :metadata_generation_run :id run-id)))
+          (is (=? {:status "pending" :created_at some?} (suggestion suggestion-a))))
+        (testing "a database has at most one active run; ended runs (is_active NULL) do not count"
+          (is (thrown? Exception (insert-run! "pending" true)))
+          (is (pos-int? (insert-run! "succeeded" nil)))
+          (is (pos-int? (insert-run! "failed" nil))))
+        (testing "one suggestion per run, field and attribute"
+          (is (thrown? Exception (insert-suggestion! field-a "data_sensitivity")))
+          (is (pos-int? (insert-suggestion! field-a "semantic_type"))))
+        (testing "deleting a user keeps the run and the suggestion and clears the user reference"
+          (t2/delete! :core_user :id user-id)
+          (is (nil? (t2/select-one-fn :creator_id :metadata_generation_run :id run-id)))
+          (is (=? {:decided_by nil} (suggestion suggestion-a))))
+        (testing "deleting a field deletes its suggestions"
+          (t2/delete! :metabase_field :id field-b)
+          (is (nil? (suggestion suggestion-b)))
+          (is (some? (suggestion suggestion-a))))
+        (testing "deleting a table deletes its suggestions"
+          (t2/delete! :metabase_table :id table-id)
+          (is (zero? (t2/count :metadata_generation_suggestion))))
+        (testing "deleting a database deletes its runs"
+          (t2/delete! :metabase_database :id db-id)
+          (is (zero? (t2/count :metadata_generation_run))))
+        (testing "rolling back drops both tables"
+          (migrate! :down 64)
+          (is (thrown? Exception (t2/query "SELECT id FROM metadata_generation_suggestion")))
+          (is (thrown? Exception (t2/query "SELECT id FROM metadata_generation_run"))))))))

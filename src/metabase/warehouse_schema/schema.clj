@@ -116,7 +116,11 @@
    [:custom_position    {:optional true} [:maybe :int]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
-   [:fk_target_field_id_set {:optional true} :boolean]])
+   [:fk_target_field_id_set {:optional true} :boolean]
+   [:data_sensitivity_set   {:optional true} :boolean]
+   [:ai_semantic_type       {:optional true} [:maybe [:or :keyword :string]]]
+   [:ai_description         {:optional true} [:maybe :string]]
+   [:ai_data_sensitivity    {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::field-values
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."

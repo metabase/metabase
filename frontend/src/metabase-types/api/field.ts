@@ -56,6 +56,24 @@ export type FieldValue = NotRemappedFieldValue | RemappedFieldValue;
 
 export type FieldValuesType = "list" | "search" | "none";
 
+export const FIELD_DATA_SENSITIVITY_TYPES = [
+  "SEC_KEY",
+  "SYS_TELEMETRY",
+  "PHI",
+  "BIO_GEN",
+  "PCI_FIN",
+  "SENS_PERS",
+  "PII",
+  "CORP_IP",
+  "BIZ_CONF",
+  "PUBLIC",
+] as const;
+
+export type FieldDataSensitivity =
+  (typeof FIELD_DATA_SENSITIVITY_TYPES)[number];
+
+export type FieldDataSensitivitySource = "human" | "ai" | "deterministic";
+
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
@@ -100,6 +118,9 @@ export interface Field {
   min_value?: number;
   has_field_values: FieldValuesType;
   has_more_values?: boolean;
+
+  data_sensitivity?: FieldDataSensitivity | null;
+  data_sensitivity_source?: FieldDataSensitivitySource | null;
 
   caveats?: string | null;
   points_of_interest?: string;
@@ -146,6 +167,12 @@ export interface UpdateFieldRequest {
   settings?: FieldFormattingSettings;
   nfc_path?: string[] | null;
   json_unfolding?: boolean | null;
+  data_sensitivity?: FieldDataSensitivity | null;
+}
+
+export interface ResetFieldToAutomaticRequest {
+  id: FieldId;
+  columns: "data_sensitivity"[];
 }
 
 export interface GetFieldValuesResponse {

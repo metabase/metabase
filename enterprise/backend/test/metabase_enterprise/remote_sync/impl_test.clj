@@ -2348,6 +2348,27 @@ serdes/meta:
             (is (not (t2/exists? :model/TableUserSettings :table_id table-id)))
             (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))))))))
 
+(deftest field-user-settings-ai-values-round-trip-test
+  (testing "a full export writes the AI values of a published Table's Fields, and an import restores them"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
+                     :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
+                     :model/Table      {table-id :id} {:name "Test Table" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {f1-id :id}    {:name "F1" :table_id table-id :base_type :type/Text}]
+        (t2/insert! :model/FieldUserSettings {:field_id f1-id :ai_semantic_type :type/Name :ai_data_sensitivity :PII})
+        (let [export-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+              mock-source    (test-helpers/create-mock-source)
+              f1-file        #(val (u/seek (fn [[path _]] (str/ends-with? path "f1___fieldusersettings.yaml"))
+                                           (get @(:files-atom mock-source) "main")))]
+          (is (= :success (:status (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true))))
+          (remote-sync.task/complete-sync-task! export-task-id)
+          (is (=? {:ai_semantic_type "type/Name" :ai_data_sensitivity "PII"} (yaml/parse-string (f1-file))))
+          (t2/delete! :model/FieldUserSettings :field_id f1-id)
+          (is (= :success (:status (import-snapshot! mock-source))))
+          (is (=? {:ai_semantic_type :type/Name :ai_data_sensitivity :PII}
+                  (t2/select-one :model/FieldUserSettings :field_id f1-id))))))))
+
 (deftest user-settings-removal-after-import-test
   (testing "removing a Dimension an import brought is tracked, and pushing the removal leaves nothing pending"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]

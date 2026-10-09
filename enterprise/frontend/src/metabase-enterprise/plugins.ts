@@ -30,6 +30,7 @@ import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embeddi
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
+import { initializePlugin as initializeMetadataGeneration } from "./metadata_generation";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeMonitorApiKeyUsage } from "./monitor/api-key-usage";
@@ -87,6 +88,7 @@ export function initializePlugins() {
   initializeGroupManagers();
   initializeLibrary();
   initializeMetabot();
+  initializeMetadataGeneration();
   initializeModelPersistence();
   initializeModeration();
   initializeMonitorApiKeyUsage();

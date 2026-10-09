@@ -183,7 +183,8 @@
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
-  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
+  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set
+   :data_sensitivity_set :ai_semantic_type :ai_description :ai_data_sensitivity])
 
 (mu/defn field-ids-with-user-settings-for-table :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
@@ -200,6 +201,15 @@
                           {:from  [[(t2/table-name :model/Dimension) :d]]
                            :join  [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :d.field_id]]
                            :where [:= :f.table_id table-id]})))
+
+(mu/defn field-data-sensitivity-layers
+  "Per Field in `field-ids`: its `:id`, its own `:data_sensitivity`, and the `:data_sensitivity_set` and
+  `:ai_data_sensitivity` of its FieldUserSettings (nil when it has none)."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/query {:select    [:f.id :f.data_sensitivity :u.data_sensitivity_set :u.ai_data_sensitivity]
+             :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
+             :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
+             :where     [:in :f.id field-ids]}))
 
 (mu/defn field-user-settings-for-tables
   "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."

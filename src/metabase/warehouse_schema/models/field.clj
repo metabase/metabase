@@ -438,6 +438,24 @@
    #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
 
+(defn- data-sensitivity-source
+  [{:keys [data_sensitivity data_sensitivity_set ai_data_sensitivity]}]
+  (cond
+    data_sensitivity_set        :human
+    (some? ai_data_sensitivity) :ai
+    (some? data_sensitivity)    :deterministic))
+
+(methodical/defmethod t2/batched-hydrate [:model/Field :data_sensitivity_source]
+  "The layer the Field's `:data_sensitivity` comes from: `:human` (also when a person cleared it), `:ai`,
+  `:deterministic`, or nil when no layer has a value. See [[warehouse-schema-overlay/field-ai-columns]]."
+  [_model k fields]
+  (mi/instances-with-hydrated-data
+   fields k
+   #(into {}
+          (map (juxt :id data-sensitivity-source))
+          (warehouse-schema.db/field-data-sensitivity-layers (keep :id fields)))
+   :id))
+
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],

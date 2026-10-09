@@ -1,0 +1,399 @@
+# Saved runs and per-field suggestions for LLM metadata generation (GHY-4721). A run proposes values for
+# some attributes of the fields of one database; a person reviews the suggestions before any value is written.
+#
+# Index changesets have no rollback: the createTable rollback drops them. Their leading columns can back an FK
+# on MySQL, so a separate dropIndex fails there.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-09T00:00:00
+      author: tplude
+      comment: Add metadata_generation_run
+      changes:
+        - createTable:
+            tableName: metadata_generation_run
+            remarks: One LLM metadata generation run over a database, a list of schemas or a list of tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: The database the run reads
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metadata_generation_run_database_id
+                    deleteCascade: true
+              - column:
+                  name: scope
+                  type: ${text.type}
+                  remarks: "JSON: the part of the database the run covers, the whole database, schema names or table ids"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attributes
+                  type: ${text.type}
+                  remarks: "JSON: the field attributes the run proposes values for"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: pending, running, succeeded, failed, canceled or timeout
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: ${boolean.type}
+                  remarks: True while the run is pending or running, NULL after; with database_id unique, so a database has at most one active run
+                  constraints:
+                    nullable: true
+              - column:
+                  name: total_tables
+                  type: int
+                  remarks: Number of tables in the run
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: done_tables
+                  type: int
+                  remarks: Number of tables processed successfully
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: failed_tables
+                  type: int
+                  remarks: Number of tables that failed
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_errors
+                  type: ${text.type}
+                  remarks: "JSON: per-table errors, each a table id and a message"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: Error message for the whole run, when it failed
+                  constraints:
+                    nullable: true
+              - column:
+                  name: usage
+                  type: ${text.type}
+                  remarks: "JSON: token usage and cost of the run's LLM calls"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who started the run
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the run was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the run row was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When the run started processing; NULL while pending
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: When the run reached a terminal status; NULL while active
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_heartbeat
+                  type: ${timestamp_type}
+                  remarks: Stamped while the run executes; a stale value means the owning process died
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:01
+      author: tplude
+      comment: Add FK on metadata_generation_run.creator_id; SET NULL keeps the run when the user is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metadata_generation_run
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_metadata_generation_run_creator_id
+            onDelete: SET NULL
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:02
+      author: tplude
+      comment: At most one active metadata_generation_run per database
+      changes:
+        - addUniqueConstraint:
+            tableName: metadata_generation_run
+            constraintName: idx_unique_active_metadata_generation_run
+            columnNames: database_id, is_active
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:03
+      author: tplude
+      comment: Index metadata_generation_run by database and status
+      changes:
+        - createIndex:
+            tableName: metadata_generation_run
+            indexName: idx_metadata_generation_run_database_id_status
+            columns:
+              - column:
+                  name: database_id
+              - column:
+                  name: status
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:04
+      author: tplude
+      comment: Index metadata_generation_run.creator_id
+      changes:
+        - createIndex:
+            tableName: metadata_generation_run
+            indexName: idx_metadata_generation_run_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:05
+      author: tplude
+      comment: Add metadata_generation_suggestion
+      changes:
+        - createTable:
+            tableName: metadata_generation_suggestion
+            remarks: A value that a metadata generation run proposes for one attribute of one field
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: run_id
+                  type: int
+                  remarks: The run that made the suggestion
+                  constraints:
+                    nullable: false
+                    referencedTableName: metadata_generation_run
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metadata_generation_suggestion_run_id
+                    deleteCascade: true
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The table of the field
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metadata_generation_suggestion_table_id
+                    deleteCascade: true
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: The field the suggestion is for
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metadata_generation_suggestion_field_id
+                    deleteCascade: true
+              - column:
+                  name: attribute
+                  type: varchar(32)
+                  remarks: data_sensitivity, semantic_type or description
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  type: varchar(32)
+                  remarks: "Which layer gave the effective value at run time: human, ai, deterministic or none"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_value
+                  type: ${text.type}
+                  remarks: The effective value at run time; NULL when there was none
+                  constraints:
+                    nullable: true
+              - column:
+                  name: proposed_value
+                  type: ${text.type}
+                  remarks: The value the model proposes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: confidence
+                  type: varchar(16)
+                  remarks: high, medium or low, as reported by the model
+                  constraints:
+                    nullable: true
+              - column:
+                  name: reasoning
+                  type: ${text.type}
+                  remarks: The model's short reason for the proposal
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(16)
+                  remarks: pending, accepted, rejected, stale or applied
+                  defaultValue: pending
+                  constraints:
+                    nullable: false
+              - column:
+                  name: decided_by
+                  type: int
+                  remarks: The user who accepted or rejected the suggestion
+                  constraints:
+                    nullable: true
+              - column:
+                  name: decided_at
+                  type: ${timestamp_type}
+                  remarks: When the suggestion was accepted or rejected
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the suggestion was saved
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the suggestion was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:06
+      author: tplude
+      comment: Add FK on metadata_generation_suggestion.decided_by; SET NULL keeps the suggestion when the user is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metadata_generation_suggestion
+            baseColumnNames: decided_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_metadata_generation_suggestion_decided_by
+            onDelete: SET NULL
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:07
+      author: tplude
+      comment: One suggestion per run, field and attribute
+      changes:
+        - addUniqueConstraint:
+            tableName: metadata_generation_suggestion
+            constraintName: idx_unique_metadata_generation_suggestion_run_field_attribute
+            columnNames: run_id, field_id, attribute
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:08
+      author: tplude
+      comment: Index metadata_generation_suggestion by run and table
+      changes:
+        - createIndex:
+            tableName: metadata_generation_suggestion
+            indexName: idx_metadata_generation_suggestion_run_id_table_id
+            columns:
+              - column:
+                  name: run_id
+              - column:
+                  name: table_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:09
+      author: tplude
+      comment: Index metadata_generation_suggestion.field_id
+      changes:
+        - createIndex:
+            tableName: metadata_generation_suggestion
+            indexName: idx_metadata_generation_suggestion_field_id
+            columns:
+              - column:
+                  name: field_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:10
+      author: tplude
+      comment: Index metadata_generation_suggestion.table_id
+      changes:
+        - createIndex:
+            tableName: metadata_generation_suggestion
+            indexName: idx_metadata_generation_suggestion_table_id
+            columns:
+              - column:
+                  name: table_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:11
+      author: tplude
+      comment: Index metadata_generation_suggestion.decided_by
+      changes:
+        - createIndex:
+            tableName: metadata_generation_suggestion
+            indexName: idx_metadata_generation_suggestion_decided_by
+            columns:
+              - column:
+                  name: decided_by
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-10-09T00:00:12
+      author: tplude
+      comment: Add metadata_generation_suggestion.edited_value
+      changes:
+        - addColumn:
+            tableName: metadata_generation_suggestion
+            columns:
+              - column:
+                  name: edited_value
+                  type: ${text.type}
+                  remarks: The value a person chose in place of proposed_value; NULL when not edited. Apply writes it as the person's value
+                  constraints:
+                    nullable: true

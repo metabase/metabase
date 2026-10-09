@@ -9,6 +9,7 @@ import type {
   GetFieldTableIdsResponse,
   GetFieldValuesResponse,
   GetRemappedFieldValueRequest,
+  ResetFieldToAutomaticRequest,
   SearchFieldValuesRequest,
   UpdateFieldRequest,
   UpdateFieldValuesRequest,
@@ -114,6 +115,23 @@ export const fieldApi = Api.injectEndpoints({
         await rollbackOnError(queryFulfilled, patches);
       },
     }),
+    resetFieldToAutomatic: builder.mutation<
+      Field,
+      ResetFieldToAutomaticRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/field/${id}/reset-to-automatic`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("field"),
+          idTag("field", id),
+          tag("card"),
+          tag("dataset"),
+        ]),
+    }),
     updateFieldValues: builder.mutation<void, UpdateFieldValuesRequest>({
       query: ({ id, ...body }) => ({
         method: "POST",
@@ -189,6 +207,7 @@ export const {
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
   useUpdateFieldMutation,
+  useResetFieldToAutomaticMutation,
   useUpdateFieldValuesMutation,
   useCreateFieldDimensionMutation,
   useDeleteFieldDimensionMutation,

@@ -52,7 +52,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `Field` with ID."
+  "Get `Field` with ID. With `include_editable_data_model`, also `data_sensitivity_source`: `human`, `ai`,
+  `deterministic`, or null."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
@@ -98,13 +99,6 @@
        (or (nil? new-semantic-type)
            (not (isa? new-semantic-type :type/FK)))))
 
-(defn- internal-remapping-allowed? [base-type semantic-type]
-  (and (isa? base-type :type/Integer)
-       (or
-        (nil? semantic-type)
-        (isa? semantic-type :type/Category)
-        (isa? semantic-type :type/Enum))))
-
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
@@ -112,7 +106,7 @@
   (doseq [{old-dim-id :id, old-dim-type :type} dimensions]
     (when (and old-dim-id
                (= :internal old-dim-type)
-               (not (internal-remapping-allowed? base-type new-semantic-type)))
+               (not (schema.field/internal-remapping-allowed? base-type new-semantic-type)))
       (warehouse-schema-rest.db/delete-dimension! old-dim-id))))
 
 (defn- update-nested-fields-on-json-unfolding-change!
@@ -209,13 +203,28 @@
     ;; but that shouldn't matter for the datamodel page
     (let [updated (warehouse-schema-rest.db/field id)]
       (u/prog1 (-> updated
-                   (t2/hydrate :dimensions :has_field_values)
+                   (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
                    (field/hydrate-target-with-write-perms))
         (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
           ;; Run with admin perms to match behavior during normal sync.
           (quick-task/submit-task! (fn [] (request/as-admin (sync/refingerprint-field! updated)))))))))
+
+(api.macros/defendpoint :post "/:id/reset-to-automatic" :- :map
+  "Drop the user values of the Field columns in `columns`, so the Field shows the accepted AI value, else the value
+  sync and the classifiers set. Returns the updated Field."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [columns]} :- [:map {:closed true}
+                         [:columns [:sequential {:min 1} [:enum "data_sensitivity"]]]]]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
+    (schema.field-user-settings/unset-user-settings! field (mapv keyword columns))
+    (u/prog1 (-> (warehouse-schema-rest.db/field id)
+                 (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
+                 (field/hydrate-target-with-write-perms))
+      (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*}))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 

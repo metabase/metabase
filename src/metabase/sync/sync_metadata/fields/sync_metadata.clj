@@ -129,6 +129,7 @@
                       new-base-type)
            (field-user-settings/unset-user-settings!
             (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type])
+           (field-user-settings/unset-ai-values! (select-keys metabase-field [:id]) [:semantic_type])
            {:base_type           new-base-type
             :effective_type      new-base-type
             :coercion_strategy   nil

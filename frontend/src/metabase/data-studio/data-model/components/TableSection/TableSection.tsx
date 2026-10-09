@@ -15,6 +15,7 @@ import { useTableUpdateHandlers } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
+  PLUGIN_METADATA_GENERATION,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -200,6 +201,7 @@ const TableSectionBase = ({
                 <Box style={{ flexGrow: 0 }}>
                   <TableLink table={table} />
                 </Box>
+                <PLUGIN_METADATA_GENERATION.TableButton table={table} />
                 <TableActionsMenu table={table} />
               </Group>
 

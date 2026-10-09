@@ -8,13 +8,23 @@
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
+(defn internal-remapping-allowed?
+  "Whether a field of `base-type` with `semantic-type` can keep an internal remapping: an integer field with no
+  semantic type, or a category or enum. A semantic type change that breaks this deletes the internal Dimension."
+  [base-type semantic-type]
+  (and (isa? base-type :type/Integer)
+       (or (nil? semantic-type)
+           (isa? semantic-type :type/Category)
+           (isa? semantic-type :type/Enum))))
+
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]
   (let [field (-> (api/check-404 (warehouse-schema.db/field id))
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
-                (field/hydrate-target-with-write-perms field)
+                (-> (field/hydrate-target-with-write-perms field)
+                    (t2/hydrate :data_sensitivity_source))
                 (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;

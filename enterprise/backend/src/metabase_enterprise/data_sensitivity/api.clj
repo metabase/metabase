@@ -6,11 +6,13 @@
   because the call skips the Metabot group permissions; see [[metabase-enterprise.data-sensitivity.core]]. The
   Metabot instance gates (enabled, provider configured, usage limit) are reported as a 400 before any work starts."
   (:require
+   [metabase-enterprise.data-sensitivity.api.runs :as api.runs]
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
@@ -89,5 +91,7 @@
     (core/classify-database! database :schema schema :commit? (not dry_run))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "Ring routes for the data-sensitivity API."
-  (api.macros/ns-handler *ns* +auth))
+  "Ring routes for the data-sensitivity API, with the metadata generation run routes."
+  (handlers/routes
+   (api.macros/ns-handler *ns* +auth)
+   api.runs/routes))

@@ -40,6 +40,7 @@ export * from "./llm";
 export * from "./logger";
 export * from "./measure";
 export * from "./metabot";
+export * from "./metadata-generation";
 export * from "./metric";
 export * from "./modelIndexes";
 export * from "./models";

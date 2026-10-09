@@ -319,7 +319,7 @@
   :dependencies)
 
 (define-premium-feature ^{:added "0.65.0"} enable-data-sensitivity?
-  "Should we allow admins to classify fields by data sensitivity?"
+  "Should we allow admins to generate field metadata (data sensitivity, semantic types and descriptions) with AI, and review the suggestions before they are saved?"
   :data-sensitivity)
 
 (define-premium-feature ^{:added "0.57.1"} enable-support-users?

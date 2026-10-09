@@ -24,6 +24,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   admin: "metabase-enterprise/admin",
   dependencies: "metabase-enterprise/dependencies",
   schema_viewer: "metabase-enterprise/schema_viewer",
+  metadata_generation: "metabase-enterprise/metadata_generation",
   feature_level_permissions: "metabase-enterprise/feature_level_permissions",
   shared: "metabase-enterprise/shared",
   transforms: "metabase-enterprise/transforms",
