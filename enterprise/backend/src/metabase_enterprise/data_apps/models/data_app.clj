@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
-   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
@@ -11,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -106,7 +106,12 @@
 (defmethod mi/can-read? :model/DataApp
   ([app] (mi/can-read? :model/DataApp (:id app)))
   ([_model pk]
-   (data-app.access/can-read? {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} pk)))
+   (or api/*is-superuser?*
+       (and api/*current-user-id*
+            (nil? (:tenant_id @api/*current-user*))
+            (let [group-ids (user/group-ids api/*current-user-id*)]
+              (boolean (some (comp group-ids :permission_group_id)
+                             (data-apps.db/app-assignments [pk]))))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
