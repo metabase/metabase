@@ -59,9 +59,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should allow drill through on cells and on left/top header values", () => {
-    createTestQuestion().then(({ body }) => {
-      cy.wrap(body.id).as("questionId");
-    });
+    createTestQuestion({ wrapId: true });
 
     cy.log("Drill through on a cell");
     // open drill-through menu
@@ -628,7 +626,7 @@ WHERE NOT (
       .should("be.visible");
   });
 
-  it("should be created from an ad-hoc question and allow formatting, renaming and resizing columns", () => {
+  it("should be created from an ad-hoc question and allow formatting and resizing columns", () => {
     H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -652,13 +650,6 @@ WHERE NOT (
     cy.log("Value fields cannot be sorted");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Sort order/).should("not.be.visible");
-
-    cy.log("Change the title of a value field (metabase#15353)");
-    cy.findByDisplayValue("Count").type(" renamed").blur();
-    cy.findByTestId("query-visualization-root").should(
-      "contain",
-      "Count renamed",
-    );
 
     cy.log("Change the value formatting");
     cy.findByDisplayValue("Normal").click();
@@ -716,7 +707,6 @@ WHERE NOT (
     cy.reload(); // reload to make sure the settings are persisted
     cy.findByTestId("pivot-table").within(() => {
       cy.findByText("78,300%");
-      cy.findByText("Count renamed");
       cy.findByText("ModifiedTITLE").should(($headerTextEl) => {
         expect(getCellWidth($headerTextEl)).equal(80);
       });
@@ -724,6 +714,32 @@ WHERE NOT (
         expect(getCellWidth($headerTextEl)).equal(220);
       });
     });
+  });
+
+  it("should be able to change field name used for values (metabase#15353)", () => {
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+    H.createQuestion(
+      {
+        name: "15353",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+        display: "pivot",
+      },
+      { visitQuestion: true },
+    );
+
+    H.openVizSettingsSidebar();
+    openColumnSettings("Count");
+    cy.findByDisplayValue("Count").type(" renamed").blur();
+    cy.wait("@pivotDataset");
+
+    cy.findByTestId("query-visualization-root").should(
+      "contain",
+      "Count renamed",
+    );
   });
 
   it("should allow sorting fields", () => {
@@ -1048,7 +1064,7 @@ WHERE NOT (
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
             .invoke("val")
-            .as("publicLink");
+            .as("publicLink", { type: "static" });
           cy.get("body").click("topLeft");
           cy.findByTestId("public-link-popover-content").should("not.exist");
 
@@ -1763,11 +1779,15 @@ const testQuery = {
   database: SAMPLE_DB_ID,
 };
 
-function createTestQuestion({ display = "pivot", visitQuestion = true } = {}) {
+function createTestQuestion({
+  display = "pivot",
+  visitQuestion = true,
+  wrapId = false,
+} = {}) {
   const { query } = testQuery;
   const questionDetails = { name: QUESTION_NAME, query, display };
 
-  return H.createQuestion(questionDetails, { visitQuestion });
+  return H.createQuestion(questionDetails, { visitQuestion, wrapId });
 }
 
 function assertOnPivotSettings() {
