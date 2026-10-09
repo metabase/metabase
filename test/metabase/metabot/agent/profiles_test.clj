@@ -6,11 +6,13 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.test :as mt]))
 
 (deftest get-profile-test
+  ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
   (letfn [(tool-names [profile]
-            (set (map #(:tool-name (meta %)) (:tools profile))))]
+            (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
     (testing "retrieves embedding_next profile with default provider"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))

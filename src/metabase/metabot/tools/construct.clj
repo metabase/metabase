@@ -17,7 +17,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
-   [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -841,63 +841,75 @@
 
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
-(mu/defn ^{:tool-name "construct_notebook_query"
-           :scope     scope/agent-notebook-create}
-  construct-notebook-query-tool
-  "Construct and visualize a notebook query from a metric, model, or table.
+(def ^:private tool-description
+  "What the model is told `construct_notebook_query` is."
+  (str
+   "Construct and visualize a notebook query from a metric, model, or table.\n"
+   "\n"
+   "Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a\n"
+   "short, human-friendly `title` shown above the resulting chart. Also provide a concise\n"
+   "one- or two-sentence `description` of what the chart shows (the metric, the grouping, and\n"
+   "any notable filter); it is used as the saved question's description. See\n"
+   "`resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."))
 
-  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
-  short, human-friendly `title` shown above the resulting chart. Also provide a concise
-  one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
-  any notable filter); it is used as the saved question's description. See
-  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
-  (try
-    (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
-          chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
-                                      :table)
-          query-result            (execute-representations-query
-                                   query
-                                   {:recovery-hint recovery-hints/recovery-hint})
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [chart-result (create-chart-tools/create-chart
-                            {:query-id      (:query-id structured)
-                             :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
-              full-structured (assoc structured
-                                     :result-type   :query
-                                     :chart-id      (:chart-id chart-result)
-                                     :chart-type    (:chart-type chart-result)
-                                     :chart-link    (:chart-link chart-result)
-                                     :chart-content (:chart-content chart-result))
-              instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-                (te/lines
-                 "Your query and chart have been created successfully."
-                 ""
-                 "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-                 "- If creating multiple charts, present all chart links"))
-              chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        [(streaming/viz-part
-                                {:entity-id   (:chart-id chart-result)
-                                 :query-id    (:query-id structured)
-                                 :query       (links/->legacy-mbql (:query structured))
-                                 :display     chart-type
-                                 :title       title
-                                 :description description})]
-           :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
-    (catch Exception e
-      (tools.u/handle-agent-or-api-error e))))
+(defn- chart-instructions
+  "What to tell the model to do with the chart it just got."
+  [chart-id]
+  (let [link (te/link "Chart" "metabase://chart/" chart-id)]
+    (te/lines
+     "Your query and chart have been created successfully."
+     ""
+     "Next steps to present the chart to the user:"
+     (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+     "- If creating multiple charts, present all chart links")))
+
+(defrecord ConstructNotebookQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "construct_notebook_query"
+     :description tool-description
+     :scope       scope/agent-notebook-create
+     :args        construct-notebook-query-args-schema})
+
+  (handle [_ {:keys [query visualization title description]} _ctx]
+    (let [chart-type (or (-> visualization
+                             (some-> (update-keys (comp keyword u/->kebab-case-en name)))
+                             :chart-type
+                             chart-type->keyword)
+                         :table)
+          ;; The one place a representations-pipeline error is allowed to become something the
+          ;; model reads. A `:error` code the pipeline declares becomes that recoverable error with
+          ;; its recovery steps; anything else — a lib, toucan2 or JDBC failure that the pipeline's
+          ;; `as-agent-input-error` stamped `:agent-error?` onto without authoring a sentence for
+          ;; it — stays unrecoverable and ends the turn.
+          structured (:structured-output (tools/with-pipeline-errors
+                                           (execute-representations-query query)))
+          ;; `execute-representations-query` either throws or returns a structured output with
+          ;; both of these, so there is nothing to branch on.
+          chart      (create-chart-tools/create-chart
+                      {:query-id      (:query-id structured)
+                       :chart-type    chart-type
+                       :queries-state {(:query-id structured) (:query structured)}})
+          instruction-text (chart-instructions (:chart-id chart))]
+      {:output            (str "<result>\n"
+                               (structured->chart-xml structured (:chart-id chart) chart-type)
+                               "\n</result>\n"
+                               "<instructions>\n" instruction-text "\n</instructions>")
+       :structured-output (assoc structured
+                                 :result-type   :query
+                                 :chart-id      (:chart-id chart)
+                                 :chart-type    (:chart-type chart)
+                                 :chart-link    (:chart-link chart)
+                                 :chart-content (:chart-content chart))
+       :data-parts        [(streaming/viz-part
+                            {:entity-id   (:chart-id chart)
+                             :query-id    (:query-id structured)
+                             :query       (links/->legacy-mbql (:query structured))
+                             :display     chart-type
+                             :title       title
+                             :description description})]})))
+
+(def construct-notebook-query-tool
+  "`construct_notebook_query`: run an agent-authored MBQL 5 query through the representations
+  pipeline and attach a chart to the conversation."
+  (->ConstructNotebookQueryTool))
