@@ -226,6 +226,22 @@
          (is (false? (remote-sync.settings/remote-sync-transforms))
              "the settings cache agrees with the deleted row"))))))
 
+(deftest clean-remote-sync-state-removes-a-stored-transforms-value-before-the-test-test
+  (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
+                "ledger row when the settings cache restores it inside the test")
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (do-with-remote-sync-state-restored!
+       (fn []
+         (t2/query-one {:delete-from :setting :where [:= :key "remote-sync-transforms"]})
+         (setting/restore-cache!)
+         (t2/delete! :model/RemoteSyncObject)
+         ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
+         (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
+         (th/clean-remote-sync-state
+          (fn []
+            (setting/restore-cache!)
+            (is (empty? (transforms-ledger-rows))))))))))
+
 (deftest clean-remote-sync-state-deletes-every-remote-sync-setting-row-test
   (testing (str "no remote-sync setting row outlives clean-remote-sync-state, also when the test binds settings "
                 "that had no row, and changes or adds rows with no binding")
@@ -660,15 +676,17 @@
     :namespace-collection (t2/exists? :model/Collection :name "Left over transforms")))
 
 (deftest clean-remote-sync-state-deletes-the-remote-sync-rows-from-before-the-test-test
-  (testing (str "a row that existed before the test does not outlive clean-remote-sync-state, in each table that "
-                "the fixture cleans")
+  (testing (str "clean-remote-sync-state deletes a row that existed before the test before the test runs, in each "
+                "table that the fixture cleans, and the row does not come back after the test")
     (doseq [kind [:ledger :task :setting :transform :tag :python-library :namespace-collection]]
       (testing kind
         (do-with-row-from-before!
          kind
          (fn []
            (is (dirty-row-exists? kind))
-           (th/clean-remote-sync-state (fn []))
+           (th/clean-remote-sync-state
+            (fn []
+              (is (not (dirty-row-exists? kind)) "the test does not see the row")))
            (is (not (dirty-row-exists? kind)))))))))
 
 (deftest clean-remote-sync-state-keeps-the-content-rows-from-before-the-test-test
