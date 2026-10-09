@@ -53,7 +53,8 @@
  [tools.construct
   construct-notebook-query-tool]
  [tools.run-query
-  run-query-tool]
+  run-query-tool
+  run-sql-query-tool]
  [tools.document
   document-schema-collect-tool
   document-construct-sql-chart-tool
