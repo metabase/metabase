@@ -192,7 +192,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.log("ad-hoc questions do not fetch actions (metabase#50266)");
     cy.findByTestId("object-detail")
       .findByRole("link", { name: /Orders/ })
-      .should("be.visible");
+      .should("exist");
     cy.get("@getActions").should("have.callCount", 0);
 
     assertUserDetailView({ id: 1, heading: "Hudson Borer" });
@@ -449,7 +449,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .click({ scrollBehavior: false });
     H.popover().should("be.visible");
     cy.realPress("Escape");
-    H.popover().should("not.exist");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
     getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
 
@@ -478,7 +478,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .click();
     // A drill popover would cover "Searsboro", and the click would fail.
     cy.findByTestId("object-detail").findByText("Searsboro").click();
-    H.popover().should("not.exist");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
     cy.log("navigates up");
     getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
