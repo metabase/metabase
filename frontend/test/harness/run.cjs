@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Entry point: node --require ./node-test-spike/hooks.cjs node-test-spike/run.cjs <files...|@list-file>
+// Entry point: node --require ./hooks.cjs run.cjs <files...|@list-file>
 // Every spec file runs in this one process, one after the other. Files that
 // mock modules run last, each with a fresh registry of project modules.
 //
@@ -26,7 +26,7 @@ const files = process.argv.slice(2)
 // itself is recorded as the failing entry.
 const runFile = async (t, file) => {
   try {
-    await globalThis.__nodeTestSpike.runFile(t, path.resolve(file));
+    await globalThis.__testHarness.runFile(t, path.resolve(file));
   } catch (error) {
     if (process.env.NT_FAILURES) fs.appendFileSync(process.env.NT_FAILURES, `${file}\t(file)\t${String(error?.message ?? error).split("\n")[0].slice(0, 200)}\n`);
     if (process.env.NT_FAILURE_DETAIL) fs.appendFileSync(process.env.NT_FAILURE_DETAIL, `\n===== ${file} > (file)\n${error?.stack ?? error}\n`);
@@ -65,7 +65,7 @@ const nextFromParent = () =>
       // A timed-out test leaves work running that cannot be stopped, so the
       // worker is spent: exit and let the pool start a clean one, rather than
       // skipping every remaining test in this process.
-      if (globalThis.__nodeTestSpike.poisoned) return finish(RECYCLE_EXIT_CODE);
+      if (globalThis.__testHarness.poisoned) return finish(RECYCLE_EXIT_CODE);
       if (megabytes(rss) > MAX_RSS_MB) return finish(RECYCLE_EXIT_CODE);
       ranHere += 1;
       if (ranHere >= MAX_FILES) return finish(RECYCLE_EXIT_CODE);
@@ -81,7 +81,7 @@ const nextFromParent = () =>
     await test(file, (t) => runFile(t, file));
     const { rss } = process.memoryUsage();
     const remaining = files.slice(index + 1);
-    if (globalThis.__nodeTestSpike.poisoned && remaining.length > 0) {
+    if (globalThis.__testHarness.poisoned && remaining.length > 0) {
       console.error(`[harness] a test timed out and its work cannot be stopped, recycling with ${remaining.length} files left`);
       return finish(RECYCLE_EXIT_CODE);
     }

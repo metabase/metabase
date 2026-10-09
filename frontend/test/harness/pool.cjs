@@ -21,11 +21,12 @@ const runner = path.join(__dirname, "run.cjs");
 // jest runs each project with its own setup files. A worker loads one
 // project's setup when it starts, so each worker serves one project, and the
 // pool moves workers to whichever project has files left.
-const { projects, projectOf } = require("./jest-config.cjs");
+const { root, projects, projectOf } = require("./jest-config.cjs");
 // The slowest files go first. Taken in list order, a 20 second file can be the
 // last one picked up, and then one worker runs it while the others sit idle.
 // The times come from the previous run, and a file with no record goes first.
-const durationsFile = path.join(__dirname, "../node_modules/.cache/node-test-spike/durations.json");
+const cacheDir = path.join(root, "node_modules/.cache/test-harness");
+const durationsFile = path.join(cacheDir, "durations.json");
 // A machine with no run behind it, such as a CI runner, starts from the times
 // that are checked in. They are from another machine, but the order holds.
 const seedDurationsFile = path.join(__dirname, "durations.json");
@@ -103,7 +104,7 @@ const spawn = (project) => {
     child.send(assigned ? { file: assigned } : { done: true });
   });
   child.on("exit", (code) => {
-    fs.rmSync(path.join(__dirname, "../node_modules/.cache/node-test-spike", `process-${child.pid}`), { recursive: true, force: true });
+    fs.rmSync(path.join(cacheDir, `process-${child.pid}`), { recursive: true, force: true });
     live -= 1;
     serving[project] -= 1;
     // 75 is a deliberate recycle, anything else non-zero is a crash. The file a
