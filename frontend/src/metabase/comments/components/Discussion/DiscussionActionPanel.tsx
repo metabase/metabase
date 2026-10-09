@@ -29,8 +29,6 @@ export type DiscussionActionPanelProps = {
   onResolve: (comment: Comment) => void;
 };
 
-const ACTION_ICON_SIZE = "md";
-
 export function DiscussionActionPanel({
   canReact = true,
   canResolve,
@@ -74,7 +72,6 @@ export function DiscussionActionPanel({
                 <ActionIcon
                   variant="subtle"
                   aria-label={t`Add reaction`}
-                  size={ACTION_ICON_SIZE}
                   onClick={() => setEmojiPickerOpened((opened) => !opened)}
                 >
                   <Icon name="smile" />
@@ -96,7 +93,6 @@ export function DiscussionActionPanel({
                   : "comment-action-panel-resolve"
               }
               aria-label={comment.is_resolved ? t`Re-open` : t`Resolve`}
-              size={ACTION_ICON_SIZE}
               onClick={() =>
                 comment.is_resolved ? onReopen?.(comment) : onResolve?.(comment)
               }
@@ -119,7 +115,6 @@ export function DiscussionActionPanel({
                   variant="subtle"
                   data-testid="comment-action-panel-more-actions"
                   aria-label={t`More actions`}
-                  size={ACTION_ICON_SIZE}
                   onClick={() => setPopoverOpened((opened) => !opened)}
                 >
                   <Icon name="ellipsis" />
