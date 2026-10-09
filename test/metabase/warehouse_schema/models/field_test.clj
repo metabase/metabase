@@ -2,11 +2,14 @@
   "Tests for specific behavior related to the Field model."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.yaml :as yaml]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
@@ -407,3 +410,26 @@
       (t2/update! :model/Field target-id {:active false})
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (= :type/Category (:semantic_type (warehouse-schema.db/field source-id)))))))
+
+(deftest serdes-load-of-unchanged-field-writes-nothing-test
+  (testing "loading a Field's own export, after a YAML round trip, does not rewrite the Field"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Field    {field-id :id} {:table_id table-id :name "price" :base_type :type/Integer}]
+      ;; An old updated_at, so a rewrite shows however fast the load runs.
+      (t2/query-one {:update :metabase_field
+                     :set    {:updated_at #t "2020-01-01T00:00:00Z"}
+                     :where  [:= :id field-id]})
+      (let [ingested (-> (serdes/extract-one "Field" {} (t2/select-one :model/Field field-id))
+                         yaml/generate-string
+                         yaml/parse-string)
+            before   (t2/select-one-fn :updated_at :metabase_field :id field-id)
+            written  (atom [])]
+        (mt/with-dynamic-fn-redefs [models.db/update-entity! (let [real (mt/original-fn #'models.db/update-entity!)]
+                                                               (fn [id entity]
+                                                                 (swap! written conj (:row entity))
+                                                                 (real id entity)))]
+          (serdes/with-cache
+            (serdes/load-one! ingested (serdes/load-find-local (serdes/path ingested)))))
+        (is (= [] @written))
+        (is (= before (t2/select-one-fn :updated_at :metabase_field :id field-id)))))))

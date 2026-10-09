@@ -603,6 +603,15 @@
     (when db-id
       (warehouse-schema.db/table-by-name db-id schema-name table-name))))
 
+(defmethod serdes/load-update! "Table" [model-name ingested local]
+  ;; `local` is the overlay row, which holds user values, but the UPDATE writes the raw row. So the comparison uses the
+  ;; raw row, with the two columns that the after-select removes.
+  (serdes/update-changed-columns!
+   model-name ingested local
+   (warehouse-schema.db/stored-row-with-columns :model/Table :metabase_table (:id local)
+                                                [:is_defective_duplicate :unique_table_helper])
+   {}))
+
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
