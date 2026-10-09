@@ -20,6 +20,7 @@
   gets no steps at all: a missing step reads as terse, a wrong one sends the agent at the wrong
   tool."
   (:require
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.error :refer [defrecoverable]]
    [metabase.util.malli.registry :as mr]))
 
@@ -29,30 +30,81 @@
   "The payload every pipeline-error declaration takes.
 
   `:message` is the pipeline's own sentence. `:entity-type` and `:entity-id` are present only for
-  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]])."
+  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]]).
+  `:table-id` and `:database-id` are the ids a code's recovery steps name, present only when the
+  pipeline knew them and the current user may read them (see [[payload]])."
   [:map {:closed true}
    [:message     :string]
    [:entity-type {:optional true} [:maybe :string]]
-   [:entity-id   {:optional true} [:maybe [:or :string :int]]]])
+   [:entity-id   {:optional true} [:maybe [:or :string :int]]]
+   [:table-id    {:optional true} pos-int?]
+   [:database-id {:optional true} pos-int?]])
+
+(def ^:private payload-ids
+  {:unknown-table {:database-id :database-id}
+   :unknown-field {:table-id :table-id}
+   :ambiguous-fk  {:table-id :source-table}})
+
+(defn payload
+  "The payload for the pipeline exception `e`, raised with `:error` code `error`: the pipeline's own
+  sentence, and the ids that code's recovery steps name.
+
+  The tables behind `:table-id` already passed the pipeline's permission sweep. A database is not
+  checked by the sweep, so `:database-id` is kept only when the current user can read it."
+  [error e]
+  (let [data (ex-data e)]
+    (reduce-kv (fn [acc payload-key data-key]
+                 (let [id (get data data-key)]
+                   (cond-> acc
+                     (and (pos-int? id)
+                          (or (not= :database-id payload-key)
+                              (metabot.db/readable-database? id)))
+                     (assoc payload-key id))))
+               (cond-> {:message (or (ex-message e) "")}
+                 (:entity-type data)       (assoc :entity-type (:entity-type data))
+                 (some? (:entity-id data)) (assoc :entity-id (:entity-id data)))
+               (get payload-ids error))))
 
 ;;; ------------------------------------------- Shared recovery steps ----------------------------------------------
 
 ;; Each step names the tools its text mentions in `:uses`, so a profile without `read_resource` gets
 ;; the error with that step dropped rather than advice it cannot follow.
 
-(def ^:private list-tables-step
-  {:uses #{"read_resource"}
-   :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the available "
-              "tables and schemas, then retry with an exact portable FK from the response.")})
+(defn- id-or-placeholder
+  [id]
+  (if id (str id) "<numeric id>"))
+
+(defn- list-tables-steps
+  [database-id]
+  [{:uses #{"read_resource"}
+    :text (str "Call `read_resource` with `metabase://database/" (id-or-placeholder database-id) "/tables` to "
+               "list the available tables and schemas, then retry with an exact portable FK from the response.")}
+   {:uses #{"search"}
+    :text "Call `search` with the table's name to find it, then build its portable FK from the result."}])
+
+(defn- list-fields-steps
+  [table-id]
+  (cond-> [{:uses #{"read_resource"}
+            :text (str "Call `read_resource` with `metabase://table/" (id-or-placeholder table-id) "/fields` to "
+                       "list this table's columns.")}]
+    table-id (conj {:uses #{"list_available_fields"}
+                    :text (str "Call `list_available_fields` with `table_ids: [" table-id "]` to list this "
+                               "table's columns.")})))
+
+(defn- list-fks-steps
+  [table-id]
+  (cond-> [{:uses #{"read_resource"}
+            :text (str "Call `read_resource` with `metabase://table/" (id-or-placeholder table-id) "/fields` to "
+                       "list the source table's foreign-key columns, then set `source-field` on the field "
+                       "clause to the one you mean.")}]
+    table-id (conj {:uses #{"list_available_fields"}
+                    :text (str "Call `list_available_fields` with `table_ids: [" table-id "]` to list the "
+                               "source table's foreign-key columns, then set `source-field` on the field "
+                               "clause to the one you mean.")})))
 
 (def ^:private list-fields-step
   {:uses #{"read_resource"}
    :text "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table's columns."})
-
-(def ^:private list-fks-step
-  {:uses #{"read_resource"}
-   :text (str "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list "
-              "the available foreign-key columns.")})
 
 (def ^:private metric-dimensions-step
   {:uses #{"read_resource"}
@@ -65,6 +117,15 @@
    :text (str "Do not invent or guess entity_ids: call `read_resource` with "
               "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the "
               "exact `portable_entity_id` from the response into `source-card:`.")})
+
+(def ^:private content-entity-id-steps
+  [{:uses #{"read_resource"}
+    :text (str "Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>`, "
+               "`metabase://model/<numeric id>` or `metabase://metric/<numeric id>` first, then copy the exact "
+               "`portable_entity_id` from the response.")}
+   {:uses #{"search"}
+    :text (str "Call `search` to find the question, model or metric, then copy the exact `portable_entity_id` "
+               "from its result.")}])
 
 (def ^:private measure-entity-id-step
   {:uses #{"read_resource"}
@@ -106,9 +167,12 @@
 
 ;;; Table resolution
 
-(defpipeline-error unknown-table!
+(defrecoverable unknown-table!
   "A portable FK `[db, schema, table]` in `source-table:` matched no active table."
-  [list-tables-step])
+  {:payload ::payload}
+  [{:keys [message database-id]}]
+  {:message  message
+   :recovery (list-tables-steps database-id)})
 
 (defpipeline-error unknown-table-id!
   "A numeric table id did not resolve."
@@ -142,9 +206,12 @@
 
 ;;; Field resolution
 
-(defpipeline-error unknown-field!
+(defrecoverable unknown-field!
   "A field reference named no column of its source."
-  [list-fields-step])
+  {:payload ::payload}
+  [{:keys [message table-id]}]
+  {:message  message
+   :recovery (list-fields-steps table-id)})
 
 (defpipeline-error unknown-field-id!
   "A numeric field id did not resolve."
@@ -164,17 +231,20 @@
 
 (defpipeline-error unresolved-cross-stage-field!
   "A later stage referenced a column no earlier stage returns."
-  [list-fields-step])
+  [])
 
 ;;; Joins
 
-(defpipeline-error ambiguous-fk!
+(defrecoverable ambiguous-fk!
   "More than one foreign key connects the two tables, so the join path is ambiguous."
-  [list-fks-step])
+  {:payload ::payload}
+  [{:keys [message table-id]}]
+  {:message  message
+   :recovery (list-fks-steps table-id)})
 
 (defpipeline-error ambiguous-fk-via-join!
   "More than one foreign key connects the joined tables, so the join path is ambiguous."
-  [list-fks-step])
+  [])
 
 (defpipeline-error no-fk-path!
   "No foreign key connects the two tables, so they cannot be joined implicitly."
@@ -184,11 +254,11 @@
 
 (defpipeline-error unknown-card!
   "A `source-card:` entity_id matched no question or model."
-  [card-entity-id-step])
+  content-entity-id-steps)
 
 (defpipeline-error unknown-card-id!
   "A numeric card id did not resolve."
-  [card-entity-id-step])
+  content-entity-id-steps)
 
 (defpipeline-error missing-card-entity-id!
   "A card reference carried no entity_id."

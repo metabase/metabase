@@ -117,12 +117,13 @@
 
   The LLM can still self-correct in one turn by listing the parent database's tables with
   the calling surface's discovery tool; the message points it at that path."
-  [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
+  [metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
   (ex-info (tru "No table found matching portable FK {0}." (pr-str path))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
-            :path         path}))
+            :path         path
+            :database-id  (:id (lib.metadata/database metadata-provider))}))
 
 (defn- table-candidates
   "Resolve `(schema, table-name)` against `metadata-provider`, returning only active tables.
@@ -168,7 +169,8 @@
                        :error        :unknown-table
                        :agent-error? true
                        :path         path
-                       :expected-db  current-db})))
+                       :expected-db  current-db
+                       :database-id  current-db-id})))
     (let [candidates (table-candidates metadata-provider current-db-id path-schema path-table-name)]
       (case (count candidates)
         0 (throw (unknown-table-ex-info metadata-provider path))

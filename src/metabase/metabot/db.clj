@@ -465,6 +465,11 @@
     (when (mi/can-read? table)
       (:db_id table))))
 
+(defn readable-database?
+  "Whether the Database with `database-id` exists and the current user can read it."
+  [database-id]
+  (boolean (some-> (t2/select-one :model/Database :id database-id) mi/can-read?)))
+
 (mu/defn tables-by-id
   "A map of ID to Table for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]

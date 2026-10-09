@@ -7,10 +7,14 @@
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.error :as tools.error]
    ;; loaded for its declarations; the codes are read out of the catalog, not off the vars
-   [metabase.metabot.tools.recoverable.pipeline]))
+   [metabase.metabot.tools.recoverable.pipeline :as pipeline]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,3 +80,71 @@
   (testing "a regex that stopped matching would make both tests above pass vacuously"
     (is (< 20 (count (pipeline-codes))))
     (is (contains? (pipeline-codes) :unknown-table))))
+
+(defn- construct-error
+  [stage]
+  (try
+    (tools.core/handle construct/construct-notebook-query-tool
+                       {:title       "t"
+                        :description "d"
+                        :query       {:lib/type "mbql/query"
+                                      :stages   [(merge {:lib/type "mbql.stage/mbql"} stage)]}}
+                       {})
+    nil
+    (catch Throwable e
+      (tools.error/classify e))))
+
+(def ^:private main-tools #{"read_resource" "search"})
+
+(def ^:private slackbot-tools #{"search" "list_available_fields"})
+
+(deftest unknown-field-names-its-table-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [db-name (:name (mt/db))
+          error   (construct-error {:source-table [db-name "PUBLIC" "ORDERS"]
+                                    :aggregation  [["count" {}]]
+                                    :breakout     [["field" {} [db-name "PUBLIC" "ORDERS" "CREATD_AT"]]]})]
+      (is (=? {:class :recoverable
+               :code  ::pipeline/unknown-field
+               :data  {:table-id (mt/id :orders)}}
+              error))
+      (testing "a profile with `read_resource` is pointed at the table's fields resource"
+        (is (str/includes? (tools.error/recoverable-text error main-tools)
+                           (str "metabase://table/" (mt/id :orders) "/fields"))))
+      (testing "a profile without it lists the table's fields with `list_available_fields`"
+        (let [text (tools.error/recoverable-text error slackbot-tools)]
+          (is (str/includes? text (str "table_ids: [" (mt/id :orders) "]")))
+          (is (not (str/includes? text "read_resource"))))))))
+
+(deftest unknown-table-names-its-database-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [db-name (:name (mt/db))
+          error   (construct-error {:source-table [db-name "PUBLIC" "ORDRS"]
+                                    :aggregation  [["count" {}]]})]
+      (is (=? {:class :recoverable
+               :code  ::pipeline/unknown-table
+               :data  {:database-id (mt/id)}}
+              error))
+      (is (str/includes? (tools.error/recoverable-text error main-tools)
+                         (str "metabase://database/" (mt/id) "/tables")))
+      (testing "a profile without `read_resource` is pointed at `search`"
+        (let [text (tools.error/recoverable-text error slackbot-tools)]
+          (is (str/includes? text "`search`"))
+          (is (not (str/includes? text "read_resource"))))))))
+
+(deftest payload-test
+  (testing "an ambiguous FK names its source table"
+    (is (= {:message "m" :table-id 7}
+           (pipeline/payload :ambiguous-fk (ex-info "m" {:source-table 7})))))
+  (testing "ids are only taken for the codes whose steps name them"
+    (is (= {:message "m"}
+           (pipeline/payload :unknown-table-id (ex-info "m" {:table-id 7})))))
+  (testing "a database id is kept only when the current user can read the database"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= {:message "m" :database-id db-id}
+               (pipeline/payload :unknown-table (ex-info "m" {:database-id db-id})))))
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= {:message "m"}
+                 (pipeline/payload :unknown-table (ex-info "m" {:database-id db-id})))))))))

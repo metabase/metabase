@@ -323,7 +323,7 @@
     (is (=? {:class    :recoverable
              :code     :metabase.metabot.tools.recoverable.pipeline/unknown-table
              :message  "No table found matching portable FK [\"db\" nil \"t\"]."
-             :recovery [{:uses #{"read_resource"}}]}
+             :recovery [{:uses #{"read_resource"}} {:uses #{"search"}}]}
             (pipeline-failure "No table found matching portable FK [\"db\" nil \"t\"]."
                               {:agent-error? true :status-code 400 :error :unknown-table}))))
   (testing "the payload carries the keys a declaration's recovery branches on"
