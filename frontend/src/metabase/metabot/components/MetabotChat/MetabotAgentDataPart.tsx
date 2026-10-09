@@ -98,7 +98,7 @@ export const AgentDataPart = ({
     .with(
       { part: { type: "data-generated_entity", data: { type: "card" } } },
       ({ part }) => (
-        <Stack gap="lg">
+        <Stack gap="sm" mb="lg">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
           <MetabotInlineChart
             value={part.data}
