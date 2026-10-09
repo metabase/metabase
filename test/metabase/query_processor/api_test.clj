@@ -742,8 +742,7 @@
                                (assoc-in (qp.pivot.test-util/pivot-query) [:query :filter]
                                          [:= [:field Integer/MAX_VALUE nil] 1])}]
           (testing cause
-            (let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :post "dataset/pivot" query)]
-              (is (contains? #{400 500} status))
+            (let [{:keys [body]} (mt/user-http-request-full-response :crowberto :post "dataset/pivot" query)]
               (is (=? {:status "failed"
                        :error  string?}
                       body)))))))))

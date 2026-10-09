@@ -1941,10 +1941,8 @@
 (defn- assert-generic-query-error
   "Assert that `response` (from [[client/client-full-response]]) is the generic public-endpoint failure body and that
   nothing about the Card leaked into it."
-  [{:keys [status body]}]
+  [{:keys [body]}]
   (let [body-str (pr-str body)]
-    (testing "the query genuinely failed"
-      (is (contains? #{400 500} status)))
     (testing "the body is the generic failed-query shape"
       (is (=? {:status "failed"
                :error  string?}

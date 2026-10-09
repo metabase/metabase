@@ -154,7 +154,8 @@
         (doseq [userland-query [(qp/userland-query query)
                                 (assoc query :info {:context :ad-hoc})]]
           (is (=? {:status     :failed
-                   :error      #"Error generating pivot queries"
+                   :error      #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
+                   :error_type :invalid-query
                    :json_query map?}
                   (qp.pivot/run-pivot-query userland-query))))))))
 

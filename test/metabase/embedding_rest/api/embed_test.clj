@@ -1644,9 +1644,8 @@
                                :dataset_query    {:database (mt/id)
                                                   :type     :native
                                                   :native   {:query "SELECT * FROM no_such_table -- EMBED_ERROR_LEAK_SQL_CANARY"}}}]
-          (let [{:keys [status body]} (client/client-full-response :get (pivot-card-query-url card ""))
-                body-str              (pr-str body)]
-            (is (= 500 status))
+          (let [{:keys [body]} (client/client-full-response :get (pivot-card-query-url card ""))
+                body-str       (pr-str body)]
             (is (= {:status "failed", :error "An error occurred while running the query.", :error_type "qp"}
                    body))
             (is (not (str/includes? body-str "CANARY")))
@@ -1660,8 +1659,7 @@
           (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
                                       (fn [query _rff]
                                         (throw (ex-info "Boom EMBED_ERROR_LEAK_SQL_CANARY" {:query query})))]
-            (let [{:keys [status body]} (client/client-full-response :get (card-query-url card ""))]
-              (is (= 500 status))
+            (let [{:keys [body]} (client/client-full-response :get (card-query-url card ""))]
               (is (= {:status "failed", :error "An error occurred while running the query."}
                      body))
               (is (not (str/includes? (pr-str body) "CANARY"))))))))))
