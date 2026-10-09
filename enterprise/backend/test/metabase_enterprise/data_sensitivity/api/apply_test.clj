@@ -207,10 +207,10 @@
            (mt/user-http-request :rasta :put 403 (url run-id "/suggestions/" sem) {:value "type/Score"})
            (edit! Integer/MAX_VALUE sem 404 "type/Score")
            (mt/with-temp [:model/MetadataGenerationRun {other-run :id} {:database_id (t2/select-one-fn :db_id :model/Table a)
-                                                                         :scope       {:type :database}
-                                                                         :attributes  [:semantic_type]
-                                                                         :status      :succeeded
-                                                                         :is_active   nil}]
+                                                                        :scope       {:type :database}
+                                                                        :attributes  [:semantic_type]
+                                                                        :status      :succeeded
+                                                                        :is_active   nil}]
              (edit! other-run sem 404 "type/Score")))
          (testing "a semantic type must be known, not a key type, and fit the field"
            (edit! run-id sem 400 "type/Nonsense")
