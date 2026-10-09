@@ -35,7 +35,7 @@ import * as Urls from "metabase/urls";
 
 import { useBuildActionTree } from "../../hooks/use-build-action-tree";
 
-export function ArchivedActionsPage() {
+export function ArchivedActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { tree, isLoading, error } = useBuildActionTree({ archived: true });
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();

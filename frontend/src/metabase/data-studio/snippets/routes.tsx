@@ -16,10 +16,12 @@ const newSnippetPage = () =>
     /* webpackChunkName: "data-studio-snippets" */ "./pages/NewSnippetPage"
   ).then(({ NewSnippetPage }) => ({ Component: NewSnippetPage }));
 
-const archivedSnippetsPage = () =>
+const archivedSnippetListPage = () =>
   import(
-    /* webpackChunkName: "data-studio-snippets" */ "./pages/ArchivedSnippetsPage"
-  ).then(({ ArchivedSnippetsPage }) => ({ Component: ArchivedSnippetsPage }));
+    /* webpackChunkName: "data-studio-snippets" */ "./pages/ArchivedSnippetListPage"
+  ).then(({ ArchivedSnippetListPage }) => ({
+    Component: ArchivedSnippetListPage,
+  }));
 
 const editSnippetPage = () =>
   import(
@@ -38,7 +40,7 @@ export function getDataStudioSnippetRoutes() {
     <Route path="snippets" element={<SnippetsSectionLayout />}>
       <Route index lazy={snippetsPage} />
       <Route path="new" lazy={newSnippetPage} />
-      <Route path="archived" lazy={archivedSnippetsPage} />
+      <Route path="archived" lazy={archivedSnippetListPage} />
       <Route path=":snippetId" lazy={editSnippetPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":snippetId/dependencies" lazy={snippetDependenciesPage}>

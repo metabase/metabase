@@ -9,10 +9,12 @@ const actionsPage = () =>
     ({ ActionListPage }) => ({ Component: ActionListPage }),
   );
 
-const archivedActionsPage = () =>
+const archivedActionListPage = () =>
   import(
-    /* webpackChunkName: "data-actions" */ "./pages/ArchivedActionsPage"
-  ).then(({ ArchivedActionsPage }) => ({ Component: ArchivedActionsPage }));
+    /* webpackChunkName: "data-actions" */ "./pages/ArchivedActionListPage"
+  ).then(({ ArchivedActionListPage }) => ({
+    Component: ArchivedActionListPage,
+  }));
 
 const newActionPage = () =>
   import(/* webpackChunkName: "data-actions" */ "./pages/NewActionPage").then(
@@ -44,7 +46,7 @@ export function getDataStudioActionRoutes() {
     <Route path="actions" element={<ActionsSectionLayout />}>
       <Route index lazy={actionsPage} />
       <Route path="new" lazy={newActionPage} />
-      <Route path="archived" lazy={archivedActionsPage} />
+      <Route path="archived" lazy={archivedActionListPage} />
       <Route path=":actionId" lazy={actionQueryPage} />
       <Route path=":actionId/edit" lazy={actionQueryPage} />
       <Route path=":actionId/fields" lazy={actionFieldsPage} />
