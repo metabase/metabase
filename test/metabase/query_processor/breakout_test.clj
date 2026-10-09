@@ -499,3 +499,18 @@
         (testing "the yearly totals equal those of the same query without names"
           (is (= (mt/formatted-rows [str int] (qp/process-query unnamed))
                  (mt/formatted-rows [str int] (qp/process-query query)))))))))
+
+(deftest ^:parallel named-implicitly-joined-breakouts-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :left-join)
+    (testing "breakouts on implicitly joined fields of the same name come back under their names"
+      (let [mp        (mt/metadata-provider)
+            joined-id (fn [table fk]
+                        (assoc (lib.metadata/field mp (mt/id table :id)) :fk-field-id (mt/id :checkins fk)))
+            named     (fn [column column-name]
+                        (lib.options/update-options (lib/ref column) assoc :name column-name))
+            query     (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                          (lib/breakout (named (joined-id :users :user_id) "user_id"))
+                          (lib/breakout (named (joined-id :venues :venue_id) "venue_id"))
+                          (lib/aggregate (lib/count)))]
+        (is (= ["user_id" "venue_id" "count"]
+               (map :name (mt/cols (qp/process-query query)))))))))

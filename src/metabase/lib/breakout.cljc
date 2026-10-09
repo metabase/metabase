@@ -164,7 +164,8 @@
        (cond-> column
          binning  (lib.binning/with-binning binning)
          bucket   (lib.temporal-bucket/with-temporal-bucket bucket)
-         ref-name (assoc :name ref-name :lib/original-name ref-name))))))
+         ref-name (-> (assoc :name ref-name :lib/original-name ref-name)
+                      (dissoc :lib/deduplicated-name)))))))
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query
   "Remove all breakouts from a query stage."
