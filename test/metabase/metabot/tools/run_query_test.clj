@@ -55,7 +55,7 @@
 
 (defn- mark-saved-by-metabot!
   "Mark `card-ids` as saved from a Metabot chart, the way `save_entity` does."
-  [& card-ids]
+  [card-ids]
   (t2/update! (t2/table-name :model/Card) :id [:in card-ids] {:metabot_chart_id "chart-1"}))
 
 (defn- data-lines
@@ -224,7 +224,7 @@
                    :model/Card {over-hidden-sql :id}    {:collection_id open
                                                          :dataset_query (card-query hidden-metabot-sql)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) open)
-      (mark-saved-by-metabot! metabot-sql-card metabot-mixed edited-sql-card hidden-metabot-sql)
+      (mark-saved-by-metabot! [metabot-sql-card metabot-mixed edited-sql-card hidden-metabot-sql])
       (t2/update! :model/Card edited-sql-card {:display :bar})
       (testing "a notebook query over a saved question runs, whether the question is a notebook or a SQL one"
         (doseq [[shape card-id] {"a notebook question"                        notebook-card
