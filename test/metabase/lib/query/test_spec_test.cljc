@@ -1495,3 +1495,24 @@
                                                        {:type :literal :value 2}]}]}]})]
       (is (=? [[:count {}] [:/ {} [:aggregation {} string?] 2]]
               (lib/aggregations query))))))
+
+(deftest ^:parallel test-query-names-breakouts-test
+  (testing "breakout of type `:breakout` gives its result column its `:name`, and a later stage finds it by that name"
+    (let [created-at {:type :column :name "CREATED_AT"}
+          query      (lib.query.test-spec/test-query
+                      meta/metadata-provider
+                      {:stages [{:source       {:type :table :id (meta/id :orders)}
+                                 :breakouts    [{:type :breakout :name "created_month" :column (assoc created-at :unit :month)}
+                                                {:type :breakout :name "created_year" :column (assoc created-at :unit :year)}]
+                                 :aggregations [{:type :operator :operator :count}]}
+                                {:filters [{:type     :operator
+                                            :operator :>
+                                            :args     [{:type :column :name "count"} {:type :literal :value 1}]}]
+                                 :breakouts [{:type :column :name "created_year"}]}]})]
+      (is (=? [[:field {:name "created_month" :temporal-unit :month} (meta/id :orders :created-at)]
+               [:field {:name "created_year" :temporal-unit :year} (meta/id :orders :created-at)]]
+              (lib/breakouts query 0)))
+      (is (= ["created_month" "created_year" "count"]
+             (map :name (lib/returned-columns query 0))))
+      (is (=? [[:field {} "created_year"]]
+              (lib/breakouts query 1))))))

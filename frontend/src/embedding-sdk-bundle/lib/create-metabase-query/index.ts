@@ -15,6 +15,7 @@ import * as Lib from "metabase-lib";
 import type {
   Card,
   DatasetQuery,
+  TestBreakoutSpec,
   TestColumnSpec,
   TestExpressionSpec,
   TestQuerySpec,
@@ -200,7 +201,7 @@ function toResultColumnStageSpec({
     ...(aggregations && {
       aggregations: aggregations.map(toResultColumnExpressionSpec),
     }),
-    ...(breakouts && { breakouts: breakouts.map(toResultColumnSpec) }),
+    ...(breakouts && { breakouts: breakouts.map(toResultBreakoutSpec) }),
     ...(orderBys && { orderBys: orderBys.map(toResultColumnSpec) }),
     ...(limit != null && { limit }),
   };
@@ -218,6 +219,14 @@ function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   } = spec;
 
   return resultColumn;
+}
+
+function toResultBreakoutSpec(spec: TestBreakoutSpec): TestBreakoutSpec {
+  if (spec.type === "breakout") {
+    return { ...spec, column: toResultColumnSpec(spec.column) };
+  }
+
+  return toResultColumnSpec(spec);
 }
 
 function toResultColumnExpressionSpec(
