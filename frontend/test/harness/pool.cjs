@@ -39,7 +39,7 @@ const readDurations = () => {
 
 // keepAlive holds idle workers for the next run() instead of ending them, which
 // is what makes a rerun in watch mode start warm.
-const createPool = ({ workers = fastCores(), keepAlive = false, silent = false, env = {}, onFileDone = () => {} } = {}) => {
+const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFileStart = () => {}, onFileDone = () => {} } = {}) => {
   const durations = readDurations();
   const queues = Object.fromEntries(projects.map(({ name }) => [name, []]));
   const serving = Object.fromEntries(projects.map(({ name }) => [name, 0]));
@@ -93,6 +93,7 @@ const createPool = ({ workers = fastCores(), keepAlive = false, silent = false, 
       return;
     }
     worker.running = { file, since: Date.now() };
+    onFileStart({ file });
     worker.child.send({ file, changed: changes.slice(worker.changesSeen) });
     worker.changesSeen = changes.length;
   };
@@ -116,19 +117,19 @@ const createPool = ({ workers = fastCores(), keepAlive = false, silent = false, 
     starting[project] += 1;
     live += 1;
     serving[project] += 1;
-    // What specs print with console goes to a worker's stderr.
-    child.stderr.on("data", (chunk) => { if (!silent) process.stderr.write(chunk); });
+    child.stderr.on("data", (chunk) => process.stderr.write(chunk));
     child.on("message", (message) => {
-      if (!message?.ready) return;
-      startupFailures = 0;
-      if (!worker.started) { worker.started = true; starting[project] -= 1; }
-      if (worker.running) {
+      if (message?.finished && worker.running) {
         const { file, since } = worker.running;
         worker.running = null;
         durations[file] = Date.now() - since;
-        onFileDone({ file, ms: durations[file], loaded: message.loaded ?? [] });
+        onFileDone({ file, ms: durations[file], loaded: message.loaded ?? [], result: message.result });
         finished();
+        return;
       }
+      if (!message?.ready) return;
+      startupFailures = 0;
+      if (!worker.started) { worker.started = true; starting[project] -= 1; }
       assign(worker);
     });
     child.on("exit", (code) => {
@@ -146,7 +147,8 @@ const createPool = ({ workers = fastCores(), keepAlive = false, silent = false, 
         worker.running = null;
         const failures = env.NT_FAILURES ?? process.env.NT_FAILURES;
         if (failures) fs.appendFileSync(failures, `${file}\t(file)\tthe worker exited with code ${code} while this file ran\n`);
-        onFileDone({ file, ms: 0, loaded: [], crashed: true });
+        const message = `the worker exited with code ${code} while this file ran`;
+        onFileDone({ file, ms: 0, loaded: [], result: { passed: 0, failed: 1, skipped: 0, failures: [{ test: "(the worker crashed)", message, stack: "", frames: [], output: "" }] } });
         finished();
       }
       // A worker that dies before it asks for a file would die again on respawn.
@@ -200,7 +202,11 @@ const createPool = ({ workers = fastCores(), keepAlive = false, silent = false, 
   };
 };
 
-module.exports = { createPool, fastCores };
+// How long a file took the last time it ran, in milliseconds.
+const knownDurations = readDurations();
+const estimateDuration = (file) => knownDurations[path.relative(root, file)] ?? knownDurations[file] ?? 500;
+
+module.exports = { createPool, fastCores, estimateDuration };
 
 // node pool.cjs <list file> [workers]: runs the listed files once.
 if (require.main === module) {
