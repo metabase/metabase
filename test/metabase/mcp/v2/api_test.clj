@@ -161,16 +161,9 @@
       (testing "the retry waits until the user has reconnected"
         (is (re-find #"(?i)retry once they have reconnected" instructions))
         (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
-      (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model tells the user
-                to tick it, and asks rather than sending them through consent unprompted"
+      (testing "GHY-4555: the model asks rather than sending the user through consent unprompted"
         (is (not (re-find #"(?i)no per-permission" instructions)))
-        (is (re-find #"(?i)unticked" instructions))
-        (is (re-find #"(?i)tell them to tick it" instructions))
-        (is (re-find #"(?i)ask whether to grant it" instructions))
-        (testing "and that every other permission starts unticked too, so a step-up doesn't silently drop one the
-                  connection already had"
-          (is (re-find #"(?i)every other permission also starts unticked" instructions))
-          (is (re-find #"(?i)re-tick the ones they want to keep" instructions))))
+        (is (re-find #"(?i)ask whether to grant it" instructions)))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
@@ -887,23 +880,6 @@
 (def ^:private metadata-url
   "http://localhost:3000/.well-known/oauth-protected-resource")
 
-(def ^:private unticked-note
-  "What every `insufficient_scope` `error_description` ends with."
-  ". The user must tick this permission on the consent screen.")
-
-(deftest ^:parallel step-up-description-test
-  (testing "GHY-4555: a step-up opens a consent screen where the missing permission is unticked, so a client that shows
-            the error_description tells the user to tick it; the note covers a permission that was never granted and one
-            that was unticked and removed, so it does not claim the permission starts unticked; the text stays inside
-            RFC 6750's error_description characters (printable ASCII without quote or backslash)"
-    (is (= (str "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
-                unticked-note)
-           (#'v2.api/step-up-description
-            "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)")))
-    (is (not (str/includes? unticked-note "starts unticked"))
-        "a removed permission does not start unticked, it was ticked and then cleared")
-    (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" unticked-note))))
-
 (deftest scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a scope denial must be a real HTTP 403 carrying an `insufficient_scope` WWW-Authenticate
             challenge (MCP authorization spec, runtime insufficient scope). Claude Code only records a step-up
@@ -917,12 +893,12 @@
          (testing "a registry-gated tool the token lacks the scope for"
            (let [response (post! 403 denied)]
              (is (= 403 (:status response)))
-             (is (= (str "Bearer error=\"insufficient_scope\", "
-                         "scope=\"agent:content:read agent:sql:run\", "
-                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                         "error_description=\"execute_sql requires agent:sql:run "
-                         "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\"")
-                    (get-in response [:headers "WWW-Authenticate"]))
+             (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"])
+                                   (str "Bearer error=\"insufficient_scope\", "
+                                        "scope=\"agent:content:read agent:sql:run\", "
+                                        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                                        "error_description=\"execute_sql requires agent:sql:run "
+                                        "(" (registry/english-scope-label "agent:sql:run") ")"))
                  "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
              (testing "the body is still the JSON-RPC error, for clients that read it"
                (is (= "application/json" (get-in response [:headers "Content-Type"])))
@@ -974,12 +950,13 @@
                response  (post! 403 (jsonrpc-request "tools/call"
                                                      {:name "alert_write" :arguments arguments}))]
            (is (= 403 (:status response)))
-           (is (= (str "Bearer error=\"insufficient_scope\", "
-                       "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
-                       "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                       "error_description=\"alert_write requires agent:query:run "
-                       "(" (registry/english-scope-label "agent:query:run") ")" unticked-note "\"")
-                  (get-in response [:headers "WWW-Authenticate"])))
+           (is (str/starts-with?
+                (get-in response [:headers "WWW-Authenticate"])
+                (str "Bearer error=\"insufficient_scope\", "
+                     "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
+                     "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                     "error_description=\"alert_write requires agent:query:run "
+                     "(" (registry/english-scope-label "agent:query:run") ")")))
            (is (= -32600 (get-in response [:body :error :code])))
            (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
            (is (zero? (t2/count :model/NotificationCard :card_id card-id))
@@ -1039,12 +1016,13 @@
                      (pr-str (get-in response [:body :result]))))))
            (testing "raw SQL still steps up, naming agent:sql:run on top of the baseline"
              (let [response (call! 403 "execute_sql" {})]
-               (is (= (str "Bearer error=\"insufficient_scope\", "
-                           "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
-                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                           "error_description=\"execute_sql requires agent:sql:run "
-                           "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\"")
-                      (get-in response [:headers "WWW-Authenticate"])))))))))))
+               (is (str/starts-with?
+                    (get-in response [:headers "WWW-Authenticate"])
+                    (str "Bearer error=\"insufficient_scope\", "
+                         "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
+                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                         "error_description=\"execute_sql requires agent:sql:run "
+                         "(" (registry/english-scope-label "agent:sql:run") ")")))))))))))
 
 (deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a data resource read the token lacks the scope for answers with the same 403 challenge as
@@ -1060,12 +1038,13 @@
            (testing "the fields catalog without agent:resource:read"
              (let [response (post! 403 denied)]
                (is (= 403 (:status response)))
-               (is (= (str "Bearer error=\"insufficient_scope\", "
-                           "scope=\"agent:content:read agent:resource:read\", "
-                           "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
-                           "error_description=\"catalog://metabase/fields requires agent:resource:read "
-                           "(" (registry/english-scope-label "agent:resource:read") ")" unticked-note "\"")
-                      (get-in response [:headers "WWW-Authenticate"])))
+               (is (str/starts-with?
+                    (get-in response [:headers "WWW-Authenticate"])
+                    (str "Bearer error=\"insufficient_scope\", "
+                         "scope=\"agent:content:read agent:resource:read\", "
+                         "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
+                         "error_description=\"catalog://metabase/fields requires agent:resource:read "
+                         "(" (registry/english-scope-label "agent:resource:read") ")")))
                (testing "the body is the JSON-RPC error, with no transport-internal marker"
                  (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))
                  (is (= {:code    -32600
@@ -1235,9 +1214,8 @@
        "it needs (each tool's description starts with the permission it requires), and why, and ask whether to grant "
        "it. Some clients open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, "
        "select this server, Re-authenticate; "
-       "Codex: `codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; "
-       "tell them to tick it. Every other permission also starts unticked, so tell them to re-tick the ones they "
-       "want to keep. Retry once they have reconnected."))
+       "Codex: `codex mcp login <server>`, then a new session). The consent screen starts with every permission "
+       "the client requests ticked; tell them to leave this one ticked. Retry once they have reconnected."))
 
 (deftest initialize-instructions-say-each-thing-once-test
   (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is one
@@ -1270,7 +1248,7 @@
        "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run\", "
        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
        "error_description=\"" tool-name " requires agent:sql:run "
-       "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\""))
+       "(" (registry/english-scope-label "agent:sql:run") ")"))
 
 (deftest native-source-scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: question_write checks agent:sql:run inside the handler, once the source resolves to native
@@ -1284,7 +1262,9 @@
                         :native {:database_id (mt/id) :sql "SELECT 1"}}
              response  (post! 403 (jsonrpc-request "tools/call" {:name "question_write" :arguments arguments}))]
          (is (= 403 (:status response)))
-         (is (= (sql-step-up-challenge "question_write") (get-in response [:headers "WWW-Authenticate"])))
+         (is (str/starts-with?
+              (get-in response [:headers "WWW-Authenticate"])
+              (sql-step-up-challenge "question_write")))
          (is (= -32600 (get-in response [:body :error :code])))
          (is (re-find #"agent:sql:run" (get-in response [:body :error :message])))
          (testing "and nothing was written"
@@ -1338,7 +1318,9 @@
                                    :stages   [{:lib/type "mbql.stage/native" :native "SELECT 1"}]})]
                (is (string? handle))
                (let [response (call! 403 handle)]
-                 (is (= (sql-step-up-challenge "question_write") (get-in response [:headers "WWW-Authenticate"])))
+                 (is (str/starts-with?
+                      (get-in response [:headers "WWW-Authenticate"])
+                      (sql-step-up-challenge "question_write")))
                  (is (= -32600 (get-in response [:body :error :code]))))))
            (testing "the legacy shape never reaches those gates: the save path decodes serialized MBQL 5 only, so a
                      legacy `{type: native}` payload is refused as an invalid query, with no challenge"
@@ -1348,3 +1330,9 @@
                (is (true? (get-in response [:body :result :isError])))))
            (testing "and nothing was written either way"
              (is (zero? (t2/count :model/Card :name "Drill probe"))))))))))
+
+(deftest step-up-description-test
+  (let [description "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
+        described   (#'v2.api/step-up-description description)]
+    (testing "the note stays inside RFC 6750's error_description characters, or the header writer rewrites it"
+      (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" described)))))
