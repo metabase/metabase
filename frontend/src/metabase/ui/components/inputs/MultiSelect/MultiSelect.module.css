@@ -1,13 +1,38 @@
 /* this is the wrapper element that looks like an input */
 .MultiSelectInput {
-  color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background_page-primary);
-  padding-top: rem(5px);
-  padding-bottom: rem(5px);
-  padding-inline-start: rem(5px);
-  padding-inline-end: rem(40px);
+  --multiselect-line-height: rem(20px);
+
+  padding-inline-end: var(--input-right-section-size);
+
+  :not([data-with-left-section]) > &:has(.MultiSelectPill) {
+    padding-inline-start: var(--input-padding-y);
+  }
 
   &[data-disabled] {
     opacity: 1;
+  }
+
+  /*
+   * The text line is as tall as a pill. PillsInput.module.css still sets
+   * 28px, sized for the old 40px inputs.
+   * TODO: fix it there with TagsInput (GDGT-2475) and remove this override
+   */
+  .MultiSelectField {
+    height: var(--multiselect-line-height);
+    line-height: var(--multiselect-line-height);
+
+    &:only-child {
+      margin-inline: 0;
+    }
+  }
+
+  /*
+   * Mantine reserves room for the clear button + chevron pair on clearable fields.
+   * The clear button replaces the chevron here, and the input already keeps the
+   * right section free.
+   * TODO: remove after upgrading Mantine (`clearSectionMode="clear"`)
+   */
+  .MultiSelectPillsList {
+    padding-inline-end: 0 !important;
   }
 }

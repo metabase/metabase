@@ -32,5 +32,12 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
     classNames: {
       chevron: S.chevron,
     },
+    vars: () => ({
+      chevron: {
+        // Same size as other icons in input sections; the fallback covers
+        // chevrons rendered outside an Input.
+        "--combobox-chevron-size": "var(--input-section-icon-size, 0.75rem)",
+      },
+    }),
   }),
 };

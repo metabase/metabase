@@ -30,7 +30,6 @@ export const selectOverrides = {
       root: S.SelectRoot,
       input: S.SelectInput,
       wrapper: S.SelectWrapper,
-      error: S.SelectError,
       section: S.SelectInputSection,
       option: S.SelectItems_Item,
       options: S.SelectItems_Options,
