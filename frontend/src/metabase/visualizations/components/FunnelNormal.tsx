@@ -1,10 +1,12 @@
 import cx from "classnames";
 import Color from "color";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Ellipsified } from "metabase/ui";
+import { Box, Ellipsified, Flex } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { isWebkit } from "metabase/utils/browser";
 import {
   formatChangeWithSign,
   formatNullable,
@@ -12,15 +14,6 @@ import {
 } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
-import {
-  FunnelNormalRoot,
-  FunnelStart,
-  FunnelStep,
-  Head,
-  Info,
-  Subtitle,
-  Title,
-} from "metabase/visualizations/components/FunnelNormal.styled";
 import type {
   ClickObject,
   VisualizationProps,
@@ -33,6 +26,10 @@ import {
 } from "metabase/viz-core";
 import type { RowValue, RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
+
+import S from "./FunnelNormal.module.css";
+
+const IS_WEBKIT = isWebkit();
 
 type FunnelStepInfo = {
   value: number;
@@ -208,44 +205,58 @@ export function FunnelNormal({
     }
   };
 
+  const dashboardFontSize = isDashboard ? "0.8125rem" : "unset";
+
   return (
-    <FunnelNormalRoot
-      className={className}
-      isSmall={isSmall}
+    <Flex
+      className={cx(className, { [S.webkitLayer]: IS_WEBKIT })}
+      p={isSmall ? "sm" : "lg"}
+      c="text-secondary"
       data-testid="funnel-chart"
     >
-      <FunnelStep isFirst>
-        <Head
-          isNarrow={isNarrow}
-          style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
-        >
+      <Flex className={S.step} direction="column">
+        <StepHead fontSize={dashboardFontSize}>
           <Ellipsified data-testid="funnel-chart-header">
             {formatDimension(dimensions[0])}
           </Ellipsified>
-        </Head>
-        <FunnelStart isNarrow={isNarrow}>
-          <Title>{formatMetric(metrics[0])}</Title>
-          <Subtitle>
+        </StepHead>
+        <Flex
+          direction="column"
+          justify="center"
+          ta="right"
+          flex="1 1 auto"
+          pr="0.5em"
+          fz="1.72em"
+        >
+          <Box fw="bold" c="text-primary" fz={isNarrow ? "0.75em" : undefined}>
+            {formatMetric(metrics[0])}
+          </Box>
+          <Box fz={isNarrow ? "0.5em" : "0.6875em"}>
             <Ellipsified>{cols[metricIndex].display_name}</Ellipsified>
-          </Subtitle>
-        </FunnelStart>
+          </Box>
+        </Flex>
         {/* This part of code in used only to share height between .Start and .Graph columns. */}
-        <Info isNarrow={isNarrow}>
-          <Title>&nbsp;</Title>
-          <Subtitle>&nbsp;</Subtitle>
-        </Info>
-      </FunnelStep>
+        <StepInfo isNarrow={isNarrow}>
+          <Box>&nbsp;</Box>
+          <Box fz={isNarrow ? "0.875em" : "0.6875em"} mt="1em">
+            &nbsp;
+          </Box>
+        </StepInfo>
+      </Flex>
       {infos.map((info, index) => {
         return (
-          <FunnelStep key={index}>
-            <Head
-              isNarrow={isNarrow}
-              style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
-            >
+          <Flex
+            key={index}
+            className={S.step}
+            direction="column"
+            w="100%"
+            miw="1.25rem"
+          >
+            <StepHead fontSize={dashboardFontSize}>
               <Ellipsified data-testid="funnel-chart-header">
                 {formatDimension(info.dimension)}
               </Ellipsified>
-            </Head>
+            </StepHead>
             <GraphSection
               className={cx({ [CS.cursorPointer]: isClickable })}
               index={index}
@@ -255,22 +266,42 @@ export function FunnelNormal({
               onHoverChange={onHoverChange}
               onVisualizationClick={handleClick}
             />
-            <Info isNarrow={isNarrow}>
-              <Title>
+            <StepInfo isNarrow={isNarrow}>
+              <Box>
                 <Ellipsified>{formatPercent(info.percent)}</Ellipsified>
-              </Title>
-              <Subtitle
-                style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
-              >
+              </Box>
+              <Box mt="1em" style={{ fontSize: dashboardFontSize }}>
                 <Ellipsified>{formatMetric(info.value)}</Ellipsified>
-              </Subtitle>
-            </Info>
-          </FunnelStep>
+              </Box>
+            </StepInfo>
+          </Flex>
         );
       })}
-    </FunnelNormalRoot>
+    </Flex>
   );
 }
+
+type StepHeadProps = {
+  fontSize: string;
+  children: ReactNode;
+};
+
+const StepHead = ({ fontSize, children }: StepHeadProps) => (
+  <Box ta="right" p="0.5em" miw={0} style={{ fontSize }}>
+    {children}
+  </Box>
+);
+
+type StepInfoProps = {
+  isNarrow: boolean;
+  children: ReactNode;
+};
+
+const StepInfo = ({ isNarrow, children }: StepInfoProps) => (
+  <Box ta="right" pt="0.5em" px="0.5em" fz={isNarrow ? "0.85em" : "1.15em"}>
+    {children}
+  </Box>
+);
 
 type GraphSectionProps = Pick<
   VisualizationProps,
