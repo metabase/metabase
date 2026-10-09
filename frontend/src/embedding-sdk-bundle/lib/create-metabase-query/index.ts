@@ -28,7 +28,7 @@ import { loadReferencedMetricMetadata } from "./metric-metadata";
 import {
   validateDynamicQuery,
   validateQueryInput,
-  validateUniqueAggregationNames,
+  validateUniqueColumnNames,
 } from "./validation";
 
 export type ResolveDatasetQuery = (
@@ -146,7 +146,7 @@ function resolveQueryFromLoadedMetadata(
   // return different numbers in the dev preview and in production.
   const dynamicStage = dynamicQuery && toResultColumnStageSpec(dynamicQuery);
 
-  validateUniqueAggregationNames(
+  validateUniqueColumnNames(
     Lib.createTestQuery(provider, {
       stages: dynamicStage
         ? [withoutOrderBys(sourceStage), withoutOrderBys(dynamicStage)]

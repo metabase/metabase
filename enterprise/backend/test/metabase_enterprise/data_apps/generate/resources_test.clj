@@ -9,6 +9,7 @@
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -534,7 +535,7 @@
 
 (deftest refuses-aggregations-sharing-column-name-test
   (testing "aggregations named alike would be read as one by a later stage or a result row, so the author names them"
-    (is (=? {:queries [{:error "Aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."}]}
+    (is (=? {:queries [{:error "Aggregations and named breakouts need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\". Name them apart with the `name` option of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."}]}
             (generate! :crowberto 200
                        {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                                 :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]}]})]})))))
@@ -567,8 +568,48 @@
 
 (deftest refuses-order-by-on-shared-column-name-test
   (testing "order-by naming a column two aggregations share gets the same refusal, not Lib's ambiguity error"
-    (is (=? {:queries [{:error #"Aggregations need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\"\..*"}]}
+    (is (=? {:queries [{:error #"Aggregations and named breakouts need unique column names: Sum of Price, Sum of Latitude share the column name \"sum\"\..*"}]}
             (generate! :crowberto 200
                        {:queries [(query-item "Sums" {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                                                 :aggregations [(venues-sum "PRICE") (venues-sum "LATITUDE")]
                                                                 :order-bys    [{:type "column" :name "sum"}]}]})]})))))
+
+(defn- check-unique-names
+  "Calls the uniqueness check on `query`, returning the refusal's message or nil."
+  [query]
+  (try
+    (#'generate.resources/check-unique-column-names query)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (ex-message e))))
+
+(deftest refuses-aggregation-sharing-breakout-field-name-test
+  (testing "a `sum` aggregation next to a breakout on a field named `sum` collide"
+    (let [mp    (mt/metadata-provider)
+          mp    (lib.tu/mock-metadata-provider
+                 mp
+                 {:fields [(assoc (lib.metadata/field mp (mt/id :venues :name)) :name "sum")]})
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                    (lib/breakout (lib.metadata/field mp (mt/id :venues :name)))
+                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))]
+      (is (=? #"Aggregations and named breakouts need unique column names: .* share the column name \"sum\".*"
+              (check-unique-names query))))))
+
+(deftest refuses-named-breakouts-sharing-name-test
+  (let [mp         (mt/metadata-provider)
+        created-at (lib.metadata/field mp (mt/id :checkins :date))
+        named      (fn [column column-name] (lib/update-options (lib/ref column) assoc :name column-name))
+        query      (fn [first-name second-name]
+                     (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                         (lib/breakout (named (lib/with-temporal-bucket created-at :month) first-name))
+                         (lib/breakout (named (lib/with-temporal-bucket created-at :year) second-name))
+                         (lib/aggregate (lib/count))))]
+    (testing "named breakouts sharing a name collide"
+      (is (=? #".* share the column name \"period\".*" (check-unique-names (query "period" "period")))))
+    (testing "named apart they don't"
+      (is (nil? (check-unique-names (query "month" "year")))))
+    (testing "the same field broken out twice without names doesn't, its columns are told apart by suffix"
+      (is (nil? (check-unique-names (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                        (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                        (lib/breakout (lib/with-temporal-bucket created-at :year))
+                                        (lib/aggregate (lib/count)))))))))
