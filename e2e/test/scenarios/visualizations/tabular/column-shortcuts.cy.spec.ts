@@ -94,7 +94,7 @@ describe("extract shortcut", () => {
   });
 
   describe("date columns", () => {
-    it("should add a date expression for each option and handle duplicate expression names", () => {
+    it("should add a date expression for each option", () => {
       H.openOrdersTable({ limit: 1 });
       DATE_CASES.forEach(({ option, value, example, expressions }) => {
         extractColumnAndCheck({
@@ -109,7 +109,15 @@ describe("extract shortcut", () => {
           database_id: SAMPLE_DB_ID,
         });
       });
+    });
 
+    it("should handle duplicate expression names", () => {
+      H.openOrdersTable({ limit: 1 });
+      extractColumnAndCheck({
+        column: "Created At",
+        option: "Hour of day",
+        newColumn: "Hour of day",
+      });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
@@ -287,10 +295,14 @@ function extractColumnAndCheck({
   cy.wait(`@${requestAlias}`);
 
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("columnheader")
-    .last()
-    .should("have.text", newColumn)
-    .should("be.visible");
+  cy.findAllByRole("columnheader").last().should("have.text", newColumn);
+
+  // With many columns, the "Add column" button can cover the last header,
+  // so the visible value cell shows that the table scrolled to the new column.
+  if (!value) {
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findAllByRole("columnheader").last().should("be.visible");
+  }
 
   if (value === "") {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering

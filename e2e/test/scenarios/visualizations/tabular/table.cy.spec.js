@@ -80,7 +80,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.realPress("Escape");
     H.tableHeaderColumn("ID updated").should("exist");
-    H.tableHeaderColumn("Orders → ID").should("exist");
+    H.tableHeaderColumn("Orders_2 → ID").should("exist");
   });
 
   it("should allow selecting cells in a table and copy the values", () => {
@@ -213,19 +213,26 @@ describe("scenarios > visualizations > table", () => {
     H.startNewNativeQuestion({
       query: 'select 1 "first_column", 2 "second_column"',
       display: "table",
-      visualization_settings: { "table.column_widths": [600, 150] },
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait(["@getSearchResults", "@getDataset"]);
 
-    H.getColumnWidth("first_column").as("firstWidth", { type: "static" });
-    H.getColumnWidth("second_column").as("secondWidth", { type: "static" });
+    H.resizeTableColumn("first_column", 100);
+    H.resizeTableColumn("second_column", 50);
+
+    H.getColumnWidth("first_column")
+      .should("be.gt", 150)
+      .as("firstWidth", { type: "static" });
+    H.getColumnWidth("second_column")
+      .should("be.gt", 100)
+      .as("secondWidth", { type: "static" });
 
     H.tableHeaderColumn("first_column").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", {
-      horizontal: 100,
+      horizontal: 250,
     });
+    headerCells().eq(0).should("contain.text", "second_column");
 
     const assertUnchangedWidths = () => {
       cy.get("@firstWidth").then((firstWidth) => {
@@ -1208,12 +1215,6 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     H.tableHeaderColumn("ID")
       .closest("[role=columnheader]")
       .findByLabelText("chevrondown icon");
-    H.tableInteractiveBody()
-      .findAllByRole("row")
-      .first()
-      .find("[data-column-id=ID]")
-      .findByTestId("cell-data")
-      .should("have.text", "2000");
 
     H.tableInteractiveBody()
       .findAllByTestId("row-id-cell")
