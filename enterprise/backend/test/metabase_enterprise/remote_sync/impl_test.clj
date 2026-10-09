@@ -2724,7 +2724,10 @@ serdes/meta:
                                                             (deliver entered true)
                                                             ;; A spin, not an interruptible wait: the interrupt must
                                                             ;; come while the fetch waits for the lock.
-                                                            (while (not (realized? held)) (Thread/onSpinWait))
+                                                            (let [deadline (+ (System/currentTimeMillis) 15000)]
+                                                              (while (and (not (realized? held))
+                                                                          (< (System/currentTimeMillis) deadline))
+                                                                (Thread/onSpinWait)))
                                                             (git/fetch! snapshot)
                                                             {:status :success})]
                    (let [{task-id :id} (impl/async-import! "master" true {})]
@@ -2768,6 +2771,47 @@ serdes/meta:
                     "the row records an error")
                 (is (=? [false false] @flags)
                     "the bookkeeping runs with no interrupt flag"))))))))))
+
+(defn- spin-until-interrupted!
+  "Spins until the current thread is interrupted, for at most `ms`. Does not clear the flag. Returns true iff the
+  thread is interrupted."
+  [ms]
+  (let [deadline (+ (System/currentTimeMillis) ms)]
+    (loop []
+      (cond
+        (.isInterrupted (Thread/currentThread)) true
+        (< (System/currentTimeMillis) deadline) (do (Thread/onSpinWait) (recur))
+        :else false))))
+
+(deftest interrupt-during-the-bookkeeping-still-ends-the-row-test
+  (testing "the task timeout interrupts handle-task-result!: the row still ends, and the exit check runs with no
+            interrupt flag"
+    (do-with-git-remote!
+     (fn [_url]
+       (source/close! (source/source-from-settings))
+       (mt/with-temporary-setting-values [remote-sync-task-time-limit-ms 300]
+         (let [original-handle (mt/original-fn #'impl/handle-task-result!)
+               original-ensure (mt/original-fn #'impl/ensure-task-ended!)
+               calls           (atom 0)
+               interrupted     (atom nil)
+               exit-flags      (atom [])]
+           (mt/with-dynamic-fn-redefs [impl/import!             (fn [& _] {:status :success})
+                                       impl/handle-task-result! (fn [& args]
+                                                                  ;; Only the first call (the result of the body) waits
+                                                                  ;; for the timeout.
+                                                                  (when (= 1 (swap! calls inc))
+                                                                    (reset! interrupted (spin-until-interrupted! 15000)))
+                                                                  (apply original-handle args))
+                                       impl/ensure-task-ended!  (fn [& args]
+                                                                  (swap! exit-flags conj
+                                                                         (.isInterrupted (Thread/currentThread)))
+                                                                  (apply original-ensure args))]
+             (let [{task-id :id} (impl/async-import! "master" true {})]
+               (is (wait-until #(task-ended? task-id)) "the task ends")
+               (is (true? @interrupted) "precondition: the timeout interrupts the bookkeeping")
+               (is (=? {:ended_at some?} (t2/select-one :model/RemoteSyncTask :id task-id))
+                   "the row ends")
+               (is (= [false] @exit-flags) "the exit check runs with no interrupt flag")))))))))
 
 (deftest request-that-throws-releases-its-lease-test
   (testing "a request that throws while it reads the clone releases the lease of its source"
