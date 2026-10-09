@@ -37,6 +37,18 @@
   ["failonmultinodeplans" "hostnameverifier" "kerberoshostname" "maxpooledconnectionspernode" "nodedownwaittime"
    "preferredaddressfamily"])
 
+(defmethod driver/file-path-parameters :vertica
+  [_driver]
+  {"keystorepath"        :read
+   "truststorepath"      :read
+   "oauthtruststorepath" :read
+   "LogPath"             :write})
+
+(defmethod driver/non-file-path-parameters :vertica
+  [_driver]
+  ["directbatchinsert" "jaasconfigname" "kerberoshostname" "kerberosservicename" "keystorepassword" "logintimeout"
+   "loglevel" "lognamespace" "metadatacachelifetime" "oauthtruststorepassword" "truststorepassword"])
+
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
                               :datetime-diff                    true

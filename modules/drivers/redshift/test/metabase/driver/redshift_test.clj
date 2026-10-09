@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -38,6 +39,24 @@
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
 (set! *warn-on-reflection* true)
+
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(driver.u/validate-connection-file-paths! :redshift (merge {:host "h" :port 5439 :db "db"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:sslrootcert "/etc/secret.pem"})))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:additional-options "ssltruststore=/etc/truststore.jks"}))))
+        (testing "a log path has to be in the writable paths"
+          (mt/with-temp-env-var-value! [mb-writable-paths "/allowed-dir"]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Writing to path is disallowed"
+                                  (spec {:additional-options "LogPath=/etc"})))
+            (is (nil? (spec {:additional-options "LogPath=/allowed-dir"})))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (nil? (spec {:sslrootcert "/allowed-dir/ok.pem"})))
+          (is (nil? (spec {}))))))))
 
 (deftest default-schema-test
   (mt/test-driver :redshift

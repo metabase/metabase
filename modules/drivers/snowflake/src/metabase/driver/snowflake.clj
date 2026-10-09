@@ -54,6 +54,13 @@
   [_driver]
   ["proxyHost" "host"])
 
+(defmethod driver/file-path-parameters :snowflake
+  [_driver]
+  {"private_key_file"           :read
+   "privateKeyFile"             :read
+   "client_config_file"         :read
+   "DIAGNOSTICS_ALLOWLIST_FILE" :read})
+
 (defmethod driver/connection-hosts :snowflake
   [_driver {:keys [account host use-hostname]}]
   (driver/hosts-from-details

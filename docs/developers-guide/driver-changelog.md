@@ -287,6 +287,36 @@ title: Driver interface changelog
   `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
   See `metabase.driver.mysql` for an example of using the abstract driver.
 
+## Metabase 0.58.36
+
+- `metabase.driver/file-path-parameters` `[driver]` -- new multimethod returning the client parameters whose value
+  names a file on the Metabase host, as a map of parameter name to `:read`, `:write`, or `:read-write`. When an admin
+  supplies one -- as a detail key or in `:additional-options` -- Metabase refuses a path outside the configured
+  readable or writable paths before testing the connection, creating a connection pool, or saving the database.
+
+  ```clj
+  (defmethod driver/file-path-parameters :postgres
+    [_driver]
+    {"sslcert"     :read
+     "sslkey"      :read
+     "sslrootcert" :read
+     "loggerFile"  :write})
+  ```
+
+  To find possible parameter names, `java.sql.Driver/getPropertyInfo` enumerates every parameter a JDBC client
+  accepts.
+
+- `metabase.driver/non-file-path-parameters` `[driver]` -- new multimethod naming the parameters that LOOK like they
+  might name a file but have been checked and do not: a keystore's password or type, a log level, a cache size. As
+  with `non-host-parameters`, nothing reads it at connection time; it lets `file-path-parameters` be checked for
+  completeness in tests.
+
+- `metabase.driver/additional-options-style` `[driver]` -- new multimethod saying how the client separates the
+  entries of `:additional-options`: `:url` (the default), `:semicolon`, or `:comma`.
+
+- `metabase.driver/additional-options-detail-key` `[driver]` -- new multimethod naming the detail key that holds those
+  options, for a driver that does not call it `:additional-options`. Defaults to `:additional-options`.
+
 ## Metabase 0.58.23
 
 - `metabase.driver/connection-hosts` `[driver details]` -- new multimethod returning the host names pointed to for a set

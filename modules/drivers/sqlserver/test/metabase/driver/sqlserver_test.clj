@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
@@ -40,6 +41,17 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(driver.u/validate-connection-file-paths! :sqlserver (merge {:host "h" :port 1433 :db "db"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:trustStore "/etc/secret.pem"}))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (nil? (spec {:trustStore "/allowed-dir/ok.pem"})))
+          (is (nil? (spec {}))))))))
 
 (deftest default-schema-test
   (mt/test-driver :sqlserver

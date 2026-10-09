@@ -68,6 +68,19 @@
   ["assumeMinServerVersion" "hostRecheckSeconds" "loadBalanceHosts" "logServerErrorDetail" "tcpNoDelay"
    "targetServerType" "localSocketAddress" "kerberosServerName" "sslhostnameverifier"])
 
+(defmethod driver/file-path-parameters :postgres
+  [_driver]
+  {"sslcert"     :read
+   "sslkey"      :read
+   "sslrootcert" :read
+   "loggerFile"  :write})
+
+(defmethod driver/non-file-path-parameters :postgres
+  [_driver]
+  ["databaseMetadataCacheFields" "databaseMetadataCacheFieldsMiB" "jaasLogin" "kerberosServerName"
+   "logServerErrorDetail" "logUnclosedConnections" "loggerLevel" "loginTimeout" "pemKeyAlgorithm"
+   "preparedStatementCacheQueries" "preparedStatementCacheSizeMiB"])
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift

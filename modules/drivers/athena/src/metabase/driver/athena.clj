@@ -41,6 +41,16 @@
   ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
    "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
 
+(defmethod driver/file-path-parameters :athena
+  [_driver]
+  {"LogPath" :write})
+
+(defmethod driver/non-file-path-parameters :athena
+  [_driver]
+  ["Catalog" "IdpWellKnownConfigurationUrl" "LogLevel" "OutputLocation" "ProfileName" "SsoLoginUrl"])
+
+(defmethod driver/additional-options-style :athena [_driver] :semicolon)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+

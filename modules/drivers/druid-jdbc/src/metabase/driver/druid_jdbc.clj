@@ -35,6 +35,16 @@
   [_driver]
   ["HOSTNAME_VERIFICATION"])
 
+(defmethod driver/file-path-parameters :druid-jdbc
+  [_driver]
+  {"KEYSTORE"   :read
+   "TRUSTSTORE" :read
+   "KEYTAB"     :read})
+
+(defmethod driver/non-file-path-parameters :druid-jdbc
+  [_driver]
+  ["KEYSTORE_PASSWORD" "KEYSTORE_TYPE" "TRUSTSTORE_PASSWORD"])
+
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true
                               :expression-literals     true

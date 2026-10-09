@@ -354,6 +354,67 @@
   [_driver]
   [])
 
+(defmulti file-path-parameters
+  "The connection parameters of this driver's client whose value names a file on the Metabase host, as a map of
+  parameter name to `:read` (the client reads it: a certificate, key, keystore, keytab, or config file), `:write`
+  (the client writes there: a log file or directory), or `:read-write` (both). A value may be a comma-separated list
+  of paths. Defaults to none.
+
+  Like [[host-carrying-parameters]] these are the parameters of the *client*, matched case-insensitively against what
+  an admin supplies -- a detail key, or an entry of `:additional-options` -- and
+  [[metabase.driver.util/validate-connection-file-paths!]] refuses a value outside the readable or writable paths
+  respectively. Paths Metabase sets itself (an uploaded secret written to a temp file) are not what this is about:
+  those are checked where Metabase reads them.
+
+  `java.sql.Driver/getPropertyInfo` enumerates every parameter a JDBC client accepts, and
+  `metabase.driver.sql-jdbc.file-path-parameters-test` fails on one whose name looks path-ish and appears neither here
+  nor in [[non-file-path-parameters]]."
+  {:added "0.58.36" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod file-path-parameters :default
+  [_driver]
+  {})
+
+(defmulti non-file-path-parameters
+  "The names of connection parameters that read as though they might name a local file -- they mention a file, a
+  path, a store, a certificate, a log, a cache -- but have been checked and do not: a keystore's password or type, a
+  log level, a cache size, an S3 location.
+
+  Like [[non-host-parameters]], nothing reads this at connection time; it records that somebody looked, so
+  [[file-path-parameters]] can be checked for completeness against what the client says it accepts."
+  {:added "0.58.36" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod non-file-path-parameters :default
+  [_driver]
+  [])
+
+(defmulti additional-options-style
+  "How this driver's client separates the entries of `:additional-options`: `:url` (`a=1&b=2`), `:semicolon`
+  (`a=1;b=2`), or `:comma` (`a=1,b=2`). Defaults to `:url`. Reading the options the way the client does is what lets
+  [[metabase.driver.util/validate-connection-file-paths!]] see the values it will."
+  {:added "0.58.36" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod additional-options-style :default
+  [_driver]
+  :url)
+
+(defmulti additional-options-detail-key
+  "The detail key holding the free-form options this driver appends to its connection string, read the way
+  [[additional-options-style]] says. Defaults to `:additional-options`."
+  {:added "0.58.36" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod additional-options-detail-key :default
+  [_driver]
+  :additional-options)
+
 (defmulti connection-parameter-hosts
   "Hosts named by parameters of the connection string or property map the driver hands to its client, once `details`,
   `:additional-options`, and any driver-specific rewriting have been folded in. Defaults to none.
