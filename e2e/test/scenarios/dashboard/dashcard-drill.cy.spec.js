@@ -477,7 +477,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       postDrillAssertion("ID is 2 selections");
 
-      cy.log("should correctly drill-through on Products filter (metabase#11503-2)");
+      cy.log(
+        "should correctly drill-through on Products filter (metabase#11503-2)",
+      );
       cy.go("back");
       H.filterWidget().eq(0).should("contain", "2 selections");
       H.clearFilterWidget(0);

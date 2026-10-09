@@ -1444,9 +1444,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.text", "1 column has custom behavior");
 
       (function addCustomUrlDestination() {
-        cy.log(
-          "custom destination (URL) behavior for 'Created At' column",
-        );
+        cy.log("custom destination (URL) behavior for 'Created At' column");
 
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).should("be.visible");
         getCreatedAtToUrlMapping().should("not.exist");
@@ -3681,7 +3679,6 @@ describe("issue 13597", () => {
       });
     });
   });
-
 });
 
 describe("issue 14473", () => {
@@ -3737,7 +3734,6 @@ describe("issue 14473", () => {
     checkOptionsForFilter("ID");
     checkOptionsForFilter("Category");
   });
-
 });
 
 describe("issue 18067", () => {
@@ -3948,7 +3944,6 @@ describe("issue 13785", () => {
       });
     });
   });
-
 });
 
 const clickLineChartPoint = ({ dashcardIndex } = {}) => {
