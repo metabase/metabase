@@ -366,7 +366,8 @@
              :active false {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn incomplete-analysis-fields-for-table
-  "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed."
+  "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed,
+  with sync's own values: the classifiers write the deterministic layer under the human and AI values."
   [table-id            :- ::lib.schema.id/table
    fingerprint-version :- :int]
   (t2/select :model/Field
@@ -375,7 +376,7 @@
              :visibility_type [:not-in ["sensitive" "retired"]]
              :fingerprint_version fingerprint-version
              :last_analyzed nil
-             {:from [(warehouse-schema-overlay/field-query)]}))
+             {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn name-field-count-for-table
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
@@ -641,15 +642,9 @@
   (t2/update! :model/Field field-id {:data_sensitivity data-sensitivity}))
 
 (def ^:private classifier-data-sensitivity-clause
-  "Honey SQL clause matching Fields whose non-null `data_sensitivity` has no value in the `FieldUserSettings` mirror,
-  i.e. was written by the data-sensitivity classifier rather than a user."
-  [:and
-   [:not= :data_sensitivity nil]
-   [:not [:exists ^:allow-subquery {:select [1]
-                                    :from   [[:metabase_field_user_settings :s]]
-                                    :where  [:and
-                                             [:= :s.field_id :metabase_field.id]
-                                             [:not= :s.data_sensitivity nil]]}]]])
+  "Honey SQL clause matching Fields with a non-null `data_sensitivity` in `metabase_field`. Only the deterministic
+  classifier writes that column; human and AI values live in `metabase_field_user_settings`."
+  [:not= :data_sensitivity nil])
 
 (mu/defn reset-classifier-data-sensitivity-for-table!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the

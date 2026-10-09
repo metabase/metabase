@@ -183,7 +183,8 @@
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
-  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
+  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set
+   :data_sensitivity_set :ai_semantic_type :ai_description :ai_data_sensitivity])
 
 (mu/defn field-ids-with-user-settings-for-table :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."

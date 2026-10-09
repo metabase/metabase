@@ -3457,6 +3457,49 @@
           (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
 
+(deftest field-user-settings-ai-values-migration-test
+  (testing "v65.2026-10-08T12:00:00 to 12:00:04: AI value columns and data_sensitivity_set, backfilled from data_sensitivity"
+    (impl/test-migrations ["v65.2026-10-08T12:00:00" "v65.2026-10-08T12:00:04"] [migrate!]
+      (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "FUS AI Test DB"
+                                                                       :engine     "h2"
+                                                                       :created_at :%now
+                                                                       :updated_at :%now
+                                                                       :details    "{}"})
+            table-id      (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                    :db_id      db-id
+                                                                    :name       "a table"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now})
+            insert-field! (fn [name]
+                            (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                      :name          name
+                                                                      :active        true
+                                                                      :base_type     "type/Text"
+                                                                      :database_type "TEXT"
+                                                                      :created_at    :%now
+                                                                      :updated_at    :%now}))
+            labelled-id   (insert-field! "labelled")
+            unlabelled-id (insert-field! "unlabelled")]
+        (t2/insert! :metabase_field_user_settings {:field_id labelled-id :data_sensitivity "PII"})
+        (t2/insert! :metabase_field_user_settings {:field_id unlabelled-id :description "a description"})
+        (migrate!)
+        (testing "a row with a data_sensitivity is flagged as set"
+          (is (=? {:data_sensitivity "PII" :data_sensitivity_set true}
+                  (t2/select-one :metabase_field_user_settings :field_id labelled-id))))
+        (testing "a row without one is not, and the AI columns start NULL"
+          (is (=? {:data_sensitivity_set false :ai_semantic_type nil :ai_description nil :ai_data_sensitivity nil}
+                  (t2/select-one :metabase_field_user_settings :field_id unlabelled-id))))
+        (testing "the AI columns take values"
+          (t2/update! :metabase_field_user_settings :field_id unlabelled-id
+                      {:ai_semantic_type "type/Name" :ai_description "ai" :ai_data_sensitivity "PHI"})
+          (is (=? {:ai_semantic_type "type/Name" :ai_description "ai" :ai_data_sensitivity "PHI"}
+                  (t2/select-one :metabase_field_user_settings :field_id unlabelled-id))))
+        (testing "rolling back drops the new columns and keeps the rows"
+          (migrate! :down 64)
+          (is (= #{"PII" nil} (t2/select-fn-set :data_sensitivity :metabase_field_user_settings)))
+          (is (thrown? Exception (t2/query "SELECT ai_semantic_type FROM metabase_field_user_settings")))
+          (is (thrown? Exception (t2/query "SELECT data_sensitivity_set FROM metabase_field_user_settings"))))))))
+
 (deftest table-user-settings-migration-keeps-hidden-tables-hidden-test
   (testing "v64.2026-09-11T00:00:05-06: the backfill and the reset leave the visibility_type users see unchanged, with
            or without a settings row"

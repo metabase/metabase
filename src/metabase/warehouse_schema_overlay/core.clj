@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema-overlay.core
   "Sources for queries over Fields and Tables: [[field-query]] and [[table-query]] merge each row with the values
-  in its user-settings table."
+  in its user-settings table. `metabase_field_user_settings` holds human values and, for the columns of
+  [[field-ai-columns]], accepted AI values too."
   (:require
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -13,11 +14,19 @@
     :custom_position})
 
 (def field-user-settings-flags
-  "The user-settable Field columns sync also writes, mapped to the flag that says the user set the column, NULL
+  "The user-settable Field columns a machine also writes, mapped to the flag that says the user set the column, NULL
   included."
   {:description        :description_set
    :semantic_type      :semantic_type_set
-   :fk_target_field_id :fk_target_field_id_set})
+   :fk_target_field_id :fk_target_field_id_set
+   :data_sensitivity   :data_sensitivity_set})
+
+(def field-ai-columns
+  "The user-settable Field columns that can have an accepted AI value, mapped to the `metabase_field_user_settings`
+  column that holds it. Users see the human value when its flag is set, else the AI value, else the Field's."
+  {:semantic_type    :ai_semantic_type
+   :description      :ai_description
+   :data_sensitivity :ai_data_sensitivity})
 
 (def field-columns
   "Every column of `metabase_field`. Spelled out rather than read from `:metabase.warehouse-schema.schema/field`,
@@ -52,20 +61,24 @@
       [:not= (u/qualified-key settings-alias :effective_type) nil])))
 
 (mu/defn- field-user-settings-column
-  "Honey SQL expression for `column` as users see it: the user value when set, else the Field's."
+  "Honey SQL expression for `column` as users see it: the user value when set, else the accepted AI value (see
+  [[field-ai-columns]]), else the Field's."
   [column         :- (into [:enum] user-settable-field-columns)
    field-alias    :- :keyword
    settings-alias :- :keyword]
   (let [field-column    (u/qualified-key field-alias column)
-        settings-column (u/qualified-key settings-alias column)]
+        settings-column (u/qualified-key settings-alias column)
+        fallback        (if-let [ai-column (field-ai-columns column)]
+                          [:coalesce (u/qualified-key settings-alias ai-column) field-column]
+                          field-column)]
     (if-let [condition (field-user-set-condition column settings-alias)]
-      [:case condition settings-column :else field-column]
+      [:case condition settings-column :else fallback]
       (if (= column :json_unfolding)
         [:case [:= [:coalesce settings-column field-column] true] true :else false]
         [:coalesce settings-column field-column]))))
 
 (mu/defn field-query :- [:tuple :any :keyword]
-  "The source a query over Fields reads from: `metabase_field` merged with the user values. `:alias` names it for
+  "The source a query over Fields reads from: `metabase_field` merged with the human and accepted AI values. `:alias` names it for
   joins; `{:user-settings? false}` gives sync's own values."
   ([]
    (field-query nil))

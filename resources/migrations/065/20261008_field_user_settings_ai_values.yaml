@@ -1,0 +1,76 @@
+## metabase_field_user_settings holds two layers over the deterministic values in metabase_field: human values
+## (<col> + <col>_set) and accepted AI values (ai_<col>). Readers see human > AI > metabase_field > NULL.
+## data_sensitivity gets a _set flag like the other columns that a machine also writes.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-08T12:00:00
+      author: tplude
+      comment: Add ai_semantic_type to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: ai_semantic_type
+                  type: varchar(254)
+                  remarks: "Accepted AI semantic_type. Overrides metabase_field.semantic_type unless semantic_type_set."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-10-08T12:00:01
+      author: tplude
+      comment: Add ai_description to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: ai_description
+                  type: ${text.type}
+                  remarks: "Accepted AI description. Overrides metabase_field.description unless description_set."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-10-08T12:00:02
+      author: tplude
+      comment: Add ai_data_sensitivity to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: ai_data_sensitivity
+                  type: varchar(32)
+                  remarks: "Accepted AI data_sensitivity. Overrides metabase_field.data_sensitivity unless data_sensitivity_set."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-10-08T12:00:03
+      author: tplude
+      comment: Add data_sensitivity_set to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: data_sensitivity_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set data_sensitivity, so a NULL data_sensitivity overrides the other values."
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-10-08T12:00:04
+      author: tplude
+      comment: Mark the data_sensitivity user settings already recorded as set
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field_user_settings
+              SET data_sensitivity_set = (data_sensitivity IS NOT NULL)
+      rollback: # not necessary

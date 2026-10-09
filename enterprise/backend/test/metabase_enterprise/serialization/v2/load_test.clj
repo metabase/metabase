@@ -218,6 +218,36 @@
             (testing "the imported Dimension replaces the Field's local one"
               (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension :field_id (:id email)))))))))))
 
+(deftest field-user-settings-ai-values-round-trip-test
+  (testing "a FieldUserSettings row that holds only AI values round-trips and is not dropped as empty"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                age   (ts/create! :model/Field :name "age" :table_id (:id table))]
+            (t2/insert! :model/FieldUserSettings {:field_id            (:id age)
+                                                  :ai_semantic_type    :type/Quantity
+                                                  :ai_description      "ai description"
+                                                  :ai_data_sensitivity :PII})
+            (reset! serialized
+                    (-> [(ts/extract-one "Database" (:id db))
+                         (ts/extract-one "Table" (:id table))
+                         (ts/extract-one "Field" (:id age))]
+                        (into (serdes/extract-all "FieldUserSettings" {:filter-column :field_id
+                                                                       :filter-ids    [(:id age)]}))))))
+        (is (=? [{:ai_semantic_type :type/Quantity :ai_description "ai description" :ai_data_sensitivity :PII}]
+                (by-model @serialized "FieldUserSettings")))
+        (ts/with-db dest-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                age   (ts/create! :model/Field :name "age" :table_id (:id table))]
+            (t2/insert! :model/FieldUserSettings {:field_id (:id age) :ai_description "local" :description "local"})
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (is (=? {:ai_semantic_type :type/Quantity :ai_description "ai description" :ai_data_sensitivity :PII
+                     :description nil}
+                    (t2/select-one :model/FieldUserSettings :field_id (:id age))))))))))
+
 (deftest user-settings-import-on-missing-database-test
   (testing "Table settings, Field settings and Dimensions alone create a stub database when theirs is missing"
     (let [serialized (atom nil)
