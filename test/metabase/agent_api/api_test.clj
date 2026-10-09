@@ -1478,9 +1478,9 @@
                                                 :visualization_settings
                                                 {:timeline.selected_timeline_ids [(:id timeline)]}}]
         (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
-        (is (= "You don't have permissions to do that."
-               (:cause (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
-                                             {:dashcards [{:action "add" :card_id card-id}]}))))
+        (is (re-find #"You don't have permissions to do that\."
+                     (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                           {:dashcards [{:action "add" :card_id card-id}]})))
         (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
         (testing "a user who can read the timeline can add it"
           (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
