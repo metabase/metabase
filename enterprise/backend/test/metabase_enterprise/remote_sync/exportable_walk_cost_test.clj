@@ -206,3 +206,23 @@
              (is (seq (filter #(= label (first %)) bounded-calls)) "was called")))
          (testing "no call got more than 3 ids"
            (is (= [] (filterv #(< 3 (second %)) bounded-calls)))))))))
+
+(deftest card-batch-reads-at-most-200-card-rows-at-once-test
+  (testing "with 201 cards at one level of the walk, the Card batch method reads the Card rows in chunks of at most 200"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [mp    (mt/metadata-provider)
+              query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              root  (t2/insert-returning-pk! :model/Collection {:name "Walk chunk" :is_remote_synced true :location "/"})
+              cards (into #{} (map #(insert-card! root % query)) (range 201))
+              sizes (atom [])
+              walk  (mt/with-dynamic-fn-redefs
+                      [queries.db/cards (let [cards-fn (mt/original-fn #'queries.db/cards)]
+                                          (fn [ids & more]
+                                            (swap! sizes conj (count ids))
+                                            (apply cards-fn ids more)))]
+                      (descendant-closure root spec/git-sync-extract-opts))]
+          (is (= cards (get walk "Card")) "the walk finds every card")
+          (testing (str "ids in each Card read: " @sizes)
+            (is (<= 2 (count @sizes)))
+            (is (every? #(<= % 200) @sizes))))))))
