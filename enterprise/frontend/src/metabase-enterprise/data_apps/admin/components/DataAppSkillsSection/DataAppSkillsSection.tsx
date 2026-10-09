@@ -8,13 +8,12 @@ import {
   versionToNumericComponents,
 } from "metabase/utils/version";
 
-const REPOSITORY_NAME = "metabase/metabase";
-const MAIN_BRANCH_NAME = "master";
-const RELEASE_BRANCH_PREFIX = "release";
-const PUBLIC_SKILLS_PATH = "/skills";
+const SKILLS_PATH = "metabase/agent-skills/skills";
+const DATA_APP_SKILLS_PATH = `${SKILLS_PATH}/data-apps`;
+const MASTER_FOLDER_NAME = "master";
 
-// The data-app skills to install. `skills add metabase/metabase` alone would
-// discover *every* skill in the repo, so each is selected explicitly.
+// The data-app skills to install. They're marked internal, so `skills add`
+// installs them only when each is named.
 const DATA_APP_SKILLS = [
   "metabase-data-app-setup",
   "metabase-data-app-routing",
@@ -23,23 +22,22 @@ const DATA_APP_SKILLS = [
   "metabase-data-app-migrate",
 ];
 
-// Writes the YAML an app's resources are committed as. It lives in another
-// repository, which has no release branches to pin to.
-const REPRESENTATION_SKILL_COMMAND =
-  "npx skills add metabase/agent-skills/skills --skill metabase-representation-format";
+// Writes the YAML an app's resources are committed as. It isn't kept per
+// Metabase version, so it's installed from outside the data-app folders.
+const REPRESENTATION_SKILL_COMMAND = `npx skills add ${SKILLS_PATH} --skill metabase-representation-format`;
 
 export const DataAppSkillsSection = () => {
-  // Pin the data-app skills (and the template bundled inside `metabase-data-app-setup`)
-  // to the branch matching this instance: `release-x.<major>.x`, or `master` for
-  // local/dev builds that have no release branch.
+  // Install the data-app skills (and the template bundled inside `metabase-data-app-setup`)
+  // from the folder matching this instance: `data-apps/<major>`, or `data-apps/master`
+  // for local/dev builds that have no release.
   const { tag } = useSetting("version");
   const majorVersion = tag ? versionToNumericComponents(tag)?.[1] : undefined;
-  const skillBranch =
+  const skillsFolder =
     tag && !isLocalOrSnapshotVersion(tag) && majorVersion != null
-      ? `${RELEASE_BRANCH_PREFIX}-x.${majorVersion}.x`
-      : MAIN_BRANCH_NAME;
+      ? String(majorVersion)
+      : MASTER_FOLDER_NAME;
 
-  const skillCommandBase = `npx skills add ${REPOSITORY_NAME}${PUBLIC_SKILLS_PATH}#${skillBranch}`;
+  const skillCommandBase = `npx skills add ${DATA_APP_SKILLS_PATH}/${skillsFolder}`;
   const skillSelectors = DATA_APP_SKILLS.map((skill) => `--skill ${skill}`);
   // Joined with shell line-continuations (` \` + newline) so each `--skill` is on
   // its own line for readability, while the copied text is still one runnable

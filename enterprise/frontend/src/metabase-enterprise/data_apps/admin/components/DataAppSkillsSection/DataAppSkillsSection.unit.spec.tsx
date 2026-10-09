@@ -45,7 +45,9 @@ describe("DataAppSkillsSection", () => {
 
     // Each --skill sits on its own line, joined by ` \` line-continuations, so
     // the pasted command is still one runnable invocation.
-    expect(command).toContain("npx skills add metabase/metabase/skills#");
+    expect(command).toContain(
+      "npx skills add metabase/agent-skills/skills/data-apps/",
+    );
     expect(command).toContain(" \\\n--skill metabase-data-app-setup");
   });
 
@@ -66,16 +68,22 @@ describe("DataAppSkillsSection", () => {
     );
   });
 
-  // Release builds pin to their `release-x.<major>.x` branch; local, snapshot,
-  // and unknown builds fall back to `master`.
-  it.each<[tag: string | undefined, branch: string]>([
-    ["v0.64.0", "release-x.64.x"],
+  // Release builds install from their `data-apps/<major>` folder; local,
+  // snapshot, and unknown builds fall back to `data-apps/master`.
+  it.each<[tag: string | undefined, folder: string]>([
+    ["v0.65.0", "65"],
+    ["v1.65.2", "65"],
     ["vLOCAL_DEV", "master"],
     ["v0.53.0-SNAPSHOT", "master"],
     [undefined, "master"],
-  ])("pins the skills for version '%s' to #%s", async (tag, branch) => {
-    setup(tag);
+  ])(
+    "installs the skills for version '%s' from data-apps/%s",
+    async (tag, folder) => {
+      setup(tag);
 
-    expect(await copyCommand()).toContain(`/skills#${branch}`);
-  });
+      expect(await copyCommand()).toContain(
+        `npx skills add metabase/agent-skills/skills/data-apps/${folder} \\\n`,
+      );
+    },
+  );
 });
