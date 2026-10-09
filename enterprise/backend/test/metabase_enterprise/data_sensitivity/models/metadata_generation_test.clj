@@ -74,7 +74,7 @@
                  :model/Database {other-db-id :id} {}]
     (let [{run-id :id} (insert-run! db-id)]
       (testing "a second active run on the same database is refused"
-        (is (thrown? Exception (insert-run! db-id))))
+        (is (thrown? Exception (t2/with-transaction [_conn] (insert-run! db-id)))))
       (testing "another database can have its own active run"
         (is (some? (insert-run! other-db-id))))
       (testing "after the first run ends, a new run can start"
@@ -109,7 +109,7 @@
         (is (=? {:status :accepted :decided_by user-id :decided_at some?}
                 (t2/select-one :model/MetadataGenerationSuggestion suggestion-id))))
       (testing "a field has one suggestion per run and attribute"
-        (is (thrown? Exception (insert-suggestion! run-id table-id field-id)))
+        (is (thrown? Exception (t2/with-transaction [_conn] (insert-suggestion! run-id table-id field-id))))
         (is (some? (insert-suggestion! run-id table-id field-id :attribute :description :source :none
                                        :current_value nil)))))))
 
