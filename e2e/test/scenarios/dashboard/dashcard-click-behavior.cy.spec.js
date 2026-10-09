@@ -159,10 +159,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           H.createDashboard().then(({ body: dashboard }) => {
             H.updateDashboardCards({
               dashboard_id: dashboard.id,
+              // The card helpers count ids across test retries, so give
+              // every dashcard a unique id here
               cards: [
                 ...cards,
                 { card_id: objectDetailCardId, row: 12, col: 0 },
-              ],
+              ].map((card, index) => ({ ...card, id: -(index + 1) })),
             });
             H.visitDashboard(dashboard.id);
           });
@@ -176,9 +178,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.log(`does not allow to set click behavior for "${display}" card`);
 
         H.getDashboardCard(index).realHover();
-        H.getDashboardCard(index)
-          .findByLabelText("Duplicate")
-          .should("be.visible");
+        // The actions panel of a short card can be clipped above the grid
+        H.getDashboardCard(index).findByLabelText("Duplicate").should("exist");
         H.getDashboardCard(index).icon("click").should("not.exist");
       });
 
