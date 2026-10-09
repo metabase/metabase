@@ -47,7 +47,13 @@ claude mcp add --transport http metabase https://{your-metabase-url}/api/metabas
 
 Replace `{your-metabase-url}` with your Metabase address.
 
-Without `--scope`, Claude Code adds the server only to the directory you ran the command in, so Metabase won't show up if you start Claude Code from a different directory. To check where you added it, run `claude mcp get metabase`. See [MCP installation scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
+Without `--scope`, Claude Code adds the server only to the directory you ran the command in, so Metabase won't show up if you start Claude Code from a different directory. To check where you added it, run:
+
+```
+claude mcp get metabase
+```
+
+See [MCP installation scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
 2. Start Claude Code with `claude`.
 
