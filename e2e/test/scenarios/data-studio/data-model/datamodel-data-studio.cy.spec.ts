@@ -355,41 +355,6 @@ describe("scenarios > data studio > datamodel", () => {
         cy.get<TableId>("@uploadedTableId").then(expectTableVisible);
         cy.get<TableId>("@ingestedTableId").then(expectTableNotVisible);
       });
-
-      it("should filter unused tables only", () => {
-        H.restore("postgres-writable");
-        H.activateToken("pro-self-hosted");
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-        const usedTableName = "Animals";
-        const unusedTableName = "Birds";
-
-        getTableId({
-          databaseId: WRITABLE_DB_ID,
-          displayName: usedTableName,
-        }).then((tableId) => {
-          cy.wrap(tableId).as("usedTableId");
-          return H.createQuestion({
-            database: WRITABLE_DB_ID,
-            name: "filter used question",
-            query: { "source-table": tableId },
-          });
-        });
-
-        getTableId({
-          databaseId: WRITABLE_DB_ID,
-          name: unusedTableName,
-        }).as("unusedTableId");
-
-        H.DataModel.visitDataStudio();
-
-        TablePicker.openFilterPopover();
-        toggleUnusedFilter(true);
-        TablePicker.applyFilters();
-
-        cy.get<TableId>("@unusedTableId").then(expectTableVisible);
-        cy.get<TableId>("@usedTableId").then(expectTableNotVisible);
-      });
     });
 
     it("select/deselect functionality", { tags: ["@external"] }, () => {
@@ -1411,14 +1376,6 @@ function selectOwnerByName(ownerLabel: string) {
 function selectOwnerByEmail(email: string) {
   cy.findByRole("textbox", { name: "Owner" }).clear().type(email);
   H.popover().contains(email).click();
-}
-
-function toggleUnusedFilter(checked: boolean) {
-  if (checked) {
-    cy.findByLabelText("Table isn’t referenced by anything").check();
-  } else {
-    cy.findByLabelText("Table isn’t referenced by anything").uncheck();
-  }
 }
 
 function expectTableVisible(tableId: TableId) {

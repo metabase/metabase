@@ -580,6 +580,33 @@ describe("TablePicker", () => {
     });
   });
 
+  describe("Unused tables filter", () => {
+    it("maps unused-only to the table search request", async () => {
+      setup();
+      await waitLoading();
+
+      await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+      await userEvent.click(
+        await screen.findByLabelText("Table isn’t referenced by anything"),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls("table-search")).toHaveLength(1);
+      });
+      const lastCall = fetchMock.callHistory.calls("table-search").at(-1);
+      expect(lastCall).toBeDefined();
+      if (!lastCall) {
+        return;
+      }
+
+      expect(Object.fromEntries(new URL(lastCall.url).searchParams)).toEqual({
+        term: "",
+        "unused-only": "true",
+      });
+    });
+  });
+
   describe("Published tables filter", () => {
     it("is hidden when the Library is not enabled", async () => {
       setup();
