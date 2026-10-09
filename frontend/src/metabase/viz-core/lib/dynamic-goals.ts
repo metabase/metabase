@@ -182,6 +182,13 @@ export function isDynamicGoalSetting(
   return getDynamicGoalSettingKeys(display).includes(key);
 }
 
+export const getGoalErrorMessage = ({ reason, message }: GoalRefError) =>
+  match(reason)
+    .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("column-not-found", () => t`This column no longer exists`)
+    .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+
 function isGoalSettingActive(
   settings: VisualizationSettings,
   key: GoalSettingKey,

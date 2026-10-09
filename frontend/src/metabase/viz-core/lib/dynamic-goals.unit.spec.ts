@@ -13,6 +13,7 @@ import {
 import type { GoalCard } from "../types";
 
 import {
+  getGoalErrorMessage,
   getGoalSegmentBounds,
   getGoalValues,
   getNumericGoalValue,
@@ -464,6 +465,34 @@ describe("resolveOpenEndedGoalSegments", () => {
       resolveOpenEndedGoalSegments(DATA, [{ min: 0, max: null }], getColor),
     ).toEqual([{ min: 0, max: null, color: "#123456", label: undefined }]);
   });
+});
+
+describe("getGoalErrorMessage", () => {
+  const REF = { type: "card", id: 9, column: "goal" } as const;
+
+  it("shows the server's explanation of a failed query", () => {
+    expect(
+      getGoalErrorMessage({ ...REF, reason: "query-failed", message: "boom" }),
+    ).toBe("boom");
+  });
+
+  it("falls back to a generic message for a failed query", () => {
+    expect(getGoalErrorMessage({ ...REF, reason: "query-failed" })).toBe(
+      "Couldn't load this value",
+    );
+  });
+
+  it.each([
+    ["column-not-found", "This column no longer exists"],
+    ["not-a-number", "This value isn't a number"],
+  ] as const)(
+    "explains %s regardless of the server message",
+    (reason, text) => {
+      expect(getGoalErrorMessage({ ...REF, reason, message: "boom" })).toBe(
+        text,
+      );
+    },
+  );
 });
 
 function gaugeCard(visualization_settings: VisualizationSettings): GoalCard {

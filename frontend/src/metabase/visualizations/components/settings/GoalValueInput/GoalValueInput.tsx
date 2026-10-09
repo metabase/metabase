@@ -18,7 +18,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
-import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
+import { getGoalErrorMessage, resolveGoalValue } from "metabase/viz-core";
 import type {
   CardId,
   ColumnSettings,
@@ -427,14 +427,6 @@ export const GoalValueInput = ({
     </Box>
   );
 };
-
-function getGoalErrorMessage({ reason, message }: GoalRefError): string {
-  return match(reason)
-    .with("query-failed", () => message ?? t`Couldn't load this value`)
-    .with("column-not-found", () => t`This column no longer exists`)
-    .with("not-a-number", () => t`This value isn't a number`)
-    .exhaustive();
-}
 
 function getPillTooltip({
   entityColumns,

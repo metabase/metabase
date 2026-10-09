@@ -230,6 +230,7 @@ export {
 } from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
+  getGoalErrorMessage,
   getGoalErrors,
   getGoalSegmentBounds,
   getNumericGoalValue,

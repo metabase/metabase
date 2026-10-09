@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -31,7 +33,7 @@ afterAll(() => {
 
 const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
 
-function setup(segments: GoalSegment[]) {
+function setup(segments: GoalSegment[], { isQueryBuilder = false } = {}) {
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({
@@ -52,7 +54,9 @@ function setup(segments: GoalSegment[]) {
     ),
   ];
 
-  renderWithProviders(<Visualization rawSeries={series} />);
+  renderWithProviders(
+    <Visualization rawSeries={series} isQueryBuilder={isQueryBuilder} />,
+  );
 }
 
 const SEGMENTS: GoalSegment[] = [
@@ -62,12 +66,23 @@ const SEGMENTS: GoalSegment[] = [
 ];
 
 describe("gauge dynamic goal", () => {
-  it("renders the ranges that resolve", async () => {
-    setup(SEGMENTS);
+  it("renders the ranges that resolve with one warning for consecutive failed bounds in the query builder", async () => {
+    setup(SEGMENTS, { isQueryBuilder: true });
 
     expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
     expect(screen.queryByTestId("gauge-arc-1")).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText("Goal warning")).toHaveLength(1);
     // like an unset bound, a failed one drops its range from the arc
     expect(screen.queryByText("100")).not.toBeInTheDocument();
+
+    await userEvent.hover(screen.getByLabelText("Goal warning"));
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+  });
+
+  it("renders the ranges that resolve without a warning outside the query builder", async () => {
+    setup(SEGMENTS);
+
+    expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
   });
 });
