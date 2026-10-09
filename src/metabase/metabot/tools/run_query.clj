@@ -111,11 +111,13 @@
                                         (contains? #{"question" "model"} (some-> type name)))
                                (parse-long (str id))))
                            (get-in (shared/current-memory) [:context :user_is_viewing]))]
-    (when-let [database-id (:database_id (metabot.db/card card-id))]
-      {:lib/type :mbql/query
-       :database database-id
-       :stages   [{:lib/type    :mbql.stage/mbql
-                   :source-card card-id}]})))
+    ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
+    (let [card (metabot.db/card card-id)]
+      (when (some-> card mi/can-read?)
+        {:lib/type :mbql/query
+         :database (:database_id card)
+         :stages   [{:lib/type    :mbql.stage/mbql
+                     :source-card card-id}]}))))
 
 (defn- stored-query
   "The query `query-id` names: one the conversation holds, or with `notebook?` a saved question the user is viewing."
@@ -148,6 +150,16 @@
   []
   (refusal (str "run_query is not available in a conversation other people can read, because they would see "
                 "the rows too. Ask the user to continue in their own Metabot chat.")))
+
+(defn sql-results-readable?
+  "Whether `run_query` would let the model read a SQL query's results in this session, the query's own checks aside:
+   the session offers the tool, query execution and SQL execution are allowed, and nobody else can read the
+   conversation."
+  []
+  (boolean (and (shared/tool-offered? "run_query")
+                (metabot.settings/metabot-query-execution-enabled?)
+                (scope/sql-execution-allowed?)
+                (not (conversation-open-to-others?)))))
 
 (def ^:private notebook-query-hint
   "Ends every refusal the model can recover from by building a notebook query instead."

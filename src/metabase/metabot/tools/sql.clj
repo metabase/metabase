@@ -5,6 +5,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -81,13 +82,6 @@
    [:sql_query :string]
    [:title :string]])
 
-(defn- sql-results-readable?
-  "Whether the model can read a SQL query's results in this session: it offers `run_query`, and Metabot may run SQL
-   for the current user."
-  []
-  (and (shared/tool-offered? "run_query")
-       (scope/sql-execution-allowed?)))
-
 (mu/defn ^{:tool-name    "create_sql_query"
            :scope        scope/agent-sql-create
            :capabilities #{:permission-write-sql-queries}}
@@ -103,7 +97,7 @@
           {:keys [query-id query]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id (sql-results-readable?))]
+              instr       (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?))]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr

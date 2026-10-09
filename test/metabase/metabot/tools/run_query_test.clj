@@ -380,6 +380,13 @@
       (testing "a saved question the user is not viewing does not run by its id"
         (is (=? {:output #"No query with id \d+\. Known query ids: \[\]\. .*"}
                 (run-viewing! [] (str notebook-card)))))
+      (testing "a viewed question the user can't read is refused like an id that names nothing"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {hidden :id}      {}
+                         :model/Card       {hidden-card :id} {:collection_id hidden, :dataset_query (venues-count)}]
+            (is (= (run-viewing! [{:type "question", :id Integer/MAX_VALUE}] (str Integer/MAX_VALUE))
+                   (update (run-viewing! [{:type "question", :id hidden-card}] (str hidden-card))
+                           :output str/replace (str hidden-card) (str Integer/MAX_VALUE)))))))
       (testing "a viewed SQL question that Metabot saved is still refused as SQL"
         (is (=? {:output #"run_query .*SQL.*"}
                 (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
