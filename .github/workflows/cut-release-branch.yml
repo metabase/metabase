@@ -57,8 +57,7 @@ jobs:
             core.setOutput('needsRequirementsUpdate', String(needsRequirementsUpdate));
 
       # Pushing the new branch triggers set-milestone.yml, which does the
-      # full milestone backfill and then dispatches release-notes-preview
-      # to upload the markdown to #writing.
+      # full milestone backfill.
       #
       # Kondo ignore ratchets apply only to master. The cut commit replaces the
       # budgets in both ratchet files with an explicit opt-out so future budget
