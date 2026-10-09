@@ -676,7 +676,7 @@
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-  Returns the updated entity."
+  Returns the updated entity. The default returns `local` when no column changed."
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
@@ -735,7 +735,8 @@
   no stored row, so a caller that needs one closes the function over it. Its result is the map of the columns to
   write; an empty map sends no write. The default returns the changed columns as they are.
 
-  Returns the row read again after the update step."
+  Returns `local`, the row the caller found, when no column changed, and the row read again after the write otherwise.
+  Callers may use only the keys of the returned row."
   [model-name ingested local baseline {:keys [adjust-changes] :or {adjust-changes (fn [changes _row] changes)}}]
   (let [model   (t2.model/resolve-model (symbol model-name))
         pk      (first (t2/primary-keys model))
@@ -744,10 +745,12 @@
         changes (adjust-changes (drop-unchanged-columns baseline (:row entity)) (:row entity))]
     (log/tracef "Upserting %s %d" model-name id)
     ;; Comparing against the stored row, not a ledger, keeps a forced pull repairing local drift. No write also means
-    ;; no before-update work, such as result-metadata inference.
-    (when (seq changes)
-      (models.db/update-entity! id (assoc entity :row changes)))
-    (models.db/entity-by-pk model pk id)))
+    ;; no before-update work, such as result-metadata inference, and no read again: a read runs the model's
+    ;; after-select, which for a Card normalizes the whole query.
+    (if (seq changes)
+      (do (models.db/update-entity! id (assoc entity :row changes))
+          (models.db/entity-by-pk model pk id))
+      local)))
 
 (defmethod load-update! :default [model-name ingested local]
   (update-changed-columns! model-name ingested local local {}))
