@@ -1651,11 +1651,15 @@ describe("issue 13785", () => {
           .click();
 
         cy.wait("@cardQuery");
-        cy.url().should("include", "2026-08");
-        H.chartPathWithFillColor("#509EE3").should("have.length", 1);
-        // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
-        // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
-        H.echartsContainer().get("text").contains("12");
+        cy.location("search").should("eq", "?date_filter=2026-08");
+        H.chartPathWithFillColor("#509EE3")
+          .should("have.length", 1)
+          .first()
+          .trigger("mousemove");
+        H.assertEChartsTooltip({
+          header: "August 2026",
+          rows: [{ name: "Count", value: "12" }],
+        });
       });
     });
   });
