@@ -62,7 +62,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 2);
+      H.chartPathWithFillColor("#A989C5").should("have.length", 2);
       H.echartsContainer().findByText("(empty)").should("not.exist");
     });
 
@@ -1136,11 +1136,8 @@ describe("scenarios > visualizations > bar chart", () => {
     H.echartsContainer().should("be.visible");
 
     H.echartsContainer()
-      .find("text")
-      .filter((_index, element) =>
-        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/.test(
-          element.textContent,
-        ),
+      .findAllByText(
+        /^(January|February|March|April|May|June|July|August|September|October|November|December) \d{4}$/,
       )
       .should("have.length", 12);
   });

@@ -217,7 +217,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     H.echartsContainer().findByText("Total").should("exist");
 
-    H.sidebar().within(() => {
+    H.leftSidebar().within(() => {
       cy.findByDisplayValue("Created At: Year").should("exist");
       cy.findByText("Add series breakout").should("not.exist");
       cy.findByText(/Add another/).should("not.exist");
