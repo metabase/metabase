@@ -53,18 +53,21 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       expect(svg).toContain(">250<");
     });
 
-    it.each([
-      ["has not answered", undefined],
-      ["reports as failed", createMockFailedReferencedEntitiesResults()],
-    ])(
-      "draws the goal line at 0 for a reference the dataset %s",
-      (_name, referencedEntities) => {
-        const svg = toSvg(createSeries(display, referencedEntities));
+    it("draws the goal line at 0 for a reference the dataset has not answered", () => {
+      const svg = toSvg(createSeries(display));
 
-        expect(svg).toContain(GOAL_LABEL);
-        expect(svg).not.toContain(">250<");
-      },
-    );
+      expect(svg).toContain(GOAL_LABEL);
+      expect(svg).not.toContain(">250<");
+    });
+
+    it("draws the goal line at 0 for a reference the dataset reports as failed", () => {
+      const svg = toSvg(
+        createSeries(display, createMockFailedReferencedEntitiesResults()),
+      );
+
+      expect(svg).toContain(GOAL_LABEL);
+      expect(svg).not.toContain(">250<");
+    });
   },
 );
 

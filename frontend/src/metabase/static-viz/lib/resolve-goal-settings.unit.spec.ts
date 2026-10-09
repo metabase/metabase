@@ -53,13 +53,23 @@ describe("resolveGoalSettings", () => {
       });
     });
 
-    it.each([
-      ["an unanswered", createData({})],
-      ["a failed", createData(createMockFailedReferencedEntitiesResults())],
-    ])("falls back to 0 for %s reference", (_name, data) => {
-      expect(
-        resolveGoalSettings(createSeries(data, display), REFERENCED_SETTINGS),
-      ).toEqual({ ...REFERENCED_SETTINGS, "graph.goal_value": 0 });
+    it("falls back to 0 for an unanswered reference", () => {
+      const series = createSeries(createData({}), display);
+
+      expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
+        ...REFERENCED_SETTINGS,
+        "graph.goal_value": 0,
+      });
+    });
+
+    it("falls back to 0 for a failed reference", () => {
+      const failed = createData(createMockFailedReferencedEntitiesResults());
+      const series = createSeries(failed, display);
+
+      expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
+        ...REFERENCED_SETTINGS,
+        "graph.goal_value": 0,
+      });
     });
   });
 });
