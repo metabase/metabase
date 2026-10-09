@@ -123,17 +123,22 @@
                   k)))
         warehouse-schema-overlay/field-ai-columns))
 
-(defn value-source
-  "The layer that gives the value readers see for column `k` of a field with `user-settings`, when that value is
-  `current-value`: `:human`, `:ai`, `:deterministic`, or `:none` when there is no value. The same rule as
+(defn layer-source
+  "The layer that gives the value readers see for column `k`, when that value is `current-value`: `:human` when `k` is
+  in `human-set`, `:ai` when it is in `ai-set`, `:deterministic`, or `:none` when there is no value. The same rule as
   [[warehouse-schema-overlay/field-query]]."
+  [human-set ai-set k current-value]
+  (cond
+    (contains? human-set k) :human
+    (contains? ai-set k)    :ai
+    (some? current-value)   :deterministic
+    :else                   :none))
+
+(defn value-source
+  "[[layer-source]] for column `k` of a field with `user-settings`."
   [user-settings k current-value]
   (let [human-set (human-set-keys user-settings)]
-    (cond
-      (contains? human-set k)                            :human
-      (contains? (ai-set-keys user-settings human-set) k) :ai
-      (some? current-value)                              :deterministic
-      :else                                              :none)))
+    (layer-source human-set (ai-set-keys user-settings human-set) k current-value)))
 
 (defn- fk-targets
   "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields`."

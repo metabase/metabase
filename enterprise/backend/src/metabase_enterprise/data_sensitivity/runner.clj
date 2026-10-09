@@ -196,11 +196,7 @@
 ;;; Suggestions
 
 (defn- source [field k current-value]
-  (cond
-    (contains? (:human_set field) k) :human
-    (contains? (:ai_set field) k)    :ai
-    (some? current-value)            :deterministic
-    :else                            :none))
+  (context/layer-source (:human_set field) (:ai_set field) k current-value))
 
 (defn- new-description
   "The description proposed in `entry` when it differs from the current `description`, else nil."
@@ -208,6 +204,11 @@
   (let [proposed (:description entry)]
     (when (and proposed (not= (some-> description str/trim) proposed))
       proposed)))
+
+(defn- key-type?
+  "Whether `semantic-type` is a key type, which sync owns: apply never replaces it."
+  [semantic-type]
+  (or (isa? semantic-type :type/PK) (isa? semantic-type :type/FK)))
 
 (defn- confidence [s]
   (#{:high :medium :low} (some-> s keyword)))
@@ -241,7 +242,8 @@
                                    :current_value  (some-> (:data_sensitivity current) name)
                                    :proposed_value (name (:data_sensitivity proposed))))
 
-                      (and (attributes :semantic_type) semantic_changed)
+                      (and (attributes :semantic_type) semantic_changed
+                           (not (key-type? (:semantic_type current))))
                       (conj (assoc base
                                    :attribute      :semantic_type
                                    :source         (source field :semantic_type (:semantic_type current))
@@ -260,7 +262,8 @@
 
 (defn- classify-table
   "Build the packet of `table`, submit its chunk calls with all Metabot permissions granted, and wait for them while
-  checking for a stop. Cancels the chunks not finished on any exit."
+  checking for a stop. Cancels the chunks not finished on any exit. On a failure or stop, puts the model and the usage
+  of the chunks that finished in the `:spent` volatile of `ctx`, then rethrows."
   [{:keys [attributes] :as ctx} database table packet-opts]
   (let [packet (database-routing/with-database-routing-off
                  (context/table-packet database table packet-opts))]
@@ -270,6 +273,9 @@
       (try
         (await-chunks! ctx submitted)
         {:packet packet :classification (llm/collect-packet submitted)}
+        (catch Throwable e
+          (vreset! (:spent ctx) {:model (:model submitted) :usage (llm/completed-usage submitted)})
+          (throw e))
         (finally
           (llm/cancel-packet submitted))))))
 
@@ -290,17 +296,24 @@
 (defn- not-processed [state tables message]
   (update state :errors into (map #(table-error % message "not_processed")) tables))
 
+(defn- add-spent
+  "Add the usage of the chunks that finished in a table that failed or stopped, from [[classify-table]], to `state`."
+  [state {:keys [model usage]}]
+  (cond-> state
+    usage (update :usage add-usage model usage)))
+
 (defn- run-tables!
   "Classify `tables` in order and record each one on the run. Returns the final state, with `:end` set to how the
   run ended: `:succeeded`, `[:stopped reason]` or `[:usage-limit message]`."
-  [{:keys [run-id attributes] :as ctx} database tables]
+  [{:keys [run-id attributes spent] :as ctx} database tables]
   (let [sample-error (core/sample-connection-error database nil)
         packet-opts  (cond-> {} sample-error (assoc :include-values? false))]
     (loop [state             {:done 0 :failed 0 :errors [] :usage zero-usage}
            [table & more :as remaining] tables]
       (if-not table
         (assoc state :end :succeeded)
-        (let [outcome (try
+        (let [_       (vreset! spent nil)
+              outcome (try
                         (check-stop! ctx)
                         (let [{:keys [packet classification]} (classify-table ctx database table packet-opts)]
                           {:usage       (:usage classification)
@@ -314,11 +327,11 @@
                             :else                   {:error e})))]
           (cond
             (:end outcome)
-            (assoc state :end (:end outcome) :remaining remaining)
+            (assoc (add-spent state @spent) :end (:end outcome) :remaining remaining)
 
             (:error outcome)
             (let [e     (:error outcome)
-                  state (-> state
+                  state (-> (add-spent state @spent)
                             (update :failed inc)
                             (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e))))]
               (log/warnf e "Metadata generation run %d failed for table %d" run-id (:id table))
@@ -380,7 +393,8 @@
   (let [ctx {:run-id     run-id
              :attributes (set attributes)
              :stop       (atom nil)
-             :last-poll  (volatile! 0)}]
+             :last-poll  (volatile! 0)
+             :spent      (volatile! nil)}]
     (swap! local-runs assoc run-id {:stop (:stop ctx)})
     (let [f (cp/future workers
                        (request/with-current-user creator-id
@@ -469,22 +483,22 @@
   (when-let [run (db/run run-id)]
     (when-not (run/active-statuses (:status run))
       (throw (ex-info (tru "The run has already ended.") {:status-code 409})))
-    (when (#{:pending :running} (:status run))
-      (db/update-run-with-status! run-id (:status run) {:status :canceling}))
+    (db/update-run-with-status! run-id #{:pending :running} {:status :canceling})
     (some-> (get-in @local-runs [run-id :stop]) (reset! :canceled))
     (db/run run-id)))
 
 (mu/defn retry-failed! :- (ms/InstanceOf :model/MetadataGenerationRun)
-  "Start a new run over the tables in the `table_errors` of the ended run `run`, with its attributes, as
-  `creator-id`. Throws a 400 when the run is active or has no table errors."
+  "Start a new run over the tables in the `table_errors` of the ended run `run` that are still active, with its
+  attributes, as `creator-id`. Throws a 400 when the run is active or none of its failed tables is active."
   [database   :- (ms/InstanceOf :model/Database)
    run        :- (ms/InstanceOf :model/MetadataGenerationRun)
    creator-id :- ms/PositiveInt]
   (when (run/active-statuses (:status run))
     (throw (bad-request (tru "The run has not ended."))))
-  (let [table-ids (vec (distinct (map :table_id (:table_errors run))))]
+  (let [active    (set (map :id (db/active-tables (:id database) nil)))
+        table-ids (into [] (comp (map :table_id) (distinct) (filter active)) (:table_errors run))]
     (when (empty? table-ids)
-      (throw (bad-request (tru "The run has no failed tables."))))
+      (throw (bad-request (tru "The run has no failed tables that are still active."))))
     (start-run! database {:table_ids table-ids :attributes (:attributes run)} creator-id)))
 
 ;;; Heartbeat and reaper

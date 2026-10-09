@@ -8,6 +8,15 @@
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
+(defn internal-remapping-allowed?
+  "Whether a field of `base-type` with `semantic-type` can keep an internal remapping: an integer field with no
+  semantic type, or a category or enum. A semantic type change that breaks this deletes the internal Dimension."
+  [base-type semantic-type]
+  (and (isa? base-type :type/Integer)
+       (or (nil? semantic-type)
+           (isa? semantic-type :type/Category)
+           (isa? semantic-type :type/Enum))))
+
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]

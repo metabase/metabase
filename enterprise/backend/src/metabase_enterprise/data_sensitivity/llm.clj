@@ -605,6 +605,17 @@ name, gets a chunk of its own. The size
   [{:keys [futures]}]
   (run! #(.cancel ^Future % true) (reverse futures)))
 
+(defn completed-usage
+  "The summed token usage of the chunk calls of a [[submit-packet]] result that finished without a failure. A table that
+  fails or stops still paid for these calls."
+  [{:keys [futures]}]
+  (reduce (partial merge-with +)
+          {:input_tokens 0 :output_tokens 0 :cache_read_tokens 0 :cache_creation_tokens 0 :total_tokens 0}
+          (keep (fn [^Future f]
+                  (when (and (.isDone f) (not (.isCancelled f)))
+                    (try (:usage (.get f)) (catch Exception _ nil))))
+                futures)))
+
 (mu/defn collect-packet :- ::classification
   "Wait for the chunk calls of a [[submit-packet]] result in chunk order and merge the parsed entries by field name.
   The first failure in chunk order is rethrown as the chunk threw it. Nothing is cancelled here: the caller cancels

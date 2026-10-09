@@ -123,12 +123,13 @@
   (t2/select :model/MetadataGenerationRun :database_id database-id {:order-by [[:id :desc]] :limit 20}))
 
 (mu/defn update-run-with-status! :- :int
-  "Apply `changes` to the MetadataGenerationRun with `run-id` when its status is `status`. Returns the number of rows
-  updated."
+  "Apply `changes` to the MetadataGenerationRun with `run-id` when its status is `status`, or one of `status` when it
+  is a set. One conditional update, so a concurrent status change cannot slip between a read and the write. Returns
+  the number of rows updated."
   [run-id  :- ms/PositiveInt
-   status  :- :keyword
+   status  :- [:or ::run/status [:set ::run/status]]
    changes :- ::run/changes]
-  (t2/update! :model/MetadataGenerationRun :id run-id :status status changes))
+  (t2/update! :model/MetadataGenerationRun :id run-id :status (if (set? status) [:in status] status) changes))
 
 (mu/defn update-active-run! :- :int
   "Apply `changes` to the MetadataGenerationRun with `run-id` when it is active. Returns the number of rows updated."

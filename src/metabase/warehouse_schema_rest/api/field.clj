@@ -99,13 +99,6 @@
        (or (nil? new-semantic-type)
            (not (isa? new-semantic-type :type/FK)))))
 
-(defn- internal-remapping-allowed? [base-type semantic-type]
-  (and (isa? base-type :type/Integer)
-       (or
-        (nil? semantic-type)
-        (isa? semantic-type :type/Category)
-        (isa? semantic-type :type/Enum))))
-
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
@@ -113,7 +106,7 @@
   (doseq [{old-dim-id :id, old-dim-type :type} dimensions]
     (when (and old-dim-id
                (= :internal old-dim-type)
-               (not (internal-remapping-allowed? base-type new-semantic-type)))
+               (not (schema.field/internal-remapping-allowed? base-type new-semantic-type)))
       (warehouse-schema-rest.db/delete-dimension! old-dim-id))))
 
 (defn- update-nested-fields-on-json-unfolding-change!

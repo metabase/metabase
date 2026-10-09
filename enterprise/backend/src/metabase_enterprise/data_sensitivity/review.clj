@@ -18,6 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.field :as warehouse-schema.field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -158,14 +159,6 @@
     (:semantic_type :data_sensitivity) (keyword proposed_value)
     :description                       proposed_value))
 
-(defn- internal-remapping-allowed?
-  "The rule of the field API: an internal remapping needs an integer field with no semantic type, or a category or enum."
-  [base-type semantic-type]
-  (and (isa? base-type :type/Integer)
-       (or (nil? semantic-type)
-           (isa? semantic-type :type/Category)
-           (isa? semantic-type :type/Enum))))
-
 (defn- write-table!
   "Write the accepted suggestions `suggestions` of one table in one transaction and mark them applied or stale. For a
   suggestion over a human value, the person's value is cleared. Returns the outcome of each suggestion and the ids of
@@ -192,7 +185,7 @@
       (doseq [[field-id ids] dims
               :let [field    (get fields field-id)
                     new-type (some #(when (= :semantic_type (:attribute %)) (proposed-value %)) (by-field field-id))]
-              :when (not (internal-remapping-allowed? (:base_type field) new-type))]
+              :when (not (warehouse-schema.field/internal-remapping-allowed? (:base_type field) new-type))]
         (db/delete-dimensions! ids))
       (db/set-suggestion-status! (mapv :id writes) :applied)
       (db/set-suggestion-status! (vec (keep #(when (= :stale (::outcome %)) (:id %)) outcomes)) :stale)

@@ -116,12 +116,15 @@
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (:id db) :name "ds_semantic_rules" :active true}
                  :model/Field    _     {:table_id (:id table) :name "ds_count" :base_type :type/Integer}
-                 :model/Field    _     {:table_id (:id table) :name "ds_email" :base_type :type/Text}]
+                 :model/Field    _     {:table_id (:id table) :name "ds_email" :base_type :type/Text}
+                 :model/Field    _     {:table_id (:id table) :name "ds_id" :base_type :type/Integer
+                                        :semantic_type :type/PK}]
     (core-test/do-with-llm!
      (core-test/canned-llm {"ds_count" {:data_sensitivity "PUBLIC" :semantic_type "type/Email"}
-                            "ds_email" {:data_sensitivity "PII" :semantic_type "type/Email"}})
+                            "ds_email" {:data_sensitivity "PII" :semantic_type "type/Email"}
+                            "ds_id"    {:data_sensitivity "PUBLIC" :semantic_type "type/Category"}})
      (fn []
-       (testing "a semantic type that does not fit the field's type makes no suggestion"
+       (testing "a semantic type that does not fit the field's type, or would replace a key type, makes no suggestion"
          (let [run (start! db {:attributes [:semantic_type]})]
            (wait-ended (:id run))
            (is (= [["ds_email" "type/Email"]]
@@ -292,6 +295,46 @@
               (is (=? {:scope {:type :tables :table_ids [(:id (second tables))]} :attributes [:data_sensitivity]}
                       retry))
               (wait-ended (:id retry))))))))))
+
+(deftest retry-failed-skips-inactive-tables-test
+  (do-with-temp-tables
+   3
+   (fn [db tables]
+     (core-test/do-with-llm!
+      (fn [& [_model messages :as args]]
+        (if (#{"ds_01" "ds_02"} (table-name-in-message messages))
+          (throw (ex-info "Provider said no" {:error-code "provider_error"}))
+          (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args)))
+      (fn []
+        (let [ended (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
+          (t2/update! :model/Table (:id (nth tables 2)) {:active false})
+          (testing "retry-failed starts a run over the failed tables that are still active"
+            (let [retry (runner/retry-failed! db ended (mt/user->id :crowberto))]
+              (is (=? {:scope {:type :tables :table_ids [(:id (second tables))]}} retry))
+              (wait-ended (:id retry))))
+          (t2/update! :model/Table (:id (second tables)) {:active false})
+          (testing "retry-failed is a 400 when no failed table is still active"
+            (is (= 400 (:status-code (try (runner/retry-failed! db ended (mt/user->id :crowberto))
+                                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
+
+(deftest failed-table-usage-test
+  (testing "the usage of the chunks that finished in a table that failed counts in the run's usage"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db) :name "ds_chunks" :active true}
+                   :model/Field    _     {:table_id (:id table) :name "ds_ok" :base_type :type/Text}
+                   :model/Field    _     {:table_id (:id table) :name "ds_fail" :base_type :type/Text}]
+      (core-test/do-with-llm!
+       (fn [& [_model messages :as args]]
+         (if (re-find #"(?m)^- ds_fail \(" (:content (last messages)))
+           (throw (ex-info "Provider said no" {:error-code "provider_error"}))
+           (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args)))
+       (fn []
+         (mt/with-dynamic-fn-redefs [llm/chunk-size-for (constantly 1)]
+           (is (=? {:status        :succeeded
+                    :done_tables   0
+                    :failed_tables 1
+                    :usage         {:input_tokens 100 :output_tokens 20 :total_tokens 120}}
+                   (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))))))))))
 
 (deftest usage-limit-stop-test
   (testing "a usage limit ends the run with status usage_limit and leaves the remaining tables unprocessed"
