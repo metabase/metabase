@@ -1,8 +1,6 @@
 import type { MetricsViewerDisplayType } from "metabase/metrics-viewer/types";
 import type { ChartTypeOption } from "metabase/metrics-viewer/utils";
-import { ActionIcon, Flex, Icon } from "metabase/ui";
-
-import S from "./ChartTypePicker.module.css";
+import { SegmentedControl } from "metabase/ui";
 
 type ChartTypePickerProps = {
   chartTypes: ChartTypeOption[];
@@ -16,30 +14,14 @@ export function ChartTypePicker({
   onChange,
 }: ChartTypePickerProps) {
   return (
-    <Flex
-      className={S.root}
-      gap="xxs"
-      bg="background_page-secondary"
-      p="xxs"
-      bdrs="sm"
-    >
-      {chartTypes.map(({ type, icon }) => (
-        <ActionIcon
-          w="2rem"
-          h="1.5rem"
-          key={type}
-          variant={value === type ? "filled" : "subtle"}
-          bg={value === type ? "background_page-primary" : undefined}
-          onClick={() => onChange(type)}
-          aria-label={type}
-          className={value === type ? S.selected : undefined}
-        >
-          <Icon
-            name={icon}
-            c={value === type ? "core-brand" : "text-primary"}
-          />
-        </ActionIcon>
-      ))}
-    </Flex>
+    <SegmentedControl
+      data={chartTypes.map(({ type, icon }) => ({
+        value: type,
+        ariaLabel: type,
+        icon,
+      }))}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
