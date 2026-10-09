@@ -62,7 +62,7 @@
                                    (filter (comp #{(:id model)} :model_id))
                                    (map :name)
                                    set))]
-            (model-index/add-values! model-index)
+            (mt/with-test-user :crowberto (model-index/add-values! model-index))
             (testing "a non-admin who resolves to the router database sees the indexed values"
               (met/with-user-attributes! :rasta {"db_name" "__METABASE_ROUTER__"}
                 (is (= #{"Rome"} (search! :rasta)))))
