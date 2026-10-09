@@ -741,7 +741,7 @@
   ;; from the agent loop's in exactly one way: a call where no URI could be read is still a 200 with
   ;; an `:error` per item, where the agent loop needs it to be a failed call. Composing the entries
   ;; here is what lets both be true without the tool knowing either of us.
-  (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx nil
+  (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx
     (fn [entries]
       {:resources (mapv read-resource-item entries)
        ;; The tool's own envelope, so the text is identical to what the agent loop reads. Its

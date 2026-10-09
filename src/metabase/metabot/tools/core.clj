@@ -228,13 +228,14 @@
     (some :structured-output entries) (assoc :structured-output (mapv :structured-output entries))
     (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))))
 
-(defn entry
+(defn- entry
   "One item's [[::entry]]: the result of calling `tool`'s [[handle]] with `item-args`, or its declared
   failure rendered.
 
-  The default per-item step for [[run-batched]]. A consumer whose error vocabulary differs supplies
-  its own — rendering a recoverable error to text is neutral, but what a consumer does with an
-  unrecoverable one is not."
+  The per-item step, and the only one. A consumer that wants something else does it to the entries
+  afterwards through [[with-batched-entries]], which is strictly more than replacing this was: the
+  one thing it cannot change is that an undeclared exception from `handle` fails the whole call, and
+  that uniformity is the point rather than a limitation."
   [tool item-args ctx]
   (try
     (let [result (handle tool item-args ctx)]
@@ -279,22 +280,17 @@
   constructing one of its consumers' response shapes.
 
   So if that endpoint goes away, delete this with it. Nothing else should reach for it: a consumer
-  that wants one result per call wants [[run-batched]], and a consumer that wants to change how an
-  entry is built passes `:entry-fn`.
-
-  `opts` may carry `:entry-fn`, which takes one item's args and returns an [[::entry]]; it defaults
-  to [[entry]]."
-  [tool args ctx {:keys [entry-fn]} f]
-  (let [item-args (batched-args tool args)
-        entry-fn  (or entry-fn #(entry tool % ctx))]
-    (around-batch tool item-args ctx #(f (mapv entry-fn item-args)))))
+  that wants one result per call wants [[run-batched]], which is this with `compose` and the
+  nothing-was-delivered check on top."
+  [tool args ctx f]
+  (let [item-args (batched-args tool args)]
+    (around-batch tool item-args ctx
+                  (fn [] (f (mapv (fn [one] (entry tool one ctx)) item-args))))))
 
 (defn run-batched
   "Perform `tool`'s batched call and return one [[::result]].
 
-  What a consumer calls in place of [[handle]] when a tool satisfies [[BatchedTool]]. `entry-fn`
-  takes one item's args and returns an [[::entry]]; it defaults to [[entry]], and a consumer with its
-  own error vocabulary passes its own.
+  What a consumer calls in place of [[handle]] when a tool satisfies [[BatchedTool]].
 
   A declared recoverable error from one item becomes that item's contribution — unless every item
   failed, which is a failed call and throws [[all-items-failed!]]. A call that produced nothing must
@@ -307,24 +303,22 @@
   Anything other than a declared recoverable error is rethrown, so an undeclared exception fails the
   whole call and discards the items that did load. That is deliberate: a bug is not a partial
   result."
-  ([tool args ctx]
-   (run-batched tool args ctx nil))
-  ([tool args ctx entry-fn]
-   (with-batched-entries tool args ctx {:entry-fn entry-fn}
-     (fn [entries]
-       (let [result (compose tool entries ctx)]
-         (if (and (seq entries) (every? :failed? entries))
-           ;; The composed output, rendered, rather than a sentence of our own: the model reads
-           ;; exactly what a call that lost all but one item would have shown it.
-           (all-items-failed! {:count  (count entries)
-                               :output (render-text (:output result))})
-           result))))))
+  [tool args ctx]
+  (with-batched-entries tool args ctx
+    (fn [entries]
+      (let [result (compose tool entries ctx)]
+        (if (and (seq entries) (every? :failed? entries))
+          ;; The composed output, rendered, rather than a sentence of our own: the model reads
+          ;; exactly what a call that lost all but one item would have shown it.
+          (all-items-failed! {:count  (count entries)
+                              :output (render-text (:output result))})
+          result)))))
 
 (defn batched?
   "Whether `tool` can be called for several items at once.
 
-  A consumer does not normally ask: [[call]] does. This is here for a consumer that needs to know
-  for its own reasons — an MCP annotation, say."
+  Read by [[call]], to decide which of the two protocols to go through, and by [[validate-tool!]],
+  to decide whether there is a second declaration to check."
   [tool]
   (satisfies? BatchedTool tool))
 
@@ -335,16 +329,12 @@
   branch and does not need to know which kind it has. [[handle]] is the protocol method for one
   item's work; this is the function that performs a call.
 
-  `entry-fn` is the seam for a consumer whose error vocabulary differs from [[entry]]'s. It is only
-  reached for a batched tool, because a single-item call has no per-item step."
-  ([tool args ctx]
-   (if (batched? tool)
-     (run-batched tool args ctx)
-     (handle tool args ctx)))
-  ([tool args ctx entry-fn]
-   (if (batched? tool)
-     (run-batched tool args ctx entry-fn)
-     (handle tool args ctx))))
+  A consumer whose contract differs from `run-batched`'s — one that answers per item rather than per
+  call — uses [[with-batched-entries]] instead of this."
+  [tool args ctx]
+  (if (batched? tool)
+    (run-batched tool args ctx)
+    (handle tool args ctx)))
 
 ;;; ------------------------------------------------ Registration --------------------------------------------------
 

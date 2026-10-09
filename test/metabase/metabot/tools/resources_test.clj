@@ -46,7 +46,7 @@
   published response and should not export it for a test to lean on, and five lines of mirror is
   cheaper than making every assertion below reach into an entry."
   [{:keys [uris]}]
-  (tools/with-batched-entries read-resource/read-resource-tool {:uris (vec uris)} read-ctx nil
+  (tools/with-batched-entries read-resource/read-resource-tool {:uris (vec uris)} read-ctx
     (fn [entries]
       {:resources (mapv (fn [{:keys [item output failed? structured-output]}]
                           (cond-> {:uri (:uri item)}
