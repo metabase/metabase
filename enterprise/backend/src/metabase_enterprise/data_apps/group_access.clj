@@ -34,7 +34,7 @@
   [app group-id]
   (perms/with-global-permissions-lock
     (t2/with-transaction [_conn]
-      (api/check-404 (pos? (data-apps.db/delete-assignment! (:id app) group-id)))
+      (api/check-404 (pos? (data-apps.db/delete-assignments! (:id app) [group-id])))
       (when-not (= group-id (:id (perms/admin-group)))
         (when-let [collection (some-> (:id app) data-apps.db/data-app :resource_collection_id
                                       data-apps.db/resource-collection)]

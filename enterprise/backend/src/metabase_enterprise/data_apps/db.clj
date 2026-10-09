@@ -232,10 +232,12 @@
   (t2/insert! :model/DataAppGroupAssignment
               (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
 
-(defn delete-assignment!
-  "Remove one group assignment."
-  [app-id group-id]
-  (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id group-id))
+(defn delete-assignments!
+  "Remove the requested group assignments from an app."
+  [app-id group-ids]
+  (if (seq group-ids)
+    (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id [:in group-ids])
+    0))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."
