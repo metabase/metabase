@@ -504,6 +504,39 @@
 (defmethod descendants :default [_ _ _]
   nil)
 
+(defn descendants-batch-size
+  "The most ids that one [[descendants-batch]] call receives, and the most ids that its implementations put into one
+  query: `:descendants-batch-size` in `opts`, or 1000. A walk over a large instance can hold every Card at one level,
+  far more than a database accepts as bind parameters in one statement (65,535 on Postgres), so callers split the ids
+  into chunks of this size."
+  [opts]
+  (get opts :descendants-batch-size 1000))
+
+(defmulti descendants-batch
+  "[[descendants]] of the entities of `model-name` with `db-ids`, all at once: the union of their descendants, as a map
+  of `{[model-name database-id] sources}`. When two of the entities share a descendant, its sources are merged,
+  which may lose the detail of which entity reached it; callers that need that detail should call [[descendants]].
+
+  A walk over a whole collection tree calls this once per model per level instead of [[descendants]] once per
+  entity, with at most [[descendants-batch-size]] ids per call. The default does exactly that per-entity call. A
+  model whose [[descendants]] queries per entity can override it to query for every entity at once; an override must
+  return the same keys, putting no more than [[descendants-batch-size]] ids into any one query.
+
+  NOTE: This is called during **EXPORT**.
+
+  Dispatched on model-name."
+  {:arglists '([model-name db-ids opts])}
+  (fn [model-name _ _] model-name))
+
+(defn merge-descendants
+  "The union of the [[descendants]] maps that `f` returns for each of `db-ids`, with the sources of a shared descendant
+  merged, as [[descendants-batch]] returns them."
+  [f db-ids]
+  (transduce (map f) (partial merge-with merge) {} db-ids))
+
+(defmethod descendants-batch :default [model-name db-ids opts]
+  (merge-descendants #(descendants model-name % opts) db-ids))
+
 (defmulti required
   "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities that are necessary to load this
    entity back. Sort of reverse method for `dependencies`. This method will be called after determining all

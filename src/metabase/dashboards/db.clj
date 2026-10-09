@@ -20,6 +20,11 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
+(mu/defn dashboards
+  "The Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select :model/Dashboard :id [:in dashboard-ids]))
+
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
@@ -157,12 +162,12 @@
   [entity-ids :- [:set :string]]
   (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
 
-(mu/defn dashcard-serdes-columns
-  "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
-  `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
-             :dashboard_id dashboard-id))
+(mu/defn dashcard-serdes-columns-for-dashboards
+  "The id, Dashboard id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the
+  Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/DashboardCard :id :dashboard_id :card_id :action_id :parameter_mappings :visualization_settings]
+             :dashboard_id [:in dashboard-ids]))
 
 (mu/defn dashcard-series-columns
   "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
