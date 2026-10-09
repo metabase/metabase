@@ -5,7 +5,16 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
-import type { ResolvedGoalSegment } from "metabase/viz-core";
+import { isNotNull } from "metabase/utils/types";
+import {
+  type GoalData,
+  type ResolvedGoalSegment,
+  type ResolvedOpenEndedGoalSegment,
+  getSegmentColor,
+  resolveGoalValue,
+} from "metabase/viz-core";
+import type { GoalSegment } from "metabase-types/api";
+import { isGoalSegment } from "metabase-types/guards";
 
 import {
   BASE_FONT_SIZE,
@@ -156,6 +165,44 @@ export function fixSwappedMinMax(
   }
 
   return segment;
+}
+
+// a bound that is unset or can't resolve runs the segment to that end of the gauge
+export function resolveGaugeSegments(
+  data: GoalData,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter,
+): ResolvedGoalSegment[] {
+  const openEndedSegments = (segments ?? [])
+    .filter(isGoalSegment)
+    .flatMap((segment): ResolvedOpenEndedGoalSegment[] => {
+      const min = resolveGoalValue(data, segment.min).value;
+      const max = resolveGoalValue(data, segment.max).value;
+
+      if (min == null && max == null) {
+        return [];
+      }
+
+      return [
+        {
+          color: getSegmentColor(segment, getColor),
+          label: segment.label,
+          min,
+          max,
+        },
+      ];
+    });
+  const bounds = openEndedSegments
+    .flatMap((segment) => [segment.min, segment.max])
+    .filter(isNotNull);
+  const start = Math.min(...bounds);
+  const end = Math.max(...bounds);
+
+  return openEndedSegments.map((segment) => ({
+    ...segment,
+    min: segment.min ?? start,
+    max: segment.max ?? end,
+  }));
 }
 
 export function colorGetter(
