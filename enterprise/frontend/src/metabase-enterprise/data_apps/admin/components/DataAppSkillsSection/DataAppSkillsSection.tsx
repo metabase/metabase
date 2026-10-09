@@ -58,6 +58,8 @@ export const DataAppSkillsSection = () => {
         value={installSkillCommand}
         aria-label={t`Install command`}
         autosize
+        // The theme caps a textarea at 6 rows; fit the whole command instead.
+        maxRows={installSkillCommand.split("\n").length}
         ff="monospace"
       />
     </Stack>
