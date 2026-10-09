@@ -174,17 +174,19 @@ function ValidTypeFixtures() {
 
   void namedMeasureValue;
 
+  const createdMonth = breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+    unit: "month",
+    name: "created_month",
+  });
+
   const namedBreakoutResult = useMetabaseQuery(
     defineQuery({
       source: TEST_SCHEMA.tables.orders,
       aggregations: [count()],
-      breakouts: [
-        breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
-          unit: "month",
-          name: "created_month",
-        }),
-      ],
+      breakouts: [createdMonth],
+      orderBys: [orderBy(createdMonth, "desc")],
     }),
+    { orderBys: [orderBy(createdMonth, "asc")] },
   );
 
   const namedBreakoutValue: string | Date | null | undefined =
