@@ -82,22 +82,22 @@ function forceTokenRefreshOnNextRequest() {
 
 function checkProviderErrors(resource: Resource, mode: TokenMode) {
   cy.log("the provider returns an HTTP error");
-  mockTokenProvider("httpErrorProvider", { statusCode: 500 });
+  mockTokenProvider(`${mode}HttpErrorProvider`, { statusCode: 500 });
   loadGuestEmbedForMode(resource, mode);
-  cy.wait("@httpErrorProvider");
+  cy.wait(`@${mode}HttpErrorProvider`);
   H.getSimpleEmbedIframeContent()
     .findByText(HTTP_ERROR_MESSAGE)
     .should("be.visible");
 
   cy.log("the provider returns a wrong response shape");
   signJwt(resource, 600).then((freshToken) => {
-    mockTokenProvider("wrongShapeProvider", {
+    mockTokenProvider(`${mode}WrongShapeProvider`, {
       statusCode: 200,
       body: { token: freshToken },
     });
   });
   loadGuestEmbedForMode(resource, mode);
-  cy.wait("@wrongShapeProvider");
+  cy.wait(`@${mode}WrongShapeProvider`);
   H.getSimpleEmbedIframeContent()
     .findByText(WRONG_SHAPE_MESSAGE)
     .should("be.visible");
@@ -404,14 +404,15 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
       });
     });
 
-    it("refresh-only: refreshes an expired token, shows provider errors, and keeps filters working after a refresh", () => {
+    it("refreshes an expired token, fetches the first token, shows provider errors, and keeps filters working after a refresh", () => {
       cy.get<number>("@dashboardId").then((dashboardId) => {
         const resource: Resource = { type: "dashboard", id: dashboardId };
 
+        cy.log("refresh-only");
         cy.log("the provider returns a fresh token");
         signJwt(resource, -60).then((expiredToken) => {
           signJwt(resource, 600).then((freshToken) => {
-            mockTokenProvider("guestTokenProvider", {
+            mockTokenProvider("refreshOnlyProvider", {
               statusCode: 200,
               body: { jwt: freshToken },
             });
@@ -423,7 +424,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           });
         });
 
-        cy.wait("@guestTokenProvider").then((interception) => {
+        cy.wait("@refreshOnlyProvider").then((interception) => {
           expect(interception.request.body).to.deep.include({
             entityType: "dashboard",
             entityId: dashboardId,
@@ -434,6 +435,33 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
         H.getSimpleEmbedIframeContent().should("contain", "Orders");
 
         checkProviderErrors(resource, "refresh-only");
+
+        cy.log("initial-token");
+        cy.log("the provider returns a fresh token");
+        signJwt(resource, 600).then((freshToken) => {
+          mockTokenProvider("initialTokenProvider", {
+            statusCode: 200,
+            body: { jwt: freshToken },
+          });
+        });
+
+        loadGuestEmbed(resource, {
+          "dashboard-id": dashboardId,
+          "custom-context": "test-custom-context",
+        });
+
+        cy.wait("@initialTokenProvider").then((interception) => {
+          expect(interception.request.url).to.include("response=json");
+          expect(interception.request.body).to.deep.include({
+            entityType: "dashboard",
+            entityId: dashboardId,
+            customContext: "test-custom-context",
+          });
+        });
+
+        H.getSimpleEmbedIframeContent().should("contain", "Orders");
+
+        checkProviderErrors(resource, "initial-token");
       });
 
       cy.get<number>("@priceDashboardId").then((priceDashboardId) => {
@@ -456,38 +484,6 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
         });
       });
     });
-
-    it("initial-token: fetches the first token and shows provider errors", () => {
-      cy.get<number>("@dashboardId").then((dashboardId) => {
-        const resource: Resource = { type: "dashboard", id: dashboardId };
-
-        cy.log("the provider returns a fresh token");
-        signJwt(resource, 600).then((freshToken) => {
-          mockTokenProvider("guestTokenProvider", {
-            statusCode: 200,
-            body: { jwt: freshToken },
-          });
-        });
-
-        loadGuestEmbed(resource, {
-          "dashboard-id": dashboardId,
-          "custom-context": "test-custom-context",
-        });
-
-        cy.wait("@guestTokenProvider").then((interception) => {
-          expect(interception.request.url).to.include("response=json");
-          expect(interception.request.body).to.deep.include({
-            entityType: "dashboard",
-            entityId: dashboardId,
-            customContext: "test-custom-context",
-          });
-        });
-
-        H.getSimpleEmbedIframeContent().should("contain", "Orders");
-
-        checkProviderErrors(resource, "initial-token");
-      });
-    });
   });
 
   describe("question", () => {
@@ -502,14 +498,15 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
       });
     });
 
-    it("refresh-only: refreshes an expired token, shows provider errors, and keeps filters working after a refresh", () => {
+    it("refreshes an expired token, fetches the first token, shows provider errors, keeps filters working after a refresh, and switches to the question the refreshed token names", () => {
       cy.get<number>("@questionId").then((questionId) => {
         const resource: Resource = { type: "question", id: questionId };
 
+        cy.log("refresh-only");
         cy.log("the provider returns a fresh token");
         signJwt(resource, -60).then((expiredToken) => {
           signJwt(resource, 600).then((freshToken) => {
-            mockTokenProvider("guestTokenProvider", {
+            mockTokenProvider("refreshOnlyProvider", {
               statusCode: 200,
               body: { jwt: freshToken },
             });
@@ -521,7 +518,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           });
         });
 
-        cy.wait("@guestTokenProvider").then((interception) => {
+        cy.wait("@refreshOnlyProvider").then((interception) => {
           expect(interception.request.body).to.deep.include({
             entityType: "question",
             entityId: questionId,
@@ -534,6 +531,35 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           .should("exist");
 
         checkProviderErrors(resource, "refresh-only");
+
+        cy.log("initial-token");
+        cy.log("the provider returns a fresh token");
+        signJwt(resource, 600).then((freshToken) => {
+          mockTokenProvider("initialTokenProvider", {
+            statusCode: 200,
+            body: { jwt: freshToken },
+          });
+        });
+
+        loadGuestEmbed(resource, {
+          "question-id": questionId,
+          "custom-context": "test-custom-context",
+        });
+
+        cy.wait("@initialTokenProvider").then((interception) => {
+          expect(interception.request.url).to.include("response=json");
+          expect(interception.request.body).to.deep.include({
+            entityType: "question",
+            entityId: questionId,
+            customContext: "test-custom-context",
+          });
+        });
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("visualization-root")
+          .should("exist");
+
+        checkProviderErrors(resource, "initial-token");
       });
 
       cy.get<number>("@priceQuestionId").then((priceQuestionId) => {
@@ -555,9 +581,8 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           },
         });
       });
-    });
 
-    it("refresh-only: switches to the question the refreshed token names", () => {
+      cy.log("switches to the question the refreshed token names");
       cy.get<number>("@categoryQuestionId").then((categoryQuestionId) => {
         cy.get<number>("@otherQuestionId").then((otherQuestionId) => {
           const resource: Resource = {
@@ -568,7 +593,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           signJwt(resource, 600).then((initialToken) => {
             signJwt({ type: "question", id: otherQuestionId }, 600).then(
               (freshToken) => {
-                mockTokenProvider("guestTokenProvider", {
+                mockTokenProvider("switchQuestionProvider", {
                   statusCode: 200,
                   body: { jwt: freshToken },
                 });
@@ -603,7 +628,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
               cy.button("Update filter").click();
             });
 
-            cy.wait("@guestTokenProvider");
+            cy.wait("@switchQuestionProvider");
           });
 
           // The refreshed token names a question that takes no
@@ -616,40 +641,6 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
           // "Vendor" is only on the question the refreshed token names.
           H.getSimpleEmbedIframeContent().findByText("Vendor").should("exist");
         });
-      });
-    });
-
-    it("initial-token: fetches the first token and shows provider errors", () => {
-      cy.get<number>("@questionId").then((questionId) => {
-        const resource: Resource = { type: "question", id: questionId };
-
-        cy.log("the provider returns a fresh token");
-        signJwt(resource, 600).then((freshToken) => {
-          mockTokenProvider("guestTokenProvider", {
-            statusCode: 200,
-            body: { jwt: freshToken },
-          });
-        });
-
-        loadGuestEmbed(resource, {
-          "question-id": questionId,
-          "custom-context": "test-custom-context",
-        });
-
-        cy.wait("@guestTokenProvider").then((interception) => {
-          expect(interception.request.url).to.include("response=json");
-          expect(interception.request.body).to.deep.include({
-            entityType: "question",
-            entityId: questionId,
-            customContext: "test-custom-context",
-          });
-        });
-
-        H.getSimpleEmbedIframeContent()
-          .findByTestId("visualization-root")
-          .should("exist");
-
-        checkProviderErrors(resource, "initial-token");
       });
     });
   });
