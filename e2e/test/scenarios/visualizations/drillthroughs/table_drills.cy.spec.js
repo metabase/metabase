@@ -547,14 +547,17 @@ describe("Issue 58247", () => {
   const text =
     "Omnis pariatur autem adipisci eligendi. Eos aut accusantium dolorem et. Numquam vero debitis id provident odit doloremque enim.";
 
-  it("should properly preselect filter when clicking a string 'Contains...' or 'Does not contain...' filter (metabase#58247)", () => {
+  it("should properly preselect filter when clicking a string 'Contains...' filter (metabase#58247)", () => {
     H.tableInteractiveBody().findByText(text).click();
     H.popover().findByText("Contains…").click();
-    H.popover().findByText("Contains").should("be.visible");
 
-    H.openTable({ table: REVIEWS_ID, limit: 10 });
+    H.popover().findByText("Contains").should("be.visible");
+  });
+
+  it("should properly preselect filter when clicking a string 'Does not contain...' filter (metabase#58247)", () => {
     H.tableInteractiveBody().findByText(text).click();
     H.popover().findByText("Does not contain…").click();
+
     H.popover().findByText("Does not contain").should("be.visible");
   });
 });
