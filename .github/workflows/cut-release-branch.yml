@@ -192,6 +192,21 @@ jobs:
 
             console.log(`Created timeline event ${name}`);
 
+      - name: Start the data-app skills cut in agent-skills
+        id: agent_skills
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: 'agent-skills',
+              workflow_id: 'cut-data-app-skills.yml',
+              ref: 'main',
+              inputs: { version: '${{ steps.preflight.outputs.next }}' },
+            });
+
       - name: Notify Slack
         uses: actions/github-script@v9
         env:
@@ -207,6 +222,7 @@ jobs:
             const milestoneFailed = '${{ steps.milestone.outcome }}' === 'failure';
             const labelFailed = '${{ steps.label.outcome }}' === 'failure';
             const timelineFailed = '${{ steps.timeline.outcome }}' === 'failure';
+            const agentSkillsFailed = '${{ steps.agent_skills.outcome }}' === 'failure';
             const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
 
             const owner = context.repo.owner;
@@ -230,6 +246,9 @@ jobs:
               timelineFailed
                 ? `:warning: Logging the cut to the <https://stats.metabase.com|stats> release timeline failed — please add an \`x.${next}.0\` event manually.`
                 : null,
+              agentSkillsFailed
+                ? `:warning: Starting the data-app skills cut failed — please run <https://github.com/${owner}/agent-skills/actions/workflows/cut-data-app-skills.yml|Cut data app skills> with version *${next}*.`
+                : `Data-app skills for v${next}: approve the <https://github.com/${owner}/agent-skills/pulls|agent-skills PR> that adds \`skills/data-apps/${next}\`.`,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
                 : null,
