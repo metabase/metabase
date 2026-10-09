@@ -1863,20 +1863,177 @@ def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
     return sql
 
 
+# Nodes that write, lock, or run something other than a query. A SELECT can hold some of these: `SELECT ... INTO`
+# creates a table, `FOR UPDATE`/`FOR SHARE` take row locks, and Postgres lets a CTE body be a DELETE ... RETURNING.
+# Spark and Hive's `SELECT TRANSFORM (...) USING '<command>'` pipes rows through a program on the cluster.
+_NOT_READ_ONLY_NODES = (
+    exp.DML, exp.DDL, exp.Into, exp.Lock, exp.Command, exp.Set, exp.Grant, exp.Revoke, exp.Drop, exp.Alter,
+    exp.TruncateTable, exp.Transaction, exp.Commit, exp.Rollback, exp.Use, exp.Execute, exp.LoadData, exp.Kill,
+    exp.Pragma, exp.Cache, exp.Uncache, exp.Refresh, exp.Analyze, exp.NextValueFor, exp.QueryTransform,
+)
+
+# Advancing a sequence is a write a SELECT can make. sqlglot parses only the SQL-standard `NEXT VALUE FOR` as its
+# own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as a `.NEXTVAL` pseudo-column, and
+# Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`.
+_SEQUENCE_WRITE_FUNCTIONS = frozenset({"nextval", "setval", "getnextval"})
+
+# Built-in functions that reach past the query that calls them: they take a lock that can outlive it, change the
+# session's settings, signal or stop another session, or hold the connection waiting.
+_SESSION_EFFECT_FUNCTIONS = frozenset(
+    {
+        # Postgres advisory locks
+        "pg_advisory_lock", "pg_advisory_lock_shared", "pg_try_advisory_lock", "pg_try_advisory_lock_shared",
+        "pg_advisory_xact_lock", "pg_advisory_xact_lock_shared", "pg_try_advisory_xact_lock",
+        "pg_try_advisory_xact_lock_shared", "pg_advisory_unlock", "pg_advisory_unlock_shared",
+        "pg_advisory_unlock_all",
+        # MySQL named locks
+        "get_lock", "release_lock", "release_all_locks",
+        # session settings and signals
+        "set_config", "pg_notify", "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf",
+        # waiting
+        "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark",
+    }
+)
+
+
+def _function_name(node: exp.Expression):
+    """The lower-case name of the function `node` calls, or None when it is not a function call."""
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower()
+    # None of the names in `_SESSION_EFFECT_FUNCTIONS` has a node of its own today. This keeps the list working if a
+    # sqlglot upgrade gives one of them its own node.
+    if isinstance(node, exp.Func):
+        return node.sql_name().lower()
+    return None
+
+
+def _session_effect_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or None."""
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in _SESSION_EFFECT_FUNCTIONS:
+            return name
+    return None
+
+
+# SQL Server table hints that take update or exclusive locks, or hold shared ones to the end of the transaction.
+# `NOLOCK`, `INDEX(...)` and the rest only steer how a plain read runs.
+_LOCKING_TABLE_HINTS = frozenset(
+    {"UPDLOCK", "XLOCK", "TABLOCK", "TABLOCKX", "HOLDLOCK", "SERIALIZABLE", "REPEATABLEREAD"}
+)
+
+
+def _writes_or_locks(node: exp.Expression) -> bool:
+    if isinstance(node, _NOT_READ_ONLY_NODES):
+        return True
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower() in _SEQUENCE_WRITE_FUNCTIONS
+    if isinstance(node, exp.Column):
+        return bool(node.table) and node.name.lower() == "nextval"
+    if isinstance(node, exp.WithTableHint):
+        return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
+    # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
+    # table-valued function named `t`.
+    if isinstance(node, exp.Table) and isinstance(node.this, exp.Anonymous):
+        return any(
+            isinstance(arg, exp.Column) and not arg.table and arg.name.upper() in _LOCKING_TABLE_HINTS
+            for arg in node.this.expressions
+        )
+    return False
+
+
+# Any other function with side effects, a user-defined one included, passes this check: `_SESSION_EFFECT_FUNCTIONS`
+# names the built-in ones known to matter, and no list of names can be complete. Grants on the database credential
+# are what keep such a function from writing. The read-only flag on the QP's connection does not on every driver:
+# the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
+def _read_only(stmt: exp.Expression) -> bool:
+    return not any(_writes_or_locks(node) for node in stmt.walk())
+
+
+# Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
+# reads a bare one as a table alias: `SELECT 1 FROM t EXEC('...')` parses as one SELECT and runs as two statements.
+# All are reserved words there, so a query can only use one as a name inside brackets or quotes.
+# `MERGE`, `FETCH` and `USE` are left out: they also appear in join hints, `OFFSET ... FETCH` and `USE HINT`.
+_TSQL_STATEMENT_WORDS = frozenset(
+    {
+        "ALTER", "BACKUP", "BEGIN", "BULK", "CHECKPOINT", "CLOSE", "COMMIT", "CREATE", "DBCC", "DEALLOCATE",
+        "DECLARE", "DELETE", "DENY", "DROP", "EXEC", "EXECUTE", "GOTO", "GRANT", "INSERT", "KILL", "OPEN", "PRINT",
+        "RAISERROR", "READTEXT", "RECONFIGURE", "RESTORE", "REVERT", "REVOKE", "ROLLBACK", "SAVE", "SET", "SHUTDOWN",
+        "THROW", "TRUNCATE", "UPDATE", "UPDATETEXT", "WAITFOR", "WRITETEXT",
+    }
+)
+
+# Dialects whose server runs the body of a `/*! ... */` comment as SQL, and reads `--` as a comment only when
+# whitespace follows it.
+_MYSQL_FAMILY_DIALECTS = frozenset({"mysql", "mariadb", "singlestore", "starrocks", "doris", "tidb"})
+
+
+def _hidden_sql(sql: str, dialect: str):
+    """`(reason, detail)` when `sql` holds text its database would run and sqlglot would not parse as a statement of
+    its own, else None.
+
+    The MySQL marks are looked for in the raw text, string literals included. Finding where a literal ends would need
+    the parser again, and MySQL's `NO_BACKSLASH_ESCAPES` mode ends one where sqlglot does not: after a backslash,
+    sqlglot reads a quote as part of the literal and MySQL in that mode reads it as the literal's end. A backslash
+    before a quote is refused for that reason, since everything after it may be SQL the parser took for text.
+    """
+    if dialect == "tsql":
+        quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
+        for tok in sqlglot.tokenize(sql, read=dialect):
+            if tok.token_type not in quoted and tok.text.upper() in _TSQL_STATEMENT_WORDS:
+                return ("statement-word", tok.text.upper())
+    if dialect in _MYSQL_FAMILY_DIALECTS:
+        if "/*!" in sql or "/*M!" in sql:
+            return ("executable-comment", None)
+        if re.search(r"--(?=\S)", sql) is not None:
+            return ("bare-dash-comment", None)
+        if re.search(r"\\['\"`]", sql) is not None:
+            return ("backslash-quote", None)
+    return None
+
+
+def _not_read_only_reason(stmts, sql: str, dialect: str):
+    """`(reason, detail)` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else None."""
+    if not stmts:
+        return ("not-a-select", None)
+    if len(stmts) != 1:
+        return ("multiple-statements", None)
+    if not isinstance(stmts[0], (exp.Select, exp.SetOperation)):
+        return ("not-a-select", None)
+    if not _read_only(stmts[0]):
+        return ("writes-or-locks", None)
+    function = _session_effect_function(stmts[0])
+    if function is not None:
+        return ("session-function", function)
+    return _hidden_sql(sql, dialect)
+
+
 def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
+
+    `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
+    its tree, and statements holding only a comment after the last semicolon are not counted. When the SQL is not a
+    read-only SELECT, `reason` says why, with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
         stmts = sqlglot.parse(_split_placeholder_casts(sql, dialect), read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
-        if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
+        if stmt_type == "read-only":
+            stmts = [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
+        elif stmt_type != "read":
+            allowed_types = (exp.Update, exp.Insert, exp.Delete)
+        problem = _not_read_only_reason(stmts, sql, dialect) if stmt_type == "read-only" else None
+        if problem is not None:
+            result["reason"], result["reason_detail"] = problem
         if len(stmts) == 1:
             result["is_single_stmt?"] = True
-            if isinstance(stmts[0], allowed_types):
+            if isinstance(stmts[0], allowed_types) and problem is None:
                 result["allowed_stmt_type?"] = True
             result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
         result["error"] = str(e)
+    if stmt_type == "read-only" and "error" in result:
+        result["reason"] = "unparseable"
     return json.dumps(result)
