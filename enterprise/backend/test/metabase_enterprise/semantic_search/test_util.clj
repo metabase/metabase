@@ -244,6 +244,7 @@
                 mock-documents-for-embeddings
                 base-embedding-vectors)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *extra-mock-embeddings*
   "Dynamic var for test-specific mock embeddings. Merged with [[mock-embeddings]] in [[get-mock-embedding]]."
   nil)

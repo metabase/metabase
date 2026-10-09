@@ -10,6 +10,20 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
+(deftest ^:parallel handle-agent-or-api-error-test
+  (testing "an API check's refusal goes back to the agent as output"
+    (doseq [status-code [400 403 404]]
+      (is (= {:output "Refused." :status-code status-code}
+             (metabot.tools.util/handle-agent-or-api-error (ex-info "Refused." {:status-code status-code}))))))
+  (testing "an agent error keeps its flags"
+    (is (= {:output "No access." :status-code 403 :terminal-error? true}
+           (metabot.tools.util/handle-agent-or-api-error
+            (ex-info "No access." {:agent-error? true :status-code 403 :terminal-error? true})))))
+  (testing "anything else is rethrown"
+    (doseq [data [{} {:status-code 500}]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (metabot.tools.util/handle-agent-or-api-error (ex-info "boom" data)))))))
+
 (deftest ^:parallel schedule->schedule-map-test
   (testing "hourly schedule"
     (is (= {:schedule_type  "hourly"
@@ -69,6 +83,26 @@
             {:frequency    :monthly
              :hour         12
              :day-of-month :mid})))))
+
+(deftest ^:parallel schedule->schedule-map-drops-unknown-days-test
+  (is (= [nil nil]
+         (for [day ["" "mo"]]
+           (:schedule_day
+            (metabot.tools.util/schedule->schedule-map
+             {:frequency   :daily
+              :hour        9
+              :day-of-week day}))))))
+
+(deftest ^:parallel schedule->schedule-map-snake-case-string-values-test
+  (testing "snake_case keys and string values normalize to the same result as kebab-case keywords"
+    (are [kebab snake] (= (metabot.tools.util/schedule->schedule-map kebab)
+                          (metabot.tools.util/schedule->schedule-map snake))
+      ;; weekly, keyed by day of week
+      {:frequency :weekly,   :hour 8, :day-of-week  :monday}
+      {:frequency "weekly",  :hour 8, :day_of_week  "monday"}
+      ;; monthly, keyed by day of month
+      {:frequency :monthly,  :hour 6, :day-of-month :first-monday}
+      {:frequency "monthly", :hour 6, :day_of_month "first-monday"})))
 
 (deftest metabot-scope-query-test
   (testing "metabot-scope-query with collection hierarchy"
@@ -154,44 +188,17 @@
           (is (contains? card-ids (:id open-model)))
           (is (not (contains? card-ids (:id destination-model)))))))))
 
-(deftest add-table-reference-test
-  (testing "add-table-reference function adds table-reference for FK fields"
-    (mt/dataset test-data
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [test-db-id (mt/id)
-              mp (lib-be/application-database-metadata-provider test-db-id)
-              orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-              columns (lib/visible-columns orders-query)]
-          (testing "adds table-reference for implicitly joined columns"
-            (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
-                  user-name-column (first (filter #(and (= "NAME" (:name %))
-                                                        (:fk-field-id %)) processed-columns))]
-              (is (some? user-name-column) "Expected to find implicitly joined User NAME column")
-              (is (contains? user-name-column :table-reference))
-              (is (string? (:table-reference user-name-column)))
-              (is (seq (:table-reference user-name-column)))
-              (is (= "User" (:table-reference user-name-column)))))
-          (testing "does not add table-reference for direct table columns"
-            (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
-                  id-column (first (filter #(and (= "ID" (:name %))
-                                                 (not (:fk-field-id %))) processed-columns))]
-              (is (some? id-column) "Expected to find direct ORDERS ID column")
-              (is (not (contains? id-column :table-reference)))))
-          (testing "handles columns without fk-field-id or table-id gracefully"
-            (let [mock-column {:name "test-column" :type :string}
-                  result (metabot.tools.util/add-table-reference orders-query mock-column)]
-              (is (= mock-column result))
-              (is (not (contains? result :table-reference)))))
-          (testing "handles columns with fk-field-id but no table-id"
-            (let [mock-column {:name "test-fk" :fk-field-id 123}
-                  result (metabot.tools.util/add-table-reference orders-query mock-column)]
-              (is (= mock-column result))
-              (is (not (contains? result :table-reference)))))
-          (testing "handles columns with table-id but no fk-field-id"
-            (let [mock-column {:name "test-field" :table-id (mt/id :orders)}
-                  result (metabot.tools.util/add-table-reference orders-query mock-column)]
-              (is (= mock-column result))
-              (is (not (contains? result :table-reference))))))))))
+(deftest ^:parallel result-column-table-reference-test
+  (testing "result columns name the FK that an implicitly joined column is reached through"
+    (let [mp           (lib-be/application-database-metadata-provider (mt/id))
+          orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (is (=? {(mt/id :people :name)    "User"
+               (mt/id :products :title) "Product"
+               (mt/id :orders :total)   nil}
+              (into {}
+                    (map (comp (juxt :field_id :table_reference)
+                               #(metabot.tools.util/->result-column orders-query %)))
+                    (lib/visible-columns orders-query)))))))
 
 (deftest metabot-verified-content-test
   (testing "metabot-scope-query with verified content filtering"

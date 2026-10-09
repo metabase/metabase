@@ -4,6 +4,5 @@ created_at: '2025-05-28T17:49:20.649159Z'
 entity_id: metabotmetabotmetabot
 updated_at: '2025-05-28T17:49:20.649159Z'
 serdes/meta:
-- id: metabotmetabotmetabot
-  model: Metabot
+- model: Metabot
 prompts: []

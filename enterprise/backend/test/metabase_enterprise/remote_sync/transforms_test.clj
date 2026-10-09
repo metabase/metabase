@@ -30,7 +30,8 @@
   (testing "Creating a transform creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}]
           (events/publish-event! :event/transform-create {:object transform})
@@ -56,7 +57,8 @@
   (testing "Updating a transform updates the RemoteSyncObject entry when setting is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform transform {:name "Test Transform" :collection_id coll-id}
                        :model/RemoteSyncObject _rso {:model_type "Transform"
@@ -108,7 +110,8 @@
   (testing "Creating a transform tag creates a RemoteSyncObject entry when transform sync is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/TransformTag tag {:name "Test Tag"}]
           (events/publish-event! :event/transform-tag-create {:object tag})
           (is (t2/exists? :model/RemoteSyncObject
@@ -610,7 +613,8 @@ serdes/meta:
   (testing "Creating a PythonLibrary creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "PythonLibrary"
@@ -632,7 +636,8 @@ serdes/meta:
   (testing "Updating a PythonLibrary updates the RemoteSyncObject entry when setting is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
                       {:status "synced"})
@@ -732,7 +737,8 @@ serdes/meta:
   (testing "Import updates local PythonLibrary when remote has same entity_id"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local version"})
@@ -1066,7 +1072,8 @@ serdes/meta:
   (testing "Creating, updating and deleting a transform test tracks it when remote-sync-transforms is enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
                        :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
           (is (= "create" (:status (transform-test-rso test-id))))
@@ -1083,7 +1090,8 @@ serdes/meta:
   (testing "Deleting a transform marks its tests for deletion, so their files leave the branch with its own"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
                        :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
           (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))

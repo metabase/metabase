@@ -29,7 +29,11 @@ jest.mock("metabase/visualizations/register", () => ({
 
 // Jest runs React 18 on localhost, which shows the React 18 warning banner.
 // Each test sets the host React major version instead.
+// Without the real module behind it, isHostReactVersionSupported is undefined
+// here, and anything that loads the SDK hooks throws: each of them calls that
+// check when its module loads.
 jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  ...jest.requireActual("embedding-sdk-bundle/lib/host-react-version"),
   getHostReactMajorVersion: jest.fn(),
 }));
 
@@ -40,7 +44,7 @@ jest.mock("metabase/embedding-sdk/config", () => ({
   EMBEDDING_SDK_CONFIG: {
     isEmbeddingSdk: true,
     metabaseClientRequestHeader: "embedding-simple",
-    enableEmbeddingSettingKey: "enable-embedding-simple",
+    enableEmbeddingSettingKey: "enable-embedding-modular",
     tokenFeatureKey: "embedding_simple",
   },
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG: {
@@ -64,7 +68,7 @@ const setup = ({ hostReactMajorVersion = 19, ...options }: Options) => {
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "enable-embedding-simple": options.isSimpleEmbeddingEnabled ?? true,
+    "enable-embedding-modular": options.isSimpleEmbeddingEnabled ?? true,
   });
 
   const MINUTE = 60;

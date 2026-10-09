@@ -199,14 +199,17 @@
   \"service unavailable\" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
   `0` to allow an unbounded queue.")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *network-timeout-ms*
   "Maximum amount of time to wait for a response from the database, in ms."
   (jdbc-network-timeout-ms))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
   H2 databases from the API, but this flag is here to disable that behavior for syncing existing databases, or when
@@ -217,10 +220,12 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *impersonation-allow-write?*
   "Whether write-back operations are permitted while connection impersonation is active. Normally `false`."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-testing-sqlite-connections*
   "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
   users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled

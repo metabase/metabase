@@ -42,12 +42,12 @@ export const CustomHomePageModal = ({
           <Box ml="0.5rem" mr="2.5rem">
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
             >{t`You can change this in Admin > Settings > General.`}</Text>
           </Box>
         ),

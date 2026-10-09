@@ -112,6 +112,7 @@ export const CreateStructuredQuestionModal = ({
       size="80%"
       title={t`Create new question`}
       padding="xl"
+      classNames={{ content: S.modalContent, body: S.modalBody }}
     >
       <Box h="70vh" className={S.notebookContainer}>
         <Notebook

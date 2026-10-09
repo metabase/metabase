@@ -6,16 +6,14 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { RemoteSyncOutcome, RemoteSyncTaskUser } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
 
 const STARTED_AT = "2026-09-15T22:06:23Z";
-const STARTED_AT_TIME = new Date(STARTED_AT).toLocaleTimeString([], {
-  hour: "numeric",
-  minute: "2-digit",
-});
+const STARTED_AT_TIME = dayjs(STARTED_AT).format("LT");
 
 const INITIATED_BY_USER: RemoteSyncTaskUser = {
   id: 231,

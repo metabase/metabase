@@ -1,12 +1,15 @@
 import { addLocale, useLocale } from "ttag";
 
 import { color } from "metabase/ui/colors";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import { NULL_DIMENSION_KEY } from "metabase/utils/constants";
-import type { PieRow, RawSeries } from "metabase-types/api";
+import type { PieRow, RawSeries, RowValues } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+
+import { getHexColor } from "../../lib/color";
 
 import { getAggregatedRows, getColors, getKeyFromDimensionValue } from "./pie";
 
@@ -207,6 +210,69 @@ describe("getColors", () => {
     };
 
     expect(getColors(rawSeries, settings).Doohickey).toBe(color("accent3"));
+  });
+
+  describe("null dimension values (metabase#81868)", () => {
+    const getRawSeries = (rows: RowValues[]) =>
+      // getColors only reads rows and cols off the series
+      [
+        {
+          data: createMockDatasetData({
+            rows,
+            cols: [
+              createMockColumn({ name: "Category" }),
+              createMockColumn({ name: "Count" }),
+            ],
+          }),
+        },
+      ] as RawSeries;
+    const settings = {
+      "pie.metric": "Count",
+      "pie.dimension": "Category",
+    };
+
+    it("should keep the default color a null slice has always had", () => {
+      const rawSeries = getRawSeries([
+        ["Doohickey", 2],
+        [null, 1],
+      ]);
+
+      expect(getColors(rawSeries, settings)[NULL_DIMENSION_KEY]).toBe(
+        getHexColor(getColorsForValues(["Doohickey", "null"]).null),
+      );
+    });
+
+    it("should give a color to the string 'null'", () => {
+      const rawSeries = getRawSeries([
+        ["Doohickey", 2],
+        ["null", 1],
+      ]);
+
+      expect(getColors(rawSeries, settings)).toEqual({
+        Doohickey: expect.stringMatching(/^#[0-9a-f]{6}$/i),
+        null: expect.stringMatching(/^#[0-9a-f]{6}$/i),
+      });
+    });
+
+    it("should give separate colors to null and the string 'null'", () => {
+      const rawSeries = getRawSeries([
+        ["null", 2],
+        [null, 1],
+      ]);
+      const result = getColors(rawSeries, {
+        ...settings,
+        // getColors only reads the key, color and defaultColor of a row
+        "pie.rows": [
+          { key: "null", defaultColor: false, color: "#FF0000" },
+          { key: NULL_DIMENSION_KEY, defaultColor: false, color: "#0000FF" },
+        ] as PieRow[],
+      });
+
+      expect(result).toEqual({
+        null: "#FF0000",
+        [NULL_DIMENSION_KEY]: "#0000FF",
+      });
+    });
   });
 });
 

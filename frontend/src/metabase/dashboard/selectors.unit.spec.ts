@@ -13,7 +13,11 @@ import {
   getDashboardHeaderParameters,
   getEditingParameterId,
   getIsEditingParameter,
+  getIsLastSeenDashboardFixedWidth,
   getIsSharing,
+  getLastSeenDashboard,
+  getLastSeenDashboardHeaderParameters,
+  getLastSeenTabDashcards,
   getParameters,
   getQuestionByCard,
   getSelectedTabId,
@@ -564,6 +568,112 @@ describe("getQuestionByCard", () => {
 
     first.forEach((question, index) => {
       expect(question).toBe(second[index]);
+    });
+  });
+
+  describe("getLastSeenTabDashcards", () => {
+    // The active pointer is null, mimicking the window during a (re)fetch when
+    // the layout can only be read from the in-memory Redux cache by id.
+    const CACHED_STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            dashcards: [10, 11, 12],
+            tabs: [
+              createMockDashboardTab({ id: 100 }),
+              createMockDashboardTab({ id: 200 }),
+            ],
+          }),
+        },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, dashboard_tab_id: 100 }),
+          11: createMockDashboardCard({ id: 11, dashboard_tab_id: 100 }),
+          12: createMockDashboardCard({ id: 12, dashboard_tab_id: 200 }),
+        },
+      }),
+    });
+
+    it("returns the cached default-tab dashcards even when the active dashboard id is reset", () => {
+      const cards = getLastSeenTabDashcards(CACHED_STATE, 5);
+      expect(cards.map((dc) => dc.id)).toEqual([10, 11]);
+    });
+
+    it("returns an empty array for a dashboard that isn't cached", () => {
+      expect(getLastSeenTabDashcards(CACHED_STATE, 999)).toEqual([]);
+      expect(getLastSeenTabDashcards(CACHED_STATE, null)).toEqual([]);
+    });
+  });
+
+  describe("getLastSeenDashboard", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: { 5: createMockStoreDashboard({ id: 5 }) },
+      }),
+    });
+
+    it("returns the dashboard from the cache even when the active dashboard id is reset", () => {
+      expect(getLastSeenDashboard(STATE, 5)).toMatchObject({ id: 5 });
+    });
+
+    it("returns nothing for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboard(STATE, 999)).toBeUndefined();
+      expect(getLastSeenDashboard(STATE, null)).toBeUndefined();
+    });
+  });
+
+  describe("getIsLastSeenDashboardFixedWidth", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({ id: 5, width: "fixed" }),
+          6: createMockStoreDashboard({ id: 6, width: "full" }),
+        },
+      }),
+    });
+
+    it("follows the cached dashboard's width", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 5)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 6)).toBe(false);
+    });
+
+    it("assumes the default fixed width for a dashboard that isn't cached", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 999)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, null)).toBe(true);
+    });
+  });
+
+  describe("getLastSeenDashboardHeaderParameters", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            dashcards: [10],
+            parameters: [
+              createMockParameter({ id: "a" }),
+              createMockParameter({ id: "b" }),
+            ],
+          }),
+        },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, inline_parameters: ["b"] }),
+        },
+      }),
+    });
+
+    it("returns the cached dashboard's parameters except those inline on a dashcard", () => {
+      expect(
+        getLastSeenDashboardHeaderParameters(STATE, 5).map(({ id }) => id),
+      ).toEqual(["a"]);
+    });
+
+    it("returns no parameters for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboardHeaderParameters(STATE, 999)).toEqual([]);
     });
   });
 });

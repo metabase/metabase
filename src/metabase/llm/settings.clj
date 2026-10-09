@@ -58,8 +58,6 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
-;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
-;; deleting the connection they key off turns those features off. They should name a connection instead.
 (defn- connection-field-getter
   "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list."
   [setting-kw]
@@ -85,22 +83,6 @@
   :setter           (connection-field-setter :llm-anthropic-api-key)
   :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
-(defsetting llm-anthropic-api-key-configured?
-  "Whether an Anthropic API key has been configured."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :export?    false
-  :getter     #(some? (llm-anthropic-api-key))
-  :doc        false)
-
-(defsetting llm-anthropic-model
-  (deferred-tru "The Anthropic model to use.")
-  :encryption :no
-  :visibility :settings-manager
-  :default "claude-opus-4-5-20251101"
-  :export? false)
-
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
   :encryption       :when-encryption-key-set
@@ -111,14 +93,6 @@
   :setter           (connection-field-setter :llm-anthropic-api-base-url)
   :deprecated-name  :ee-anthropic-api-base-url
   :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
-
-(defsetting llm-anthropic-api-version
-  (deferred-tru "The Anthropic API version.")
-  :encryption :no
-  :visibility :internal
-  :default "2023-06-01"
-  :export? false
-  :doc false)
 
 ;;; -------------------------------------------------- OpenAI ---------------------------------------------------
 
@@ -259,6 +233,27 @@
   :getter     (connection-field-getter :llm-deepseek-api-key)
   :setter     (connection-field-setter :llm-deepseek-api-key)
   :doc        "Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+;;; ---------------------------------------------------- xAI ----------------------------------------------------
+
+(defsetting llm-xai-api-base-url
+  (deferred-tru "The xAI API base URL used for Chat Completions.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :default    "https://api.x.ai/v1"
+  :export?    false
+  :getter     (connection-field-getter :llm-xai-api-base-url)
+  :setter     (connection-field-setter :llm-xai-api-base-url)
+  :doc        "Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-xai-api-key
+  (deferred-tru "The xAI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-xai-api-key)
+  :setter     (connection-field-setter :llm-xai-api-key)
+  :doc        "Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
@@ -416,6 +411,35 @@
   :visibility :settings-manager
   :export?    false)
 
+;;; -------------------------------------------------- Ollama ---------------------------------------------------
+
+(defsetting llm-ollama-api-base-url
+  (deferred-tru "The base URL of your Ollama server''s OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-ollama-api-base-url)
+  :setter     (connection-field-setter :llm-ollama-api-base-url)
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.")
+
+(defsetting llm-ollama-api-key
+  (deferred-tru (str "The API key for Ollama Cloud, with MB_LLM_OLLAMA_API_BASE_URL set to https://ollama.com/v1. "
+                     "For self-hosted servers, only needed behind an authenticated proxy."))
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-ollama-api-key)
+  :setter     (connection-field-setter :llm-ollama-api-key)
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-ollama-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for requests to your Ollama server.")
+  ;; Self-hosted TTFT is bounded by the operator's hardware, as it is for vLLM.
+  :type       :integer
+  :default    300000
+  :visibility :settings-manager
+  :export?    false)
+
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set
 ;;; by an environment variable, which [[metabase.llm.provider/connections]] resolves on every read. Editing one in
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.
@@ -451,13 +475,6 @@
   :default    true
   :export?    true)
 
-(defsetting llm-max-tokens
-  (deferred-tru "Maximum tokens for LLM responses.")
-  :type :integer
-  :default 4096
-  :visibility :settings-manager
-  :export? false)
-
 (defsetting llm-request-timeout-ms
   (deferred-tru
    (str "Socket (inter-byte read) timeout in milliseconds for LLM API requests. "
@@ -478,19 +495,5 @@
         "thread forever."))
   :type :integer
   :default 10000
-  :visibility :settings-manager
-  :export? false)
-
-(defsetting llm-rate-limit-per-user
-  (deferred-tru "Maximum SQL generation requests per user per minute.")
-  :type :integer
-  :default 20
-  :visibility :settings-manager
-  :export? false)
-
-(defsetting llm-rate-limit-per-ip
-  (deferred-tru "Maximum SQL generation requests per IP address per minute.")
-  :type :integer
-  :default 100
   :visibility :settings-manager
   :export? false)

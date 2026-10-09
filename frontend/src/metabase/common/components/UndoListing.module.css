@@ -27,7 +27,7 @@
   transform-origin: left;
 }
 
-.toast:hover .progress {
+.toast[data-paused] .progress {
   animation-play-state: paused;
 }
 

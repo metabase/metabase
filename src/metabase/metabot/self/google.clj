@@ -2,13 +2,16 @@
   "Google Gemini Enterprise Agent Platform (formerly Vertex AI) provider.
 
   This namespace handles credentials, endpoint URLs, HTTP calls, error translation, and connect-time model validation.
-  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]]
-  and [[metabase.metabot.self.google.raw-predict]].
+  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]],
+  [[metabase.metabot.self.google.raw-predict]] and, for Model Garden endpoints, [[metabase.metabot.self.vllm]].
 
   Like openrouter and azure, models for this provider must specify the sub-provider in the `llm-metabot-provider`
   setting. For example `MB_LLM_METABOT_PROVIDER=google/google/gemini-3.6-flash`. Gemini models are served by
   `streamGenerateContent`; Anthropic partner models (e.g. `google/anthropic/claude-sonnet-4-6`) are served by
-  `streamRawPredict`, whose payload is Anthropic's Messages API.
+  `streamRawPredict`, whose payload is Anthropic's Messages API. An open model deployed from Model Garden is named by
+  the endpoint the deployment created (e.g. `google/endpoints/1234567890123456789`) and served by that endpoint's
+  `chat/completions` route, whose payload is the OpenAI-compatible Chat Completions API of the vLLM or SGLang server
+  behind it.
 
   Credentials can be supplied via either a service account key JSON or an OAuth access token.
 
@@ -34,6 +37,7 @@
    [metabase.metabot.self.google.models :as models]
    [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -259,10 +263,11 @@
                      :error-code  :invalid-project-id}))))
 
 (defn- location-path
-  "Returns the URL path to the project's location resource.
+  "Returns the URL path to the project's location resource in API version `api-version`.
   This is the parent of every resource that we call."
-  [credentials]
-  (format "/v1/projects/%s/locations/%s" (effective-project-id credentials) (effective-location credentials)))
+  [credentials api-version]
+  (format "/%s/projects/%s/locations/%s"
+          api-version (effective-project-id credentials) (effective-location credentials)))
 
 (def ^:private max-model-segment-length
   "The longest publisher or model ID that belongs in a request path.
@@ -295,9 +300,12 @@
   (llm.provider/model-ref->model model))
 
 (def ^:private model-families
-  "Map from supported model publishers to their API format."
+  "Map from supported model publishers to their API format.
+  `endpoints` is not a publisher but the resource collection a Model Garden deployment lands in, so a model reads as
+  the tail of its endpoint's resource name."
   {"google"    :google
-   "anthropic" :anthropic})
+   "anthropic" :anthropic
+   "endpoints" :chat-completions})
 
 (def model-publishers
   "The publishers whose models this adapter serves."
@@ -319,7 +327,7 @@
   (or (model-families (model-publisher model))
       (throw (if (str/blank? (model-id model))
                (unqualified-model-ex model)
-               (ex-info (tru "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
+               (ex-info (tru "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
                              (pr-str model))
                         {:api-error   true
                          :status-code 400
@@ -337,13 +345,15 @@
 (defn reasoning-model?
   "Whether a publisher-qualified `model` streams its reasoning back to us.
 
+  A Model Garden endpoint serves whatever the admin deployed on it, which its name does not say, so it answers false.
   Answers false for a model this adapter cannot serve rather than throwing the way [[model->family]] does: the
   `llm-metabot-supports-reasoning?` setting reads this, and a provider setting Metabot cannot use must not take the
   public settings endpoint down with it. The request path rejects the same model soon enough."
   [model]
   (case (model-families (model-publisher model))
-    :anthropic (raw-predict/reasoning-model? (model-id model))
-    :google    (stream-generate-content/reasoning-model? model)
+    :anthropic        (raw-predict/reasoning-model? (model-id model))
+    :google           (stream-generate-content/reasoning-model? model)
+    :chat-completions false
     false))
 
 (mu/defn streams-reasoning? :- :boolean
@@ -354,22 +364,25 @@
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for a publisher-qualified `model`, or nil when it isn't one we know.
 
-  Gemini windows come from the [[models/catalog]], the same rows that drive the reasoning gate.
+  Gemini windows come from the [[models/catalog]], the same rows that drive the reasoning gate. A Model Garden
+  endpoint's window is whatever the admin deployed with, so it is not known here.
   Answers nil for a model this adapter cannot serve rather than throwing the way [[model->family]] does, for the
   same reason [[reasoning-model?]] does."
   [model :- [:maybe :string]]
   (case (model-families (model-publisher model))
-    :anthropic (raw-predict/context-window-tokens (model-id model))
-    :google    (get-in models/catalog [model :context-window])
+    :anthropic        (raw-predict/context-window-tokens (model-id model))
+    :google           (get-in models/catalog [model :context-window])
+    :chat-completions nil
     nil))
 
 (defn- model-resource-path
-  "Returns the URL path to a publisher model resource, without the `:method` verb at the end.
-  The `model` must include its `{publisher}/{model}` qualifier, e.g. `google/gemini-3.5-flash`.
+  "Returns the URL path to a publisher model or endpoint resource, without the `:method` verb at the end.
+  The `model` must include its `{publisher}/{model}` qualifier, e.g. `google/gemini-3.5-flash` or
+  `endpoints/1234567890123456789`. The path is in API version `v1` unless `api-version` names another.
 
   Both segments become path segments of the request URL, so a character that does not belong in one is rejected here.
   [[model->family]] has already settled the publisher by this point; the model ID is still free text."
-  [credentials model]
+  [credentials model & {:keys [api-version] :or {api-version "v1"}}]
   (let [publisher (model-publisher model)
         model-id  (model-id model)]
     (when (str/blank? model-id)
@@ -382,7 +395,15 @@
                       {:api-error   true
                        :status-code 400
                        :error-code  :invalid-model})))
-    (format "%s/publishers/%s/models/%s" (location-path credentials) publisher model-id)))
+    (if (= :chat-completions (model-families publisher))
+      (format "%s/endpoints/%s" (location-path credentials api-version) model-id)
+      (format "%s/publishers/%s/models/%s" (location-path credentials api-version) publisher model-id))))
+
+(defn- chat-completions-path
+  "Returns the URL path of the `chat/completions` route of the endpoint `model` names.
+  Google defines the route in `v1beta1` only, while the endpoint resource itself is read from `v1`."
+  [credentials model]
+  (str (model-resource-path credentials model :api-version "v1beta1") "/chat/completions"))
 
 (def ^:private provider
   "Google is the only adapter whose request path is derived from its credentials rather than fixed, so the path it
@@ -402,6 +423,56 @@
                         501 #(tru "Google API is not available in this location")
                         503 #(tru "Google API is temporarily unavailable")}}))
 
+(defn- fetch-endpoint
+  "Returns the Endpoint resource at `endpoint-path`.
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.endpoints/get"
+  [credentials endpoint-path]
+  (:body (adapter/request! provider {:method      :get
+                                     :path        endpoint-path
+                                     :as          :json
+                                     :credentials credentials})))
+
+(defn- admin-base-url
+  "Returns the base URL the admin set outright, say a proxy, or nil when the connection uses Google's own hosts."
+  [{:keys [base-url] :as credentials}]
+  (when-let [configured (not-empty base-url)]
+    (when-not (#{llm/google-global-api-base-url (location-host (effective-location credentials))} configured)
+      configured)))
+
+(defn- endpoint-host
+  "Returns the host that serves requests to the endpoint whose resource is `endpoint`.
+
+  A dedicated endpoint answers only on the DNS name its resource reports; the shared regional host refuses it.
+  Google's reference spells that name with a scheme and its samples without one, so either is accepted. A base URL
+  the admin set outright is kept, as it is for every other route: only Google's own hosts are looked past. A shared
+  endpoint is served by the location's host."
+  [credentials endpoint]
+  (let [dns (not-empty (:dedicatedEndpointDns endpoint))]
+    (or (admin-base-url credentials)
+        (when dns (str "https://" (str/replace-first dns #"^https://" "")))
+        (api-base-url credentials))))
+
+(defn- lookup-endpoint-host
+  "Reads the endpoint at `endpoint-path` with `credentials` and returns its [[endpoint-host]]."
+  [credentials endpoint-path]
+  (endpoint-host credentials (fetch-endpoint credentials endpoint-path)))
+
+(def ^:private cached-endpoint-host
+  "Bounded memoization of [[lookup-endpoint-host]].
+  Cached so that the endpoint resource is read once per connection and endpoint, and not once per request. The
+  connection's credentials are the key, which a refreshed access token does not change."
+  (u.memoize/bounded #'lookup-endpoint-host :bounded/threshold 8))
+
+(defn- endpoint-auth
+  "Google's `:auth` for a request to the Model Garden endpoint `model` names: [[google-auth]], sent to the host that
+  serves the endpoint. The host is looked up here, inside the request span like the credentials, and recorded in the
+  volatile `host` for errors to name."
+  [model host]
+  (fn [p {:keys [credentials] :as req}]
+    (let [credentials (resolve-credentials credentials)]
+      (assoc (google-auth p req)
+             :url (vreset! host (cached-endpoint-host credentials (model-resource-path credentials model)))))))
+
 (defn- json-content?
   "Returns true if an HTTP response has a JSON content type."
   [{:keys [headers]}]
@@ -420,9 +491,10 @@
 
   Wraps the descriptor's own message rather than restating it: a status whose message should name the host it was
   sent to (see [[include-endpoint-in-msg?]]) gets the endpoint appended, and the endpoint is known only per
-  connection, which is why this cannot live on the descriptor."
-  [credentials]
-  (let [endpoint (delay (try (api-base-url credentials) (catch Exception _ nil)))]
+  connection, which is why this cannot live on the descriptor. The message names `host` when given, and
+  [[api-base-url]] otherwise."
+  [credentials host]
+  (let [endpoint (delay (or host (try (api-base-url credentials) (catch Exception _ nil))))]
     (fn [res]
       (cond-> ((:error-msg provider) res)
         (and (include-endpoint-in-msg? (:status res)) @endpoint)
@@ -432,15 +504,20 @@
   "Rethrows a Google HTTP exception like [[core/rethrow-api-error!]], with two changes:
 
   - For a status that satisfies [[include-endpoint-in-msg?]], the message includes the endpoint URL.
-  - For 404s include a hint to check that the provided location is correct."
-  [credentials e]
+  - For 404s include a hint to check that the provided location is correct.
+
+  `host` is the host an endpoint's resource named, for a request that failed there. The message names it, and there is
+  no hint, since the resource resolved in that location. An exception that is already translated is left as it is."
+  [credentials host e]
   (let [data     (ex-data e)
         location (:location credentials)
         known?   (conj multi-region-locations global-location)]
     (core/rethrow-api-error!
      (:slug provider)
-     (google-res->msg credentials)
+     (google-res->msg credentials host)
      (if (and location
+              (not host)
+              (not (:api-error data))
               (= 404 (:status data))
               (not (known? location))
               (not (json-content? data)))
@@ -508,12 +585,46 @@
         (when-not (and (= 400 status) (anthropic-error-body? body))
           (throw e))))))
 
+(def ^:private endpoint-probe-body
+  "The smallest Chat Completions request for the connect-time check of an endpoint: one token, no stream."
+  {:model      ""
+   :messages   [{:role "user" :content "hi"}]
+   :max_tokens 1})
+
+(defn- validate-endpoint-surface!
+  "Validate `credentials` and `model` for a Model Garden endpoint.
+
+  Read the endpoint resource, which is free and names the endpoint in the URL, so a 2xx proves the credential, the
+  project, the location and the endpoint all resolve. An endpoint still resolves after its model is undeployed, which
+  is how its compute is stopped, so that is checked as well.
+
+  Reading the resource takes only `aiplatform.endpoints.get`, which a viewer role carries without
+  `aiplatform.endpoints.predict`, so with `probe?` a one-token completion on the route conversations use, on the host
+  they use, is what proves the credential can run one. Without `probe?` nothing is generated."
+  [credentials model probe?]
+  (let [endpoint (fetch-endpoint credentials (model-resource-path credentials model))]
+    (when (empty? (:deployedModels endpoint))
+      (throw (ex-info (tru "Nothing is deployed on Google endpoint {0}" (pr-str (model-id model)))
+                      {:api-error   true
+                       :status-code 400
+                       :error-code  :endpoint-has-no-model})))
+    (when probe?
+      (let [host (endpoint-host credentials endpoint)]
+        (try
+          (adapter/request! provider {:method      :post
+                                      :path        (chat-completions-path credentials model)
+                                      :body        (json/encode endpoint-probe-body)
+                                      :credentials (assoc credentials :base-url host)})
+          (catch Exception e
+            (rethrow-google-api-error! credentials host e)))))))
+
 (defn- validate-model!
   "Validates `model` against the surface that serves it, and discards the response."
-  [credentials model]
+  [credentials model probe?]
   (case (model->family model)
-    :anthropic (validate-anthropic-surface! credentials model)
-    :google    (validate-google-surface! credentials model))
+    :anthropic        (validate-anthropic-surface! credentials model)
+    :google           (validate-google-surface! credentials model)
+    :chat-completions (validate-endpoint-surface! credentials model probe?))
   nil)
 
 (mu/defn list-models :- adapter/ModelListing
@@ -525,55 +636,66 @@
   https://github.com/googleapis/python-genai/issues/679
 
   `:probe?` reports the model the probe verified as `:connection-info` `:probed-model`, for the connect and edit paths
-  to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts."
+  to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts.
+  For an endpoint it also runs a one-token completion, where a plain listing only reads the endpoint's resource."
   ([] (list-models {}))
   ([{:keys [credentials model proposed-model ai-proxy? probe?]} :- adapter/ListOpts]
    (adapter/reject-ai-proxy! provider ai-proxy?)
    (if-let [model (or (not-empty model) (not-empty proposed-model))]
      (do
        (try
-         (validate-model! (resolve-credentials credentials) model)
+         (validate-model! (resolve-credentials credentials) model probe?)
          (catch Exception e
-           (rethrow-google-api-error! credentials e)))
+           (rethrow-google-api-error! credentials nil e)))
        (cond-> {:models []}
          probe? (assoc :connection-info {:probed-model model})))
      {:models []})))
 
 (mu/defn google-raw
   "Makes a streaming request to the Gemini Enterprise Agent Platform.
-  Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`.
+  Returns `[family stream]`, where `stream` is a reducible over raw events.
+  Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`; Model
+  Garden endpoints through their `chat/completions` route.
   `:ai-proxy?` is not supported and throws when it is true."
   [{:keys [model credentials] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [family (model->family model)
-        opts   (assoc opts :model model)]
-    (adapter/stream! provider opts
-                     {;; a thunk, not a string: the project and the location are URL segments, so the path cannot be
-                      ;; built until the credentials resolve, and that resolution is the only one in the fleet that
-                      ;; can fail. [[adapter/stream!]] calls it inside the span and behind the proxy refusal, so a
-                      ;; bad project ID lands on the trace and a proxied request still hears about the proxy first.
-                      :path             #(str (model-resource-path (resolve-credentials credentials) model)
-                                              (case family
-                                                :anthropic raw-predict-method
-                                                :google    generate-content-method))
-                      :body             (case family
-                                          :anthropic (raw-predict/request-body (model-id model) opts)
-                                          ;; `opts` carries the defaulted model: the thinking directive keys off it
-                                          :google    (stream-generate-content/request-body opts))
-                      :span-attrs       {:family (name family)}
-                      ;; both read only `:location`, which resolution does not touch, so the raw map serves and
-                      ;; neither can mask a resolution failure with one of its own
-                      :error-msg        (google-res->msg credentials)
-                      :on-request-error #(rethrow-google-api-error! credentials %)})))
+        opts   (assoc opts :model model)
+        host   (volatile! nil)]
+    [family
+     (adapter/stream! (cond-> provider
+                        (= :chat-completions family) (assoc :auth (endpoint-auth model host)))
+                      opts
+                      {;; a thunk, not a string: the project and the location are URL segments, so the path cannot be
+                       ;; built until the credentials resolve, and that resolution is the only one in the fleet that
+                       ;; can fail. [[adapter/stream!]] calls it inside the span and behind the proxy refusal, so a
+                       ;; bad project ID lands on the trace and a proxied request still hears about the proxy first.
+                       :path             #(let [credentials (resolve-credentials credentials)]
+                                            (if (= :chat-completions family)
+                                              (chat-completions-path credentials model)
+                                              (str (model-resource-path credentials model)
+                                                   (case family
+                                                     :anthropic raw-predict-method
+                                                     :google    generate-content-method))))
+                       :body             (case family
+                                           :anthropic        (raw-predict/request-body (model-id model) opts)
+                                           ;; `opts` carries the defaulted model: the thinking directive keys off it
+                                           :google           (stream-generate-content/request-body opts)
+                                           ;; the endpoint serves one model, and Model Garden's OpenAI client samples
+                                           ;; send an empty `model`
+                                           :chat-completions (assoc (vllm/vllm-request-body opts) :model ""))
+                       :span-attrs       {:family (name family)}
+                       ;; both read only `:location`, which resolution does not touch, so the raw map serves and
+                       ;; neither can mask a resolution failure with one of its own
+                       :error-msg        #((google-res->msg credentials @host) %)
+                       :on-request-error #(rethrow-google-api-error! credentials @host %)})]))
 
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
   [& args]
-  (let [{:keys [model] :or {model default-model}} (first args)
-        raw (apply google-raw args)]
-    ;; Keep this dispatch in sync with `google-raw`, which independently uses
-    ;; `model->family` to select the request protocol.
-    (eduction (case (model->family model)
-                :anthropic (raw-predict/->aisdk-chunks-xf)
-                :google    (stream-generate-content/->aisdk-chunks-xf))
+  (let [[family raw] (apply google-raw args)]
+    (eduction (case family
+                :anthropic        (raw-predict/->aisdk-chunks-xf)
+                :google           (stream-generate-content/->aisdk-chunks-xf)
+                :chat-completions (vllm/vllm->aisdk-chunks-xf))
               raw)))

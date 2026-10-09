@@ -15,6 +15,10 @@ const subComponents: StaticQuestionComponents = {
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.StaticQuestion
         ?.FilterDropdown,
   ),
+  RefreshButton: createComponent(
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.StaticQuestion?.RefreshButton,
+  ),
   ResetButton: createComponent(
     () =>
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.StaticQuestion?.ResetButton,

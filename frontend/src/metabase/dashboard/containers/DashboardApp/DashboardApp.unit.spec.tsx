@@ -22,11 +22,12 @@ import {
   act,
   renderWithProviders,
   screen,
-  waitForLoaderToBeRemoved,
+  waitForDashboardToLoad,
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -36,7 +37,9 @@ import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
+  createMockHeadingDashboardCard,
   createMockTable,
+  createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 
 const TEST_COLLECTION = createMockCollection();
@@ -59,22 +62,33 @@ const TestHome = () => <div />;
 interface Options {
   dashboard?: Partial<Dashboard>;
   slug?: string;
+  /** Holds the query metadata response until `resolveQueryMetadata` is called. */
+  deferQueryMetadata?: boolean;
 }
 
-async function setup({ dashboard, slug }: Options = {}) {
+function renderDashboardApp({
+  dashboard,
+  slug,
+  deferQueryMetadata = false,
+}: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
+  const queryMetadata = createMockDashboardQueryMetadata({
+    databases: [TEST_DATABASE_WITH_ACTIONS],
+  });
+  const queryMetadataRequest = defer();
 
   setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
-  setupDashboardQueryMetadataEndpoint(
-    mockDashboard,
-    createMockDashboardQueryMetadata({
-      databases: [TEST_DATABASE_WITH_ACTIONS],
-    }),
-  );
+  if (deferQueryMetadata) {
+    fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
+      queryMetadataRequest.promise.then(() => queryMetadata),
+    );
+  } else {
+    setupDashboardQueryMetadataEndpoint(mockDashboard, queryMetadata);
+  }
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,
@@ -116,14 +130,21 @@ async function setup({ dashboard, slug }: Options = {}) {
     },
   );
 
-  await waitForLoaderToBeRemoved();
-
   return {
     dashboardId,
     router: checkNotNull(router),
     store,
     mockEventListener,
+    resolveQueryMetadata: () => queryMetadataRequest.resolve(),
   };
+}
+
+async function setup(options: Options = {}) {
+  const view = renderDashboardApp(options);
+
+  await waitForDashboardToLoad();
+
+  return view;
 }
 
 describe("DashboardApp", () => {
@@ -169,7 +190,7 @@ describe("DashboardApp", () => {
         router.navigate(`/dashboard/${dashboardId}`);
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForDashboardToLoad();
 
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
@@ -190,7 +211,7 @@ describe("DashboardApp", () => {
         router.navigate(`/dashboard/${dashboardId}`);
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForDashboardToLoad();
 
       await userEvent.click(screen.getByLabelText("Edit dashboard"));
       await userEvent.click(screen.getByTestId("dashboard-name-heading"));
@@ -283,6 +304,55 @@ describe("DashboardApp", () => {
 
     expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
     expect(store.getState().app.errorPage).toMatchObject({ status: 404 });
+  });
+
+  describe("loading state (DSN-749)", () => {
+    it("renders the dashboard with skeletons, instead of a loading spinner, while it loads", async () => {
+      renderDashboardApp();
+
+      // The real dashboard page renders right away, with skeletons for its
+      // header and grid, and a loading spinner is never shown.
+      expect(screen.getByTestId("dashboard")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("dashboard-header-skeleton"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-grid-skeleton")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      // Once the dashboard arrives, its real header and grid replace them.
+      await waitForDashboardToLoad();
+      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+    });
+
+    it("switches to the dashboard's real card layout as soon as it is known, before the load finishes", async () => {
+      const { resolveQueryMetadata } = renderDashboardApp({
+        dashboard: {
+          dashcards: [
+            createMockHeadingDashboardCard({ id: 1, text: "Heading" }),
+            createMockTextDashboardCard({
+              id: 2,
+              text: "First line\nSecond line",
+            }),
+          ],
+        },
+        deferQueryMetadata: true,
+      });
+
+      try {
+        // These can only come from the dashboard's own layout, drawn while
+        // its query metadata loads.
+        expect(
+          await screen.findAllByTestId("dashboard-skeleton-text"),
+        ).toHaveLength(2);
+      } finally {
+        resolveQueryMetadata();
+      }
+
+      await waitForDashboardToLoad();
+      expect(
+        screen.queryByTestId("dashboard-skeleton-text"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("should not allow to enter a dashboard name longer than 254 characters", async () => {

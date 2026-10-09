@@ -61,17 +61,15 @@ describe("scenarios > question > view", () => {
       });
     });
 
-    it("should show filters by search for Vendor", () => {
+    it("should be able to filter Q by Vendor and Category as no data user (from Q link) (metabase#12654)", () => {
+      cy.log("admin sees filters by search for Vendor");
       H.visitQuestion("@questionId");
-
       cy.findAllByText("VENDOR").first().click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Search the list");
+        cy.findByPlaceholderText("Search the list").should("exist");
         cy.findByText("Search the list").should("not.exist");
       });
-    });
 
-    it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       cy.signIn("nodata");
       H.visitQuestion("@questionId");
 
@@ -94,11 +92,19 @@ describe("scenarios > question > view", () => {
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 
-      cy.findAllByText("Widget");
-      cy.findAllByText("Gizmo").should("not.exist");
+      cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
+        "have.length",
+        1,
+      );
+      cy.get(".CardVisualization").within(() => {
+        cy.findByText("Widget");
+        cy.findByText("Balistreri-Muller");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("McClure-Lockman").should("not.exist");
+      });
     });
 
-    it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
+    it("should be able to filter Q by Vendor and Category as no data user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
       H.visitDashboard("@dashboardId");

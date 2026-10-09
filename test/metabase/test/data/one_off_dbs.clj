@@ -11,6 +11,7 @@
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *conn*
   "Bound to a JDBC connection spec when using one of the `with-db` macros below."
   nil)

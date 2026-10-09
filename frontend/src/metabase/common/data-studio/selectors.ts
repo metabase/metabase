@@ -1,14 +1,17 @@
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
+import {
+  getUserIsAdmin,
+  getUserIsEntitledAnalyst,
+} from "metabase/current-user";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { isWithinIframe } from "metabase/utils/iframe";
 
-// Must be in sync with CanAccessDataStudio in frontend/src/metabase/data-studio/route-guards.tsx
+// Must be in sync with api/check-data-studio-access in src/metabase/api/common.clj
 export function canAccessDataStudio(state: State) {
   if (isWithinIframe()) {
     return false;
   }
-  return getUserIsAdmin(state) || getUserIsAnalyst(state);
+  return getUserIsAdmin(state) || getUserIsEntitledAnalyst(state);
 }
 
 export const getUserCanWriteSegments = (

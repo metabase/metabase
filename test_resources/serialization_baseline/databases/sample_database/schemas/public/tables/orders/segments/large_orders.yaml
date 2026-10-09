@@ -22,6 +22,4 @@ definition:
 entity_id: OaFXAvEzPvu9ZXW5PUMRa
 name: Large Orders
 serdes/meta:
-- id: OaFXAvEzPvu9ZXW5PUMRa
-  label: large_orders
-  model: Segment
+- model: Segment

@@ -28,6 +28,12 @@
     "selector-pseudo-element-colon-notation": null,
     "no-empty-source": null,
     "font-family-no-missing-generic-family-keyword": null,
+    "selector-disallowed-list": [
+      ["/:global$/"],
+      {
+        "message": "Use :global(.foo) on each selector instead of a bare :global, which breaks when combined with nesting."
+      }
+    ],
     "metabase/no-base-colors": true
   }
 }

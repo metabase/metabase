@@ -14,6 +14,7 @@
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *secret-key* nil)
 
 (defn sign [claims] (jwt/sign claims *secret-key*))
@@ -27,7 +28,7 @@
   `(do-with-new-secret-key! (fn [] ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-static true
+  `(mt/with-temporary-setting-values [~'enable-embedding-modular true
                                       ~'enable-embedding-interactive true]
      (with-new-secret-key!
        ~@body)))

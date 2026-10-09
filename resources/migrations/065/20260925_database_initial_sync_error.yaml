@@ -1,0 +1,21 @@
+## Keeps the reason an initial sync aborted, so admins can diagnose it without reading the server logs.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-25T00:00:00
+      author: ericnormand
+      comment: Add initial_sync_error to metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: initial_sync_error
+                  type: ${text.type}
+                  remarks: Message of the error that aborted the initial sync; null unless initial_sync_status is aborted
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: initial_sync_error

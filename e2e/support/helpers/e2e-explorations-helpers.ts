@@ -52,25 +52,6 @@ export function selectAllMetricsTab(): void {
   cy.findByRole("dialog").findByRole("tab", { name: "All" }).click();
 }
 
-export interface AddMetricsToExplorationOptions {
-  metrics: string[];
-}
-
-/**
- * Pick metrics through the "+ Metrics" picker.
- */
-export function addMetricsToExploration({
-  metrics,
-}: AddMetricsToExplorationOptions): void {
-  cy.findByRole("button", { name: /Metrics/ }).click();
-  cy.wait("@getDimensions");
-  selectAllMetricsTab();
-  for (const name of metrics) {
-    cy.findByRole("checkbox", { name }).check({ force: true });
-  }
-  cy.findByRole("button", { name: "Add" }).click();
-}
-
 /**
  * Pick the named timelines (one or many) through the "+ Events" modal.
  */

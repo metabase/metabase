@@ -10,6 +10,7 @@
 ;; `publish-event!` is a methodical multimethod, so capture events with a handler on a test-only parent topic
 ;; rather than by redefining the var (see the docstring of [[metabase.events.impl/publish-event!]]).
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *events* nil)
 
 (events/derive! ::glossary-test-event :metabase/event)

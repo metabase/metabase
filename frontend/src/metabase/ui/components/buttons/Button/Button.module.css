@@ -11,7 +11,7 @@
   --mb-button-radius: 6px;
 
   font-family: var(--mb-default-font-family);
-  font-size: 14px;
+  font-size: var(--mantine-font-size-md);
   font-weight: 700;
   line-height: 16px;
   border-radius: var(--button-radius, var(--mb-button-radius));
@@ -27,7 +27,7 @@
     --mb-button-section-gap: 4px;
     --mb-button-loader-size: 12px;
 
-    font-size: 12px;
+    font-size: var(--mantine-font-size-sm);
 
     &[data-loading] {
       --mb-button-padding-y: 6px;
@@ -59,7 +59,7 @@
     --mb-button-loader-size: 11.5px;
     --mb-button-radius: 4px;
 
-    font-size: 12px;
+    font-size: var(--mantine-font-size-sm);
   }
 
   &[data-loading]::before {

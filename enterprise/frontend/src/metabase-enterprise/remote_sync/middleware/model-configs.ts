@@ -1,5 +1,6 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 
+import { actionApi } from "metabase/api/action";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
@@ -76,6 +77,16 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     createEndpoints: [documentApi.endpoints.createDocument.matchFulfilled],
     updateEndpoints: [documentApi.endpoints.updateDocument.matchFulfilled],
     deleteEndpoints: [documentApi.endpoints.deleteDocument.matchFulfilled],
+    invalidation: {
+      type: InvalidationType.Always,
+    },
+  },
+
+  {
+    modelType: "action",
+    createEndpoints: [actionApi.endpoints.createAction.matchFulfilled],
+    updateEndpoints: [actionApi.endpoints.updateAction.matchFulfilled],
+    deleteEndpoints: [actionApi.endpoints.deleteAction.matchFulfilled],
     invalidation: {
       type: InvalidationType.Always,
     },

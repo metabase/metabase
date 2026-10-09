@@ -1,8 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderRoutes, screen } from "__support__/ui";
+import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { Outlet } from "metabase/router";
+import {
+  type MemoryTestRouterHolder,
+  Outlet,
+  RouterProviderMemory,
+} from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 import { getCollectionTimelineRoutes } from "./routes";
 
@@ -37,17 +42,16 @@ function CollectionPage() {
   );
 }
 
+const routes = [
+  {
+    path: "collection/:slug",
+    element: <CollectionPage />,
+    children: getCollectionTimelineRoutes(),
+  },
+];
+
 function setup(initialRoute: string) {
-  const { router } = renderRoutes(
-    [
-      {
-        path: "collection/:slug",
-        element: <CollectionPage />,
-        children: getCollectionTimelineRoutes(),
-      },
-    ],
-    { initialRoute },
-  );
+  const { router } = renderRoutes(routes, { initialRoute });
 
   return { pathname: () => router?.location.pathname };
 }
@@ -112,5 +116,39 @@ describe("collection timeline routes", () => {
     expect(
       await screen.findByRole("button", { name: "Close" }),
     ).toBeInTheDocument();
+  });
+
+  // The index modal shows the same timeline again when it is the only one, so
+  // closing the details modal to it would look like nothing happened.
+  it("closes the timeline details modal to the collection page (metabase#83006)", async () => {
+    const { pathname } = setup("/collection/5/timelines/9");
+
+    await close();
+
+    expect(pathname()).toBe("/collection/5");
+    expect(screen.getByText("Collection page")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Close" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the timeline details modal to the collection page when hosted on a subpath", async () => {
+    const routerHolder: MemoryTestRouterHolder = { current: null };
+    renderWithProviders(
+      <RouterProviderMemory
+        routes={routes}
+        initialRoute="/metabase/collection/5/timelines/9"
+        basename="/metabase"
+        routerHolder={routerHolder}
+      />,
+    );
+
+    await close();
+
+    const router = checkNotNull(routerHolder.current);
+    expect(router.createHref(router.state.location)).toBe(
+      "/metabase/collection/5",
+    );
+    expect(screen.getByText("Collection page")).toBeInTheDocument();
   });
 });

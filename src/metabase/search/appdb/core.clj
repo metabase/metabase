@@ -232,7 +232,9 @@
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
-    (log/info "Reindexing appdb index because the site locale changed.")
-    (if search.ingestion/*force-sync*
-      (search.engine/reindex! :search.engine/appdb {})
-      (future (search.engine/reindex! :search.engine/appdb {})))))
+    (let [reindex! (fn []
+                     (log/info "Reindexing appdb index because the site locale changed.")
+                     (search.engine/reindex! :search.engine/appdb {}))]
+      (if search.ingestion/*force-sync*
+        (reindex!)
+        (mdb/do-after-commit #(future (reindex!)))))))

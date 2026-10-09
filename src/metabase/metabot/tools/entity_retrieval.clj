@@ -21,7 +21,6 @@
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -187,19 +186,10 @@
   top match is flagged low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library
   clearly matches — prefer asking the user to clarify or narrow the request."
   [{:keys [user_search_prompt limit]} :- entity-retrieval-schema]
-  (try
-    (let [n       (min max-limit (or limit default-limit))
-          matches (build-matches user_search_prompt n)]
-      {:output            (format-output matches)
-       :structured-output {:result-type :search
-                           :data        (flatten-data matches)
-                           :total_count (count matches)
-                           :weak_match  (boolean (:weak? (first matches)))}})
-    (catch Exception e
-      ;; A failure here is the search subsystem being down (typically the embedding service), not "the
-      ;; library is empty" — say so in :output (the only channel the agent reads) so it doesn't confidently
-      ;; tell the user nothing matches. No :structured-output: that feeds the FE a result payload, and there's
-      ;; no successful search to render.
-      (log/errorf "Error in retrieve_library_entities: %s" (ex-message e))
-      {:output (str "The library search is temporarily unavailable (" (or (ex-message e) "unknown error")
-                    "). This does not mean the library is empty; the search could not be run.")})))
+  (let [n       (min max-limit (or limit default-limit))
+        matches (build-matches user_search_prompt n)]
+    {:output            (format-output matches)
+     :structured-output {:result-type :search
+                         :data        (flatten-data matches)
+                         :total_count (count matches)
+                         :weak_match  (boolean (:weak? (first matches)))}}))

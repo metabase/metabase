@@ -210,7 +210,6 @@ config:
     license-token-missing-banner-dismissal-timestamp: []
     llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
-    llm-anthropic-model: claude-opus-4-5-20251101
     llm-azure-api-base-url: null
     llm-azure-api-key: null
     llm-azure-deployment-name: null
@@ -228,25 +227,27 @@ config:
     llm-google-oauth-access-token: null
     llm-google-project-id: null
     llm-google-service-account-key: null
-    llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mini-model: null
     llm-mistral-api-base-url: https://api.mistral.ai/v1
     llm-mistral-api-key: null
     llm-moonshot-api-base-url: https://api.moonshot.ai/v1
     llm-moonshot-api-key: null
+    llm-ollama-api-base-url: null
+    llm-ollama-api-key: null
+    llm-ollama-request-timeout-ms: 300000
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null
     llm-providers: []
-    llm-rate-limit-per-ip: 100
-    llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
     llm-vllm-api-base-url: null
     llm-vllm-api-key: null
     llm-vllm-request-timeout-ms: 300000
+    llm-xai-api-base-url: https://api.x.ai/v1
+    llm-xai-api-key: null
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science
@@ -257,6 +258,7 @@ config:
     mcp-apps-cors-enabled-clients: []
     metabot-advanced-permissions: false
     metabot-chat-system-prompt: ''
+    metabot-chat-turn-async-timeout-ms: 1800000
     metabot-enabled: true
     metabot-icon: metabot
     metabot-limit-reset-rate: monthly

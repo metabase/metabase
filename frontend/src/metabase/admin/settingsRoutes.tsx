@@ -3,7 +3,6 @@ import type { Store } from "@reduxjs/toolkit";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
-  PLUGIN_DATA_APPS,
   PLUGIN_MULTI_FACTOR_AUTH,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
@@ -139,11 +138,11 @@ const dataAppsManage = () =>
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
   ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
 
-const dataAppUsersManage = () =>
+const dataAppGroupsManage = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
-  ).then(({ DataAppUsersManagePage }) => ({
-    Component: DataAppUsersManagePage,
+  ).then(({ DataAppGroupsManagePage }) => ({
+    Component: DataAppGroupsManagePage,
   }));
 
 const uploadSettings = () =>
@@ -247,19 +246,15 @@ export const getSettingsRoutes = (
           <Route path="development" lazy={customVisualizationsDevelopment} />
         )}
       </Route>
-      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so the
-          page shows the upsell without the token feature instead of 404ing */}
-      {PLUGIN_DATA_APPS.isEnabled && (
-        <Route
-          path={
-            Urls.DATA_APP_URL_SEGMENT
-          } /* do not allow users with "Settings access" permissions to access data apps pages */
-          element={<IsAdmin />}
-        >
-          <Route index lazy={dataAppsManage} />
-          <Route path=":slug/users" lazy={dataAppUsersManage} />
-        </Route>
-      )}
+      <Route
+        path={
+          Urls.DATA_APP_URL_SEGMENT
+        } /* do not allow users with "Settings access" permissions to access data apps pages */
+        element={<IsAdmin />}
+      >
+        <Route index lazy={dataAppsManage} />
+        <Route path=":slug/groups" lazy={dataAppGroupsManage} />
+      </Route>
       <Route path="uploads" lazy={uploadSettings} />
       <Route
         path="python-runner"

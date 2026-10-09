@@ -49,24 +49,29 @@ describe("scenarios > filters > filter types", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("date filters", () => {
-    describe("shortcuts", () => {
-      DATE_SHORTCUT_CASES.forEach(
-        ({ title, shortcut, expectedDisplayName }) => {
-          it(title, () => {
-            H.openProductsTable({ mode: "notebook" });
-            H.filter({ mode: "notebook" });
+  it("date filter shortcuts", () => {
+    H.openProductsTable({ mode: "notebook" });
 
-            H.clauseStepPopover().within(() => {
-              cy.findByText("Created At").click();
-              cy.findByText(shortcut).click();
-            });
-            assertFilterName(expectedDisplayName);
-            H.visualize();
-            assertFiltersExist();
-          });
-        },
-      );
+    DATE_SHORTCUT_CASES.forEach(({ title, shortcut, expectedDisplayName }) => {
+      cy.log(title);
+      H.filter({ mode: "notebook" });
+
+      H.clauseStepPopover().within(() => {
+        cy.findByText("Created At").click();
+        cy.findByText(shortcut).click();
+      });
+      assertFilterName(expectedDisplayName);
+      H.visualize();
+      H.queryBuilderFiltersPanel()
+        .findByText(expectedDisplayName)
+        .should("be.visible");
+
+      H.openNotebook();
+      H.getNotebookStep("filter")
+        .findByText(expectedDisplayName)
+        .icon("close")
+        .click();
+      H.getNotebookStep("filter").should("not.exist");
     });
   });
 });
@@ -75,8 +80,4 @@ function assertFilterName(filterName, options) {
   H.getNotebookStep("filter", options)
     .findByText(filterName)
     .should("be.visible");
-}
-
-function assertFiltersExist() {
-  cy.findByTestId("qb-filters-panel").should("be.visible");
 }

@@ -53,6 +53,7 @@
     :case-sensitive   (.parseCaseSensitive builder)
     :case-insensitive (.parseCaseInsensitive builder)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *options*
   {:strictness       :strict
    :case-sensitivity :case-sensitive})

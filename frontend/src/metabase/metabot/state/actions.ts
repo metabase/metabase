@@ -415,14 +415,28 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
+        const metabotName = getSetting(getState(), "metabot-name");
         return {
           prompt: rawPrompt,
           success: false,
           shouldRetry: result.payload?.shouldRetry ?? true,
-          error:
-            result.payload?.type === "error"
-              ? result.payload.display
-              : undefined,
+          error: match(result)
+            .returnType<MetabotAgentTurnDisplayError | undefined>()
+            .with(
+              P.union(
+                { payload: { type: "abort" } },
+                { meta: { aborted: true } },
+              ),
+              () => ({
+                type: "aborted",
+                message: t`Response from ${metabotName} was interrupted`,
+              }),
+            )
+            .with(
+              { payload: { type: "error" } },
+              ({ payload }) => payload.display,
+            )
+            .otherwise(() => undefined),
         };
       }
 
@@ -544,9 +558,9 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
-                // TODO: always push, but let the surface render and/or navigate on its own
+                pushDataPart({ type: "data_part", part });
+
                 if (isFullPageMetabot) {
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -556,7 +570,6 @@ export const sendAgentRequest = createAsyncThunk<
                   if (part.data.type === "card") {
                     dispatch(setNavigateToPath(path));
                   }
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -705,7 +718,15 @@ export const sendAgentRequest = createAsyncThunk<
           serverStarted,
           error: streamedError,
           display: isMatching(
-            { type: "ai_usage_limit_reached", message: P.string },
+            {
+              type: P.union(
+                "ai_usage_limit_reached",
+                "ai_provider_billing",
+                "ai_provider_rate_limit",
+                "ai_provider_auth",
+              ),
+              message: P.string,
+            },
             streamedError,
           )
             ? // special case where we want to show the returned error from the backend
