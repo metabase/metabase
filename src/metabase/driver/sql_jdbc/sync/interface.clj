@@ -116,8 +116,12 @@
 (defmulti describe-nested-field-columns-for-fields
   "Return information about the nestable columns in a `table`, given `fields`: the Table's column metadata that sync
   just fetched from the warehouse (via [[metabase.driver/describe-fields]] or [[metabase.driver/describe-table]]), so
-  implementations don't need to list the columns again. Required for drivers that support `:nested-field-columns`.
-  Results should match the [[metabase.sync.interface/NestedFCMetadata]] schema."
+  implementations don't need to list the columns again. Results should match the
+  [[metabase.sync.interface/NestedFCMetadata]] schema.
+
+  Drivers that support `:nested-field-columns` should implement this. Until the deprecated
+  [[describe-nested-field-columns]] is removed, drivers that only implement it keep working: it is called in place of
+  this method."
   {:added "0.65.0", :arglists '([driver database table fields])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

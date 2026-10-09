@@ -428,7 +428,7 @@
                                    (sql-jdbc.sync/describe-nested-field-columns-for-fields
                                     driver/*driver* (mt/db) table fields))
                              "json_bit → title"))))
-          (testing "JSON columns missing from the given fields, e.g. ones the sync user can't read (#83790), are not sampled"
+          (testing "JSON columns missing from the given fields (e.g. unreadable ones, #83790) are not sampled"
             (is (= #{}
                    (sql-jdbc.sync/describe-nested-field-columns-for-fields
                     driver/*driver* (mt/db) table

@@ -871,17 +871,17 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defn- overrides-describe-nested-field-columns?
   "Whether `driver` has its own implementation of the deprecated
-  [[sql-jdbc.sync.interface/describe-nested-field-columns]]. The `:sql-jdbc` implementation of
-  [[sql-jdbc.sync.interface/describe-nested-field-columns-for-fields]] shadows the `::driver/driver` fallback for every
-  `:sql-jdbc` driver, so it has to defer to such an override itself."
+  [[sql-jdbc.sync.interface/describe-nested-field-columns]]."
   [driver]
   (not (identical? (get-method sql-jdbc.sync.interface/describe-nested-field-columns driver)
                    (get-method sql-jdbc.sync.interface/describe-nested-field-columns :sql-jdbc))))
 
 (defmethod sql-jdbc.sync.interface/describe-nested-field-columns-for-fields :sql-jdbc
   [driver database table fields]
+  ;; this method shadows the `::driver/driver` fallback for every `:sql-jdbc` driver, so it has to call a driver's own
+  ;; implementation of the deprecated method itself; remove when that method is deleted
   (if (overrides-describe-nested-field-columns? driver)
-    ;; the driver only implements the deprecated method; remove when it's deleted
+    ;; the driver only implements the deprecated method
     #_{:clj-kondo/ignore [:deprecated-var]}
     (sql-jdbc.sync.interface/describe-nested-field-columns driver database table)
     ;; `fields` is the column list sync just read, so for drivers with `describe-fields` it already leaves out columns
