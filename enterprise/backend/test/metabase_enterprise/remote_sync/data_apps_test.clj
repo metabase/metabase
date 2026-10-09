@@ -815,7 +815,7 @@
       (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (let [card-id (t2/select-one-pk :model/Card :entity_id question-eid)]
-          (mt/with-temporary-setting-values [enable-embedding-static true]
+          (mt/with-temporary-setting-values [enable-embedding-modular true]
             (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:embedding_params {}})
             (testing "a card elsewhere takes them"
               (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]

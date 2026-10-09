@@ -21,12 +21,14 @@ Each item in `data` is text only, icon + text, or icon only. The component owns 
     { value: "code", label: "Code" },
     { value: "preview", label: "Preview", icon: "eye_filled" },
     { value: "settings", ariaLabel: "Settings", icon: "gear" },
+    { value: "help", ariaLabel: "Help", icon: "info", withTooltip: true },
   ]}
 />
 ```
 
 - `label` is the visible text. Add `icon` to show an icon before it.
 - Leave out `label` and pass `ariaLabel` with `icon` for an icon-only item. `ariaLabel` is required so the item has an accessible name.
+- Add `withTooltip` to an icon-only item to show its `ariaLabel` as a tooltip. It opens when the pointer is anywhere over the segment or the segment has keyboard focus, and pressing Escape closes it. Use it when the icon alone doesn't make the option clear.
 - `icon` is usually an icon name. Pass an element only when the icon can't be expressed as a name; the element is then responsible for its own size.
 
 ## Examples
@@ -42,6 +44,10 @@ Each item in `data` is text only, icon + text, or icon only. The component owns 
 ### Icon only
 
 <Canvas of={SegmentedControlStories.IconOnly} />
+
+### Icon only with tooltip
+
+<Canvas of={SegmentedControlStories.IconOnlyWithTooltip} />
 
 ### Full width
 

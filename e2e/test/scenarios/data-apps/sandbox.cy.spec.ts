@@ -95,6 +95,11 @@ describe("scenarios > data apps > sandbox & isolation", () => {
 
   describe("isolation", () => {
     it("serves the embed document with locked-down headers, renders the app in a sandboxed iframe, and keeps the app's CSS and JS globals inside it", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
       cy.request({
         url: `/embed/apps/${APP_NAME}`,
         followRedirect: false,
@@ -113,10 +118,6 @@ describe("scenarios > data apps > sandbox & isolation", () => {
         );
       });
 
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
       H.openDataApp(APP_NAME);
 
       cy.get(`iframe[title="${APP_DISPLAY_NAME}"]`)

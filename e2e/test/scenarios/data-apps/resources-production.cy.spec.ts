@@ -163,7 +163,9 @@ describe("scenarios > data apps > resources in production", () => {
 
   it("serves the app to a member of its permission group", () => {
     publishApp().then(({ app }) => {
-      H.addUserToGroup(app.permission_group_id, USERS.normal.email);
+      H.assignTestGroupToDataApp(app.name).then((groupId) => {
+        H.addUserToGroup(groupId, USERS.normal.email);
+      });
 
       cy.signInAsNormalUser();
       H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });

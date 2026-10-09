@@ -55,14 +55,15 @@ Rules:
 - This directory sits beside `package.json`, not under `src/`. The CLI scans
   only `queries/` and `actions/`, so a definition anywhere else never gets a
   copy, and the authored action is refused for the app's viewers in production.
-- Actions exist only when the generated schema includes actions
-  (`include-actions=true`). The app runs a copy of each action, written from
-  what `npm run print-resources` prints; it never creates actions.
+- The generated schema lists every query action that belongs to no model.
+  The app runs a copy of each action, written by
+  `npm run write-resources`; it never creates actions.
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.
 - `copiedActionEntityId` is the entity ID of the action's copy in the app's
   collection, under the repo's `collections/data_apps/`. After adding a
-  definition, write the copy there, run `npm run check-resources`, and commit
+  definition, run `npm run write-resources` to write the copy there, then
+  `npm run check-resources`, and commit
   the definitions and the collection files together. `npm run build` fails
   until they match.
 - Never copy a `copiedActionEntityId` to another definition, or remove it while
