@@ -44,13 +44,14 @@
       (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
         (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id (mt/user->id :crowberto)}
                        :model/MetabotConversation {theirs :id} {:user_id (mt/user->id :rasta)}]
-          (doseq [[situation tool-names sql-on? conversation readable?]
-                  [["run_query offered and SQL execution on"  #{"create_sql_query" "run_query"} true  own    true]
-                   ["run_query offered and SQL execution off" #{"create_sql_query" "run_query"} false own    false]
-                   ["no run_query in the session"             #{"create_sql_query"}             true  own    false]
-                   ["a conversation someone else can read"    #{"create_sql_query" "run_query"} true  theirs false]]]
+          (doseq [[situation tool-names query-on? sql-on? conversation readable?]
+                  [["run_query offered and SQL execution on"    #{"create_sql_query" "run_query"} true  true  own    true]
+                   ["run_query offered and SQL execution off"   #{"create_sql_query" "run_query"} true  false own    false]
+                   ["run_query offered and query execution off" #{"create_sql_query" "run_query"} false true  own    false]
+                   ["no run_query in the session"               #{"create_sql_query"}             true  true  own    false]
+                   ["a conversation someone else can read"      #{"create_sql_query" "run_query"} true  true  theirs false]]]
             (testing situation
-              (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+              (mt/with-temporary-setting-values [metabot-query-execution-enabled? query-on?
                                                  metabot-sql-execution-enabled?   sql-on?]
                 (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
                                                                           :conversation-id conversation
