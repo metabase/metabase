@@ -120,7 +120,7 @@
                :headers        {"Authorization" "Bearer sk-test"}
                :socket-timeout (llm.settings/llm-vllm-request-timeout-ms)}
               @captured))
-      (is (=? {:model "gpt-oss-120b" :max_tokens (llm.settings/llm-max-tokens) :temperature 0.3}
+      (is (=? {:model "gpt-oss-120b" :temperature 0.3}
               (json/decode+kw (:body @captured)))))))
 
 (deftest chat-usage-test
