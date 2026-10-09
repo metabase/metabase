@@ -56,6 +56,7 @@
   - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -1084,6 +1085,10 @@
 ;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
 ;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
 ;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
+;;
+;; [[with-field-path-cache]] is that bounded, opt-in cache. It is for callers whose field refs are reuse-heavy, for
+;; example remote sync, which serializes again the imported cards that refer to the same few fields many times. It is
+;; deliberately not part of [[with-cache]].
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
@@ -1100,6 +1105,24 @@
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
   [[_db-name _schema _table-name & _fields :as field-id] :- [:maybe [:cat string? [:maybe string?] string? #_fields [:+ string?]]]]
   (resolve/import-field-fk (import-resolver) field-id))
+
+(def ^:private field-path-cache-size
+  "The most field paths that [[with-field-path-cache]] keeps. Each entry is a short vector of names."
+  10000)
+
+(defn do-with-field-path-cache
+  "Impl for [[with-field-path-cache]]. An inner use reuses the cache of an outer use."
+  [thunk]
+  (if (memoize/memoized? *export-field-fk*)
+    (thunk)
+    (binding [*export-field-fk* (memoize/lru *export-field-fk* :lru/threshold field-path-cache-size)]
+      (thunk))))
+
+(defmacro with-field-path-cache
+  "Runs `body` with [[*export-field-fk*]] memoized in a bounded LRU cache. Use it only where field refs are reused
+  heavily and no Field or Table is written during `body`, because a cached path can go stale."
+  [& body]
+  `(do-with-field-path-cache (fn [] ~@body)))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field, with one
