@@ -63,6 +63,11 @@
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
   (t2/select :model/Card :id [:in card-ids]))
 
+(mu/defn timelines
+  "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
+  [timeline-ids :- [:set ms/PositiveInt]]
+  (t2/select :model/Timeline :id [:in timeline-ids]))
+
 (mu/defn card-query-info
   "The query-related fields of the Card with `card-id`.
 
@@ -584,3 +589,15 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(defn card-ids-outside-collection
+  "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."
+  [card-ids collection-id]
+  (t2/select-pks-set :model/Card {:where [:and
+                                          [:in :id card-ids]
+                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
+
+(defn other-cards-in-collection
+  "The cards in the collection with `collection-id`, leaving out the card with `card-id`."
+  [collection-id card-id]
+  (t2/select :model/Card :collection_id collection-id :id [:not= card-id]))

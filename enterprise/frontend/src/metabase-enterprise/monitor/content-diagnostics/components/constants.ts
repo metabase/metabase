@@ -1,0 +1,2 @@
+export const DEFAULT_INCLUDE_PERSONAL_COLLECTIONS = true;
+export const TOOLTIP_OPEN_DELAY_MS = 300;

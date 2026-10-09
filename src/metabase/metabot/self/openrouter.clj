@@ -244,10 +244,10 @@
   [body {:keys [model reasoning? schema] :or {reasoning? true}}]
   (let [forced? (or (some? schema) (= "required" (:tool_choice body)))
         ;; Safety net: the mandatory tool call must survive the un-disableable thinking spend
-        ;; (theory vs practice in [[forced-tool-call-token-floor]]); only an existing cap is
-        ;; raised, and only where a tool call is actually forced.
+        ;; (theory vs practice in [[forced-tool-call-token-floor]]); the cap is raised only
+        ;; where a tool call is actually forced.
         body    (cond-> body
-                  (and (reasoning-mandatory? model) forced? (:max_tokens body))
+                  (and (reasoning-mandatory? model) forced?)
                   (update :max_tokens max forced-tool-call-token-floor))]
     (if-not (= :renderable (reasoning-class model))
       body
@@ -274,10 +274,17 @@
 
   `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). Gating it in the shared
   builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
-  whose model names are customer-chosen free text."
-  [{:keys [model system] :as opts
+  whose model names are customer-chosen free text.
+
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
+  [{:keys [model system max-tokens] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (-> (cond-> (chat-completions/request-body (assoc opts :model model))
+  ;; `openai/*` models get the default too: the rate-limit metering that keeps
+  ;; [[metabase.metabot.self.openai/openai-request-body]] from sending one is OpenAI's and Azure's, and uncapped,
+  ;; OpenRouter substitutes a per-endpoint default (probed 2026-09-17 on deepseek/deepseek-v4-pro: 16384 on one
+  ;; endpoint, 32768 on another).
+  (-> (cond-> (chat-completions/request-body
+               (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens)))
         (and system (anthropic-model? model))
         (update-in [:messages 0 :content] claude/system->cached-content-blocks)
 

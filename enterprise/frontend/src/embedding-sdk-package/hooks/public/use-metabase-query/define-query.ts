@@ -7,12 +7,13 @@ import type {
 } from "./types";
 
 type SavedQuestionBinding = {
-  savedQuestionSourceId?: number;
+  savedQuestionEntityId?: string;
 };
 
 /**
- * Defines a source-controlled data app query that can be synchronized to a
- * saved question.
+ * Defines a source-controlled data app query. `savedQuestionEntityId` is the
+ * entity ID of its saved question in the app's collection under `collections/data_apps/`, which a
+ * production build runs.
  */
 export function defineQuery<
   TEntity extends TableSchema | undefined = undefined,

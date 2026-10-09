@@ -11,6 +11,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
@@ -372,6 +373,17 @@
        (keep :state)
        (reduce memory/merge-states {})))
 
+(defn- filled-context-window?
+  "Whether a turn that stopped for `finish-reason` with `context-tokens` reached `window`.
+
+  True only for a `length` stop whose context is at or past `window`, so the next turn cannot fit.
+  False when either count is unknown."
+  [finish-reason context-tokens window]
+  (and (= "length" finish-reason)
+       (pos-int? context-tokens)
+       (pos-int? window)
+       (>= context-tokens window)))
+
 (defn finalize-assistant-turn!
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final
   streamed parts.
@@ -380,7 +392,10 @@
   (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
   the v2 at-rest format (see [[parts->storable-content]]) before storage; usage is
   accumulated separately into the `usage` column; the error part body, if any,
-  is captured into the `error` column via the `:error` kwarg.
+  is captured into the `error` column via the `:error` kwarg; why the turn
+  stopped early, if it did, is derived from those same parts into the
+  `finish_reason` column, and whether a `length` stop filled the context window
+  into `context_window_full`.
 
   Keyword args:
   - `:profile-id` — same value passed to [[start-turn!]]; tags the
@@ -393,18 +408,23 @@
   - `:turn-state` — the state this turn produced; stored in the `state` column
      when non-empty.
   - `:slack-msg-id`, `:channel-id` — backfill onto the assistant row when known
-     at completion (Slack response posts mid-stream)."
+     at completion (Slack response posts mid-stream).
+  - `:context-window-tokens` — window of the model the turn ran on. When the turn
+     stopped at `length` with its context at or past it, `context_window_full` is
+     set, so the turn reads as full later whatever model is configured then."
   [assistant-msg-id parts
-   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state]
+   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens]
       :or   {finished? true}}]
-  (let [turn-state    (not-empty turn-state)
-        usage         (extract-usage parts)
+  (let [turn-state     (not-empty turn-state)
+        usage          (extract-usage parts)
+        context-tokens (extract-context-tokens parts)
+        finish-reason  (self.core/parts->incomplete-finish-reason parts)
         ;; used-table extraction needs the raw internal parts before conversion trims
         ;; tool outputs, so it can see keys the stored format discards, e.g. `:transform`
-        kept-parts    (->> parts
-                           (remove #(#{:start :usage :finish :error} (:type %)))
-                           (filter streaming/persistable-data-part?))
-        content       (parts->storable-content parts)]
+        kept-parts     (->> parts
+                            (remove #(#{:start :usage :finish :error} (:type %)))
+                            (filter streaming/persistable-data-part?))
+        content        (parts->storable-content parts)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
@@ -415,12 +435,21 @@
                                          :total_tokens   (->> (vals usage)
                                                               (map #(+ (:prompt %) (:completion %)))
                                                               (reduce + 0))
-                                         :context_tokens (extract-context-tokens parts)
+                                         :context_tokens context-tokens
                                          :finished       (boolean finished?)
+                                         ;; Recorded whatever else the turn did: a turn the client
+                                         ;; abandoned, or one that also errored, was still truncated
+                                         ;; or filtered, and support and EE analytics read that back.
+                                         ;; `row->status` ranks aborted and errored ahead of it, so
+                                         ;; the status the client sees is unchanged.
+                                         :finish_reason  finish-reason
                                          :error          (safe-encode-error error)}
                                   turn-state   (assoc :state turn-state)
                                   slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                                  channel-id   (assoc :channel_id channel-id)))
+                                  channel-id   (assoc :channel_id channel-id)
+                                  ;; Set only on a full turn, so every other row keeps NULL.
+                                  (filled-context-window? finish-reason context-tokens context-window-tokens)
+                                  (assoc :context_window_full true)))
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
@@ -664,23 +693,45 @@
          (< (.toMillis (java.time.Duration/between then (Instant/now)))
             placeholder-grace-period-ms))))
 
+(def ^:private known-finish-reason
+  "The stopped-early reasons this build can render, as a lookup. Any other stored value — one written
+  by a newer build — reads as a plain completed turn rather than reaching the client as a status
+  variant it cannot model."
+  #{"length" "content-filter" "tool-calls"})
+
 (defn- row->status
-  "The message's status, from its own `finished` / `error` columns. Absent
-  `:finished` means success; explicit `nil` past the grace window is a crashed
+  "The message's status, from its own `finished` / `error` / `finish_reason` / `context_window_full` columns.
+
+  Absent `:finished` means success; explicit `nil` past the grace window is a crashed
   placeholder and reads as aborted."
   [row]
-  (cond
-    (placeholder-still-active? row)
-    {:type "in_progress"}
+  ;; Branch order is the precedence: a row can carry a reason and still be aborted or errored, and
+  ;; what the client saw happen to the turn outranks why the model stopped.
+  (let [stored-reason (:finish_reason row)
+        finish-reason (known-finish-reason stored-reason)]
+    (cond
+      (placeholder-still-active? row)
+      {:type "in_progress"}
 
-    (some? (:error row))
-    {:type "errored" :error (decode-error (:error row))}
+      (some? (:error row))
+      {:type "errored" :error (decode-error (:error row))}
 
-    (and (contains? row :finished) (not (true? (:finished row))))
-    {:type "aborted"}
+      (and (contains? row :finished) (not (true? (:finished row))))
+      {:type "aborted"}
 
-    :else
-    {:type "done"}))
+      finish-reason
+      (cond-> {:type "incomplete" :finishReason finish-reason}
+        (and (= "length" finish-reason) (:context_window_full row)) (assoc :contextWindowFull true))
+
+      :else
+      (do
+        (when (some? stored-reason)
+          ;; This build has no copy to show for a reason it doesn't know, so the turn reads as a
+          ;; normal completed one and the reason is thrown away. Warn so it leaves a trace: the
+          ;; row came either from a newer build or from a bad write.
+          (log/warnf "Unknown metabot_message.finish_reason %s on message %s; reading it as a completed turn"
+                     (pr-str stored-reason) (:id row)))
+        {:type "done"}))))
 
 (defn- message->client-message
   "Convert one `MetabotMessage` row into its client shape: the row's parts, plus
@@ -768,7 +819,7 @@
   the source row so the copied prefix can be told apart from messages added after
   the fork."
   [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state
-                                       context_tokens]}]
+                                       context_tokens finish_reason context_window_full]}]
   (cond-> {:conversation_id        new-conversation-id
            :data                   data
            :data_version           data_version
@@ -781,9 +832,11 @@
            :ai_proxied             (boolean ai_proxied)
            :user_id                user-id
            :forked_from_message_id id}
-    (some? finished) (assoc :finished finished)
-    (some? error)    (assoc :error error)
-    (some? state)    (assoc :state state)))
+    (some? finished)            (assoc :finished finished)
+    (some? error)               (assoc :error error)
+    (some? state)               (assoc :state state)
+    (some? finish_reason)       (assoc :finish_reason finish_reason)
+    (some? context_window_full) (assoc :context_window_full context_window_full)))
 
 (mu/defn fork-conversation!
   "Fork `conversation-id` at the assistant message identified by `fork-external-id`,

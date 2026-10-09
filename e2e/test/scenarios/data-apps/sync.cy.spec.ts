@@ -1,4 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { DataApp } from "metabase-types/api";
+
 const { H } = cy;
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /**
  * Drives a real remote-sync pull of a repo whose `data_apps/` holds two apps, each a `data_app.yaml` with its bundle
@@ -40,15 +45,36 @@ describe("scenarios > data apps > repo sync", () => {
     });
 
     cy.request("/api/apps/good/bundle").its("status").should("eq", 200);
+
+    // The good app's collection files were loaded with it: its collection, and
+    // the saved question in it, addressed by the entity IDs the files carry.
+    cy.request<DataApp>("/api/apps/good").then(({ body: app }) => {
+      cy.request("/api/collection/goodAppCollection0000")
+        .its("body.id")
+        .should("eq", app.resource_collection_id);
+      cy.request("/api/card/goodAppOrdersQuestion")
+        .its("body.collection_id")
+        .should("eq", app.resource_collection_id);
+      expect(app.table_ids).to.deep.eq([ORDERS_ID]);
+    });
   });
 
-  it("removes an app whose directory is removed from the repo on the next sync", () => {
+  it("removes an app whose directory and collection files are removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");
 
-    cy.exec(`rm -rf -- "${H.LOCAL_GIT_PATH}/data_apps/good"`);
+    // An author deletes an app by deleting its directory and its collection's
+    // files in one commit; the pull deletes the app, and the app deletes its
+    // collection with what it holds.
+    cy.task("removeDataAppPaths", {
+      paths: [
+        `${H.LOCAL_GIT_PATH}/data_apps/good`,
+        `${H.LOCAL_GIT_PATH}/collections/data_apps/data_app__good_app.yaml`,
+        `${H.LOCAL_GIT_PATH}/collections/data_apps/data_app__good_app`,
+      ],
+    });
     H.commitToRepo("Remove the good app from the repo");
     H.configureGitAndPullChanges("read-write");
 
@@ -58,6 +84,18 @@ describe("scenarios > data apps > repo sync", () => {
       ]);
     });
     cy.request({ url: "/api/apps/good", failOnStatusCode: false })
+      .its("status")
+      .should("eq", 404);
+    cy.request({
+      url: "/api/card/goodAppOrdersQuestion",
+      failOnStatusCode: false,
+    })
+      .its("status")
+      .should("eq", 404);
+    cy.request({
+      url: "/api/collection/goodAppCollection0000",
+      failOnStatusCode: false,
+    })
       .its("status")
       .should("eq", 404);
   });

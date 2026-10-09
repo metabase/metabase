@@ -3650,6 +3650,86 @@
         (is (= #{implicit-id} (t2/select-pks-set :action)))
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
 
+(deftest timeline-event-entity-ids-test
+  (testing "v65.h1c4r5 thru v65.lpm4z3: existing timeline events get distinct portable IDs, other data unchanged"
+    (impl/test-migrations ["v65.h1c4r5" "v65.lpm4z3"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-birds@example.com"
+                                                             :password    "password"
+                                                             :date_joined :%now
+                                                             :entity_id   (u/generate-nano-id)})
+            timeline-id (t2/insert-returning-pk! :timeline {:name       "Migration seasons"
+                                                            :icon       "star"
+                                                            :creator_id user-id
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :entity_id  (u/generate-nano-id)})
+            event       {:name         "Swallows return"
+                         :archived     false
+                         :icon         "star"
+                         :timeline_id  timeline-id
+                         :creator_id   user-id
+                         :created_at   :%now
+                         :updated_at   :%now
+                         :timestamp    #t "2027-04-20T00:00:00Z"
+                         :time_matters false
+                         :timezone     "UTC"}
+            _           (t2/insert! :timeline_event [event (assoc event :archived true)])
+            before      (t2/select :timeline_event {:order-by [:id]})]
+        (migrate!)
+        (let [after      (t2/select :timeline_event {:order-by [:id]})
+              entity-ids (map :entity_id after)]
+          (is (= before (mapv #(dissoc % :entity_id) after)))
+          (is (= 2 (count (set entity-ids))))
+          (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))
+          (is (thrown? Exception (t2/insert! :timeline_event event))
+              "new events must carry an entity ID")
+          (is (thrown? Exception (t2/insert! :timeline_event (assoc event :entity_id (first entity-ids))))
+              "two events must not share an entity ID"))))))
+
+(deftest timeline-event-entity-ids-rollback-test
+  (testing "v65.h1c4r5 thru v65.lpm4z3: rolling back leaves timeline events readable and writable by older code"
+    (impl/test-migrations ["v65.h1c4r5" "v65.lpm4z3"] [migrate!]
+      (let [user-id       (t2/insert-returning-pk! :core_user {:email       "migration-storks@example.com"
+                                                               :password    "password"
+                                                               :date_joined :%now
+                                                               :entity_id   (u/generate-nano-id)})
+            timeline-id   (t2/insert-returning-pk! :timeline {:name       "Rollback seasons"
+                                                              :icon       "star"
+                                                              :creator_id user-id
+                                                              :created_at :%now
+                                                              :updated_at :%now
+                                                              :entity_id  (u/generate-nano-id)})
+            event         {:name         "Swallows return"
+                           :archived     false
+                           :icon         "star"
+                           :timeline_id  timeline-id
+                           :creator_id   user-id
+                           :created_at   :%now
+                           :updated_at   :%now
+                           :timestamp    #t "2027-04-20T00:00:00Z"
+                           :time_matters false
+                           :timezone     "UTC"}
+            _             (t2/insert! :timeline_event [event (assoc event
+                                                                    :name "Swifts leave"
+                                                                    :archived true
+                                                                    :timestamp #t "2027-08-15T00:00:00Z")])
+            portable-data (fn []
+                            (map #(select-keys % [:name :timestamp :timeline_id :archived])
+                                 (t2/select :timeline_event {:order-by [:id]})))
+            before        (portable-data)]
+        (migrate!)
+        (migrate! :down 64)
+        (testing "events written before the upgrade are still there, unchanged"
+          (is (= before (portable-data))))
+        (testing "and an event can be written without an entity ID again"
+          (is (some? (t2/insert-returning-pk! :timeline_event (assoc event :name "Storks nest")))))
+        (migrate!)
+        (testing "migrating forward again gives every event a distinct portable ID"
+          (let [entity-ids (map :entity_id (t2/select :timeline_event {:order-by [:id]}))]
+            (is (= 3 (count entity-ids)))
+            (is (= 3 (count (set entity-ids))))
+            (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))))))))
+
 (deftest add-library-dashboards-section-test
   (testing "v65.2026-10-06T16:00:00 through v65.2026-10-06T16:00:02: an existing Library gets a Dashboards section with its permissions"
     (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
@@ -3687,3 +3767,132 @@
     (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
       (migrate!)
       (is (not (t2/exists? :collection :entity_id "librarylibrarydashbrd"))))))
+
+(deftest metabot-message-finish-reason-column-test
+  (testing "v65.2026-10-08T00:00:00: metabot_message gains a nullable finish_reason, and finished is left alone"
+    (impl/test-migrations ["v65.2026-10-08T00:00:00"] [migrate!]
+      (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Finish"
+                                                                 :last_name     "Reason"
+                                                                 :email         "finish-reason@test.com"
+                                                                 :date_joined   :%now
+                                                                 :password      "password"
+                                                                 :password_salt "salt"
+                                                                 ;; NOT NULL since v64.2026-07-23T12:00:05
+                                                                 :entity_id     (u/generate-nano-id)})
+            conversation-id (str (random-uuid))
+            _               (t2/insert! :metabot_conversation {:id conversation-id :user_id user-id})
+            new-message!    (fn [finished]
+                              (t2/insert-returning-pk! :metabot_message {:conversation_id conversation-id
+                                                                         :created_at      :%now
+                                                                         :profile_id      "internal"
+                                                                         :role            "assistant"
+                                                                         :data            "[]"
+                                                                         :total_tokens    0
+                                                                         :data_version    2
+                                                                         :finished        finished}))
+            completed       (new-message! true)
+            aborted         (new-message! false)
+            in-flight       (new-message! nil)
+            ;; Read whole rows: naming finish_reason in the query would make the pre-migration run a SQL
+            ;; error, which says nothing about whether the migration added the column.
+            message         (fn [id] (t2/select-one :metabot_message :id id))]
+        (migrate!)
+        (testing "the column exists and every pre-migration row reads NULL"
+          (is (contains? (message completed) :finish_reason))
+          (is (nil? (:finish_reason (message completed))))
+          (is (nil? (:finish_reason (message aborted))))
+          (is (nil? (:finish_reason (message in-flight)))))
+        (testing "finished keeps its value: true completed, false client-aborted, NULL in flight"
+          (is (true? (:finished (message completed))))
+          (is (false? (:finished (message aborted))))
+          (is (nil? (:finished (message in-flight)))))
+        (testing "the column stores a reason"
+          (t2/update! :metabot_message completed {:finish_reason "content-filter"})
+          (is (= "content-filter" (:finish_reason (message completed)))))
+        (testing "rolling back drops the column and keeps the rows"
+          (migrate! :down 64)
+          (is (not (contains? (message completed) :finish_reason)))
+          (is (true? (:finished (message completed)))))))))
+
+(deftest metabot-message-context-window-full-column-test
+  (testing "v65.2026-10-08T00:00:01: metabot_message gains a nullable context_window_full"
+    (impl/test-migrations ["v65.2026-10-08T00:00:01"] [migrate!]
+      (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Context"
+                                                                 :last_name     "Window"
+                                                                 :email         "context-window-full@test.com"
+                                                                 :date_joined   :%now
+                                                                 :password      "password"
+                                                                 :password_salt "salt"
+                                                                 ;; NOT NULL since v64.2026-07-23T12:00:05
+                                                                 :entity_id     (u/generate-nano-id)})
+            conversation-id (str (random-uuid))
+            _               (t2/insert! :metabot_conversation {:id conversation-id :user_id user-id})
+            ;; `finish_reason` exists already: its changeset runs before this one
+            message-id      (t2/insert-returning-pk! :metabot_message {:conversation_id conversation-id
+                                                                       :created_at      :%now
+                                                                       :profile_id      "internal"
+                                                                       :role            "assistant"
+                                                                       :data            "[]"
+                                                                       :total_tokens    0
+                                                                       :data_version    2
+                                                                       :finished        true
+                                                                       :finish_reason   "length"})
+            ;; Read whole rows: naming the column in the query would make the pre-migration run a SQL error,
+            ;; which says nothing about whether the migration added it.
+            message         #(t2/select-one :metabot_message :id message-id)]
+        (migrate!)
+        (testing "the column exists and a pre-migration row reads NULL"
+          (is (contains? (message) :context_window_full))
+          (is (nil? (:context_window_full (message)))))
+        (testing "the column stores the verdict"
+          (t2/update! :metabot_message message-id {:context_window_full true})
+          (is (true? (:context_window_full (message)))))
+        (testing "rolling back drops the column and keeps the row"
+          (migrate! :down 64)
+          (is (not (contains? (message) :context_window_full)))
+          (is (true? (:finished (message)))))))))
+
+(deftest data-app-group-assignment-migration-test
+  (impl/test-migrations ["v65.2026-09-16T00:00:00" "v65.2026-09-16T00:00:08"] [migrate!]
+    (let [legacy-group (t2/insert-returning-pk! :permissions_group
+                                                {:name "Data App: birds"
+                                                 :is_data_app_group true
+                                                 :entity_id "legacy-app-group"})
+          ordinary-group (t2/insert-returning-pk! :permissions_group
+                                                  {:name "Finches" :entity_id "ordinary-group"})
+          user-id (t2/insert-returning-pk! :core_user
+                                           {:email "finch@test.com"
+                                            :entity_id "migration-finch"
+                                            :date_joined :%now
+                                            :password "password"
+                                            :password_salt "salt"})
+          app-id (t2/insert-returning-pk! :data_app
+                                          {:name "birds"
+                                           :display_name "Birds"
+                                           :bundle_path "birds.js"
+                                           :permission_group_id legacy-group
+                                           :created_at :%now
+                                           :updated_at :%now})]
+      (t2/insert! :permissions_group_membership {:group_id legacy-group :user_id user-id})
+      (t2/insert! :permissions {:group_id legacy-group :object "/collection/999/read/"})
+      (testing "migration removes legacy groups and their access"
+        (migrate!)
+        (is (not (t2/exists? :permissions_group :id legacy-group)))
+        (is (not (t2/exists? :permissions_group_membership :group_id legacy-group)))
+        (is (not (t2/exists? :permissions :group_id legacy-group))))
+      (testing "migration preserves apps and ordinary groups without converting legacy access"
+        (is (t2/exists? :permissions_group :id ordinary-group))
+        (is (t2/exists? :data_app :id app-id))
+        (is (empty? (t2/select :data_app_group_assignment))))
+      (testing "migration removes the obsolete columns"
+        (is (not (contains? (t2/select-one :data_app :id app-id) :permission_group_id)))
+        (is (not (contains? (t2/select-one :permissions_group :id ordinary-group) :is_data_app_group))))
+      (testing "rollback restores the old columns without deleting apps or ordinary groups"
+        (migrate! :down 64)
+        (is (contains? (t2/select-one :data_app :id app-id) :permission_group_id))
+        (is (false? (:is_data_app_group (t2/select-one :permissions_group :id ordinary-group)))))
+      (testing "the migration can run again after rollback"
+        (migrate!)
+        (is (t2/exists? :data_app :id app-id))
+        (is (t2/exists? :permissions_group :id ordinary-group))
+        (is (empty? (t2/select :data_app_group_assignment)))))))
