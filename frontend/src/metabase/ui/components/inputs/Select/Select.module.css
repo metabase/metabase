@@ -62,7 +62,9 @@
   }
 
   [data-combined-clear-section] {
-    /* Mantine sets an inline offset for the clear button + chevron pair */
+    /* Mantine sets `padding-inline-end` as an inline style on this wrapper (10px at md)
+       to offset the clear button + chevron pair from the edge. With the chevron hidden,
+       it would push the clear button off-center. */
     padding-inline-end: 0 !important;
 
     [data-combobox-chevron] {

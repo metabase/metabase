@@ -25,7 +25,7 @@ import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSe
 import { ChartSettingColorPicker } from "./components/settings/ChartSettingColorPicker";
 import { ChartSettingColorsPicker } from "./components/settings/ChartSettingColorsPicker";
 import { ChartSettingEnumToggle } from "./components/settings/ChartSettingEnumToggle";
-import { ChartSettingFieldPicker } from "./components/settings/ChartSettingFieldPicker";
+import { ChartSettingSingleFieldPicker } from "./components/settings/ChartSettingFieldPicker";
 import { ChartSettingFieldsPartition } from "./components/settings/ChartSettingFieldsPartition";
 import { ChartSettingFieldsPicker } from "./components/settings/ChartSettingFieldsPicker";
 import { ChartSettingGoalInput } from "./components/settings/ChartSettingGoalInput";
@@ -198,7 +198,7 @@ function registerVisualizationSettingWidgets() {
     select: ChartSettingSelect,
     toggle: ChartSettingToggle,
     segmentedControl: ChartSettingSegmentedControl,
-    field: ChartSettingFieldPicker,
+    field: ChartSettingSingleFieldPicker,
     fields: ChartSettingFieldsPicker,
     fieldsPartition: ChartSettingFieldsPartition,
     color: ChartSettingColorPicker,
