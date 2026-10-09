@@ -37,8 +37,8 @@ export function useResolvedGoalData(
   return {
     status: "resolved",
     data: answered.status === "resolved" ? answered.data : data,
-    results: goalValues.map((value) =>
-      getAnsweredGoalValue(data, answered, value),
-    ),
+    results: goalValues.map((value) => {
+      return getAnsweredGoalValue(data, answered, value);
+    }),
   };
 }
