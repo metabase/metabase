@@ -54,6 +54,12 @@
   "Re-export of [[metabase.query-processor.pivot.common/group-bitmask]]."
   pivot.common/group-bitmask)
 
+(def ^:private max-powerset-breakouts
+  "The most breakouts [[breakout-combinations]] will expand to their full powerset (2^n grouping combinations) when no
+  pivot rows or columns are given. Beyond this a single request could force the server to enumerate billions of
+  combinations. 12 breakouts (4096 combinations) also matches Postgres's maximum number of grouping sets."
+  12)
+
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]
@@ -100,6 +106,16 @@
                        :pivot-rows    pivot-rows
                        :pivot-cols    pivot-cols})))))
 
+(defn- validate-powerset-size!
+  "Throw an `:invalid-query` error if `num-breakouts` is too large to expand into its full powerset of combinations."
+  [num-breakouts]
+  (when (> num-breakouts max-powerset-breakouts)
+    (throw (ex-info (tru "Too many breakouts for a pivot query without pivot rows or columns: {0} breakouts, but the maximum is {1}"
+                         num-breakouts max-powerset-breakouts)
+                    {:type          qp.error-type/invalid-query
+                     :num-breakouts num-breakouts
+                     :max-breakouts max-powerset-breakouts}))))
+
 (defmacro ^:private wrapping-pivot-generation-errors
   "Rewrap any throw from `body` as `\"Error generating pivot queries\"` of type `:qp`, matching the
   outer error shape every pivot path presents to the QP's error handling."
@@ -132,7 +148,9 @@
        ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
        ;; we'll just generate everything
        (if (empty? (concat pivot-rows pivot-cols))
-         (powerset (range 0 num-breakouts))
+         (do
+           (validate-powerset-size! num-breakouts)
+           (powerset (range 0 num-breakouts)))
          (concat
           ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
           ;; primary data: return all breakouts
