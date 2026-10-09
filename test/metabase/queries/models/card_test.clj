@@ -2037,3 +2037,54 @@
       (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query categories {:aggregation [[:count]]})})
       (is (= #{(mt/id :categories)}
              (into #{} (map :table-id) (t2/select-one-fn :dimension_mappings :model/Card :id card-id)))))))
+
+(deftest ^:parallel adjust-serdes-changes-test
+  (let [adjust    #'card/adjust-serdes-changes
+        query     (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        native    (lib/native-query meta/metadata-provider "SELECT 1")
+        derived   {:database_id (meta/id) :table_id (meta/id :venues) :query_type :query}
+        mappings  (fn [uuid base-type]
+                    [{:dimension-id "d1" :type :table :table-id (meta/id :venues)
+                      :target       [:field {:lib/uuid uuid :base-type base-type} (meta/id :venues :id)]}])
+        columns   [{:name "ID" :display_name "ID" :base_type :type/BigInteger :id (meta/id :venues :id)}]
+        overrides [{:name "ID" :display_name "ID"}]
+        renamed   [{:name "ID" :display_name "Renamed"}]
+        model     (merge derived {:type :model :dataset_query query :result_metadata columns})]
+    (testing "dimension_mappings"
+      (let [metric (merge derived {:type :metric :dataset_query query :dimension_mappings (mappings "a" :type/Integer)})]
+        (testing "that differ only in :lib/uuid are no change"
+          (is (= {} (adjust metric
+                            {:dimension_mappings (mappings "b" :type/Integer)}
+                            (assoc metric :dimension_mappings (mappings "b" :type/Integer))))))
+        (testing "with another :base-type in a target are a change"
+          (is (= {:dimension_mappings (mappings "b" :type/Text)}
+                 (adjust metric
+                         {:dimension_mappings (mappings "b" :type/Text)}
+                         (assoc metric :dimension_mappings (mappings "b" :type/Text))))))))
+    (testing "result_metadata of an MBQL model"
+      (testing "equal to the stored columns in the part that the file holds is no change"
+        (is (= {} (adjust model {:result_metadata overrides} (assoc model :result_metadata overrides)))))
+      (testing "with a changed override is written with the file query"
+        (is (= {:dataset_query query :result_metadata renamed}
+               (adjust model {:result_metadata renamed} (assoc model :result_metadata renamed))))))
+    (testing "a changed query of an MBQL model is written with the file columns"
+      (let [row (assoc model :result_metadata overrides)]
+        (is (= {:dataset_query query :result_metadata overrides}
+               (adjust model {:dataset_query query} row)))))
+    (testing "a stored question whose file is an MBQL model is written with the file query and columns"
+      (let [question (assoc model :type :question)
+            row      (assoc model :result_metadata overrides)]
+        (is (= {:type :model :dataset_query query :result_metadata overrides}
+               (adjust question {:type :model :result_metadata overrides} row)))))
+    (testing "drift of a derived column"
+      (testing "adds the file query"
+        (is (= {:dataset_query query}
+               (adjust (assoc derived :type :question :database_id 999) {} (assoc derived :type :question :dataset_query query)))))
+      (testing "of an MBQL model also adds the file columns: the query step comes before the model step"
+        (is (= {:dataset_query query :result_metadata overrides}
+               (adjust (assoc model :database_id 999) {} (assoc model :result_metadata overrides))))))
+    (testing "a native model writes only its changed columns"
+      (let [native-model {:type :model :dataset_query native :database_id (meta/id) :table_id nil :query_type :native
+                          :result_metadata columns}]
+        (is (= {:result_metadata overrides}
+               (adjust native-model {:result_metadata overrides} (assoc native-model :result_metadata overrides))))))))

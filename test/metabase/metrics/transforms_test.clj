@@ -103,3 +103,19 @@
               :status           :status/active
               :sources          [{:type :field :field-id 1}]}
              dim)))))
+
+(deftest ^:parallel same-dimension-mappings?-test
+  (let [mappings (fn [& {:keys [uuid base-type dimension-id]
+                         :or   {uuid "a" base-type :type/Integer dimension-id "d1"}}]
+                   [{:dimension-id dimension-id
+                     :type         :table
+                     :table-id     5
+                     :target       [:field {:lib/uuid uuid :base-type base-type :effective-type base-type} 9]}])]
+    (testing "mappings that differ only in the :lib/uuid of a target are the same"
+      (is (metrics.transforms/same-dimension-mappings? (mappings) (mappings :uuid "b"))))
+    (testing "a changed :base-type of a target is a difference"
+      (is (not (metrics.transforms/same-dimension-mappings? (mappings) (mappings :uuid "b" :base-type :type/Text)))))
+    (testing "a changed :dimension-id is a difference"
+      (is (not (metrics.transforms/same-dimension-mappings? (mappings) (mappings :dimension-id "d2")))))
+    (testing "nil and a mapping are a difference"
+      (is (not (metrics.transforms/same-dimension-mappings? nil (mappings)))))))

@@ -276,3 +276,17 @@
          (card-writes! src "v0")
          (is (= :model (t2/select-one-fn :type :model/Card card-id)))
          (is (typed-columns? card-id)))))))
+
+(deftest forced-reload-of-model-query-change-keeps-column-types-test
+  (testing "A forced pull that changes only the query of an MBQL model writes the query with the columns, and stores
+            inferred column types"
+    (do-with-synced-cards!
+     [{:name "Model" :type :model :dataset_query (venues-query :filter? true)}]
+     (fn [[model-id]]
+       (let [tree      (rs.test/synced-tree)
+             entity-id (t2/select-one-fn :entity_id :model/Card model-id)
+             changed   (edit-card-file tree entity-id #(assoc-in % [:dataset_query :stages 0 :filters 0 3] 2))
+             src       (rs.test/versioned-source :trees {"v1" changed} :current "v1")]
+         (is (= [#{:dataset_query :result_metadata}] (card-writes! src "v1")))
+         (is (= 2 (get-in (t2/select-one-fn :dataset_query :model/Card model-id) [:stages 0 :filters 0 3])))
+         (is (typed-columns? model-id)))))))
