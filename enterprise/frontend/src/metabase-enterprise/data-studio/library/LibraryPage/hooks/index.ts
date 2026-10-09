@@ -1,2 +1,3 @@
 export { useLibraryCollections } from "./useLibraryCollections";
-export { useLibraryTreeTableInstance } from "./useLibraryTreeTableInstance";
+export { useLibraryCollectionTree } from "./useLibraryCollectionTree";
+export { useLibrarySearch } from "./useLibrarySearch";

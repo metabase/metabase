@@ -2,9 +2,8 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import { getArchiveLibraryCollectionsMessage } from "metabase/data-studio/common/utils";
 import type { Collection, CollectionId } from "metabase-types/api";
-
-import { getArchiveLibraryCollectionsMessage } from "../utils";
 
 type LibraryCollectionRowMenuProps = {
   childCount: number;

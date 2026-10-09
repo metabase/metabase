@@ -5,14 +5,32 @@ import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, IconName, SearchResult } from "metabase-types/api";
 
 const SEARCH_DEBOUNCE_MS = 300;
+
+export type LibrarySearchModel = "table" | "metric" | "dashboard";
+
+type SearchSection = {
+  id: string;
+  name: string;
+  icon: IconName;
+};
+
+const getSearchSections = (): Record<LibrarySearchModel, SearchSection> => ({
+  table: { id: "search-section:data", name: t`Data`, icon: "table" },
+  metric: { id: "search-section:metrics", name: t`Metrics`, icon: "metric" },
+  dashboard: {
+    id: "search-section:dashboards",
+    name: t`Dashboards`,
+    icon: "dashboard",
+  },
+});
 
 export function useLibrarySearch(
   searchQuery: string,
   libraryCollectionId: CollectionId | undefined,
-  localTree: TreeItem[],
+  models: LibrarySearchModel[],
 ) {
   const debouncedQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const isActive = debouncedQuery.trim().length > 0;
@@ -28,109 +46,38 @@ export function useLibrarySearch(
       ? {
           q: debouncedQuery,
           collection: libraryCollectionId,
-          models: ["table", "metric", "dashboard"],
+          models,
           context: "library",
         }
       : skipToken,
   );
 
   const tree = useMemo((): TreeItem[] => {
-    if (!isActive) {
+    if (!isActive || !searchResponse) {
       return [];
     }
 
-    const sections: TreeItem[] = [];
-
-    if (searchResponse) {
-      const dataItems: TreeItem[] = [];
-      const metricItems: TreeItem[] = [];
-      const dashboardItems: TreeItem[] = [];
-
-      for (const result of searchResponse.data) {
-        if (
-          result.model !== "table" &&
-          result.model !== "metric" &&
-          result.model !== "dashboard"
-        ) {
-          continue;
-        }
-
-        const item: TreeItem = {
-          id: `${result.model}:${result.id}`,
-          name: result.name,
-          icon: getIcon({ model: result.model }).name,
-          updatedAt: result.last_edited_at ?? result.updated_at,
-          model: result.model,
-          parentCollectionName: result.collection?.name,
-          data: {
-            id: Number(result.id),
-            model: result.model,
-            name: result.name,
-            description: result.description,
-            collection_id: result.collection_id ?? null,
-            archived: result.archived ?? false,
-            collection_position: result.collection_position,
-            "last-edit-info": result["last-edit-info"],
-          },
-        };
-
-        if (result.model === "table") {
-          dataItems.push(item);
-        } else if (result.model === "metric") {
-          metricItems.push(item);
-        } else {
-          dashboardItems.push(item);
-        }
+    const sections = getSearchSections();
+    return models.flatMap((model): TreeItem[] => {
+      const children = searchResponse.data
+        .filter((result) => result.model === model)
+        .map((result) => createSearchResultItem(result, model, getIcon));
+      if (children.length === 0) {
+        return [];
       }
-
-      if (dataItems.length > 0) {
-        sections.push({
-          id: "search-section:data",
-          name: t`Data`,
-          icon: "table",
+      const { id, name, icon } = sections[model];
+      return [
+        {
+          id,
+          name,
+          icon,
           model: "collection",
-          data: {
-            model: "collection",
-            name: t`Data`,
-          },
-          children: dataItems,
-        });
-      }
-
-      if (metricItems.length > 0) {
-        sections.push({
-          id: "search-section:metrics",
-          name: t`Metrics`,
-          icon: "metric",
-          model: "collection",
-          data: {
-            model: "collection",
-            name: t`Metrics`,
-          },
-          children: metricItems,
-        });
-      }
-
-      if (dashboardItems.length > 0) {
-        sections.push({
-          id: "search-section:dashboards",
-          name: t`Dashboards`,
-          icon: "dashboard",
-          model: "collection",
-          data: {
-            model: "collection",
-            name: t`Dashboards`,
-          },
-          children: dashboardItems,
-        });
-      }
-    }
-
-    // Client-side filter snippets and actions
-    sections.push(...filterLocalTree(localTree, debouncedQuery));
-
-    return sections;
-  }, [isActive, searchResponse, localTree, debouncedQuery, getIcon]);
+          data: { model: "collection", name },
+          children,
+        },
+      ];
+    });
+  }, [isActive, searchResponse, models, getIcon]);
 
   return {
     tree,
@@ -140,21 +87,27 @@ export function useLibrarySearch(
   };
 }
 
-function filterLocalTree(nodes: TreeItem[], query: string): TreeItem[] {
-  const lowerQuery = query.toLowerCase();
-
-  return nodes.flatMap((node) => {
-    if (node.model === "snippet" || node.model === "action") {
-      return node.name.toLowerCase().includes(lowerQuery) ? [node] : [];
-    }
-
-    if (node.children) {
-      const filteredChildren = filterLocalTree(node.children, query);
-      if (filteredChildren.length > 0) {
-        return [{ ...node, children: filteredChildren }];
-      }
-    }
-
-    return [];
-  });
+function createSearchResultItem(
+  result: SearchResult,
+  model: LibrarySearchModel,
+  getIcon: ReturnType<typeof useGetIcon>,
+): TreeItem {
+  return {
+    id: `${model}:${result.id}`,
+    name: result.name,
+    icon: getIcon({ model }).name,
+    updatedAt: result.last_edited_at ?? result.updated_at,
+    model,
+    parentCollectionName: result.collection?.name,
+    data: {
+      id: Number(result.id),
+      model,
+      name: result.name,
+      description: result.description,
+      collection_id: result.collection_id ?? null,
+      archived: result.archived ?? false,
+      collection_position: result.collection_position,
+      "last-edit-info": result["last-edit-info"],
+    },
+  };
 }

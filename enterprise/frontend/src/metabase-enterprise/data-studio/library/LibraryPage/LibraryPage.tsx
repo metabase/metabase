@@ -1,38 +1,34 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { match } from "ts-pattern";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { ListEmptyState } from "metabase/common/components/ListEmptyState";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
-import { useSelector } from "metabase/redux";
 import {
-  Card,
-  Flex,
-  Icon,
-  Stack,
-  TextInput,
-  TreeTable,
-  TreeTableSkeleton,
-} from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+  LibraryTreePage,
+  useErrorHandling,
+} from "metabase/data-studio/common/components/LibraryTreePage";
+import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
+import type { TreeItem } from "metabase/data-studio/common/types";
+import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import type { CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
+import { ActionCell } from "./components/ActionCell";
 import { CreateLibraryDashboardModal } from "./components/CreateLibraryDashboardModal";
 import { CreateMenu } from "./components/CreateMenu";
-import { LibraryBulkActions } from "./components/LibraryBulkActions";
 import { PublishTableModal } from "./components/PublishTableModal";
-import { useLibraryCollections, useLibraryTreeTableInstance } from "./hooks";
-import type { LibrarySection } from "./hooks/library-bulk-selection.utils";
-import { useLibraryBulkSelection } from "./hooks/useLibraryBulkSelection";
+import {
+  useLibraryCollectionTree,
+  useLibraryCollections,
+  useLibrarySearch,
+} from "./hooks";
+import type { LibrarySearchModel } from "./hooks/useLibrarySearch";
 import { getWritableCollection } from "./utils";
+
+const SEARCH_MODELS: LibrarySearchModel[] = ["table", "metric", "dashboard"];
 
 export function LibraryPage() {
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -45,7 +41,6 @@ export function LibraryPage() {
 }
 
 function LibraryPageContent() {
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const [searchQuery, setSearchQuery] = useState("");
   const [
     showPublishTableModal,
@@ -62,21 +57,6 @@ function LibraryPageContent() {
       "include-library": true,
     });
   const {
-    treeTableInstance,
-    allRows,
-    isChildrenLoading,
-    isLoading,
-    emptyMessage,
-    refreshSection,
-  } = useLibraryTreeTableInstance({
-    collections,
-    isLoadingCollections,
-    searchQuery,
-    onPublishTableClick: openPublishTableModal,
-    onNewDashboardClick: openCreateDashboardModal,
-  });
-
-  const {
     libraryCollection,
     tableCollection,
     metricCollection,
@@ -90,110 +70,151 @@ function LibraryPageContent() {
   );
 
   const {
-    selectedItems,
-    selectionSection,
-    isAllTables,
-    getSelectionState,
-    getRowCovered,
-    onCheckboxClick,
-    clear: clearSelection,
-  } = useLibraryBulkSelection(allRows);
+    tree: tablesTree,
+    isLoading: isLoadingTables,
+    error: tablesError,
+    watchRows: watchTableRows,
+    isChildrenLoading: isTableChildrenLoading,
+    refreshCollections: refreshTableCollections,
+  } = useLibraryCollectionTree(tableCollection, "data");
+  const {
+    tree: metricsTree,
+    isLoading: isLoadingMetrics,
+    error: metricsError,
+    watchRows: watchMetricRows,
+    isChildrenLoading: isMetricChildrenLoading,
+    refreshCollections: refreshMetricCollections,
+  } = useLibraryCollectionTree(
+    metricCollection,
+    "metrics",
+    metricCollection?.id,
+  );
+  const {
+    tree: dashboardsTree,
+    isLoading: isLoadingDashboards,
+    error: dashboardsError,
+    watchRows: watchDashboardRows,
+    isChildrenLoading: isDashboardChildrenLoading,
+    refreshCollections: refreshDashboardCollections,
+  } = useLibraryCollectionTree(dashboardCollection, "dashboards");
+  const {
+    tree: searchTree,
+    isActive: isSearchActive,
+    isLoading: isSearchLoading,
+  } = useLibrarySearch(searchQuery, libraryCollection?.id, SEARCH_MODELS);
+  useErrorHandling(tablesError || metricsError || dashboardsError);
 
-  // Clear selection when changing search query
-  const trimmedSearch = searchQuery.trim();
-  useEffect(() => {
-    clearSelection();
-  }, [trimmedSearch, clearSelection]);
+  const tree = useMemo(
+    () =>
+      isSearchActive
+        ? searchTree
+        : [...tablesTree, ...metricsTree, ...dashboardsTree],
+    [isSearchActive, searchTree, tablesTree, metricsTree, dashboardsTree],
+  );
+  const defaultExpandedIds = useMemo(
+    () =>
+      [tableCollection, metricCollection, dashboardCollection].flatMap(
+        (collection) => (collection ? [`collection:${collection.id}`] : []),
+      ),
+    [tableCollection, metricCollection, dashboardCollection],
+  );
+  const defaultMoveCollectionIds = useMemo(
+    () => ({
+      data: tableCollection?.id,
+      metrics: metricCollection?.id,
+      dashboards: dashboardCollection?.id,
+    }),
+    [tableCollection, metricCollection, dashboardCollection],
+  );
+  const emptyStateActions = useMemo(
+    () => ({
+      data: openPublishTableModal,
+      dashboards: openCreateDashboardModal,
+    }),
+    [openPublishTableModal, openCreateDashboardModal],
+  );
 
-  const moveDefaultCollectionId = match(selectionSection)
-    .with("data", () => tableCollection?.id)
-    .with("metrics", () => metricCollection?.id)
-    .with("dashboards", () => dashboardCollection?.id)
-    .otherwise(() => undefined);
-
-  const handleActionComplete = useCallback(
-    (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
-      refreshSection(section, affectedCollectionIds);
-      // Snippet sections refetch via RTK tag invalidation.
-      clearSelection();
+  const refreshSection = useCallback(
+    (section: LibrarySection, collectionIds: CollectionId[]) => {
+      if (section === "data") {
+        refreshTableCollections(collectionIds);
+      } else if (section === "metrics") {
+        refreshMetricCollections(collectionIds);
+      } else if (section === "dashboards") {
+        refreshDashboardCollections(collectionIds);
+      }
     },
-    [refreshSection, clearSelection],
+    [
+      refreshTableCollections,
+      refreshMetricCollections,
+      refreshDashboardCollections,
+    ],
+  );
+  const renderRowMenu = useCallback(
+    (item: TreeItem) => (
+      <ActionCell treeItem={item} refreshSection={refreshSection} />
+    ),
+    [refreshSection],
+  );
+  const handleRowsChange = useCallback(
+    (rows: Row<TreeItem>[]) => {
+      watchTableRows(rows);
+      watchMetricRows(rows);
+      watchDashboardRows(rows);
+    },
+    [watchTableRows, watchMetricRows, watchDashboardRows],
+  );
+  const isChildrenLoading = useCallback(
+    (row: Row<TreeItem>) =>
+      isTableChildrenLoading(row) ||
+      isMetricChildrenLoading(row) ||
+      isDashboardChildrenLoading(row),
+    [
+      isTableChildrenLoading,
+      isMetricChildrenLoading,
+      isDashboardChildrenLoading,
+    ],
   );
 
   return (
-    <>
-      <SectionLayout>
-        <PaneHeader
-          breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Semantic layer`}</DataStudioBreadcrumbs>
-          }
-          px="3.5rem"
-          py={0}
+    <LibraryTreePage
+      title={t`Semantic layer`}
+      tree={tree}
+      isLoading={
+        isLoadingCollections ||
+        isLoadingTables ||
+        isLoadingMetrics ||
+        isLoadingDashboards ||
+        isSearchLoading
+      }
+      isSearchActive={isSearchActive}
+      searchQuery={searchQuery}
+      emptyMessage={t`No tables, metrics, or dashboards yet`}
+      defaultExpandedIds={defaultExpandedIds}
+      defaultMoveCollectionIds={defaultMoveCollectionIds}
+      emptyState={
+        !libraryCollection && !isLoadingCollections ? (
+          <LibraryEmptyState />
+        ) : undefined
+      }
+      createMenu={
+        <CreateMenu
+          metricCollectionId={writableMetricCollection?.id}
+          canWriteToMetricCollection={!!writableMetricCollection}
+          dataCollectionId={tableCollection?.id}
+          canWriteToDataCollection={!!tableCollection?.can_write}
+          dashboardCollectionId={dashboardCollection?.id}
+          canWriteToDashboardCollection={!!dashboardCollection?.can_write}
+          onNewDashboardClick={openCreateDashboardModal}
         />
-        <Stack
-          bg="background_page-secondary"
-          data-testid="library-page"
-          pb="2rem"
-          px="3.5rem"
-          style={{ overflow: "hidden" }}
-        >
-          {!libraryCollection && !isLoadingCollections ? (
-            <LibraryEmptyState />
-          ) : (
-            <>
-              <Flex gap="lg">
-                <TextInput
-                  placeholder={t`Search...`}
-                  leftSection={<Icon name="search" />}
-                  bdrs="sm"
-                  flex="1"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <CreateMenu
-                  metricCollectionId={writableMetricCollection?.id}
-                  canWriteToMetricCollection={!!writableMetricCollection}
-                  dataCollectionId={tableCollection?.id}
-                  canWriteToDataCollection={!!tableCollection?.can_write}
-                  dashboardCollectionId={dashboardCollection?.id}
-                  canWriteToDashboardCollection={
-                    !!dashboardCollection?.can_write
-                  }
-                  onNewDashboardClick={openCreateDashboardModal}
-                />
-              </Flex>
-              <Card withBorder p={0}>
-                {isLoading ? (
-                  <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
-                ) : (
-                  <TreeTable
-                    instance={treeTableInstance}
-                    showCheckboxes={!isRemoteSyncReadOnly}
-                    getSelectionState={getSelectionState}
-                    isRowDisabled={getRowCovered}
-                    onCheckboxClick={onCheckboxClick}
-                    emptyState={
-                      emptyMessage ? (
-                        <ListEmptyState label={emptyMessage} />
-                      ) : null
-                    }
-                    onRowClick={(row) => {
-                      if (row.original.model === "empty-state") {
-                        return;
-                      }
-                      if (row.getCanExpand()) {
-                        row.toggleExpanded();
-                      }
-                      // Leaf navigation is handled by the name link in the cell
-                    }}
-                    isChildrenLoading={isChildrenLoading}
-                  />
-                )}
-              </Card>
-            </>
-          )}
-        </Stack>
-      </SectionLayout>
+      }
+      emptyStateActions={emptyStateActions}
+      renderRowMenu={renderRowMenu}
+      isChildrenLoading={isChildrenLoading}
+      onRowsChange={handleRowsChange}
+      onSearchQueryChange={setSearchQuery}
+      onBulkActionComplete={refreshSection}
+    >
       <PublishTableModal
         opened={showPublishTableModal}
         onClose={closePublishTableModal}
@@ -206,16 +227,6 @@ function LibraryPageContent() {
           onClose={closeCreateDashboardModal}
         />
       )}
-      {!isRemoteSyncReadOnly && (
-        <LibraryBulkActions
-          selectedItems={selectedItems}
-          selectionSection={selectionSection}
-          isAllTables={isAllTables}
-          defaultCollectionId={moveDefaultCollectionId}
-          onActionComplete={handleActionComplete}
-          onClear={clearSelection}
-        />
-      )}
-    </>
+    </LibraryTreePage>
   );
 }

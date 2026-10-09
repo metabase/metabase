@@ -3,9 +3,7 @@ import type { ComponentType } from "react";
 import { Route } from "metabase/router";
 
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
-import { getDataStudioActionRoutes } from "./actions/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
-import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
 
 /**
@@ -23,8 +21,6 @@ export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
       <Route index lazy={libraryPage} />
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
-      {getDataStudioSnippetRoutes()}
-      {getDataStudioActionRoutes()}
     </Route>
   );
 };
