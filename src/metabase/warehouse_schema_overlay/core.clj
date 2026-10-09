@@ -79,22 +79,28 @@
 
 (mu/defn field-query :- [:tuple :any :keyword]
   "The source a query over Fields reads from: `metabase_field` merged with the human and accepted AI values. `:alias` names it for
-  joins; `{:user-settings? false}` gives sync's own values."
+  joins; `{:user-settings? false}` gives sync's own values. `{:deterministic-ai-columns? true}` reads the columns of
+  [[field-ai-columns]] from `metabase_field` and merges the rest: the view of the classifiers, which write that layer
+  under the human and AI values but must respect the other user settings, such as a coercion."
   ([]
    (field-query nil))
 
-  ([{:keys [alias user-settings?]
+  ([{:keys [alias user-settings? deterministic-ai-columns?]
      :or   {alias          (t2/table-name :model/Field)
             user-settings? true}} :- [:maybe [:map {:closed true}
-                                              [:alias          {:optional true} :keyword]
-                                              [:user-settings? {:optional true} :boolean]]]]
+                                              [:alias                     {:optional true} :keyword]
+                                              [:user-settings?            {:optional true} :boolean]
+                                              [:deterministic-ai-columns? {:optional true} :boolean]]]]
    [(if user-settings?
-      ^:allow-subquery
-      {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
-                        (map (fn [column] [(field-user-settings-column column :f :u) column]))
-                        (sort user-settable-field-columns))
-       :from      [[(t2/table-name :model/Field) :f]]
-       :left-join (field-user-settings-join :f :u)}
+      (let [from-field (cond-> (vec sync-owned-field-columns)
+                         deterministic-ai-columns? (into (sort (keys field-ai-columns))))
+            merged     (sort (remove (set from-field) user-settable-field-columns))]
+        ^:allow-subquery
+        {:select    (into (mapv #(u/qualified-key :f %) from-field)
+                          (map (fn [column] [(field-user-settings-column column :f :u) column]))
+                          merged)
+         :from      [[(t2/table-name :model/Field) :f]]
+         :left-join (field-user-settings-join :f :u)})
       (t2/table-name :model/Field))
     alias]))
 

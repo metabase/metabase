@@ -248,6 +248,39 @@
                      :description nil}
                     (t2/select-one :model/FieldUserSettings :field_id (:id age))))))))))
 
+(deftest field-user-settings-data-sensitivity-flag-import-test
+  (let [serialized (atom nil)]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [db    (ts/create! :model/Database :name "my-db")
+              table (ts/create! :model/Table :name "customers" :db_id (:id db))
+              age   (ts/create! :model/Field :name "age" :table_id (:id table))
+              email (ts/create! :model/Field :name "email" :table_id (:id table))]
+          (t2/insert! :model/FieldUserSettings {:field_id (:id age) :data_sensitivity :PII})
+          (t2/insert! :model/FieldUserSettings {:field_id (:id email) :data_sensitivity nil :data_sensitivity_set true})
+          (reset! serialized
+                  (-> [(ts/extract-one "Database" (:id db))
+                       (ts/extract-one "Table" (:id table))
+                       (ts/extract-one "Field" (:id age))
+                       (ts/extract-one "Field" (:id email))]
+                      (into (map (fn [entity]
+                                   (cond-> entity
+                                     (= "PII" (some-> (:data_sensitivity entity) name)) (dissoc :data_sensitivity_set))))
+                            (serdes/extract-all "FieldUserSettings" {:filter-column :field_id
+                                                                     :filter-ids    [(:id age) (:id email)]}))))))
+      (ts/with-db dest-db
+        (let [db    (ts/create! :model/Database :name "my-db")
+              table (ts/create! :model/Table :name "customers" :db_id (:id db))
+              age   (ts/create! :model/Field :name "age" :table_id (:id table))
+              email (ts/create! :model/Field :name "email" :table_id (:id table))]
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (testing "a label exported with no flag imports as set by a person"
+            (is (=? {:data_sensitivity :PII :data_sensitivity_set true}
+                    (t2/select-one :model/FieldUserSettings :field_id (:id age)))))
+          (testing "an exported flag imports as it is"
+            (is (=? {:data_sensitivity nil :data_sensitivity_set true}
+                    (t2/select-one :model/FieldUserSettings :field_id (:id email))))))))))
+
 (deftest user-settings-import-on-missing-database-test
   (testing "Table settings, Field settings and Dimensions alone create a stub database when theirs is missing"
     (let [serialized (atom nil)

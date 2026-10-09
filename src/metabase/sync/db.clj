@@ -367,16 +367,24 @@
 
 (mu/defn incomplete-analysis-fields-for-table
   "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed,
-  with sync's own values: the classifiers write the deterministic layer under the human and AI values."
-  [table-id            :- ::lib.schema.id/table
-   fingerprint-version :- :int]
-  (t2/select :model/Field
-             :table_id table-id
-             :active true
-             :visibility_type [:not-in ["sensitive" "retired"]]
-             :fingerprint_version fingerprint-version
-             :last_analyzed nil
-             {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  as readers see them. With `{:deterministic-ai-columns? true}`, `semantic_type`, `description` and
+  `data_sensitivity` are sync's own values: the view of the classifiers, which write that layer under the human and
+  AI values. The other columns include user settings either way, such as a coercion."
+  ([table-id            :- ::lib.schema.id/table
+    fingerprint-version :- :int]
+   (incomplete-analysis-fields-for-table table-id fingerprint-version nil))
+  ([table-id            :- ::lib.schema.id/table
+    fingerprint-version :- :int
+    {:keys [deterministic-ai-columns?]} :- [:maybe [:map {:closed true}
+                                                    [:deterministic-ai-columns? {:optional true} :boolean]]]]
+   (t2/select :model/Field
+              :table_id table-id
+              :active true
+              :visibility_type [:not-in ["sensitive" "retired"]]
+              :fingerprint_version fingerprint-version
+              :last_analyzed nil
+              {:from [(warehouse-schema-overlay/field-query
+                       {:deterministic-ai-columns? (boolean deterministic-ai-columns?)})]})))
 
 (mu/defn name-field-count-for-table
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."

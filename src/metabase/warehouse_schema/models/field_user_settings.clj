@@ -172,13 +172,19 @@
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
-               :description_set :semantic_type_set :fk_target_field_id_set :data_sensitivity_set
+               :description_set :semantic_type_set :fk_target_field_id_set
                :ai_semantic_type :ai_description :ai_data_sensitivity]
    :defaults  {:description_set        false
                :semantic_type_set      false
                :fk_target_field_id_set false
                :data_sensitivity_set   false}
    :transform {:created_at   (serdes/date)
+               ;; An export made before the flag existed has a label and no flag: the label is a person's.
+               :data_sensitivity_set {:export              identity
+                                      :import-with-context (fn [ingested k v]
+                                                             (if (contains? ingested k)
+                                                               (boolean v)
+                                                               (some? (:data_sensitivity ingested))))}
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
                               :export     #(serdes/*export-field-fk* %)

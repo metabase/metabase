@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
    [metabase.sync.analyze.classify :as classify]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -319,3 +320,20 @@
         (testing "a field with a human value gets the classifier's value in metabase_field"
           (is (= :type/Name (raw human-field)))
           (is (= :type/Category (read human-field))))))))
+
+(deftest classifier-view-of-user-settings-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table table {:name "users" :db_id (u/the-id db)}
+                 :model/Field field {:name "created" :base_type :type/Integer :table_id (u/the-id table)
+                                     :semantic_type       nil
+                                     :has_field_values    nil
+                                     :fingerprint_version i/*latest-fingerprint-version*
+                                     :last_analyzed       nil}]
+    (field-user-settings/upsert-user-settings field {:semantic_type    :type/Category
+                                                     :has_field_values :list})
+    (testing "the classifiers see metabase_field's semantic type and the user's other settings"
+      (is (=? [{:semantic_type nil :has_field_values :list}]
+              (#'classify/fields-to-classify table))))
+    (testing "the other readers of fields to analyze see the user's semantic type"
+      (is (=? [{:semantic_type :type/Category :has_field_values :list}]
+              (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*))))))
