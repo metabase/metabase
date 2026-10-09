@@ -13,6 +13,7 @@
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
    [metabase-enterprise.cloud-proxy.api]
+   [metabase-enterprise.content-diagnostics.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
@@ -24,7 +25,6 @@
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
-   [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
@@ -40,6 +40,7 @@
    [metabase-enterprise.security-center.api]
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
+   [metabase-enterprise.session-management.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
@@ -60,6 +61,7 @@
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
+   :content-diagnostics        (deferred-tru "Content Diagnostics")
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :data-apps                  (deferred-tru "Data Apps")
@@ -74,6 +76,7 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :admin-security-center      (deferred-tru "Security Center")
    :serialization              (deferred-tru "Serialization")
+   :session-management         (deferred-tru "Session management")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
@@ -113,6 +116,7 @@
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    ;; The sandbox donor GET can be accessed without auth (an iframe src cannot carry session auth), so it lives in
    ;; its own namespace, tested before the rest of the session-authed custom-viz routes. Both stay behind
@@ -138,7 +142,6 @@
    "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
-   "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
@@ -160,6 +163,7 @@
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/session-management"           (premium-handler metabase-enterprise.session-management.api/routes :session-management)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)

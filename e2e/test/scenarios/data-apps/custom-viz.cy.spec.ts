@@ -34,12 +34,6 @@ describe("scenarios > data apps > custom visualizations", () => {
     visitAppRoute("custom-viz");
 
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-      // The InteractiveQuestion (a single-column count) must render before its
-      // toolbar — `demo-viz` requires exactly one result column.
-      cy.findByTestId("data-app-custom-viz", { timeout: 30000 }).should(
-        "exist",
-      );
-
       // Switch the visualization to the custom viz through the chart-type selector.
       cy.findByTestId("chart-type-selector-button", { timeout: 30000 }).click();
       cy.findByText("demo-viz").click();

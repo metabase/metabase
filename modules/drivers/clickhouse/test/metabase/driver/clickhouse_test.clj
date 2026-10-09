@@ -8,7 +8,6 @@
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
-   [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -740,54 +739,53 @@
 
 (deftest ^:parallel uploads-supported-test
   (mt/test-driver :clickhouse
-    (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
+    (is (true? (driver/database-supports? driver/*driver* :uploads (mt/db))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms-version :cloud] true))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
 
 (deftest ^:synchronized csv-upload-and-sync-test
-  (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
+  (testing "ClickHouse CSV uploads work correctly"
     (mt/test-driver :clickhouse
-      (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true
-                                                                               :version "24.8.1"
-                                                                               :semantic-version {:major 24 :minor 8}})]
-        (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
-                            (assoc :enable-multiple-db false))
-              conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
-          (driver/create-schema-if-needed! :clickhouse conn-spec "uploads_schema")
-          (try
-            (mt/with-temp [:model/Database db {:engine  :clickhouse
-                                               :details details}]
-              (is (true? (driver/database-supports? :clickhouse :uploads db)))
-              (testing "an upload schema is required"
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"A schema has not been set."
-                     (upload-test/do-with-uploaded-example-csv!
-                      {:db-id (:id db)
-                       :auxiliary-sync-steps :synchronous
-                       :schema-name ""}
-                      identity))))
-              (testing "upload models work after sync"
-                (upload-test/do-with-uploaded-example-csv!
-                 {:db-id (:id db)
-                  :auxiliary-sync-steps :synchronous
-                  :schema-name "uploads_schema"}
-                 (fn [model]
-                   (let [query-model (fn []
-                                       (let [mp   (lib-be/application-database-metadata-provider (:id db))
-                                             card (lib.metadata/card mp (:id model))]
-                                         (->> (lib/query mp card)
-                                              (qp/process-query)
-                                              (mt/formatted-rows [int str]))))]
-                     (is (= [[1 " Luke Skywalker"]
-                             [2 " Darth Vader"]]
-                            (query-model)))
-                     (sync/sync-database! db {:scan :schema})
-                     (is (= [[1 " Luke Skywalker"]
-                             [2 " Darth Vader"]]
-                            (query-model))))))))
-            (finally
-              (jdbc/execute! conn-spec ["DROP DATABASE IF EXISTS `uploads_schema`"]))))))))
+      (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
+                          (assoc :enable-multiple-db false))
+            dbms-version (driver/dbms-version :clickhouse (mt/db))
+            conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+        (driver/create-schema-if-needed! :clickhouse conn-spec "uploads_schema")
+        (try
+          (mt/with-temp [:model/Database db {:engine  :clickhouse
+                                             :details details
+                                             :dbms_version dbms-version}]
+            (is (true? (driver/database-supports? :clickhouse :uploads db)))
+            (testing "an upload schema is required"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"A schema has not been set."
+                   (upload-test/do-with-uploaded-example-csv!
+                    {:db-id (:id db)
+                     :auxiliary-sync-steps :synchronous
+                     :schema-name ""}
+                    identity))))
+            (testing "upload models work after sync"
+              (upload-test/do-with-uploaded-example-csv!
+               {:db-id (:id db)
+                :auxiliary-sync-steps :synchronous
+                :schema-name "uploads_schema"}
+               (fn [model]
+                 (let [query-model (fn []
+                                     (let [mp   (lib-be/application-database-metadata-provider (:id db))
+                                           card (lib.metadata/card mp (:id model))]
+                                       (->> (lib/query mp card)
+                                            (qp/process-query)
+                                            (mt/formatted-rows [int str]))))]
+                   (is (= [[1 " Luke Skywalker"]
+                           [2 " Darth Vader"]]
+                          (query-model)))
+                   (sync/sync-database! db {:scan :schema})
+                   (is (= [[1 " Luke Skywalker"]
+                           [2 " Darth Vader"]]
+                          (query-model))))))))
+          (finally
+            (jdbc/execute! conn-spec ["DROP DATABASE IF EXISTS `uploads_schema`"])))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct ClickHouse types"

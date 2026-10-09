@@ -58,7 +58,7 @@
   (update opts :credentials #(or % (settings-credentials))))
 
 (defn- google-raw [opts]
-  (google/google-raw (with-settings-credentials opts)))
+  (second (google/google-raw (with-settings-credentials opts))))
 
 (defn- list-models
   ([] (list-models {}))
@@ -80,8 +80,10 @@
            including when the platform dates it in the `@` spelling"
     (are [model window] (= window (google/context-window-tokens model))
       "anthropic/claude-fable-5"            1000000
+      "anthropic/claude-opus-5-5"           1000000
       "anthropic/claude-opus-5"             1000000
       "anthropic/claude-opus-4-6"           1000000
+      "anthropic/claude-sonnet-5-5"         1000000
       "anthropic/claude-sonnet-5"           1000000
       "anthropic/claude-sonnet-4-6"         1000000
       "anthropic/claude-haiku-4-5@20251001"  200000
@@ -159,7 +161,8 @@
                    :headers {"Content-Type" "application/json"}}
                   req))
           (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-                  :generationConfig {:thinkingConfig {:includeThoughts true}}}
+                  :generationConfig {:maxOutputTokens 32000
+                                     :thinkingConfig  {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
 (deftest google-raw-regional-location-host-test
@@ -399,8 +402,7 @@
               "the URL names the model; a model in the body is rejected by the platform"))))))
 
 (deftest google-raw-anthropic-max-tokens-test
-  (testing "the Anthropic model whitelist supplies max_tokens for a bare current-generation ID, and the @-versioned
-           spelling of a dated ID resolves to the same entry the direct Anthropic adapter uses"
+  (testing "an Anthropic model gets the default max_tokens, whether its ID is bare or @-versioned"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
@@ -409,11 +411,11 @@
                                   self.core/reducible-with-api-errors (fn [r _ _] r)
                                   debug/capture-stream                (fn [r _] r)
                                   http/request                        (fn [req] {:body req})]
-        (doseq [[model max-tokens] {"anthropic/claude-sonnet-4-6"          128000
-                                    "anthropic/claude-fable-5"             128000
-                                    "anthropic/claude-haiku-4-5@20251001"   64000}]
+        (doseq [model ["anthropic/claude-sonnet-4-6"
+                       "anthropic/claude-fable-5"
+                       "anthropic/claude-haiku-4-5@20251001"]]
           (testing model
-            (is (= max-tokens
+            (is (= 32000
                    (:max_tokens (json/decode+kw (:body (google-raw {:model model
                                                                     :input [{:role :user :content "hi"}]}))))))))))))
 
@@ -1320,12 +1322,14 @@
                :as      :stream}
               post-req))
       (testing "the body is a Chat Completions request with an empty model, since the endpoint serves one"
-        (is (=? {:model          ""
-                 :stream         true
-                 :stream_options {:include_usage true}
-                 :messages       [{:role "user" :content "hi"}]
-                 :max_tokens     pos-int?}
-                (json/decode+kw (:body post-req))))))))
+        (let [body (json/decode+kw (:body post-req))]
+          (is (=? {:model          ""
+                   :stream         true
+                   :stream_options {:include_usage true}
+                   :messages       [{:role "user" :content "hi"}]}
+                  body))
+          (testing "and, like vLLM chat with an unknown context window, no output cap"
+            (is (not (contains? body :max_tokens)))))))))
 
 (deftest google-raw-dedicated-endpoint-host-test
   (testing "a dedicated endpoint is served on the DNS name its resource reports, in either spelling Google uses, also when the base URL names Google's host for the location"

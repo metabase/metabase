@@ -11,7 +11,7 @@ section: Migrate
 
 # Migrate to Metabase Cloud - Metabase 49 or lower
 
-> If you're running Metabase 50 or above, check out [this guide](./guide.md).
+> If you're running Metabase 50 or above, check out [this guide](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
 The migration from a self-hosted Metabase to Metabase Cloud will keep all of your questions, dashboards, people, settings---everything in your existing Metabase.
 
@@ -21,7 +21,7 @@ And don't stress. You won't lose any of your work, and if you get stuck, we're h
 
 ### Understand the limitations
 
-There are some [limitations](../limitations.md) to Metabase Cloud that may impact your migration.
+There are some [limitations](https://www.metabase.com/docs/latest/cloud/limitations) to Metabase Cloud that may impact your migration.
 
 ### Confirm you have the right access
 
@@ -59,7 +59,7 @@ Before executing the migration script, you may need to set the environment varia
 
 - **Docker**: the environment variables will already be set.
 - **JAR**: set the environment variables by running `MB_DB_CONNECTION_URI=xxxxx migration_script.sh` on the server where you're running the JAR.
-- **Heroku**: please follow a [few extra steps to running the script](./heroku.md).
+- **Heroku**: please follow a [few extra steps to running the script](https://www.metabase.com/docs/latest/cloud/migrate/heroku).
 
 ### Execute the script in your self-hosted environment
 

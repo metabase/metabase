@@ -129,20 +129,15 @@
     {:output "dashboard not found"}))
 
 (defn- get-field-values
-  "Get field values for a field, creating them if they don't exist.
-   Uses the user-aware API that respects sandboxing/impersonation."
   [id->values id]
-  (if-some [field-values (get id->values id)]
-    (:values field-values)
-    (let [field (metabot.db/field id)]
-      (when (and field
-                 (params.field-values/current-user-can-fetch-field-values? field))
-        (:values (params.field-values/get-or-create-field-values! field))))))
+  (:values (get id->values id)))
 
 (defn- add-field-values
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
-    (let [id->values (params.field-values/field-id->field-values-for-current-user field-ids)]
+    (let [id->values (params.field-values/get-or-create-field-values-by-field-id!
+                      (filter params.field-values/current-user-can-fetch-field-values?
+                              (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
@@ -303,7 +298,6 @@
                                                   (comp (filter #(and (= target-tid (:table-id %))
                                                                       (not (base-reachable-ids (:id %)))
                                                                       (not (key-ids (:id %)))))
-                                                        (map #(metabot.tools.u/add-table-reference defq %))
                                                         (map #(metabot.tools.u/->result-column defq %))
                                                         (map (fn [rc]
                                                                (cond-> rc
@@ -421,10 +415,7 @@
                                                        :field_id))
 
        (and source-table with-queryable-dimensions?)
-       (assoc :queryable-dimensions (into []
-                                          (comp (map #(metabot.tools.u/add-table-reference base-query %))
-                                                (map #(metabot.tools.u/->result-column metric-query %)))
-                                          queryable-columns))
+       (assoc :queryable-dimensions (mapv #(metabot.tools.u/->result-column metric-query %) queryable-columns))
 
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)
@@ -499,8 +490,7 @@
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        permission-filter-columns
-                       field-values-fn
-                       (map #(metabot.tools.u/add-table-reference table-query %))))
+                       field-values-fn))
            related (when with-related-tables?
                      (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id

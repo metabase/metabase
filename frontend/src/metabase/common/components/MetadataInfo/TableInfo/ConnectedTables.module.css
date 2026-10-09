@@ -1,0 +1,12 @@
+.connectedTable {
+  cursor: pointer;
+
+  .label {
+    color: var(--mb-color-text-disabled);
+  }
+
+  &:hover .label,
+  &:focus .label {
+    color: var(--mb-color-core-brand);
+  }
+}

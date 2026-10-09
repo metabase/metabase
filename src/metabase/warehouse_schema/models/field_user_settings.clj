@@ -110,12 +110,15 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))
 
-(defn- field-path->field-ref [field-values-path]
-  (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]
-    (if field
-      field-ref
-      ;; It's too short, so no schema. Shift them over and add a nil schema.
-      [db nil schema table])))
+(defmethod serdes/load-find-local "FieldUserSettings" [path]
+  (when-let [field (serdes/load-find-local (pop path))]
+    (warehouse-schema.db/field-user-settings (:id field))))
+
+(defmethod serdes/load-update! "FieldUserSettings" [model-name ingested local]
+  ((get-method serdes/load-update! :default)
+   model-name
+   (merge (zipmap warehouse-schema-overlay/user-settable-field-columns (repeat nil)) ingested)
+   local))
 
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
@@ -128,7 +131,17 @@
    :transform {:created_at   (serdes/date)
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
-                              :export     (constantly ::serdes/skip)
+                              :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]
-                                                     (let [field-ref (field-path->field-ref (serdes/path current))]
-                                                       (serdes/*import-field-fk* field-ref)))}}})
+                                                     (serdes/*import-field-fk*
+                                                      (serdes/field-path->field-ref (pop (serdes/path current)))))}}})
+
+(defmethod serdes/ingested-path "FieldUserSettings" [_ {:keys [field_id]}]
+  (conj (serdes/field->path field_id) {:model "FieldUserSettings" :id "1"}))
+
+(def ^:private field-user-settings-slug "___fieldusersettings")
+
+(defmethod serdes/storage-path "FieldUserSettings" [field-user-settings _ctx]
+  (let [field-path (serdes/storage-path-prefixes (pop (serdes/path field-user-settings)))]
+    (update field-path (dec (count field-path))
+            (fn [segment] (assoc segment :suffix field-user-settings-slug)))))

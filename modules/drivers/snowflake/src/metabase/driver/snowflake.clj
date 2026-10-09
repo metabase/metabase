@@ -237,7 +237,8 @@
         token     (when (= "OIDC" provider)
                     (cond
                       (not (str/blank? wif-token-file-path))
-                      (str/trim (slurp wif-token-file-path))
+                      ;; an admin-supplied path the Metabase server reads, so it must be one `readable-paths` allows
+                      (str/trim (slurp (driver-api/ensure-readable-path! wif-token-file-path)))
 
                       (not (str/blank? wif-token))
                       wif-token))

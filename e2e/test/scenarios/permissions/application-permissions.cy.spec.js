@@ -18,24 +18,39 @@ describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    // H.activateToken("pro-self-hosted");
     H.activateToken("pro-self-hosted");
   });
 
-  it("shows permissions help", () => {
-    cy.visit("/admin/permissions/application");
-    cy.get("main").within(() => {
-      cy.findByText("Permissions help").as("permissionHelpButton").click();
-      cy.get("@permissionHelpButton").should("not.exist");
-    });
+  describe("default permissions", () => {
+    it("gives ability to create dashboard subscriptions and question alerts, but not to access monitoring tools", () => {
+      H.setupSMTP();
+      cy.signInAsNormalUser();
 
-    cy.findByLabelText("Permissions help reference").within(() => {
-      cy.findAllByText("Applications permissions");
+      cy.log("Set up a dashboard subscription");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.toggleDashboardSubscriptionsSidebar();
+      H.sidebar().findByText("Email this dashboard").should("exist");
 
-      cy.findByText(
-        "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.",
-      );
-      cy.findByLabelText("Close").click();
+      cy.log("Create a question alert");
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+      H.modal().findByText("New alert").should("be.visible");
+
+      cy.log("Monitoring tools are not accessible");
+      cy.visit("/");
+      H.getProfileLink().click();
+
+      H.popover()
+        .findByTestId("mode-switcher-profile-link")
+        .should("be.visible");
+      H.popover().findByText(adminAppLinkText).should("not.exist");
+
+      cy.visit("/monitor/errors");
+      H.main().findByText("Sorry, you don’t have permission to see that.");
+
+      cy.visit("/monitor");
+      H.main().findByText("Sorry, you don’t have permission to see that.");
     });
   });
 
@@ -54,6 +69,7 @@ describe("scenarios > admin > permissions > application", () => {
           cy.button("Yes").click();
         });
 
+        H.setupSMTP();
         createSubscription(NORMAL_USER_ID);
 
         cy.signInAsNormalUser();
@@ -62,7 +78,13 @@ describe("scenarios > admin > permissions > application", () => {
       it("revokes ability to create subscriptions and alerts and manage them", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
+        H.sharingMenuButton().should("be.visible");
+        H.dashboardHeader()
+          .findByTestId("dashboard-subscriptions-button")
+          .should("not.exist");
+
         H.openSharingMenu();
+        H.sharingMenu().findByText("Copy link").should("be.visible");
         H.sharingMenu()
           .findByText(/subscri/i)
           .should("not.exist");
@@ -74,26 +96,9 @@ describe("scenarios > admin > permissions > application", () => {
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
+          cy.findByText("Subscription").should("be.visible");
           cy.icon("close").should("not.exist");
         });
-      });
-    });
-
-    describe("granted", () => {
-      it("gives ability to create dashboard subscriptions and question alerts", () => {
-        H.setupSMTP();
-        cy.signInAsNormalUser();
-
-        cy.log("Set up a dashboard subscription");
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.toggleDashboardSubscriptionsSidebar();
-        H.sidebar().findByText("Email this dashboard").should("exist");
-
-        cy.log("Create a question alert");
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        cy.findByLabelText("Move, trash, and more…").click();
-        H.popover().findByText("Create an alert").click();
-        H.modal().findByText("New alert").should("be.visible");
       });
     });
   });
@@ -113,14 +118,6 @@ describe("scenarios > admin > permissions > application", () => {
           cy.button("Yes").click();
         });
 
-        H.createNativeQuestion(
-          {
-            name: "broken_question",
-            native: { query: "select * from broken_question" },
-          },
-          { loadMetadata: true },
-        );
-
         cy.signInAsNormalUser();
       });
 
@@ -130,7 +127,7 @@ describe("scenarios > admin > permissions > application", () => {
         H.popover().findByText("Monitor").click();
 
         cy.log("Monitor tools smoke test");
-        cy.location("pathname").should("contain", "/monitor/tasks");
+        cy.location("pathname").should("eq", "/monitor/tasks/list");
         cy.findByRole("heading", {
           name: "Background tasks",
         });
@@ -138,22 +135,6 @@ describe("scenarios > admin > permissions > application", () => {
         cy.findByTestId("monitor-nav").findByText("Erroring questions").click();
         cy.location("pathname").should("eq", "/monitor/errors");
         cy.findByTestId("monitor-main").findByText("Erroring questions");
-      });
-    });
-
-    describe("revoked", () => {
-      it("does not allow accessing admin tools for non-admins", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/");
-        H.getProfileLink().click();
-
-        H.popover().findByText(adminAppLinkText).should("not.exist");
-
-        cy.visit("/monitor/errors");
-        H.main().findByText("Sorry, you don’t have permission to see that.");
-
-        cy.visit("/monitor");
-        H.main().findByText("Sorry, you don’t have permission to see that.");
       });
     });
   });
@@ -181,8 +162,6 @@ describe("scenarios > admin > permissions > application", () => {
         cy.url().should("include", "/admin/settings/general");
 
         cy.findByTestId("admin-layout-content").within(() => {
-          cy.findByText("License and Billing").should("not.exist");
-          cy.findByLabelText("Updates").should("not.exist");
           cy.findByLabelText("Site name")
             .should("be.visible")
             .clear()

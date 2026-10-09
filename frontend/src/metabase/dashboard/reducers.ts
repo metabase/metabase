@@ -22,6 +22,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,
+  dashboardLayoutFetched,
   fetchDashboardFulfilled,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
@@ -47,6 +48,7 @@ import {
   parameterValues,
   sidebar,
   slowCards,
+  timelineEvents,
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
@@ -67,6 +69,10 @@ const dashcards = createReducer(
       .addCase(fetchDashboardFulfilled, (state, action) => ({
         ...state,
         ...action.payload.entities.dashcard,
+      }))
+      .addCase(dashboardLayoutFetched, (state, { payload }) => ({
+        ...state,
+        ...payload.dashcard,
       }))
       .addCase(
         setDashCardAttributes,
@@ -269,6 +275,7 @@ const combinedDashboardReducer = combineReducers({
   editingDashboard,
   loadingControls,
   sidebar,
+  timelineEvents,
   parameterValues,
   dashboards,
   loadingDashCards,

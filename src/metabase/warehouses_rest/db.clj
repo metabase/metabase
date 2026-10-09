@@ -52,7 +52,7 @@
   ;; Rows are pushed through `mi/do-after-select :model/Card` by the caller, so `:dataset_query` and
   ;; `:result_metadata` drag in the rest of [[metabase.queries.card-schema/schema-upgrade-triggers]].
   (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                  :result_metadata :type :source_card_id :card_schema
+                                  :result_metadata :type :source_card_id :card_schema :entity_id
                                   :dimensions :dimension_mappings
                                   [^:allow-subquery {:select   [:status]
                                                      :from     [:moderation_review]
@@ -78,19 +78,21 @@
 
 (mu/defn databases-where
   "The Databases visible to the user with `user-id` (`is-superuser?`/`is-data-analyst?` further widen visibility), in
-  name then engine order. Excludes stub Databases and, unless `include-analytics?`, the audit Database. Restricted
-  to Databases routed from `router-database-id` when given, otherwise to non-routed Databases. When
-  `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or edit the
-  metadata of."
+  name then engine order. Excludes stub Databases unless `include-stubs?` and the audit Database unless
+  `include-analytics?`. Restricted to Databases routed from `router-database-id` when given, otherwise to non-routed
+  Databases. When `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or edit
+  the metadata of."
   [user-id                :- ::lib.schema.id/user
    is-superuser?          :- :boolean
    is-data-analyst?       :- :boolean
    filter-by-data-access? :- :boolean
    router-database-id     :- [:maybe ::lib.schema.id/database]
-   include-analytics?     :- :boolean]
+   include-analytics?     :- :boolean
+   include-stubs?         :- :boolean]
   (let [user-info  {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
         base-where [:and
-                    [:= :is_stub false]
+                    (when-not include-stubs?
+                      [:= :is_stub false])
                     (when-not include-analytics?
                       [:= :is_audit false])
                     (if router-database-id

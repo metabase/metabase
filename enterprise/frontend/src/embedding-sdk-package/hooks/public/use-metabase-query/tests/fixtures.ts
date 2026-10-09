@@ -160,39 +160,33 @@ export const TEST_SCHEMA = {
       sourceCardId: 41,
     },
   },
-  models: {
-    orders: {
-      actions: {
-        create: {
-          kind: "action" as const,
-          id: 51,
-          name: "Create Order",
-          type: "implicit" as const,
-          implicitKind: "row/create" as const,
-          parameters: [
-            {
-              slug: "status",
-              displayName: "Status",
-              jsType: "string" as const,
-            },
-          ],
+  actions: {
+    createOrder: {
+      kind: "action" as const,
+      id: 51,
+      name: "Create Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "status",
+          displayName: "Status",
+          jsType: "string" as const,
         },
-        update: {
-          kind: "action" as const,
-          id: 52,
-          name: "Update Order",
-          type: "implicit" as const,
-          implicitKind: "row/update" as const,
-          parameters: [
-            {
-              slug: "id",
-              displayName: "ID",
-              jsType: "number" as const,
-              required: true,
-            },
-          ],
+      ],
+    },
+    updateOrder: {
+      kind: "action" as const,
+      id: 52,
+      name: "Update Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "id",
+          displayName: "ID",
+          jsType: "number" as const,
+          required: true,
         },
-      },
+      ],
     },
   },
   questions: {
@@ -225,7 +219,9 @@ export const TEST_METADATA = {
   fields: {
     100: metadataField(100, 1, "ID", "ID", "type/Integer"),
     101: metadataField(101, 1, "STATUS", "Status", "type/Text"),
-    102: metadataField(102, 1, "AMOUNT", "Amount", "type/Float"),
+    102: metadataField(102, 1, "AMOUNT", "Amount", "type/Float", {
+      fingerprint: { type: { "type/Number": { min: 0, max: 100 } } },
+    }),
     103: metadataField(103, 1, "CREATED_AT", "Created At", "type/DateTime"),
     104: metadataField(104, 1, "PRODUCT_ID", "Product ID", "type/Integer", {
       semantic_type: "type/FK",

@@ -7,7 +7,8 @@
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
-   [metabase.mcp.ui-surface :as mcp.ui-surface]))
+   [metabase.mcp.ui-surface :as mcp.ui-surface]
+   [metabase.mcp.usage :as mcp.usage]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,6 +47,12 @@
   "Whether a UI credential with `claims` holds what `method` + `uri` costs."
   [method uri claims]
   (mcp.ui-surface/scope-satisfied? method uri claims))
+
+(defn inline-ui-enabled-for-client?
+  "Whether the admin allows the client named `client-info-name` (from the `initialize` handshake) to render
+   MCP Apps UI. See [[metabase.mcp.settings/inline-ui-enabled-for-client?]]."
+  [client-info-name]
+  (mcp.settings/inline-ui-enabled-for-client? (mcp.usage/detect-client client-info-name)))
 
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."

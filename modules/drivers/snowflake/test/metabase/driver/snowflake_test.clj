@@ -280,6 +280,20 @@
                          :wif-token-file-path tok-path))]
         (is (= "from-file" (:token spec)))))))
 
+(deftest ^:synchronized connection-details->spec-wif-oidc-file-path-readable-paths-test
+  (testing "the token file is read only from a directory `readable-paths` allows"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file")
+      (let [spec (fn [] (sql-jdbc.conn/connection-details->spec
+                         :snowflake
+                         (assoc wif-base-details
+                                :wif-provider        "OIDC"
+                                :wif-token-file-path tok-path)))]
+        (mt/with-temp-env-var-value! [mb-readable-paths "NONE"]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec))))
+        (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+          (is (= "from-file" (:token (spec)))))))))
+
 (defn- fake-jwt
   "Build a JWT-shaped string with `claims` as the payload. Header and signature are placeholders —
   the token is only parseable, not verifiable."
@@ -796,15 +810,14 @@
   (testing "the FK path passes raw names to the dynamic table check (#78541)"
     (let [dynamic-table-args (atom nil)
           fk-args            (atom nil)]
-      (with-redefs [driver.snowflake/dynamic-table?
-                    (fn [_conn db-name schema table-name]
-                      (reset! dynamic-table-args [db-name schema table-name])
-                      false)
-
-                    sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
-                    (fn [_metadata db-name schema table-name]
-                      (reset! fk-args [db-name schema table-name])
-                      [])]
+      (mt/with-dynamic-fn-redefs [driver.snowflake/dynamic-table?
+                                  (fn [_conn db-name schema table-name]
+                                    (reset! dynamic-table-args [db-name schema table-name])
+                                    false)
+                                  sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
+                                  (fn [_metadata db-name schema table-name]
+                                    (reset! fk-args [db-name schema table-name])
+                                    [])]
         (#'driver.snowflake/reducible-table-fks-from-jdbc-metadata
          (reify java.sql.Connection) (reify java.sql.DatabaseMetaData) "MY_DB" "RAW_DATA" "MY_TABLE"))
       (is (= ["MY_DB" "RAW_DATA" "MY_TABLE"] @dynamic-table-args))
