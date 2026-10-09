@@ -209,3 +209,29 @@
         ;; exclude loading permission rows that the data access warning check does not need
         (is (= #{table-permission database-permission}
                (into #{} (map #(select-keys % (keys table-permission))) permission-rows)))))))
+
+(deftest group-permission-warnings-preserve-table-details-test
+  (mt/with-premium-features #{:data-apps :advanced-permissions}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database aviary {:name "Aviary"}
+                     :model/Database zoo {:name "Zoo"}
+                     :model/Table finches {:db_id (:id aviary) :name "finches" :display_name "Zebra" :schema "PUBLIC"}
+                     :model/Table owls {:db_id (:id aviary) :name "owls" :display_name "Owls" :schema "PUBLIC"}
+                     :model/Table albatrosses {:db_id (:id zoo) :name "albatrosses"
+                                               :display_name "Albatrosses" :schema nil}
+                     :model/TableUserSettings _ {:table_id (:id finches) :display_name "Finches"}
+                     :model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
+                                         :table_ids [(:id albatrosses) (:id owls) (:id finches)]}
+                     :model/PermissionsGroup group {}]
+        (doseq [group-id [(:id (perms/all-users-group)) (:id group)]
+                database-id [(:id aviary) (:id zoo)]]
+          (perms/set-database-permission! group-id database-id :perms/view-data :blocked))
+        (group-access/add-groups! app [(:id group)])
+        (is (= [{:group_id (:id group)
+                 :missing_tables [{:id (:id finches) :name "Finches" :schema "PUBLIC"
+                                   :database_id (:id aviary) :database_name "Aviary"}
+                                  {:id (:id owls) :name "Owls" :schema "PUBLIC"
+                                   :database_id (:id aviary) :database_name "Aviary"}
+                                  {:id (:id albatrosses) :name "Albatrosses" :schema nil
+                                   :database_id (:id zoo) :database_name "Zoo"}]}]
+               (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))

@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest delete-assignments-test
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
@@ -25,3 +26,11 @@
         (is (= #{[(:id app) (:id sparrows)]
                  [(:id other-app) (:id finches)]}
                (assignments)))))))
+
+(deftest warning-queries-with-empty-ids-test
+  (mt/with-temp [:model/PermissionsGroup group {}]
+    (doseq [[group-ids database-ids table-ids] [[[] [1] [1]] [[(:id group)] [] [1]] [[(:id group)] [1] []]]]
+      (testing (str "empty warning IDs " [group-ids database-ids table-ids])
+        (t2/with-call-count [calls]
+          (is (= [] (data-apps.db/permissions-for-warnings group-ids database-ids table-ids)))
+          (is (zero? (calls))))))))
