@@ -375,9 +375,20 @@
 
 (deftest model-editable?-unknown-model-test
   (testing "model-editable? returns true for models not in the spec"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (is (true? (spec/model-editable? :model/UnknownModel {}))
           "Unknown models should always be editable"))))
+
+(deftest model-editable?-remote-sync-disabled-test
+  (testing "model-editable? returns true for every model while remote sync is not configured"
+    (mt/with-temporary-setting-values [remote-sync-url  nil
+                                       remote-sync-type :read-only]
+      (is (true? (spec/model-editable? :model/DataApp {:draft false})))
+      (is (= {1 true} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))
+    (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                       remote-sync-type :read-only]
+      (is (false? (spec/model-editable? :model/DataApp {:draft false})))
+      (is (= {1 false} (spec/batch-model-editable? :model/DataApp [{:id 1 :draft false}]))))))
 
 (deftest model-editable?-read-write-mode-test
   (testing "model-editable? returns true in read-write mode regardless of eligibility"
@@ -390,12 +401,12 @@
 (deftest model-editable?-library-synced-eligibility-test
   (testing "model-editable? with :library-synced eligibility (NativeQuerySnippet)"
     (testing "returns false when library is synced and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
           (is (false? (spec/model-editable? :model/NativeQuerySnippet {}))
               "Snippets should NOT be editable when library is synced and mode is read-only"))))
     (testing "returns true when library is NOT synced even in read-only mode"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
           (is (true? (spec/model-editable? :model/NativeQuerySnippet {}))
               "Snippets should be editable when library is NOT synced"))))))
@@ -403,12 +414,12 @@
 (deftest model-editable?-setting-eligibility-test
   (testing "model-editable? with :setting eligibility (Transform)"
     (testing "returns false when setting is enabled and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
                                          remote-sync-transforms true]
         (is (false? (spec/model-editable? :model/Transform {}))
             "Transforms should NOT be editable when transforms setting is enabled and mode is read-only")))
     (testing "returns true when setting is disabled even in read-only mode"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
                                          remote-sync-transforms false]
         (is (true? (spec/model-editable? :model/Transform {}))
             "Transforms should be editable when transforms setting is disabled")))))
@@ -416,23 +427,23 @@
 (deftest model-editable?-collection-eligibility-test
   (testing "model-editable? with :collection eligibility (Card)"
     (testing "returns false when card is in remote-synced collection and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced Collection" :is_remote_synced true :location "/"}]
           (is (false? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in synced collections should NOT be editable in read-only mode"))))
     (testing "returns true when card is in non-synced collection even in read-only mode"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Normal Collection" :is_remote_synced false :location "/"}]
           (is (true? (spec/model-editable? :model/Card {:collection_id coll-id}))
               "Cards in non-synced collections should be editable"))))))
 
 (deftest model-editable?-nil-instance-test
   (testing "model-editable? works with nil instance for global eligibility models"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
                                        remote-sync-transforms true]
       (is (false? (spec/model-editable? :model/Transform nil))
           "Transforms with nil instance should check setting-based eligibility"))
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
         (is (false? (spec/model-editable? :model/NativeQuerySnippet nil))
             "Snippets with nil instance should check library-synced eligibility")))))
@@ -469,7 +480,7 @@
 
 (deftest batch-model-editable?-unknown-model-test
   (testing "batch-model-editable? returns true for all instances of unknown models"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (let [instances [{:id 1} {:id 2} {:id 3}]
             result (spec/batch-model-editable? :model/UnknownModel instances)]
         (is (= {1 true, 2 true, 3 true} result))))))
@@ -485,13 +496,13 @@
 (deftest batch-model-editable?-library-synced-test
   (testing "batch-model-editable? with :library-synced eligibility"
     (testing "returns false for all when library is synced and mode is read-only"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
             (is (= {1 false, 2 false, 3 false} result))))))
     (testing "returns true for all when library is not synced"
-      (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
         (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]

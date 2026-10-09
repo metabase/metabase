@@ -368,14 +368,22 @@
 (deftest ^:parallel openai-request-body-reasoning-gating-test
   (testing "reasoning models ask for a summary; others don't"
     (let [reasoning #(:reasoning (openai/openai-request-body {:model % :input []}))]
-      (is (= {:summary "auto"} (reasoning "gpt-5.4")))
+      (is (= {:summary "auto"} (reasoning "gpt-5.5")))
       (is (= {:summary "auto"} (reasoning "gpt-5.6-sol")))
       (is (= {:summary "auto"} (reasoning "gpt-6-astra")))
       (is (= {:summary "auto"} (reasoning "o3")))
+      (is (= {:summary "auto"} (reasoning "gpt-5.4-pro")))
       (testing "bedrock/azure vendor prefix is stripped"
-        (is (= {:summary "auto"} (reasoning "openai.gpt-5.4"))))
+        (is (= {:summary "auto"} (reasoning "openai.gpt-5.5"))))
       (testing "non-reasoning models get no reasoning param"
         (is (nil? (reasoning "gpt-4.1"))))))
+  (testing "GPT-5.4, its mini and its nano default to no reasoning, so chat requests ask for low effort"
+    (are [model] (= {:summary "auto" :effort "low"}
+                    (:reasoning (openai/openai-request-body {:model model :input []})))
+      "gpt-5.4" "gpt-5.4-mini" "gpt-5.4-nano" "gpt-5.4-2026-03-05" "openai.gpt-5.4" "GPT-5.4")
+    (testing "but structured output keeps the model's default"
+      (is (= {:summary "auto"}
+             (:reasoning (openai/openai-request-body {:model "gpt-5.4" :input [] :schema {:type "object"}}))))))
   (testing "reasoning requests ask for encrypted content so items can be replayed"
     (is (= ["reasoning.encrypted_content"]
            (:include (openai/openai-request-body {:model "gpt-5.4" :input []}))))

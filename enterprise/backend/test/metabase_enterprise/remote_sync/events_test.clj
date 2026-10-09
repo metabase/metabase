@@ -30,6 +30,32 @@
   (when-let [rows (seq (spec/sync-all-entities! (t/instant) imported-data))]
     (t2/insert! :model/RemoteSyncObject rows)))
 
+(defn- track-as-synced!
+  "Replaces the RemoteSyncObject table with a single synced row for `entity` of `model-type`."
+  [model-type entity]
+  (t2/delete! :model/RemoteSyncObject)
+  (t2/insert! :model/RemoteSyncObject {:model_type        model-type
+                                       :model_id          (:id entity)
+                                       :model_name        (:name entity)
+                                       :status            "synced"
+                                       :status_changed_at (t/offset-date-time)}))
+
+(deftest deleting-an-untracked-entity-is-not-a-change-test
+  (testing "deleting or archiving an entity that was never tracked adds no RemoteSyncObject row"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                     :model/Card remote-sync-card {:name "Test Card"
+                                                   :dataset_query (mt/mbql-query venues)
+                                                   :collection_id (:id remote-sync-collection)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/card-update
+                               {:object (assoc remote-sync-card :archived true)
+                                :previous-object remote-sync-card
+                                :user-id (mt/user->id :rasta)})
+        (events/publish-event! :event/card-delete
+                               {:object remote-sync-card :user-id (mt/user->id :rasta)})
+        (is (not (t2/exists? :model/RemoteSyncObject)))))))
+
 ;;; Model Change Event Tests
 
 (deftest card-create-event-creates-entry-test
@@ -73,7 +99,7 @@
                      :model/Card remote-sync-card {:name "Test Card"
                                                    :dataset_query (mt/mbql-query venues)
                                                    :collection_id (:id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Card" remote-sync-card)
         (events/publish-event! :event/card-update
                                {:object (assoc remote-sync-card :archived true)
                                 :previous-object remote-sync-card
@@ -92,7 +118,7 @@
                      :model/Card remote-sync-card {:name "Test Card"
                                                    :dataset_query (mt/mbql-query venues)
                                                    :collection_id (:id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Card" remote-sync-card)
         (events/publish-event! :event/card-delete
                                {:object remote-sync-card :user-id (mt/user->id :rasta)})
         (let [entries (t2/select :model/RemoteSyncObject)]
@@ -231,7 +257,7 @@
 
 (deftest events-on-read-only-instance-do-not-track-synced-items-test
   (testing "On a read-only instance, no event marks a synced item dirty, since that change can never be pushed"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Dashboard dashboard {:name "Test Dashboard" :collection_id (:id remote-sync-collection)}]
         (t2/delete! :model/RemoteSyncObject)
@@ -244,7 +270,7 @@
                             :model/Dashboard [:event/dashboard-public-link-created :event/dashboard-public-link-deleted]}
             topic topics]
       (testing topic
-        (mt/with-temporary-setting-values [remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
           (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                          model instance {:name "Shared" :collection_id (:id remote-sync-collection)}]
             (t2/delete! :model/RemoteSyncObject)
@@ -257,7 +283,7 @@
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Dashboard dashboard {:name "Test Dashboard"
                                                  :collection_id (:id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Dashboard" dashboard)
         (events/publish-event! :event/dashboard-update
                                {:object (assoc dashboard :archived true)
                                 :user-id (mt/user->id :rasta)})
@@ -274,7 +300,7 @@
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Dashboard dashboard {:name "Test Dashboard"
                                                  :collection_id (:id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Dashboard" dashboard)
         (events/publish-event! :event/dashboard-delete
                                {:object dashboard :user-id (mt/user->id :rasta)})
         (let [entries (t2/select :model/RemoteSyncObject)]
@@ -319,7 +345,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Document" document)
         (events/publish-event! :event/document-update
                                {:object (assoc document :archived true)
                                 :user-id (mt/user->id :rasta)})
@@ -335,7 +361,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Document" document)
         (events/publish-event! :event/document-delete
                                {:object document :user-id (mt/user->id :rasta)})
         (let [entries (t2/select :model/RemoteSyncObject)]
@@ -389,7 +415,7 @@
                        :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                           :content "SELECT 1"
                                                           :collection_id (:id snippet-collection)}]
-          (t2/delete! :model/RemoteSyncObject)
+          (track-as-synced! "NativeQuerySnippet" snippet)
           (events/publish-event! :event/snippet-update
                                  {:object (assoc snippet :archived true)
                                   :user-id (mt/user->id :rasta)})
@@ -408,7 +434,7 @@
                        :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                           :content "SELECT 1"
                                                           :collection_id (:id snippet-collection)}]
-          (t2/delete! :model/RemoteSyncObject)
+          (track-as-synced! "NativeQuerySnippet" snippet)
           (events/publish-event! :event/snippet-delete
                                  {:object snippet :user-id (mt/user->id :rasta)})
           (let [entries (t2/select :model/RemoteSyncObject)]
@@ -919,7 +945,7 @@
                      :model/Timeline timeline {:name "Test Timeline"
                                                :collection_id (:id remote-sync-collection)
                                                :archived true}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Timeline" timeline)
         (events/publish-event! :event/timeline-update
                                {:object timeline :user-id (mt/user->id :rasta)})
         (let [entries (t2/select :model/RemoteSyncObject)]
@@ -935,7 +961,7 @@
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Timeline timeline {:name "Test Timeline"
                                                :collection_id (:id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Timeline" timeline)
         (events/publish-event! :event/timeline-delete
                                {:object timeline :user-id (mt/user->id :rasta)})
         (let [entries (t2/select :model/RemoteSyncObject)]
@@ -997,7 +1023,7 @@
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Document doc {:name "Test Doc"
                                           :collection_id (:id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Document" doc)
         ;; Trash the doc
         (t2/update! :model/Document (:id doc) {:archived true})
         (events/publish-event! :event/document-update
@@ -1065,7 +1091,7 @@
                      :model/Table table {:name "Test Table"
                                          :is_published true
                                          :collection_id (:id remote-sync-collection)}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Table" table)
         (events/publish-event! :event/table-update
                                {:object (assoc table :archived_at (t/offset-date-time))
                                 :user-id (mt/user->id :rasta)})
@@ -1180,7 +1206,7 @@
                                              :table_id (:id table)
                                              :definition {:source-table (:id table)
                                                           :filter [:> [:field 1 nil] 0]}}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Segment" segment)
         (events/publish-event! :event/segment-update
                                {:object (assoc segment :archived true)
                                 :user-id (mt/user->id :rasta)})
@@ -1202,7 +1228,7 @@
                                              :table_id (:id table)
                                              :definition {:source-table (:id table)
                                                           :filter [:> [:field 1 nil] 0]}}]
-        (t2/delete! :model/RemoteSyncObject)
+        (track-as-synced! "Segment" segment)
         (events/publish-event! :event/segment-delete
                                {:object segment :user-id (mt/user->id :rasta)})
         (let [entries (t2/select :model/RemoteSyncObject)]

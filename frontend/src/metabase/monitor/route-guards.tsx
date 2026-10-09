@@ -4,6 +4,7 @@ import {
   canAccessMonitor,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
+  canAccessSessionManagement,
 } from "metabase/common/monitor/selectors";
 import {
   MetabaseIsSetup,
@@ -29,6 +30,11 @@ const UserCanAccessMonitoringTools = createRedirectGuard(
 
 const UserCanAccessAlertsManagement = createRedirectGuard(
   (state) => canAccessAlertsManagement(state),
+  "/unauthorized",
+);
+
+const UserCanAccessSessionManagement = createRedirectGuard(
+  (state) => canAccessSessionManagement(state),
   "/unauthorized",
 );
 
@@ -63,6 +69,12 @@ export const CanAccessAlertsManagement = () => (
   <UserCanAccessAlertsManagement>
     <Outlet />
   </UserCanAccessAlertsManagement>
+);
+
+export const CanAccessSessionManagement = () => (
+  <UserCanAccessSessionManagement>
+    <Outlet />
+  </UserCanAccessSessionManagement>
 );
 
 export const CanAccessAiAuditing = () => (

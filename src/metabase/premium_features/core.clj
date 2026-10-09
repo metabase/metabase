@@ -81,6 +81,7 @@
   enable-scim?
   enable-semantic-search?
   enable-serialization?
+  enable-session-management?
   enable-session-timeout-config?
   enable-snippet-collections?
   enable-sso-google?

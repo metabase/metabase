@@ -27,37 +27,6 @@ jobs:
       chunks: 50
       test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
-  reset-e2e-test-comment:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    steps:
-      - name: Remove test results comment
-        uses: actions/github-script@v9
-        with:
-          script: | # js
-            const { owner, repo } = context.repo;
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number: context.issue.number,
-            }).catch(console.error);
-
-            if (!comments) {
-              return;
-            }
-
-            const comment = comments.find((comment) => comment.body.includes('## e2e tests failed on '));
-
-            if (comment) {
-              await github.rest.issues.deleteComment({
-                owner,
-                repo,
-                comment_id: comment.id,
-              });
-            }
-
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
