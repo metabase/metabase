@@ -371,7 +371,7 @@ const SourcesSection = ({
 
   return (
     <Stack gap="lg" className={S.sources}>
-      <Stack gap="sm">
+      <Stack gap="xxs">
         <Text fz="sm" lh="lg" c="text-secondary">
           {ngettext(
             msgid`Data source used`,
