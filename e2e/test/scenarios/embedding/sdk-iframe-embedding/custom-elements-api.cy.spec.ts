@@ -151,19 +151,22 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           attributes: "with-title drills",
           withTitle: true,
           drills: true,
+          withDownloads: false,
         },
         {
-          attributes: 'with-title="true" drills="false"',
-          withTitle: true,
-          drills: false,
-        },
-        {
-          attributes: 'with-title="false" drills="true"',
+          attributes: 'with-title="false" drills="false" with-downloads',
           withTitle: false,
+          drills: false,
+          withDownloads: true,
+        },
+        {
+          attributes: 'with-title="true" drills="true" with-downloads',
+          withTitle: true,
           drills: true,
+          withDownloads: true,
         },
       ] as const
-    ).forEach(({ attributes, withTitle, drills }) => {
+    ).forEach(({ attributes, withTitle, drills, withDownloads }) => {
       it(`should apply \`${attributes}\``, () => {
         H.createQuestionAndDashboard({
           questionDetails: LIMITED_ORDERS_QUESTION_DETAILS,
@@ -183,6 +186,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           H.getSimpleEmbedIframeContent()
             .findByText(LIMITED_ORDERS_DASHBOARD_NAME)
             .should(withTitle ? "be.visible" : "not.exist");
+          H.getSimpleEmbedIframeContent()
+            .findByLabelText("Download as PDF")
+            .should(withDownloads ? "be.visible" : "not.exist");
 
           assertDrills(drills);
         });
@@ -310,6 +316,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="new" is-save-enabled />
       `);
 
+      H.getSimpleEmbedIframeContent().within(() => {
+        H.popover().findByText("Orders Model").should("be.visible");
+      });
       H.getSimpleEmbedIframeContent().findByText("Orders").click();
       H.getSimpleEmbedIframeContent().findByText("Save").should("be.visible");
     });
