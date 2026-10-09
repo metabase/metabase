@@ -323,6 +323,16 @@ function InvalidTypeFixtures() {
     orderBys: [{ type: "column", name: "total" }],
   });
 
+  useMetabaseQueryObject(plainOrdersQuery, {
+    // @ts-expect-error the static query returns no column of that name
+    filters: [filter({ type: "column", name: "NOPE" }, "not-null")],
+  });
+
+  useMetabaseQueryObject(groupedStaticQuery, {
+    // @ts-expect-error a grouped static query returns no source column
+    orderBys: [{ type: "column", name: "AMOUNT" }],
+  });
+
   useMetabaseQuery(plainOrdersQuery, {
     // @ts-expect-error a string column takes no numeric comparison
     filters: [filter({ type: "column", name: "STATUS" }, ">", 1)],

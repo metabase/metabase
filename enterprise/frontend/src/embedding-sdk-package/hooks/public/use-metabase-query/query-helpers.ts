@@ -115,7 +115,12 @@ export function breakout<TDimension extends object>(
 export function orderBy<const TName extends string>(
   breakout: NamedBreakout<unknown, TName>,
   direction?: MetabaseOrderByDirection,
-): { type: "column"; name: TName; direction?: MetabaseOrderByDirection };
+): {
+  type: "column";
+  name: TName;
+  sourceFieldId?: number;
+  direction?: MetabaseOrderByDirection;
+};
 
 export function orderBy<
   TAggregation extends { columns?: readonly SchemaColumn[] },
@@ -138,9 +143,12 @@ export function orderBy<TDimension>(
   direction?: MetabaseOrderByDirection,
 ) {
   if (isNamedBreakout(dimension)) {
+    const { sourceFieldId } = dimension.column;
+
     return {
       type: "column",
       name: dimension.name,
+      ...(sourceFieldId !== undefined ? { sourceFieldId } : undefined),
       ...(direction ? { direction } : undefined),
     };
   }

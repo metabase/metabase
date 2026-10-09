@@ -15,23 +15,18 @@ import type {
   DefinedQuery,
   MetabaseDynamicQuery,
   MetabaseQueryOptions,
+  UseMetabaseQueryObject,
+  UseMetabaseQueryObjectResult,
 } from "./types";
 
-export type UseMetabaseQueryObjectResult = {
-  query: MetabaseQueryObject | null;
-  error: unknown;
-  isLoading: boolean;
-};
+export type { UseMetabaseQueryObjectResult } from "./types";
 
 type QueryObjectState = {
   query: MetabaseQueryObject;
   queryKey: string;
 };
 
-/**
- * Resolves a data app query into a query object that can be passed to SDK question components.
- */
-export function useMetabaseQueryObject(
+function useMetabaseQueryObjectImpl(
   query: MetabaseQueryOptions<undefined> & DefinedQuery,
   dynamicQuery?: MetabaseDynamicQuery,
 ): UseMetabaseQueryObjectResult {
@@ -120,3 +115,10 @@ export function useMetabaseQueryObject(
     isLoading: loading,
   };
 }
+
+/**
+ * Resolves a data app query into a query object that can be passed to SDK question components.
+ */
+export const useMetabaseQueryObject =
+  // The implementation takes any query; the public signature checks the dynamic clauses against the static query.
+  useMetabaseQueryObjectImpl as UseMetabaseQueryObject;
