@@ -43,6 +43,7 @@ jobs:
         id: compute
         uses: ./.github/actions/create-test-plan
         with:
+          diff-base: ${{ needs.gate.outputs.diff-base }}
           stats-url: ${{ secrets.ENG_STATS_URL }}
           stats-api-key: ${{ secrets.ENG_STATS_API_KEY }}
 

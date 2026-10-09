@@ -235,6 +235,28 @@
             (is (= :allow-private (:network-policy-floor auth)))
             (is (nil? (mr/explain adapter/Auth auth)))))))))
 
+(deftest ^:parallel credentials-accept-mini-model-metadata-test
+  (doseq [credentials [{:api-key "test-key" :base-url "https://api.anthropic.com"}
+                       {:api-key "test-key" :model-family "openai" :deployment-name "parakeet"}
+                       {:region "us-east-1" :model-id "anthropic.claude-sonnet-4-6"}
+                       {:project-id "parakeet-project" :location "us-central1"}]]
+    (testing (str "Credential fields: " (keys credentials))
+      (is (nil? (mr/explain self.core/LLMCredentials credentials)))
+      (doseq [mini-model [nil "parakeet-mini"]]
+        (is (nil? (mr/explain self.core/LLMCredentials (assoc credentials :mini-model mini-model)))))
+      (is (some? (mr/explain self.core/LLMCredentials (assoc credentials :mini-model 42))))
+      (is (some? (mr/explain self.core/LLMCredentials
+                             (assoc credentials :mini-model "parakeet-mini" :unexpected-field "value")))))))
+
+(deftest ^:parallel reasoning-capability-accepts-mini-model-metadata-test
+  (is (true? (claude/streams-reasoning? {:connection-key "anthropic"
+                                         :type           "anthropic"
+                                         :model          "claude-sonnet-4-6"
+                                         :credentials    {:api-key    "test-key"
+                                                          :base-url   "https://api.anthropic.com"
+                                                          :mini-model "claude-haiku-4-5-20251001"}
+                                         :ai-proxy?      false}))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Descriptor headers
 ;;; ──────────────────────────────────────────────────────────────────
