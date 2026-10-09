@@ -1994,3 +1994,11 @@
                        nil
                        (catch clojure.lang.ExceptionInfo e (ex-data e))))
               (str "should be refused: " k)))))))
+
+(deftest authenticator-values-read-connection-uri-test
+  ;; private-key auth moves the connection string from `:subname` into `:connection-uri`
+  (testing "an `authenticator` in `:connection-uri` is found as well as one in `:subname`"
+    (doseq [k [:subname :connection-uri]]
+      (is (= ["https://localhost/"]
+             (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
+          (str "should be found in " k)))))

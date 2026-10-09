@@ -67,9 +67,12 @@
   "Every `authenticator` the client could be handed by `spec`: each one in the connection string, as written and as the
   client percent-decodes it, and each property whose name matches regardless of case -- the client looks property
   names up case-insensitively, and details the driver does not recognize are passed through as properties. All are
-  returned rather than guessing which one the client lets win."
+  returned rather than guessing which one the client lets win. The connection string is `:connection-uri` when the
+  driver has built one (private-key auth does), otherwise `:subname`; both are read."
   [spec]
-  (into (sql-jdbc.common/connection-string-parameter-values (:subname spec) "authenticator")
+  (into (into []
+              (mapcat #(sql-jdbc.common/connection-string-parameter-values % "authenticator"))
+              [(:connection-uri spec) (:subname spec)])
         (keep (fn [[k v]]
                 (when (= "authenticator" (u/lower-case-en (str/trim (name k))))
                   v)))
