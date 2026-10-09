@@ -14,6 +14,7 @@ const OPEN_BRACKET = char("[");
 const CLOSE_BRACKET = char("]");
 const SINGLE_QUOTE = char("'");
 const DOUBLE_QUOTE = char('"');
+const STRING_QUOTES = new Set([SINGLE_QUOTE, DOUBLE_QUOTE]);
 const NEW_LINE = char("\n");
 const EOF = -1;
 
