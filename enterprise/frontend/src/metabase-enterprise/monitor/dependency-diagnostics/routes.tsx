@@ -1,21 +1,23 @@
 import { Route, redirect } from "metabase/router";
 
 /**
- * The two diagnostics pages sit behind one barrel, so a single `import()`
- * reaches both and they land in one chunk by construction.
+ * The two diagnostics pages sit behind one barrel under one chunk name, so they
+ * land in one chunk. Each loader names it, rather than sharing a helper that
+ * does, so the preload manifest can read it off the route.
  */
-const pages = () =>
-  import(/* webpackChunkName: "dependency-diagnostics" */ "./pages");
-
 const brokenPage = () =>
-  pages().then(({ BrokenDependencyDiagnosticsPage }) => ({
-    Component: BrokenDependencyDiagnosticsPage,
-  }));
+  import(/* webpackChunkName: "dependency-diagnostics" */ "./pages").then(
+    ({ BrokenDependencyDiagnosticsPage }) => ({
+      Component: BrokenDependencyDiagnosticsPage,
+    }),
+  );
 
 const unreferencedPage = () =>
-  pages().then(({ UnreferencedDependencyDiagnosticsPage }) => ({
-    Component: UnreferencedDependencyDiagnosticsPage,
-  }));
+  import(/* webpackChunkName: "dependency-diagnostics" */ "./pages").then(
+    ({ UnreferencedDependencyDiagnosticsPage }) => ({
+      Component: UnreferencedDependencyDiagnosticsPage,
+    }),
+  );
 
 export function getDependencyDiagnosticsRoutes() {
   return (

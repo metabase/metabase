@@ -1,12 +1,7 @@
 import { Route } from "metabase/router";
 
-import { loadDependencyGraphPage } from "./lazy";
-
-const dependencyGraphPage = () =>
-  loadDependencyGraphPage().then(({ DependencyGraphPage }) => ({
-    Component: DependencyGraphPage,
-  }));
+import { loadDependencyGraphRoute } from "./lazy";
 
 export function getDataStudioDependencyRoutes() {
-  return <Route index lazy={dependencyGraphPage} />;
+  return <Route index lazy={loadDependencyGraphRoute} />;
 }
