@@ -645,6 +645,7 @@ describe("issue 29304", () => {
         window.Cypress = undefined;
       },
     });
+    H.collapseNavigationSidebar();
   };
 
   beforeEach(() => {

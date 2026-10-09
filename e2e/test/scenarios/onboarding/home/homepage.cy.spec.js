@@ -32,6 +32,7 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for the Sample Database", () => {
       cy.visit("/");
+      H.collapseNavigationSidebar();
       cy.wait("@getXrayCandidates");
       cy.findByTestId("home-page").within(() => {
         cy.findByText(

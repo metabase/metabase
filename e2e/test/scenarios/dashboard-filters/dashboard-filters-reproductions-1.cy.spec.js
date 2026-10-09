@@ -1553,7 +1553,7 @@ describe("issue 26230, issue 27356", () => {
     // Switching from the parameterized dashboard to the non-parameterized one
     // via the navigation sidebar should load cleanly, without erroring
     // (metabase#27356).
-    cy.button("Toggle sidebar").click();
+    H.openNavigationSidebar();
     cy.findByRole("listitem", { name: REGULAR_DASHBOARD }).click();
     cy.wait("@loadDashboard");
 

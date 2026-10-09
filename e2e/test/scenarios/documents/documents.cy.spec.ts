@@ -269,6 +269,8 @@ describe("documents", () => {
     cy.location("pathname").should("equal", "/document/1-test-document");
     H.documentContent().should("contain.text", "This is a paragraph");
 
+    // breadcrumbs are hidden while the navbar is open
+    H.closeNavigationSidebar();
     H.appBar()
       .findByRole("link", { name: /Our analytics/ })
       .click();

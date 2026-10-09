@@ -1,5 +1,7 @@
 import type { CardId, TableId } from "metabase-types/api";
 
+import { collapseNavigationSidebar } from "./e2e-ui-elements-helpers";
+
 export const DetailView = {
   visitModel,
   visitTable,
@@ -22,6 +24,7 @@ function visitModel(modelIdOrSlug: CardId | string, rowId: string | number) {
     "modelDetailTableMetadata",
   );
   cy.visit(`/model/${modelIdOrSlug}/detail/${rowId}`);
+  collapseNavigationSidebar();
   cy.wait("@modelDetailTableMetadata");
 }
 
@@ -30,6 +33,7 @@ function visitTable(tableId: TableId, rowId: string | number) {
     "tableDetailTableMetadata",
   );
   cy.visit(`/table/${tableId}/detail/${rowId}`);
+  collapseNavigationSidebar();
   cy.wait("@tableDetailTableMetadata");
 }
 

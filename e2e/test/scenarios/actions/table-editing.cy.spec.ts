@@ -172,6 +172,7 @@ describe("scenarios > actions > table editing", () => {
         );
 
         cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
+        H.collapseNavigationSidebar();
       });
 
       cy.log("wait for the grid to be interactive");

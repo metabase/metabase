@@ -480,7 +480,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // unbookmark it
       H.queryBuilderHeader().icon("bookmark_filled").click();
-      cy.findByTestId("sidebar-toggle").click();
+      H.openNavigationSidebar();
       H.navigationSidebar().findByText("Collections").should("be.visible");
       H.navigationSidebar().findByText("Orders").should("not.exist");
 
@@ -1221,6 +1221,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.editDashboard();
       H.removeDashboardCard(1); // removes card for QUESTION_THREE
       H.saveDashboard();
+      H.collapseNavigationSidebar(); // breadcrumbs are hidden while the navbar is open
       H.appBar().findByText("First collection").click(); // navigate via breadcrumbs to avoid page refresh
       H.openCollectionMenu();
       H.popover().within(() => {

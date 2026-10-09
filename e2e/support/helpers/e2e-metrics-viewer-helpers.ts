@@ -1,5 +1,10 @@
+import { collapseNavigationSidebar } from "./e2e-ui-elements-helpers";
+
 export const MetricsViewer = {
-  goToViewer: () => cy.visit("/explore"),
+  goToViewer: () => {
+    cy.visit("/explore");
+    collapseNavigationSidebar();
+  },
   formulaInput: () => cy.findByTestId("metrics-formula-input"),
   searchInput: () => {
     // Click the right edge of the container to focus the CodeMirror input

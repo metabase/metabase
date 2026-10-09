@@ -1026,7 +1026,6 @@ describe("issue 47170", () => {
   it("should not show error when dashboard fetch request is cancelled (metabase#47170)", () => {
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
-    H.appBar().button("Toggle sidebar").click();
     H.navigationSidebar().findByText("Dashboard A").should("be.visible");
     H.main().findByTestId("dashboard-header-skeleton").should("be.visible");
     H.navigationSidebar().findByText("Dashboard A").click();
