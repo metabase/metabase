@@ -9,7 +9,6 @@
    [metabase.events.core :as events]
    [metabase.notification.db :as notification.db]
    [metabase.request.core :as request]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
@@ -21,8 +20,7 @@
 
 (defn- check-hash [notification-handler-id email hash ip-address]
   (when-not throttling-disabled?
-    (api-error/exposing #{:errors}
-      (throttle/check unsubscribe-throttler ip-address)))
+    (throttle/check unsubscribe-throttler ip-address))
   (when (not= hash (messages/generate-notification-unsubscribe-hash notification-handler-id email))
     (throw (ex-info (tru "Invalid hash.")
                     {:status-code 400}))))

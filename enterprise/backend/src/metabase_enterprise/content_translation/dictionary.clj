@@ -105,8 +105,7 @@
     (when (seq errors)
       (throw (ex-info "This file could not be uploaded due to the following error(s):"
                       {:status-code http-status-unprocessable
-                       :errors errors
-                       :response/keys #{:errors}})))
+                       :errors errors})))
     parsed))
 
 (defn- process-rows
@@ -144,8 +143,7 @@
     (when (seq errors)
       (throw (ex-info (tru "The file could not be uploaded due to the following error(s):")
                       {:status-code http-status-unprocessable
-                       :errors errors
-                       :response/keys #{:errors}})))
+                       :errors errors})))
     ;; remove bad msgstrs after error generator for line number reporting reasons
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
       (t2/with-transaction [_tx]
@@ -174,8 +172,7 @@
           (throw (ex-info error-message
                           {:status-code http-status-unprocessable
                            :errors [error-message]
-                           :row row-no
-                           :response/keys #{:errors}}
+                           :row row-no}
                           e)))))
     (import-translations! @rows)))
 

@@ -119,7 +119,7 @@
                      (not (slack/valid-token? slack-app-token)))
             (slack/clear-channel-cache!)
             (throw (ex-info (tru "Invalid Slack token.")
-                            {:errors {:slack-app-token (tru "invalid token")} :response/keys #{:errors}})))
+                            {:errors {:slack-app-token (tru "invalid token")}})))
           (setting/set-many! {:slack-app-token    slack-app-token
                               :slack-token-valid? true})
           (slack/refresh-channels-and-usernames-when-needed!))))
@@ -128,7 +128,7 @@
         (when (and processed-bug-channel
                    (not (slack/channel-exists? processed-bug-channel)))
           (throw (ex-info (tru "Slack channel not found.")
-                          {:errors {:slack-bug-report-channel (tru "channel not found")} :response/keys #{:errors}})))
+                          {:errors {:slack-bug-report-channel (tru "channel not found")}})))
         (channel.settings/slack-bug-report-channel! processed-bug-channel)))
     {:ok true}
     (catch clojure.lang.ExceptionInfo info

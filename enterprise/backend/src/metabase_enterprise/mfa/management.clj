@@ -106,9 +106,8 @@
                  ;; 400, not 401: the session is fine, the re-auth input is wrong. The FE (and any
                  ;; well-behaved client) treats a 401 as an expired session and bounces to login.
                  (throw (ex-info (tru "Invalid password.")
-                                 {:status-code   400
-                                  :errors        {:password (tru "Invalid password.")}
-                                  :response/keys #{:errors}})))
+                                 {:status-code 400
+                                  :errors      {:password (tru "Invalid password.")}})))
                ;; Precondition for [[enrollment/start-enrollment!]] is met: this user is logged in and we just
                ;; re-validated their password.
                (or (enrollment/start-enrollment! api/*current-user-id*)

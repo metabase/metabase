@@ -166,8 +166,7 @@
         (when-not (validate query)
           (throw (ex-info "Invalid data app query"
                           {:status-code 400
-                           :errors (me/humanize (mr/explain schema query))
-                           :response/keys #{:errors}})))
+                           :errors (me/humanize (mr/explain schema query))})))
         query))))
 
 (mr/def ::query-definition

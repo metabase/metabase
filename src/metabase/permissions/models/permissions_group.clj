@@ -185,9 +185,8 @@
   [group-ids]
   (when-let [offending (seq (hidden-tenant-group-ids group-ids))]
     (throw (ex-info (tru "Tenant groups are not editable while the Tenants feature is disabled.")
-                    {:status-code   400
-                     :errors        {:tenant-group-ids (sort offending)}
-                     :response/keys #{:errors}}))))
+                    {:status-code 400
+                     :errors      {:tenant-group-ids (sort offending)}}))))
 
 (defn- group-id->num-members
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty

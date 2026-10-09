@@ -262,7 +262,7 @@
     (throw (ex-info (tru (str "This app was built for version {0} of data apps. Migrate it to the current "
                               "version, then rebuild and sync it again.")
                          (:version app))
-                    {:status-code 409, :error-code "data-app-outdated", :response/keys #{:error-code}})))
+                    {:status-code 409, :error-code "data-app-outdated"})))
   app)
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]

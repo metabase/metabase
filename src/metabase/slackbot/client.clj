@@ -83,8 +83,7 @@
                             (tru "Invalid Slack bot token: {0}" error-code)
                             (tru "Slack API error: {0}" error-code))
                           {:status-code (if invalid-token? 400 502)
-                           :error-code error-code
-                           :response/keys #{:error-code}})))))
+                           :error-code error-code})))))
     (catch clojure.lang.ExceptionInfo e
       (throw e))
     (catch Exception e

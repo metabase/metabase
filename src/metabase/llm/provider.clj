@@ -1066,7 +1066,7 @@
                           :error-code    :llm-base-url-change-requires-credentials
                           :field         :base-url
                           :secrets       (mapv name missing-secrets)
-                          :response/keys #{:error-code :field}})))))))
+                          :response/keys #{:field}})))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
@@ -1088,7 +1088,7 @@
                          :api-error     true
                          :error-code    :llm-credential-change-requires-connection-settings
                          :field         field
-                         :response/keys #{:error-code :field}}))))))
+                         :response/keys #{:field}}))))))
 
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
@@ -1124,7 +1124,7 @@
                                  :api-error     true
                                  :error-code    :llm-base-url-is-env-managed
                                  :field         :base-url
-                                 :response/keys #{:error-code :field}})))
+                                 :response/keys #{:field}})))
               (let [current-config (or (:config live) {})
                     new-config     (if value
                                      (assoc current-config field value)

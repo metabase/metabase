@@ -74,10 +74,8 @@
                                        [:active      {:optional true} [:maybe {:default true} :boolean]]])]
   (perms/check-has-application-permission :setting)
   (when (channel.db/channel-name-exists? channel-name)
-    (throw (ex-info "Channel with that name already exists"
-                    {:status-code   409
-                     :errors        {:name "Channel with that name already exists"}
-                     :response/keys #{:errors}})))
+    (throw (ex-info "Channel with that name already exists" {:status-code 409
+                                                             :errors      {:name "Channel with that name already exists"}})))
   (u/prog1 (channel.db/insert-channel! body)
     (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 
@@ -129,8 +127,8 @@
         {:ok true}))
     (catch Exception e
       {:status 400
-       :body   {:message (ex-message e)
-                :data    (api-error/response-data (ex-data e))}})))
+       :body   {:message     (ex-message e)
+                :data        (api-error/response-data (ex-data e))}})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

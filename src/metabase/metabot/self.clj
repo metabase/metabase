@@ -594,10 +594,9 @@
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
   (when-let [limit-msg (usage/check-usage-limits!)]
     (throw (ex-info limit-msg
-                    {:type          :metabot/usage-limit-reached
-                     :error-code    "ai_usage_limit_reached"
-                     :message       limit-msg
-                     :response/keys #{:error-code :message}})))
+                    {:type       :metabot/usage-limit-reached
+                     :error-code "ai_usage_limit_reached"
+                     :message    limit-msg})))
   (check-permission! (:required-permission opts))
   (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))

@@ -546,7 +546,7 @@
                                              :decoded decoded}
                          :specific-errors (invalid-params-specific-errors explanation)
                          :errors          (invalid-params-errors explanation)
-                         :response/keys   #{:specific-errors :errors}}))))
+                         :response/keys   #{:specific-errors}}))))
     decoded))
 
 (mu/defn- decode-and-validate-params-form

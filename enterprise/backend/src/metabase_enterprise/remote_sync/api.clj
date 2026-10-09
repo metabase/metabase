@@ -17,7 +17,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
-   [metabase.util.api-error :as api-error]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -301,20 +300,17 @@
       (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
         (throw (ex-info (or (ex-message e) "Invalid settings")
-                        {:error         (ex-message e)
-                         :status-code   400
-                         :response/keys #{:error}}
-                        e))))
+                        {:error       (ex-message e)
+                         :status-code 400} e))))
     (when (seq collections)
       (try
         (remote-sync.core/bulk-set-remote-sync collections)
         (catch Exception e
-          (throw (api-error/ex-info (or (ex-message e) "Invalid collection settings")
-                                    (assoc (ex-data e)
-                                           :error       (ex-message e)
-                                           :status-code 400)
-                                    e
-                                    :response/keys #{:error})))))
+          (throw (ex-info (or (ex-message e) "Invalid collection settings")
+                          (assoc (ex-data e)
+                                 :error       (ex-message e)
+                                 :status-code 400)
+                          e)))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})

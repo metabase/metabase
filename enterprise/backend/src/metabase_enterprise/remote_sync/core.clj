@@ -425,17 +425,15 @@
     (cond
       unsynced-dependencies
       (ex-info (ex-message e)
-               {:status-code   400
-                :error_code    "unsynced-dependencies"
-                :errors        {:required (describe-required-syncs unsynced-dependencies)}
-                :response/keys #{:error_code :errors}})
+               {:status-code 400
+                :error_code  "unsynced-dependencies"
+                :errors      {:required (describe-required-syncs unsynced-dependencies)}})
 
       remote-synced-dependents
       (ex-info (ex-message e)
-               {:status-code   400
-                :error_code    "remote-synced-dependents"
-                :errors        {:collections [(describe-dependent-failure remote-synced-dependents)]}
-                :response/keys #{:error_code :errors}}))))
+               {:status-code 400
+                :error_code  "remote-synced-dependents"
+                :errors      {:collections [(describe-dependent-failure remote-synced-dependents)]}}))))
 
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state

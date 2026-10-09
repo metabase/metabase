@@ -154,7 +154,8 @@
                            [(:message message) message]
                            [message])]
       ;; a map message is authored as the response body, so all of it is client-facing
-      (throw (api-error/ex-info (str message) (assoc info :status-code code) :response/keys (keys info)))))
+      (throw (ex-info (str message)
+                      (apply api-error/extend-response-keys (assoc info :status-code code) (keys info))))))
   condition)
 
 (defn check
@@ -235,9 +236,8 @@
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
   (throw (ex-info (tru "Invalid field: {0}" field-name)
-                  {:status-code   400
-                   :errors        {(keyword field-name) message}
-                   :response/keys #{:errors}})))
+                  {:status-code 400
+                   :errors      {(keyword field-name) message}})))
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.

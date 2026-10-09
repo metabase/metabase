@@ -154,18 +154,16 @@
 (defn- blocked-network-address-exception []
   (let [message (str (deferred-tru "Cannot connect to a private or internal network address."))]
     (ex-info message
-             {:status-code   400
-              :message       message
-              :errors        {:host (str (deferred-tru "check your host settings"))}
-              :response/keys #{:message :errors}})))
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}})))
 
 (defn- unknown-connection-hosts-exception [cause]
   (let [message (str (deferred-tru "Error resolving hosts: could not apply security policy."))]
     (ex-info message
-             {:status-code   400
-              :message       message
-              :errors        {:host (str (deferred-tru "check your host settings"))}
-              :response/keys #{:message :errors}}
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}}
              cause)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}

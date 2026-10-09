@@ -78,7 +78,7 @@
                            :new-col       col
                            :expected      table-col-base-type
                            :actual        (:base_type col)
-                           :response/keys #{:message :expected :actual}})))))))
+                           :response/keys #{:expected :actual}})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,

@@ -14,7 +14,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -69,16 +68,14 @@
   (try
     (thunk)
     (catch SQLException e
-      (throw (api-error/ex-info (or (ex-message e) "Error executing action.")
-                                ;; the parsed `:message` and per-column `:errors` are what the UI shows
-                                (merge (or (some-> (parse-sql-error driver database action e)
-                                                   ;; the columns in error message should match with columns in the
-                                                   ;; parameter. It's usually got from calling GET /api/action/:id/execute,
-                                                   ;; and in there all column names are slugified
-                                                   (m/update-existing :errors perf/update-keys u/slugify))
-                                           (assoc (ex-data e) :message (ex-message e)))
-                                       {:status-code 400})
-                                :response/keys #{:message :errors})))))
+      (throw (ex-info (or (ex-message e) "Error executing action.")
+                      (merge (or (some-> (parse-sql-error driver database action e)
+                                         ;; the columns in error message should match with columns
+                                         ;; in the parameter. It's usually got from calling
+                                         ;; GET /api/action/:id/execute, and in there all column names are slugified
+                                         (m/update-existing :errors perf/update-keys u/slugify))
+                                 (assoc (ex-data e) :message (ex-message e)))
+                             {:status-code 400}))))))
 
 (defmacro ^:private with-auto-parse-sql-exception
   "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."
@@ -582,10 +579,9 @@
           :input-fn   row-create-input-fn})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) inserting rows.")
-                      {:status-code   400
-                       :errors        errors
-                       :results       results
-                       :response/keys #{:errors}})))
+                      {:status-code 400
+                       :errors      errors
+                       :results     results})))
     {:context (record-mutations context results)
      :outputs (mapv (fn [{:keys [table-id after]}]
                       {:table-id table-id
@@ -698,10 +694,9 @@
                                                                        (table-id->pk-field-name->id db-id table-id) row)}})})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) deleting rows.")
-                      {:status-code   400
-                       :errors        errors
-                       :results       results
-                       :response/keys #{:errors}})))
+                      {:status-code 400
+                       :errors      errors
+                       :results     results})))
     {:context (record-mutations context results)
      :outputs (for [{:keys [table-id before]} results]
                 {:table-id table-id
@@ -772,10 +767,9 @@
           :input-fn   update-input-fn})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) updating rows.")
-                      {:status-code   400
-                       :errors        errors
-                       :results       results
-                       :response/keys #{:errors}})))
+                      {:status-code 400
+                       :errors      errors
+                       :results     results})))
     {:context (record-mutations context results)
      :outputs (mapv (fn [{:keys [table-id after]}]
                       {:table-id table-id

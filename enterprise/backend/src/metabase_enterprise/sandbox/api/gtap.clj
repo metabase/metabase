@@ -97,9 +97,8 @@
     (let [db (sandbox.db/database-of-table table_id)]
       (when (not (driver.u/supports? (:engine db) :saved-question-sandboxing db))
         (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
-                        {:status-code   400
-                         :message       (tru "Sandboxing with a saved question is not enabled for this database.")
-                         :response/keys #{:message}})))))
+                        {:status-code 400
+                         :message     (tru "Sandboxing with a saved question is not enabled for this database.")})))))
   (sandbox/check-columns-match-table {:table_id table_id
                                       :card_id  card_id}))
 

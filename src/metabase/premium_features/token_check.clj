@@ -26,7 +26,6 @@
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -627,7 +626,9 @@
       (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
-                        {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+                        {:status-code   400
+                         :error-details "Token should be 64 hexadecimal characters."
+                         :response/keys #{:error-details}})))
       ;; validate against the store, not a cached verdict — the token may be the same string with a
       ;; renewed subscription behind it
       (clear-cache!)
@@ -639,16 +640,17 @@
                            ;; probably more appropriate.
                            :status-code (if (:canonical? decoded)
                                           400
-                                          503)}))))
+                                          503)
+                           :response/keys #{:error-details}}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
       ;; merge in error-details if present
-      (throw (api-error/ex-info (.getMessage e) (merge {:message (.getMessage e), :status-code 400}
-                                                       (ex-data e))
-                                :response/keys #{:message :error-details})))))
+      (throw (ex-info (.getMessage e) (merge
+                                       {:message (.getMessage e), :status-code 400}
+                                       (ex-data e)))))))
 
 (defn -airgap-enabled
   "Getter for [[metabase.premium-features.settings/airgap-enabled]]"

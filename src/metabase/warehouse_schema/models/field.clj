@@ -56,8 +56,7 @@
                           {:status-code       400
                            :errors            {column-name message}
                            :value             k
-                           :allowed-ancestors ancestor-types
-                           :response/keys     #{:errors}}))))
+                           :allowed-ancestors ancestor-types}))))
       (u/qualified-name k))))
 
 (defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]

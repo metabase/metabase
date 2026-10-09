@@ -137,12 +137,11 @@
    (url-not-allowed-ex message host nil))
   ([message host cause]
    (ex-info message
-            {:status-code   400
-             :status        400
-             :api-error     true
-             :error-code    :llm-host-not-allowed
-             :llm-host      host
-             :response/keys #{:error-code}}
+            {:status-code 400
+             :status      400
+             :api-error   true
+             :error-code  :llm-host-not-allowed
+             :llm-host    host}
             cause)))
 
 (defn llm-url-syntax-problem
@@ -247,10 +246,9 @@
                 (when (and (request.current/current-request)
                            (not *allow-llm-provider-write*))
                   (throw (ex-info (tru "Manage LLM provider connections through the provider connection settings.")
-                                  {:status-code   400
-                                   :api-error     true
-                                   :error-code    :llm-providers-direct-write-forbidden
-                                   :response/keys #{:error-code}})))
+                                  {:status-code 400
+                                   :api-error   true
+                                   :error-code  :llm-providers-direct-write-forbidden})))
                 ((requiring-resolve 'metabase.llm.provider/validate-changed-connections!) new-value)
                 (setting/set-value-of-type! :json :llm-providers new-value))
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.

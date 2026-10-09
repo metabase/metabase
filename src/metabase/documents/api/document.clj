@@ -144,7 +144,7 @@
     (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
-        (throw (ex-info msg {:status-code 400, :errors {:archived msg}, :response/keys #{:errors}}))))
+        (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
     (documents.db/delete-document! document-id)
     (events/publish-event! :event/document-delete
                            {:object document

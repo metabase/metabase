@@ -4,8 +4,7 @@
    [clojure.test :refer :all]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.settings :as server.settings]
-   [metabase.test :as mt]
-   [metabase.util.api-error :as api-error])
+   [metabase.test :as mt])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -74,23 +73,22 @@
             "Response should contain :via key with exception chain")))))
 
 (deftest api-exception-response-error-code-test
-  (testing "a non-500 that exposes an :error-code returns its structured body without a stacktrace, whatever hide-stacktraces says"
+  (testing (str "a non-500 with an :error-code, client-facing without being listed, returns its structured body "
+                "without a stacktrace, whatever hide-stacktraces says")
     (doseq [hide? [false true]]
       (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
         (let [exception (ex-info "You are out of tokens."
-                                 {:status-code   402
-                                  :message       "You are out of tokens."
-                                  :error-code    "metabase_ai_managed_locked"
-                                  :response/keys #{:message :error-code}})
+                                 {:status-code 402
+                                  :message     "You are out of tokens."
+                                  :error-code  "metabase_ai_managed_locked"})
               response  (mw.exceptions/api-exception-response exception nil)]
           (is (= 402 (:status response)))
           (is (= {:message    "You are out of tokens."
                   :error-code "metabase_ai_managed_locked"}
                  (:body response))))
         (let [exception (ex-info "Slack API error: ratelimited"
-                                 {:status-code   502
-                                  :error-code    "ratelimited"
-                                  :response/keys #{:error-code}})
+                                 {:status-code 502
+                                  :error-code  "ratelimited"})
               response  (mw.exceptions/api-exception-response exception nil)]
           (is (= 502 (:status response)))
           (is (= {:message    "Slack API error: ratelimited"
@@ -98,8 +96,8 @@
                  (:body response)))))))
   (testing "a 500, or the legacy :error_code spelling, keeps the full stacktrace body"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
-      (doseq [data [(api-error/extend-response-keys {:status-code 500, :error-code "boom"} :error-code)
-                    (api-error/extend-response-keys {:status-code 404, :error_code "archived"} :error_code)]]
+      (doseq [data [{:status-code 500, :error-code "boom"}
+                    {:status-code 404, :error_code "archived"}]]
         (let [response (mw.exceptions/api-exception-response (ex-info "boom" data) nil)]
           (is (= (:status-code data) (:status response)))
           (is (contains? (:body response) :trace)))))))
@@ -180,8 +178,7 @@
                                {:status-code 400
                                 :params {:password "hunter2"}
                                 :errors {:email    "Invalid email format"
-                                         :password "Password too short"}
-                                :response/keys #{:errors}})
+                                         :password "Password too short"}})
             response (mw.exceptions/api-exception-response exception nil)]
         (is (= 400 (:status response)))
         (is (= {:email "Invalid email format"
@@ -197,8 +194,7 @@
                                {:status-code 400
                                 :params {:password "hunter2"}
                                 :errors {:email    "Invalid email format"
-                                         :password "Password too short"}
-                                :response/keys #{:errors}})
+                                         :password "Password too short"}})
             response (mw.exceptions/api-exception-response exception nil)]
         (is (= 400 (:status response)))
         (is (= {:email "Invalid email format"

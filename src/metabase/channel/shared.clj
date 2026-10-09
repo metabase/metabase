@@ -20,7 +20,7 @@
   [schema value]
   (when-let [errors (some-> (mr/explain schema value)
                             me/humanize)]
-    (throw (ex-info (tru "Invalid channel details") {:errors errors :response/keys #{:errors}}))))
+    (throw (ex-info (tru "Invalid channel details") {:errors errors}))))
 
 (defn- maybe-deref
   [x]

@@ -25,7 +25,6 @@
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
-   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -649,8 +648,7 @@
   (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
         data   (cond-> base
                  (nil? (:status-code base)) (assoc :status-code 400))]
-    ;; HTTP callers also get the machine-readable error code, on top of whatever `e` already exposes
-    (api-error/ex-info (ex-message e) data e :response/keys #{:error})))
+    (ex-info (ex-message e) data e)))
 
 (defn- query-not-runnable-explanation
   "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli

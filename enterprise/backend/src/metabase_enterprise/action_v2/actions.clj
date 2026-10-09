@@ -78,10 +78,9 @@
                             :when errors]
                   [table-id errors]))]
     (when errors
-      (throw (ex-info "Failed validation" {:errors        errors
-                                           :status-code   400
-                                           :error-code    ::invalid-input
-                                           :response/keys #{:errors :error-code}})))))
+      (throw (ex-info "Failed validation" {:errors      errors
+                                           :status-code 400
+                                           :error-code  ::invalid-input})))))
 
 (defn- coerce-inputs [inputs]
   (let [table-id->inputs (group-by :table-id inputs)

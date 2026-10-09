@@ -49,8 +49,7 @@
   (when-not (mr/validate CreateTenantArguments tenant)
     (throw (ex-info "Invalid Tenant"
                     {:status-code 400
-                     :errors (mr/explain CreateTenantArguments tenant)
-                     :response/keys #{:errors}})))
+                     :errors (mr/explain CreateTenantArguments tenant)})))
   (api/check-403 api/*is-superuser?*)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")

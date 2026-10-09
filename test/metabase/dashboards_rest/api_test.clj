@@ -4441,9 +4441,9 @@
                                                                           :group_id group-id}]
                         (data-perms.graph/update-data-perms-graph!* [group-id (mt/id) :view-data] :blocked)
                         (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :view-data] :blocked)
-                        (is (= "You don't have permissions to do that."
-                               (mt/user-http-request :rasta :post 403 execute-path
-                                                     {:parameters {"id" 1}}))
+                        (is (partial= {:message "You don't have permissions to do that."}
+                                      (mt/user-http-request :rasta :post 403 execute-path
+                                                            {:parameters {"id" 1}}))
                             "Data permissions should be required")))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
