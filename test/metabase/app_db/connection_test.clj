@@ -215,6 +215,40 @@
       (mdb.connection/do-after-commit (fn [] (swap! calls conj :b))))
     (is (= [:a :nested-from-a :b] @calls))))
 
+(deftest after-commit-callback-registered-after-the-commit-runs-immediately-test
+  ;; A thread started inside a transaction keeps the transaction's bindings after it ends, so its do-after-commit
+  ;; still finds that transaction's callbacks. They have already run, and a thunk added to them would never run.
+  (let [committed      (promise)
+        callback-state (promise)
+        worker         (t2/with-transaction [_conn]
+                         (future
+                           @committed
+                           (mdb.connection/do-after-commit
+                            #(deliver callback-state
+                                      {:current-connectable t2.connection/*current-connectable*
+                                       :in-transaction?     (mdb.connection/in-transaction?)}))))]
+    (deliver committed true)
+    (deref worker 1000 ::timed-out)
+    (is (= {:current-connectable nil
+            :in-transaction?     false}
+           (deref callback-state 1000 ::timed-out)))))
+
+(deftest after-commit-callback-registered-after-a-rollback-never-runs-test
+  (let [rolled-back (promise)
+        calls       (atom [])
+        worker      (promise)]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Roll back"
+         (t2/with-transaction [_conn]
+           (deliver worker (future
+                             @rolled-back
+                             (mdb.connection/do-after-commit (fn [] (swap! calls conj :late)))
+                             :done))
+           (throw (ex-info "Roll back" {})))))
+    (deliver rolled-back true)
+    (is (= :done (deref @worker 1000 ::timed-out)))
+    (is (= [] @calls))))
+
 (deftest rollback-only-transaction-rolls-back-and-discards-callbacks-test
   (let [email (mt/random-email)
         calls (atom [])]

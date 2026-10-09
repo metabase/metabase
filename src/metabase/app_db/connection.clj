@@ -270,20 +270,14 @@
     (do (swap! callbacks conj thunk) nil)
     (thunk)))
 
-(defn do-after-commit
-  "Run `thunk` after the current outermost transaction commits successfully — never on rollback.
-  Outside a transaction (autocommit), runs `thunk` immediately — the surrounding write already committed.
-  Use to *schedule* post-commit work — enqueue async work, fire a `future`, publish an event — that must
-  observe committed state (e.g. a reconcile that reads the row).
-  Do not do synchronous DB I/O in `thunk`: it runs while the transaction's connection is still checked out,
-  so a query here would hold a second connection and can deadlock a saturated pool. Hand DB work to the
-  async job you schedule, which acquires its own connection."
-  [thunk]
-  (if-let [callbacks *after-commit-callbacks*]
-    (do (swap! callbacks conj thunk) nil)
-    (thunk)))
+(def ^:private already-run-callbacks
+  "What the after-commit callbacks are replaced with once they have run."
+  ^::already-run? [])
 
-(defn- run-after-commit-callbacks! [callbacks]
+(defn- already-run? [callbacks]
+  (::already-run? (meta callbacks)))
+
+(defn- run-after-commit-callback! [thunk]
   ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
   ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
   ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
@@ -291,10 +285,30 @@
   (binding [t2.conn/*current-connectable* nil
             *transaction-depth*           0
             *after-commit-callbacks*      nil]
-    (doseq [thunk @callbacks]
-      ;; the transaction already committed; a failing callback must not unwind it
-      (try (thunk) (catch Throwable t (log/errorf "after-commit callback failed: %s" (ex-message t)))))
-    (reset! callbacks [])))
+    ;; the transaction already committed; a failing callback must not unwind it
+    (try (thunk) (catch Throwable t (log/errorf "after-commit callback failed: %s" (ex-message t))))))
+
+(defn do-after-commit
+  "Run `thunk` after the current outermost transaction commits successfully — never on rollback.
+  Outside a transaction (autocommit), runs `thunk` immediately — the surrounding write already committed.
+  Use to *schedule* post-commit work — enqueue async work, fire a `future`, publish an event — that must
+  observe committed state (e.g. a reconcile that reads the row).
+  Do not do synchronous DB I/O in `thunk`: it runs while the transaction's connection is still checked out,
+  so a query here would hold a second connection and can deadlock a saturated pool. Hand DB work to the
+  async job you schedule, which acquires its own connection.
+  A thread started inside the transaction can call this after the commit, and `thunk` then runs immediately too."
+  [thunk]
+  (if-let [callbacks *after-commit-callbacks*]
+    ;; A thread started inside the transaction keeps this binding after the transaction ends.
+    ;; Once the callbacks have run, a thunk added to them would never run.
+    (let [[before] (swap-vals! callbacks #(cond-> % (not (already-run? %)) (conj thunk)))]
+      (when (already-run? before)
+        (run-after-commit-callback! thunk))
+      nil)
+    (thunk)))
+
+(defn- run-after-commit-callbacks! [callbacks]
+  (run! run-after-commit-callback! (first (reset-vals! callbacks already-run-callbacks))))
 
 (defn- discard-callbacks-after!
   "Truncate the `callbacks` atom back to its first `n` entries, dropping any that a now-rolling-back
@@ -305,7 +319,8 @@
            (fn [cbs]
              ;; copy rather than return the subvec view, which would retain the discarded callbacks (and their
              ;; captured closures) through the backing array until the outer transaction finishes
-             (into [] (subvec cbs 0 (min n (count cbs))))))))
+             ;; `empty` keeps the metadata that marks callbacks as already run.
+             (into (empty cbs) (subvec cbs 0 (min n (count cbs))))))))
 
 (defn- do-transaction [^java.sql.Connection connection rollback-only? f]
   ;; Set when a connection rollback fails and leaves pending writes. Restoring autocommit would commit those writes,
