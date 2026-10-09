@@ -147,9 +147,14 @@
                                        metabot.settings/llm-metabot-provider test-provider]
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (let [conversation-id (str (random-uuid))
-              e               (mut/openrouter-error!
-                               {:max-tokens 32000
-                                :input      [{:role :user :content (apply str (repeat 700000 "a"))}]})]
+              ;; OpenRouter's 400 body for a request over the window (probed 2026-10-09, BOT-2158).
+              e               (ex-info "OpenRouter API error (HTTP 400)"
+                                       {:api-error true
+                                        :status    400
+                                        :provider  "openrouter"
+                                        :body      {:error {:message  "This endpoint's maximum context length is 200000 tokens."
+                                                            :code     400
+                                                            :metadata {:provider_name nil}}}})]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw e))
                                       conversation-title/ensure-title! (constantly {:status :ready
                                                                                     :title  "Orders by Month"})]

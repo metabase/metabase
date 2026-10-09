@@ -52,12 +52,9 @@
 (def supported-models
   "DeepSeek models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  ;; DeepSeek states a "1M" context for both models (https://api-docs.deepseek.com/quick_start/pricing).
-  ;; - deepseek-v4-pro: 1,048,576 is the `context_length` of DeepSeek's own endpoint on OpenRouter
-  ;;   (https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-pro-0813/endpoints, fetched 2026-10-08).
-  ;; - deepseek-flash: no first-party endpoint list gives an exact figure, so we record 1,000,000. A window above the
-  ;;   real one would stop the "full" notice, and a lower one only shows it a little early.
-  {"deepseek-flash"  {:display-name "DeepSeek Flash"  :context-window 1000000}
+  ;; Both models answer an overflow with "This model's maximum context length is 1048576 tokens" (probed
+  ;; 2026-10-09, BOT-2158). DeepSeek's docs state "1M" (https://api-docs.deepseek.com/quick_start/pricing/).
+  {"deepseek-flash"  {:display-name "DeepSeek Flash"  :context-window 1048576}
    "deepseek-v4-pro" {:display-name "DeepSeek V4 Pro" :context-window 1048576}})
 
 (mu/defn context-window-tokens :- [:maybe :int]

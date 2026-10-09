@@ -183,6 +183,44 @@ describe("metabot > errors", () => {
     expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
   });
 
+  it("should not offer a retry for ai_provider_context_full errors", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "error",
+          errorText:
+            "This conversation has reached its maximum length and can't continue. Please start a new chat.",
+        },
+        {
+          type: "finish",
+          finishReason: "error",
+          messageMetadata: { errorCode: "ai_provider_context_full" },
+        },
+      ],
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    expect(
+      await screen.findByTestId("metabot-long-chat-notice"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-chat-message-retry"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should offer a retry for other errors", async () => {
+    setup();
+    mockAgentEndpoint({ events: erroredResponse });
+
+    await enterChatMessage("Who is your favorite?");
+
+    expect(
+      await screen.findByTestId("metabot-chat-message-retry"),
+    ).toBeInTheDocument();
+  });
+
   it("should mask streamed errors with a generic message", async () => {
     setup();
     mockAgentEndpoint({ events: erroredResponse });

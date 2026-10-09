@@ -22,6 +22,7 @@ import {
   getIncompleteTurnMessage,
   getIncompleteTurnReason,
   isChainOfThoughtMessage,
+  isContextFullError,
   isTextPart,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
@@ -763,7 +764,9 @@ export const Messages = ({
                 conversationId={conversationId}
                 isStreaming={isDoingScience && isLastMessage}
                 onRetry={
-                  isLastMessage && onRetryMessage
+                  isLastMessage &&
+                  onRetryMessage &&
+                  !isContextFullError(message)
                     ? () => onRetryMessage(message.id)
                     : undefined
                 }

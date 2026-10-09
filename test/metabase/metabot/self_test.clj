@@ -1285,8 +1285,8 @@
       "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
       "zai/glm-5.3"                          1048576 ; Z.AI direct
       "openrouter/z-ai/glm-5.3"              1048576 ; OpenRouter serving limit
-      "deepseek/deepseek-v4-pro"             1048576 ; DeepSeek direct, first-party endpoint figure
-      "deepseek/deepseek-flash"              1000000 ; DeepSeek direct, the documented "1M"
+      "deepseek/deepseek-v4-pro"             1048576 ; DeepSeek direct, probed overflow message
+      "deepseek/deepseek-flash"              1048576 ; DeepSeek direct, probed overflow message
       "azure/openai/my-deployment"           nil     ; unmatched deployment
       "anthropic/some-future-model"          nil     ; unknown model
       "unknown"                              nil)))  ; no such connection
@@ -2643,6 +2643,55 @@
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
         (is (nil? (mt/as-admin
                     (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))))))
+
+(deftest context-overflow-error-test
+  (testing "a 400 for a prompt that does not fit the window is a \"full\" error"
+    ;; Bodies probed 2026-10-09 (BOT-2158), unless a row names a doc.
+    (are [provider body]
+         (= "ai_provider_context_full"
+            (:error-code (self/context-overflow-error (provider-api-error! provider 400 body))))
+      "openrouter" {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you "
+                                           "requested about 200001 tokens (1 of text input, 200000 in the output).")
+                            :code     400
+                            :metadata {:provider_name nil}}}
+      ;; https://openrouter.ai/docs/api-reference/errors
+      "openrouter" {:error {:message  "Provider returned error"
+                            :code     400
+                            :metadata {:error_type "context_length_exceeded"}}}
+      "deepseek"   {:error {:message (str "This model's maximum context length is 1048576 tokens. However, you "
+                                          "requested 1048600 tokens (1016600 in the messages, 32000 in the completion).")
+                            :type    "invalid_request_error"
+                            :param   nil
+                            :code    "invalid_request_error"}}
+      "mistral"    {:object          "error"
+                    :message         "Prompt 1000015 > 262144 maximum context length"
+                    :type            "invalid_request_prompt_too_long"
+                    :param           nil
+                    :code            "3059"
+                    :raw_status_code 400}
+      "moonshot"   {:error {:message "Invalid request: Your request exceeded model token limit: 262144 (requested: 1000008)"
+                            :type    "invalid_request_error"}}
+      ;; https://platform.kimi.ai/docs/api/errors
+      "moonshot"   {:error {:message "Input token length too long" :type "invalid_request_error"}}
+      "moonshot"   {:error {:message "prompt tokens + max_tokens exceeds the model specification"
+                            :type    "invalid_request_error"}}
+      ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
+      "anthropic"  {:type  "error"
+                    :error {:type "invalid_request_error" :message "prompt is too long: 208310 tokens > 200000 maximum"}}
+      ;; https://docs.z.ai/api-reference/api-code
+      "zai"        {:error {:code "1261" :message "Prompt too long"}}))
+  (testing "any other failure is not a \"full\" error"
+    (are [status body]
+         (nil? (self/context-overflow-error (provider-api-error! "openrouter" status body)))
+      400 {:error {:code 400 :message "Bad request"}}
+      400 {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}
+      400 anthropic-credit-balance-body
+      429 {:error {:code 429 :message "This endpoint's maximum context length is 200000 tokens."}}
+      500 {:error {:code 500 :message "This endpoint's maximum context length is 200000 tokens."}}))
+  (testing "an exception that is not a provider API error"
+    (is (nil? (self/context-overflow-error
+               (ex-info "boom" {:status 400
+                                :body   {:error {:message "This endpoint's maximum context length is 200000 tokens."}}}))))))
 
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"

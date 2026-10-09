@@ -366,13 +366,27 @@
       (or (= status 401) (= "permission_error" error-type))
       :auth)))
 
+(def ^:private context-overflow-message
+  "The overflow 400 text of providers that send no structured code for it.
+
+  Probed 2026-10-09 (BOT-2158): OpenRouter \"This endpoint's maximum context length is 200000 tokens\", DeepSeek
+  \"This model's maximum context length is 1048576 tokens\", Mistral \"Prompt 1000015 > 262144 maximum context
+  length\", Moonshot \"exceeded model token limit: 262144\". Documented: Moonshot \"Input token length too long\" and
+  \"prompt tokens + max_tokens exceeds the model specification\" (https://platform.kimi.ai/docs/api/errors), Anthropic
+  \"prompt is too long\" (https://platform.claude.com/docs/en/build-with-claude/context-windows)."
+  #"maximum context length|exceeded model token limit|token length too long|exceeds the model specification|prompt is too long")
+
 (defn- context-overflow?
-  "True when a provider API error's ex-data is a 400 that the adapter flagged with `:context-overflow? true`."
-  [{:keys [status context-overflow?]}]
-  ;; The adapter sets the flag from its own estimate: the BOT-2158 live test found that OpenRouter's overflow 400
-  ;; carries no structured type (no `error.metadata.error_type`).
-  (and (= status 400)
-       (true? context-overflow?)))
+  "True when a provider API error's ex-data is a 400 for a prompt that does not fit the model's context window."
+  [{:keys [status body]}]
+  (let [{:keys [message code metadata]} (:error body)]
+    (and (= status 400)
+         (or ;; https://openrouter.ai/docs/api-reference/errors ("Typed error codes")
+          (= "context_length_exceeded" (:error_type metadata))
+          ;; https://docs.z.ai/api-reference/api-code (1261 "Prompt too long")
+          (= "1261" (str code))
+          ;; Mistral puts its message at the top level, not under `error`.
+          (boolean (re-find context-overflow-message (str (or message (:message body)))))))))
 
 (defn context-overflow-error
   "A user-facing `{:message :error-code}` for a request too long for the model's context window, or nil.

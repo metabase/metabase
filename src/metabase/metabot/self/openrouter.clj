@@ -274,16 +274,6 @@
   (quot (+ (count (json/encode (select-keys body [:messages :tools]))) 3)
         4))
 
-(defn- exceeds-context-window?
-  "True when the estimated prompt of `body` plus its `:max_tokens` (0 when absent) exceeds the window of `model`.
-
-  For example, on Claude Haiku 4.5 (200,000 tokens), a 175,000-token estimate plus a 32,000 cap is true, and the same
-  estimate with no cap is false. False for a model with no known window."
-  [body model]
-  (if-let [window (context-window-tokens model)]
-    (> (+ (estimated-prompt-tokens body) (:max_tokens body 0)) window)
-    false))
-
 (defn- without-unfitting-default-cap
   "Remove the default `:max_tokens` from `body` when it does not fit the context window of `model`.
 
@@ -293,12 +283,13 @@
   Only the default cap is removed: a caller's `max-tokens` is always sent. A model with no known window keeps the
   default. The bound is inclusive: an estimate plus cap equal to the window keeps the cap."
   [body max-tokens model]
-  (cond-> body
-    (and (nil? max-tokens)
-         (exceeds-context-window? body model))
-    ;; With no cap, OpenRouter uses its own per-endpoint default (64000 measured on claude-haiku-4.5). Before the
-    ;; default cap, Metabot sent every chat request this way.
-    (dissoc :max_tokens)))
+  (let [window (context-window-tokens model)]
+    (cond-> body
+      (and (nil? max-tokens)
+           window
+           (> (+ (estimated-prompt-tokens body) (:max_tokens body 0)) window))
+      ;; With no cap, OpenRouter uses its own per-endpoint default (64000 measured on claude-haiku-4.5).
+      (dissoc :max_tokens))))
 
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
@@ -336,25 +327,6 @@
       (with-reasoning-directive (assoc opts :model model))
       (without-unfitting-default-cap max-tokens model)))
 
-(defn- rethrow-flagging-context-overflow!
-  "Rethrow request error `e` as OpenRouter's API error, with `:context-overflow? true` in its ex-data when it is a
-  400 for a `body` that does not fit the window of `model`.
-
-  For example, a 400 for a 175,000-token prompt with a 32,000 cap on Claude Haiku 4.5 (200,000 tokens) gets the
-  flag. A 400 for a prompt that fits, or for a model with no known window, does not."
-  [body model e]
-  ;; OpenRouter's overflow 400 carries no structured type: the BOT-2158 live test saw
-  ;; `{:error {:code 400 :message "..." :metadata {:provider_name nil}}}`, with no `error_type`. So the flag comes
-  ;; from our own estimate, which the same test found never below the count of OpenRouter's admission check.
-  (try
-    (adapter/rethrow! provider e)
-    (catch clojure.lang.ExceptionInfo api-error
-      (let [data (ex-data api-error)]
-        (throw (if (and (= 400 (:status data))
-                        (exceeds-context-window? body model))
-                 (ex-info (ex-message api-error) (assoc data :context-overflow? true) (ex-cause api-error))
-                 api-error))))))
-
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
 
@@ -362,16 +334,13 @@
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
-  `:ai-proxy?` is not supported for OpenRouter and throws when true.
-  A request-time 400 for a body over the model's window throws with `:context-overflow? true` in its ex-data."
+  `:ai-proxy?` is not supported for OpenRouter and throws when true."
   [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts (assoc opts :model model)
-        body (openrouter-request-body opts)]
+  (let [opts (assoc opts :model model)]
     (adapter/stream! provider opts
-                     {:path             "/v1/chat/completions"
-                      :body             body
-                      :on-request-error #(rethrow-flagging-context-overflow! body model %)})))
+                     {:path "/v1/chat/completions"
+                      :body (openrouter-request-body opts)})))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."

@@ -1005,28 +1005,37 @@
                                         :profile-id :embedding_next
                                         :context    {}}))))))
 
-(deftest agent-loop-context-overflow-error-part-test
-  (testing "an OpenRouter 400 for a request over the window becomes a \"full\" error part with the web copy"
-    (let [e     (mut/openrouter-error! {:max-tokens 32000
-                                        :input      [{:role :user :content (apply str (repeat 700000 "a"))}]})
-          parts [{:type  :error
-                  :error {:error-code "ai_provider_context_full" :message context-full-copy}}]]
-      (is (= parts (mt/as-admin (agent-loop-error-parts! "openrouter/anthropic/claude-haiku-4.5" e))))
-      (is (= parts (mt/with-current-user (mt/user->id :rasta)
-                     (agent-loop-error-parts! "openrouter/anthropic/claude-haiku-4.5" e)))))))
+(def ^:private openrouter-overflow-body
+  "OpenRouter's 400 body for a request over the window (probed 2026-10-09, BOT-2158)."
+  {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you requested about "
+                          "200001 tokens (1 of text input, 200000 in the output).")
+           :code     400
+           :metadata {:provider_name nil}}})
 
-(deftest agent-loop-other-400s-keep-the-generic-error-part-test
-  (testing "a 400 that the adapter did not flag as a context overflow keeps the generic error part"
+(deftest agent-loop-context-overflow-error-part-test
+  (testing "a 400 for a request over the window becomes a \"full\" error part with the web copy"
     (doseq [[model-ref provider body]
-            [["openrouter/anthropic/claude-haiku-4.5" "openrouter" mut/openrouter-overflow-body]
-             ["openrouter/anthropic/claude-haiku-4.5" "openrouter"
-              {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}]
-             ["openrouter/anthropic/claude-haiku-4.5" "openrouter"
-              {:error {:code 400 :message "Bad request"}}]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-overflow-body]
+             ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
              ["anthropic/claude-sonnet-4-6" "anthropic"
               {:type  "error"
                :error {:type    "invalid_request_error"
                        :message "prompt is too long: 208310 tokens > 200000 maximum"}}]]]
+      (testing provider
+        (let [e     (rethrown-api-error! provider 400 body)
+              parts [{:type  :error
+                      :error {:error-code "ai_provider_context_full" :message context-full-copy}}]]
+          (is (= parts (mt/as-admin (agent-loop-error-parts! model-ref e))))
+          (is (= parts (mt/with-current-user (mt/user->id :rasta)
+                         (agent-loop-error-parts! model-ref e)))))))))
+
+(deftest agent-loop-other-400s-keep-the-generic-error-part-test
+  (testing "a 400 that is not a context overflow keeps the generic error part"
+    (doseq [[model-ref provider body]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}]
+             ["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "Bad request"}}]]]
       (testing (str provider " " (pr-str body))
         (let [e (rethrown-api-error! provider 400 body)]
           (is (= [{:type  :error

@@ -257,7 +257,7 @@ export const getContextUsagePercent = createSelector(
   getContextWindowPercentUsage,
 );
 
-const isContextFullError = (message: MetabotMessage | undefined) =>
+export const isContextFullError = (message: MetabotMessage | undefined) =>
   message?.status.type === "errored" &&
   message.status.error.type === CONTEXT_FULL_ERROR_CODE;
 

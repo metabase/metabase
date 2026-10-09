@@ -1,16 +1,11 @@
 (ns metabase.metabot.test-util
   (:require
-   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.tools :as metabot.tools]
-   [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
-  (:import
-   (java.io ByteArrayInputStream)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -193,40 +188,3 @@
                                        :display-name "snip"
                                        :snippet-id   Integer/MAX_VALUE}}}
               {:lib/type :mbql.stage/mbql}]})
-
-;;; ──────────────────────────────────────────────────────────────────
-;;; OpenRouter context overflow
-;;; ──────────────────────────────────────────────────────────────────
-
-(def openrouter-overflow-body
-  "OpenRouter's 400 body for a request that does not fit the model's window, with the shape the BOT-2158 live test
-  saw: `error.metadata` has no `error_type`."
-  {:error {:code     400
-           :message  "This endpoint's maximum context length is 200000 tokens."
-           :metadata {:provider_name nil}}})
-
-(defn openrouter-error!
-  "Return what `openrouter/openrouter` throws for `opts` when OpenRouter answers with HTTP `status` and
-  [[openrouter-overflow-body]].
-
-  `opts` merge over a Haiku 4.5 model and BYOK credentials. `status` defaults to 400. Returns nil when the call does
-  not throw."
-  ([opts]
-   (openrouter-error! opts 400))
-  ([opts status]
-   (mt/with-log-level [metabase.metabot.self.core :fatal]
-     (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                (throw (ex-info "clj-http: status"
-                                                                {:status  status
-                                                                 :headers {"content-type" "application/json"}
-                                                                 ;; The adapter asks clj-http for `:as :stream`.
-                                                                 :body    (-> ^String (json/encode openrouter-overflow-body)
-                                                                              (.getBytes "UTF-8")
-                                                                              ByteArrayInputStream.)})))]
-       (try
-         (openrouter/openrouter (merge {:model       "anthropic/claude-haiku-4.5"
-                                        :credentials {:api-key "sk-or-v1-byok" :base-url "https://openrouter.ai/api"}}
-                                       opts))
-         nil
-         (catch clojure.lang.ExceptionInfo e
-           e))))))

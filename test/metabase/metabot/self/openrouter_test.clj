@@ -396,46 +396,6 @@
       (is (not (contains? body :max_tokens))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; Context overflow flag
-;;; ──────────────────────────────────────────────────────────────────
-
-(deftest openrouter-flags-context-overflow-400-test
-  (testing "a 175,011-token estimate plus a caller cap of 32,000 exceeds Haiku 4.5's 200,000 window"
-    (is (=? {:status 400 :api-error true :context-overflow? true}
-            (ex-data (metabot.tu/openrouter-error! {:max-tokens 32000
-                                                    :input     [{:role :user :content (letters 700000)}]})))))
-  (testing "with no cap sent, the estimate alone exceeds the window"
-    (let [opts {:input [{:role :user :content (letters 1000000)}]}]
-      (is (not (contains? (openrouter/openrouter-request-body (assoc opts :model haiku)) :max_tokens)))
-      (is (=? {:status 400 :context-overflow? true}
-              (ex-data (metabot.tu/openrouter-error! opts)))))))
-
-(deftest openrouter-does-not-flag-other-400s-test
-  (testing "a prompt that fits the window"
-    (is (=? {:status 400 :api-error true}
-            (ex-data (metabot.tu/openrouter-error! {:input [{:role :user :content "hi"}]}))))
-    (is (not (contains? (ex-data (metabot.tu/openrouter-error! {:input [{:role :user :content "hi"}]}))
-                        :context-overflow?))))
-  (testing "at the boundary: estimate 199,000 plus a cap of 1,000 equals the window"
-    (let [opts {:model haiku :max-tokens 1000}
-          e    (metabot.tu/openrouter-error! (assoc opts :input [{:role :user :content (padded-content opts (* 4 199000))}]))]
-      (is (=? {:status 400} (ex-data e)))
-      (is (not (contains? (ex-data e) :context-overflow?)))))
-  (testing "above the boundary: estimate 199,001 plus a cap of 1,000"
-    (let [opts {:model haiku :max-tokens 1000}]
-      (is (=? {:context-overflow? true}
-              (ex-data (metabot.tu/openrouter-error! (assoc opts :input [{:role :user :content (padded-content opts (inc (* 4 199000)))}])))))))
-  (testing "a model with no known window"
-    (let [e (metabot.tu/openrouter-error! {:model "some-vendor/unknown-model"
-                                           :input [{:role :user :content (letters 1000000)}]})]
-      (is (=? {:status 400} (ex-data e)))
-      (is (not (contains? (ex-data e) :context-overflow?)))))
-  (testing "a status other than 400"
-    (let [e (metabot.tu/openrouter-error! {:input [{:role :user :content (letters 1000000)}]} 502)]
-      (is (=? {:status 502} (ex-data e)))
-      (is (not (contains? (ex-data e) :context-overflow?))))))
-
-;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;; ──────────────────────────────────────────────────────────────────
 
