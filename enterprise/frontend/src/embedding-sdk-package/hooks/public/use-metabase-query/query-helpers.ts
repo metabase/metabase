@@ -128,18 +128,9 @@ export function orderBy<const TDimension>(
   direction?: OrderByDirection,
 ): TDimension & { direction?: OrderByDirection };
 
-export function orderBy<const TDimension>(
-  dimension: TDimension,
-  direction: OrderByDirection | undefined,
-  options: BreakoutOptionsArgument<TDimension>,
-): TDimension & {
-  direction?: OrderByDirection;
-} & BreakoutOptionsArgument<TDimension>;
-
 export function orderBy<TDimension>(
   dimension: TDimension,
   direction?: OrderByDirection,
-  options?: BreakoutOptionsArgument<TDimension>,
 ) {
   if (isNamedBreakout(dimension)) {
     return {
@@ -168,10 +159,6 @@ export function orderBy<TDimension>(
   return {
     ...orderableDimension,
     ...(direction ? { direction } : undefined),
-    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
-    ...(options?.binning !== undefined
-      ? { binning: options.binning }
-      : undefined),
   };
 }
 

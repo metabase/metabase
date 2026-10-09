@@ -4,6 +4,7 @@ import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import {
   breakout,
   count,
+  orderBy,
   sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -117,6 +118,9 @@ const _invalidMetricSourceQuery = {
 
 // @ts-expect-error `unit` buckets a date, so only a date dimension offers it
 breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
+
+// @ts-expect-error A bucketed orderBy takes the bucketed breakout instead of options
+orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", { unit: "month" });
 
 function InvalidTypeFixtures() {
   const staticQuery = defineQuery({

@@ -79,34 +79,20 @@
                          (pr-str (original-name column)))
                     {:column-spec column-spec, :columns (cons column others)}))))
 
-(mu/defn- matches-bucketing? :- :boolean
-  [{:keys [unit binning]} :- ::lib.schema.test-spec/test-order-by-spec
-   column                 :- ::lib.schema.metadata/column]
-  (let [{:keys [strategy] :as column-binning} (lib.binning/binning column)]
-    (and (= unit (lib.temporal-bucket/raw-temporal-bucket column))
-         (= (:strategy binning) strategy)
-         (or (nil? binning)
-             (= strategy :default)
-             (== (strategy binning) (strategy column-binning))))))
-
 (mu/defn- find-column :- ::lib.schema.metadata/column
-  "Finds the column a spec names, by field ID or else by deduplicated name. A column is refused when another column
-  shares its original name and only a deduplication suffix tells them apart, like a previous stage's `ID` and `ID_2`.
-  A column already bucketed more than one way, like a breakout by month and by year, is told apart by the spec's
-  `:unit` or `:binning`."
+  "Finds the one column a spec names, by field ID or else by deduplicated name. A name is refused when its column
+  shares its original name with another column that only a deduplication suffix tells apart, like a previous stage's
+  `ID` and `ID_2`; a field broken out twice is named apart instead."
   [_query            :- ::lib.schema/query
    _stage-number     :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
    column-spec       :- ::lib.schema.test-spec/test-order-by-spec]
-  (let [matching (filterv (partial matches-column? column-spec) available-columns)
-        columns  (if (and (> (count matching) 1)
-                          ((some-fn :unit :binning) column-spec))
-                   (filterv (partial matches-bucketing? column-spec) matching)
-                   matching)]
+  (let [columns (filterv (partial matches-column? column-spec) available-columns)]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (let [column (first columns)]
-          (check-unambiguous-name available-columns column-spec column)
+          (when-not (:field-id column-spec)
+            (check-unambiguous-name available-columns column-spec column))
           column)
       (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec})))))
 

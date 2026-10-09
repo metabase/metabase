@@ -31,6 +31,12 @@ beforeEach(resetTestState);
 describe("resolveDatasetQuery", () => {
   it("loads table metadata and passes the public source DSL through Lib.createTestQuery", async () => {
     const store = createMockStore();
+    const createdAtMonth = breakout(
+      TEST_SCHEMA.tables.orders.fields.createdAt,
+      {
+        unit: "month",
+      },
+    );
 
     const datasetQuery = await resolveDatasetQueryInBundle(store)({
       source: TEST_SCHEMA.tables.orders,
@@ -43,14 +49,8 @@ describe("resolveDatasetQuery", () => {
         filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
       ],
       aggregations: [count(), sum(TEST_SCHEMA.tables.orders.fields.amount)],
-      breakouts: [
-        breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { unit: "month" }),
-      ],
-      orderBys: [
-        orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", {
-          unit: "month",
-        }),
-      ],
+      breakouts: [createdAtMonth],
+      orderBys: [orderBy(createdAtMonth, "desc")],
       limit: 100,
     });
 
@@ -108,13 +108,15 @@ describe("resolveDatasetQuery", () => {
 
   it("passes breakout and orderBy binning through Lib.createTestQuery", async () => {
     const { amount } = TEST_SCHEMA.tables.orders.fields;
-    const binning = { strategy: "num-bins", numBins: 10 } as const;
+    const binnedAmountBreakout = breakout(amount, {
+      binning: { strategy: "num-bins", numBins: 10 },
+    });
 
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: TEST_SCHEMA.tables.orders,
       aggregations: [count()],
-      breakouts: [breakout(amount, { binning })],
-      orderBys: [orderBy(amount, "asc", { binning })],
+      breakouts: [binnedAmountBreakout],
+      orderBys: [orderBy(binnedAmountBreakout, "asc")],
     });
 
     const binnedAmount = [
@@ -313,9 +315,10 @@ describe("resolveDatasetQuery", () => {
       ],
       orderBys: [
         orderBy(
-          TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt,
+          breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+            unit: "month",
+          }),
           "desc",
-          { unit: "month" },
         ),
       ],
       limit: 12,
