@@ -97,18 +97,13 @@
     (str value)))
 
 (defn- scalar-segments
-  "Resolve column names in scalar segment bounds using `data`. Omit segments with no bounds.
-  Eager, so a bound that can't resolve throws even when there is no value to color.
-  Entity references must already be resolved by `metabase.channel.render.card`."
+  "Resolve column names in scalar segment bounds using `data`, leaving a bound that can't resolve unset. Omit segments
+  with no bounds. Entity references must already be resolved by `metabase.channel.render.card`."
   [viz-settings data]
-  (into []
-        (comp (map (fn [segment]
-                     (-> segment
-                         (update :min dynamic-goals/resolve-self-column-value data)
-                         (update :max dynamic-goals/resolve-self-column-value data))))
-              (filter (fn [{:keys [min max]}]
-                        (or (some? min) (some? max)))))
-        (:scalar.segments viz-settings)))
+  (filterv (fn [{:keys [min max]}]
+             (or (some? min) (some? max)))
+           (dynamic-goals/resolve-segments (:scalar.segments viz-settings)
+                                           #(dynamic-goals/resolve-self-column-value % data))))
 
 (defn- scalar-color
   "Return the color of the first segment containing `value`, or nil if none matches or `value` is not numeric.

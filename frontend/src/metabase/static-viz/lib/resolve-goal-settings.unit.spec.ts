@@ -53,21 +53,23 @@ describe("resolveGoalSettings", () => {
       });
     });
 
-    it("throws for an unanswered reference", () => {
+    it("falls back to 0 for an unanswered reference", () => {
       const series = createSeries(createData({}), display);
 
-      expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
-        "Couldn't load the value this chart's goal depends on.",
-      );
+      expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
+        ...REFERENCED_SETTINGS,
+        "graph.goal_value": 0,
+      });
     });
 
-    it("throws for a failed reference", () => {
+    it("falls back to 0 for a failed reference", () => {
       const failed = createData(createMockFailedReferencedEntitiesResults());
       const series = createSeries(failed, display);
 
-      expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
-        "Couldn't load the value this chart's goal depends on.",
-      );
+      expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
+        ...REFERENCED_SETTINGS,
+        "graph.goal_value": 0,
+      });
     });
   });
 });
