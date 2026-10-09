@@ -6,7 +6,7 @@ import {
 import type { HeaderGroup } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
 import { getScrollBarSize } from "metabase/utils/dom";
@@ -26,6 +26,7 @@ import type {
   DataGridRowType,
   DataGridTheme,
 } from "../../types";
+import { getStripedBackgroundColor } from "../../utils/striped-background-color";
 import { AddColumnButton } from "../AddColumnButton/AddColumnButton";
 import { DataGridHeader } from "../DataGridHeader/DataGridHeader";
 import { DataGridRow } from "../DataGridRow/DataGridRow";
@@ -106,6 +107,11 @@ export const DataGrid = function DataGrid<TData>({
     (backgroundColor == null || backgroundColor === "transparent"
       ? "var(--mb-color-background_page-primary)"
       : backgroundColor);
+
+  const stripedBackgroundColor = useMemo(
+    () => getStripedBackgroundColor(theme),
+    [theme],
+  );
 
   const centerRows = getCenterRows();
   const pinnedRows = getPinnedRows();
@@ -236,6 +242,8 @@ export const DataGrid = function DataGrid<TData>({
           style={{
             fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
             backgroundColor,
+            // CSSProperties has no index signature for custom properties
+            ["--data-grid-striped-bg-color" as string]: stripedBackgroundColor,
             ...styles?.root,
           }}
         >

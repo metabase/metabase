@@ -87,7 +87,10 @@
   position: relative;
 
   &.striped {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(
+      --data-grid-striped-bg-color,
+      var(--mb-color-background-hover)
+    );
   }
 
   &.active {

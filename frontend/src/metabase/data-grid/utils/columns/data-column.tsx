@@ -8,10 +8,12 @@ import { memo } from "react";
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { HeaderCell } from "metabase/data-grid/components/HeaderCell/HeaderCell";
 import { MIN_COLUMN_WIDTH } from "metabase/data-grid/constants";
+import { useDataGridTheme } from "metabase/data-grid/hooks";
 import type {
   ColumnOptions,
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
+import { getDefaultCellBackgroundColor } from "metabase/data-grid/utils/striped-background-color";
 
 const getDefaultCellTemplate = <TRow, TValue>({
   id,
@@ -26,11 +28,17 @@ const getDefaultCellTemplate = <TRow, TValue>({
   editingCell: EditingCellComponent,
 }: ColumnOptions<TRow, TValue>) => {
   return function Cell(
-    props: CellContext<TRow, TValue> & { isSelected?: boolean },
+    props: CellContext<TRow, TValue> & {
+      isSelected?: boolean;
+      isStriped?: boolean;
+    },
   ) {
-    const { getValue, row, column, isSelected } = props;
+    const { getValue, row, column, isSelected, isStriped } = props;
+    const theme = useDataGridTheme();
     const value = getValue();
-    const backgroundColor = getBackgroundColor?.(value, row?.index);
+    const backgroundColor =
+      getBackgroundColor?.(value, row?.index) ??
+      getDefaultCellBackgroundColor(theme, isStriped);
     const isEditing = getIsEditing?.(id, row.index);
     // Read from column meta so the component identity can stay stable across
     // column width changes (metabase#78557)

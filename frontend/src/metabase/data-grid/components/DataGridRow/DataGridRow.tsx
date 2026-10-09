@@ -116,6 +116,7 @@ export const DataGridRow = <TData,>({
             {flexRender(columnDef.cell, {
               ...cell.getContext(),
               isSelected: selection.isCellSelected(cell),
+              isStriped,
             })}
           </div>
         );
