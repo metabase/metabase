@@ -1,9 +1,7 @@
 import { t } from "ttag";
 
-import {
-  DataModelBreadcrumbs,
-  PublishedTableBreadcrumbs,
-} from "metabase/data-studio/common/components/Breadcrumbs";
+import { DataModelBreadcrumbs } from "metabase/data-studio/common/components/DataModelBreadcrumbs";
+import { PublishedTableBreadcrumbs } from "metabase/data-studio/common/components/PublishedTableBreadcrumbs";
 import * as Urls from "metabase/urls";
 import type { Segment, Table } from "metabase-types/api";
 

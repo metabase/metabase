@@ -84,3 +84,37 @@ body:where(:global(.mb-wrapper)) {
   has `z-index: 3`. */
   z-index: 4;
 }
+
+.overflowAuto {
+  overflow: auto;
+
+  /* Prevents https://github.com/metabase/metabase/issues/40660 when printing an embedded dashboard */
+  @media print {
+    &.printOverflowVisible {
+      overflow: visible;
+    }
+  }
+}
+
+.border {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 2px var(--mb-color-shadow-default);
+}
+
+.borderBottom {
+  border-bottom: 2px solid var(--mb-color-border-neutral);
+}
+
+/* Full-bleed tab row on small screens, with higher specificity than FullWidthContainer's padding */
+div.dashboardTabs {
+  @media screen and (max-width: 40em) {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* Leaves room for the floating PDF button next to a scrolling tab row */
+.narrowTabs [role="tablist"]:global(.scrollable) {
+  width: calc(100% - 3.75rem);
+}

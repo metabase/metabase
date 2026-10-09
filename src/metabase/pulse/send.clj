@@ -2,6 +2,7 @@
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.pulse.db :as pulse.db]
@@ -81,7 +82,9 @@
                                                                           :dashboard_card_id (:dashboard_card_id %)}
                                                                          (select-keys % [:include_xls :include_csv :pivot_results :format_rows]))
                                                                  (:cards pulse))}
-     :handlers               [(get-notification-handler pulse-channel)]}
+     ;; only a dashboard subscription email has a subject; an alert handler must not carry the key
+     :handlers               [(m/assoc-some (get-notification-handler pulse-channel)
+                                            :subject (get-in pulse-channel [:details :subject]))]}
     {:id            (:id pulse)
      :payload_type  :notification/card
      :creator_id    (:creator_id pulse)

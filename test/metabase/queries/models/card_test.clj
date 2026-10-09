@@ -1,6 +1,7 @@
 (ns metabase.queries.models.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.models.card-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -2240,3 +2241,41 @@
         (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids []}})
         (is (= [] (get-in (t2/select-one :model/Card (:id card))
                           [:visualization_settings :timeline.selected_timeline_ids])))))))
+
+(deftest skip-dimension-backfill-skips-only-upgrade-24-test
+  (testing "card-schema/*skip-dimension-backfill?* skips the 24 dimension backfill and nothing else (#83937)"
+    (mt/with-temp [:model/Card {card-id :id} {:type          :metric
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      ;; A pre-curation metric: schema 23, no stored dimensions, and a `:result_metadata` still carrying one of
+      ;; the abandoned `:ident`s that the upgrade to 22 exists to strip. Written raw because before-insert
+      ;; forces `:card_schema` to current and normalizes the card.
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema        23
+                              :dimensions         nil
+                              :dimension_mappings nil
+                              :result_metadata    (json/encode [{:name      "count"
+                                                                 :ident     "abandoned-ident"
+                                                                 :base_type "type/Integer"}])}
+                     :where  [:= :id card-id]})
+      (testing "precondition: the stored row really does carry the stale ident"
+        (is (str/includes? (:result_metadata (t2/query-one {:select [:result_metadata]
+                                                            :from   [:report_card]
+                                                            :where  [:= :id card-id]}))
+                           "abandoned-ident")))
+      (testing "without the flag the backfill runs"
+        (is (seq (:dimensions (t2/select-one :model/Card card-id)))))
+      (binding [card-schema/*skip-dimension-backfill?* true]
+        (let [card (t2/select-one :model/Card card-id)]
+          (testing "the expensive 24 backfill is skipped"
+            (is (nil? (:dimensions card)))
+            (is (nil? (:dimension_mappings card))))
+          (testing "the other upgrades still run -- 22 strips the abandoned :ident"
+            (is (every? #(not (contains? % :ident)) (:result_metadata card))))
+          (testing ":dataset_query is still normalized to current MBQL"
+            (is (=? {:lib/type :mbql/query} (:dataset_query card))))
+          (testing "and the row still reports the current schema version"
+            (is (= @#'card/current-schema-version (:card_schema card))))))
+      (testing "the stored row is untouched by any of this"
+        (is (= 23 (stored-card-schema card-id)))))))

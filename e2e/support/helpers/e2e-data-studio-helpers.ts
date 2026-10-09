@@ -92,6 +92,10 @@ export const DataStudio = {
     editor: () => cy.findByTestId("python-editor"),
   },
   Snippets: {
+    visitList: () => {
+      cy.visit("/data-studio/snippets");
+      libraryPage().should("be.visible");
+    },
     newPage: newSnippetPage,
     editPage: editSnippetPage,
     archivedPage: archivedSnippetsPage,
@@ -101,7 +105,7 @@ export const DataStudio = {
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
     visitSnippet: (snippetId: number) =>
-      cy.visit(`/data-studio/library/snippets/${snippetId}`),
+      cy.visit(`/data-studio/snippets/${snippetId}`),
   },
   Metrics: MetricPage,
   Tables: {
@@ -158,6 +162,12 @@ export const DataStudio = {
       H.popover();
     },
   },
+  Actions: {
+    visitList: () => {
+      cy.visit("/data-studio/actions");
+      libraryPage().should("be.visible");
+    },
+  },
   Library: {
     visit: () => {
       cy.visit("/data-studio/library");
@@ -167,14 +177,7 @@ export const DataStudio = {
       DataStudio.Library.collectionItem("Dashboards")
         .scrollIntoView()
         .should("be.visible");
-      DataStudio.Library.collectionItem("SQL snippets")
-        .scrollIntoView()
-        .should("be.visible");
     },
-    noResults: () =>
-      libraryPage().findByText(
-        "No tables, metrics, dashboards, or snippets yet",
-      ),
     libraryPage,
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>

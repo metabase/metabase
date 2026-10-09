@@ -8,14 +8,21 @@ import {
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import type { CollectionId } from "metabase-types/api";
 
+import {
+  buildNamespaceCollectionMap,
+  getDisplayGroupId,
+} from "../displayGroups";
+
 import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
 
 const isNumericId = (id: CollectionId): id is number => typeof id === "number";
 
+const LIBRARY_DISPLAY_GROUP_IDS = new Set(["tables", "default"]);
+
 export function useHasLibraryDirtyChanges(): boolean {
   const { isVisible: isGitSyncVisible } = useGitSyncVisible();
-  const { dirty, hasDirtyInCollectionTree, isDirty, hasRemovedItems } =
+  const { dirty, hasDirtyInCollectionTree, isDirty } =
     useRemoteSyncDirtyState();
 
   const { data: collections = [] } = useListCollectionsTreeQuery(
@@ -26,67 +33,52 @@ export function useHasLibraryDirtyChanges(): boolean {
     },
     { skip: !isGitSyncVisible },
   );
-
-  // Fetch snippets-namespace collections to check for dirty snippet collections
   const { data: snippetsCollections = [] } = useListCollectionsTreeQuery(
     { namespace: "snippets" },
     { skip: !isGitSyncVisible },
   );
+  const { data: dataActionsCollections = [] } = useListCollectionsTreeQuery(
+    { namespace: "data-actions" },
+    { skip: !isGitSyncVisible },
+  );
 
   return useMemo(() => {
-    // Always show dirty if there are removed items
-    if (hasRemovedItems) {
-      return true;
-    }
-
     if (!isDirty) {
       return false;
     }
 
-    // Check for dirty snippets or snippet collections
-    const snippetsTree = buildCollectionTree(snippetsCollections);
-    const snippetsCollectionIds = getAllDescendantIds(snippetsTree);
-    const numericSnippetCollectionIds = new Set(
-      [...snippetsCollectionIds].filter(isNumericId),
+    // Removed items have no collection to place them by, so any that no other tab owns show here
+    const namespaceCollectionMap = buildNamespaceCollectionMap([
+      ...snippetsCollections,
+      ...dataActionsCollections,
+    ]);
+    const hasRemovedLibraryItems = dirty.some(
+      (entity) =>
+        entity.sync_status === "removed" &&
+        LIBRARY_DISPLAY_GROUP_IDS.has(
+          getDisplayGroupId(entity, namespaceCollectionMap),
+        ),
     );
-
-    const hasSnippetDirtyChanges = dirty.some((entity) => {
-      if (entity.model === "nativequerysnippet") {
-        return true;
-      }
-      if (
-        entity.model === "collection" &&
-        numericSnippetCollectionIds.has(entity.id)
-      ) {
-        return true;
-      }
-      return false;
-    });
-
-    if (hasSnippetDirtyChanges) {
+    if (hasRemovedLibraryItems) {
       return true;
     }
 
-    // Check for dirty items in the Library collection tree
     const libraryCollection = collections.find(isLibraryCollection);
     if (!libraryCollection) {
       return false;
     }
 
-    // Build tree and get all descendant IDs (including Library itself)
     const libraryTree = buildCollectionTree([libraryCollection]);
     const libraryCollectionIds = getAllDescendantIds(libraryTree);
-
-    // Filter to only numeric IDs for the dirty check
     const numericIds = new Set([...libraryCollectionIds].filter(isNumericId));
 
     return hasDirtyInCollectionTree(numericIds);
   }, [
     collections,
     snippetsCollections,
+    dataActionsCollections,
     dirty,
     isDirty,
-    hasRemovedItems,
     hasDirtyInCollectionTree,
   ]);
 }

@@ -1,0 +1,1 @@
+export { SearchNew } from "./SearchNew";

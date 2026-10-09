@@ -6,6 +6,7 @@ export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";
 export * from "./cloud-add-ons";
+export * from "./content-diagnostics";
 export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./data-app";

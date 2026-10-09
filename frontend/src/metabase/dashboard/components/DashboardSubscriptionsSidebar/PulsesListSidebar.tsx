@@ -10,7 +10,16 @@ import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
@@ -24,6 +33,7 @@ import type {
   ChannelApiResponse,
   ChannelType,
   DashboardSubscription,
+  IconName,
 } from "metabase-types/api";
 
 import { getParameters } from "../../selectors";
@@ -171,6 +181,14 @@ function canEditPulse(
   }
 }
 
+function getEmailSubject({
+  channels: [firstChannel],
+}: DashboardSubscription): string {
+  return firstChannel.channel_type === "email"
+    ? (firstChannel.details?.subject ?? "")
+    : "";
+}
+
 function buildRecipientText(pulse: DashboardSubscription): string {
   const {
     channels: [firstChannel],
@@ -246,84 +264,52 @@ type PulseDetailsProps = {
 };
 
 function PulseDetails({ pulse, parameters }: PulseDetailsProps) {
-  const recipientText = buildRecipientText(pulse);
-  const filterText = buildFilterText(pulse, parameters);
+  const items: PulseDetailsItemProps[] = [
+    { icon: "string", text: getEmailSubject(pulse) },
+    { icon: "group", text: buildRecipientText(pulse) },
+    { icon: "filter", text: buildFilterText(pulse, parameters) },
+  ];
 
   return (
-    <div className={cx(CS.textMedium, CS.hoverChild)}>
-      <ul
-        className={cx(
-          CS.flex,
-          CS.flexColumn,
-          CS.scrollX,
-          CS.scrollY,
-          CS.textUnspaced,
-        )}
-        style={{ maxHeight: 130 }}
+    <Stack
+      component="ul"
+      gap="sm"
+      mah={130}
+      className={cx(CS.scrollX, CS.scrollY)}
+    >
+      {items
+        .filter(({ text }) => text !== "")
+        .map(({ icon, text }) => (
+          <PulseDetailsItem key={icon} icon={icon} text={text} />
+        ))}
+    </Stack>
+  );
+}
+
+type PulseDetailsItemProps = {
+  icon: IconName;
+  text: string;
+};
+
+function PulseDetailsItem({ icon, text }: PulseDetailsItemProps) {
+  return (
+    <Group component="li" gap="sm" align="flex-start" wrap="nowrap" mr="sm">
+      <Icon
+        name={icon}
+        size={12}
+        c="text-secondary"
+        className={CS.hoverChild}
+      />
+      <Text
+        component="span"
+        size="sm"
+        fw="bold"
+        c="text-secondary"
+        className={CS.hoverChild}
       >
-        {recipientText && (
-          <li
-            className={cx(
-              CS.flex,
-              CS.alignStart,
-              CS.mr1,
-              CS.textBold,
-              CS.textMedium,
-              CS.hoverChild,
-              CS.hoverInherit,
-            )}
-          >
-            <Icon
-              name="group"
-              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
-              size={12}
-            />
-            <span
-              className={cx(
-                CS.ml1,
-                CS.textMedium,
-                CS.hoverChild,
-                CS.hoverInherit,
-              )}
-              style={{ fontSize: "12px" }}
-            >
-              {recipientText}
-            </span>
-          </li>
-        )}
-        {filterText && (
-          <li
-            className={cx(
-              CS.flex,
-              CS.alignStart,
-              CS.mt1,
-              CS.mr1,
-              CS.textBold,
-              CS.textMedium,
-              CS.hoverChild,
-              CS.hoverInherit,
-            )}
-          >
-            <Icon
-              name="filter"
-              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
-              size={12}
-            />
-            <span
-              className={cx(
-                CS.ml1,
-                CS.textMedium,
-                CS.hoverChild,
-                CS.hoverInherit,
-              )}
-              style={{ fontSize: "12px" }}
-            >
-              {filterText}
-            </span>
-          </li>
-        )}
-      </ul>
-    </div>
+        {text}
+      </Text>
+    </Group>
   );
 }
 

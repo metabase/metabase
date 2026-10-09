@@ -99,10 +99,9 @@ function getJoinedQuery() {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "PRODUCT_ID",
                 },
-                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                right: { type: "column", name: "ID" },
               },
             ],
           },
@@ -152,21 +151,18 @@ function getJoinedQueryWithMultipleConditions() {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "PRODUCT_ID",
                 },
-                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                right: { type: "column", name: "ID" },
               },
               {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "CREATED_AT",
                 },
                 right: {
                   type: "column",
-                  sourceName: "PRODUCTS",
                   name: "CREATED_AT",
                 },
               },
@@ -995,10 +991,9 @@ describe("Notebook Editor > Join Step", () => {
                     operator: "=",
                     left: {
                       type: "column",
-                      sourceName: "ORDERS",
                       name: "USER_ID",
                     },
-                    right: { type: "column", sourceName: "PEOPLE", name: "ID" },
+                    right: { type: "column", name: "ID" },
                   },
                 ],
               },
@@ -1442,7 +1437,6 @@ describe("Notebook Editor > Join Step", () => {
             },
             {
               type: "column",
-              sourceName: "PRODUCTS",
               name: "ID",
             },
           ),
@@ -1458,7 +1452,7 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+            { type: "column", name: "PRODUCT_ID" },
             { type: "literal", value: "abc" },
           ),
         }),
@@ -1477,11 +1471,11 @@ describe("Notebook Editor > Join Step", () => {
               type: "operator",
               operator: "+",
               args: [
-                { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+                { type: "column", name: "PRODUCT_ID" },
                 { type: "literal", value: 1 },
               ],
             },
-            { type: "column", sourceName: "PRODUCTS", name: "ID" },
+            { type: "column", name: "ID" },
           ),
         }),
       });
@@ -1497,14 +1491,13 @@ describe("Notebook Editor > Join Step", () => {
           query: getJoinedQueryWithCustomExpressions(
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "PRODUCT_ID",
             },
             {
               type: "operator",
               operator: "+",
               args: [
-                { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                { type: "column", name: "ID" },
                 { type: "literal", value: 1 },
               ],
             },

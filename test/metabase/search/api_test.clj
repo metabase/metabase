@@ -1450,6 +1450,19 @@
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
 
+(deftest action-without-model-not-searchable-test
+  (testing "search returns an Action with a model but not one without a model"
+    (let [search-term "action-without-model-search"]
+      (mt/with-temp [:model/Card   {model-id :id}  {:name (str search-term " model") :type :model}
+                     :model/Action {action-id :id} {:name (str search-term " with model") :model_id model-id :type :query}
+                     :model/Action _               {:name (str search-term " without model") :model_id nil :type :query}]
+        (search.tu/with-appdb-search-and-legacy-search
+          (is (= #{action-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "action")
+                      :data
+                      (map :id)
+                      set))))))))
+
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]
     (mt/with-temp

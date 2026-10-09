@@ -3,7 +3,7 @@ import { createMockCollection } from "metabase-types/api/mocks";
 import { getCreatedCollectionUrl } from "./CreateCollectionModal";
 
 describe("getCreatedCollectionUrl", () => {
-  it("opens a new data actions folder in the Library with its path expanded", () => {
+  it("opens a new data actions folder on the Data actions tab with its path expanded", () => {
     const collection = createMockCollection({
       id: 12,
       namespace: "data-actions",
@@ -11,7 +11,19 @@ describe("getCreatedCollectionUrl", () => {
     });
 
     expect(getCreatedCollectionUrl(collection)).toBe(
-      "/data-studio/library?expandedId=10&expandedId=12",
+      "/data-studio/actions?expandedId=10&expandedId=12",
+    );
+  });
+
+  it("opens a new snippet folder on the SQL snippets tab with its path expanded", () => {
+    const collection = createMockCollection({
+      id: 12,
+      namespace: "snippets",
+      location: "/10/",
+    });
+
+    expect(getCreatedCollectionUrl(collection)).toBe(
+      "/data-studio/snippets?expandedId=10&expandedId=12",
     );
   });
 

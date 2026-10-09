@@ -45,7 +45,7 @@ describe("issue 18009", { tags: "@external" }, () => {
 
     // Click anywhere to close the popover that covers the "Send email now" button
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("To:").click();
+    cy.findByText("To").click();
 
     H.sendEmailAndAssert((email) => {
       expect(email.html).not.to.include(
@@ -114,7 +114,7 @@ describe("issues 18344 and 18352", { tags: "@external" }, () => {
     cy.findByText(`${first_name} ${last_name}`).click();
     // Click this just to close the popover that is blocking the "Send email now" button
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("To:").click();
+    cy.findByText("To").click();
 
     H.sendEmailAndAssert(({ html }) => {
       expect(html).not.to.include(
@@ -969,7 +969,7 @@ describe("issue 49525", { tags: "@external" }, () => {
     H.popover().findByText(`${first_name} ${last_name}`).click();
 
     // Click this just to close the popover that is blocking the "Send email now" button
-    H.sidebar().findByText("To:").click();
+    H.sidebar().findByText("To").click();
 
     H.clickSend();
     cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {

@@ -99,9 +99,18 @@ export interface ChannelApiResponse {
 
 export type ChannelType = keyof ChannelApiResponse["channels"];
 
+export type PulseChannelDetails = {
+  channel?: string;
+  channel_id?: string;
+  subject?: string;
+  include_pdf?: boolean;
+  attachment_only?: boolean;
+  [specFieldName: string]: string | boolean | undefined;
+};
+
 export type Channel = {
   channel_type: ChannelType;
-  details?: Record<string, string | boolean>;
+  details?: PulseChannelDetails;
   enabled?: boolean;
   recipients?: User[];
   channel_id?: number;

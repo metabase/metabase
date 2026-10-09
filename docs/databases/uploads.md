@@ -21,7 +21,7 @@ To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings 
 - [MySQL](../databases/connections/mysql.md)
 - [Snowflake](../databases/connections/snowflake.md)
 - [Redshift](../databases/connections/redshift.md)
-- [ClickHouse](../databases/connections/clickhouse.md) (only supported on ClickHouse Cloud)
+- [ClickHouse](../databases/connections/clickhouse.md#uploads) (ClickHouse Cloud and self-hosted single-node deployments)
 
 ## Setting up uploads
 

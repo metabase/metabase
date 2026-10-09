@@ -261,6 +261,11 @@
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
 
+(defn group-permission-exists?
+  "Whether some McpGroupPermission matches `where`, a HoneySQL condition such as `[:in :group_id ids]`."
+  [where]
+  (t2/exists? :model/McpGroupPermission {:where where}))
+
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
   database and answers `{}` — `[:in ()]` is not valid SQL.

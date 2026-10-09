@@ -160,7 +160,8 @@
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
-   [:probed-model    {:optional true} [:maybe :string]]])
+   [:probed-model    {:optional true} [:maybe :string]]
+   [:mini-model      {:optional true} [:maybe :string]]])
 
 (def ^:private AzureCredentials
   "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
@@ -168,7 +169,8 @@
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-family    {:optional true} [:maybe :string]]
-   [:deployment-name {:optional true} [:maybe :string]]])
+   [:deployment-name {:optional true} [:maybe :string]]
+   [:mini-model      {:optional true} [:maybe :string]]])
 
 (def ^:private BedrockCredentials
   [:map {:closed true}
@@ -176,7 +178,8 @@
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
    [:region            {:optional true} [:maybe :string]]
-   [:model-id          {:optional true} [:maybe :string]]])
+   [:model-id          {:optional true} [:maybe :string]]
+   [:mini-model        {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
   [:map {:closed true}
@@ -188,7 +191,8 @@
    [:base-url            {:optional true} [:maybe :string]]
    [:endpoint-id         {:optional true} [:maybe :string]]
    ;; recorded by the connect-time probe, not entered by the admin
-   [:probed-model        {:optional true} [:maybe :string]]])
+   [:probed-model        {:optional true} [:maybe :string]]
+   [:mini-model          {:optional true} [:maybe :string]]])
 
 (def LLMCredentials
   "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say

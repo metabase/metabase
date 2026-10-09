@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
 
@@ -56,6 +57,21 @@ describe("CreateCollectionForm", () => {
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ namespace: "snippets" }),
+    );
+  });
+
+  it("creates the collection in the namespace root when only that namespace is allowed", async () => {
+    const { onSubmit } = setup({
+      user: createMockUser({ personal_collection_id: 99 }),
+      canWriteRoot: false,
+      namespaces: ["snippets"],
+    });
+
+    await userEvent.type(screen.getByLabelText("Name"), "My snippets folder");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ parent_id: null, namespace: "snippets" }),
     );
   });
 });
