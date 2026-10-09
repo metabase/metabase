@@ -111,6 +111,10 @@
       (h2x/database-type expr)
       (h2x/with-database-type-info (h2x/database-type expr)))))
 
+(defmethod sql.qp/use-ctes-for-stages? :presto-jdbc
+  [_driver]
+  true)
+
 (defmethod sql.qp/add-interval-honeysql-form :presto-jdbc
   [_driver expr amount unit]
   (date-add unit amount expr))
