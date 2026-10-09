@@ -331,6 +331,15 @@
                              part
                              {:type :text :id "t1" :text "Model](metabase://model/1)"}]))))))
 
+(deftest ^:parallel resolve-xf-flushes-held-text-after-reasoning-before-tool-call-test
+  (is (= [{:type :text :id "t1" :text "a "}
+          {:type :reasoning :id "r1" :text "Thinking"}
+          {:type :text :id "t1" :text "[b"}
+          {:type :tool-input :id "c1"}]
+         (resolve-parts [{:type :text :id "t1" :text "a [b"}
+                         {:type :reasoning :id "r1" :text "Thinking"}
+                         {:type :tool-input :id "c1"}]))))
+
 (deftest ^:parallel with-context-test
   (testing "updates state for subsequent link resolution"
     (let [registry (atom {})
