@@ -428,21 +428,18 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it("should support scrolling, keyboard navigation, row highlighting, sidebar toggling and viz settings", () => {
+  it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
     H.openPeopleTable();
-
-    cy.log(
-      "calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)",
-    );
     H.tableInteractiveScrollContainer().scrollTo(2000, 14900);
     H.openObjectDetail(417);
     cy.findByRole("dialog")
       .should("contain", "418")
       .and("contain", "31942-31950 Oak Ridge Parkway")
       .and("contain", "koss-ella@hotmail.com");
-    cy.realPress("Escape");
-    cy.findByTestId("object-detail").should("not.exist");
-    H.tableInteractiveScrollContainer().scrollTo(0, 0);
+  });
+
+  it("should not offer drill-through on the object detail records (metabase#20560)", () => {
+    H.openPeopleTable({ limit: 2 });
 
     H.tableInteractive()
       .findByText("Searsboro")
@@ -450,6 +447,29 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     H.popover().should("be.visible");
     cy.realPress("Escape");
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    drillPK({ id: 2 });
+    cy.url().should("contain", "objectId=2");
+
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findByTestId("object-detail")
+      .findAllByText("Domenica Williamson")
+      .last()
+      .click();
+    // A drill popover would cover "Searsboro", and the click would fail.
+    cy.findByTestId("object-detail").findByText("Searsboro").click();
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+  });
+
+  it("should support keyboard navigation, row highlighting, sidebar toggling and viz settings", () => {
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PEOPLE_ID },
+      },
+    });
 
     getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
 
@@ -467,18 +487,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail")
       .findByRole("heading", { name: "Domenica Williamson" })
       .should("be.visible");
-
-    cy.log(
-      "does not offer drill-through on the record values (metabase#20560)",
-    );
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findByTestId("object-detail")
-      .findAllByText("Domenica Williamson")
-      .last()
-      .click();
-    // A drill popover would cover "Searsboro", and the click would fail.
-    cy.findByTestId("object-detail").findByText("Searsboro").click();
-    cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
     cy.log("navigates up");
     getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
