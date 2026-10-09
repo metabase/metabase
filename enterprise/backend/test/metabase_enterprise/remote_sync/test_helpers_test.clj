@@ -350,7 +350,7 @@
 
     (:mysql :mariadb)
     (if (mariadb-server?)
-      ;; MariaDB has no `performance_schema`; `INNODB_LOCK_WAITS` names the blocking transaction
+      ;; MariaDB has no `performance_schema.data_lock_waits`; `INNODB_LOCK_WAITS` names the blocking transaction
       (pos? (:n (t2/query-one [(str "SELECT count(*) AS n FROM information_schema.INNODB_LOCK_WAITS w "
                                     "JOIN information_schema.innodb_trx b ON b.trx_mysql_thread_id = ? "
                                     "WHERE w.blocking_trx_id = b.trx_id")

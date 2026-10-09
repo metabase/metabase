@@ -128,73 +128,69 @@
 (deftest archive-collection-removes-nested-content-from-remote-test
   (testing "GHY-4399: archiving a collection inside a synced collection removes its whole subtree from the remote
             on the next push, not only the collection's own file"
-    (test-helpers/clean-remote-sync-state
+    (test-helpers/commit-with-temp
      (fn []
-       (test-helpers/commit-with-temp
-        (fn []
-          (mt/with-premium-features #{:remote-sync}
-            (mt/with-model-cleanup [:model/Card :model/Collection]
-              (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}]
-                (let [src (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})]
-                  (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                                     remote-sync-token  "test-token"
-                                                     remote-sync-branch "main"]
-                    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly src)]
-                      (let [folder     (mt/user-http-request :crowberto :post 200 "collection"
-                                                             {:name "Bug Repro" :parent_id synced-id})
-                            sub-folder (mt/user-http-request :crowberto :post 200 "collection"
-                                                             {:name "Sub Folder" :parent_id (:id folder)})
-                            new-card   (fn [card-name coll-id]
-                                         (mt/user-http-request :crowberto :post 200 "card"
-                                                               {:name                   card-name
-                                                                :display                "table"
-                                                                :dataset_query          (mt/mbql-query venues)
-                                                                :visualization_settings {}
-                                                                :collection_id          coll-id}))
-                            card       (new-card "Card In Folder" (:id folder))
-                            sub-card   (new-card "Card In Sub Folder" (:id sub-folder))
-                            subtree    (set (map :entity_id [folder sub-folder card sub-card]))]
-                        (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "first push pushes")
-                        (is (= subtree (into #{} (filter subtree) (exported-entity-ids src)))
-                            "precondition: the folder, its sub-folder, and both cards are on the remote")
-                        (mt/user-http-request :crowberto :put 200 (str "collection/" (:id folder)) {:archived true})
-                        (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "second push pushes")
-                        (is (= #{} (into #{} (filter subtree) (exported-entity-ids src)))
-                            "no file from the archived subtree stays on the remote"))))))))))))))
+       (mt/with-premium-features #{:remote-sync}
+         (mt/with-model-cleanup [:model/Card :model/Collection]
+           (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}]
+             (let [src (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})]
+               (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                                  remote-sync-token  "test-token"
+                                                  remote-sync-branch "main"]
+                 (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly src)]
+                   (let [folder     (mt/user-http-request :crowberto :post 200 "collection"
+                                                          {:name "Bug Repro" :parent_id synced-id})
+                         sub-folder (mt/user-http-request :crowberto :post 200 "collection"
+                                                          {:name "Sub Folder" :parent_id (:id folder)})
+                         new-card   (fn [card-name coll-id]
+                                      (mt/user-http-request :crowberto :post 200 "card"
+                                                            {:name                   card-name
+                                                             :display                "table"
+                                                             :dataset_query          (mt/mbql-query venues)
+                                                             :visualization_settings {}
+                                                             :collection_id          coll-id}))
+                         card       (new-card "Card In Folder" (:id folder))
+                         sub-card   (new-card "Card In Sub Folder" (:id sub-folder))
+                         subtree    (set (map :entity_id [folder sub-folder card sub-card]))]
+                     (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "first push pushes")
+                     (is (= subtree (into #{} (filter subtree) (exported-entity-ids src)))
+                         "precondition: the folder, its sub-folder, and both cards are on the remote")
+                     (mt/user-http-request :crowberto :put 200 (str "collection/" (:id folder)) {:archived true})
+                     (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "second push pushes")
+                     (is (= #{} (into #{} (filter subtree) (exported-entity-ids src)))
+                         "no file from the archived subtree stays on the remote"))))))))))))
 
 (deftest archive-transforms-folder-removes-its-transforms-from-remote-test
   (testing "GHY-4399: archiving a Transforms folder removes the transforms in it from the remote on the next push.
             Transforms have no archived column, so only their folder being archived says they left."
-    (test-helpers/clean-remote-sync-state
+    (test-helpers/commit-with-temp
      (fn []
-       (test-helpers/commit-with-temp
-        (fn []
-          (mt/with-premium-features #{:remote-sync :transforms-basic}
-            (mt/with-model-cleanup [:model/Transform :model/Collection]
-              (let [src (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})]
-                (mt/with-temporary-setting-values [remote-sync-url        "https://github.com/test/repo.git"
-                                                   remote-sync-token      "test-token"
-                                                   remote-sync-branch     "main"
-                                                   remote-sync-transforms true]
-                  (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly src)]
-                    (let [folder       (mt/user-http-request :crowberto :post 200 "collection"
-                                                             {:name "Bug Repro" :namespace "transforms"})
-                          ;; H2 cannot be a transform target, so POST /api/transform refuses it; insert the transform
-                          ;; and publish the event that endpoint publishes
-                          transform-id (t2/insert-returning-pk! :model/Transform
-                                                                {:name          "Transform In Folder"
-                                                                 :collection_id (:id folder)
-                                                                 :source        {:type  "query"
-                                                                                 :query (mt/native-query {:query "SELECT 1"})}
-                                                                 :target        {:type "table" :schema "PUBLIC" :name "ghy_4399"}})
-                          transform    (t2/select-one :model/Transform :id transform-id)
-                          _            (events/publish-event! :event/transform-create
-                                                              {:object transform :user-id (mt/user->id :crowberto)})
-                          subtree      (set (map :entity_id [folder transform]))]
-                      (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "first push pushes")
-                      (is (= subtree (into #{} (filter subtree) (exported-entity-ids src)))
-                          "precondition: the folder and its transform are on the remote")
-                      (mt/user-http-request :crowberto :put 200 (str "collection/" (:id folder)) {:archived true})
-                      (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "second push pushes")
-                      (is (= #{} (into #{} (filter subtree) (exported-entity-ids src)))
-                          "no file from the archived folder stays on the remote")))))))))))))
+       (mt/with-premium-features #{:remote-sync :transforms-basic}
+         (mt/with-model-cleanup [:model/Transform :model/Collection]
+           (let [src (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})]
+             (mt/with-temporary-setting-values [remote-sync-url        "https://github.com/test/repo.git"
+                                                remote-sync-token      "test-token"
+                                                remote-sync-branch     "main"
+                                                remote-sync-transforms true]
+               (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly src)]
+                 (let [folder       (mt/user-http-request :crowberto :post 200 "collection"
+                                                          {:name "Bug Repro" :namespace "transforms"})
+                       ;; H2 cannot be a transform target, so POST /api/transform refuses it; insert the transform
+                       ;; and publish the event that endpoint publishes
+                       transform-id (t2/insert-returning-pk! :model/Transform
+                                                             {:name          "Transform In Folder"
+                                                              :collection_id (:id folder)
+                                                              :source        {:type  "query"
+                                                                              :query (mt/native-query {:query "SELECT 1"})}
+                                                              :target        {:type "table" :schema "PUBLIC" :name "ghy_4399"}})
+                       transform    (t2/select-one :model/Transform :id transform-id)
+                       _            (events/publish-event! :event/transform-create
+                                                           {:object transform :user-id (mt/user->id :crowberto)})
+                       subtree      (set (map :entity_id [folder transform]))]
+                   (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "first push pushes")
+                   (is (= subtree (into #{} (filter subtree) (exported-entity-ids src)))
+                       "precondition: the folder and its transform are on the remote")
+                   (mt/user-http-request :crowberto :put 200 (str "collection/" (:id folder)) {:archived true})
+                   (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "second push pushes")
+                   (is (= #{} (into #{} (filter subtree) (exported-entity-ids src)))
+                       "no file from the archived folder stays on the remote")))))))))))

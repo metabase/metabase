@@ -633,7 +633,9 @@ width: fixed
   during the test.
 
   Use as the first `:each` fixture, so that a setting binding in a later fixture ends before the cleanup deletes its
-  row; a `:once` fixture must bind no remote-sync setting. Carries `{::shared-fixture true}`."
+  row. Bind no remote-sync setting around the fixture (in a `:once` fixture, or in an `:each` fixture before it): the
+  fixture deletes the row of the binding before the test, so the test does not see the bound value. Carries
+  `{::shared-fixture true}`."
   (with-meta
    (t/join-fixtures [warn-when-another-writer-can-be-active clean-imported-content clean-object
                      clean-remote-sync-settings clean-task-table clean-optional-feature-models])
