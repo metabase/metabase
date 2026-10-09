@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { getArchiveLibraryCollectionsMessage } from "../utils";
@@ -10,10 +11,11 @@ type LibraryCollectionRowMenuProps = {
   childCount: number;
   collection: Collection;
   refreshCollections: (collectionIds: CollectionId[]) => void;
+  onOpenModal: (modal: CollectionRowModalState) => void;
 };
 
 export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
-  const { childCount, collection, refreshCollections } = props;
+  const { childCount, collection, refreshCollections, onOpenModal } = props;
   const isLibraryDataCollection =
     collection.type === "library-data" && !collection.is_library_root;
 
@@ -30,6 +32,7 @@ export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
   return (
     <CollectionRowMenu
       collection={collection}
+      onOpenModal={onOpenModal}
       onSave={(details) => {
         refreshCollections(getAffectedCollectionIds(details));
       }}

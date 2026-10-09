@@ -1,25 +1,14 @@
-import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  actionApi,
-  collectionApi,
-  snippetApi,
-  transformApi,
-  useUpdateCollectionMutation,
-} from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/common/collections/utils";
-import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_SNIPPET_FOLDERS,
 } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -28,34 +17,30 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
-import { EditCollectionModal } from "./EditCollectionModal";
+import type { CollectionRowModalState } from "../CollectionRowModal";
+import { UnarchiveCollectionButton } from "../UnarchiveCollectionButton";
 
 type CollectionRowMenuProps = {
   collection: Collection;
-  onSave?: (details: {
-    previousParentId: CollectionId | null;
-    newParentId: CollectionId | null;
-  }) => void;
+  onOpenModal: (modal: CollectionRowModalState) => void;
+  onSave?: Extract<CollectionRowModalState, { type: "edit" }>["onSave"];
   onArchiveSuccess?: () => void;
   customArchiveMessage?: string;
 };
 
-export function CollectionRowMenu(props: CollectionRowMenuProps) {
-  const { collection, onArchiveSuccess, onSave, customArchiveMessage } = props;
-  const dispatch = useDispatch();
-
+export function CollectionRowMenu({
+  collection,
+  onOpenModal,
+  onSave,
+  onArchiveSuccess,
+  customArchiveMessage,
+}: CollectionRowMenuProps) {
   const isAdmin = useSelector(getUserIsAdmin);
-  const [updateCollection] = useUpdateCollectionMutation();
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
-  const { show, modalContent: confirmationModal } = useConfirmation();
-  const [isEditModalOpen, { toggle: toggleEditModal }] = useDisclosure(false);
-  const [isPermissionsModalOpen, { toggle: togglePermissionsModal }] =
-    useDisclosure(false);
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const showPermissionsOption =
     isAdmin &&
@@ -68,82 +53,8 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
     return null;
   }
 
-  const invalidateTags = () => {
-    if (collection.namespace === "snippets") {
-      dispatch(snippetApi.util.invalidateTags([listTag("snippet")]));
-    } else if (collection.namespace === "transforms") {
-      dispatch(transformApi.util.invalidateTags([listTag("transform")]));
-    } else if (collection.namespace === "data-actions") {
-      dispatch(actionApi.util.invalidateTags([listTag("action")]));
-      dispatch(collectionApi.util.invalidateTags([listTag("collection")]));
-    } else {
-      dispatch(collectionApi.util.invalidateTags([listTag("collection")]));
-    }
-  };
-
-  const handleArchive = async () => {
-    try {
-      await updateCollection({ id: collection.id, archived: true }).unwrap();
-      sendSuccessToast(t`"${collection.name}" has been archived`);
-      invalidateTags();
-      onArchiveSuccess?.();
-    } catch {
-      sendErrorToast(t`"${collection.name}" could not be archived`);
-    }
-  };
-
-  const onArchiveClick = () => {
-    show({
-      title: t`Archive "${collection.name}"?`,
-      message: customArchiveMessage,
-      confirmButtonText: t`Archive`,
-      onConfirm: handleArchive,
-    });
-  };
-
   if (collection.archived) {
-    const handleUnarchive = async () => {
-      try {
-        await updateCollection({ id: collection.id, archived: false }).unwrap();
-        void dispatch(
-          addUndo({
-            message: t`"${collection.name}" has been unarchived`,
-            action: async () => {
-              await updateCollection({ id: collection.id, archived: true });
-              invalidateTags();
-            },
-          }),
-        );
-        invalidateTags();
-      } catch (error) {
-        void dispatch(
-          addUndo({
-            message: t`"${collection.name}" could not be unarchived`,
-            icon: "warning",
-          }),
-        );
-      }
-    };
-
-    const label = match(collection.namespace)
-      .with("snippets", () => t`Unarchive snippet folder`)
-      .with("data-actions", () => t`Unarchive folder`)
-      .otherwise(() => t`Unarchive collection`);
-
-    return (
-      <Tooltip label={label}>
-        <ActionIcon
-          aria-label={label}
-          size="md"
-          onClick={(event) => {
-            event.stopPropagation();
-            void handleUnarchive();
-          }}
-        >
-          <FixedSizeIcon name="unarchive" c="text-primary" />
-        </ActionIcon>
-      </Tooltip>
-    );
+    return <UnarchiveCollectionButton collection={collection} />;
   }
 
   const optionsLabel = match(collection.namespace)
@@ -172,7 +83,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
           {!isRoot && (
             <Menu.Item
               leftSection={<Icon name="pencil" />}
-              onClick={toggleEditModal}
+              onClick={() => onOpenModal({ type: "edit", collection, onSave })}
             >
               {isFolder ? t`Edit folder details` : t`Edit collection details`}
             </Menu.Item>
@@ -180,7 +91,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
           {showPermissionsOption && (
             <Menu.Item
               leftSection={<Icon name="lock" />}
-              onClick={togglePermissionsModal}
+              onClick={() => onOpenModal({ type: "permissions", collection })}
             >
               {t`Change permissions`}
             </Menu.Item>
@@ -188,7 +99,14 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
           {!isRoot && (
             <Menu.Item
               leftSection={<Icon name="archive" />}
-              onClick={onArchiveClick}
+              onClick={() =>
+                onOpenModal({
+                  type: "archive",
+                  collection,
+                  customArchiveMessage,
+                  onArchiveSuccess,
+                })
+              }
               c="feedback-negative"
             >
               {t`Archive`}
@@ -196,28 +114,6 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
           )}
         </Menu.Dropdown>
       </Menu>
-      {confirmationModal}
-      {isEditModalOpen && (
-        <EditCollectionModal
-          collection={collection}
-          onSave={onSave}
-          onClose={toggleEditModal}
-        />
-      )}
-      {collection.namespace === "snippets" ? (
-        <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
-          opened={isPermissionsModalOpen}
-          collectionId={collection.id}
-          onClose={togglePermissionsModal}
-        />
-      ) : (
-        <PLUGIN_LIBRARY.CollectionPermissionsModal
-          opened={isPermissionsModalOpen}
-          collectionId={collection.id}
-          namespace={collection.namespace}
-          onClose={togglePermissionsModal}
-        />
-      )}
     </Box>
   );
 }

@@ -1,29 +1,29 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
 import { Link } from "metabase/common/components/Link";
 import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import { dataStudioArchivedSnippets } from "metabase/urls";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
-type RootSnippetsCollectionMenu = {
-  collectionId: CollectionId;
+type RootSnippetsCollectionMenuProps = {
+  collection: Collection;
+  onOpenModal: (modal: CollectionRowModalState) => void;
 };
 
 export const RootSnippetsCollectionMenu = ({
-  collectionId,
-}: RootSnippetsCollectionMenu) => {
+  collection,
+  onOpenModal,
+}: RootSnippetsCollectionMenuProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
   const canChangePermissions =
     PLUGIN_SNIPPET_FOLDERS.isEnabled && isAdmin && !remoteSyncReadOnly;
-  const [showPermissionsModal, { toggle: togglePermissionsModal }] =
-    useDisclosure(false);
 
   const optionsLabel = t`Snippet collection options`;
 
@@ -46,7 +46,7 @@ export const RootSnippetsCollectionMenu = ({
             leftSection={<FixedSizeIcon name="lock" />}
             onClick={(e) => {
               e.stopPropagation();
-              togglePermissionsModal();
+              onOpenModal({ type: "permissions", collection });
             }}
           >
             {t`Change permissions`}
@@ -60,11 +60,6 @@ export const RootSnippetsCollectionMenu = ({
           {t`View archived snippets`}
         </Menu.Item>
       </Menu.Dropdown>
-      <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
-        opened={showPermissionsModal}
-        collectionId={collectionId}
-        onClose={togglePermissionsModal}
-      />
     </Menu>
   );
 };

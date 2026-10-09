@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { type ComponentProps, useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -9,12 +10,28 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
+import {
   createMockCollection,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { LibraryCollectionRowMenu } from ".";
+import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
+
+function LibraryCollectionRowMenuWithModal(
+  props: Omit<ComponentProps<typeof LibraryCollectionRowMenu>, "onOpenModal">,
+) {
+  const [modal, setModal] = useState<CollectionRowModalState>();
+  return (
+    <>
+      <LibraryCollectionRowMenu {...props} onOpenModal={setModal} />
+      <CollectionRowModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
 
 function setup({
   collection = createMockCollection({
@@ -38,7 +55,7 @@ function setup({
   setupCollectionByIdEndpoint({ collections: [parentCollection] });
 
   renderWithProviders(
-    <LibraryCollectionRowMenu
+    <LibraryCollectionRowMenuWithModal
       childCount={childCount}
       collection={collection}
       refreshCollections={refreshCollections}

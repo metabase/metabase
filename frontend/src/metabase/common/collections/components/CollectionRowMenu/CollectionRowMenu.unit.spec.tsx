@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { type ComponentProps, useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupUpdateCollectionEndpoint } from "__support__/server-mocks";
@@ -13,7 +14,24 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "../CollectionRowModal";
+
 import { CollectionRowMenu } from "./CollectionRowMenu";
+
+function CollectionRowMenuWithModal(
+  props: Omit<ComponentProps<typeof CollectionRowMenu>, "onOpenModal">,
+) {
+  const [modal, setModal] = useState<CollectionRowModalState>();
+  return (
+    <>
+      <CollectionRowMenu {...props} onOpenModal={setModal} />
+      <CollectionRowModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
 
 interface SetupOptions {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
@@ -45,7 +63,7 @@ const setup = ({
   setupEnterpriseOnlyPlugin("remote_sync");
 
   return renderWithProviders(
-    <CollectionRowMenu
+    <CollectionRowMenuWithModal
       collection={createMockCollection(collection)}
       customArchiveMessage={customArchiveMessage}
       onArchiveSuccess={onArchiveSuccess}

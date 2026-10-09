@@ -4,12 +4,20 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
+import {
+  TableModal,
+  type TableModalState,
+} from "metabase-enterprise/data-studio/library/tables/components/TableModal";
 import type { CollectionId } from "metabase-types/api";
 
 import { ActionCell } from "./ActionCell";
@@ -48,6 +56,9 @@ export function LibraryPage() {
 
 function LibraryPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionModal, setCollectionModal] =
+    useState<CollectionRowModalState>();
+  const [tableModal, setTableModal] = useState<TableModalState>();
   const [
     showPublishTableModal,
     { open: openPublishTableModal, close: closePublishTableModal },
@@ -158,7 +169,12 @@ function LibraryPageContent() {
   );
   const renderRowMenu = useCallback(
     (item: TreeItem) => (
-      <ActionCell treeItem={item} refreshSection={refreshSection} />
+      <ActionCell
+        treeItem={item}
+        refreshSection={refreshSection}
+        onOpenCollectionModal={setCollectionModal}
+        onOpenTableModal={setTableModal}
+      />
     ),
     [refreshSection],
   );
@@ -234,6 +250,11 @@ function LibraryPageContent() {
           onClose={closeCreateDashboardModal}
         />
       )}
+      <CollectionRowModal
+        modal={collectionModal}
+        onClose={() => setCollectionModal(undefined)}
+      />
+      <TableModal modal={tableModal} onClose={() => setTableModal(undefined)} />
     </LibraryTreePage>
   );
 }

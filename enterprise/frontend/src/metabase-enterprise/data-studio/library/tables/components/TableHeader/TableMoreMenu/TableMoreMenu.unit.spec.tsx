@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { type ComponentProps, useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
@@ -24,7 +25,21 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
+import { TableModal, type TableModalState } from "../../TableModal";
+
 import { TableMoreMenu, type TableMoreMenuProps } from "./TableMoreMenu";
+
+function TableMoreMenuWithModal(
+  props: Omit<ComponentProps<typeof TableMoreMenu>, "onOpenModal">,
+) {
+  const [modal, setModal] = useState<TableModalState>();
+  return (
+    <>
+      <TableMoreMenu {...props} onOpenModal={setModal} />
+      <TableModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
 
 // Mocking picker modal to limit overhead (picker functionality is tested in e2e tests)
 jest.mock("metabase/common/components/Pickers", () => ({
@@ -155,7 +170,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
   renderWithProviders(
     <Route
       path="/"
-      element={<TableMoreMenu table={tableData} onMoved={onMoved} />}
+      element={<TableMoreMenuWithModal table={tableData} onMoved={onMoved} />}
     />,
     {
       withRouter: true,

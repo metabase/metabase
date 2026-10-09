@@ -8,6 +8,10 @@ import {
   useListCollectionsTreeQuery,
   useListTransformsQuery,
 } from "metabase/api";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -124,6 +128,8 @@ export const TransformListPage = () => {
     ) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionModal, setCollectionModal] =
+    useState<CollectionRowModalState>();
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
@@ -275,6 +281,7 @@ export const TransformListPage = () => {
             <CollectionRowMenu
               collection={row.original.collection}
               transformCount={countTransforms(row.original)}
+              onOpenModal={setCollectionModal}
             />
           ) : null,
       },
@@ -361,6 +368,10 @@ export const TransformListPage = () => {
           )}
         </Card>
       </Stack>
+      <CollectionRowModal
+        modal={collectionModal}
+        onClose={() => setCollectionModal(undefined)}
+      />
       <Outlet />
     </PageContainer>
   );
