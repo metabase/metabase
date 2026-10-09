@@ -91,9 +91,11 @@
   (format "Total number of tables classified %d, %d updated"
           total-tables tables-classified))
 
-(defn- interestingness-summary [{:keys [fields-scored fields-failed]}]
-  (format "Interestingness scored %d fields, %d failed"
-          fields-scored fields-failed))
+(defn- interestingness-summary [{:keys [fields-scored fields-failed fields-remaining]}]
+  (str (format "Interestingness scored %d fields, %d failed" fields-scored fields-failed)
+       ;; only present when the per-sync limit truncated the leftovers pass
+       (when (and fields-remaining (pos? fields-remaining))
+         (format ", %d still unscored" fields-remaining))))
 
 (defn- data-sensitivity-summary [{:keys [fields-scanned fields-labeled fields-failed]}]
   (format "Data sensitivity scanned %d fields, labeled %d, %d failed"
