@@ -26,10 +26,11 @@ function setup() {
     createMockMetadataGenerationRunTable({
       table_id: 10,
       table_name: "ORDERS",
-      total: 3,
+      total: 4,
       counts: createMockMetadataGenerationStatusCounts({
         pending: 2,
         accepted: 1,
+        stale: 1,
       }),
       human_set_pending: 1,
     }),
@@ -68,6 +69,15 @@ function setup() {
       attribute: "description",
       proposed_value: "Free-text notes",
       status: "accepted",
+    }),
+    createMockMetadataGenerationSuggestion({
+      id: 4,
+      table_id: 10,
+      field_id: 103,
+      field_display_name: "Created At",
+      attribute: "semantic_type",
+      proposed_value: "type/CreationTimestamp",
+      status: "stale",
     }),
   ];
 
@@ -118,7 +128,7 @@ describe("ReviewModal", () => {
     );
     expect(within(tables).getByText("PUBLIC.ORDERS")).toBeInTheDocument();
     expect(
-      within(tables).getByText("2 pending · 1 accepted"),
+      within(tables).getByText("2 not accepted · 1 accepted · 1 stale"),
     ).toBeInTheDocument();
     expect(within(tables).getByText("1 applied")).toBeInTheDocument();
     expect(
@@ -135,16 +145,31 @@ describe("ReviewModal", () => {
     setup();
 
     const rows = await screen.findAllByTestId("metadata-generation-suggestion");
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
     expect(
       within(rows[0]).getByText("Personally identifiable information"),
     ).toBeInTheDocument();
     expect(within(rows[0]).getByText("Empty")).toBeInTheDocument();
     expect(within(rows[1]).getByText("Set by a person")).toBeInTheDocument();
     expect(within(rows[1]).getByText("Currency")).toBeInTheDocument();
+  });
+
+  it("checks accepted rows and disables stale rows with a status marker", async () => {
+    setup();
+
+    const rows = await screen.findAllByTestId("metadata-generation-suggestion");
+    const checkboxes = rows.map((row) => within(row).getByRole("checkbox"));
+    expect(checkboxes[0]).not.toBeChecked();
+    expect(checkboxes[1]).not.toBeChecked();
+    expect(checkboxes[2]).toBeChecked();
+    expect(checkboxes[3]).not.toBeChecked();
+    expect(checkboxes[3]).toBeDisabled();
     expect(
-      within(rows[2]).getByTestId("metadata-generation-suggestion-status"),
-    ).toHaveTextContent("Accepted");
+      within(rows[3]).getByTestId("metadata-generation-suggestion-status"),
+    ).toHaveTextContent("Stale");
+    expect(
+      within(rows[2]).queryByTestId("metadata-generation-suggestion-status"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the reasoning icon in its own column and no confidence column", async () => {
@@ -155,23 +180,24 @@ describe("ReviewModal", () => {
       within(table)
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
-    ).toEqual(["Field", "Attribute", "Current", "Proposed", "", "Decision"]);
+    ).toEqual(["", "Field", "Attribute", "Current", "Proposed", ""]);
     expect(within(table).queryByText("High")).not.toBeInTheDocument();
 
     const rows = within(table).getAllByTestId("metadata-generation-suggestion");
-    const reasoningCell = within(rows[0]).getAllByRole("cell")[4];
+    const reasoningCell = within(rows[0]).getAllByRole("cell")[5];
     expect(
       within(reasoningCell).getByLabelText("Reasoning"),
     ).toBeInTheDocument();
-    expect(within(rows[1]).getAllByRole("cell")[4]).toBeEmptyDOMElement();
+    expect(within(rows[1]).getAllByRole("cell")[5]).toBeEmptyDOMElement();
   });
 
-  it("accepts one suggestion by id", async () => {
+  it("accepts one suggestion when its row is ticked", async () => {
     setup();
 
-    const rows = await screen.findAllByTestId("metadata-generation-suggestion");
     await userEvent.click(
-      within(rows[0]).getByRole("button", { name: "Accept" }),
+      await screen.findByRole("checkbox", {
+        name: "Accept Data sensitivity of Email",
+      }),
     );
 
     expect(await getLastDecisionBody()).toEqual({
@@ -180,12 +206,29 @@ describe("ReviewModal", () => {
     });
   });
 
-  it("accepts a table without the human-set suggestions", async () => {
+  it("unaccepts one suggestion when its row is unticked", async () => {
     setup();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Accept table" }),
+      await screen.findByRole("checkbox", {
+        name: "Accept Description of Notes",
+      }),
     );
+
+    expect(await getLastDecisionBody()).toEqual({
+      decision: "unaccept",
+      suggestion_ids: [3],
+    });
+  });
+
+  it("accepts a table without the human-set suggestions when the table checkbox is ticked", async () => {
+    setup();
+
+    const tableCheckbox = await screen.findByRole("checkbox", {
+      name: "Accept the suggestions of this table",
+    });
+    expect(tableCheckbox).toBePartiallyChecked();
+    await userEvent.click(tableCheckbox);
 
     expect(await getLastDecisionBody()).toEqual({
       decision: "accept",

@@ -1,10 +1,12 @@
 (ns metabase-enterprise.data-sensitivity.review
-  "Review of the suggestions of a metadata generation run: counts per table, and accept or reject per suggestion, per
-  table or for the whole run. A decision writes no field metadata; apply is a separate step that writes the accepted
-  suggestions as AI values (decision `ghy-4721-metadata-layer-precedence`).
+  "Review of the suggestions of a metadata generation run: counts per table, and accept, unaccept or reject per
+  suggestion, per table or for the whole run. Unaccept moves a decided suggestion back to pending. A decision writes no
+  field metadata; apply is a separate step that writes the accepted suggestions as AI values (decision
+  `ghy-4721-metadata-layer-precedence`).
 
-  A suggestion with source `human` would replace a value a person set. Accept by table or for the whole run leaves
-  those suggestions out unless the request sets `include_human_set`; accept by suggestion id always includes them.
+  A suggestion with source `human` would replace a value a person set. Accept or unaccept by table or for the whole run
+  leaves those suggestions out unless the request sets `include_human_set`; a decision by suggestion id always includes
+  them.
   Apply of such a suggestion clears the person's value."
   (:require
    [metabase-enterprise.data-sensitivity.context :as context]
@@ -62,15 +64,16 @@
 
 (mr/def ::decision-request
   [:map {:closed true}
-   [:decision          [:enum :accept :reject]]
+   [:decision          [:enum :accept :unaccept :reject]]
    [:suggestion_ids    {:optional true} [:maybe [:sequential {:min 1} ms/PositiveInt]]]
    [:table_ids         {:optional true} [:maybe [:sequential {:min 1} ms/PositiveInt]]]
    [:all               {:optional true} [:maybe :boolean]]
    [:include_human_set {:optional true} [:maybe :boolean]]])
 
 (def ^:private decision-rules
-  {:accept {:from #{:pending :rejected} :to :accepted}
-   :reject {:from #{:pending :accepted} :to :rejected}})
+  {:accept   {:from #{:pending :rejected} :to :accepted}
+   :unaccept {:from #{:accepted :rejected} :to :pending}
+   :reject   {:from #{:pending :accepted} :to :rejected}})
 
 (defn- bad-request [message]
   (ex-info message {:status-code 400}))
@@ -82,13 +85,13 @@
             suggestion_ids {:suggestion-ids (vec (distinct suggestion_ids))}
             table_ids      {:table-ids (vec (distinct table_ids))}
             :else          {})
-    (and (= :accept decision) (not suggestion_ids) (not include_human_set))
+    (and (#{:accept :unaccept} decision) (not suggestion_ids) (not include_human_set))
     (assoc :exclude-human? true)))
 
 (mu/defn decide! :- [:map {:closed true} [:updated ms/IntGreaterThanOrEqualToZero]]
-  "Accept or reject the suggestions of run `run-id` that `request` selects, as `user-id`. Accept moves pending and
-  rejected suggestions to accepted; reject moves pending and accepted suggestions to rejected. Stale and applied
-  suggestions do not change."
+  "Decide the suggestions of run `run-id` that `request` selects, as `user-id`. Accept moves pending and rejected
+  suggestions to accepted; unaccept moves accepted and rejected suggestions to pending; reject moves pending and
+  accepted suggestions to rejected. Stale and applied suggestions do not change."
   [run-id  :- ms/PositiveInt
    request :- ::decision-request
    user-id :- ms/PositiveInt]

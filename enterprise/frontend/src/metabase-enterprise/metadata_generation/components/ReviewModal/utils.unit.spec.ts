@@ -6,15 +6,15 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  canAcceptSuggestion,
-  canRejectSuggestion,
   formatSuggestionValue,
   getApplySummary,
-  getBulkAcceptable,
+  getBulkDecidable,
   getHumanSetAcceptable,
-  getRejectable,
   getRunTotals,
+  getTableCheckboxState,
   getTableLabel,
+  isSuggestionChecked,
+  isSuggestionDecidable,
 } from "./utils";
 
 describe("getRunTotals", () => {
@@ -60,21 +60,21 @@ describe("getRunTotals", () => {
 
 describe("decision state", () => {
   it.each([
-    ["pending", true, true],
-    ["accepted", false, true],
+    ["pending", true, false],
+    ["accepted", true, true],
     ["rejected", true, false],
     ["stale", false, false],
-    ["applied", false, false],
+    ["applied", false, true],
   ] as const)(
-    "a %s suggestion can be accepted: %s, rejected: %s",
-    (status, canAccept, canReject) => {
+    "a %s suggestion is decidable: %s, checked: %s",
+    (status, decidable, checked) => {
       const suggestion = createMockMetadataGenerationSuggestion({ status });
-      expect(canAcceptSuggestion(suggestion)).toBe(canAccept);
-      expect(canRejectSuggestion(suggestion)).toBe(canReject);
+      expect(isSuggestionDecidable(suggestion)).toBe(decidable);
+      expect(isSuggestionChecked(suggestion)).toBe(checked);
     },
   );
 
-  it("leaves human-set suggestions out of the table accept and lists them apart", () => {
+  it("leaves human-set suggestions out of the table checkbox and lists the unaccepted ones apart", () => {
     const suggestions = [
       createMockMetadataGenerationSuggestion({ id: 1, source: "none" }),
       createMockMetadataGenerationSuggestion({ id: 2, source: "human" }),
@@ -93,11 +93,45 @@ describe("decision state", () => {
         source: "human",
         status: "stale",
       }),
+      createMockMetadataGenerationSuggestion({
+        id: 6,
+        source: "human",
+        status: "accepted",
+      }),
     ];
 
-    expect(getBulkAcceptable(suggestions).map((s) => s.id)).toEqual([1, 3]);
+    expect(getBulkDecidable(suggestions).map((s) => s.id)).toEqual([1, 3, 4]);
     expect(getHumanSetAcceptable(suggestions).map((s) => s.id)).toEqual([2]);
-    expect(getRejectable(suggestions).map((s) => s.id)).toEqual([1, 2, 4]);
+  });
+});
+
+describe("getTableCheckboxState", () => {
+  it("is indeterminate when some bulk-decidable suggestions are accepted", () => {
+    expect(
+      getTableCheckboxState([
+        createMockMetadataGenerationSuggestion({ id: 1, status: "accepted" }),
+        createMockMetadataGenerationSuggestion({ id: 2, status: "rejected" }),
+      ]),
+    ).toEqual({ checked: false, indeterminate: true, disabled: false });
+  });
+
+  it("is checked when every bulk-decidable suggestion is accepted, whatever the human-set ones", () => {
+    expect(
+      getTableCheckboxState([
+        createMockMetadataGenerationSuggestion({ id: 1, status: "accepted" }),
+        createMockMetadataGenerationSuggestion({ id: 2, source: "human" }),
+        createMockMetadataGenerationSuggestion({ id: 3, status: "applied" }),
+      ]),
+    ).toEqual({ checked: true, indeterminate: false, disabled: false });
+  });
+
+  it("is disabled when no suggestion is bulk-decidable", () => {
+    expect(
+      getTableCheckboxState([
+        createMockMetadataGenerationSuggestion({ id: 1, source: "human" }),
+        createMockMetadataGenerationSuggestion({ id: 2, status: "stale" }),
+      ]),
+    ).toEqual({ checked: false, indeterminate: false, disabled: true });
   });
 });
 

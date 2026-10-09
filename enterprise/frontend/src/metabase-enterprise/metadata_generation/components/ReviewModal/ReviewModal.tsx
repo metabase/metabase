@@ -9,6 +9,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Flex,
   Group,
   Icon,
@@ -33,6 +34,7 @@ import type {
   MetadataGenerationRunId,
   MetadataGenerationRunTable,
   MetadataGenerationSuggestion,
+  MetadataGenerationSuggestionId,
 } from "metabase-types/api";
 
 import { getAttributeLabel } from "../../utils";
@@ -40,21 +42,20 @@ import { getAttributeLabel } from "../../utils";
 import S from "./ReviewModal.module.css";
 import {
   type RunTotals,
-  canAcceptSuggestion,
-  canRejectSuggestion,
   formatSuggestionValue,
   getApplyFailureReasonLabel,
   getApplySummary,
-  getBulkAcceptable,
   getFieldLabel,
   getHumanSetAcceptable,
-  getRejectable,
+  getNotAcceptedCount,
   getRunTotals,
   getSuggestionStatusColor,
   getSuggestionStatusLabel,
+  getTableCheckboxState,
   getTableLabel,
   hasOpenDecisions,
   isHumanSet,
+  isSuggestionChecked,
   isSuggestionDecidable,
 } from "./utils";
 
@@ -81,19 +82,44 @@ type Decide = (
   request: Omit<MetadataGenerationDecisionRequest, "run_id">,
 ) => Promise<void>;
 
-function useDecide(runId: MetadataGenerationRunId) {
-  const [decideSuggestions, { isLoading }] =
-    useDecideMetadataGenerationSuggestionsMutation();
+type DecideState = {
+  decide: Decide;
+  /** True while a decision request runs. */
+  isDeciding: boolean;
+  /** The suggestions whose own decision request runs. */
+  decidingIds: ReadonlySet<MetadataGenerationSuggestionId>;
+};
+
+function useDecide(runId: MetadataGenerationRunId): DecideState {
+  const [decideSuggestions] = useDecideMetadataGenerationSuggestionsMutation();
+  const [requestCount, setRequestCount] = useState(0);
+  const [decidingIds, setDecidingIds] = useState<
+    ReadonlySet<MetadataGenerationSuggestionId>
+  >(new Set());
   const { sendErrorToast } = useMetadataToasts();
 
+  const updateDecidingIds = (
+    ids: MetadataGenerationSuggestionId[] = [],
+    isAdding: boolean,
+  ) =>
+    setDecidingIds((current) => {
+      const next = new Set(current);
+      ids.forEach((id) => (isAdding ? next.add(id) : next.delete(id)));
+      return next;
+    });
+
   const decide: Decide = async (request) => {
+    setRequestCount((count) => count + 1);
+    updateDecidingIds(request.suggestion_ids, true);
     const { error } = await decideSuggestions({ run_id: runId, ...request });
+    updateDecidingIds(request.suggestion_ids, false);
+    setRequestCount((count) => count - 1);
     if (error) {
       sendErrorToast(getErrorMessage(error, t`Failed to save the decision`));
     }
   };
 
-  return { decide, isDeciding: isLoading };
+  return { decide, isDeciding: requestCount > 0, decidingIds };
 }
 
 function ReviewContent({ runId }: { runId: MetadataGenerationRunId }) {
@@ -106,7 +132,7 @@ function ReviewContent({ runId }: { runId: MetadataGenerationRunId }) {
     useState<ConcreteTableId | null>(null);
   const [applyResult, setApplyResult] =
     useState<MetadataGenerationApplyResult | null>(null);
-  const { decide, isDeciding } = useDecide(runId);
+  const decideState = useDecide(runId);
 
   if (error) {
     return <Text c="error">{getErrorMessage(error)}</Text>;
@@ -128,8 +154,7 @@ function ReviewContent({ runId }: { runId: MetadataGenerationRunId }) {
       <RunHeader
         runId={runId}
         totals={getRunTotals(tables)}
-        isDeciding={isDeciding}
-        decide={decide}
+        decideState={decideState}
         onApply={setApplyResult}
       />
       {applyResult && (
@@ -151,8 +176,7 @@ function ReviewContent({ runId }: { runId: MetadataGenerationRunId }) {
             key={selectedTable.table_id}
             runId={runId}
             table={selectedTable}
-            isDeciding={isDeciding}
-            decide={decide}
+            decideState={decideState}
           />
         </Box>
       </Flex>
@@ -163,22 +187,21 @@ function ReviewContent({ runId }: { runId: MetadataGenerationRunId }) {
 type RunHeaderProps = {
   runId: MetadataGenerationRunId;
   totals: RunTotals;
-  isDeciding: boolean;
-  decide: Decide;
+  decideState: DecideState;
   onApply: (result: MetadataGenerationApplyResult) => void;
 };
 
 function RunHeader({
   runId,
   totals,
-  isDeciding,
-  decide,
+  decideState: { decide, isDeciding },
   onApply,
 }: RunHeaderProps) {
   const [applyRun, { isLoading: isApplying }] =
     useApplyMetadataGenerationRunMutation();
   const { sendErrorToast } = useMetadataToasts();
   const { counts, humanSetPending } = totals;
+  const notAccepted = getNotAcceptedCount(counts);
 
   const handleApply = async () => {
     const { data, error } = await applyRun({ run_id: runId });
@@ -195,9 +218,8 @@ function RunHeader({
     <Group justify="space-between" wrap="nowrap" align="flex-start">
       <Stack gap={4}>
         <Group gap="xs" data-testid="metadata-generation-review-totals">
-          <StatusCount label={t`Pending`} count={counts.pending} />
+          <StatusCount label={t`Not accepted`} count={notAccepted} />
           <StatusCount label={t`Accepted`} count={counts.accepted} />
-          <StatusCount label={t`Rejected`} count={counts.rejected} />
           <StatusCount label={t`Stale`} count={counts.stale} />
           <StatusCount label={t`Applied`} count={counts.applied} />
         </Group>
@@ -213,11 +235,11 @@ function RunHeader({
       </Stack>
       <Group gap="sm" wrap="nowrap">
         <Tooltip
-          label={t`Accepts every pending and rejected suggestion, except those that would replace a value a person set.`}
+          label={t`Accepts every suggestion, except those that would replace a value a person set.`}
         >
           <Button
             variant="default"
-            disabled={counts.pending + counts.rejected === 0 || isDeciding}
+            disabled={notAccepted === 0 || isDeciding}
             onClick={() => decide({ decision: "accept", all: true })}
           >
             {t`Accept all`}
@@ -322,11 +344,11 @@ function TableList({ tables, selectedTableId, onSelect }: TableListProps) {
 }
 
 function getTableCountsLabel(table: MetadataGenerationRunTable): string {
-  const { pending, accepted, rejected, stale, applied } = table.counts;
+  const { accepted, stale, applied } = table.counts;
+  const notAccepted = getNotAcceptedCount(table.counts);
   const parts = [
-    pending > 0 && t`${pending} pending`,
+    notAccepted > 0 && t`${notAccepted} not accepted`,
     accepted > 0 && t`${accepted} accepted`,
-    rejected > 0 && t`${rejected} rejected`,
     stale > 0 && t`${stale} stale`,
     applied > 0 && t`${applied} applied`,
   ].filter((part): part is string => Boolean(part));
@@ -336,11 +358,11 @@ function getTableCountsLabel(table: MetadataGenerationRunTable): string {
 type TableReviewProps = {
   runId: MetadataGenerationRunId;
   table: MetadataGenerationRunTable;
-  isDeciding: boolean;
-  decide: Decide;
+  decideState: DecideState;
 };
 
-function TableReview({ runId, table, isDeciding, decide }: TableReviewProps) {
+function TableReview({ runId, table, decideState }: TableReviewProps) {
+  const { decide, isDeciding } = decideState;
   const {
     data: suggestions,
     error,
@@ -357,9 +379,8 @@ function TableReview({ runId, table, isDeciding, decide }: TableReviewProps) {
     return <Loader size="sm" />;
   }
 
-  const bulkAcceptable = getBulkAcceptable(suggestions);
   const humanSetAcceptable = getHumanSetAcceptable(suggestions);
-  const rejectable = getRejectable(suggestions);
+  const tableCheckbox = getTableCheckboxState(suggestions);
 
   return (
     <Stack gap="sm" h="100%" mih={0}>
@@ -391,24 +412,6 @@ function TableReview({ runId, table, isDeciding, decide }: TableReviewProps) {
               </Button>
             </Tooltip>
           )}
-          <Button
-            variant="default"
-            disabled={rejectable.length === 0 || isDeciding}
-            onClick={() =>
-              decide({ decision: "reject", table_ids: [table.table_id] })
-            }
-          >
-            {t`Reject table`}
-          </Button>
-          <Button
-            variant="default"
-            disabled={bulkAcceptable.length === 0 || isDeciding}
-            onClick={() =>
-              decide({ decision: "accept", table_ids: [table.table_id] })
-            }
-          >
-            {t`Accept table`}
-          </Button>
         </Group>
       </Group>
       <ScrollArea flex={1}>
@@ -417,21 +420,38 @@ function TableReview({ runId, table, isDeciding, decide }: TableReviewProps) {
           data-testid="metadata-generation-suggestions"
         >
           <colgroup>
+            <col className={S.checkboxColumn} />
             <col className={S.fieldColumn} />
             <col className={S.attributeColumn} />
             <col className={S.currentColumn} />
             <col />
             <col className={S.reasoningColumn} />
-            <col className={S.decisionColumn} />
           </colgroup>
           <thead>
             <tr>
+              <th>
+                <Tooltip
+                  label={t`Accepts or clears every suggestion of this table, except those that would replace a value a person set.`}
+                >
+                  <Checkbox
+                    aria-label={t`Accept the suggestions of this table`}
+                    checked={tableCheckbox.checked}
+                    indeterminate={tableCheckbox.indeterminate}
+                    disabled={tableCheckbox.disabled || isDeciding}
+                    onChange={() =>
+                      decide({
+                        decision: tableCheckbox.checked ? "unaccept" : "accept",
+                        table_ids: [table.table_id],
+                      })
+                    }
+                  />
+                </Tooltip>
+              </th>
               <th>{t`Field`}</th>
               <th>{t`Attribute`}</th>
               <th>{t`Current`}</th>
               <th>{t`Proposed`}</th>
               <th aria-label={t`Reasoning`} />
-              <th>{t`Decision`}</th>
             </tr>
           </thead>
           <tbody>
@@ -443,7 +463,7 @@ function TableReview({ runId, table, isDeciding, decide }: TableReviewProps) {
                   index === 0 ||
                   suggestions[index - 1].field_id !== suggestion.field_id
                 }
-                isDeciding={isDeciding}
+                isDeciding={decideState.decidingIds.has(suggestion.id)}
                 decide={decide}
               />
             ))}
@@ -479,12 +499,26 @@ function SuggestionRow({
   );
   const fieldLabel = getFieldLabel(suggestion);
   const attributeLabel = getAttributeLabel(suggestion.attribute);
+  const isChecked = isSuggestionChecked(suggestion);
 
   return (
     <tr
       className={cx({ [S.humanSet]: isConflict })}
       data-testid="metadata-generation-suggestion"
     >
+      <td>
+        <Checkbox
+          aria-label={t`Accept ${attributeLabel} of ${fieldLabel}`}
+          checked={isChecked}
+          disabled={!isSuggestionDecidable(suggestion) || isDeciding}
+          onChange={() =>
+            decide({
+              decision: isChecked ? "unaccept" : "accept",
+              suggestion_ids: [suggestion.id],
+            })
+          }
+        />
+      </td>
       <td>
         {isFirstOfField && (
           <Text fw="bold" title={fieldLabel} truncate>
@@ -513,7 +547,20 @@ function SuggestionRow({
         </Stack>
       </td>
       <td className={S.value}>
-        <Text>{proposed}</Text>
+        <Stack gap={4} align="flex-start">
+          <Text>{proposed}</Text>
+          {!isSuggestionDecidable(suggestion) && (
+            <Tooltip label={getFixedStatusTooltip(suggestion)}>
+              <Badge
+                variant="light"
+                color={getSuggestionStatusColor(suggestion.status)}
+                data-testid="metadata-generation-suggestion-status"
+              >
+                {getSuggestionStatusLabel(suggestion.status)}
+              </Badge>
+            </Tooltip>
+          )}
+        </Stack>
       </td>
       <td>
         {suggestion.reasoning && (
@@ -527,50 +574,14 @@ function SuggestionRow({
           </Tooltip>
         )}
       </td>
-      <td className={S.decision}>
-        <Group gap="xs" wrap="nowrap">
-          <Badge
-            className={S.noShrink}
-            variant="light"
-            color={getSuggestionStatusColor(suggestion.status)}
-            data-testid="metadata-generation-suggestion-status"
-          >
-            {getSuggestionStatusLabel(suggestion.status)}
-          </Badge>
-          {canAcceptSuggestion(suggestion) && (
-            <Tooltip label={t`Accept`}>
-              <ActionIcon
-                aria-label={t`Accept`}
-                disabled={isDeciding}
-                onClick={() =>
-                  decide({
-                    decision: "accept",
-                    suggestion_ids: [suggestion.id],
-                  })
-                }
-              >
-                <Icon name="check" />
-              </ActionIcon>
-            </Tooltip>
-          )}
-          {canRejectSuggestion(suggestion) && (
-            <Tooltip label={t`Reject`}>
-              <ActionIcon
-                aria-label={t`Reject`}
-                disabled={isDeciding}
-                onClick={() =>
-                  decide({
-                    decision: "reject",
-                    suggestion_ids: [suggestion.id],
-                  })
-                }
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </Group>
-      </td>
     </tr>
   );
+}
+
+function getFixedStatusTooltip(
+  suggestion: MetadataGenerationSuggestion,
+): string {
+  return suggestion.status === "applied"
+    ? t`This suggestion was applied.`
+    : t`The field changed after the run, so this suggestion can no longer be applied.`;
 }

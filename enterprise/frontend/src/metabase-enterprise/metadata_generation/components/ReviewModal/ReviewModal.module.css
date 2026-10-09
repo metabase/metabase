@@ -11,6 +11,10 @@
   border-collapse: collapse;
 }
 
+.checkboxColumn {
+  width: 2.75rem;
+}
+
 .fieldColumn {
   width: 10rem;
 }
@@ -25,10 +29,6 @@
 
 .reasoningColumn {
   width: 2.5rem;
-}
-
-.decisionColumn {
-  width: 11rem;
 }
 
 .suggestions th {
@@ -62,12 +62,4 @@
 
 .value {
   overflow-wrap: anywhere;
-}
-
-.decision {
-  white-space: nowrap;
-}
-
-.noShrink {
-  flex-shrink: 0;
 }

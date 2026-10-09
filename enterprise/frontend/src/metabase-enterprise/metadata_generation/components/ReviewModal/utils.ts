@@ -53,45 +53,66 @@ export function isHumanSet(suggestion: MetadataGenerationSuggestion): boolean {
   return suggestion.source === "human";
 }
 
-export function canAcceptSuggestion(
-  suggestion: MetadataGenerationSuggestion,
-): boolean {
-  return suggestion.status === "pending" || suggestion.status === "rejected";
-}
-
-export function canRejectSuggestion(
-  suggestion: MetadataGenerationSuggestion,
-): boolean {
-  return suggestion.status === "pending" || suggestion.status === "accepted";
-}
-
+/** Pending, accepted and rejected suggestions can change; stale and applied ones cannot. */
 export function isSuggestionDecidable(
   suggestion: MetadataGenerationSuggestion,
 ): boolean {
-  return canAcceptSuggestion(suggestion) || canRejectSuggestion(suggestion);
+  return (
+    suggestion.status === "pending" ||
+    suggestion.status === "accepted" ||
+    suggestion.status === "rejected"
+  );
 }
 
-/** The suggestions that "Accept table" accepts: the backend leaves out human-set ones. */
-export function getBulkAcceptable(
+/** The row checkbox is checked for accepted suggestions and for applied ones, which were accepted. */
+export function isSuggestionChecked(
+  suggestion: MetadataGenerationSuggestion,
+): boolean {
+  return suggestion.status === "accepted" || suggestion.status === "applied";
+}
+
+/** The suggestions that the table checkbox ticks and unticks: the backend leaves out human-set ones. */
+export function getBulkDecidable(
   suggestions: MetadataGenerationSuggestion[],
 ): MetadataGenerationSuggestion[] {
-  return suggestions.filter((s) => canAcceptSuggestion(s) && !isHumanSet(s));
+  return suggestions.filter((s) => isSuggestionDecidable(s) && !isHumanSet(s));
 }
 
 export function getHumanSetAcceptable(
   suggestions: MetadataGenerationSuggestion[],
 ): MetadataGenerationSuggestion[] {
-  return suggestions.filter((s) => canAcceptSuggestion(s) && isHumanSet(s));
+  return suggestions.filter(
+    (s) => isSuggestionDecidable(s) && !isSuggestionChecked(s) && isHumanSet(s),
+  );
 }
 
-export function getRejectable(
+export type TableCheckboxState = {
+  checked: boolean;
+  indeterminate: boolean;
+  disabled: boolean;
+};
+
+export function getTableCheckboxState(
   suggestions: MetadataGenerationSuggestion[],
-): MetadataGenerationSuggestion[] {
-  return suggestions.filter(canRejectSuggestion);
+): TableCheckboxState {
+  const decidable = getBulkDecidable(suggestions);
+  const checkedCount = decidable.filter(isSuggestionChecked).length;
+  return {
+    checked: decidable.length > 0 && checkedCount === decidable.length,
+    indeterminate: checkedCount > 0 && checkedCount < decidable.length,
+    disabled: decidable.length === 0,
+  };
+}
+
+/** Pending and rejected suggestions both count as not accepted: apply skips both. */
+export function getNotAcceptedCount(
+  counts: MetadataGenerationStatusCounts,
+): number {
+  return counts.pending + counts.rejected;
 }
 
 export function hasOpenDecisions(table: MetadataGenerationRunTable): boolean {
-  return table.counts.pending > 0;
+  return getNotAcceptedCount(table.counts) > 0;
 }
 
 export function getTableLabel(table: MetadataGenerationRunTable): string {

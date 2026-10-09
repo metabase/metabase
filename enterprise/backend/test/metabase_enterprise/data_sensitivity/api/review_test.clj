@@ -109,12 +109,39 @@
          (is (= {:updated 4} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
                                                    {:decision "reject" :all true})))
          (is (= #{:rejected} (set (vals (statuses (vals ids)))))))))
+    (testing "per suggestion: unaccept moves accepted and rejected suggestions back to pending"
+      (do-with-run!
+       (fn [run-id _ {:keys [a1-sem a1-ds a2-human b1-sem]}]
+         (t2/update! :model/MetadataGenerationSuggestion a1-sem {:status :accepted})
+         (t2/update! :model/MetadataGenerationSuggestion a1-ds {:status :rejected})
+         (t2/update! :model/MetadataGenerationSuggestion a2-human {:status :accepted})
+         (is (= {:updated 3} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
+                                                   {:decision       "unaccept"
+                                                    :suggestion_ids [a1-sem a1-ds a2-human b1-sem]})))
+         (is (= #{:pending} (set (vals (statuses [a1-sem a1-ds a2-human b1-sem])))))
+         (is (=? {:decided_by (mt/user->id :crowberto) :decided_at some?}
+                 (t2/select-one :model/MetadataGenerationSuggestion a1-ds))))))
+    (testing "per table and whole run: unaccept leaves out human-set suggestions unless include_human_set"
+      (do-with-run!
+       (fn [run-id {:keys [a]} {:keys [a1-sem a1-ds a2-human b1-sem] :as ids}]
+         (t2/update! :model/MetadataGenerationSuggestion :id [:in (vals ids)] {:status :accepted})
+         (is (= {:updated 2} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
+                                                   {:decision "unaccept" :table_ids [a]})))
+         (is (= {a1-sem :pending a1-ds :pending a2-human :accepted b1-sem :accepted} (statuses (vals ids))))
+         (is (= {:updated 1} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
+                                                   {:decision "unaccept" :all true})))
+         (is (= {a2-human :accepted b1-sem :pending} (statuses [a2-human b1-sem])))
+         (is (= {:updated 1} (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
+                                                   {:decision "unaccept" :all true :include_human_set true})))
+         (is (= #{:pending} (set (vals (statuses (vals ids)))))))))
     (testing "stale and applied suggestions do not change"
       (do-with-run!
        (fn [run-id _ {:keys [a1-sem b1-sem]}]
          (t2/update! :model/MetadataGenerationSuggestion a1-sem {:status :stale})
          (t2/update! :model/MetadataGenerationSuggestion b1-sem {:status :applied})
-         (mt/user-http-request :crowberto :post 200 (url run-id "/decisions") {:decision "reject" :all true})
+         (doseq [decision ["accept" "unaccept" "reject"]]
+           (mt/user-http-request :crowberto :post 200 (url run-id "/decisions")
+                                 {:decision decision :all true :include_human_set true}))
          (is (= {a1-sem :stale b1-sem :applied} (statuses [a1-sem b1-sem]))))))))
 
 (deftest decisions-validation-test

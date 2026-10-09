@@ -92,9 +92,10 @@
   (db/table-suggestions id table-id))
 
 (api.macros/defendpoint :post "/runs/:id/decisions" :- [:map [:updated ms/IntGreaterThanOrEqualToZero]]
-  "Accept or reject suggestions of the run: those in `suggestion_ids`, those of the tables in `table_ids`, or `all`.
-  Give exactly one. Accept by table or for the whole run leaves out suggestions that would replace a value a person
-  set, unless `include_human_set` is true. Stale and applied suggestions do not change. Writes no field metadata."
+  "Accept, unaccept or reject suggestions of the run: those in `suggestion_ids`, those of the tables in `table_ids`, or
+  `all`. Give exactly one. Unaccept moves accepted and rejected suggestions back to pending. Accept or unaccept by
+  table or for the whole run leaves out suggestions that would replace a value a person set, unless
+  `include_human_set` is true. Stale and applied suggestions do not change. Writes no field metadata."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::review/decision-request]

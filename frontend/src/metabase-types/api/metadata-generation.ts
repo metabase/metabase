@@ -146,7 +146,7 @@ export type GetMetadataGenerationSuggestionsRequest = {
   table_id: ConcreteTableId;
 };
 
-export type MetadataGenerationDecision = "accept" | "reject";
+export type MetadataGenerationDecision = "accept" | "unaccept" | "reject";
 
 export type MetadataGenerationDecisionRequest = {
   run_id: MetadataGenerationRunId;
