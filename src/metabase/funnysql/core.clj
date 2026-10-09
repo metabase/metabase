@@ -140,17 +140,27 @@
   (when-not (identifier-form? x)
     (throw (ex-info "Expected an identifier" {:x x}))))
 
+(defn- check-subquery-marked
+  "In a position that only takes a query -- a CTE, `FROM`, a join, `EXISTS`, `UNION`, `INSERT INTO ... SELECT` -- a map
+  not marked `^:allow-subquery` would be bound as a `?` the database can only reject, so throw instead, like `:in`
+  does. Call this before compiling anything in one of those positions."
+  [x]
+  (when (and (map? x)
+             (not (subquery? x)))
+    (throw (ex-info "A subquery must be marked ^:allow-subquery" {:subquery x}))))
+
 (declare alias!)
 
 (defn- identifier-with-optional-alias!
   "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
-  unaliased identifier while a vector with two elements will emit `<x> AS <y>`."
-  [identifier context & {:keys [lhs-must-be-identifier? include-as?], :or {lhs-must-be-identifier? false, include-as? true}}]
+  unaliased identifier while a vector with two elements will emit `<x> AS <y>`. `check-lhs`, if given, is called with
+  the unaliased part before it is compiled."
+  [identifier context & {:keys [check-lhs include-as?], :or {include-as? true}}]
   (let [[lhs rhs] (if (vector? identifier)
                     identifier
                     [identifier])]
-    (when lhs-must-be-identifier?
-      (check-identifier-form lhs))
+    (when check-lhs
+      (check-lhs lhs))
     (compile! lhs context)
     (when rhs
       ;; the alias is a name, not a value: a string here would otherwise become a `?` parameter and the database
@@ -187,6 +197,7 @@
             (doseq [option options]
               (case option
                 :materialized (append-sql! context "MATERIALIZED ")))
+            (check-subquery-marked subquery)
             (parens! subquery context))]
     (interpose-fn ctes cte! #(append-sql! context ", "))))
 
@@ -307,6 +318,7 @@
         (append-sql! context \space)
         (identifier-list! columns context)))
     (when subquery
+      (check-subquery-marked subquery)
       (append-sql! context \space)
       ;; `INSERT INTO t SELECT ...` -- the subquery is not wrapped in parens here
       ((if (subquery? subquery) map! compile!) subquery context))))
@@ -342,7 +354,7 @@
 
 (defn- update! [identifier context]
   (append-sql! context "UPDATE ")
-  (identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
+  (identifier-with-optional-alias! identifier context :check-lhs check-identifier-form, :include-as? false))
 
 (defn- set-clause! [kvs context]
   (append-sql! context "SET ")
@@ -350,7 +362,7 @@
 
 (defn- delete-from! [identifier context]
   (append-sql! context "DELETE FROM ")
-  (identifier-with-optional-alias! identifier context :lhs-must-be-identifier? true, :include-as? false))
+  (identifier-with-optional-alias! identifier context :check-lhs check-identifier-form, :include-as? false))
 
 (defn- select! [sql cols context]
   (append-sql! context sql)
@@ -381,7 +393,7 @@
         (when (nil? condition)
           (throw (ex-info "A join condition cannot be nil" {:thing-to-join thing-to-join})))
         (append-sql! context join-type-sql)
-        (identifier-with-optional-alias! thing-to-join context)
+        (identifier-with-optional-alias! thing-to-join context :check-lhs check-subquery-marked)
         (append-sql! context " ON ")
         (compile! condition context)
         (when (seq more)
@@ -528,7 +540,9 @@
   [[compile!]] don't wrap them in parens -- use `:nest` for that."
   [separator queries context]
   (interpose-fn queries
-                #((if (subquery? %) map! compile!) % context)
+                (fn [query]
+                  (check-subquery-marked query)
+                  ((if (subquery? query) map! compile!) query context))
                 #(append-sql! context separator)))
 
 (def ^:private clause-fns
@@ -689,11 +703,38 @@
     :or
     :metabase.funnysql.core/postgres-full-text-search-match})
 
+(defn- unwrap-h2x-typed
+  "`x` without its `::h2x/typed` wrappers, if any. `h2x/+` and friends wrap their result in one when an argument carries
+  database type info, and it compiles to just the form it wraps, so look through it to see what that form is."
+  [x]
+  (if (fn-call-of-type? x ::h2x/typed)
+    (recur (get x 1))
+    x))
+
 (defn- predicate-call?
   "Whether `x` is a [[fn-call?]] for one of the [[predicate-operators]]."
   [x]
-  (and (fn-call? x)
-       (contains? predicate-operators (get x 0))))
+  (fn-call-of-type? (unwrap-h2x-typed x) predicate-operators))
+
+(def ^:private infix-operators
+  (into predicate-operators #{:+ :- :/ :* :% :||}))
+
+(defn- infix-call?
+  "Whether `x` compiles to a bare infix expression -- a [[predicate-call?]], arithmetic, or `||` -- which needs parens
+  as the operand of another infix operator: `[:* [:+ :x 1] 2]` is `(x + 1) * 2`, not `x + 1 * 2`. `:escape` is the
+  exception. It is the postfix `ESCAPE` of the `LIKE` pattern it is the operand of, and `x LIKE (? ESCAPE '!')` is not
+  valid SQL."
+  [x]
+  (let [x (unwrap-h2x-typed x)]
+    (and (fn-call? x)
+         (not (fn-call-of-type? x :escape))
+         (fn-call-of-type? x infix-operators))))
+
+(defn- infix-operand!
+  "Compile `x` as the operand of an infix operator like `*`, `IS`, `BETWEEN` or `IN`, parenthesized if it is an
+  [[infix-call?]]."
+  [x context]
+  ((if (infix-call? x) parens! compile!) x context))
 
 (defn- equals! [sql nil-sql [x y :as args] context]
   (when-not (= (count args) 2)
@@ -788,7 +829,7 @@
                 context)
       ;; non-empty values
       (do
-        (compile! lhs context)
+        (infix-operand! lhs context)
         (append-sql! context (case f
                                :in     " IN "
                                :not-in " NOT IN "))
@@ -812,11 +853,11 @@
           (list! vs context))))))
 
 (defn- between! [[x y z] context]
-  (compile! x context)
+  (infix-operand! x context)
   (append-sql! context " BETWEEN ")
-  (compile! y context)
+  (infix-operand! y context)
   (append-sql! context " AND ")
-  (compile! z context))
+  (infix-operand! z context))
 
 (defn- cast! [[x type-name] context]
   (append-sql! context "CAST(")
@@ -843,8 +884,8 @@
   (append-sql! context " END"))
 
 (defn- exists! [sql subquery context]
+  (check-subquery-marked subquery)
   (append-sql! context sql)
-  ;; presumably always a map, but still don't compile it as such unless marked `^:allow-subquery`
   (compile! subquery context))
 
 (defn- inline! [x context]
@@ -908,13 +949,6 @@
   (append-sql! context ")"))
 
 (defn- param! [k context]
-
-(def ^:private binary-arithmetic-operators
-  #{:+ :- :/ :* :%})
-
-(defn- binary-arithmetic-call? [x]
-  (and (fn-call? x)
-       (binary-arithmetic-operators (get x 0))))
   (object! (param-value k context) context))
 
 (defn- unary-binary-operator! [f x context]
@@ -937,10 +971,8 @@
                   :not-like " NOT LIKE "
                   :is       " IS "
                   :is-not   " IS NOT "
-                  (str \space (name f) \space))
-          ;; wrap nested binary function calls in parens to avoid order-of-operation ambiguity
-          arg!  #((if (binary-arithmetic-call? %) parens! compile!) % context)]
-      (interpose-fn args arg! #(append-sql! context f-str)))))
+                  (str \space (name f) \space))]
+      (interpose-fn args #(infix-operand! % context) #(append-sql! context f-str)))))
 
 (defn- simple-fn! [f args context]
   (let [f (name f)]
@@ -1152,7 +1184,18 @@
                     {:f f, :args args}))))
 
 (defn- sequence! [xs context]
-  ((if (fn-call? xs) fn-call! list!) xs context))
+  (cond
+    (fn-call? xs)
+    (fn-call! xs context)
+
+    ;; a function call has to be a vector. Compiled as a list of values, a seq like `(cons :or clauses)` gives
+    ;; `("or", ...)`, which the database only rejects later with a misleading `Column "OR" not found`
+    (and (sequential? xs)
+         (keyword? (first xs)))
+    (throw (ex-info "A function call must be a vector, not a seq" {:form xs}))
+
+    :else
+    (list! xs context)))
 
 (extend-protocol Compile
   Object                      (compile! [this context] (object! this context))

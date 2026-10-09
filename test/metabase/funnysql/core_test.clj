@@ -34,6 +34,19 @@
       (lazy-seq [1 2])
       #{1 2})))
 
+(deftest ^:parallel seq-function-call-test
+  (testing "a function call has to be a vector -- one built as a seq throws instead of compiling to a list of values like
+            `(\"or\", ...)` that the database rejects with a misleading error"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"A function call must be a vector, not a seq"
+         (funnysql/format {:where (cons :or [[:= :a 1] [:= :b 2]])} :postgres))))
+  (testing "a seq of values is still fine"
+    (are [form expected] (= expected
+                            (funnysql/format form :postgres))
+      {:where [:in :a (list 1 2)]}        ["WHERE \"a\" IN (1, 2)"]
+      {:select (list :a :b), :from [:t]} ["SELECT \"a\", \"b\" FROM \"t\""])))
+
 (deftest ^:parallel equals-test
   (are [value expected] (= expected
                            (funnysql/format {:where [:= :field value]} :postgres))
@@ -253,11 +266,33 @@
     :not-exists "NOT EXISTS"))
 
 (deftest ^:parallel exists-unmarked-map-is-not-a-subquery-test
-  (testing "an unmarked map under `:exists`/`:not-exists` is never compiled as a subquery"
-    (are [op expected] (= [expected {:from [:table], :select [1]}]
-                          (funnysql/format {:where [op {:from [:table], :select [1]}]} :postgres))
-      :exists     "WHERE EXISTS ?"
-      :not-exists "WHERE NOT EXISTS ?")))
+  (testing "an unmarked map under `:exists`/`:not-exists` is never compiled as a subquery, and since binding it as a
+            `?` could only fail in the database, it throws"
+    (are [op] (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A subquery must be marked \^:allow-subquery"
+               (funnysql/format {:where [op {:from [:table], :select [1]}]} :postgres))
+      :exists
+      :not-exists)))
+
+(deftest ^:parallel infix-operand-parens-test
+  (testing "an infix expression used as the operand of another infix operator is parenthesized, so it means the same
+            thing it does in Honey SQL"
+    (are [form expected] (= expected
+                            (funnysql/format form :postgres))
+      [:* [:|| :a :b] 2]                     ["(\"a\" || \"b\") * 2"]
+      [:is [:or [:= :a 1] [:= :b 2]] false]  ["((\"a\" = 1) OR (\"b\" = 2)) IS false"]
+      [:between [:|| :a :b] "a" "z"]         ["(\"a\" || \"b\") BETWEEN ? AND ?" "a" "z"]
+      [:in [:= :a :b] [true]]                ["(\"a\" = \"b\") IN (true)"]))
+  (testing "including when `h2x/` helpers hide the operator in `::h2x/typed`"
+    (let [x (h2x/with-database-type-info :x "integer")]
+      (is (= ["(\"x\" + 1) * 2"]
+             (funnysql/format (h2x/* (h2x/+ x 1) 2) :postgres))))
+    (is (= ["\"deactivated_at\" < (\"x\" + 1)"]
+           (funnysql/format [:< :deactivated_at (h2x/+ (h2x/with-database-type-info :x "integer") 1)] :postgres))))
+  (testing "but not `:escape`, which is the postfix `ESCAPE` of the `LIKE` pattern rather than an expression of its own"
+    (is (= ["\"x\" LIKE ? ESCAPE '!'" "a!%"]
+           (funnysql/format [:like :x [:escape "a!%" (h2x/literal "!")]] :postgres)))))
 
 (deftest ^:parallel cast-test
   (is (= ["WHERE CAST(\"field\" AS integer) = 1"]
@@ -454,6 +489,17 @@
     (is (= ["SELECT * FROM \"a\" JOIN \"b\" ON false"]
            (funnysql/format {:select [:*] :from [:a] :join [:b false]} :postgres)))))
 
+(deftest ^:parallel from-and-join-unmarked-map-test
+  (testing "an unmarked map in `:from` or a join is never compiled as a subquery, and since binding it as a `?` could
+            only fail in the database, it throws"
+    (are [form] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"A subquery must be marked \^:allow-subquery"
+                 (funnysql/format form :postgres))
+      {:select [:*] :from [{:select [:id] :from [:t]}]}
+      {:select [:*] :from [[{:select [:id] :from [:t]} :s]]}
+      {:select [:*] :from [:a] :join [[{:select [:id] :from [:t]} :s] [:= :s.id :a.id]]})))
+
 (deftest ^:parallel empty-join-test
   (testing "Handle `nil`/empty joins; we still spit out an extra space because of the way things work but that's ok I guess"
     (is (= ["SELECT 1 AS \"v\" "]
@@ -467,13 +513,13 @@
                            :from   [:cte]} :postgres))))
 
 (deftest ^:parallel with-not-marked-allow-subquery-test
-  (is (= ["WITH \"cte\" AS (?), \"cte2\" AS (?) SELECT \"id\" FROM \"cte\""
-          {:select [:id], :from [:table]}
-          {:select [:*], :from [:cte]}]
-         (funnysql/format {:with   [[:cte  {:select [:id] :from [:table]}]
-                                    [:cte2 {:select [:*] :from [:cte]}]]
-                           :select [:id]
-                           :from   [:cte]} :postgres))))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"A subquery must be marked \^:allow-subquery"
+       (funnysql/format {:with   [[:cte  {:select [:id] :from [:table]}]
+                                  [:cte2 {:select [:*] :from [:cte]}]]
+                         :select [:id]
+                         :from   [:cte]} :postgres))))
 
 (deftest ^:parallel with-recursive-test
   (is (= ["WITH RECURSIVE \"cte\" AS (SELECT \"id\" FROM \"table\") SELECT \"id\" FROM \"cte\""]
@@ -482,10 +528,12 @@
                            :from           [:cte]} :postgres))))
 
 (deftest ^:parallel with-recursive-not-marked-allow-subquery-test
-  (is (= ["WITH RECURSIVE \"cte\" AS (?) SELECT \"id\" FROM \"cte\"" {:select [:id], :from [:table]}]
-         (funnysql/format {:with-recursive [[:cte {:select [:id] :from [:table]}]]
-                           :select         [:id]
-                           :from           [:cte]} :postgres))))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"A subquery must be marked \^:allow-subquery"
+       (funnysql/format {:with-recursive [[:cte {:select [:id] :from [:table]}]]
+                         :select         [:id]
+                         :from           [:cte]} :postgres))))
 
 (deftest ^:parallel with-recursive-columns-test
   (is (= [(str "WITH RECURSIVE \"parents\" (\"id\", \"name\") AS (SELECT \"id\", \"name\" FROM \"metabase_field\")"
@@ -523,10 +571,12 @@
                           :postgres))))
 
 (deftest ^:parallel union-not-marked-allow-subquery-test
-  (is (= ["? UNION ?" {:select [:id], :from [:a]} {:select [:id], :from [:b]}]
-         (funnysql/format {:union [{:select [:id] :from [:a]}
-                                   {:select [:id] :from [:b]}]}
-                          :postgres))))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"A subquery must be marked \^:allow-subquery"
+       (funnysql/format {:union [{:select [:id] :from [:a]}
+                                 {:select [:id] :from [:b]}]}
+                        :postgres))))
 
 (deftest ^:parallel union-all-test
   (is (= ["SELECT \"id\" FROM \"a\" UNION ALL SELECT \"id\" FROM \"b\""]
@@ -534,10 +584,12 @@
                                        ^:allow-subquery {:select [:id] :from [:b]}]} :postgres))))
 
 (deftest ^:parallel union-all-not-marked-allow-subquery-test
-  (is (= ["? UNION ALL ?" {:select [:id], :from [:a]} {:select [:id], :from [:b]}]
-         (funnysql/format {:union-all [{:select [:id] :from [:a]}
-                                       {:select [:id] :from [:b]}]}
-                          :postgres))))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"A subquery must be marked \^:allow-subquery"
+       (funnysql/format {:union-all [{:select [:id] :from [:a]}
+                                     {:select [:id] :from [:b]}]}
+                        :postgres))))
 
 (deftest ^:parallel insert-into-values-test
   (are [table] (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?)" "x" "y"]
@@ -583,14 +635,15 @@
                             :postgres)))))
 
 (deftest ^:parallel insert-from-select-not-marked-allow-subquery-test
-  (is (= ["INSERT INTO \"permissions_group_membership\" (\"group_id\", \"user_id\", \"is_group_manager\") ?"
-          {:from [[:permissions_group :g]], :join [[:core_user :u] [:= :u.id [:inline 1]]], :select [:g.id :u.id]}]
-         (funnysql/format {:insert-into
-                           [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
-                            {:select [:g.id :u.id]
-                             :from   [[:permissions_group :g]]
-                             :join   [[:core_user :u] [:= :u.id [:inline 1]]]}]}
-                          :postgres))))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"A subquery must be marked \^:allow-subquery"
+       (funnysql/format {:insert-into
+                         [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
+                          {:select [:g.id :u.id]
+                           :from   [[:permissions_group :g]]
+                           :join   [[:core_user :u] [:= :u.id [:inline 1]]]}]}
+                        :postgres))))
 
 (deftest ^:parallel degenerate-insert-test
   (testing "an INSERT with nothing to insert must fail closed rather than emit invalid SQL"
