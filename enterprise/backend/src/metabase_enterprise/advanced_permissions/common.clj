@@ -215,6 +215,30 @@
                                     (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
+(defenterprise new-table-sandboxed-groups
+  "Returns the subset of `group-ids` that must have new tables on `db-id` forced to `:blocked` view-data regardless of
+  the new table's schema, because they have a sandbox on a table in this DB. A sandbox is a stronger condition than
+  a few specific tables being blocked, so the presence of a sandbox on this DB for a group is sufficient to make any
+  new table `:blocked` for that group, even if the table came from a CSV upload.
+
+  OSS has no sandboxes, so the OSS implementation returns the empty set. On EE we deliberately do *not* consult
+  `enable-sandboxes?`: as with `apply-sandboxing`, we block *setting up* a sandbox without the feature (see
+  `metabase-enterprise.sandbox.api.gtap`) but keep enforcing one that is already configured, rather than silently
+  ignoring it when a token lapses. See UXW-4927 for the incident where an unlicensed EE instance leaked a
+  newly-synced table to a sandboxed group."
+  :feature :none ;; fail CLOSED if the feature is unavailable.
+  [db-id group-ids]
+  (if (empty? group-ids)
+    #{}
+    (into #{}
+          (map :group_id)
+          (t2/query {:select [[:s.group_id :group_id]]
+                     :from   [[(t2/table-name :model/Sandbox) :s]]
+                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
+                     :where  [:and
+                              [:in :s.group_id group-ids]
+                              [:= :t.db_id db-id]]}))))
+
 (defenterprise new-table-view-data-permission-levels
   "Returns a map of {group-id → permission-level} for multiple groups and a single DB."
   :feature :none ;; fail CLOSED if the feature is unavailable.
@@ -229,14 +253,16 @@
                                               :perm_value :blocked
                                               :group_id [:in group-ids]
                                               {:select-distinct [:group_id]})
-          sandbox-group-ids (into #{}
-                                  (map :group_id)
-                                  (t2/query {:select [[:s.group_id :group_id]]
-                                             :from   [[(t2/table-name :model/Sandbox) :s]]
-                                             :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
-                                             :where  [:and
-                                                      [:in :s.group_id group-ids]
-                                                      [:= :t.db_id db-id]]}))
+          sandbox-group-ids (new-table-sandboxed-groups db-id group-ids)
+          app-group-ids     (set (perms/data-app-group-ids))
+          app-view-data     (when (some app-group-ids group-ids)
+                              (perms/data-app-view-data-permission-level db-id))
           blocked-groups    (into (or blocked-group-ids #{})
                                   sandbox-group-ids)]
-      (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
+      ;; A new table must not introduce a block into an app group's database-wide legacy permission.
+      (into {} (map (fn [group-id]
+                      [group-id (cond
+                                  (app-group-ids group-id) app-view-data
+                                  (blocked-groups group-id) :blocked
+                                  :else :unrestricted)]))
+            group-ids))))
