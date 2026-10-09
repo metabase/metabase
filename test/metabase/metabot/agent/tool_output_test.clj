@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.resources :as resource-tools]
    [metabase.metabot.tools.search :as search-tools]
@@ -84,40 +85,40 @@
 
 (defn- read-resource-invocations! []
   [["read_resource: table (no fields)"
-    #(resource-tools/read-resource-tool
-      {:uris [(str "metabase://table/" (mt/id :orders))]})
+    #(test-util/call-tool resource-tools/read-resource-tool
+                          {:uris [(str "metabase://table/" (mt/id :orders))]})
     #"<table\b"]
    ["read_resource: table with fields"
-    #(resource-tools/read-resource-tool
-      {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
+    #(test-util/call-tool resource-tools/read-resource-tool
+                          {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
     #"<table\b"]
    ["read_resource: table field values"
     #(let [table-id (mt/id :orders)
            field-id (find-field-id table-id "QUANTITY")]
        (ensure-fresh-field-values! (mt/id :orders :quantity))
-       (resource-tools/read-resource-tool
-        {:uris [(str "metabase://table/" table-id "/fields/" field-id)]}))
+       (test-util/call-tool resource-tools/read-resource-tool
+                            {:uris [(str "metabase://table/" table-id "/fields/" field-id)]}))
     #"<field-metadata\b"]])
 
 (defn- read-resource-metric-invocations [metric-id]
   [["read_resource: metric (no dimensions)"
-    #(resource-tools/read-resource-tool
-      {:uris [(str "metabase://metric/" metric-id)]})
+    #(test-util/call-tool resource-tools/read-resource-tool
+                          {:uris [(str "metabase://metric/" metric-id)]})
     #"<metric\b"]
    ["read_resource: metric with dimensions"
-    #(resource-tools/read-resource-tool
-      {:uris [(str "metabase://metric/" metric-id "/dimensions")]})
+    #(test-util/call-tool resource-tools/read-resource-tool
+                          {:uris [(str "metabase://metric/" metric-id "/dimensions")]})
     #"<metric\b"]])
 
 (defn- read-resource-model-invocations [model-id]
   [["read_resource: model (no fields)"
-    #(resource-tools/read-resource-tool
-      {:uris [(str "metabase://model/" model-id)]})
+    #(test-util/call-tool resource-tools/read-resource-tool
+                          {:uris [(str "metabase://model/" model-id)]})
     ;; model->xml outputs <metabase-model> tag
     #"<metabase-model\b"]
    ["read_resource: model with fields"
-    #(resource-tools/read-resource-tool
-      {:uris [(str "metabase://model/" model-id "/fields")]})
+    #(test-util/call-tool resource-tools/read-resource-tool
+                          {:uris [(str "metabase://model/" model-id "/fields")]})
     #"<metabase-model\b"]])
 
 ;; ---------------------------------------------------------------------------
@@ -173,17 +174,17 @@
   (testing "read_resource with multiple URIs returns a single formatted :output string"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (resource-tools/read-resource-tool
-                      {:uris [(str "metabase://table/" (mt/id :orders))
-                              (str "metabase://table/" (mt/id :products))]})]
+        (let [result (test-util/call-tool resource-tools/read-resource-tool
+                                          {:uris [(str "metabase://table/" (mt/id :orders))
+                                                  (str "metabase://table/" (mt/id :products))]})]
           (assert-formatted-output result "multiple tables" #"<resources>"))))))
 
 (deftest read-resource-error-uri-test
   (testing "read_resource with bad URI returns :output string, not an exception"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [{:keys [output]} (resource-tools/read-resource-tool
-                                {:uris ["metabase://table/999999999"]})]
+        (let [{:keys [output]} (test-util/call-tool resource-tools/read-resource-tool
+                                                    {:uris ["metabase://table/999999999"]})]
           (is (string? output) "error case must still return :output string")
           (testing "Should not contain EDN patterns"
             (doseq [pattern edn-patterns]
@@ -323,8 +324,8 @@
                                                      :type          :model}]
             (ensure-fresh-field-values! (mt/id :orders :quantity))
             (let [field-id (mt/id :orders :quantity)
-                  result   (resource-tools/read-resource-tool
-                            {:uris [(str "metabase://model/" model-id "/fields/" field-id)]})]
+                  result   (test-util/call-tool resource-tools/read-resource-tool
+                                                {:uris [(str "metabase://model/" model-id "/fields/" field-id)]})]
               (assert-formatted-output result "model field values" #"<field-metadata\b"))))))))
 
 (deftest read-resource-metric-dimension-values-test
@@ -342,6 +343,6 @@
             ;; Use a real filterable field ID from the metric's source table
             ;; Temp metrics may not have fingerprints — "No metadata available" is also valid
             (let [field-id (mt/id :orders :id)
-                  result   (resource-tools/read-resource-tool
-                            {:uris [(str "metabase://metric/" metric-id "/dimensions/" field-id)]})]
+                  result   (test-util/call-tool resource-tools/read-resource-tool
+                                                {:uris [(str "metabase://metric/" metric-id "/dimensions/" field-id)]})]
               (assert-formatted-output result "metric dimension values" #"(?:<field-metadata\b|No metadata available)"))))))))

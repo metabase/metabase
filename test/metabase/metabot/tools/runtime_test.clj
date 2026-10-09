@@ -280,24 +280,35 @@
       (is (= {:output "line one\nline two"} outcome))
       (is (string? (:output outcome))))))
 
+(defn- capped-tool
+  "A batched-shaped tool whose item cap lives in its `:args`, with `opts` on the `:sequential`
+  entry."
+  [opts]
+  (tool {:name "capped" :description "Takes at most 5."
+         :args [:map {:closed true}
+                [:uris [:sequential (merge {:min 1 :max 5} opts) :string]]]}
+        (fn [_ _] {:output "ok"})))
+
+(defn- over-the-cap
+  [tool]
+  (binding [scope/*current-user-scope* #{"*"}]
+    (tools.runtime/invoke (tools/entries [tool])
+                          (ctx {:tool-names #{"capped"}})
+                          "capped" {:uris ["a" "b" "c" "d" "e" "f"]})))
+
 (deftest ^:parallel an-item-limit-is-a-schema-fact-test
-  (testing "RECORDED, NOT BLESSED. The cap belongs in the schema, but the generated message is
-           worse than the hand-written one it replaces. `read_resource` says today:
-
-             Too many URIs provided (6). Please limit to 5 URIs maximum. Be more selective and
-             focus on the most relevant items for the current task or fetch them in batches.
-
-           The limit now lives in a schema the tool composed itself, so an `:error/message` on that
-           entry is easy to add. That is the likely answer."
-    (let [tool    (tool {:name "capped" :description "Takes at most 5."
-                         :args [:map {:closed true}
-                                [:uris [:sequential {:min 1 :max 5} :string]]]}
-                        (fn [_ _] {:output "ok"}))
-          outcome (binding [scope/*current-user-scope* #{"*"}]
-                    (tools.runtime/invoke (tools/entries [tool])
-                                          (ctx {:tool-names #{"capped"}})
-                                          "capped" {:uris ["a" "b" "c" "d" "e" "f"]}))]
+  (testing "an item cap belongs in `:args`, so the runtime rejects the call before the tool runs
+           and the model is told how to repair it"
+    (let [outcome (over-the-cap (capped-tool nil))]
       (is (= "Invalid tool arguments: `uris` should have at most 5 elements; received an array."
+             (:output outcome)))
+      (is (= {:class :validation :code :invalid-arguments} (:error outcome)))))
+  (testing "the generated sentence is accurate but says nothing about what to do instead, so a tool
+           with teaching to do writes its own with `:error/message`. This is what resolved the open
+           question the branch recorded here: `read_resource` had a hand-written count check whose
+           text was better than the generated one, and this is where that text now lives."
+    (let [outcome (over-the-cap (capped-tool {:error/message "must be an array of 1 to 5 URIs"}))]
+      (is (= "Invalid tool arguments: `uris` must be an array of 1 to 5 URIs; received an array."
              (:output outcome)))
       (is (= {:class :validation :code :invalid-arguments} (:error outcome))))))
 

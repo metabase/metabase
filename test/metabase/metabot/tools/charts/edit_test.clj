@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.charts.edit :as edit-chart]
    [metabase.metabot.tools.construct :as tools.construct]
@@ -135,7 +136,7 @@
     (let [table-fields-uri (str "metabase://table/" (mt/id :products) "/fields")
 
           {[{{table :structured-output} :content}] :resources}
-          (tools.resources/read-resource-tool {:uris [table-fields-uri]})
+          (test-util/call-tool tools.resources/read-resource-tool {:uris [table-fields-uri]})
 
           ;; Representations-format query: LLM-facing code should prefer the portable_fk path
           ;; over numeric field ids. Take them straight from the read_resource response.
@@ -311,12 +312,12 @@
     (mt/with-current-user (test.users/user->id :crowberto)
       (let [;; Discover portable FKs the same way the LLM does: via read_resource /fields.
             {[{{orders-details :structured-output} :content}] :resources}
-            (tools.resources/read-resource-tool
-             {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
+            (test-util/call-tool tools.resources/read-resource-tool
+                                 {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
 
             {[{{products-details :structured-output} :content}] :resources}
-            (tools.resources/read-resource-tool
-             {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
+            (test-util/call-tool tools.resources/read-resource-tool
+                                 {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
 
             orders-fk           (:portable_fk orders-details)
             product-id-field    (some (fn [{:keys [display_name] :as f}]
