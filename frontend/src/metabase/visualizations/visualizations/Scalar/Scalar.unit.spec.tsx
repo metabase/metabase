@@ -416,11 +416,16 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
   });
 
-  it.each([
-    ["the cell is null", [[null]]],
-    ["the question returned no rows", []],
-  ])("renders the value when a self-column range's %s", (_name, rows) => {
-    setup(createScalarSeries({ rows }), [
+  it("renders the value when a self-column range's cell is null", () => {
+    setup(createScalarSeries({ rows: [[null]] }), [
+      { min: "count", max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
+  });
+
+  it("renders the value when a self-column range's question returned no rows", () => {
+    setup(createScalarSeries({ rows: [] }), [
       { min: "count", max: null, color: "green", label: "above goal" },
     ]);
 
