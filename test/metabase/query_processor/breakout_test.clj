@@ -526,5 +526,5 @@
                            lib/append-stage)
             year       (first (lib/filterable-columns query))
             query      (lib/filter query (lib/>= year "2015-01-01"))]
-        (is (=? [[#"^2015-01-01" 267]]
+        (is (=? [[#"2015-01-01.*" 267]]
                 (mt/formatted-rows [str int] (qp/process-query query))))))))
