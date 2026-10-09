@@ -18,7 +18,6 @@
   (vllm/server
    {:slug           "openai-compatible"
     :display-name   "OpenAI-compatible"
-    :error-fallback #(tru "OpenAI-compatible API error (HTTP {0})" %)
     :errors         {401 #(tru "The server did not accept the API key")
                      404 #(tru "The server has no Chat Completions endpoint at this base URL, or no model with this ID")}}
    {:base-url-missing        #(tru "No base URL is set for this OpenAI-compatible connection")
