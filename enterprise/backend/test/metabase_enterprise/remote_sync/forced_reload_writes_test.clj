@@ -79,6 +79,27 @@
                     (.toInstant ^java.time.OffsetDateTime (:created_at after))))
              (is (= 1 (get-in after [:dataset_query :stages 0 :filters 0 3]))))))))))
 
+(deftest forced-reload-repairs-drift-in-derived-card-columns-test
+  (testing "A forced pull restores the card columns that derive from dataset_query and that the file does not carry"
+    (mt/with-temp [:model/Database {other-db :id} {:engine :h2 :details {}}]
+      (search.tu/with-index-disabled
+        (cost/do-with-content!
+         {:cards 2}
+         (fn [tree]
+           (let [src     (rs.test/versioned-source :trees {"v0" tree} :current "v0")
+                 card-id (t2/select-one-pk :model/Card :name "Cost card 001")
+                 derived #(into {} (t2/query-one {:select [:database_id :table_id]
+                                                  :from   [:report_card]
+                                                  :where  [:= :id card-id]}))]
+             (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "baseline load")
+             (let [synced (derived)]
+               (is (= {:database_id (mt/id) :table_id (mt/id :venues)} synced))
+               ;; a direct DB edit: no hooks derive the columns again, and no events reach the ledger
+               (t2/query {:update :report_card :set {:database_id other-db :table_id nil} :where [:= :id card-id]})
+               (is (= {:database_id other-db :table_id nil} (derived)) "drift is in place before the pull")
+               (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "forced pull")
+               (is (= synced (derived)))))))))))
+
 (defn- stored-card-row
   "The stored `card_schema`, `dataset_query` and `updated_at` of `card-id`, read without the after-select schema
   upgrade, which would report the current schema version whether or not the row holds it."
