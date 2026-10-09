@@ -747,9 +747,12 @@
   (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
 
 (mu/defn table-location
-  "The ID, Database ID, and schema of the Table with `table-id`."
+  "The ID, Database ID, schema, and data source of the Table with `table-id`.
+
+  `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
+  see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."

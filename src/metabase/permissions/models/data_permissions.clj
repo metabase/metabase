@@ -1333,6 +1333,16 @@
   []
   #{})
 
+(defenterprise new-table-sandboxed-groups
+  "Returns the subset of `group-ids` whose new tables on `db-id` have a sandbox somewhere in this DB, and must therefore
+  have their `view-data` forced to `:blocked` regardless of the new table's schema.
+
+  On OSS there are no sandboxes, so the set is always empty. The EE implementation is `:feature :none`: a sandbox that
+  is already configured keeps forcing new tables to `:blocked` even when the token no longer grants `:sandboxes`."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id _group-ids]
+  #{})
+
 ;;; ---------------------------------------- Bulk permission functions ------------------------------------------------
 ;; These functions set permissions for newly-created entities (groups, databases, tables) using batch SQL operations
 ;; instead of per-row mutations. They are intended to be called from within a coarse cluster lock.
@@ -1492,19 +1502,43 @@
                                  (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
                                {} table-level)
      :all-db-tables    (permissions.db/active-table-locations-for-database db-id)
-     :view-data-levels (new-table-view-data-permission-levels db-id group-ids)}))
+     :view-data-levels (new-table-view-data-permission-levels db-id group-ids)
+     :sandboxed-groups (new-table-sandboxed-groups db-id group-ids)}))
 
 (defn- compute-actual-value
-  "Per-entry resolution: enterprise view-data override, then schema-consistency
-  if all existing tables in the schema agree, else the caller's default."
-  [{:keys [view-data-levels schema-vals-idx]}
+  "Per-entry resolution for a new table's permission value for a given `group-id` and `perm-type`.
+
+  For perms other than `view-data`, the new table inherits its schema's value when all existing tables in that schema
+  agree, otherwise the default supplied by the caller.
+
+  For `view-data` the order depends on where the table came from, which we read off its `:data_source`:
+
+  - Sync (any other data source): the enterprise DB-wide override wins. If the group has *any* `:blocked` table (or a
+    sandbox) in the DB, then it has only partial access, so a newly-discovered, unclassified table fails safe to
+    `:blocked`.
+  - Upload (`:data_source` is `:upload`): if the permissions for all (active) tables in the new table's schema are
+    unanimously `:unrestricted`, then the new table is granted the same permission.
+    - This is a specific override for an uploaded table, since otherwise the user would be both locked out of their
+      own freshly uploaded table *and* prevented from making any further uploads! (Since uploads require at least one
+      group with unanimous `:unrestricted` access to the target schema. See UXW-3217.)
+
+  Note that if the group has a sandbox anywhere on this DB, the uploaded table is still `:blocked`, preventing any
+  leak of data to that group which should be sandboxed."
+  [{:keys [sandboxed-groups schema-vals-idx view-data-levels]}
    {:keys [group-id perm-type default-value table]}]
-  (or (when (= perm-type :perms/view-data)
-        (get view-data-levels group-id))
-      (let [sv (get-in schema-vals-idx [group-id perm-type (:schema table)])]
-        (when (and (seq sv) (= (count sv) 1))
-          (first sv)))
-      default-value))
+  (let [view-data?   (= perm-type :perms/view-data)
+        upload?      (= :upload (some-> table :data_source keyword))
+        schema-value (let [sv (get-in schema-vals-idx [group-id perm-type (:schema table)])]
+                       (when (and (seq sv) (= (count sv) 1))
+                         (first sv)))
+        override     (when view-data?
+                       (get view-data-levels group-id))]
+    (or (when (and view-data? (contains? sandboxed-groups group-id))
+          :blocked)
+        (if (and view-data? upload?)
+          (or schema-value override)
+          (or override schema-value))
+        default-value)))
 
 (defn- classify-key
   "For one `(group-id, perm-type)`, return `{:deletes [id?] :rows [perm-row...]}`.
@@ -1580,7 +1614,10 @@
 
    `group-perm-defaults` is a seq of `{:group-id :perm-type :default-value}`
    triples. Thin wrapper over [[set-default-table-permissions-bulk!]] for
-   the single-table case."
+   the single-table case.
+
+   `table` may be a Table ID or a Table map. A map must carry `:data_source`, since [[compute-actual-value]] branches
+   on whether the table came from an upload; the `:model/Table` after-insert hook passes the full inserted row."
   [table group-perm-defaults]
   (let [table (if (map? table)
                 table
