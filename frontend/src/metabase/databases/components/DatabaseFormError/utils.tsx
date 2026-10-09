@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { useFormErrorMessage } from "metabase/forms";
+import { useFormContext, useFormErrorMessage } from "metabase/forms";
 import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
@@ -48,10 +48,19 @@ export const getDocsLinkConditionally = (
   return linkContent;
 };
 
+/**
+ * Returned when a non-admin changes connection settings without re-entering the saved secrets they'd be sent with.
+ * No connection was attempted, so connection troubleshooting doesn't apply.
+ */
+const SECRETS_REENTRY_REQUIRED = "secrets-reentry-required";
+
 export const useDatabaseErrorDetails = () => {
   const { errors } = useFormikContext<DatabaseData>();
+  const { errorCode } = useFormContext();
   const originalErrorMessage = useFormErrorMessage();
+  const isSecretsReentryError = errorCode === SECRETS_REENTRY_REQUIRED;
   const isHostAndPortError =
+    !isSecretsReentryError &&
     typeof errors?.details === "object" &&
     !!(errors?.details?.["host"] || errors?.details?.["port"]);
   const errorMessage = isHostAndPortError
@@ -61,5 +70,6 @@ export const useDatabaseErrorDetails = () => {
   return {
     errorMessage,
     isHostAndPortError,
+    isSecretsReentryError,
   };
 };
