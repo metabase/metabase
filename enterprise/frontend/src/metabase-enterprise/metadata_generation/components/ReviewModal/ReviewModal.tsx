@@ -57,6 +57,7 @@ import {
   getTableLabel,
   hasOpenDecisions,
   isHumanSet,
+  isSuggestionDecidable,
 } from "./utils";
 
 type ReviewModalProps = {
@@ -461,6 +462,7 @@ function SuggestionRow({
   decide,
 }: SuggestionRowProps) {
   const humanSet = isHumanSet(suggestion);
+  const isConflict = humanSet && isSuggestionDecidable(suggestion);
   const current = formatSuggestionValue(
     suggestion.attribute,
     suggestion.current_value,
@@ -472,7 +474,7 @@ function SuggestionRow({
 
   return (
     <tr
-      className={cx({ [S.humanSet]: humanSet })}
+      className={cx({ [S.humanSet]: isConflict })}
       data-testid="metadata-generation-suggestion"
     >
       <td>
@@ -502,6 +504,7 @@ function SuggestionRow({
           {suggestion.reasoning && (
             <Tooltip label={suggestion.reasoning} maw="25rem" multiline>
               <Icon
+                className={S.noShrink}
                 name="info"
                 c="text-secondary"
                 aria-label={t`Reasoning`}
@@ -521,9 +524,10 @@ function SuggestionRow({
           </Badge>
         )}
       </td>
-      <td>
+      <td className={S.decision}>
         <Group gap="xs" wrap="nowrap">
           <Badge
+            className={S.noShrink}
             variant="light"
             color={getSuggestionStatusColor(suggestion.status)}
             data-testid="metadata-generation-suggestion-status"

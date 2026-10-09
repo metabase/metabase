@@ -42,3 +42,11 @@
   max-width: 20rem;
   overflow-wrap: anywhere;
 }
+
+.decision {
+  white-space: nowrap;
+}
+
+.noShrink {
+  flex-shrink: 0;
+}
