@@ -574,8 +574,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="new" entity-types='["table"]' />
       `);
 
-        H.getSimpleEmbedIframeContent().should("contain", "Orders");
-        H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
+        H.getSimpleEmbedIframeContent().within(() => {
+          H.popover().findByText("Orders").should("be.visible");
+          H.popover().findByText("Orders Model").should("not.exist");
+        });
       });
 
       it("should support json5 with strings wrapped in single quotes", () => {
@@ -585,8 +587,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="new" entity-types="['table']" />
       `);
 
-        H.getSimpleEmbedIframeContent().should("contain", "Orders");
-        H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
+        H.getSimpleEmbedIframeContent().within(() => {
+          H.popover().findByText("Orders").should("be.visible");
+          H.popover().findByText("Orders Model").should("not.exist");
+        });
       });
     });
 
