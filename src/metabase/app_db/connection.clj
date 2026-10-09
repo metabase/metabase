@@ -283,9 +283,15 @@
   ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
   ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
   ;; immediately rather than enqueue into this now-drained accumulator.
+  ;; A thunk registered late runs on a thread that still has every binding of the finished transaction, so clear
+  ;; the rest too: its before-commit callbacks have also run, and its state must not be mistaken for a live one.
   (binding [t2.conn/*current-connectable* nil
             *transaction-depth*           0
-            *after-commit-callbacks*      nil]
+            *after-commit-callbacks*      nil
+            *before-commit-callbacks*     nil
+            *transaction-state*           nil
+            *rollback-required*           nil
+            *open-savepoints*             nil]
     ;; the transaction already committed; a failing callback must not unwind it
     (try (thunk) (catch Throwable t (log/errorf "after-commit callback failed: %s" (ex-message t))))))
 

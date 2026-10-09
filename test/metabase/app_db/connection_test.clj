@@ -226,10 +226,16 @@
         (mdb.connection/do-after-commit
          #(deliver callback-state
                    {:current-connectable t2.connection/*current-connectable*
-                    :in-transaction?     (mdb.connection/in-transaction?)}))))
+                    :in-transaction?     (mdb.connection/in-transaction?)
+                    :transaction-state   (mdb.connection/transaction-state)
+                    :before-commit-ran?  (let [ran? (atom false)]
+                                           (mdb.connection/do-before-commit (fn [] (reset! ran? true)))
+                                           @ran?)}))))
     (deliver committed true)
     (is (= {:current-connectable nil
-            :in-transaction?     false}
+            :in-transaction?     false
+            :transaction-state   nil
+            :before-commit-ran?  true}
            (deref callback-state 1000 ::timed-out)))))
 
 (deftest after-commit-callback-registered-after-a-rollback-never-runs-test
