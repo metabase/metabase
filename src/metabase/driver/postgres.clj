@@ -405,7 +405,7 @@
                [:pn.nspname :table-schema]
                [:pc.relname :table-name]
                [false :pk?]
-               [nil :field-comment]
+               [[:col_description :pc.oid :pa.attnum] :field-comment]
                [false :database-required]
                [nil   :database-default]
                [false :database-is-auto-increment]
