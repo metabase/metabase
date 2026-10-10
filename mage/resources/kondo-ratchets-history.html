@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ratchet history</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #ffffff; --line: #e4e4e0; --text: #1f2328; --muted: #6b7280;
+    --good: #1a7f37; --bad: #c62828; --accent: #4c5fd5; --pick: #eef0fd; --warn: #9a6700;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171a; --panel: #1c1f23; --line: #2e3238; --text: #e6e8eb; --muted: #9aa3ad;
+      --good: #4ac26b; --bad: #ff7b72; --accent: #9aa8ff; --pick: #262b45; --warn: #d4a72c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100vh; }
+  nav { border-right: 1px solid var(--line); padding: 20px 12px; position: sticky; top: 0; height: 100vh;
+        overflow-y: auto; }
+  nav h1 { font-size: 15px; margin: 0 8px 4px; }
+  nav .asof { color: var(--muted); font-size: 12px; margin: 0 8px 16px; }
+  nav h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+           margin: 18px 8px 4px; }
+  nav a { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 6px;
+          color: var(--text); text-decoration: none; white-space: nowrap; }
+  nav a:hover { background: var(--pick); }
+  nav a.on { background: var(--pick); color: var(--accent); font-weight: 600; }
+  nav a.empty { color: var(--muted); }
+  nav a .n { font-family: var(--mono); font-size: 12px; }
+  main { padding: 28px 32px 64px; max-width: 1080px; }
+  main > header h2 { font-size: 24px; margin: 0; }
+  main > header p { color: var(--muted); margin: 2px 0 0; }
+  .question { color: var(--muted); margin: 0 0 20px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .tile .k { color: var(--muted); font-size: 12px; }
+  .tile .v { font: 600 24px/1.2 var(--mono); }
+  section { margin-top: 30px; }
+  section h3 { font-size: 15px; margin: 0 0 2px; }
+  section .hint { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 5px 12px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); }
+  tbody tr + tr td { border-top: 1px solid var(--line); }
+  tfoot td { border-top: 2px solid var(--line); font-weight: 600; }
+  .num { font-family: var(--mono); }
+  .name { font-family: var(--mono); font-size: 13px; }
+  .good { color: var(--good); } .bad { color: var(--bad); } .zero { color: var(--muted); }
+  .commit { margin: 0 0 4px; }
+  .commit a { color: var(--accent); text-decoration: none; font-family: var(--mono); font-size: 13px; }
+  .commit a:hover { text-decoration: underline; }
+  .commit .who { font-weight: 600; }
+  .commit .subject { color: var(--muted); }
+  .items { margin: 0 0 12px; padding: 0; list-style: none; }
+  .items li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; }
+  .items li .num { text-align: right; }
+  .warn { border-left: 3px solid var(--warn); }
+  /* chart roles: grown and shrunk carry the status hues, read by position and legend as well as color */
+  :root { --grown: #d03b3b; --shrunk: #0ca30c; --net: #2a78d6; --level: #2a78d6; --grid: #e1e0d9; --axis: #c3c2b7; }
+  @media (prefers-color-scheme: dark) { :root { --grid: #2c2c2a; --axis: #45453f; } }
+  .chart-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 8px;
+                position: relative; }
+  .chart-card h4 { margin: 0; font-size: 14px; }
+  .chart-card .sub { color: var(--muted); font-size: 12px; margin: 0 0 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; margin: 0 0 4px; }
+  .legend span.key { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle;
+                     margin-right: 6px; }
+  .legend b { font-family: var(--mono); font-weight: 600; }
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.chart text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+  svg.chart .grid { stroke: var(--grid); stroke-width: 1; }
+  svg.chart .zero { stroke: var(--axis); stroke-width: 1; }
+  svg.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  svg.chart .cross { stroke: var(--axis); stroke-width: 1; visibility: hidden; }
+  svg.chart .dot { stroke: var(--panel); stroke-width: 2; visibility: hidden; }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line);
+         border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
+         max-width: 300px; visibility: hidden; z-index: 2; }
+  .tip .when { color: var(--muted); }
+  .tip .what { margin: 2px 0 4px; }
+  .tip .row { display: flex; justify-content: space-between; gap: 16px; }
+  .tip .row b { font-family: var(--mono); }
+  details.data { margin-top: 10px; }
+  details.data summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  .none { color: var(--muted); padding: 40px 0; }
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }
+    main { padding: 20px 16px 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<script type="application/json" id="data">__DATA__</script>
+<script>
+const data = JSON.parse(document.getElementById("data").textContent);
+const byId = Object.fromEntries(data.periods.map(p => [p.id, p]));
+
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const signed = n => (n > 0 ? "+" + n : String(n));
+// shrunk is good, grown is bad; a net is judged by its sign, and a net of zero keeps the text color
+const tone = (n, kind) => n === 0 ? (kind === "net" ? "" : "zero") : (n < 0 ? "good" : "bad");
+const num = (n, kind) => `<td class="num ${tone(n, kind)}">${signed(n)}</td>`;
+
+function commit(c) {
+  const sha = `<a href="${esc(data.repo)}/commit/${esc(c.sha)}">${esc(c.sha.slice(0, 10))}</a>`;
+  const pr = c.pr ? ` <a href="${esc(data.repo)}/pull/${c.pr}">#${c.pr}</a>` : "";
+  return `<p class="commit">${sha}${pr} <span class="who">${esc(c.author)}</span> <span class="subject">${esc(c.subject)}</span></p>`;
+}
+
+function table(head, rows, foot) {
+  return `<div class="scroll"><table><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>` +
+    `<tbody>${rows.join("")}</tbody>${foot ? `<tfoot>${foot}</tfoot>` : ""}</table></div>`;
+}
+
+function section(title, hint, body) {
+  return body ? `<section><h3>${esc(title)}</h3>${hint ? `<p class="hint">${esc(hint)}</p>` : ""}${body}</section>` : "";
+}
+
+function biggest(title, b) {
+  if (!b) return "";
+  const shown = b.measures.slice(0, 8), more = b.measures.slice(8);
+  const items = shown.map(m => `<li><span class="num ${tone(m.delta)}">${signed(m.delta)}</span><span class="name">${esc(m.measure)}</span></li>`);
+  if (more.length) {
+    const sum = more.reduce((a, m) => a + m.delta, 0);
+    items.push(`<li><span class="num ${tone(sum)}">${signed(sum)}</span><span>${more.length} more linters</span></li>`);
+  }
+  return `<div class="card"><h4>${esc(title)}</h4>${commit(b.commit)}` +
+    `<p><span class="num ${tone(b.net)}"><b>${signed(b.net)}</b></span> net, across ${b.measures.length} linter${b.measures.length === 1 ? "" : "s"}</p>` +
+    `<ul class="items">${items.join("")}</ul></div>`;
+}
+
+function ranking(rows, keep, order, cols) {
+  const picked = rows.filter(keep).sort((a, b) => order(a) - order(b) || a.author.localeCompare(b.author));
+  if (!picked.length) return "";
+  return table(["", ...cols.map(c => c[0])],
+    picked.map(r => `<tr><td>${esc(r.author)}</td>${cols.map(c => c[2](r[c[1]])).join("")}</tr>`));
+}
+
+function groups(list, item, cls) {
+  if (!list.length) return "";
+  return `<div class="card ${cls || ""}">` +
+    list.map(g => commit(g.commit) + `<ul class="items">${g.items.map(item).join("")}</ul>`).join("") + "</div>";
+}
+
+// ---- charts: step lines over time, one point per commit that changed a budget ----
+
+const W = 520, H = 220, M = {l: 44, r: 12, t: 10, b: 22};
+const drawn = {};
+const day = t => new Date(t).toLocaleDateString("en-GB", {day: "numeric", month: "short", timeZone: "UTC"});
+
+function ticks(lo, hi, n) {
+  const span = (hi - lo) || 1, mag = Math.pow(10, Math.floor(Math.log10(span / n)));
+  const step = Math.max(1, [1, 2, 5, 10].map(m => m * mag).find(s => span / s <= n + 1));
+  const out = [];
+  for (let v = Math.floor(lo / step) * step; v < hi + step * 0.999; v += step) out.push(Math.round(v));
+  return out;
+}
+
+// The points of a period: its commits, each with running totals from the period's start.
+function points(p) {
+  const inside = data.series.filter(s => (!p.from || s.date.slice(0, 10) >= p.from) && (!p.to || s.date.slice(0, 10) < p.to));
+  let shrunk = 0, grown = 0;
+  return inside.map(s => {
+    shrunk += s.shrunk; grown += s.grown;
+    return {...s, t: Date.parse(s.date), cumShrunk: shrunk, cumGrown: grown, cumNet: shrunk + grown};
+  });
+}
+
+// One chart: `series` are {key, name, color, area}; `start` holds each series' value before the first point.
+function chart(id, title, sub, pts, span, series, start, zero) {
+  const values = pts.flatMap(pt => series.map(s => pt[s.key])).concat(series.map(s => start[s.key]), zero ? [0] : []);
+  const ys = ticks(Math.min(...values), Math.max(...values), 4);
+  const lo = ys[0], hi = ys[ys.length - 1];
+  const x = t => M.l + (t - span[0]) / ((span[1] - span[0]) || 1) * (W - M.l - M.r);
+  const y = v => M.t + (hi - v) / ((hi - lo) || 1) * (H - M.t - M.b);
+  // a budget holds its value until the next commit, so the line steps
+  const step = s => `M${x(span[0])},${y(start[s.key])}` + pts.map(pt => `H${x(pt.t)}V${y(pt[s.key])}`).join("") + `H${x(span[1])}`;
+  const grid = ys.map(v => `<line class="${zero && v === 0 ? "zero" : "grid"}" x1="${M.l}" x2="${W - M.r}" y1="${y(v)}" y2="${y(v)}"/>` +
+    `<text x="${M.l - 8}" y="${y(v) + 4}" text-anchor="end">${zero ? signed(v) : v}</text>`).join("");
+  const dates = [0, 1, 2, 3].map(i => span[0] + (span[1] - span[0]) * i / 3).map((t, i) =>
+    `<text x="${x(t)}" y="${H - 4}" text-anchor="${i === 0 ? "start" : i === 3 ? "end" : "middle"}">${day(t)}</text>`).join("");
+  const areas = series.filter(s => s.area).map(s =>
+    `<path d="${step(s)}V${y(0)}H${x(span[0])}Z" fill="var(${s.color})" opacity="0.1"/>`).join("");
+  const lines = series.map(s => `<path class="line" d="${step(s)}" stroke="var(${s.color})"/>`).join("");
+  const dots = series.map(s => `<circle class="dot" data-key="${s.key}" r="4.5" fill="var(${s.color})"/>`).join("");
+  const last = pts[pts.length - 1];
+  const legend = series.length > 1 ? `<p class="legend">${series.map(s =>
+    `<span><span class="key" style="border-color: var(${s.color})"></span>${esc(s.name)} <b>${signed(last[s.key])}</b></span>`).join("")}</p>` : "";
+  drawn[id] = {pts, series, x, y, zero};
+  return `<div class="chart-card"><h4>${esc(title)}</h4><p class="sub">${esc(sub)}</p>${legend}` +
+    `<svg class="chart" id="${id}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${grid}${dates}${areas}${lines}` +
+    `<line class="cross" y1="${M.t}" y2="${H - M.b}"/>${dots}</svg><div class="tip"></div></div>`;
+}
+
+function trends(p) {
+  const pts = points(p);
+  if (pts.length < 2) return "";
+  const before = data.series[data.series.findIndex(s => s.sha === pts[0].sha) - 1];
+  const end = Math.min(p.to ? Date.parse(p.to) : Infinity, Date.parse(data.generated) + 864e5);
+  const span = [p.from ? Date.parse(p.from) : pts[0].t, Math.max(end, pts[pts.length - 1].t)];
+  const last = pts[pts.length - 1];
+  const rows = pts.map(pt => `<tr><td>${esc(pt.date.slice(0, 10))} ${commitLink(pt)}</td>${num(pt.shrunk)}${num(pt.grown)}` +
+    `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
+  return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
+    `<div class="grid2">` +
+    chart("c-change", "Cumulative change", "Suppressions grown (up) and shrunk (down) since the start of the period, and their net.",
+      pts, span,
+      [{key: "cumGrown", name: "Grown", color: "--grown", area: true},
+       {key: "cumNet", name: "Net", color: "--net"},
+       {key: "cumShrunk", name: "Shrunk", color: "--shrunk", area: true}],
+      {cumGrown: 0, cumNet: 0, cumShrunk: 0}, true) +
+    chart("c-level", "Total budget", `Every numeric budget added up: ${last.level} at the end of the period. A new ratchet lifts it without any new suppression.`,
+      pts, span, [{key: "level", name: "Total budget", color: "--level"}],
+      {level: before ? before.level : pts[0].level}, false) +
+    `</div><details class="data"><summary>Data table</summary>` +
+    table(["commit", "shrunk", "grown", "net so far", "total budget"], rows) + `</details>`);
+}
+
+function commitLink(c) {
+  return `<a href="${esc(data.repo)}/commit/${esc(c.sha)}">${esc(c.sha.slice(0, 10))}</a>`;
+}
+
+// Crosshair and tooltip: the pointer picks the latest commit at or before its x.
+function wire() {
+  for (const [id, {pts, series, x, y, zero}] of Object.entries(drawn)) {
+    const svg = document.getElementById(id);
+    if (!svg) continue;
+    const tip = svg.parentNode.querySelector(".tip"), cross = svg.querySelector(".cross");
+    const hide = () => { tip.style.visibility = cross.style.visibility = "hidden"; svg.querySelectorAll(".dot").forEach(d => d.style.visibility = "hidden"); };
+    svg.addEventListener("pointerleave", hide);
+    svg.addEventListener("pointermove", e => {
+      const box = svg.getBoundingClientRect(), px = (e.clientX - box.left) / box.width * W;
+      const at = pts.filter(pt => x(pt.t) <= px).pop() || pts[0];
+      cross.setAttribute("x1", x(at.t)); cross.setAttribute("x2", x(at.t)); cross.style.visibility = "visible";
+      svg.querySelectorAll(".dot").forEach(d => {
+        d.setAttribute("cx", x(at.t)); d.setAttribute("cy", y(at[d.dataset.key])); d.style.visibility = "visible";
+      });
+      // commit subjects and author names are untrusted text
+      tip.textContent = "";
+      const add = (cls, text) => { const el = document.createElement("div"); el.className = cls; el.textContent = text; tip.appendChild(el); return el; };
+      add("when", `${at.date.slice(0, 10)} · ${at.author}`);
+      add("what", at.subject);
+      for (const s of series) {
+        const row = add("row", ""), name = document.createElement("span"), value = document.createElement("b");
+        name.textContent = s.name; value.textContent = zero ? signed(at[s.key]) : at[s.key];
+        row.append(name, value);
+      }
+      const left = e.clientX - box.left + 28;
+      tip.style.left = (left + 300 > box.width ? Math.max(0, left - 340) : left) + "px";
+      tip.style.top = (svg.offsetTop + 8) + "px";
+      tip.style.visibility = "visible";
+    });
+  }
+}
+
+function render(p) {
+  const r = p.report;
+  const head = `<header><h2>${esc(p.label)}</h2><p>${r.commits} commit${r.commits === 1 ? "" : "s"} changed a ratchet budget</p></header>`;
+  if (!r.commits) return head + `<p class="none">No ratchet budget changed in this period.</p>`;
+  const t = r.total;
+  const linters = r.introduced.reduce((a, g) => a + g.items.length, 0);
+  const tile = (k, v, cls) => `<div class="tile"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
+  const good = n => `<td class="num good">${n}</td>`;
+  return head +
+    `<div class="tiles">${tile("Shrunk", signed(t.shrunk), tone(t.shrunk))}${tile("Grown", signed(t.grown), tone(t.grown))}` +
+      `${tile("Net", signed(t.net), tone(t.net, "net"))}${tile("New linters", linters, linters ? "good" : "zero")}</div>` +
+    trends(p) +
+    section("Biggest commits", "The commits responsible for the most change, whoever lowered or raised the number.",
+      (r.best || r.worst) ? `<div class="grid2">${biggest("Biggest improvement", r.best)}${biggest("Biggest regression", r.worst)}</div>` : "") +
+    section("Net by author", "From most shrunk to most grown. A shrink is credited to whoever removed the suppressions.",
+      ranking(r.board, x => x.shrunk || x.grown, x => x.net,
+        [["shrunk", "shrunk", n => num(n)], ["grown", "grown", n => num(n)], ["net", "net", n => num(n, "net")]])) +
+    `<div class="grid2">` +
+      section("Most shrunk", "", ranking(r.board, x => x.shrunk < 0, x => x.shrunk, [["shrunk", "shrunk", n => num(n)]])) +
+      section("Most grown", "", ranking(r.board, x => x.grown > 0, x => -x.grown, [["grown", "grown", n => num(n)]])) +
+    `</div>` +
+    section("Most introduced", "Ranked by the ignores the new linters started with: more debt put under a ratchet is better.",
+      ranking(r.board, x => x.linters > 0, x => -x.ignores, [["ignores", "ignores", good], ["linters", "linters", good]])) +
+    section("New linters", "A linter that got its first budget in the commit that added it.",
+      groups(r.introduced, i => `<li><span class="num good">${esc(i.budget)}</span><span class="name good">${esc(i.measure)}</span></li>`)) +
+    section("Total deltas by linter", "",
+      table(["", "shrunk", "grown", "net"],
+        r.totals.map(x => `<tr><td class="name">${esc(x.measure)}</td>${num(x.shrunk)}${num(x.grown)}${num(x.net, "net")}</tr>`),
+        `<tr><td>total</td>${num(t.shrunk)}${num(t.grown)}${num(t.net, "net")}</tr>`)) +
+    section("Moved into or out of :unlimited", "",
+      groups(r.unlimited, i => `<li><span></span><span><span class="name">${esc(i.measure)}</span> ${esc(i.old)} → ${esc(i.new)}</span></li>`)) +
+    section("Shrinks no commit accounts for", "The automation lowered these budgets, but no commit removed that many suppressions.",
+      groups(r.unaccounted, i => `<li><span class="num ${tone(i.delta)}">${signed(i.delta)}</span><span class="name">${esc(i.measure)}</span></li>`, "warn")) +
+    section("Raises with no verdict", "The budget rose by more than the suppressions the commit added. Pardon or confirm each with ./bin/mage kondo-ratchets-verdict.",
+      groups(r.suspects, i => `<li><span class="num bad">${signed(i.delta)}</span><span><span class="name">${esc(i.measure)}</span>, with ${i.added} suppressions added</span></li>`, "warn"));
+}
+
+function nav(current) {
+  const link = (p, label) => `<a href="#${p.id}" class="${p.id === current ? "on" : ""} ${p.report.commits ? "" : "empty"}">` +
+    `<span>${esc(label || p.label)}</span><span class="n ${p.report.commits ? tone(p.report.total.net, "net") : "zero"}">` +
+    `${p.report.commits ? signed(p.report.total.net) : "·"}</span></a>`;
+  const of = kind => data.periods.filter(p => p.kind === kind);
+  const weeks = of("week"), months = of("month");
+  return `<h1>Ratchet history</h1><p class="asof">as of ${esc(data.generated)}</p>` +
+    (weeks[0] ? link(weeks[0], "This week") : "") +
+    (months[1] ? link(months[1], "Last month") : "") +
+    link(byId.all) +
+    `<h2>Weeks</h2>${weeks.map(p => link(p)).join("")}` +
+    `<h2>Months</h2>${months.map(p => link(p)).join("")}`;
+}
+
+function show() {
+  const fallback = (data.periods.find(p => p.kind === "week") || byId.all).id;
+  const id = byId[location.hash.slice(1)] ? location.hash.slice(1) : fallback;
+  for (const key of Object.keys(drawn)) delete drawn[key];
+  document.getElementById("nav").innerHTML = nav(id);
+  document.getElementById("main").innerHTML =
+    `<p class="question">Who shrank, grew and introduced kondo ratchet budgets in ${esc(data.repo.replace("https://github.com/", ""))}, per week and month?</p>` +
+    render(byId[id]);
+  wire();
+  document.title = "Ratchet history: " + byId[id].label;
+  window.scrollTo(0, 0);
+}
+
+window.addEventListener("hashchange", show);
+show();
+</script>
+</body>
+</html>

@@ -427,10 +427,12 @@
                             (known-linter-hint))
                     {:unknown (vec unknown)}))))
 
-(def ^:private source-roots
+(def source-roots
+  "Directories, relative to the repo root, whose source files [[scan]] reads."
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
 
-(def ^:private source-extensions
+(def source-extensions
+  "File extensions [[scan]] reads."
   [".clj" ".cljc" ".cljs"])
 
 ;; Concatenated so the scan does not count this definition as an ignore.

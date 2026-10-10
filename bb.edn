@@ -350,6 +350,29 @@
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
+  kondo-ratchets-history
+  {:doc "Report which commits, pull requests and authors shrank, grew and introduced ratchet budgets."
+   :examples [["./bin/mage kondo-ratchets-history" "Summarize the last 7 days"]
+              ["./bin/mage kondo-ratchets-history --days 30" "Summarize the last 30 days"]
+              ["./bin/mage kondo-ratchets-history --all" "Summarize every change since the first ratchet"]
+              ["./bin/mage kondo-ratchets-history --html ratchets.html" "Write a page with every week, every month and all time"]
+              ["./bin/mage kondo-ratchets-history 57e0ad66ea5" "Summarize every change after that commit"]]
+   :options [["-d" "--days DAYS" "Days to look back (default 7)" :parse-fn parse-long]
+             ["-a" "--all" "Look back to the first ratchet"]
+             ["-o" "--html FILE" "Write a single-file HTML page covering every week, every month and all time"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "commit" :description "Summarize the changes after this commit; not with --days or --all"}]]]
+   :requires [[mage.kondo-ratchets-history]]
+   :task (task! (mage.kondo-ratchets-history/history parsed))}
+
+  kondo-ratchets-verdict
+  {:doc "Pardon or confirm the budget raises of a commit that kondo-ratchets-history questions."
+   :examples [["./bin/mage kondo-ratchets-verdict pardon 81406 --why \"stale budget from a long-lived branch\"" "Count the raises in PR 81406 against nobody"]
+              ["./bin/mage kondo-ratchets-verdict confirm 8d5db3195d" "Keep counting that commit's raises as growth"]]
+   :options [["-w" "--why REASON" "Why the raises are pardoned or confirmed; a pardon needs one"]]
+   :arg-schema [:tuple [:enum "pardon" "confirm"] [:string {:name "commit-or-pr" :description "The commit, or the number of its PR"}]]
+   :requires [[mage.kondo-ratchets-history]]
+   :task (task! (mage.kondo-ratchets-history/verdict parsed))}
+
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]
