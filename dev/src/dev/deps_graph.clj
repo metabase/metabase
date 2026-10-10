@@ -955,12 +955,6 @@
 
 ;;;; Module boundary analysis
 
-(defn- enterprise-companion?
-  "Whether `module` is the `enterprise/X` companion of OSS module `ancestor`."
-  [module ancestor]
-  (and (= "enterprise" (namespace module))
-       (= ancestor (symbol (name module)))))
-
 (defn module-cycles
   "Each module cycle with its members and [[module-graph/cycle-metrics]], largest first.
   The strong bridges are the single dependency edges whose removal splits a cycle."
@@ -969,10 +963,40 @@
   ([deps]
    (module-graph/cycles (module-dependencies deps))))
 
+(defn- enterprise-companion?
+  "Whether `module` is the `enterprise/X` companion of OSS module `ancestor`."
+  [module ancestor]
+  (and (= "enterprise" (namespace module))
+       (= ancestor (symbol (name module)))))
+
+(defn- upward-references*
+  "The [[upward-references]] of `deps`, given the [[module-cycles]] of the same `deps` as `cycles`."
+  [deps config cycles]
+  ;; A nested module may use its ancestors' internals, and a parent usually requires its children, so one
+  ;; require back up is enough to make a cycle.
+  ;; The linter allows these requires, so nothing else reports them.
+  (let [module->cycle-members (u/for-map [{:keys [modules]} cycles
+                                          :let              [members (set modules)]
+                                          module            modules]
+                                [module members])]
+    (vec (for [{:keys [module], :as file} deps
+               dep   (:deps file)
+               :let  [ancestor (:module dep)]
+               :when (and (not= module ancestor)
+                          (modules/descendant-of? config module ancestor)
+                          (not (enterprise-companion? module ancestor)))
+               :let  [api (modules/module-api-namespaces config ancestor)]]
+           {:namespace          (:namespace file)
+            :module             module
+            :required-namespace (:namespace dep)
+            :ancestor           ancestor
+            ;; A nil API means `:api :any`, where every namespace is public.
+            :api?               (or (nil? api) (contains? api (:namespace dep)))
+            :cycle?             (contains? (module->cycle-members module) ancestor)}))))
+
 (defn upward-references
   "Requires from a module into one of its ancestors.
   An `enterprise/X` module requiring OSS `X` is expected and left out.
-  Pass `cycles` from [[module-cycles]] for the same `deps` to reuse them.
 
   Returns one map per require:
 
@@ -983,28 +1007,7 @@
   ([]
    (upward-references (dependencies) (kondo-config)))
   ([deps config]
-   (upward-references deps config (module-cycles deps)))
-  ([deps config cycles]
-   ;; A nested module may use its ancestors' internals, and a parent usually requires its children, so one
-   ;; require back up is enough to make a cycle.
-   ;; The linter allows these, so this is the only place they are counted.
-   (let [module->cycle (u/for-map [{:keys [modules]} cycles
-                                   module            modules]
-                         [module (set modules)])]
-     (vec (for [{:keys [module], :as file} deps
-                dep  (:deps file)
-                :let [ancestor (:module dep)]
-                :when (and (not= module ancestor)
-                           (modules/descendant-of? config module ancestor)
-                           (not (enterprise-companion? module ancestor)))
-                :let [api (modules/module-api-namespaces config ancestor)]]
-            {:namespace          (:namespace file)
-             :module             module
-             :required-namespace (:namespace dep)
-             :ancestor           ancestor
-             ;; A nil API means `:api :any`, where every namespace is public.
-             :api?               (or (nil? api) (contains? api (:namespace dep)))
-             :cycle?             (contains? (module->cycle module) ancestor)})))))
+   (upward-references* deps config (module-cycles deps))))
 
 (defn module-boundary-stats
   "REPL diagnostics for the module graph:
@@ -1030,7 +1033,7 @@
    (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
          ns-counts   (frequencies (keep :module deps))
          cycles      (module-cycles deps)
-         upward      (upward-references deps config cycles)]
+         upward      (upward-references* deps config cycles)]
      {:api-any-namespaces       (count (filter #(contains? any-modules (:module %)) deps))
       :module-count             (count config)
       :scc-module-sizes         (mapv :size cycles)

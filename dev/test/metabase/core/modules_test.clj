@@ -427,6 +427,7 @@
                   :deps      [{:namespace metabase.x.impl, :module x}]}
                  {:namespace metabase-enterprise.x.y.core
                   :module    enterprise/x.y
+                  ;; Not an ancestor: the parents of `enterprise/x.y` are `enterprise/x` and `x`.
                   :deps      [{:namespace metabase.x.y.impl, :module x.y}
                               {:namespace metabase.x.impl, :module x}]}
                  {:namespace metabase.z.core
@@ -440,7 +441,7 @@
                  x.y            {}
                  x.y.z          {}
                  z              {}}]
-    (testing "requires into any ancestor count, except an enterprise companion requiring its own OSS module"
+    (testing "a require into any ancestor is listed, except an enterprise companion requiring its own OSS module"
       (is (= '[{:namespace          metabase.x.y.core
                 :module             x.y
                 :required-namespace metabase.x.core
