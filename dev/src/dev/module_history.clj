@@ -21,7 +21,7 @@
    [dev.module-source :as module-source]
    [hooks.common.modules :as modules])
   (:import
-   (java.io BufferedInputStream File OutputStream)
+   (java.io BufferedInputStream ByteArrayOutputStream File OutputStream)
    (java.nio.charset StandardCharsets)
    (java.nio.file CopyOption Files StandardCopyOption)
    (java.security MessageDigest)
@@ -34,7 +34,7 @@
 
 (defn- git!
   "Run git with `args` in the repo and return its output, throwing when it fails."
-  [& args]
+  [args]
   (let [{:keys [exit out err]} (apply sh/sh "git" args)]
     (when-not (zero? exit)
       (throw (ex-info (format "git %s failed: %s" (str/join " " args) err) {:args args})))
@@ -56,7 +56,7 @@
 (defn- read-line-bytes
   "One `\\n`-terminated line from `in`, without the newline."
   [^BufferedInputStream in]
-  (let [buffer (java.io.ByteArrayOutputStream.)]
+  (let [buffer (ByteArrayOutputStream.)]
     (loop []
       (let [b (.read in)]
         (if (or (= b -1) (= b (int \newline)))
@@ -90,8 +90,8 @@
                       [_mode kind blob] (str/split meta-part #" ")]
                   (when (and (= kind "blob") path (re-matches source-path path))
                     {:path path, :blob blob}))))
-        (str/split (git! "ls-tree" "-r" "-z" commit
-                         "--" "src" "enterprise/backend/src" "modules/drivers" "modules/embedder")
+        (str/split (git! ["ls-tree" "-r" "-z" commit
+                          "--" "src" "enterprise/backend/src" "modules/drivers" "modules/embedder"])
                    #"\u0000")))
 
 ;;;; Module config
@@ -110,38 +110,36 @@
   [config-source]
   ;; Before #53583 an unlisted module's API was its root namespace; today's default is `.api`, `.core` and `.init`,
   ;; so exposure measured against this config is approximate.
-  (let [linter     (get-in (binding [*read-eval* false] (read-string config-source))
-                           [:linters :metabase/ns-module-checker])
-        translated (fn [k translate]
-                     (into {}
-                           (for [[root-ns value] (get linter k)
-                                 :let  [module (legacy-module-name root-ns)]
-                                 :when module]
-                             [module (cond
-                                       (nil? value)   nil
-                                       (= :any value) :any
-                                       :else          (translate value))])))
-        apis       (translated :api-namespaces set)
-        uses       (translated :allowed-modules #(into #{} (keep legacy-module-name) %))]
-    ;; Same exclusion as [[deps-graph/kondo-config]].
+  (let [linter (get-in (binding [*read-eval* false] (read-string config-source))
+                       [:linters :metabase/ns-module-checker])]
     (into {}
-          (for [module (keys (dissoc apis 'connection-pool))]
+          (for [[root-ns api] (:api-namespaces linter)
+                :let  [module (legacy-module-name root-ns)
+                       uses   (get-in linter [:allowed-modules root-ns])]
+                ;; Same exclusion as [[deps-graph/kondo-config]].
+                :when (and module (not= 'connection-pool module))]
             [module (cond-> {}
-                      (some? (apis module)) (assoc :api (apis module))
-                      (some? (uses module)) (assoc :uses (uses module)))]))))
+                      (some? api)  (assoc :api (if (= :any api) :any (set api)))
+                      (some? uses) (assoc :uses (if (= :any uses) :any (into #{} (keep legacy-module-name) uses))))]))))
 
 (def ^:private whole-backend
   "The module map before #42250, when there were no modules: the whole backend is one."
   '{backend {}})
 
+(def ^:private modules-config-path ".clj-kondo/config/modules/config.edn")
+
+(def ^:private legacy-config-path
+  "Where the module linter's config lived before #53583 gave it [[modules-config-path]]."
+  ".clj-kondo/config.edn")
+
 (defn- commit-modules
   "The `:metabase/modules` map at `commit`. Before #53583 it is translated from the older linter config, and before
   #42250 there is no module config, so it is [[whole-backend]]."
   [reader commit]
-  (if-let [config (read-object reader (str commit ":.clj-kondo/config/modules/config.edn"))]
+  (if-let [config (read-object reader (str commit ":" modules-config-path))]
     ;; Same exclusion as [[deps-graph/kondo-config]].
     (dissoc (:metabase/modules (edn/read-string config)) 'connection-pool)
-    (or (not-empty (some-> (read-object reader (str commit ":.clj-kondo/config.edn")) legacy-modules))
+    (or (not-empty (some-> (read-object reader (str commit ":" legacy-config-path)) legacy-modules))
         whole-backend)))
 
 (defn- prefix->module
@@ -161,7 +159,7 @@
 
 (defn- code-hash
   "A short hash over the source of classpath `resources`, naming a cache layer computed by that code."
-  [& resources]
+  [resources]
   (let [digest (MessageDigest/getInstance "SHA-1")]
     (doseq [resource resources]
       (.update digest (.getBytes (slurp (or (io/resource resource)
@@ -170,11 +168,14 @@
     (subs (format "%040x" (BigInteger. 1 (.digest digest))) 0 12)))
 
 (def ^:private parse-version
-  (delay (code-hash "dev/module_source.clj")))
+  (delay (code-hash ["dev/module_source.clj"])))
 
 (def ^:private metrics-version
-  (delay (code-hash "dev/module_source.clj" "dev/deps_graph.clj" "dev/module_graph.clj" "hooks/common/modules.clj"
-                    "dev/module_history.clj")))
+  (delay (code-hash ["dev/deps_graph.clj"
+                     "dev/module_graph.clj"
+                     "dev/module_history.clj"
+                     "dev/module_source.clj"
+                     "hooks/common/modules.clj"])))
 
 (defn- read-cached [^File file]
   (when (.exists file)
@@ -418,7 +419,7 @@
         static-graph     (deps-graph/module-dependencies (map (fn [row] (update row :deps #(remove :dynamic %))) deps))
         static-n         (transduce (map (fn [component] (reduce + (map ns-count component)))) max 0
                                     (module-graph/cyclic-components static-graph))
-        top-graph        (into #{}
+        top-edges        (into #{}
                                (for [[from tos] graph
                                      to         tos
                                      :when      (not= (root-of from) (root-of to))]
@@ -450,7 +451,7 @@
       :top-level-modules                   (count (into #{} (map root-of) with-nses))
       :nested-modules                      (count (remove #(= % (root-of %)) with-nses))
       :module-edges                        (reduce + (map count (vals graph)))
-      :top-level-edges                     (count top-graph)
+      :top-level-edges                     (count top-edges)
       :scc-largest-modules                 largest-m
       :scc-largest-namespaces              largest-n
       :scc-largest-pct                     (if (pos? namespaces) (* 100.0 (/ largest-n namespaces)) 0.0)
@@ -480,13 +481,11 @@
 ;;;; Commits
 
 (defn- commit-info
-  "The `:sha`, `:committed-at` and `:subject` of each of `commits`."
-  [commits]
-  (when (seq commits)
-    (mapv (fn [line]
-            (let [[sha committed-at subject] (str/split line #"\u0000" 3)]
-              {:sha sha, :committed-at committed-at, :subject subject}))
-          (str/split-lines (apply git! "show" "-s" "--format=%H%x00%cI%x00%s" commits)))))
+  "The `:sha`, `:committed-at` and `:subject` of `commit`."
+  [commit]
+  (let [line (str/trim-newline (git! ["show" "-s" "--format=%H%x00%cI%x00%s" commit]))
+        [sha committed-at subject] (str/split line #"\u0000" 3)]
+    {:sha sha, :committed-at committed-at, :subject subject}))
 
 (defn measure
   "Metrics for `commit`, from the cache when this code has measured it before.
@@ -498,19 +497,13 @@
        (finally
          (close-object-reader reader)))))
   ([reader commit]
-   (let [sha  (str/trim (git! "rev-parse" (str commit "^{commit}")))
+   (let [sha  (str/trim (git! ["rev-parse" (str commit "^{commit}")]))
          file (metrics-file sha)]
      (or (read-cached file)
          (let [modules (commit-modules reader sha)]
-           (write-cached! file (merge (first (commit-info [sha]))
+           (write-cached! file (merge (commit-info sha)
                                       {:module-system? (not= modules whole-backend)}
                                       (commit-metrics (commit-dependencies reader sha modules) modules))))))))
-
-(def ^:private modules-config-path ".clj-kondo/config/modules/config.edn")
-
-(def ^:private legacy-config-path
-  "Where the module linter's config lived before #53583 gave it [[modules-config-path]]."
-  ".clj-kondo/config.edn")
 
 (def ^:private backend-pathspecs
   "Pathspecs for the backend sources [[source-path]] matches, plus the module config."
@@ -527,16 +520,15 @@
 (defn- commits-since
   "First-parent commits of `ref` since `date` that touch any of `pathspecs`, newest first."
   [ref date pathspecs]
-  (remove str/blank?
-          (str/split-lines (apply git! "log" "--first-parent" "--format=%H" (str "--since=" (midnight-utc date)) ref
-                                  "--" pathspecs))))
+  (let [args ["log" "--first-parent" "--format=%H" (str "--since=" (midnight-utc date)) ref "--"]]
+    (remove str/blank? (str/split-lines (git! (into args pathspecs))))))
 
 (defn- config-commits
   "Commits of `ref` since `date` that changed the module config. Before [[modules-config-path]] existed that is a
   change to [[legacy-config-path]], which is followed only up to the commit that moved the config out of it."
   [ref date]
-  (let [introduced (last (str/split-lines (git! "log" "--first-parent" "--diff-filter=A" "--format=%H" ref
-                                                "--" modules-config-path)))]
+  (let [introduced (last (str/split-lines (git! ["log" "--first-parent" "--diff-filter=A" "--format=%H" ref
+                                                 "--" modules-config-path])))]
     (concat (commits-since ref date [modules-config-path])
             (when-not (str/blank? introduced)
               (commits-since (str introduced "^") date [legacy-config-path])))))
@@ -544,7 +536,7 @@
 (defn- last-commit-before
   "The last first-parent commit of `ref` before each of `dates`."
   [ref dates]
-  (keep #(not-empty (str/trim (git! "rev-list" "-1" "--first-parent" (str "--before=" (midnight-utc %)) ref)))
+  (keep #(not-empty (str/trim (git! ["rev-list" "-1" "--first-parent" (str "--before=" (midnight-utc %)) ref])))
         dates))
 
 (defn- dates-from
@@ -569,12 +561,12 @@
         months         (when monthly-since
                          (dates-from (.withDayOfMonth (LocalDate/parse monthly-since) 1) #(.plusMonths ^LocalDate % 1)))
         anchors        (last-commit-before ref (concat weeks months))
-        resolved       (map #(str/trim (git! "rev-parse" (str % "^{commit}")))
+        resolved       (map #(str/trim (git! ["rev-parse" (str % "^{commit}")]))
                             (concat changed anchors extra [ref]))
         order          (into {}
                              (map-indexed (fn [i sha] [sha i]))
-                             (str/split-lines (git! "rev-list" "--first-parent" "--reverse" ref)))]
-    (->> (distinct (remove str/blank? resolved))
+                             (str/split-lines (git! ["rev-list" "--first-parent" "--reverse" ref])))]
+    (->> (distinct resolved)
          (sort-by #(order % Long/MAX_VALUE))
          vec)))
 
