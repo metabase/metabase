@@ -17,8 +17,6 @@
   (:import
    (com.mchange.v2.c3p0 DataSources)
    (java.sql Connection)
-   (org.quartz JobKey Scheduler)
-   (org.quartz.impl.matchers GroupMatcher)
    (org.quartz.utils ConnectionProvider)))
 
 (set! *warn-on-reflection* true)
@@ -87,6 +85,11 @@
           "b.Current" "b.Current"}
          (#'mdb.quartz/current-class-names [{:job-key "a.job", :class-names ["a.Oldest" "a.Old" "a.Current"]}
                                             {:job-key "b.job", :class-names ["b.Old" "b.Current"]}]))))
+
+(deftest load-class-names-the-stored-class-when-its-current-class-is-missing-test
+  ;; plain `with-redefs`, because the lookup is a map and not a function
+  (with-redefs [mdb.quartz/stored-class-name->current {"a.Old" "a.Missing"}]
+    (is (thrown-with-msg? ClassNotFoundException #"a\.Old" (#'mdb.quartz/load-class "a.Old")))))
 
 (defn- in-this-edition?
   "Whether this edition has the class named `class-name`."
@@ -262,15 +265,6 @@
     (testing "no job class is listed as both renamed and without history"
       (is (= #{} (set/intersection renamed job-classes-without-history))))))
 
-(defn- job-keys-by-class-name
-  "Returns the names of the job keys in `scheduler`, grouped by the name of their job's class."
-  [^Scheduler scheduler]
-  (-> (group-by (fn [^JobKey job-key]
-                  (.getName (.getJobClass (.getJobDetail scheduler job-key))))
-                (.getJobKeys scheduler (GroupMatcher/anyGroup)))
-      (update-vals (fn [job-keys]
-                     (into (sorted-set) (map (fn [^JobKey job-key] (.getName job-key))) job-keys)))))
-
 (defn- scheduled-job-keys!
   "Returns the job keys that each job in `history` is scheduled under at startup, by its current class name."
   [history]
@@ -286,7 +280,8 @@
            (doseq [[task init!] (methods task.impl/init!)
                    :when        (namespaces (namespace task))]
              (init! task))
-           (job-keys-by-class-name (#'task.impl/scheduler))))))))
+           (-> (group-by #(.getName ^Class (:class %)) (tu/scheduler-current-tasks))
+               (update-vals #(into (sorted-set) (map :key) %)))))))))
 
 (defn- rename-to-complete
   "The entry for [[mdb.quartz/job-key-renames]] if the key of the job in `entry` changed to `new-key`."
