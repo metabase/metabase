@@ -26,3 +26,10 @@
   `:query-permissions/referenced-card-ids` key."
   [query :- ::lib.schema/query]
   (u/assoc-dissoc query :query-permissions/referenced-card-ids (lib/all-source-card-ids-recursive query)))
+
+(mu/defn record-referenced-snippet-ids :- ::lib.schema/query
+  "Pre-processing middleware. Record the IDs of the Snippets referenced by `:snippet` template tags in `query` itself
+  under the `:query-permissions/referenced-snippet-ids` key. Runs before source Cards are resolved, so Snippets used
+  by a source Card are not included: running a Card does not require read perms on the Snippets it uses."
+  [query :- ::lib.schema/query]
+  (u/assoc-dissoc query :query-permissions/referenced-snippet-ids (lib/all-template-tag-snippet-ids query)))

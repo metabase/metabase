@@ -741,6 +741,7 @@
    [:qp.pivot/num-remapped-breakouts          {:optional true} [:int {:min 0}]]
    [:qp.pivot/remapped-indexes                {:optional true} [:map-of [:int {:min 0}] [:int {:min 0}]]]
    [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set [:ref ::id/card]]]]
+   [:query-permissions/referenced-snippet-ids {:optional true} [:maybe [:set [:ref ::id/snippet]]]]
    [:destination-database/id {:optional true} [:ref ::id/database]]
    [:impersonation/role         {:optional true} ::common/non-blank-string]
    [:impersonation/admin?       {:optional true} :boolean]

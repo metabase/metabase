@@ -2244,7 +2244,10 @@
            request
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Card :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/NativeQuerySnippet
+                    :model/Table}}
 
   query-processor
   {:team    "Querying Platform"

@@ -430,6 +430,30 @@
                                 (mi/perms-objects-set card :read)
                                 {:card-id card-id}))))))
 
+(mu/defn check-snippet-read-perms
+  "Check that the current user can read every NativeQuerySnippet in `snippet-ids`, or throw an Exception. Snippets
+  are spliced verbatim into the compiled SQL, which is returned with the query results, so using one in a query you
+  author discloses its content. IDs of Snippets that do not exist are skipped: the query fails to resolve them anyway."
+  [snippet-ids :- [:maybe [:set ::lib.schema.id/snippet]]]
+  (when (and api/*current-user-id* (seq snippet-ids))
+    (doseq [snippet-id (query-permissions.db/existing-snippet-ids snippet-ids)]
+      (when-not (mi/can-read? :model/NativeQuerySnippet snippet-id)
+        (throw (perms-exception (tru "You do not have permissions to use Snippet {0}." (pr-str snippet-id))
+                                {}
+                                {:snippet-id snippet-id, :status-code 403}))))))
+
+(defn- query-snippet-ids
+  "The IDs of the Snippets referenced by `:snippet` template tags in `query`, or nil if `query` is too broken to read
+  them from. Such a query fails the run-permissions check anyway."
+  [{database-id :database, :as query}]
+  (when (pos-int? database-id)
+    (try
+      (lib/all-template-tag-snippet-ids
+       (lib/query (lib-be/application-database-metadata-provider database-id) query))
+      (catch Exception e
+        (log/debugf e "Unable to read the Snippet IDs of query %s" (pr-str query))
+        nil))))
+
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
   user has perms for the query, and throws an exception otherwise (exceptions can be disabled by setting
@@ -516,6 +540,9 @@
                      nil))
         query    (or expanded query)
         expanded? (some? expanded)]
+    (check-snippet-read-perms (if expanded?
+                                (:query-permissions/referenced-snippet-ids query)
+                                (query-snippet-ids query)))
     (when-not (can-run-query? query expanded?)
       (let [required-perms (try
                              (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)

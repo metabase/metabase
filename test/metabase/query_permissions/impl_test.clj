@@ -397,3 +397,13 @@
              clojure.lang.ExceptionInfo
              #"You do not have permission to view data of table 1595 in result_metadata\."
              (query-perms/check-result-metadata-data-perms (mt/id) [{:name "NAME", :table_id 1595}])))))))
+
+(deftest check-run-permissions-for-unpreprocessable-query-test
+  (testing "a query that cannot be preprocessed is still refused with the usual 403, not some other error"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [e (is (thrown? clojure.lang.ExceptionInfo
+                           (query-perms/check-run-permissions-for-query
+                            {:database Integer/MAX_VALUE, :type :native, :native {:query "SELECT 1"}})))]
+        (is (= 403 (:status-code (ex-data e))))
+        (is (= "You cannot save this Question because you do not have permissions to run its query."
+               (ex-message e)))))))
