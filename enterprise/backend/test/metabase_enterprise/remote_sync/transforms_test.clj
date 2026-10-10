@@ -158,7 +158,8 @@
 (deftest enable-transform-sync-marks-all-transforms-test
   (testing "Enabling transform sync creates a single Transforms RSO with model_id=-1 and status 'create'"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled true
+                                         remote-sync-type :read-write]
         ;; Clean up any existing Transforms root RSO first
         (t2/delete! :model/RemoteSyncObject
                     :model_type "Collection"
@@ -186,7 +187,8 @@
   (testing "Disabling transform sync creates a Transforms RSO with status 'delete'"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
-                                         remote-sync-enabled true]
+                                         remote-sync-enabled true
+                                         remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
                        :model/Transform _transform {:name "Test Transform" :collection_id coll-id}
                        :model/TransformTag _tag {:name "Test Tag"}]
@@ -202,6 +204,51 @@
                             :model_id settings/transforms-root-id
                             :status "delete")
                 "Transforms root should now have 'delete' status")))))))
+
+(defn- transforms-root-status
+  "The status of the Transforms root RSO, or nil when there is none."
+  []
+  (t2/select-one-fn :status :model/RemoteSyncObject :model_type "Collection" :model_id settings/transforms-root-id))
+
+(deftest transform-tracking-keeps-tracked-root-test
+  (testing "Re-applying an enabled transforms setting, as every settings cache load does, keeps a synced root synced"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (settings/sync-transform-tracking! true)
+      (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
+                  {:status "synced"})
+      (settings/sync-transform-tracking! true)
+      (is (= "synced" (transforms-root-status)))
+      (testing "and disabling then re-enabling marks it again"
+        (settings/sync-transform-tracking! false)
+        (is (= "delete" (transforms-root-status)))
+        (settings/sync-transform-tracking! true)
+        (is (= "create" (transforms-root-status)))))))
+
+(deftest transform-tracking-read-only-test
+  (testing "A read-only instance never tracks the Transforms root, so it never reports it as unsaved"
+    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (settings/sync-transform-tracking! true)
+      (is (nil? (transforms-root-status)))
+      (is (not (sync-object/dirty?)))
+      (testing "and drops one left over from before the fix"
+        (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id
+                                             :model_name "Transforms" :status "create"
+                                             :status_changed_at (t/offset-date-time)})
+        (settings/sync-transform-tracking! true)
+        (is (nil? (transforms-root-status)))))))
+
+(deftest switching-to-read-only-with-transforms-test
+  (testing "Saving read-only settings with transforms on, as the setup guide does, leaves nothing unsaved"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                         remote-sync-transforms false]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                {:remote-sync-type :read-only :remote-sync-transforms true})
+          (is (true? (settings/remote-sync-transforms)))
+          (is (nil? (transforms-root-status)))
+          (is (not (sync-object/dirty?))))))))
 
 (deftest transforms-included-in-dirty-check-when-enabled-test
   (testing "Transforms are included in dirty check when setting is enabled"
