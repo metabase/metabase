@@ -124,12 +124,14 @@
   - `/*DATA*/`: the commits, a JSON array
   - `/*TODAY*/`: the cycles at the latest commit, a JSON array
   - `/*ANCHORS*/`: the cluster names, a JSON array
+  - `/*RETEST*/`: the latest commit's namespaces per tenth of retest share, a JSON object
   - `/*COUNT*/`: how many commits there are"
   [template page-data]
   (-> template
       (str/replace "/*DATA*/" (script-safe-json (get page-data "commits")))
       (str/replace "/*TODAY*/" (script-safe-json (get page-data "today")))
       (str/replace "/*ANCHORS*/" (script-safe-json (get page-data "clusters")))
+      (str/replace "/*RETEST*/" (script-safe-json (get page-data "retest")))
       (str/replace "/*COUNT*/" (str (count (get page-data "commits"))))))
 
 (defn- write-pages!
