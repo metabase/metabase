@@ -48,9 +48,19 @@
                     {:prod    {:ignore-counts {:existing 5}, :config-counts {:existing 2, :new-linter 3}}
                      :modules {:uses-any 4}}
                     #{:new-linter}))))
+  (testing "a first budget in a ratchet that exists but holds nothing yet is growth, not a seed"
+    (is (= [{:measure [:prod :config :existing], :old nil, :new 2, :kind :grow, :delta 2}]
+           (changes {:prod {:ignore-counts {}, :config-counts {}}}
+                    {:prod {:ignore-counts {}, :config-counts {:existing 2}}}
+                    #{}))))
   (testing "a newly discouraged symbol is an introduction, and the rest of its linter's budget still moves"
     (is (= [{:measure [:prod :ignore :discouraged-var], :kind :introduce, :key :clojure.core/eval, :new 6}
-            {:measure [:prod :ignore :discouraged-var], :old 3, :new 2, :kind :shrink, :delta -1}]
+            {:measure     [:prod :ignore :discouraged-var]
+             :old         3
+             :new         2
+             :per-symbol? true
+             :kind        :shrink
+             :delta       -1}]
            (changes {:prod {:discouraged-var-counts {:clojure.core/prn 3}}}
                     {:prod {:discouraged-var-counts {:clojure.core/prn 2, :clojure.core/eval 6}}}
                     #{:clojure.core/eval}))))
@@ -190,6 +200,31 @@
             [{:sha     "tighten"
               :changes [{:measure :a, :kind :shrink, :delta -7}]
               :causes  {:a [{:sha "stale", :delta -7}]}}]))))
+  (testing "a pardoned raise is taken back once, by the oldest shrinks after it"
+    (is (= [[:shrink -4 [{:sha "stale", :delta -3} {:sha "fix", :delta -1}]] nil nil]
+           (map (fn [{:keys [changes causes]}]
+                  (when-let [{:keys [kind delta]} (first changes)]
+                    [kind delta (:a causes)]))
+                (history/pardon
+                 {:pardons {"stale" {:a 5}}}
+                 ;; newest first: the raise of 5 comes back as 2 and then 3
+                 ;; what the same commit explains after that is a real removal
+                 [{:sha     "third"
+                   :changes [{:measure :a, :kind :shrink, :delta -4}]
+                   :causes  {:a [{:sha "stale", :delta -3} {:sha "fix", :delta -1}]}}
+                  {:sha     "second"
+                   :changes [{:measure :a, :kind :shrink, :delta -3}]
+                   :causes  {:a [{:sha "stale", :delta -3}]}}
+                  {:sha     "first"
+                   :changes [{:measure :a, :kind :shrink, :delta -2}]
+                   :causes  {:a [{:sha "stale", :delta -2}]}}])))))
+  (testing "a recount keeps no credit for a later shrink, even of a budget it did not raise"
+    (is (= [{:sha "tighten", :changes [], :causes {:a []}}]
+           (history/pardon
+            {:pardons {"regroup" {:f 5}}, :recounts #{"regroup"}}
+            [{:sha     "tighten"
+              :changes [{:measure :a, :kind :shrink, :delta -4}]
+              :causes  {:a [{:sha "regroup", :delta -4}]}}]))))
   (testing "a recount loses its own shrinks as well as its raises"
     (is (= [{:sha     "regroup"
              :changes [{:measure :f, :kind :pardon, :delta 5}]
@@ -302,7 +337,7 @@
             :introduced  [["feature" [{:measure ":new-linter (config)", :budget "9"}]]]
             :unaccounted [["tighten" [{:measure ":a", :delta -1}]]]
             :suspects    []}
-           (let [report  (history/report {:settled #{}} records)
+           (let [report  (history/report (history/settle {:settled #{}} records))
                  biggest (juxt (comp :sha :commit) :net :measures)
                  groups  (partial map (juxt (comp :sha :commit) :items))]
              (-> (select-keys report [:commits :total])
@@ -318,28 +353,29 @@
     (is (= [":discouraged-namespace (test)" ":discouraged-var"]
            (:approximate
             (history/report
-             {:settled #{}}
              [{:sha     "mixed"
                :author  "Ada"
-               :changes [{:measure [:prod :ignore :discouraged-var], :kind :grow, :delta 1, :added 1}
-                         {:measure [:test :ignore :discouraged-namespace], :kind :grow, :delta 2, :added 2}
-                         {:measure a, :kind :grow, :delta 3, :added 3}]}]))))))
+               :changes [{:measure [:prod :ignore :discouraged-var], :kind :grow, :delta 1, :per-symbol? true}
+                         {:measure [:test :ignore :discouraged-namespace], :kind :shrink, :delta -2, :per-symbol? true}
+                         ;; exact: a config-level budget, and a flat one from before per-symbol budgets
+                         {:measure [:prod :config :discouraged-var], :kind :grow, :delta 4}
+                         {:measure [:test :ignore :discouraged-var], :kind :grow, :delta 5}
+                         {:measure a, :kind :grow, :delta 3}]}]))))))
 
 (deftest series-test
   (testing "gives each commit's counted change and the total budget after it, oldest first"
-    (is (= [["seed" 0 0 5] ["mixed" 0 0 9] ["tighten" -2 0 7]]
-           (map (juxt :sha :shrunk :grown :level)
-                (history/series
-                 {:pardons {"seed" {a 5}}}
-                 [{:sha "tighten", :changes [{:measure a, :kind :shrink, :delta -2, :old 5, :new 3}]}
-                  {:sha     "mixed"
-                   :changes [{:measure [:prod :ignore :discouraged-var], :kind :introduce, :key :x/y, :new 4}
-                             {:measure [:prod :ignore :metabase/prefer-with-dynamic-fn-redefs]
-                              :kind    :grow
-                              :delta   8
-                              :old     1
-                              :new     9}]}
-                  {:sha "seed", :changes [{:measure a, :kind :grow, :delta 5, :old nil, :new 5}]}]))))))
+    (let [records [{:sha "tighten", :changes [{:measure a, :kind :shrink, :delta -2, :old 5, :new 3}]}
+                   {:sha     "mixed"
+                    :changes [{:measure [:prod :ignore :discouraged-var], :kind :introduce, :key :x/y, :new 4}
+                              {:measure [:prod :ignore :metabase/prefer-with-dynamic-fn-redefs]
+                               :kind    :grow
+                               :delta   8
+                               :old     1
+                               :new     9}]}
+                   {:sha "seed", :changes [{:measure a, :kind :grow, :delta 5, :old nil, :new 5}]}]
+          settled (history/settle {:pardons {"seed" {a 5}}, :settled #{}} records)]
+      (is (= [["seed" 0 0 5] ["mixed" 0 0 9] ["tighten" -2 0 7]]
+             (map (juxt :sha :shrunk :grown :level) (history/series records settled)))))))
 
 (deftest periods-test
   (testing "covers all time, then each week from its Monday and each month, back to the first commit"
@@ -349,7 +385,7 @@
             ["month-2026-10" "October 2026" "2026-10-01" "2026-11-01" 2 -3]
             ["month-2026-09" "September 2026" "2026-09-01" "2026-10-01" 1 -7]]
            (map (juxt :id :label :from :to (comp :commits :report) (comp :net :total :report))
-                (history/periods {:settled #{}} "2026-10-10" records))))))
+                (history/periods "2026-10-10" (history/settle {:settled #{}} records)))))))
 
 (deftest script-json-test
   (testing "data that could end or hide the end of a script element reads back unchanged, with no `<` in it"
@@ -367,7 +403,7 @@
 
 (deftest summary-test
   (binding [c/*disable-colors* true]
-    (let [lines (history/summary "of all time" (history/report {:settled #{}} records))]
+    (let [lines (history/summary "of all time" (history/report (history/settle {:settled #{}} records)))]
       (testing "has a section for each part of the report that holds something"
         (is (= ["Ratchet changes of all time: 3 commits"
                 "Total deltas"
