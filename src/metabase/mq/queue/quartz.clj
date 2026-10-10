@@ -142,6 +142,8 @@
   "Idempotently creates the durable, trigger-less job that [[wake-scheduler!]] pokes."
   [^Scheduler scheduler]
   (when-not @nudge-job-ensured?
+    ;; This replaces the stored row on every start, unlike `task/add-job!`, which leaves an unchanged job alone.
+    ;; That is harmless here: the job has no triggers, so nothing is lost if a node can't load its class.
     (.addJob scheduler
              (jobs/build
               (jobs/of-type QueueSlotNudgeJob)
