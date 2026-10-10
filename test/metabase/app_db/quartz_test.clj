@@ -9,10 +9,15 @@
    [metabase.app-db.quartz :as mdb.quartz]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
+   [metabase.task.impl :as task.impl]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.util :as tu]
    [toucan2.connection :as t2.conn])
   (:import
    (com.mchange.v2.c3p0 DataSources)
    (java.sql Connection)
+   (org.quartz JobKey Scheduler)
+   (org.quartz.impl.matchers GroupMatcher)
    (org.quartz.utils ConnectionProvider)))
 
 (set! *warn-on-reflection* true)
@@ -262,3 +267,42 @@
                "For a job that was removed, or whose key changed too: remove the name.")))
     (testing "no job class is listed as both renamed and without history"
       (is (= [] (filter renamed job-classes-without-history))))))
+
+(defn- scheduled-job-keys!
+  "A map from the class name of every job that the tasks schedule at startup to the set of its job keys."
+  []
+  (run! classloader/require (job-namespaces))
+  (initialize/initialize-if-needed! :db)
+  (let [scheduled (atom {})]
+    (tu/do-with-unstarted-temp-scheduler!
+     (fn []
+       (#'task.impl/init-tasks!)
+       (let [^Scheduler scheduler (#'task.impl/scheduler)]
+         (doseq [^JobKey job-key (.getJobKeys scheduler (GroupMatcher/anyGroup))]
+           (swap! scheduled update (.getName (.getJobClass (.getJobDetail scheduler job-key)))
+                  (fnil conj (sorted-set)) (.getName job-key))))))
+    @scheduled))
+
+(deftest job-history-labels-match-the-scheduled-job-keys-test
+  ;; This catches a job key that changed while its entry stayed. It covers only the jobs that the tasks schedule
+  ;; at startup in the environment the test runs in.
+  (let [scheduled  (scheduled-job-keys!)
+        label-for? (fn [label job-key]
+                     ;; a label that ends in a dot is the prefix of the keys of a job scheduled many times
+                     (if (str/ends-with? label ".")
+                       (str/starts-with? job-key label)
+                       (= label job-key)))
+        checked    (for [{:keys [job-key class-names]} mdb.quartz/job-history
+                         :let                          [scheduled-as (scheduled (peek class-names))]
+                         :when                         scheduled-as]
+                     {:job-key job-key, :scheduled-as scheduled-as})]
+    (testing "some entries are checked"
+      (is (seq checked)))
+    (is (= []
+           (remove (fn [{:keys [job-key scheduled-as]}]
+                     (every? #(label-for? job-key %) scheduled-as))
+                   checked))
+        (str "The `:job-key` of these entries in `metabase.app-db.quartz/job-history` is not the key their job is"
+             " scheduled under. If the label is wrong, correct it.\n"
+             "If the job's key changed: remove the entry, add the class to `job-classes-without-history`, and add"
+             " the rename to `past-job-key-renames`."))))

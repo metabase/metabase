@@ -208,6 +208,7 @@
    (jobs/with-identity (jobs/key "metabase.task-test.job"))
    (jobs/with-description (or description "a job"))
    (jobs/using-job-data (or data {}))
+   ;; `jobs/build` threads the builder in as the first argument
    (cond-> requests-recovery? jobs/request-recovery)
    (jobs/store-durably)))
 
