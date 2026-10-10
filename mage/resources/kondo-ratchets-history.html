@@ -347,7 +347,8 @@ function verdicts() {
     const shown = v.raises.slice(0, 6), more = v.raises.slice(6);
     const items = shown.map(r => `<li><span class="num zero">${signed(r.delta)}</span><span class="name">${esc(r.measure)}</span></li>`);
     if (more.length) items.push(`<li><span class="num zero">${signed(more.reduce((a, r) => a + r.delta, 0))}</span><span>${more.length} more budgets</span></li>`);
-    const recorded = v.by || v.on ? `<p class="hint">Recorded${v.by ? " by " + esc(v.by) : ""}${v.on ? " on " + esc(v.on) : ""}</p>` : "";
+    const kind = {pardon: "Pardon", recount: "Recount", confirm: "Confirmed"}[v.verdict] || v.verdict;
+    const recorded = `<p class="hint">${esc(kind)}${v.by || v.on ? ", recorded" : ""}${v.by ? " by " + esc(v.by) : ""}${v.on ? " on " + esc(v.on) : ""}</p>`;
     return `<div class="card verdict">${commit(v.commit)}<p class="why">${esc(v.why || "No reason recorded.")}</p>${recorded}` +
       `<p class="hint">${signed(sum(v))} across ${v.raises.length} budget${v.raises.length === 1 ? "" : "s"}</p><ul class="items">${items.join("")}</ul></div>`;
   };
