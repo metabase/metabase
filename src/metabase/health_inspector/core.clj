@@ -134,7 +134,11 @@
   [limit]
   (health-inspector.db/latest-runs limit))
 
-(task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true} SaveReport [_]
+(task/defjob SaveReport
+  "Runs every health check and saves the results, when the health inspector is enabled."
+  {:saved-class "metabase.health_inspector.core.SaveReport"
+   :concurrent? false}
+  [_]
   (when (setting/health-inspector-enabled)
     ;; background job should always be the lowest priority
     (.setPriority (Thread/currentThread) 1)

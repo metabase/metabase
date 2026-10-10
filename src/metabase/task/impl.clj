@@ -19,7 +19,6 @@
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
    [clojure.string :as str]
-   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.app-db.core :as mdb]
@@ -89,6 +88,13 @@
 (defn- set-jdbc-backend-properties! []
   (metabase.app-db.quartz/set-jdbc-backend-properties! (mdb/db-type)))
 
+(defn- no-class-message
+  "The log message for deleting the job under `job-key`, whose class can't be found."
+  [job-key class-not-found-message]
+  (let [{:keys [new-key release change]} (metabase.app-db.quartz/job-key-rename job-key)]
+    (cond-> (format "Deleting job %s due to class not found (%s)" job-key class-not-found-message)
+      new-key (str (format ". Its key was renamed to %s in %s. %s" new-key release change)))))
+
 (defn- delete-jobs-with-no-class!
   "Delete any jobs that have been scheduled but whose class is no longer available."
   []
@@ -98,9 +104,7 @@
         (qs/get-job scheduler job-key)
         (catch JobPersistenceException e
           (when (instance? ClassNotFoundException (.getCause e))
-            (log/warnf "Deleting job %s due to class not found (%s)"
-                       (.getName ^JobKey job-key)
-                       (ex-message (.getCause e)))
+            (log/warn (no-class-message (.getName ^JobKey job-key) (ex-message (.getCause e))))
             (qs/delete-job scheduler job-key)))))))
 
 (defn- reset-errored-triggers!
@@ -228,11 +232,35 @@
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
+(defn- job-definition
+  "The parts of `job` that Quartz stores and reads back."
+  [^JobDetail job]
+  ;; Quartz also stores whether the class disallows concurrent execution and persists its job data.
+  ;; It reads neither column back, and takes both from the loaded class's annotations, so they are left out.
+  {:class              (.getJobClass job)
+   :data               (into {} (.getJobDataMap job))
+   :description        (.getDescription job)
+   :durable?           (.isDurable job)
+   :requests-recovery? (.requestsRecovery job)})
+
+(defn- stored-as-is?
+  "Whether `scheduler` already stores `job` exactly as it is."
+  [^Scheduler scheduler ^JobDetail job]
+  ;; a stored job whose class can't be loaded counts as not stored, so that it gets replaced
+  (when-let [stored (try
+                      (.getJobDetail scheduler (.getKey job))
+                      (catch JobPersistenceException _
+                        nil))]
+    (= (job-definition stored) (job-definition job))))
+
 (mu/defn add-job!
-  "Add a job separately from a trigger, replace if the job is already there"
+  "Add a job separately from a trigger. Replaces a stored job only when its definition has changed."
   [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
-    (qs/add-job scheduler job true)))
+    ;; Replacing a job writes its current class name, which old nodes in a rolling upgrade can't load.
+    ;; An unchanged job therefore keeps its stored name: see [[metabase.app-db.quartz/job-history]].
+    (when-not (stored-as-is? scheduler job)
+      (qs/add-job scheduler job true))))
 
 (mu/defn add-trigger!
   "Add a trigger. Assumes the trigger is already associated to a job (i.e. `trigger/for-job`)"
@@ -358,15 +386,175 @@
          (log/error msg# (ex-message e#))
          (throw (JobExecutionException. msg# e# true))))))
 
-;; this is the sanctioned metabase.task/defjob wrapper; it must expand to the quartzite macro
-#_{:clj-kondo/ignore [:discouraged-var]}
+(def ^:private job-option-annotations
+  "The Quartz annotation that each boolean job option puts on the job class, and the value that asks for it."
+  {:concurrent?   {:annotation 'org.quartz.DisallowConcurrentExecution, :when false}
+   :persist-data? {:annotation 'org.quartz.PersistJobDataAfterExecution, :when true}})
+
+(def ^:private job-option-keys
+  (into #{:saved-class} (keys job-option-annotations)))
+
+(defn- job-definition-error [macro-name type-name message data]
+  (ex-info (format "Invalid (task/%s %s ...): %s" macro-name type-name message)
+           (assoc data :type-name type-name)))
+
+(defn- check-job-options!
+  "Throws unless `options` is a valid options map for the job type `type-name`."
+  [macro-name type-name options]
+  (let [error        (partial job-definition-error macro-name type-name)
+        unknown-keys (when (map? options)
+                       (sort (remove job-option-keys (keys options))))
+        saved-class  (:saved-class options)
+        default-name (str (munge (ns-name *ns*)) "." type-name)]
+    (cond
+      (not (map? options))
+      (throw (error (format (str "its options map is missing. It goes after the optional docstring, and needs"
+                                 " the class name that Quartz stores for the job. For a new job, add:\n\n"
+                                 "  {:saved-class %s}\n")
+                            (pr-str default-name))
+                    {}))
+
+      (seq unknown-keys)
+      (throw (error (format "unknown options %s. The options are %s."
+                            (pr-str (vec unknown-keys)) (pr-str (vec (sort job-option-keys))))
+                    {:unknown-keys unknown-keys}))
+
+      (not (contains? options :saved-class))
+      (throw (error (format (str "it needs the class name that Quartz stores for the job. For a new job, add"
+                                 " this to its options map:\n\n"
+                                 "  :saved-class %s\n\n"
+                                 "For a job that moved or was renamed, put back the `:saved-class` it had.")
+                            (pr-str default-name))
+                    {}))
+
+      (not (string? saved-class))
+      (throw (error "its `:saved-class` must be a string literal." {:saved-class saved-class}))
+
+      (not (re-matches #"[A-Za-z_$][A-Za-z0-9_$]*(\.[A-Za-z_$][A-Za-z0-9_$]*)+" saved-class))
+      (throw (error (format (str "its `:saved-class` %s is not a fully qualified Java class name, such as %s."
+                                 " A namespace's `-` is a `_` in a class name.")
+                            (pr-str saved-class) (pr-str default-name))
+                    {:saved-class saved-class}))
+
+      :else
+      (doseq [k     (keys job-option-annotations)
+              :let  [v (get options k)]
+              :when (and (contains? options k) (not (boolean? v)))]
+        (throw (error (format "its `%s` must be `true` or `false`." k) {k v}))))))
+
+(defn- parse-job-definition
+  "Splits the arguments of [[defjob]] or [[defjob-type]] after the type name into the `:docstring`, the valid
+  `:options` and the `:more` that follows them."
+  [macro-name type-name args]
+  (let [[docstring args] (if (string? (first args))
+                           [(first args) (rest args)]
+                           [nil args])
+        [options & more] args]
+    (when-not (simple-symbol? type-name)
+      (throw (job-definition-error macro-name type-name
+                                   "its type name must be a symbol with no namespace."
+                                   {})))
+    ;; This refuses only the metadata that would be lost, where an annotation is a symbol key.
+    ;; Other metadata is fine: some readers, such as Eastwood's, put the line and column on every symbol.
+    (when (some #(or (symbol? %) (#{:doc :private} %)) (keys (meta type-name)))
+      (throw (job-definition-error macro-name type-name
+                                   (str "its type name has metadata. Put the description in the docstring,"
+                                        " and ask for Quartz annotations with the `:concurrent?` and"
+                                        " `:persist-data?` options.")
+                                   {:metadata (meta type-name)})))
+    (check-job-options! macro-name type-name options)
+    {:docstring docstring, :options options, :more more}))
+
+(defn- job-class-symbol
+  "The class name in `options` as a symbol, with the annotations that the options ask for as its metadata."
+  [options]
+  (with-meta (symbol (:saved-class options))
+             (into {}
+                   (for [[k {:keys [annotation], wanted :when}] job-option-annotations
+                         :when (and (contains? options k) (= wanted (get options k)))]
+                     [annotation true]))))
+
+(defn- job-type-form
+  "The form that defines the job class for [[defjob]] and [[defjob-type]]."
+  [type-name {:keys [docstring options]} specs]
+  (let [class-symbol (job-class-symbol options)]
+    ;; `deftype` names its class after the current namespace and then expands to `deftype*`, so this skips it.
+    ;; The forms of a top-level `do` are compiled one at a time, so the code that follows can use `type-name`.
+    `(do
+       (deftype* ~(symbol (name (ns-name *ns*)) (name type-name)) ~class-symbol []
+         :implements [~@(filter symbol? specs) clojure.lang.IType]
+         ~@(filter seq? specs))
+       (.importClass ^clojure.lang.Namespace *ns*
+                     '~type-name
+                     (clojure.lang.RT/classForNameNonLoading ~(:saved-class options)))
+       ;; the factory function that `deftype` and `defrecord` define
+       (defn ~(symbol (str "->" type-name))
+         ~(or docstring (str "Returns a new `" type-name "` job."))
+         []
+         (new ~(with-meta class-symbol nil))))))
+
+(defmacro defjob-type
+  "Defines a Quartz job class from interfaces and method implementations, as `deftype` with no fields does.
+  Prefer [[defjob]], and use this for a job that implements more than `org.quartz.Job`.
+  Nothing is wrapped around the methods: add a log context or a tracing span yourself.
+
+    (task/defjob-type MyJob
+      \"What the job does.\"
+      {:saved-class \"metabase.my_module.task.my_job.MyJob\"}
+      org.quartz.Job
+      (execute [_ ctx] ...)
+      org.quartz.InterruptableJob
+      (interrupt [_] ...))
+
+  The docstring is optional, and the options are those of [[defjob]], with `:saved-class` required."
+  {:arglists '([type-name docstring? options & specs])}
+  [type-name & args]
+  (let [{:keys [more], :as definition} (parse-job-definition "defjob-type" type-name args)]
+    (job-type-form type-name definition more)))
+
+(defn- job-body-form
+  "The `body` of a [[defjob]], inside its log context and its tracing span."
+  [type-name body]
+  `(log/with-context {:quartz-job-type (quote ~type-name)}
+     (tracing/with-span :tasks (str "task." (quote ~type-name)) {:task/name (str (quote ~type-name))}
+       ~@body)))
+
 (defmacro defjob
-  "Like `clojurewerkz.quartzite.task/defjob` but with a log context and an OpenTelemetry tracing span."
-  [jtype args & body]
-  `(jobs/defjob ~jtype ~args
-     (log/with-context {:quartz-job-type (quote ~jtype)}
-       (tracing/with-span :tasks (str "task." (quote ~jtype)) {:task/name (str (quote ~jtype))}
-         ~@body))))
+  "Defines a Quartz job class that runs `body` with a log context and an OpenTelemetry tracing span around it.
+  Imports the class as `type-name`, and defines the `->type-name` function that returns a new job.
+
+    (task/defjob MyJob
+      \"What the job does.\"
+      {:saved-class \"metabase.my_module.task.my_job.MyJob\"
+       :concurrent? false}
+      [job-context]
+      ...)
+
+  The docstring is optional. `args` is a vector of one binding, for the `JobExecutionContext`. Options:
+
+  - `:saved-class` (required, a string literal): the exact name of the job's class.
+    Quartz stores this name in the app DB, and finds the job's class by it.
+    Keep it the same when the namespace or `type-name` changes, or stored jobs lose their class.
+    A new job takes the name its namespace would give it, which the error for a missing `:saved-class` prints.
+    To change a stored name on purpose, see `metabase.app-db.quartz/job-history`.
+  - `:concurrent?` (default `true`): `false` stops Quartz running two executions of the job at once, as
+    `org.quartz.DisallowConcurrentExecution` does.
+  - `:persist-data?` (default `false`): `true` saves the job's data map again after each execution, as
+    `org.quartz.PersistJobDataAfterExecution` does.
+
+  For a job that implements more than `org.quartz.Job`, see [[defjob-type]]."
+  {:arglists '([type-name docstring? options args & body])}
+  [type-name & args]
+  (let [{[job-args & body] :more, :as definition} (parse-job-definition "defjob" type-name args)]
+    (when-not (and (vector? job-args) (= 1 (count job-args)))
+      (throw (job-definition-error "defjob" type-name
+                                   "its argument vector takes one binding, for the `JobExecutionContext`."
+                                   {:args job-args})))
+    (job-type-form type-name
+                   definition
+                   `[org.quartz.Job
+                     (~'execute [~'_this ~@job-args]
+                                ~(job-body-form type-name body))])))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will

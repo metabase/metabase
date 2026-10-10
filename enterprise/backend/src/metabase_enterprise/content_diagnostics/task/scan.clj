@@ -17,7 +17,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution JobExecutionContext ObjectAlreadyExistsException TriggerKey)))
+   (org.quartz JobExecutionContext ObjectAlreadyExistsException TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -100,9 +100,11 @@
         (backfill-scan!)
         (scan-when-enabled!)))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc                         "Content Diagnostics - scan for problematic content."}
-  ContentDiagnosticsScan [ctx]
+(task/defjob ContentDiagnosticsScan
+  "Content Diagnostics - scan for problematic content."
+  {:saved-class "metabase_enterprise.content_diagnostics.task.scan.ContentDiagnosticsScan"
+   :concurrent? false}
+  [ctx]
   (scan-for-trigger! (.getKey (.getTrigger ^JobExecutionContext ctx))))
 
 (defn- backfill-trigger []

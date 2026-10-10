@@ -13,9 +13,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -222,9 +220,11 @@
     :skip      nil
     (run-scoring! fingerprint)))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Compute and publish the Data Complexity Score."}
-  DataComplexityScoring [_ctx]
+(task/defjob DataComplexityScoring
+  "Compute and publish the Data Complexity Score."
+  {:saved-class "metabase_enterprise.data_complexity_score.task.complexity_score.DataComplexityScoring"
+   :concurrent? false}
+  [_ctx]
   (with-scoring-claim! {:cooldown-hours cron-cooldown-hours} run-claim!))
 
 (defn maybe-emit-boot-score!

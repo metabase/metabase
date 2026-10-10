@@ -6,7 +6,10 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.quartz :as mdb.quartz]
+   [metabase.classloader.core :as classloader]
    [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -14,7 +17,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz CronTrigger JobDetail)))
+   (java.lang.annotation Annotation)
+   (java.time Duration Instant)
+   (java.util Date)
+   (org.quartz CronTrigger InterruptableJob Job JobDetail)))
 
 (set! *warn-on-reflection* true)
 
@@ -22,7 +28,9 @@
 
 ;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
 
-(task/defjob TestJob [_])
+(task/defjob TestJob
+  {:saved-class "metabase.task_test.TestJob"}
+  [_])
 
 (defn- job ^JobDetail []
   (jobs/build
@@ -138,6 +146,14 @@
     u/upper-case-en
     true keyword))
 
+(deftest no-class-message-test
+  (is (= {:renamed-key (str "Deleting job metabase-enterprise.transforms.timeout due to class not found"
+                            " (a.Class). Its key was renamed to metabase.transforms.timeout in x.59.1."
+                            " Moved out of enterprise, with no change to the job.")
+          :other-key   "Deleting job some.job due to class not found (a.Class)"}
+         {:renamed-key (#'task.impl/no-class-message "metabase-enterprise.transforms.timeout" "a.Class")
+          :other-key   (#'task.impl/no-class-message "some.job" "a.Class")})))
+
 (deftest start-scheduler-will-cleanup-jobs-without-class-test
   ;; we can't use the temp scheduler in this test because the temp scheduler use an in-memory jobstore
   ;; and we need update the job class in the database to trigger the cleanup
@@ -161,3 +177,261 @@
         (if scheduler-initialized?
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
+
+(defmacro ^:private with-jdbc-scheduler!
+  "Runs `body` with a JDBC-backed scheduler, and stops it afterwards unless one was already running.
+  A scheduler that this starts stays in standby: it stores and loads jobs, and fires no trigger."
+  [& body]
+  `(let [running?# (some? (#'task/scheduler))]
+     (when-not running?#
+       ;; the tasks' initializers start threads that outlive the scheduler, so only the scheduler starts
+       (mt/with-dynamic-fn-redefs [task.impl/init-tasks! (constantly nil)]
+         (task/init-scheduler!)))
+     (try
+       ~@body
+       (finally
+         (when-not running?#
+           (task/stop-scheduler!))))))
+
+(def ^:private old-upgrade-checks-class-name "metabase.task.upgrade_checks.CheckForNewVersions")
+
+(def ^:private upgrade-checks-class-name "metabase.version.task.upgrade_checks.CheckForNewVersions")
+
+(defn- stored-job-class-name []
+  (t2/select-one-fn (capitalize-if-mysql :job_class_name)
+                    (capitalize-if-mysql :qrtz_job_details)
+                    (capitalize-if-mysql :job_name) "metabase.task-test.job"))
+
+(defn- set-stored-job-class-name! [class-name]
+  (t2/update! (capitalize-if-mysql :qrtz_job_details)
+              (capitalize-if-mysql :job_name) "metabase.task-test.job"
+              {(capitalize-if-mysql :job_class_name) class-name}))
+
+(defn- trigger-that-starts-next-week
+  "An hourly trigger like [[trigger-1]] that can't fire while a test runs."
+  ^CronTrigger []
+  (triggers/build
+   (triggers/with-identity (triggers/key "metabase.task-test.trigger"))
+   (triggers/start-at (Date/from (.plus (Instant/now) (Duration/ofDays 7))))
+   (triggers/with-schedule
+    (cron/schedule
+     (cron/cron-schedule "0 0 * * * ? *")
+     (cron/with-misfire-handling-instruction-do-nothing)))))
+
+(deftest startup-cleanup-keeps-a-job-stored-under-an-old-class-name-test
+  ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it.
+  ;; Upgraded nodes load the current class under it.
+  (require 'metabase.version.task.upgrade-checks)
+  (with-jdbc-scheduler!
+    (try
+      ;; Once the old name is stored, this row loads as the real version-check job, which must not run here.
+      ;; A scheduler that this test started is in standby and fires nothing.
+      ;; One that was already running could fire an hourly trigger, so the trigger starts next week.
+      (task/schedule-task! (job) (trigger-that-starts-next-week))
+      (set-stored-job-class-name! old-upgrade-checks-class-name)
+      (#'task.impl/delete-jobs-with-no-class!)
+      ;; the trigger survives too, which matters for per-database sync schedules, as no `init!` recreates them
+      (is (= {:stored-class-name old-upgrade-checks-class-name
+              :loaded-class-name upgrade-checks-class-name
+              :triggers          #{{:cron-expression     "0 0 * * * ? *"
+                                    :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}}
+             {:stored-class-name (stored-job-class-name)
+              :loaded-class-name (-> ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))
+                                     .getJobClass
+                                     .getName)
+              :triggers          (triggers)}))
+      (finally
+        (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))))))
+
+(defonce ^:private moved-job-runs (atom 0))
+
+(task/defjob MovedJob
+  "A job as it is after its namespace moved: its saved class name is not the one this namespace would give."
+  {:saved-class "metabase.task_test_before_the_move.MovedJob"}
+  [_]
+  (swap! moved-job-runs inc))
+
+(defn- moved-job ^JobDetail []
+  (jobs/build
+   (jobs/of-type MovedJob)
+   (jobs/with-identity (jobs/key "metabase.task-test.job"))))
+
+(defn- loadable-class-name
+  "Returns `class-name` if a class of that name loads, as Quartz would load a stored job's class."
+  [class-name]
+  (try
+    (.getName (Class/forName class-name true (classloader/the-classloader)))
+    (catch ClassNotFoundException _
+      nil)))
+
+(deftest startup-cleanup-keeps-a-moved-job-that-kept-its-saved-class-test
+  ;; The stored name is the `:saved-class`, which has no entry in `job-history`, so no alias is involved.
+  (with-jdbc-scheduler!
+    (try
+      ;; the row is this test's own, and its trigger starts next week, so the scheduler never fires it
+      (task/schedule-task! (moved-job) (trigger-that-starts-next-week))
+      (#'task.impl/delete-jobs-with-no-class!)
+      (let [^JobDetail stored (qs/get-job (#'task/scheduler) (.getKey (moved-job)))
+            ^Class job-class  (.getJobClass stored)
+            runs-before       @moved-job-runs]
+        ;; Quartz fires a job by calling `execute` on a new instance of the class that the stored name loads.
+        (.execute ^Job (.newInstance (.getDeclaredConstructor job-class (make-array Class 0))
+                                     (object-array 0))
+                  nil)
+        (is (= {:stored-class-name   "metabase.task_test_before_the_move.MovedJob"
+                :loaded-class-name   "metabase.task_test_before_the_move.MovedJob"
+                :defined-here?       true
+                :name-from-namespace nil
+                :job-history-entries []
+                :triggers            #{{:cron-expression     "0 0 * * * ? *"
+                                        :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
+                :runs                1}
+               {:stored-class-name   (stored-job-class-name)
+                :loaded-class-name   (.getName job-class)
+                :defined-here?       (identical? job-class MovedJob)
+                :name-from-namespace (loadable-class-name "metabase.task_test.MovedJob")
+                :job-history-entries (filterv #(some #{(.getName job-class)} (:class-names %))
+                                              mdb.quartz/job-history)
+                :triggers            (triggers)
+                :runs                (- @moved-job-runs runs-before)})))
+      (finally
+        (task/delete-task! (.getKey (moved-job)) (.getKey (trigger-1)))))))
+
+(defn- upgrade-checks-job ^JobDetail [{:keys [data description requests-recovery?]}]
+  (jobs/build
+   (jobs/of-type (Class/forName upgrade-checks-class-name))
+   (jobs/with-identity (jobs/key "metabase.task-test.job"))
+   (jobs/with-description (or description "a job"))
+   (jobs/using-job-data (or data {}))
+   ;; the `jobs/build` macro threads the builder in as the first argument
+   (cond-> requests-recovery? jobs/request-recovery)
+   (jobs/store-durably)))
+
+(defn- class-name-after-add-job!
+  "Returns the class name stored after [[task/add-job!]] adds a job built with `job-options`.
+  The default job is stored under `stored-class-name` first."
+  [[stored-class-name job-options]]
+  (task/add-job! (upgrade-checks-job {}))
+  (set-stored-job-class-name! stored-class-name)
+  (task/add-job! (upgrade-checks-job job-options))
+  (stored-job-class-name))
+
+(deftest add-job!-replaces-a-stored-job-only-when-it-changed-test
+  ;; Replacing a stored job writes its current class name, which old nodes in a rolling upgrade can't load
+  (require 'metabase.version.task.upgrade-checks)
+  (with-jdbc-scheduler!
+    (let [old-name old-upgrade-checks-class-name]
+      (try
+        (is (= {:unchanged               old-name
+                :new-description         upgrade-checks-class-name
+                :new-data                upgrade-checks-class-name
+                :new-recovery-request    upgrade-checks-class-name
+                :unloadable-stored-class upgrade-checks-class-name}
+               (update-vals {:unchanged               [old-name {}]
+                             :new-description         [old-name {:description "a new description"}]
+                             :new-data                [old-name {:data {"a" "b"}}]
+                             :new-recovery-request    [old-name {:requests-recovery? true}]
+                             :unloadable-stored-class ["metabase.task_test.NotAClass" {}]}
+                            class-name-after-add-job!)))
+        (finally
+          (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job")))))))
+
+;;; ------------------------------------------------ defjob -------------------------------------------------
+
+(task/defjob AnnotatedJob
+  "A job with both Quartz annotations."
+  {:saved-class   "metabase.task_test.AnnotatedJob"
+   :concurrent?   false
+   :persist-data? true}
+  [_])
+
+(task/defjob DefaultsJob
+  {:saved-class "metabase.task_test.DefaultsJob", :concurrent? true, :persist-data? false}
+  [_])
+
+(task/defjob-type InterruptableTestJob
+  "A job that implements more than `org.quartz.Job`."
+  {:saved-class "metabase.task_test.InterruptableTestJob", :concurrent? false}
+  org.quartz.Job
+  (execute [_ _])
+  org.quartz.InterruptableJob
+  (interrupt [_]))
+
+(defn- annotation-names [^Class c]
+  (into #{} (map #(.getSimpleName (.annotationType ^Annotation %))) (.getAnnotations c)))
+
+(deftest defjob-options-put-quartz-annotations-on-the-class-test
+  (is (= {:annotated     {:class-name                       "metabase.task_test.AnnotatedJob"
+                          :annotations                      #{"DisallowConcurrentExecution"
+                                                              "PersistJobDataAfterExecution"}
+                          :concurrent-execution-disallowed? true
+                          :persist-job-data?                true}
+          :defaults      {:class-name                       "metabase.task_test.DefaultsJob"
+                          :annotations                      #{}
+                          :concurrent-execution-disallowed? false
+                          :persist-job-data?                false}
+          :interruptable {:class-name                       "metabase.task_test.InterruptableTestJob"
+                          :annotations                      #{"DisallowConcurrentExecution"}
+                          :concurrent-execution-disallowed? true
+                          :persist-job-data?                false}}
+         (update-vals {:annotated     AnnotatedJob
+                       :defaults      DefaultsJob
+                       :interruptable InterruptableTestJob}
+                      (fn [^Class c]
+                        (let [^JobDetail detail (jobs/build (jobs/of-type c))]
+                          {:class-name                       (.getName c)
+                           :annotations                      (annotation-names c)
+                           :concurrent-execution-disallowed? (.isConcurrentExectionDisallowed detail)
+                           :persist-job-data?                (.isPersistJobDataAfterExecution detail)}))))))
+
+(deftest defjob-defines-a-factory-test
+  ;; Kondo lints `task/defjob` as a `defn`, so it does not know the factory of a job defined with it.
+  (let [->annotated-job (ns-resolve 'metabase.task-test '->AnnotatedJob)]
+    (is (= {:job?           true
+            :interruptable? true
+            :docstring      "A job with both Quartz annotations."}
+           {:job?           (instance? Job (->annotated-job))
+            :interruptable? (instance? InterruptableJob (->InterruptableTestJob))
+            :docstring      (:doc (meta ->annotated-job))}))))
+
+(defn- definition-error
+  "Returns the message of the error that expanding the job definition `form` in this namespace throws."
+  [form]
+  (binding [*ns* (the-ns 'metabase.task-test)]
+    (try
+      (when (macroexpand-1 form)
+        nil)
+      (catch Throwable e
+        (ex-message (or (ex-cause e) e))))))
+
+(deftest defjob-rejects-an-invalid-definition-test
+  (is (=? {;; the entry to paste, with the class name that this namespace gives the type
+           :no-saved-class   #"(?s).*\n\n  :saved-class \"metabase\.task_test\.NewJob\"\n\n.*"
+           :no-options       #"(?s).*\n\n  \{:saved-class \"metabase\.task_test\.NewJob\"\}\n"
+           :unknown-option   #".*unknown options \[:durable\?\]\. The options are \[.*\]\."
+           :not-a-literal    #".*its `:saved-class` must be a string literal\."
+           :not-a-class-name #".*\"metabase\.task-test\.NewJob\" is not a fully qualified Java class name.*"
+           :no-package       #".*\"NewJob\" is not a fully qualified Java class name.*"
+           :not-a-boolean    #".*its `:concurrent\?` must be `true` or `false`\."
+           :metadata         #".*its type name has metadata\..*"
+           :two-arguments    #".*its argument vector takes one binding.*"
+           :valid            nil}
+          (update-vals
+           '{:no-saved-class   (task/defjob NewJob {:concurrent? false} [_])
+             :no-options       (task/defjob NewJob [_])
+             :unknown-option   (task/defjob NewJob {:saved-class "a.NewJob", :durable? true} [_])
+             :not-a-literal    (task/defjob NewJob {:saved-class (str "a." "NewJob")} [_])
+             :not-a-class-name (task/defjob NewJob {:saved-class "metabase.task-test.NewJob"} [_])
+             :no-package       (task/defjob-type NewJob {:saved-class "NewJob"} org.quartz.Job)
+             :not-a-boolean    (task/defjob NewJob {:saved-class "a.NewJob", :concurrent? nil} [_])
+             :metadata         (task/defjob ^{:doc "A job."} NewJob {:saved-class "a.NewJob"} [_])
+             :two-arguments    (task/defjob NewJob {:saved-class "a.NewJob"} [_ _])
+             :valid            (task/defjob NewJob "A job." {:saved-class "a.NewJob"} [_])}
+           definition-error))))
+
+(deftest defjob-allows-the-position-metadata-of-a-reader-test
+  ;; Eastwood reads the source with a reader that puts the line and column on every symbol.
+  (is (nil? (definition-error (list 'task/defjob
+                                    (with-meta 'NewJob {:line 1, :column 14})
+                                    {:saved-class "a.NewJob"}
+                                    '[_])))))

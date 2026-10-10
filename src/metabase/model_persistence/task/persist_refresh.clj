@@ -225,14 +225,18 @@
   [_job-context]
   (prune-all-deletable! dispatching-refresher))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Refresh persisted tables job"}
-  PersistenceRefresh [job-context]
+(task/defjob PersistenceRefresh
+  "Refresh persisted tables job"
+  {:saved-class "metabase.model_persistence.task.persist_refresh.PersistenceRefresh"
+   :concurrent? false}
+  [job-context]
   (refresh-job-fn! job-context))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Remove deletable persisted tables"}
-  PersistencePrune [job-context]
+(task/defjob PersistencePrune
+  "Remove deletable persisted tables"
+  {:saved-class "metabase.model_persistence.task.persist_refresh.PersistencePrune"
+   :concurrent? false}
+  [job-context]
   (prune-job-fn! job-context))
 
 (def ^:private refresh-job-key

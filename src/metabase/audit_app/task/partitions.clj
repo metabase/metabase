@@ -101,8 +101,11 @@
 
 ;;; scheduling the jobs
 
-(task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true}
-  ManagePartitions [_]
+(task/defjob ManagePartitions
+  "Creates and drops the partitions of `query_execution`, under Postgres."
+  {:saved-class "metabase.audit_app.task.partitions.ManagePartitions"
+   :concurrent? false}
+  [_]
   (when (= :postgres (mdb/db-type)) ; mysql/h2 don't have partitions
     (let [retention-days (settings/audit-max-retention-days)]
       (with-open [conn (.getConnection (mdb/data-source))]

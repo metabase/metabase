@@ -99,6 +99,20 @@ interactive explorer with a dependency graph.
 - Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
   make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
 
+## Moving or Renaming Quartz Jobs
+
+Keep a job's `:saved-class` the same when you move its namespace or rename its type. Quartz stores that
+class name in the app DB, and `task/defjob` gives the class exactly that name, so a move changes nothing
+that is stored.
+A new job needs one too: compile without it, and the error prints the entry to paste.
+
+To change a stored class name on purpose, add the new name to the end of that job's entry in
+`metabase.app-db.quartz/job-history`, or stored jobs and their triggers are deleted at the next startup.
+Each entry names its job key. If the key changes too, remove the entry, add the rename to `job-key-renames`
+beside it, and add the class to `job-classes-without-history` in `metabase.app-db.quartz-test`.
+The tests in `metabase.app-db.quartz-test` fail with instructions when a job's class name changes, or a job
+is added.
+
 ## Ratchets
 
 After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.

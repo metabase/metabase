@@ -44,8 +44,9 @@
                    #(satisfies? qc/JobDataMapConversion %)]]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
 
-;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
-;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
+;; The `:concurrent? false` option on the two jobs below puts the `DisallowConcurrentExecution` annotation on
+;; the generated class, which constrains the job execution to only be one at a time. Other triggers wanting
+;; the job to run will misfire.
 
 (def ^:private analyze-duration-threshold-for-refingerprinting
   "If the `analyze-db!` step is shorter than this number of `minutes`, then we may refingerprint fields."
@@ -122,9 +123,11 @@
       :else
       (sync-and-analyze-database*! database-id))))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Sync and analyze the database"}
-  SyncAndAnalyzeDatabase [job-context]
+(task/defjob SyncAndAnalyzeDatabase
+  "Sync and analyze the database"
+  {:saved-class "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"
+   :concurrent? false}
+  [job-context]
   (sync-and-analyze-database! job-context))
 
 (defn- update-field-values!
@@ -143,9 +146,11 @@
             (sync.field-values/update-field-values! database)
             (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Update field values"}
-  UpdateFieldValues [job-context]
+(task/defjob UpdateFieldValues
+  "Update field values"
+  {:saved-class "metabase.sync.task.sync_databases.UpdateFieldValues"
+   :concurrent? false}
+  [job-context]
   (update-field-values! job-context))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
