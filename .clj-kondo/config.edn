@@ -313,8 +313,6 @@
   {:exclude
    {metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported! {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver/current-db-time                              {:namespaces ["metabase.*"]}
-    metabase.driver/supports?                                    {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
@@ -1121,9 +1119,7 @@
 
     :deprecated-var
     {:exclude
-     {metabase.legacy-mbql.schema.helpers/is-clause?   {:namespaces ["metabase\\.driver.*"]}
-      metabase.legacy-mbql.schema.helpers/mbql-clause? {:namespaces ["metabase\\.driver.*"]}
-      metabase.legacy-mbql.util/query->source-table-id {:namespaces ["metabase\\.driver.*"]}
+     {metabase.legacy-mbql.util/query->source-table-id {:namespaces ["metabase\\.driver.*"]}
       metabase.legacy-mbql.util/aggregation-at-index   {:namespaces ["metabase\\.driver.*"]}
       metabase.legacy-mbql.util/assoc-field-options    {:namespaces ["metabase\\.driver.*"]}
       metabase.legacy-mbql.util/expression-with-name   {:namespaces ["metabase\\.driver.*"]}
