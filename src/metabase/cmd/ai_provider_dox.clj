@@ -158,8 +158,8 @@
 (defn- known-models-table
   "A `{model-id {:display-name ... :context-window ...}}` allow-list as a table, ordered by model ID."
   [models]
-  ;; the context window column is dropped when nothing in the table publishes one — DeepSeek would otherwise get a
-  ;; column of dashes, which reads as missing data rather than as a column that doesn't apply
+  ;; Drop the context window column when no model in the table has a window. A column of only dashes reads as
+  ;; missing data, not as a column that does not apply.
   (let [sorted   (sort-by key models)
         windows? (some (comp :context-window val) sorted)
         row      (fn [[model-id {:keys [display-name context-window]}]]

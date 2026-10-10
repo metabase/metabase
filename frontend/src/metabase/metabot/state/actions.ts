@@ -35,6 +35,7 @@ import type {
 
 import { metabotApi } from "../api";
 import {
+  CONTEXT_FULL_ERROR_CODE,
   METABOT_ERR_MSG,
   type MetabotProfileId,
   isHistoryEnabledProfile,
@@ -724,6 +725,7 @@ export const sendAgentRequest = createAsyncThunk<
                 "ai_provider_billing",
                 "ai_provider_rate_limit",
                 "ai_provider_auth",
+                CONTEXT_FULL_ERROR_CODE,
               ),
               message: P.string,
             },

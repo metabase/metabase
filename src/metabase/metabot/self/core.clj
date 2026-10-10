@@ -289,13 +289,16 @@
   A constant rather than a setting: the output distribution is the same on every instance, telemetry records no
   finish reason so a lowered value would truncate tool calls invisibly, and some surfaces deliberately send no cap
   (see the OpenAI builder, and Google Model Garden endpoints, which reach the vLLM builder with no context window)
-  or send it only when it fits the context window (see the vLLM builder), so one global knob would mislead.
+  or send it only when it fits the context window (see the vLLM and OpenRouter builders), so one global knob would
+  mislead.
 
-  Where a provider counts the cap against the context window, the cap also takes room from the prompt. Mistral
-  (https://docs.mistral.ai/api/endpoint/chat) and Moonshot (https://platform.kimi.ai/docs/api/chat) reject a
-  request whose prompt plus cap exceeds the window, and both send this cap on every request: on a 262,144-token
-  window a prompt over 230,144 tokens fails while the context meter shows about 88%. The agent loop resends the
-  full history and does not compact it, so a long enough conversation reaches this limit."
+  Some providers document that the cap takes room from the prompt. Mistral documents a 400 when the prompt plus
+  `max_tokens` exceeds the window (https://docs.mistral.ai/api/endpoint/chat). But a probe on mistral-medium-3-5
+  with a 240,000-token prompt and this cap got no 400: it got a 504 after about 5 minutes (probed 2026-10-09,
+  https://github.com/metabase/metabase/pull/83989). Moonshot documents the error for `max_completion_tokens`
+  (https://platform.kimi.ai/docs/api/chat). Metabot sends the deprecated `max_tokens`, and kimi-k2.6 accepted the
+  same request (probed 2026-10-09, https://github.com/metabase/metabase/pull/83989: HTTP 200). The agent loop
+  resends the full history and does not compact it, so a long enough conversation reaches the window."
   32000)
 
 (defn mkid

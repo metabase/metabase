@@ -974,6 +974,77 @@
                        :data    (ex-data credit-error)}}]
              (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6")))))))
 
+(defn- rethrown-api-error!
+  "What an adapter throws when `provider` answers with HTTP `status` and the JSON `body`."
+  [provider status body]
+  (mt/with-log-level [metabase.metabot.self.core :fatal]
+    (try
+      (self.core/rethrow-api-error! provider
+                                    (constantly "API error")
+                                    (ex-info "clj-http error"
+                                             {:status  status
+                                              :headers {"content-type" "application/json"}
+                                              :body    (json/encode body)}))
+      (catch clojure.lang.ExceptionInfo e
+        e))))
+
+(def ^:private context-full-copy
+  "This conversation has reached its maximum length and can't continue. Please start a new chat.")
+
+(defn- agent-loop-error-parts!
+  "The `:error` parts of an agent loop on `model-ref` whose provider call throws `e`."
+  [model-ref e]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider model-ref]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw e))
+                                claude/claude         (fn [_] (throw e))]
+      (mt/with-log-level [metabase.metabot.agent.core :fatal]
+        (filterv #(= :error (:type %))
+                 (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                        :state      {}
+                                        :profile-id :embedding_next
+                                        :context    {}}))))))
+
+(def ^:private openrouter-overflow-body
+  "OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+  https://github.com/metabase/metabase/pull/83989)."
+  {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you requested about "
+                          "200001 tokens (1 of text input, 200000 in the output).")
+           :code     400
+           :metadata {:provider_name nil}}})
+
+(deftest agent-loop-context-overflow-error-part-test
+  (testing "a 400 for a request over the window becomes a \"full\" error part with the web copy"
+    (doseq [[model-ref provider body]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-overflow-body]
+             ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
+             ["anthropic/claude-sonnet-4-6" "anthropic"
+              {:type  "error"
+               :error {:type    "invalid_request_error"
+                       :message "prompt is too long: 208310 tokens > 200000 maximum"}}]]]
+      (testing provider
+        (let [e     (rethrown-api-error! provider 400 body)
+              parts [{:type  :error
+                      :error {:error-code "ai_provider_context_full" :message context-full-copy}}]]
+          (is (= parts (mt/as-admin (agent-loop-error-parts! model-ref e))))
+          (is (= parts (mt/with-current-user (mt/user->id :rasta)
+                         (agent-loop-error-parts! model-ref e)))))))))
+
+(deftest agent-loop-other-400s-keep-the-generic-error-part-test
+  (testing "a 400 that is not a context overflow keeps the generic error part"
+    (doseq [[model-ref provider body]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}]
+             ["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "Bad request"}}]]]
+      (testing (str provider " " (pr-str body))
+        (let [e (rethrown-api-error! provider 400 body)]
+          (is (= [{:type  :error
+                   :error {:message (ex-message e)
+                           :type    (str (type e))
+                           :data    (ex-data e)}}]
+                 (mt/as-admin (agent-loop-error-parts! model-ref e)))))))))
+
 ;;; ===================== Prometheus Metrics Tests =====================
 
 (deftest run-agent-loop-prometheus-test

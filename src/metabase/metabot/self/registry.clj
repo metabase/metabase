@@ -95,6 +95,7 @@
    "deepseek"   {:stream           #'deepseek/deepseek
                  :list-models      #'deepseek/list-models
                  :supported-models #'deepseek/supported-models
+                 :context-window   #'deepseek/context-window-tokens
                  :reasoning?       #'deepseek/streams-reasoning?}
    "google"     {:stream           #'google/google
                  :list-models      #'google/list-models

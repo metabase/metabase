@@ -141,6 +141,42 @@
                         (t2/select-one :model/MetabotMessage
                                        :conversation_id conversation-id :role "assistant")))))))))))
 
+(deftest native-agent-streaming-context-overflow-error-test
+  (testing "an OpenRouter 400 for a request over the window streams the \"full\" copy and error code"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [conversation-id (str (random-uuid))
+              ;; OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+              ;; https://github.com/metabase/metabase/pull/83989).
+              e               (ex-info "OpenRouter API error (HTTP 400)"
+                                       {:api-error true
+                                        :status    400
+                                        :provider  "openrouter"
+                                        :body      {:error {:message  "This endpoint's maximum context length is 200000 tokens."
+                                                            :code     400
+                                                            :metadata {:provider_name nil}}}})]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw e))
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                               (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     {:message         "Test full context"
+                                                      :context         {}
+                                                      :conversation_id conversation-id
+                                                      :state           {}}))
+                    events   (->> (str/split-lines response)
+                                  (filter #(str/starts-with? % "data: "))
+                                  (remove #(= "data: [DONE]" %))
+                                  (mapv #(json/decode+kw (subs % 6))))]
+                (is (=? {:errorText "This conversation has reached its maximum length and can't continue. Please start a new chat."}
+                        (u/seek #(= "error" (:type %)) events)))
+                (is (=? {:finishReason    "error"
+                         :messageMetadata {:errorCode "ai_provider_context_full"}}
+                        (u/seek #(= "finish" (:type %)) events)))))))))))
+
 (def ^:private openrouter-error-chunks
   "Raw OpenRouter chunks for a generation the upstream model abandoned: OpenRouter reports that as
   `finish_reason \"error\"` rather than as an error event."

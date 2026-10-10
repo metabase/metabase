@@ -9,7 +9,8 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -307,6 +308,92 @@
                    {:choices [{:delta {:content "4"}}]}
                    {:choices [{:delta {} :finish_reason "stop"}]
                     :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}])))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Default cap fit check
+;;; ──────────────────────────────────────────────────────────────────
+
+;; Claude Haiku 4.5 has a 200,000-token window. With the 32,000 default cap, the largest prompt
+;; estimate that fits is 168,000 tokens, which is 672,000 characters of JSON at 4 characters a token.
+
+(def ^:private haiku "anthropic/claude-haiku-4.5")
+
+(def ^:private stub-tool
+  {:tool-name "get_thing"
+   :doc       "Get a thing."
+   :schema    [:=> [:cat [:map [:id :int]]] :any]
+   :fn        identity})
+
+(defn- letters
+  "A string of `n` ASCII letters, which JSON encodes with no escapes."
+  [n]
+  (String. (char-array n \a)))
+
+(defn- prompt-json-length
+  "The number of characters in the JSON of the `messages` and `tools` of `body`."
+  [body]
+  (count (json/encode (select-keys body [:messages :tools]))))
+
+(defn- padded-content
+  "A user message text that makes the JSON of the `messages` and `tools` of the body for `opts` `n` characters long."
+  [opts n]
+  (let [base (prompt-json-length (openrouter/openrouter-request-body
+                                  (assoc opts :input [{:role :user :content ""}])))]
+    (letters (- n base))))
+
+(defn- body-with-json-length
+  "The request body for `opts`, with one user message padded so the JSON of its `messages` and `tools` is `n`
+  characters long."
+  [opts n]
+  (let [opts (merge {:model haiku} opts)
+        body (openrouter/openrouter-request-body
+              (assoc opts :input [{:role :user :content (padded-content opts n)}]))]
+    (is (= n (prompt-json-length body)) "calibration")
+    body))
+
+(deftest ^:parallel request-body-drops-default-cap-when-prompt-does-not-fit-test
+  (testing "an estimated 168,001-token prompt plus the 32,000 default cap exceeds Haiku 4.5's 200,000 window"
+    (is (not (contains? (body-with-json-length {} (* 4 168001)) :max_tokens)))))
+
+(deftest ^:parallel request-body-keeps-default-cap-when-prompt-fits-test
+  (is (= 32000 (:max_tokens (body-with-json-length {} (* 4 150000))))))
+
+(deftest ^:parallel request-body-always-sends-caller-cap-test
+  (testing "a caller cap is sent even when the prompt does not fit with it"
+    (is (= 512 (:max_tokens (body-with-json-length {:max-tokens 512} (* 4 200000)))))))
+
+(deftest ^:parallel request-body-keeps-default-cap-for-unknown-window-test
+  (testing "a model with no catalog window keeps the default cap"
+    (is (= 32000 (:max_tokens (body-with-json-length {:model "some-vendor/unknown-model"} (* 4 200000)))))))
+
+(deftest ^:parallel request-body-fit-check-runs-after-the-forced-call-floor-test
+  (testing "a forced call on a mandatory-reasoning model is fit-checked after its max_tokens floor"
+    (let [body (body-with-json-length {:model  "openai/gpt-5.4-pro"
+                                       :schema {:type "object" :properties {:answer {:type "string"}}}}
+                                      (* 4 900000))]
+      (is (not (contains? body :max_tokens))))))
+
+(deftest ^:parallel request-body-anthropic-system-counts-toward-the-fit-test
+  (testing "the system prompt counts toward the estimate"
+    (let [body (openrouter/openrouter-request-body {:model  haiku
+                                                    :system (letters (* 4 168001))
+                                                    :input  [{:role :user :content "hi"}]})]
+      (is (not (contains? body :max_tokens))))))
+
+(deftest ^:parallel request-body-default-cap-fit-boundary-test
+  (testing "below the boundary: estimate 167,999"
+    (is (= 32000 (:max_tokens (body-with-json-length {} 671996)))))
+  (testing "at the boundary: estimate 168,000, so estimate plus cap equals the window"
+    (is (= 32000 (:max_tokens (body-with-json-length {} 672000)))))
+  (testing "above the boundary: 672,001 characters round up to an estimate of 168,001"
+    (is (not (contains? (body-with-json-length {} 672001) :max_tokens))))
+  (testing "tools count: the at-boundary message plus one tool does not fit"
+    (let [content (padded-content {:model haiku} 672000)
+          body    (openrouter/openrouter-request-body {:model haiku
+                                                       :input [{:role :user :content content}]
+                                                       :tools [stub-tool]})]
+      (is (< 672000 (prompt-json-length body)))
+      (is (not (contains? body :max_tokens))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests

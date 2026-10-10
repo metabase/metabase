@@ -4,6 +4,10 @@ import { isEmbedding } from "metabase/embedding/config";
 
 export const CONTEXT_WINDOW_WARNING_PERCENT = 90;
 
+// The server sends this error code when it judges that a rejected turn did
+// not fit the model's context window.
+export const CONTEXT_FULL_ERROR_CODE = "ai_provider_context_full";
+
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
 export const FIXED_METABOT_IDS = {
   DEFAULT: 1 as const,
