@@ -48,14 +48,15 @@
         (is (= :type/Integer
                (lib/type-of query col)))))
     (testing "temporal truncation (non-extraction) preserves effective type"
-      (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)]
-        (is (= (:effective-type (meta/field-metadata :orders :created-at))
-               (lib/type-of query col)))))))
+      (doseq [unit [:month :year]]
+        (let [col (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) unit)]
+          (is (= (:effective-type (meta/field-metadata :orders :created-at))
+                 (lib/type-of query col))))))))
 
 (deftest ^:parallel ref-test
   (is (=? [:field
            {:base-type      :type/DateTime
-            :effective-type :type/Integer
+            :effective-type :type/DateTime
             :temporal-unit  :year
             :lib/uuid       string?}
            "CREATED_AT"]

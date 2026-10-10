@@ -10,7 +10,7 @@ import { cardApi, selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { fetchTableMetadata } from "metabase/redux/tables";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type {
   Card,
@@ -261,7 +261,9 @@ async function loadSourceMetadata(
   }
 
   if (isTableInput(input)) {
-    await store.dispatch(fetchTableMetadata({ id: input.source.id }));
+    await store.dispatch(
+      fetchTableMetadataAndForeignKeys({ id: input.source.id }),
+    );
     await loadReferencedMetricMetadata(store, input);
   }
 }

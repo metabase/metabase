@@ -355,9 +355,17 @@ function ValidTypeFixtures() {
     filters: [filter({ type: "column", name: "STATUS" }, "contains", "p")],
   });
 
+  useMetabaseQueryObject(groupedStaticQuery, {
+    filters: [filter({ type: "column", name: "created_month" }, "not-null")],
+    orderBys: [{ type: "column", name: "total", direction: "desc" }],
+  });
+
   useMetabaseQuery(pickedOrdersQuery, {
     filters: [
-      filter({ type: "column", name: "CREATED_AT" }, "time-interval", "x"),
+      filter({ type: "column", name: "CREATED_AT" }, "time-interval", [
+        -24,
+        "month",
+      ]),
     ],
   });
 

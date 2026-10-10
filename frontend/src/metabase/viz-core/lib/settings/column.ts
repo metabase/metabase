@@ -562,7 +562,7 @@ export function tableColumnSettings({
       getSection: () => t`Columns`,
       // title: t`Columns`,
       widget: "tableColumns",
-      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"] ?? false,
       getValue: ([{ data }], vizSettings) => {
         const { cols } = data;
         const settings = vizSettings["table.columns"] ?? [];

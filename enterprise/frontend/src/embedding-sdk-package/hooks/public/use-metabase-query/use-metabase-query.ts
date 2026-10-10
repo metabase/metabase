@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useAsyncFn } from "react-use";
 
+import { useDataAppDevLog } from "embedding-sdk-package/hooks/private/use-data-app-dev-log";
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { isQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
@@ -49,6 +50,7 @@ const useMetabaseQueryImpl = <
   );
   const queryRef = useRef(query);
   const dynamicQueryRef = useRef(dynamicQuery);
+  const { logError } = useDataAppDevLog();
 
   useEffect(() => {
     queryRef.current = query;
@@ -80,17 +82,22 @@ const useMetabaseQueryImpl = <
           return null;
         }
 
-        const datasetQuery = await resolveDatasetQuery(reduxStore)(
-          currentQuery,
-          currentDynamicQuery,
-        );
-        const result = await queryDataset(reduxStore)({ datasetQuery });
+        try {
+          const datasetQuery = await resolveDatasetQuery(reduxStore)(
+            currentQuery,
+            currentDynamicQuery,
+          );
+          const result = await queryDataset(reduxStore)({ datasetQuery });
 
-        return mapDatasetQueryData(result);
+          return mapDatasetQueryData(result);
+        } catch (error) {
+          logError(error);
+          throw error;
+        }
       }
 
       return null;
-    }, [queryDataset, reduxStore, resolveDatasetQuery]);
+    }, [logError, queryDataset, reduxStore, resolveDatasetQuery]);
 
   // Type signature of refetch requires returning Promise<void>
   const refetch = useCallback(async () => {
