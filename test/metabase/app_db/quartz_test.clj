@@ -245,7 +245,7 @@
 (deftest every-job-class-is-listed-test
   (let [current         (job-class-names)
         renamed         (into #{} (map current-name) mdb.quartz/job-history)
-        without-history (into #{} (filter in-this-edition?) job-classes-without-history)]
+        listed-here     (into #{} (filter in-this-edition?) job-classes-without-history)]
     (testing "every job class is listed"
       (is (= #{} (set/difference current renamed job-classes-without-history))
           (str "For an existing job's class under a new name, with the same job key: add the new name to the end"
@@ -255,7 +255,7 @@
                "For a new job: add the class to `job-classes-without-history`.\n"
                "For a job whose key changed too: " changed-job-key-instructions)))
     (testing "every name in `job-classes-without-history` is a job class"
-      (is (= #{} (set/difference without-history current))
+      (is (= #{} (set/difference listed-here current))
           (str "For a job that was renamed and kept its job key: move the name into an entry in"
                " `metabase.app-db.quartz/job-history`, before the new name.\n"
                "For a job that was removed, or whose key changed too: remove the name.")))
@@ -281,8 +281,8 @@
       (mt/with-temp [:model/TransformJob _ {:schedule "0 0 * * * ? *"}]
         (tu/do-with-unstarted-temp-scheduler!
          (fn []
-           ;; Only these jobs' initializers run, because other tasks' initializers start threads that outlive
-           ;; the scheduler. They are called directly so that one that throws fails the test.
+           ;; Only these jobs' initializers run, because others start threads that outlive the scheduler.
+           ;; They are called directly so that one that throws fails the test.
            (doseq [[task init!] (methods task.impl/init!)
                    :when        (namespaces (namespace task))]
              (init! task))

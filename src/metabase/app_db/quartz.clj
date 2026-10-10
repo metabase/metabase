@@ -46,17 +46,19 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
-;; Quartz stores each job's class name in the app DB, and moving a job's namespace or renaming its type
-;; renames its class. Without the old name here, the first upgraded node deletes the stored job as classless
-;; at startup, even while an old node is running it, and reschedules it under the new name. With it, upgraded
-;; nodes load the stored row under the current class.
+;; Quartz stores each job's class name in the app DB, and moving or renaming a job renames its class.
+;; Without the old name here, the first upgraded node can't find the stored job's class, and deletes the job.
+;; It does so at startup, even while an old node is running the job, then reschedules it under the new name.
+;; With the old name here, upgraded nodes load the stored row under the current class.
 ;;
-;; Quartz asks for a class by name only, so the lookup goes by class name alone. The `:job-key` or
-;; `:job-key-prefix` is a label for readers. No code reads it, and a test checks it against the real job keys.
+;; Quartz asks for a class by name only, so the lookup goes by class name alone.
+;; The `:job-key` or `:job-key-prefix` is a label for readers.
+;; No code reads it, and a test checks it against the real job keys.
 ;;
-;; Keep an entry for good, because stored rows keep the old name. The exception is a job whose key changes:
-;; remove its entry, and record the change in [[job-key-renames]]. A row under the old key would otherwise
-;; still load, and keep running beside the newly scheduled job. Without the entry it is deleted as classless.
+;; Keep an entry for good, because stored rows keep the old name.
+;; The exception is a job whose key changes: remove its entry, and record the change in [[job-key-renames]].
+;; A row under the old key would otherwise still load, and keep running beside the newly scheduled job.
+;; Without the entry, its class can't be found and it is deleted.
 (def job-history
   "The class names each renamed Quartz job has had, oldest first, so the last is its current name.
   The `:job-key` says which job an entry is for.
@@ -130,7 +132,7 @@
 
 (def job-key-renames
   "Past renames of job keys, each with the class the job had under the old key and under the new one.
-  The row stored under an old key is deleted at startup as classless.
+  The row stored under an old key is deleted at startup, because its class is gone.
   The log then says why, from `:release` and `:change`.
   The `:release` is the first version with the new key, patch number included.
   It names each release line when the rename was backported, as in \"x.58.7 and x.59.3\"."
