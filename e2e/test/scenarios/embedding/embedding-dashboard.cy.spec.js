@@ -68,6 +68,14 @@ describe("scenarios > embedding > dashboard parameters", () => {
     it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
       H.visitDashboard("@dashboardId");
 
+      cy.log(
+        "should render cursor pointer on hover over a toggle (metabase#46223)",
+      );
+      cy.findAllByTestId("parameter-value-widget-target")
+        .first()
+        .realHover()
+        .should("have.css", "cursor", "pointer");
+
       cy.get("@dashboardId").then((dashboardId) => {
         H.openLegacyStaticEmbeddingModal({
           resource: "dashboard",
@@ -177,53 +185,42 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       H.visitIframe();
 
-      H.filterWidget().should("not.exist");
-
       cy.findByTestId("scalar-value").invoke("text").should("eq", "2,500");
+
+      H.filterWidget().should("not.exist");
     });
 
-    it("should only display filters mapped to cards on the selected tab", () => {
+    it("should (dis)allow setting parameters as required for a published embedding", () => {
+      H.visitDashboard("@dashboardId");
+
       cy.get("@dashboardId").then((dashboardId) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          embedding_params: {
-            id: "enabled",
-            name: "enabled",
-            source: "enabled",
-            user_id: "enabled",
-          },
-          enable_embedding: true,
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+          activeTab: "parameters",
         });
-
-        const payload = {
-          resource: { dashboard: dashboardId },
-          params: {},
-        };
-
-        H.visitEmbeddedPage(payload);
-
-        // wait for the results to load
-        cy.contains("Test Dashboard");
-        cy.contains("2,500");
       });
 
-      H.dashboardParametersContainer().within(() => {
-        cy.findByText("Id").should("be.visible");
-        cy.findByText("Name").should("be.visible");
-        cy.findByText("Source").should("be.visible");
-        cy.findByText("User").should("be.visible");
-        cy.findByText("Not Used Filter").should("not.exist");
+      H.setEmbeddingParameter("Name", "Editable");
+      H.setEmbeddingParameter("Source", "Locked");
+      H.publishChanges("dashboard", ({ request }) => {
+        assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
+          name: "enabled",
+          source: "locked",
+          user_id: "disabled",
+          not_used: "disabled",
+        });
       });
 
-      H.goToTab("Tab 2");
+      H.closeStaticEmbeddingModal();
+      H.editDashboard();
 
-      H.dashboardParametersContainer().should("not.exist");
-      cy.findByTestId("embed-frame").within(() => {
-        cy.findByText("Id").should("not.exist");
-        cy.findByText("Name").should("not.exist");
-        cy.findByText("Source").should("not.exist");
-        cy.findByText("User").should("not.exist");
-        cy.findByText("Not Used Filter").should("not.exist");
-      });
+      assertRequiredEnabledForName({ name: "Name", enabled: true });
+      assertRequiredEnabledForName({ name: "Source", enabled: true });
+      assertRequiredEnabledForName({ name: "Id", enabled: false });
+      assertRequiredEnabledForName({ name: "User", enabled: false });
+      assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
     });
 
     it("should handle required parameters", () => {
@@ -317,55 +314,10 @@ describe("scenarios > embedding > dashboard parameters", () => {
         .invoke("attr", "class")
         .should("not.contain", "IsSticky");
     });
-
-    it("should (dis)allow setting parameters as required for a published embedding", () => {
-      H.visitDashboard("@dashboardId");
-
-      cy.get("@dashboardId").then((dashboardId) => {
-        H.openLegacyStaticEmbeddingModal({
-          resource: "dashboard",
-          resourceId: dashboardId,
-          activeTab: "parameters",
-        });
-      });
-
-      // Set an "editable" and "locked" parameters and leave the rest "disabled"
-      H.setEmbeddingParameter("Name", "Editable");
-      H.setEmbeddingParameter("Source", "Locked");
-      H.publishChanges("dashboard", ({ request }) => {
-        assert.deepEqual(request.body.embedding_params, {
-          id: "disabled",
-          name: "enabled",
-          source: "locked",
-          user_id: "disabled",
-          not_used: "disabled",
-        });
-      });
-
-      H.closeStaticEmbeddingModal();
-      H.editDashboard();
-
-      // Check each parameter's required state
-      assertRequiredEnabledForName({ name: "Name", enabled: true });
-      assertRequiredEnabledForName({ name: "Source", enabled: true });
-      // The rest must be disabled
-      assertRequiredEnabledForName({ name: "Id", enabled: false });
-      assertRequiredEnabledForName({ name: "User", enabled: false });
-      assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
-    });
-
-    it("should render cursor pointer on hover over a toggle (metabase#46223)", () => {
-      H.visitDashboard("@dashboardId");
-
-      cy.findAllByTestId("parameter-value-widget-target")
-        .first()
-        .realHover()
-        .should("have.css", "cursor", "pointer");
-    });
   });
 
   context("API", () => {
-    beforeEach(() => {
+    it("should work for all filters", () => {
       cy.get("@dashboardId").then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           embedding_params: {
@@ -377,10 +329,38 @@ describe("scenarios > embedding > dashboard parameters", () => {
           enable_embedding: true,
         });
 
+        cy.log(
+          "should render error message when `params` is not an object (metabase#14474)",
+        );
+        const invalidParamsValue = [];
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashboardId },
+          params: invalidParamsValue,
+        });
+
+        H.getDashboardCard()
+          .findByText("There was a problem displaying this chart.")
+          .should("be.visible");
+
+        cy.log("should send 'X-Metabase-Client' header for api requests");
+        cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
+
         const payload = {
           resource: { dashboard: dashboardId },
           params: {},
         };
+
+        H.visitEmbeddedPage(payload, {
+          onBeforeLoad: (window) => {
+            window.Cypress = undefined;
+          },
+        });
+
+        cy.wait("@getEmbeddedDashboard").then(({ request }) => {
+          expect(request?.headers?.["x-metabase-client"]).to.equal(
+            "embedding-iframe-static",
+          );
+        });
 
         H.visitEmbeddedPage(payload);
 
@@ -388,9 +368,35 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.contains("Test Dashboard");
         cy.contains("2,500");
       });
-    });
 
-    it("should work for all filters", () => {
+      cy.log("should only display filters mapped to cards on the selected tab");
+      H.dashboardParametersContainer().within(() => {
+        cy.findByText("Id").should("be.visible");
+        cy.findByText("Name").should("be.visible");
+        cy.findByText("Source").should("be.visible");
+        cy.findByText("User").should("be.visible");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
+
+      cy.log(
+        "should hide filters that are not mapped to cards on the selected tab",
+      );
+      H.goToTab("Tab 2");
+      H.assertTabSelected("Tab 2");
+
+      H.dashboardParametersContainer().should("not.exist");
+      cy.findByTestId("embed-frame").within(() => {
+        cy.findByText("Id").should("not.exist");
+        cy.findByText("Name").should("not.exist");
+        cy.findByText("Source").should("not.exist");
+        cy.findByText("User").should("not.exist");
+        cy.findByText("Not Used Filter").should("not.exist");
+      });
+
+      H.goToTab("Tab 1");
+      H.assertTabSelected("Tab 1");
+      H.dashboardParametersContainer().findByText("Id").should("be.visible");
+
       cy.log("should allow searching PEOPLE.ID by PEOPLE.NAME");
 
       openFilterOptions("Id");
@@ -447,33 +453,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         cy.visit(`${location.origin}${location.pathname}?id=1&id=3`),
       );
 
-      cy.findByTestId("scalar-value").contains("2");
-    });
-  });
-
-  it("should render error message when `params` is not an object (metabase#14474)", () => {
-    cy.get("@dashboardId").then((dashboardId) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-        embedding_params: {
-          id: "enabled",
-          name: "enabled",
-          source: "enabled",
-          user_id: "enabled",
-        },
-        enable_embedding: true,
-      });
-
-      const invalidParamsValue = [];
-      const payload = {
-        resource: { dashboard: dashboardId },
-        params: invalidParamsValue,
-      };
-
-      H.visitEmbeddedPage(payload);
-
-      H.getDashboardCard()
-        .findByText("There was a problem displaying this chart.")
-        .should("be.visible");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
     });
   });
 
@@ -610,34 +590,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     cy.findByTestId("export-as-pdf-button").should("be.visible").click();
   });
-
-  it("should send 'X-Metabase-Client' header for api requests", () => {
-    cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
-
-    cy.get("@dashboardId").then((dashboardId) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-        embedding_params: {},
-        enable_embedding: true,
-      });
-
-      const payload = {
-        resource: { dashboard: dashboardId },
-        params: {},
-      };
-
-      H.visitEmbeddedPage(payload, {
-        onBeforeLoad: (window) => {
-          window.Cypress = undefined;
-        },
-      });
-
-      cy.wait("@getEmbeddedDashboard").then(({ request }) => {
-        expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe-static",
-        );
-      });
-    });
-  });
 });
 
 describe("scenarios > embedding > dashboard parameters with defaults", () => {
@@ -679,79 +631,9 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       });
     });
 
-    cy.get("@dashboardId").then((dashboardId) => {
-      const payload = {
-        resource: { dashboard: dashboardId },
-        params: { source: [] },
-      };
-
-      H.visitEmbeddedPage(payload);
-
-      // wait for the results to load
-
-      // The ID default (1 and 2) should apply, because it is disabled.
-      // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
-      // The Source default ('Facebook') should not apply because the param is locked but the value is unset
-      // If either the Name or Source default applied the result would be 0.
-
-      cy.contains("Test Dashboard");
-      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
-    });
-    //visitIframe();
-  });
-
-  it("locked parameters require a value to be specified in the JWT", () => {
-    const nameParameter = dashboardDetails.parameters.find(
-      (parameter) => parameter.name === "Name",
+    cy.log(
+      "locked parameters should still render results in the preview by default (metabase#47570)",
     );
-    const sourceParameter = dashboardDetails.parameters.find(
-      (parameter) => parameter.name === "Source",
-    );
-
-    cy.get("@dashboardId").then((dashboardId) => {
-      cy.request("PUT", `api/dashboard/${dashboardId}`, {
-        enable_embedding: true,
-        embedding_params: {
-          [nameParameter.slug]: "enabled",
-          [sourceParameter.slug]: "locked",
-        },
-      });
-
-      const payload = {
-        resource: { dashboard: dashboardId },
-        params: { source: null },
-      };
-
-      H.visitEmbeddedPage(payload);
-    });
-
-    // The Source parameter is 'locked', and no value has been specified in the token,
-    // thus the API responds with "You must specify a value for :source in the JWT."
-    // and the card will not display.
-
-    H.getDashboardCard()
-      .findByText("There was a problem displaying this chart.")
-      .should("be.visible");
-  });
-
-  it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
-    const nameParameter = dashboardDetails.parameters.find(
-      (parameter) => parameter.name === "Name",
-    );
-    const sourceParameter = dashboardDetails.parameters.find(
-      (parameter) => parameter.name === "Source",
-    );
-
-    cy.get("@dashboardId").then((dashboardId) => {
-      cy.request("PUT", `api/dashboard/${dashboardId}`, {
-        enable_embedding: true,
-        embedding_params: {
-          [nameParameter.slug]: "enabled",
-          [sourceParameter.slug]: "locked",
-        },
-      });
-    });
-
     H.visitDashboard("@dashboardId");
 
     cy.get("@dashboardId").then((dashboardId) => {
@@ -765,9 +647,257 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 
     H.visitIframe();
 
-    cy.log("should show card results by default");
     H.getDashboardCard().findByText("2").should("be.visible");
     H.getDashboardCard().findByText("test question").should("be.visible");
+
+    cy.log("card parameter defaults should apply only for disabled parameters");
+    cy.get("@dashboardId").then((dashboardId) => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: { source: [] },
+      };
+
+      H.visitEmbeddedPage(payload);
+
+      // The ID default (1 and 2) should apply, because it is disabled.
+      // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
+      // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+      // If either the Name or Source default applied the result would be 0.
+
+      cy.contains("Test Dashboard");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+    });
+
+    cy.log("locked parameters require a value to be specified in the JWT");
+    cy.get("@dashboardId").then((dashboardId) => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: { source: null },
+      };
+
+      H.visitEmbeddedPage(payload);
+    });
+
+    // The Source parameter is 'locked', and no value has been specified in the token,
+    // thus the API responds with "You must specify a value for :source in the JWT."
+    // and the card will not display.
+    H.getDashboardCard()
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
+  });
+});
+
+describe("issue 20438", () => {
+  const questionDetails = {
+    name: "20438",
+    native: {
+      query:
+        "SELECT * FROM PRODUCTS\nWHERE true\n    [[AND {{CATEGORY}}]]\n limit 30",
+      "template-tags": {
+        CATEGORY: {
+          id: "24f69111-29f8-135f-9321-1ff94bbb31ad",
+          name: "CATEGORY",
+          "display-name": "Category",
+          type: "dimension",
+          dimension: ["field", PRODUCTS.CATEGORY, null],
+          "widget-type": "string/=",
+          default: null,
+        },
+      },
+    },
+  };
+
+  const filter = {
+    name: "Text",
+    slug: "text",
+    id: "b555d25b",
+    type: "string/=",
+    sectionId: "string",
+  };
+
+  const dashboardDetails = {
+    parameters: [filter],
+  };
+
+  beforeEach(() => {
+    cy.intercept("GET", "/api/embed/dashboard/**").as("getEmbed");
+
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      // Connect filter to the card
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 24,
+            size_y: 8,
+            parameter_mappings: [
+              {
+                parameter_id: filter.id,
+                card_id,
+                target: ["dimension", ["template-tag", "CATEGORY"]],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Enable embedding and enable the "Text" filter
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        enable_embedding: true,
+        embedding_params: { [filter.slug]: "enabled" },
+      });
+
+      cy.wrap(card_id).as("questionId");
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      H.visitDashboard(dashboard_id);
+    });
+  });
+
+  it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboardId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
+
+    H.visitIframe();
+
+    cy.wait("@getEmbed");
+
+    H.filterWidget().click();
+    cy.wait("@getEmbed");
+
+    H.popover().contains("Doohickey").click();
+    cy.wait("@getEmbed");
+
+    cy.button("Add filter").click();
+    cy.wait("@getEmbed");
+
+    cy.findAllByRole("gridcell")
+      // One of product titles for Doohickey
+      .should("contain", "Small Marble Shoes")
+      // One of product titles for Gizmo
+      .and("not.contain", "Rustic Paper Wallet");
+  });
+});
+
+describe("scenarios > embedding > dashboard locked numeric parameters (metabase#25031)", () => {
+  const dashboardFilter = {
+    name: "Equal to",
+    slug: "equal_to",
+    id: "c269ebe1",
+    type: "number/=",
+    sectionId: "number",
+  };
+
+  const dashboardDetails = {
+    name: "25031",
+    parameters: [dashboardFilter],
+    enable_embedding: true,
+    embedding_params: {
+      [dashboardFilter.slug]: "locked",
+    },
+  };
+
+  function getQuestionDetails(defaultValue = undefined) {
+    return {
+      name: "20845",
+      native: {
+        "template-tags": {
+          qty_locked: {
+            id: "6bd8d7be-bd5b-382c-cfa2-683461891663",
+            name: "qty_locked",
+            "display-name": "Qty locked",
+            type: "number",
+            required: defaultValue ? true : false,
+            default: defaultValue,
+          },
+        },
+        query:
+          "select count(*) from orders where true [[AND quantity={{qty_locked}}]]",
+      },
+    };
+  }
+
+  function createDashboard(defaultValue, alias) {
+    H.createNativeQuestionAndDashboard({
+      questionDetails: getQuestionDetails(defaultValue),
+      dashboardDetails,
+    }).then(({ body: { id, dashboard_id, card_id } }) => {
+      cy.wrap(dashboard_id).as(alias);
+
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            card_id,
+            id,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 10,
+            parameter_mappings: [
+              {
+                parameter_id: dashboardFilter.id,
+                card_id,
+                target: ["variable", ["template-tag", "qty_locked"]],
+              },
+            ],
+          },
+        ],
+      });
+    });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("locked parameter should work with numeric values, with and without a required filter with a default value", () => {
+    createDashboard(undefined, "dashboardId");
+    createDashboard("10", "requiredDashboardId");
+
+    [
+      { alias: "@dashboardId", label: "without a default value" },
+      { alias: "@requiredDashboardId", label: "with a required default value" },
+    ].forEach(({ alias, label }) => {
+      cy.get(alias).then((dashboardId) => {
+        // This issue is not possible to reproduce using UI from this point on.
+        // We have to manually send the payload in order to make sure it works for both strings and integers.
+        ["string", "integer"].forEach((type) => {
+          cy.log(
+            `Make sure it works with ${type.toUpperCase()} in the payload ${label}`,
+          );
+
+          const payload = {
+            resource: { dashboard: dashboardId },
+            params: {
+              [dashboardFilter.slug]: type === "string" ? "15" : 15, // IMPORTANT: integer
+            },
+          };
+
+          H.visitEmbeddedPage(payload);
+
+          // wait for the results to load
+          cy.contains(dashboardDetails.name);
+          cy.get(".CardVisualization").should("contain", "COUNT(*)");
+          cy.get(".CardVisualization").findByText("5").should("be.visible");
+        });
+      });
+    });
   });
 });
 
