@@ -535,7 +535,10 @@
     :severed}`, where `:pct` is `:after` as a share of all namespaces, `:edges` is [[module-edges]] and `:severed`
     lists each require as `from-namespace -> to-namespace`"
   [deps modules]
-  (let [namespace->module (into {} (map (juxt :namespace :module)) deps)]
+  (let [namespace->module (into {}
+                                (map (juxt :namespace :module))
+                                ;; A required namespace need not have a row of its own.
+                                (concat (mapcat :deps deps) deps))]
     {:pairs (for [pair (module-cuts/upward-pairs deps modules)]
               (-> pair (update :module str) (update :ancestor str)))
      :cuts  (for [{:keys [base-modules cycle-modules requires largest-after freed]}

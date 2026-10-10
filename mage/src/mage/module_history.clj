@@ -72,7 +72,9 @@
   "A check that the map at `path`, or each map of the vector there, holds only `known` keys."
   [path known]
   [path
-   (fn [value] (distinct (mapcat #(remove known (keys %)) (filter map? (if (map? value) [value] value)))))
+   (fn [value]
+     (let [maps (cond (map? value) [value], (sequential? value) (filter map? value))]
+       (distinct (mapcat #(remove known (keys %)) maps))))
    (fn [unknown] (str "has unknown keys: " (str/join ", " unknown)))])
 
 (defn- string-keyed?
@@ -81,8 +83,8 @@
 
 (def ^:private config-checks
   "What a publishing config must satisfy, as `[path valid? message]`.
-  The value at `path` passes when `valid?` returns true or an empty seq. `message` is a string, or a function of
-  what `valid?` returned."
+  The value at `path` passes when `valid?` returns true, or a seq with nothing in it.
+  A `message` is a string, or a function of what `valid?` returned."
   [(unknown-keys [] #{:pages :metabase :shares})
    (unknown-keys [:metabase] #{:profile :uploads :cards})
    (unknown-keys [:pages] #{:template :file})

@@ -54,6 +54,28 @@
                 :largest-after 0
                 :freed         9}]
              (module-cuts/cut-candidates deps 30))))
+    (testing "another cycle in the graph does not count as what is left of this one"
+      (is (= [[1 6] [2 0]]
+             (map (juxt :base-modules :largest-after)
+                  (module-cuts/cut-candidates (concat deps
+                                                      [(row 'metabase.p.core 'p '[[metabase.q.core q]])
+                                                       (row 'metabase.p.a 'p [])
+                                                       (row 'metabase.q.core 'q '[[metabase.p.core p]])
+                                                       (row 'metabase.q.a 'q [])])
+                                              30)))))
+    (testing "a layer that costs as much as another and frees less is dropped, and the cheapest comes first"
+      ;; With far on top the order is mid, base, top, far. The bottom two cost three requires, as the bottom one
+      ;; does, and free less; the bottom three cost one.
+      (is (= [{:base-modules 3, :requires 1, :freed 1}
+              {:base-modules 1, :requires 3, :freed 5}]
+             (map #(-> % (select-keys [:base-modules :freed]) (assoc :requires (count (:requires %))))
+                  (module-cuts/cut-candidates
+                   (concat deps
+                           [(row 'metabase.far.core 'far '[[metabase.top.core top]
+                                                           [metabase.top.a top]
+                                                           [metabase.mid.core mid]])
+                            (row 'metabase.top.c 'top '[[metabase.far.core far]])])
+                   30)))))
     (testing "a candidate needing more requires than the limit is left out"
       (is (= [1]
              (map :base-modules (module-cuts/cut-candidates deps 1)))))

@@ -45,9 +45,14 @@
   (when-let [cycles (seq (module-graph/cyclic-components graph))]
     (apply max-key size cycles)))
 
+(defn- largest-remnant
+  "The modules of the largest cycle of `graph` left inside `cycle`, or nil when none is."
+  [graph cycle size]
+  (largest-cycle (into {} (map (fn [module] [module (into #{} (filter cycle) (graph module))])) cycle) size))
+
 (defn- bottom-up
-  "The modules of one `cycle`, ordered so that as few requires as possible point from an earlier module to a later
-  one: what the cycle would look like as layers, the most depended-upon first. `weight` is the number of requires
+  "The modules of one `cycle`, ordered so that few requires point from an earlier module to a later one: roughly
+  what the cycle would look like as layers, the most depended-upon first. `weight` is the number of requires
   behind an edge."
   ;; Eades, Lin and Smyth's greedy heuristic for a small feedback arc set: take modules that require nothing left
   ;; to the bottom and modules nothing left requires to the top, and otherwise the one that gives up the fewest
@@ -80,9 +85,12 @@
       {:base-modules 44, :cycle-modules 53, :requires [[from-namespace to-namespace] ...],
        :largest-after 681, :freed 113}
 
-  `:largest-after` is the largest cycle's namespaces once those requires are gone, and `:freed` how many fewer
-  that is. Returns the candidates of at most `max-requires` requires that no other beats on both counts, fewest
-  requires first. Empty when there is no cycle."
+  `:largest-after` is the namespaces in the largest cycle left among those modules once the requires are gone,
+  and `:freed` how many fewer that is.
+  Other cycles of the graph are not looked at.
+  Returns the candidates of at most `max-requires` requires that no other beats on both counts, fewest requires
+  first.
+  Empty when there is no cycle."
   [deps max-requires]
   (let [requires (requires-by-edge deps)
         counts   (frequencies (keep :module deps))
@@ -103,18 +111,18 @@
                                     [from to])
                           cut     (into [] (mapcat requires) severed)]
                    :when (<= 1 (count cut) max-requires)
-                   :let  [after (size (largest-cycle (reduce (fn [graph [from to]] (update graph from disj to))
-                                                             graph
-                                                             severed)
-                                                     size))]
-                   :when (< after before)]
+                   :let  [after (size (largest-remnant (reduce (fn [graph [from to]] (update graph from disj to))
+                                                               graph
+                                                               severed)
+                                                       cycle
+                                                       size))]]
                {:base-modules  n
                 :cycle-modules (count order)
                 :requires      cut
                 :largest-after after
                 :freed         (- before after)})
              (sort-by (juxt (comp count :requires) (comp - :freed)))
-             ;; Keep a candidate only when it frees more than every cheaper one.
+             ;; Keep a candidate only when it frees more than every cheaper one. One that frees nothing is never kept.
              (reduce (fn [kept candidate]
                        (if (> (:freed candidate) (:freed (peek kept) 0))
                          (conj kept candidate)
