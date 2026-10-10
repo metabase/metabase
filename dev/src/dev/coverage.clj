@@ -323,7 +323,7 @@
         partially-covered (sort-by :function (filter #(seq (:survived %)) fns))
         fully-covered (sort-by :function (filter #(and (contains? % :tests)
                                                        (empty? (:survived %))) fns))
-        s #_{:clj-kondo/ignore [:discouraged-var]} ;; it's wrapped in `with-out-str`
+        s
         (with-out-str
           (println "# Mutation Testing Namespace Report")
           (println)
