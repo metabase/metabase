@@ -17,15 +17,11 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     settings,
     width,
   }: CustomVisualizationProps<Settings>) => {
-    const { threshold } = settings;
-    const value = series[0].data.rows[0][0];
+    const { threshold = 0 } = settings;
+    const value = Number(series[0].data.rows[0][0]);
 
     if (!height || !width) {
       return null;
-    }
-
-    if (typeof value !== "number" || typeof threshold !== "number") {
-      throw new Error("Value and threshold need to be numbers");
     }
 
     const meetsThreshold = value >= threshold;

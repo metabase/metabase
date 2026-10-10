@@ -1,0 +1,15 @@
+# Ship — package the viz
+
+Executor: main agent.
+Input: none.
+Output: `<name>-<version>.tgz` and upload instructions.
+
+Read: `skill/references/operations.md`, `skill/references/project.md`.
+
+1. Icon: ask once — the user replaces `public/assets/icon.svg`
+   themselves, describes one for you to draw (per `project.md`, Files),
+   or keeps the default.
+2. Ask the user to stop the dev server, then run `npm run build`. Build fails → show the
+   error verbatim and stop; no auto-recovery.
+3. Hand off: the archive path, then Connecting Metabase — the
+   requirements, the packaged steps and the docs link.

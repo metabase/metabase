@@ -1,0 +1,245 @@
+{
+  "predicates": {
+    "text": [
+      "isAny",
+      "isString"
+    ],
+    "category": [
+      "isAny",
+      "isCategory",
+      "isString"
+    ],
+    "title": [
+      "isAny",
+      "isCategory",
+      "isString",
+      "isTitle"
+    ],
+    "url": [
+      "isAny",
+      "isString",
+      "isURL"
+    ],
+    "email": [
+      "isAny",
+      "isEmail",
+      "isString"
+    ],
+    "integer": [
+      "isAny",
+      "isInteger",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "float": [
+      "isAny",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "count": [
+      "isAny",
+      "isInteger",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isQuantity",
+      "isSummable"
+    ],
+    "sum": [
+      "isAny",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "currency": [
+      "isAny",
+      "isCurrency",
+      "isFloat",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "percentage": [
+      "isAny",
+      "isFloat",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isPercentage",
+      "isSummable"
+    ],
+    "score": [
+      "isAny",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isScore",
+      "isSummable"
+    ],
+    "boolean": [
+      "isAny",
+      "isBoolean"
+    ],
+    "date": [
+      "isAny",
+      "isDate",
+      "isDateWithoutTime"
+    ],
+    "datetime": [
+      "isAny",
+      "isDate"
+    ],
+    "date-breakout": [
+      "isAny",
+      "isDate"
+    ],
+    "month-breakout": [
+      "isAny",
+      "isDate"
+    ],
+    "day-of-week": [
+      "isAny",
+      "isInteger",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "hour-of-day": [
+      "isAny",
+      "isInteger",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "pk": [
+      "isAny",
+      "isID",
+      "isInteger",
+      "isNumeric",
+      "isNumericBaseType",
+      "isPK"
+    ],
+    "fk": [
+      "isAny",
+      "isFK",
+      "isID",
+      "isInteger",
+      "isNumeric",
+      "isNumericBaseType"
+    ],
+    "latitude": [
+      "isAny",
+      "isCoordinate",
+      "isFloat",
+      "isLatitude",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "longitude": [
+      "isAny",
+      "isCoordinate",
+      "isFloat",
+      "isLongitude",
+      "isNumber",
+      "isNumeric",
+      "isNumericBaseType",
+      "isSummable"
+    ],
+    "country": [
+      "isAddress",
+      "isAny",
+      "isCategory",
+      "isCountry",
+      "isString"
+    ],
+    "state": [
+      "isAddress",
+      "isAny",
+      "isCategory",
+      "isState",
+      "isString"
+    ]
+  },
+  "colors": {
+    "light": {
+      "text-primary": "hsla(204, 66%, 8%, 0.84)",
+      "text-secondary": "hsla(204, 66%, 8%, 0.62)",
+      "text-tertiary": "hsla(204, 66%, 8%, 0.44)",
+      "background-primary": "hsla(0, 0%, 100%, 1.00)",
+      "background-secondary": "hsla(240, 11%, 98%, 1)",
+      "border": "hsla(195, 6%, 87%, 1)",
+      "brand": "hsla(208, 72%, 60%, 1.00)",
+      "success": "hsla(89, 48%, 40%, 1)",
+      "error": "hsla(358, 71%, 62%, 1)",
+      "warning": "hsla(46, 81%,  52%, 1)",
+      "accent0": "#509EE3",
+      "accent1": "#88BF4D",
+      "accent2": "#A989C5",
+      "accent3": "#EF8C8C",
+      "accent4": "#F9D45C",
+      "accent5": "#F2A86F",
+      "accent6": "#98D9D9",
+      "accent7": "#7172AD",
+      "accent0-light": "#87BCEC",
+      "accent1-light": "#A7D07C",
+      "accent2-light": "#C8B4DA",
+      "accent3-light": "#F7C4C4",
+      "accent4-light": "#FBE499",
+      "accent5-light": "#F7CBA9",
+      "accent6-light": "#C7EAEA",
+      "accent7-light": "#999AC4",
+      "accent0-dark": "#227FD2",
+      "accent1-dark": "#689636",
+      "accent2-dark": "#8A5EB0",
+      "accent3-dark": "#E75454",
+      "accent4-dark": "#F7C41F",
+      "accent5-dark": "#ED8535",
+      "accent6-dark": "#69C8C8",
+      "accent7-dark": "#51528D"
+    },
+    "dark": {
+      "text-primary": "hsla(0, 0%, 100%, 0.95)",
+      "text-secondary": "hsla(0, 0%, 100%, 0.69)",
+      "text-tertiary": "hsla(0, 0%, 100%, 0.46)",
+      "background-primary": "hsla(204, 66%, 8%, 1)",
+      "background-secondary": "hsla(205, 63%, 5%, 1)",
+      "border": "hsla(0, 0%, 100%, 0.21)",
+      "brand": "hsla(208, 72%, 60%, 1.00)",
+      "success": "hsla(89, 48%, 40%, 1)",
+      "error": "hsla(358, 71%, 62%, 1)",
+      "warning": "hsla(46, 81%,  52%, 1)",
+      "accent0": "#509EE3",
+      "accent1": "#88BF4D",
+      "accent2": "#A989C5",
+      "accent3": "#EF8C8C",
+      "accent4": "#F9D45C",
+      "accent5": "#F2A86F",
+      "accent6": "#98D9D9",
+      "accent7": "#7172AD",
+      "accent0-light": "#87BCEC",
+      "accent1-light": "#A7D07C",
+      "accent2-light": "#C8B4DA",
+      "accent3-light": "#F7C4C4",
+      "accent4-light": "#FBE499",
+      "accent5-light": "#F7CBA9",
+      "accent6-light": "#C7EAEA",
+      "accent7-light": "#999AC4",
+      "accent0-dark": "#227FD2",
+      "accent1-dark": "#689636",
+      "accent2-dark": "#8A5EB0",
+      "accent3-dark": "#E75454",
+      "accent4-dark": "#F7C41F",
+      "accent5-dark": "#ED8535",
+      "accent6-dark": "#69C8C8",
+      "accent7-dark": "#51528D"
+    }
+  }
+}

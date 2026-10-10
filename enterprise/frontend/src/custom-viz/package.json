@@ -13,6 +13,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing.js"
+    },
     "./dev-server-landing.html": "./dist/templates/dev-server-landing.html"
   },
   "publishConfig": {
@@ -28,7 +32,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "vite build && cp -r src/templates dist/templates",
+    "build": "vite build",
     "check:package-versions": "bun run scripts/check-package-versions.ts",
     "dev": "vite build --watch",
     "format": "prettier --write .",

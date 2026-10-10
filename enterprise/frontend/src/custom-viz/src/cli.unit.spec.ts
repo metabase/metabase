@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -76,6 +76,7 @@ describe("cli init", () => {
       "public/assets/icon.svg",
       ".gitignore",
       "README.md",
+      "AGENTS.md",
     ];
 
     for (const file of expectedFiles) {
@@ -83,6 +84,19 @@ describe("cli init", () => {
         true,
       );
     }
+  });
+
+  it("scaffolds every .claude template file", async () => {
+    await runCli(["init", "test-viz-claude"]);
+    const listFiles = (dir: string) =>
+      readdirSync(dir, { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => join(entry.parentPath, entry.name).slice(dir.length))
+        .sort();
+
+    expect(listFiles(join(tmpDir, "test-viz-claude", ".claude"))).toEqual(
+      listFiles(join(__dirname, "templates", ".claude")),
+    );
   });
 
   it("does not scaffold a pack script — packing lives in the CLI", async () => {

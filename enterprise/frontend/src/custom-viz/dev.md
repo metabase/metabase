@@ -33,6 +33,18 @@ bun run format
 bun run format:check
 ```
 
+## Skill docs and testing module host data
+
+`src/testing/host-data.json` holds what the `@metabase/custom-viz/testing` mocks need from Metabase: column type predicate results for each preset in `src/testing/column-presets.json`, and light/dark values for the color names listed in `src/skill/references/api-contract.md`.
+
+`custom-viz-skill-docs.unit.spec.ts` in `metabase-enterprise/custom_viz` checks the skill docs and this file against the host:
+
+- `host-data.json` matches the host predicates and color names; on drift the test prints the up-to-date file to paste in.
+- `sandbox-restrictions.md` lists every entry blocked in `frontend/src/metabase/utils/scripts-sandbox`.
+- `testing.md` lists every `mockColumn` kind.
+
+It runs in the main frontend unit tests, not in the package's own `bun run test`.
+
 ## Releasing
 
 Releases are published via the **Release Custom Viz Package** GitHub Actions workflow ([`.github/workflows/release-custom-viz.yml`](../../../.github/workflows/release-custom-viz.yml)).

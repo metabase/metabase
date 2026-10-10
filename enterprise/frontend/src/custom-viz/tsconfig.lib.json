@@ -10,7 +10,10 @@
     "src/format.ts",
     "src/measure-text.ts",
     "src/types/**/*.ts",
-    "src/vite-env.d.ts"
+    "src/vite-env.d.ts",
+    "src/testing/**/*.ts",
+    "src/testing/**/*.tsx",
+    "src/testing/**/*.json"
   ],
   "exclude": ["node_modules", "dist", "src/types/_example*"]
 }

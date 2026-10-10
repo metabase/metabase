@@ -22,11 +22,20 @@ npm run build      # Compiles src/ → dist/, then packages it into a .tgz
 
 > The packaged archive contains `metabase-plugin.json` plus the build output (`dist/index.js` and any whitelisted `dist/assets/*`). The `dist/` folder does not need to be committed.
 
+### Test
+
+```bash
+npm test           # Runs src/*.test.tsx against a mocked Metabase host
+```
+
+The bundled agent skill writes `src/index.test.tsx` with `@metabase/custom-viz/testing`.
+
 ### Project structure
 
 ```
 src/
   index.tsx             # Your visualization code — start here
+  index.test.tsx        # Tests written by the agent skill
 metabase-plugin.json    # Plugin manifest (name, icon, version)
 public/
   assets/

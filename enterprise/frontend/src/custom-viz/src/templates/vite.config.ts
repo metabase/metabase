@@ -150,10 +150,21 @@ function metabaseDevServer() {
           if (!filename) {
             return;
           }
-          cpSync(
-            resolve(assetsDir, filename),
-            resolve(__dirname, "dist/assets", filename),
-          );
+          try {
+            cpSync(
+              resolve(assetsDir, filename),
+              resolve(__dirname, "dist/assets", filename),
+            );
+          } catch (error) {
+            if (
+              error instanceof Error &&
+              "code" in error &&
+              error.code === "ENOENT"
+            ) {
+              return;
+            }
+            throw error;
+          }
           for (const client of clients) {
             client.write("data: reload\n\n");
           }

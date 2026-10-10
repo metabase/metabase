@@ -2,6 +2,13 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## 2.1.0
+
+### Features
+
+- Coding agent skill for building custom visualizations. `init` now scaffolds a Claude Code skill (`.claude/skills/custom-viz`) with builder and tester subagents, plus an `AGENTS.md` for other coding agents. The skill interviews you for what to build, writes the visualization, tests it, and walks you through iterating, debugging, connecting a local Metabase, and packaging the `.tgz` for upload. Its instructions ship with the package under `dist/skill`, so `npm update` brings the latest version.
+- New `@metabase/custom-viz/testing` entry point renders a visualization outside Metabase against a mocked host (`mockColumn`, `mockSeries`, `checkViz`, `renderViz`). The mock matches Metabase's column type predicates and color names, and throws where Metabase would silently misbehave. Scaffolded projects get an `npm test` script (Vitest with happy-dom) that the bundled agent skill uses for its tests.
+
 ## 2.0.0
 
 ### ⚠ BREAKING CHANGES
