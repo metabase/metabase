@@ -141,6 +141,8 @@
    ["/*TODAY*/"   "today"    script-safe-json]
    ["/*ANCHORS*/" "clusters" script-safe-json]
    ["/*RETEST*/"  "retest"   script-safe-json]
+   ["/*PAIRS*/"   "pairs"    script-safe-json]
+   ["/*CUTS*/"    "cuts"     script-safe-json]
    ["/*COUNT*/"   "commits"  count]])
 
 (defn fill-template
@@ -150,6 +152,8 @@
   - `/*TODAY*/`: the cycles at the latest commit, a JSON array
   - `/*ANCHORS*/`: the cluster names, a JSON array
   - `/*RETEST*/`: the latest commit's namespaces per tenth of retest share, a JSON object
+  - `/*PAIRS*/`: the module pairs whose upward requires close a cycle at the latest commit, a JSON array
+  - `/*CUTS*/`: the cheapest ways to split the largest cycle at the latest commit, a JSON array
   - `/*COUNT*/`: how many commits there are"
   [template page-data]
   (reduce (fn [page [placeholder k write]]
