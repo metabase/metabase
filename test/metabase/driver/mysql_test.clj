@@ -1368,3 +1368,19 @@
         (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]] stmts))
         (is (not (str/includes? (ffirst stmts) "PREPARE")))
         (is (not (str/includes? (ffirst stmts) "UNHEX")))))))
+
+(deftest ^:parallel order-by-temporal-nulls-last-test
+  (testing "MySQL order-by-clause uses IS NULL workaround for temporal columns"
+    (mt/test-driver :mysql
+      (qp.store/with-metadata-provider (mt/metadata-provider)
+        (let [temporal-field [:field (mt/id :orders :created_at) {:base-type :type/DateTimeWithTZ}]
+              non-temporal-field [:field (mt/id :orders :id) {:base-type :type/BigInteger}]]
+          (testing "ascending order on temporal field generates two clauses"
+            (let [result (sql.qp/order-by-clause :mysql :asc temporal-field)]
+              (is (= 2 (count result)) "Should return two ORDER BY clauses for MySQL temporal NULLS LAST workaround")))
+          (testing "descending order on temporal field generates two clauses"
+            (let [result (sql.qp/order-by-clause :mysql :desc temporal-field)]
+              (is (= 2 (count result)) "Should return two ORDER BY clauses for MySQL temporal NULLS LAST workaround")))
+          (testing "non-temporal field uses single clause"
+            (let [result (sql.qp/order-by-clause :mysql :asc non-temporal-field)]
+              (is (= 1 (count result)) "Non-temporal fields should use standard single ORDER BY clause"))))))))
