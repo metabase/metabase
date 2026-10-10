@@ -44,8 +44,9 @@
                    #(satisfies? qc/JobDataMapConversion %)]]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
 
-;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
-;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
+;; The `:concurrent? false` option on the two jobs below puts the `DisallowConcurrentExecution` annotation on
+;; the generated class, which constrains the job execution to only be one at a time. Other triggers wanting
+;; the job to run will misfire.
 
 (def ^:private analyze-duration-threshold-for-refingerprinting
   "If the `analyze-db!` step is shorter than this number of `minutes`, then we may refingerprint fields."

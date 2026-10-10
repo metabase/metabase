@@ -62,7 +62,7 @@ Tests:
 - **Cycles are not test-gated.** No test fails on a module cycle. Track them with `module-boundary-stats`: `:scc-namespace-sizes` is the metric to watch, because splitting a module can grow `:scc-module-sizes` without removing anything. Don't add a new edge into an existing strongly connected component.
 - **`.core` is a facade.** Mostly `potemkin/import-vars`, some `metabase.util.namespaces/import-fns`. Never require your own `.core` from inside the module (self-cycle). `^:dynamic` vars don't re-export usefully; export a `with-*` helper instead.
 - **`.init` is eager.** Everything it requires loads at launch. Require only settings, tasks, event handlers, and multimethod registrations that must exist at startup.
-- **Moving a `.task.*` namespace renames its Quartz job classes.** Add the new class name to the job's entry in `metabase.app-db.quartz/job-history`, or stored jobs and their triggers are deleted at the next startup.
+- **Keep each job's `:saved-class` when you move a `.task.*` namespace.** Quartz stores that class name in the app DB, and `task/defjob` names the class after it, not after the namespace. Don't let a bulk rename rewrite it: `metabase.app-db.quartz-test` fails if one changes. To change a stored name on purpose, add the new name to the job's entry in `metabase.app-db.quartz/job-history`.
 - **Grab-bag modules** (`models`, `api`, `task`, `events`, `util`, `core.cmd`) are infrastructure. New feature code goes in a feature module named after the user-facing feature, OSS and EE sharing the name (`upload` + `enterprise/upload`).
 
 ## How to work

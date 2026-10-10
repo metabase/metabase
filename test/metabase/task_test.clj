@@ -336,7 +336,7 @@
         (finally
           (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job")))))))
 
-;;; ------------------------------------------------- defjob --------------------------------------------------
+;;; ------------------------------------------------ defjob -------------------------------------------------
 
 (task/defjob AnnotatedJob
   "A job with both Quartz annotations."

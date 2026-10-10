@@ -218,6 +218,8 @@
 
 (def ^:private job-classes-without-history
   "Job classes with no entry in [[mdb.quartz/job-history]], as none was renamed under its current job key."
+  ;; This list and the history hold every job's class name a second time, apart from its `:saved-class`.
+  ;; That is what catches a bulk rename that rewrites a `:saved-class`, which nothing else would notice.
   #{"metabase.audit_app.task.partitions.ManagePartitions"
     "metabase.explorations.task.collect_orphaned_results.CollectOrphanedExplorationResults"
     "metabase.health_inspector.core.SaveReport"
@@ -312,22 +314,30 @@
   (str "remove its entry from `metabase.app-db.quartz/job-history`, add its class to"
        " `job-classes-without-history`, and add the rename to `metabase.app-db.quartz/job-key-renames`."))
 
+(def ^:private put-the-saved-class-back
+  "The start of a failure message, for the usual cause of a job class that is new or gone."
+  (str "If you only moved or renamed a namespace or a type, or a bulk rename reached a `:saved-class`:"
+       " put the job's `:saved-class` back. A stored job is found by that name, so it stays the same"
+       " through a move.\n"))
+
 (deftest every-job-class-is-listed-test
-  (let [current         (job-class-names)
+  (let [current        (job-class-names)
         renamed         (into #{} (map current-name) mdb.quartz/job-history)
         listed-here     (into #{} (filter in-this-edition?) job-classes-without-history)]
     (testing "every job class is listed"
       (is (= #{} (set/difference current renamed job-classes-without-history))
-          (str "For an existing job's class under a new name, with the same job key: add the new name to the end"
-               " of the `:class-names` of the job's entry in `metabase.app-db.quartz/job-history`. If the job has"
-               " no entry, add one with its job key and the old name first, and remove the old name from"
+          (str put-the-saved-class-back
+               "To change a stored class name on purpose, with the same job key: add the new name to the end"
+               " of the `:class-names` of the job's entry in `metabase.app-db.quartz/job-history`. If the job"
+               " has no entry, add one with its job key and the old name first, and remove the old name from"
                " `job-classes-without-history`.\n"
-               "For a new job: add the class to `job-classes-without-history`.\n"
+               "For a new job: add its `:saved-class` to `job-classes-without-history`.\n"
                "For a job whose key changed too: " changed-job-key-instructions)))
     (testing "every name in `job-classes-without-history` is a job class"
       (is (= #{} (set/difference listed-here current))
-          (str "For a job that was renamed and kept its job key: move the name into an entry in"
-               " `metabase.app-db.quartz/job-history`, before the new name.\n"
+          (str put-the-saved-class-back
+               "For a class name that was changed on purpose, with the same job key: move the old name into"
+               " an entry in `metabase.app-db.quartz/job-history`, before the new name.\n"
                "For a job that was removed, or whose key changed too: remove the name.")))
     (testing "no job class is listed as both renamed and without history"
       (is (= #{} (set/intersection renamed job-classes-without-history))))))
