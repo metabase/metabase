@@ -139,9 +139,10 @@ In the Metabase instance that you use for development:
 
    - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-token-for-your-read-and-write-metabase). Metabase encrypts your token before storing it.
 
-5. Save and test the connection:
+5. Test the connection:
 
-   - Click "Save changes". Metabase will check whether it can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. If you copied the token incorrectly, generate a new one.
+   - Click **Test connection** to check whether Metabase can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. If you copied the token incorrectly, generate a new one.
+   - Metabase also checks the connection when you save your settings.
 
 6. (Optional) If you have [multi-tenant user strategy enabled](../embedding/tenants.md#enable-multi-tenant-strategy), you can also choose which [shared collection](../embedding/tenants.md#changing-tenant-strategy) to sync.
 
@@ -201,9 +202,10 @@ In your production Metabase instance:
 
    - Paste the read-only personal access token you created for this production Metabase.
 
-5. Save and test the connection:
+5. Test the connection:
 
-   - Click "Save changes". Metabase will verify it can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
+   - Click **Test connection** to check whether Metabase can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
+   - Metabase also checks the connection when you save your settings.
 
 6. Sync your content:
    - Click "Pull changes now" to immediately sync content from your repository.
@@ -217,7 +219,9 @@ At this point, you should be all set up. Exit Admin, then reload your browser. Y
 
 ### 8. Configure transforms syncing (optional)
 
-To version your data transformation logic, you can sync your [Transforms](../data-modeling/transforms/transforms-overview.md), including all your tags and jobs. Some things to keep in mind:
+To version your data transformation logic, you can sync your [Transforms](../data-modeling/transforms/transforms-overview.md), including their tags and tests. Some things to keep in mind:
+
+- **Jobs don't sync.** Each Metabase keeps its own jobs. Tag your transforms with the built-in hourly, daily, weekly, or monthly tags so the matching built-in jobs run them on every Metabase, or create the jobs you need on each Metabase.
 
 - **Transform syncing is all or nothing**: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
 - **This setting only determines whether Metabase pushes transforms from Read-write mode.** When you _pull_ from a repository, all content present in the repo is loaded—including any transforms—regardless of this setting. Think of it like pulling a repo that has a new collection you hadn't previously synced: the setting doesn't filter what comes in, only what goes out.
@@ -363,16 +367,21 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Documents
 - Timelines and events
 - Collection structure and metadata
-- Library content (published tables, metrics, snippets, segments, measures, glossary)
-- Transforms (including jobs and folders)
+- Library content (published tables, metrics, dashboards, snippets, segments, measures, glossary)
+- Transforms (including tags, tests, and folders)
 
 **What doesn't sync:**
 
 - Users, groups, and permissions
 - Alerts and subscriptions
-- Database connections
+- Database connections (see [Synced content that uses a database your Metabase doesn't have](#synced-content-that-uses-a-database-your-metabase-doesnt-have))
+- Transform jobs
 - Personal collections
 - Table metadata (table names, column types, descriptions, visibility settings, etc.)
+
+### Synced content that uses a database your Metabase doesn't have
+
+Synced content points to databases by their display name, so give the database the same name on your development and production Metabases. If a pull brings in content that uses a database your Metabase doesn't have, Metabase creates a placeholder for that database, without connection details. In **Admin** > **Databases**, the placeholder's status is **Stubbed**. Questions and transforms that use the database can't run until an admin opens the stubbed database and enters its connection details. Once you save the connection details, the status changes to **Active**.
 
 ## Branch management
 
