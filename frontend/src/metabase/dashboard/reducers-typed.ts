@@ -223,14 +223,6 @@ export const timelineEvents = createReducer(
       ...INITIAL_DASHBOARD_STATE.timelineEvents,
       hasTrackedEventsShown: state.hasTrackedEventsShown,
     }));
-    builder.addCase(fetchDashboard.fulfilled, (state) => {
-      if (Object.keys(state.overrides).length > 0) {
-        state.overrides = {};
-      }
-      if (Object.keys(state.enabledByDashCard).length > 0) {
-        state.enabledByDashCard = {};
-      }
-    });
     builder.addCase(CLOSE_SIDEBAR, (state) => {
       state.selection = null;
     });
