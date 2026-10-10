@@ -18,222 +18,100 @@ describe("scenarios > data apps > sandbox isolation", () => {
 
     H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME, testEnv });
     H.openDataApp(APP_NAME);
-  };
-
-  /**
-   * Click a probe and assert it reported that the boundary held. Every probe
-   * stops at the first sign it reached across the boundary: `isolated:` means it
-   * did not, `reached:` means it did. `pending` / `no-probe-observed` mean the
-   * probe never fired, which is also a failure — none of those contain
-   * `isolated:`, so a single assertion covers all three.
-   */
-  const runProbe = (buttonTestId: string) => {
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-      cy.findByTestId(buttonTestId).scrollIntoView().click();
-
-      cy.findByTestId("isolation-result", { timeout: 30000 })
-        .should("not.have.text", "pending")
-        .invoke("text")
-        .then((text) => {
-          cy.log(`isolation-result: ${text}`);
-          expect(text, "the boundary held").to.contain("isolated:");
-        });
+      cy.findByTestId("isolation-result", { timeout: 30000 }).should(
+        "have.text",
+        "pending",
+      );
     });
   };
 
   /**
-   * For the probes whose element is refused during React's own render pass.
-   *
-   * The guard throws from `createElement` inside the reconciler, and the app's
-   * `BoundaryReporter` never catches it: that boundary is declared in the GUEST
-   * realm while HOST React renders the tree, and React's error-boundary detection
-   * does not survive the membrane. The throw therefore reaches the host boundary
-   * and takes the data app down — which is the correct outcome, but it also
-   * destroys the probe, so there is no `isolation-result` left to read. Assert on
-   * the guard's own message instead.
+   * Click each probe in turn and record what it reported, then assert that the
+   * boundary held for all of them at once, so every failing probe shows. Every
+   * probe stops at the first sign it reached across the boundary: `isolated:`
+   * means it did not, `reached:` means it did. `no-probe-observed` means the
+   * probe never fired, which is also a failure. The fixture resets the result to
+   * `pending` and tags it with the probe's id on each click, so a result is only
+   * read once it belongs to the probe just clicked.
    */
-  const runProbeExpectingGuard = (buttonTestId: string) => {
+  const runProbes = (probeIds: string[]) => {
+    const results: Record<string, string> = {};
+
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-      cy.findByTestId(buttonTestId).scrollIntoView().click();
+      probeIds.forEach((probeId) => {
+        cy.findByTestId(`isolation-${probeId}`).scrollIntoView().click();
+
+        cy.findByTestId("isolation-result", { timeout: 30000 })
+          .should(($result) => {
+            expect($result.attr("data-probe-id")).to.eq(probeId);
+            expect($result.text()).not.to.eq("pending");
+          })
+          .invoke("text")
+          .then((text) => {
+            cy.log(`${probeId}: ${text}`);
+            results[probeId] = text;
+          });
+      });
     });
 
-    cy.contains("blocked host createElement", { timeout: 30000 }).should(
-      "exist",
-    );
+    cy.then(() => {
+      expect(Object.keys(results), "every probe reported").to.deep.eq(probeIds);
+      expect(
+        probeIds
+          .filter((probeId) => !results[probeId].includes("isolated:"))
+          .map((probeId) => `${probeId}: ${results[probeId]}`),
+        "probes that crossed the boundary",
+      ).to.deep.eq([]);
+    });
   };
 
-  it("keeps a document.createElement about:blank iframe within the gated realm", () => {
+  const guardMessage = () =>
+    cy.contains("blocked host createElement", { timeout: 30000 });
+
+  it("keeps the realms the app creates within the gated realm", () => {
     setup();
-    runProbe("isolation-create-element");
+
+    runProbes([
+      "window-frames",
+      "create-element",
+      "dom-parser",
+      "adopt-html-doc-iframe",
+      "import-html-doc-iframe",
+      "xml-doc-iframe",
+      "template-doc-iframe",
+      "range-fragment-iframe",
+      "inner-html",
+      "custom-element",
+      "window-open",
+    ]);
   });
 
-  it("gates a host-React about:blank iframe", () => {
-    setup();
-    runProbeExpectingGuard("isolation-react-about-blank");
-  });
+  // The 403s the marker produces are backend behaviour, covered by
+  // `data_app_scope_test.clj`. What only e2e can prove is the premise those 403s rest
+  // on: that the real transport stamps `X-Metabase-Client: data-app` on the requests the
+  // SDK makes from inside the sandbox. The header cannot be spoofed to gain access —
+  // host-realm code the membraned guest can't reach sets it, and it only ever narrows —
+  // but if it ever stopped being sent, the confinement would silently stop applying.
+  it("keeps the host window, its storage and a host iframe's realm gated, and marks the SDK's requests as data-app", () => {
+    const markedPaths = new Set<string>();
 
-  it("gates an iframe pointing at Metabase itself", () => {
-    setup();
-    runProbeExpectingGuard("isolation-react-src");
-  });
+    cy.intercept("/api/**", (req) => {
+      if (req.headers["x-metabase-client"] === "data-app") {
+        markedPaths.add(new URL(req.url).pathname);
+      }
+    });
 
-  it("gates a srcdoc iframe", () => {
     setup();
-    runProbeExpectingGuard("isolation-react-srcdoc");
-  });
 
-  it("keeps a window.open realm within the gated realm", () => {
-    setup();
-    runProbe("isolation-window-open");
-  });
-
-  it("gates the Worker constructor", () => {
-    setup();
-    runProbe("isolation-worker");
-  });
-
-  it("gates the SharedWorker constructor", () => {
-    setup();
-    runProbe("isolation-shared-worker");
-  });
-
-  it("gates the service worker registration API", () => {
-    setup();
-    runProbe("isolation-service-worker");
-  });
-
-  it("gates dynamic import", () => {
-    setup();
-    runProbe("isolation-dynamic-import");
-  });
-
-  it("keeps a dangerouslySetInnerHTML iframe within the gated realm", () => {
-    setup();
-    runProbe("isolation-inner-html");
-  });
-
-  it("keeps a Function-constructor fetch gated", () => {
-    setup();
-    runProbe("isolation-function-constructor");
-  });
-
-  it("keeps a DOMParser iframe within the gated realm", () => {
-    setup();
-    runProbe("isolation-dom-parser");
-  });
-
-  it("keeps a createHTMLDocument iframe adopted into the realm gated", () => {
-    setup();
-    runProbe("isolation-adopt-html-doc-iframe");
-  });
-
-  it("keeps a createHTMLDocument iframe imported into the realm gated", () => {
-    setup();
-    runProbe("isolation-import-html-doc-iframe");
-  });
-
-  it("keeps a createDocument iframe adopted into the realm gated", () => {
-    setup();
-    runProbe("isolation-xml-doc-iframe");
-  });
-
-  it("keeps a template owner-document iframe adopted into the realm gated", () => {
-    setup();
-    runProbe("isolation-template-doc-iframe");
-  });
-
-  it("keeps a raw API out of the SDK endowments", () => {
-    setup();
-    runProbe("isolation-endowment-api");
-  });
-
-  it("keeps an Error.prepareStackTrace realm reference gated", () => {
-    setup();
-    runProbe("isolation-stack-trace-realm");
-  });
-
-  it("keeps window.parent within the gated realm", () => {
-    setup();
-    runProbe("isolation-window-parent");
-  });
-
-  it("keeps window.top within the gated realm", () => {
-    setup();
-    runProbe("isolation-window-top");
-  });
-
-  it("keeps window.frameElement's owner realm gated", () => {
-    setup();
-    runProbe("isolation-frame-element");
-  });
-
-  it("keeps window.parent.parent within the gated realm", () => {
-    setup();
-    runProbe("isolation-parent-chain");
-  });
-
-  it("gates document.cookie on the parent realm", () => {
-    setup();
-    runProbe("isolation-parent-cookie");
-  });
-
-  it("gates localStorage on the parent realm", () => {
-    setup();
-    runProbe("isolation-parent-local-storage");
-  });
-
-  it("gates sessionStorage on the parent realm", () => {
-    setup();
-    runProbe("isolation-parent-session-storage");
-  });
-
-  it("gates indexedDB on the parent realm", () => {
-    setup();
-    runProbe("isolation-parent-indexeddb");
-  });
-
-  it("gates caches on the parent realm", () => {
-    setup();
-    runProbe("isolation-parent-caches");
-  });
-
-  it("keeps indexed window.frames access gated", () => {
-    setup();
-    runProbe("isolation-window-frames");
-  });
-
-  it("keeps window.opener's realm gated", () => {
-    setup();
-    runProbe("isolation-window-opener");
-  });
-
-  it("gates FontFace.load", () => {
-    setup();
-    runProbe("isolation-font-face");
-  });
-
-  it("gates cookieStore", () => {
-    setup();
-    runProbe("isolation-cookie-store");
-  });
-
-  it("gates performance resource timing", () => {
-    setup();
-    runProbe("isolation-perf-resource-timing");
-  });
-
-  it("keeps a Range.createContextualFragment iframe within the gated realm", () => {
-    setup();
-    runProbe("isolation-range-fragment-iframe");
-  });
-
-  it("keeps a custom element's upgrade callback in the gated realm", () => {
-    setup();
-    runProbe("isolation-custom-element");
-  });
-
-  it("keeps a host iframe's realm gated", () => {
-    setup();
+    // `/api/user/current` is the whole marked surface this fixture produces — it renders
+    // isolation probes, not questions, and the SDK's bootstrap takes site settings from
+    // the auth prefetch rather than refetching `/api/session/properties`.
+    cy.wrap(markedPaths, { timeout: 30000 }).should((paths) => {
+      expect([...paths], "requests marked as data-app").to.include(
+        "/api/user/current",
+      );
+    });
 
     // A srcless (about:blank) iframe is same-origin, so its `contentWindow` is a
     // live realm with an un-gated `fetch` — the same capability html2canvas's
@@ -252,7 +130,72 @@ describe("scenarios > data apps > sandbox isolation", () => {
       );
     });
 
-    runProbe("isolation-child-frame-grab");
+    runProbes([
+      "child-frame-grab",
+      "window-parent",
+      "window-top",
+      "frame-element",
+      "parent-chain",
+      "window-opener",
+      "parent-cookie",
+      "parent-local-storage",
+      "parent-session-storage",
+      "parent-indexeddb",
+      "parent-caches",
+    ]);
+  });
+
+  it("gates the APIs that run code, read host data or reach a host realm", () => {
+    setup();
+
+    runProbes([
+      "perf-resource-timing",
+      "function-constructor",
+      "worker",
+      "shared-worker",
+      "service-worker",
+      "dynamic-import",
+      "font-face",
+      "cookie-store",
+      "endowment-api",
+      "stack-trace-realm",
+    ]);
+  });
+
+  /**
+   * For the probes whose element is refused during React's own render pass.
+   *
+   * The guard throws from `createElement` inside the reconciler, and the app's
+   * `BoundaryReporter` never catches it: that boundary is declared in the GUEST
+   * realm while HOST React renders the tree, and React's error-boundary detection
+   * does not survive the membrane. The throw therefore reaches the host boundary
+   * and takes the data app down — which is the correct outcome, but it also
+   * destroys the probe, so there is no `isolation-result` left to read. Assert on
+   * the guard's own message instead, and open the app again for each probe.
+   */
+  it("gates host-React iframes: about:blank, Metabase itself and srcdoc", () => {
+    const instanceUrl = Cypress.config("baseUrl") ?? "";
+    const testEnv: IsolationTestEnv = { instanceUrl };
+
+    H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME, testEnv });
+
+    ["react-about-blank", "react-src", "react-srcdoc"].forEach((probeId) => {
+      cy.log(probeId);
+      H.openDataApp(APP_NAME);
+
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId("isolation-result", { timeout: 30000 }).should(
+          "have.text",
+          "pending",
+        );
+      });
+      guardMessage().should("not.exist");
+
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId(`isolation-${probeId}`).scrollIntoView().click();
+      });
+      guardMessage().should("exist");
+    });
   });
 
   it("gates an allowed_host redirect to the instance", () => {
@@ -278,7 +221,7 @@ describe("scenarios > data apps > sandbox isolation", () => {
         statusCode: 307,
         headers: { ...cors, Location: `${instanceUrl}/api/session/properties` },
       });
-    });
+    }).as("allowedHostRedirect");
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -286,40 +229,14 @@ describe("scenarios > data apps > sandbox isolation", () => {
       allowedHosts: ["http://localhost:4444"],
     });
     H.openDataApp(APP_NAME);
-
-    runProbe("isolation-allowed-host-redirect");
-  });
-
-  // The 403s the marker produces are backend behaviour, covered by
-  // `data_app_scope_test.clj`. What only e2e can prove is the premise those 403s rest
-  // on: that the real transport stamps `X-Metabase-Client: data-app` on the requests the
-  // SDK makes from inside the sandbox. The header cannot be spoofed to gain access —
-  // host-realm code the membraned guest can't reach sets it, and it only ever narrows —
-  // but if it ever stopped being sent, the confinement would silently stop applying.
-  it("marks the requests the SDK makes from inside the sandbox as data-app", () => {
-    const markedPaths = new Set<string>();
-
-    cy.intercept("/api/**", (req) => {
-      if (req.headers["x-metabase-client"] === "data-app") {
-        markedPaths.add(new URL(req.url).pathname);
-      }
-    });
-
-    setup();
-
-    // Wait for the guest bundle to have rendered — the SDK's bootstrap requests are
-    // still in flight while it loads, so asserting earlier races them.
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-      cy.findByTestId("isolation-result", { timeout: 30000 }).should("exist");
-    });
-
-    // `/api/user/current` is the whole marked surface this fixture produces — it renders
-    // isolation probes, not questions, and the SDK's bootstrap takes site settings from
-    // the auth prefetch rather than refetching `/api/session/properties`.
-    cy.then(() => {
-      expect([...markedPaths], "requests marked as data-app").to.include(
-        "/api/user/current",
+      cy.findByTestId("isolation-result", { timeout: 30000 }).should(
+        "have.text",
+        "pending",
       );
     });
+
+    runProbes(["allowed-host-redirect"]);
+    cy.wait("@allowedHostRedirect");
   });
 });

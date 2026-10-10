@@ -17,11 +17,10 @@ describe("scenarios > data apps > repo sync", () => {
     H.setupGitSync();
   });
 
-  it("materializes each app with its bundle", () => {
+  it("materializes each app with its bundle, then removes an app whose files are removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps");
-
     H.configureGitAndPullChanges("read-write");
 
     cy.visit("/admin/settings/apps");
@@ -57,13 +56,6 @@ describe("scenarios > data apps > repo sync", () => {
         .should("eq", app.resource_collection_id);
       expect(app.table_ids).to.deep.eq([ORDERS_ID]);
     });
-  });
-
-  it("removes an app whose directory and collection files are removed from the repo on the next sync", () => {
-    H.copySyncedCollectionFixture();
-    H.copySyncedDataAppsFixture();
-    H.commitToRepo("Add data apps");
-    H.configureGitAndPullChanges("read-write");
 
     // An author deletes an app by deleting its directory and its collection's
     // files in one commit; the pull deletes the app, and the app deletes its

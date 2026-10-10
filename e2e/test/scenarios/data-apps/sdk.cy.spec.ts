@@ -35,7 +35,8 @@ describe("scenarios > data apps > SDK runtime", () => {
         },
       });
 
-    it("surfaces the useMetabaseQuery error state", () => {
+    it("surfaces the useMetabaseQuery error state, and re-runs the query when the app calls refetch", () => {
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
       setupQueryStatesApp();
 
       visitAppRoute("query-states");
@@ -44,15 +45,7 @@ describe("scenarios > data apps > SDK runtime", () => {
           "have.text",
           "error",
         );
-      });
-    });
 
-    it("re-runs the query when the app calls refetch", () => {
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      setupQueryStatesApp();
-
-      visitAppRoute("query-states");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         // The query has to have resolved before refetching means anything.
         cy.findByTestId("query-value", { timeout: 30000 })
           .invoke("text")
