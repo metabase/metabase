@@ -236,8 +236,8 @@
 (defn- job-definition
   "The parts of `job` that Quartz stores and reads back."
   [^JobDetail job]
-  ;; Quartz also stores whether the class disallows concurrent execution and persists its job data, but it never
-  ;; reads those columns back. It takes both from the loaded class's annotations, so they are left out.
+  ;; Quartz also stores whether the class disallows concurrent execution and persists its job data. It never
+  ;; reads those columns back, and takes both from the loaded class's annotations, so they are left out.
   {:class              (.getJobClass job)
    :data               (into {} (.getJobDataMap job))
    :description        (.getDescription job)
@@ -258,9 +258,8 @@
   "Add a job separately from a trigger. Replaces a stored job only when its definition has changed."
   [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
-    ;; Replacing a job writes its current class name. A job stored under an old class name has to keep that name
-    ;; while nothing else about it changes, because old nodes in a rolling upgrade can only load the old name. See
-    ;; [[metabase.app-db.quartz/job-history]].
+    ;; Replacing a job writes its current class name, which old nodes in a rolling upgrade can't load, so an
+    ;; unchanged job keeps the name it is stored under. See [[metabase.app-db.quartz/job-history]].
     (when-not (stored-as-is? scheduler job)
       (qs/add-job scheduler job true))))
 

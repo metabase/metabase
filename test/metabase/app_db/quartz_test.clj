@@ -165,8 +165,7 @@
            " job scheduled under the new key. Rename the job's class too, so that the row is deleted at startup.")))
 
 (def ^:private job-classes-without-history
-  "Job classes with no entry in [[mdb.quartz/job-history]], because their job has had no other class name under
-  its current job key."
+  "Job classes with no entry in [[mdb.quartz/job-history]], as none was renamed under its current job key."
   #{"metabase.audit_app.task.partitions.ManagePartitions"
     "metabase.explorations.task.collect_orphaned_results.CollectOrphanedExplorationResults"
     "metabase.health_inspector.core.SaveReport"
@@ -239,13 +238,14 @@
           (.getName c))))
 
 (def ^:private changed-job-key-instructions
-  "The end of the sentence that says what to do when a job's key changed, for the failure messages that need it."
+  "The end of a failure message's sentence that says what to do when a job's key changed."
   (str "remove its entry from `metabase.app-db.quartz/job-history`, add its class to"
        " `job-classes-without-history`, and add the rename to `metabase.app-db.quartz/job-key-renames`."))
 
 (deftest every-job-class-is-listed-test
-  (let [current (job-class-names)
-        renamed (into #{} (map current-name) mdb.quartz/job-history)]
+  (let [current         (job-class-names)
+        renamed         (into #{} (map current-name) mdb.quartz/job-history)
+        without-history (into #{} (filter in-this-edition?) job-classes-without-history)]
     (testing "every job class is listed"
       (is (= #{} (set/difference current renamed job-classes-without-history))
           (str "For an existing job's class under a new name, with the same job key: add the new name to the end"
@@ -255,7 +255,7 @@
                "For a new job: add the class to `job-classes-without-history`.\n"
                "For a job whose key changed too: " changed-job-key-instructions)))
     (testing "every name in `job-classes-without-history` is a job class"
-      (is (= #{} (set/difference (into #{} (filter in-this-edition?) job-classes-without-history) current))
+      (is (= #{} (set/difference without-history current))
           (str "For a job that was renamed and kept its job key: move the name into an entry in"
                " `metabase.app-db.quartz/job-history`, before the new name.\n"
                "For a job that was removed, or whose key changed too: remove the name.")))
@@ -307,7 +307,8 @@
                  :when (or (empty? scheduled-as)
                            (not-every? #(labels? entry %) scheduled-as))]
              (cond-> (assoc (label entry) :scheduled-as scheduled-as)
-               (seq scheduled-as) (assoc :rename-if-the-key-changed (rename-to-complete entry (first scheduled-as))))))
+               (seq scheduled-as)
+               (assoc :rename-if-the-key-changed (rename-to-complete entry (first scheduled-as))))))
         (str "The `:job-key` or `:job-key-prefix` of these entries in `metabase.app-db.quartz/job-history` does"
              " not match the key their job is scheduled under. If the label is wrong, correct it.\n"
              "If the job's key changed: " changed-job-key-instructions
