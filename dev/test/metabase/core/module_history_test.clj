@@ -254,3 +254,10 @@
   (testing "so does a commit whose linter config names no modules"
     (is (= @#'module-history/whole-backend
            (#'module-history/commit-modules {".clj-kondo/config.edn" (pr-str '{:linters {}})})))))
+
+(deftest snapshot-test
+  (testing "a commit's snapshot has its module map and a dependency row for each backend namespace"
+    (let [{:keys [deps modules]} (module-history/snapshot "HEAD")]
+      (is (=? {:namespace 'metabase.util, :module 'util, :deps seq}
+              (first (filter #(= 'metabase.util (:namespace %)) deps))))
+      (is (contains? modules 'util)))))
