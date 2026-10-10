@@ -117,6 +117,18 @@
   "The current class name of an entry of [[mdb.quartz/job-history]]."
   (comp peek :class-names))
 
+(defn- label
+  "The `:job-key` or `:job-key-prefix` of an entry of [[mdb.quartz/job-history]], as a map."
+  [entry]
+  (select-keys entry [:job-key :job-key-prefix]))
+
+(defn- labels?
+  "Whether the label of the history entry `entry` stands for the job key `job-key`."
+  [{exact :job-key, prefix :job-key-prefix} job-key]
+  (if prefix
+    (str/starts-with? job-key prefix)
+    (= exact job-key)))
+
 (def ^:private job-history-in-this-edition
   (filter (comp in-this-edition? current-name) mdb.quartz/job-history))
 
@@ -129,17 +141,17 @@
                :let  [current-exists?      (class-exists? (current-name entry))
                       old-names-that-exist (filterv class-exists? (pop (:class-names entry)))]
                :when (or (not current-exists?) (seq old-names-that-exist))]
-           {:job-key              (:job-key entry)
-            :current-exists?      current-exists?
-            :old-names-that-exist old-names-that-exist}))))
+           (assoc (label entry)
+                  :current-exists?      current-exists?
+                  :old-names-that-exist old-names-that-exist)))))
 
 (deftest job-history-has-no-entry-for-a-renamed-job-key-test
-  (let [old-keys    (into #{} (map :old-key) mdb.quartz/job-key-renames)
+  (let [old-keys    (map :old-key mdb.quartz/job-key-renames)
         old-classes (into #{} (map :old-class) mdb.quartz/job-key-renames)]
     (is (= []
-           (filter (fn [{:keys [job-key class-names]}]
-                     (or (old-keys job-key)
-                         (some old-classes class-names)))
+           (filter (fn [entry]
+                     (or (some #(labels? entry %) old-keys)
+                         (some old-classes (:class-names entry))))
                    mdb.quartz/job-history))
         (str "Remove these entries from `metabase.app-db.quartz/job-history`. Each is for a job key that"
              " `metabase.app-db.quartz/job-key-renames` lists as renamed, or holds the class that key had."
@@ -276,19 +288,11 @@
              (init! task))
            (job-keys-by-class-name (#'task.impl/scheduler))))))))
 
-(defn- labels?
-  "Whether `label`, the `:job-key` of a history entry, stands for the job key `job-key`."
-  [label job-key]
-  ;; a label that ends in a dot is the prefix of the keys of a job scheduled many times
-  (if (str/ends-with? label ".")
-    (str/starts-with? job-key label)
-    (= label job-key)))
-
 (defn- rename-to-complete
   "The entry for [[mdb.quartz/job-key-renames]] if the key of the job in `entry` changed to `new-key`."
-  [{:keys [job-key] :as entry} new-key]
-  {:release   "<the release>"
-   :old-key   job-key
+  [entry new-key]
+  {:release   "<the first release with the new key, such as x.59.3>"
+   :old-key   (:job-key entry "<the old key>")
    :old-class (current-name entry)
    :new-key   new-key
    :new-class (current-name entry)
@@ -298,14 +302,14 @@
   ;; This catches a job key that changed while its entry stayed
   (let [scheduled (scheduled-job-keys! job-history-in-this-edition)]
     (is (= []
-           (for [{:keys [job-key] :as entry} job-history-in-this-edition
-                 :let                        [scheduled-as (scheduled (current-name entry) #{})]
-                 :when                       (or (empty? scheduled-as)
-                                                 (not-every? #(labels? job-key %) scheduled-as))]
-             (cond-> {:job-key job-key, :scheduled-as scheduled-as}
+           (for [entry job-history-in-this-edition
+                 :let  [scheduled-as (scheduled (current-name entry) #{})]
+                 :when (or (empty? scheduled-as)
+                           (not-every? #(labels? entry %) scheduled-as))]
+             (cond-> (assoc (label entry) :scheduled-as scheduled-as)
                (seq scheduled-as) (assoc :rename-if-the-key-changed (rename-to-complete entry (first scheduled-as))))))
-        (str "The `:job-key` of these entries in `metabase.app-db.quartz/job-history` is not the key their job is"
-             " scheduled under. If the label is wrong, correct it.\n"
+        (str "The `:job-key` or `:job-key-prefix` of these entries in `metabase.app-db.quartz/job-history` does"
+             " not match the key their job is scheduled under. If the label is wrong, correct it.\n"
              "If the job's key changed: " changed-job-key-instructions
              " Complete `:rename-if-the-key-changed` to get the rename.\n"
              "If `:scheduled-as` is empty, the job's `task/init!` did not schedule it in this test: set up what it"

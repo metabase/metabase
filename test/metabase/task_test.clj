@@ -141,7 +141,7 @@
 
 (deftest no-class-message-test
   (is (= {:renamed-key (str "Deleting job metabase-enterprise.transforms.timeout due to class not found (a.Class)."
-                            " Its key was renamed to metabase.transforms.timeout in 0.59."
+                            " Its key was renamed to metabase.transforms.timeout in x.59."
                             " Moved out of enterprise, with no change to the job.")
           :other-key   "Deleting job some.job due to class not found (a.Class)"}
          {:renamed-key (#'task.impl/no-class-message "metabase-enterprise.transforms.timeout" "a.Class")
