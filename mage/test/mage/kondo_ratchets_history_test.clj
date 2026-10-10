@@ -200,7 +200,7 @@
     :unaccounted {b -5}}])
 
 (deftest attribution-test
-  (testing "a shrink goes to its causes, a grow to its commit, and the unexplained rest to a commit that did more than tighten"
+  (testing "credits a shrink to its causes, a grow to its commit, and the unexplained rest to the commit that shrank"
     (is (= {:totals      {a {:shrink -5, :grow 3}, b {:shrink -8}}
             :by-commit   [["recount" -7] ["fix" -6] ["hid" 1] ["feature" 3]]
             :leaderboard [[nil true -1 0 -1 0 0]
