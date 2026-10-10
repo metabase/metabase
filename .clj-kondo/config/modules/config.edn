@@ -2326,7 +2326,6 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
 
@@ -2335,7 +2334,8 @@
    :ns-prefix "metabase.query-processor.middleware.cache-backend"
    :api       #{metabase.query-processor.middleware.cache-backend.db
                 metabase.query-processor.middleware.cache-backend.interface}
-   :uses      #{premium-features query-processor util}}
+   :uses      #{app-db premium-features util}
+   :model-imports #{:model/QueryCache}}
 
   query-processor.driver-api
   {:team "Querying Platform"
