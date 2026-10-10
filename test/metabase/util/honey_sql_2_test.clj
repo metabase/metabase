@@ -388,3 +388,20 @@
                         :where  [:like [:lower :name] (h2x/like-prefix "A%b")]}))))
   (testing "passes the app-DB HoneySQL guard"
     (is (honeysql-guard/safe-syntax? {:select [:*] :from [:t] :where [:like :name (h2x/like-substring "a%b")]}))))
+
+(deftest ^:parallel h2x-timestamp-diff-test
+  (testing (str "metabase.util.honey-sql-2 is shared by Funny SQL (the app DB) and Honey SQL (warehouses, pgvector), "
+                "so its helpers have to produce working SQL under both")
+    (testing "calculate-interval-honeysql-form for MySQL needs `TIMESTAMPDIFF`'s unit to be a bare keyword"
+      (let [form {:select [[(h2x/calculate-interval-honeysql-form :mysql :end_time :start_time)]]}]
+        (is (= ["SELECT timestampdiff(microsecond, `start_time`, `end_time`)"]
+               (sql/format form {:dialect :mysql})))))
+    (testing "a string type name passed to cast keeps its spelling"
+      (let [form {:select [[(h2x/cast "DateTime64(3, 'America/Port-au-Prince')" :x)]]}]
+        (is (= ["SELECT CAST(\"x\" AS DateTime64(3, 'America/Port-au-Prince'))"]
+               (sql/format form {:dialect :ansi})))))
+    (testing "the Honey SQL side of `::h2x/timestampdiff` validates the unit too"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid unit"
+           (sql/format {:select [[[::h2x/timestampdiff "second, x) OR 1 = 1; --" :a :b]]]} {:dialect :mysql}))))))

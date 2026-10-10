@@ -21,7 +21,7 @@
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
                                 :deprecated-namespace                                      29
-                                :deprecated-var                                            53
+                                :deprecated-var                                            54
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1

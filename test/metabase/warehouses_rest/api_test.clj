@@ -1896,8 +1896,10 @@
                                                                                 (binding [driver.settings/*allow-testing-h2-connections* true]
                                                                                   (f)))
                                             t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
-                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
-                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
+                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL.
+                                                                              ;; The id is a `?` parameter under Honey SQL but an inlined literal
+                                                                              ;; under FunnySQL, so accept either.
+                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = (?:\?|\d+)$" sql)
                                                                                 (swap! db-reads inc))
                                                                               (run-query rf init conn model sql-args opts))]
                   (t2/select-one :model/Database :id db-id)

@@ -164,6 +164,7 @@
      events
      explorations
      formatter
+     funnysql
      geojson
      glossary
      indexed-entities

@@ -74,7 +74,7 @@
          ;; Use seconds for granularity in the fraction.
          (if (= :mysql db-type)
            [:coalesce
-            [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
+            [[:timestampdiff :second from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
            [[::h2x/extract :epoch [:- to-column from-column]]])
          [:inline (double seconds-in-a-day)]]]

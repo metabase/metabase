@@ -98,6 +98,24 @@
   {:pre [(some-fn keyword? string?) (re-matches #"^[a-zA-Z0-9]+$" (name unit))]}
   [::extract unit expr])
 
+;; register the `::timestampdiff` function with HoneySQL. MySQL's `TIMESTAMPDIFF` takes its unit as a bare keyword, which
+;; no plain Honey SQL form produces short of `:raw` -- a keyword unit comes out as a quoted identifier, `` `microsecond` ``.
+;; Funny SQL ([[metabase.funnysql.core]]) compiles this form to the same SQL.
+(defn- format-timestampdiff
+  "(sql/format-expr [::timestampdiff :microsecond :a :b])
+   => [\"timestampdiff(microsecond, a, b)\"]"
+  [_tag [unit x y]]
+  (when-not (and ((some-fn keyword? string?) unit)
+                 (re-matches #"^[a-zA-Z0-9]+$" (name unit)))
+    (throw (ex-info "Invalid unit" {:unit unit})))
+  (let [[x-sql & x-args] (sql/format-expr x {:nested true})
+        [y-sql & y-args] (sql/format-expr y {:nested true})]
+    (into [(clojure.core/format "timestampdiff(%s, %s, %s)" (name unit) x-sql y-sql)]
+          cat
+          [x-args y-args])))
+
+(sql/register-fn! ::timestampdiff #'format-timestampdiff)
+
 ;; register the function `::distinct-count` with HoneySQL
 (defn- format-distinct-count
   "(sql/format-expr [::h2x/distinct-count :x])
@@ -465,12 +483,30 @@
   [sql-type]
   (boolean (re-matches raw-type-name-regex (name sql-type))))
 
+(defn- format-raw-type-name
+  "Emit a [[raw-type-name?]] type name as the SQL it names: unquoted, and with its spelling preserved exactly as the
+  engine reported it.
+
+  A type name needs its own form because neither shape Honey SQL splices on its own is the name we were given. A
+  string in the type position of `:cast` becomes a `?` parameter, which is not a type at all, so the engine rejects
+  the statement. A keyword goes through `honey.sql/sql-kw`, which upper-cases it and drops everything before a `/` --
+  so `timestamp` becomes `TIMESTAMP`, and ClickHouse's `DateTime64(3, 'America/New_York')` loses its timezone."
+  [_fn [sql-type]]
+  (let [type-name (name sql-type)]
+    ;; [[cast]] checks this before building the form; check it again here so the guarantee holds for anyone who writes
+    ;; the form directly, and so nothing unvalidated can reach the SQL through this path.
+    (when-not (raw-type-name? type-name)
+      (throw (ex-info "Invalid SQL type name" {:type type-name})))
+    [type-name]))
+
+(sql/register-fn! ::raw-type-name #'format-raw-type-name)
+
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type :- ms/KeywordOrString
    expr     :- ::honeysql-expr]
   (-> (if (raw-type-name? sql-type)
-        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
+        [:cast expr [::raw-type-name (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 
@@ -705,7 +741,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
+  [::timestampdiff :microsecond start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

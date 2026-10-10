@@ -1000,10 +1000,10 @@
 
 (defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
   (when official-collections-first?
-    [:authority_level :asc :nulls-last]))
+    [:authority_level :asc-nulls-last]))
 
 (def ^:private normal-collections-first-sort-clause
-  [:type :asc :nulls-first])
+  [:type :asc-nulls-first])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
@@ -1051,8 +1051,8 @@
                                     [:%lower.name :asc]]
            [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
            [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]
-           [:description :asc]     [[:%lower.description :asc :nulls-last] [:%lower.name :asc]]
-           [:description :desc]    [[:%lower.description :desc :nulls-last] [:%lower.name :asc]])
+           [:description :asc]     [[:%lower.description :asc-nulls-last] [:%lower.name :asc]]
+           [:description :desc]    [[:%lower.description :desc-nulls-last] [:%lower.name :asc]])
          ;; add a fallback sort order so paging is still deterministic even if collection have the same name or
          ;; whatever
          [[:id :asc]]]))
@@ -1073,7 +1073,8 @@
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
         models        (sort (map keyword models))
         queries       (for [model models
-                            :let  [query              (collection-children-query model collection options)
+                            :let  [query              (-> (collection-children-query model collection options)
+                                                          (vary-meta assoc :allow-subquery true))
                                    select-clause-type (some
                                                        (fn [k]
                                                          (when (get query k)
@@ -1088,7 +1089,7 @@
                        :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
         rows-query    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                               :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                               :select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                                :order-by sql-order}
                         search-clause
@@ -1193,7 +1194,9 @@
                          {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                           :select (vec
                                    (for [model candidates]
-                                     [[:exists (collection-children-query model collection options)] model]))}))]
+                                     [[:exists (-> (collection-children-query model collection options)
+                                                   (vary-meta assoc :allow-subquery true))]
+                                      model]))}))]
         {:available_models
          (->> candidates
               (keep (fn [model]

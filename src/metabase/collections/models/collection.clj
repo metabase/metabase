@@ -1019,7 +1019,7 @@
                                                                             (when (perms/is-data-analyst? current-user-id)
                                                                               ^:allow-subquery {:select visible-union-columns
                                                                                                 :from [[:collection :c]]
-                                                                                                :where [:= :namespace ^:allow-raw-sql [:inline "transforms"]]})])}
+                                                                                                :where [:= :namespace "transforms"]})])}
                                :c])]
                      ;; The `WHERE` clause is where we apply the other criteria we were given:
                      :where [:and
@@ -1039,7 +1039,7 @@
                                [:not [:exists ^:allow-subquery {:select [1]
                                                                 :from [[:collection :sub_c]]
                                                                 :where [:and [:= :c.id :sub_c.id]
-                                                                        [:= :sub_c.namespace ^:allow-raw-sql [:inline "shared-tenant-collection"]]]}]])
+                                                                        [:= :sub_c.namespace (h2x/literal "shared-tenant-collection")]]}]])
                              ;; excluding things outside of the `archive_operation_id` you wanted...
                              (when-let [op-id (:archive-operation-id visibility-config)]
                                [:or
@@ -2192,7 +2192,7 @@
        [:not= (maybe-alias :type) instance-analytics-collection-type]
        [:not= (maybe-alias :type) trash-collection-type]]]
      [:or [:= (maybe-alias :namespace) nil]
-      [:not= (maybe-alias :namespace) ^:allow-raw-sql [:inline "analytics"]]]
+      [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]
