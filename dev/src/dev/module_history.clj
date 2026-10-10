@@ -15,7 +15,6 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
-   [clojure.set :as set]
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
    [dev.module-graph :as module-graph]
@@ -260,25 +259,22 @@
 (defn- structure-metrics
   "The measures stats dashboard 9805 tracks, defined as when it was built: cycle sizes in
   [[module-graph/cyclic-components]] order, the largest namespace-level cycle, module pairs that require each other,
-  and cross-module requires past a module's `:api`, including those a `:friends` grant allows."
-  [deps modules stats]
-  (let [existing    (into #{} (map :namespace) deps)
-        ns-graph    (into {}
-                          (map (fn [{:keys [namespace deps]}]
-                                 [namespace (into #{} (comp (map :namespace) (filter existing)) deps)]))
-                          deps)
-        graph       (deps-graph/module-dependencies deps)
-        ;; The declared API: nil for `:api :any`, else the declared set, else the default namespaces that exist.
-        api-of      (memoize (fn [module]
+  and cross-module requires past a module's `:api`, including those a `:friends` grant allows.
+  The `graph` and `ns-graph` map each module and each namespace to the ones it requires."
+  [deps modules stats graph ns-graph]
+  (let [api-of      (memoize (fn [module]
+                               ;; The declared API: nil for `:api :any`, else the declared set, else the default
+                               ;; namespaces that exist.
                                (let [api (get-in modules [module :api])]
                                  (cond
                                    (= :any api) nil
                                    (set? api)   api
                                    :else        (let [prefix (modules/module-ns-prefix modules module)]
-                                                  (set/intersection existing
-                                                                    #{(symbol (str prefix ".api"))
-                                                                      (symbol (str prefix ".core"))
-                                                                      (symbol (str prefix ".init"))}))))))
+                                                  (into #{}
+                                                        (filter #(contains? ns-graph %))
+                                                        [(symbol (str prefix ".api"))
+                                                         (symbol (str prefix ".core"))
+                                                         (symbol (str prefix ".init"))]))))))
         non-api     (for [{:keys [module namespace], :as row} deps
                           {to-ns :namespace, to :module} (:deps row)
                           :when (not= module to)
@@ -294,7 +290,7 @@
                                       (not (modules/descendant-of? modules b a)))]
                       [a b])
         size-at     (fn [sizes i] (get sizes i 0))]
-    {:distinct-namespaces           (count existing)
+    {:distinct-namespaces           (count ns-graph)
      :configured-top-level-modules  (count (remove #(modules/parent-module modules %) (keys modules)))
      :scc1-modules                  (size-at (:scc-module-sizes stats) 0)
      :scc1-namespaces               (size-at (:scc-namespace-sizes stats) 0)
@@ -337,6 +333,11 @@
         (recur)))
     {:nodes nodes, :sets sets}))
 
+(defn- set-bits
+  "The indices of the set bits of `bits`, in ascending order."
+  [^BitSet bits]
+  (take-while nat-int? (iterate #(.nextSetBit bits (inc (long %))) (.nextSetBit bits 0))))
+
 (defn- percent
   "`part` of `whole` as a percentage with one decimal."
   [part whole]
@@ -357,41 +358,33 @@
   A test run selected by module reruns every namespace of every module that reaches the changed namespace's module;
   one selected by namespace reruns only the namespaces that reach it. Shares are percentages of all namespaces.
 
-  A leaf is a module or namespace nothing else requires, so a change to it retests only itself."
-  [deps]
-  (let [total          (count deps)
-        mod->count     (update-vals (group-by :module deps) count)
-        namespaces     (into #{} (map :namespace) deps)
-        by-namespace   (dependents (into {}
-                                         (map (fn [{:keys [namespace deps]}]
-                                                [namespace (into #{} (comp (map :namespace) (filter namespaces)) deps)]))
-                                         deps))
-        by-module      (dependents (merge (zipmap (keys mod->count) (repeat #{}))
-                                          (deps-graph/module-dependencies deps)))
-        module-share   (into {}
-                             (map (fn [module ^BitSet reaching]
-                                    [module (percent (transduce (map #(mod->count ((:nodes by-module) %) 0))
-                                                                +
-                                                                0
-                                                                (take-while nat-int? (iterate #(.nextSetBit reaching (inc (long %)))
-                                                                                              (.nextSetBit reaching 0))))
-                                                     total)])
-                                  (:nodes by-module)
-                                  (:sets by-module)))
-        leaf-modules   (into #{}
-                             (keep (fn [[module ^BitSet reaching]] (when (= 1 (.cardinality reaching)) module)))
-                             (map vector (:nodes by-module) (:sets by-module)))
-        per-module     (share-summary (map (comp module-share :module) deps))
-        per-namespace  (share-summary (map (fn [^BitSet reaching] (percent (.cardinality reaching) total))
-                                           (:sets by-namespace)))]
+  A leaf is a module or namespace nothing else requires, so a change to it retests only itself.
+
+  The `graph` and `ns-graph` map each module and each namespace to the ones it requires.
+  The `total` is the number of rows in `deps`."
+  [deps graph ns-graph total]
+  (let [mod->count    (frequencies (map :module deps))
+        by-namespace  (dependents ns-graph)
+        {:keys [nodes sets]} (dependents graph)
+        module-share  (zipmap nodes
+                              ;; A module that is required but has no source in `deps` has no namespaces to count.
+                              (map #(percent (transduce (map (fn [i] (mod->count (nodes i) 0))) + 0 (set-bits %)) total)
+                                   sets))
+        ;; Something requires every module without a source in `deps`, so each leaf has namespaces.
+        leaf-modules  (keep (fn [[module ^BitSet reaching]] (when (= 1 (.cardinality reaching)) module))
+                            (map vector nodes sets))
+        per-module    (share-summary (map (comp module-share :module) deps))
+        per-namespace (share-summary (map (fn [^BitSet reaching] (percent (.cardinality reaching) total))
+                                          (:sets by-namespace)))]
     {:retest-module-mean      (:mean per-module)
      :retest-module-median    (:median per-module)
      :retest-namespace-mean   (:mean per-namespace)
      :retest-namespace-median (:median per-namespace)
      :retest-histogram        {:module (:histogram per-module), :namespace (:histogram per-namespace)}
-     :leaf-modules            (count (filter mod->count leaf-modules))
-     :leaf-module-namespaces  (transduce (map #(mod->count % 0)) + 0 leaf-modules)
-     :leaf-namespaces         (count (filter (fn [^BitSet reaching] (= 1 (.cardinality reaching))) (:sets by-namespace)))}))
+     :leaf-modules            (count leaf-modules)
+     :leaf-module-namespaces  (transduce (map mod->count) + 0 leaf-modules)
+     :leaf-namespaces         (count (filter (fn [^BitSet reaching] (= 1 (.cardinality reaching)))
+                                             (:sets by-namespace)))}))
 
 (defn commit-metrics
   "Metrics for one commit's dependency rows and module map: [[deps-graph/module-boundary-stats]] plus the sizes,
@@ -400,8 +393,14 @@
   `:density`, `:cycle-rank` and `:strong-bridges` count, largest first, and `:retest-histogram`, the namespaces in
   each tenth of retest share; see [[retest-metrics]]."
   [deps modules]
-  (let [cycles           (deps-graph/module-cycles deps)
+  (let [graph            (deps-graph/module-dependencies deps)
+        cycles           (module-graph/cycles graph)
         stats            (deps-graph/module-boundary-stats deps modules cycles)
+        existing         (into #{} (map :namespace) deps)
+        ns-graph         (into {}
+                               (map (fn [{:keys [namespace deps]}]
+                                      [namespace (into #{} (comp (map :namespace) (filter existing)) deps)]))
+                               deps)
         mod->nses        (update-vals (group-by :module deps) #(into #{} (map :namespace) %))
         ns-count         #(count (get mod->nses % #{}))
         with-nses        (set (keys mod->nses))
@@ -419,7 +418,6 @@
         static-graph     (deps-graph/module-dependencies (map (fn [row] (update row :deps #(remove :dynamic %))) deps))
         static-n         (transduce (map (fn [component] (reduce + (map ns-count component)))) max 0
                                     (module-graph/cyclic-components static-graph))
-        graph            (deps-graph/module-dependencies deps)
         top-graph        (into #{}
                                (for [[from tos] graph
                                      to         tos
@@ -428,8 +426,8 @@
         ns->mod          (into {} (map (juxt :namespace :module)) deps)
         namespaces       (count deps)]
     (merge
-     (structure-metrics deps modules stats)
-     (retest-metrics deps)
+     (structure-metrics deps modules stats graph ns-graph)
+     (retest-metrics deps graph ns-graph namespaces)
      ;; Each cycle's members, so a report can follow a cycle as it splits or merges.
      {:cycles (mapv (fn [{:keys [modules edges cycle-rank strong-bridges]} namespaces density]
                       {:modules        modules
