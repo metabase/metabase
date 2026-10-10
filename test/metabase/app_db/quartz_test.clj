@@ -270,18 +270,21 @@
   [history]
   (let [namespaces (into #{} (map (comp class-namespace current-name)) history)]
     (run! (comp classloader/require symbol) namespaces)
-    ;; the cache job needs its feature, and there is one transforms job for each active transform job
-    (mt/with-premium-features #{:cache-granular-controls}
-      (mt/with-temp [:model/TransformJob _ {:schedule "0 0 * * * ? *"}]
-        (tu/do-with-unstarted-temp-scheduler!
-         (fn []
-           ;; Only these jobs' initializers run, because others start threads that outlive the scheduler.
-           ;; They are called directly so that one that throws fails the test.
-           (doseq [[task init!] (methods task.impl/init!)
-                   :when        (namespaces (namespace task))]
-             (init! task))
-           (-> (group-by #(.getName ^Class (:class %)) (tu/scheduler-current-tasks))
-               (update-vals #(into (sorted-set) (map :key) %)))))))))
+    ;; Initializers can write to the app DB, as the sync job's does when it randomizes default sync schedules.
+    ;; They run against an empty app DB that is thrown away, so nothing they write reaches the real one.
+    (mt/with-empty-h2-app-db!
+      ;; the cache job needs its feature, and there is one transforms job for each active transform job
+      (mt/with-premium-features #{:cache-granular-controls}
+        (mt/with-temp [:model/TransformJob _ {:schedule "0 0 * * * ? *"}]
+          (tu/do-with-unstarted-temp-scheduler!
+           (fn []
+             ;; Only these jobs' initializers run, because others start threads that outlive the scheduler.
+             ;; They are called directly so that one that throws fails the test.
+             (doseq [[task init!] (methods task.impl/init!)
+                     :when        (namespaces (namespace task))]
+               (init! task))
+             (-> (group-by #(.getName ^Class (:class %)) (tu/scheduler-current-tasks))
+                 (update-vals #(into (sorted-set) (map :key) %))))))))))
 
 (defn- rename-to-complete
   "The entry for [[mdb.quartz/job-key-renames]] if the key of the job in `entry` changed to `new-key`."
