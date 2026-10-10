@@ -16,7 +16,7 @@
   and discouraged symbols in `added`."
   [before after added]
   (history/budget-changes (history/budget-view before after)
-                          {:new-linter? added
+                          {:new-measure? (comp added peek)
                            :new-symbol? (fn [_linter sym] (added sym))}))
 
 (deftest budget-changes-test

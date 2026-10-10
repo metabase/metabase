@@ -8,7 +8,7 @@
     number, which is usually the post-merge automation.
   - grow: the budget of a linter that already existed rose, or it got its first budget in a ratchet that
     already existed.
-  - introduce: a linter got its first budget in the commit that added the linter.
+  - introduce: a linter, or a measure of the module ratchet, got its first budget in the commit that added it.
   - seed: a linter that already existed got its first budget because the commit added a whole ratchet: a new
     ratchet file, or a new kind of budget in one. Existing debt came under a budget, so it counts for nobody.
   - limit or unlimit: the budget moved out of or into `:unlimited`.
@@ -173,8 +173,9 @@
   The kinds are those the namespace docstring lists.
   A change to a measure that has per-symbol budgets is marked `:per-symbol?`.
   A newly discouraged symbol is its own `:introduce`, with the symbol as `:key`.
-  `new-linter?` and `new-symbol?` say whether the commit also added the linter, or the symbol under `linter`."
-  [{:keys [ratcheted before after symbols-before symbols-after]} {:keys [new-linter? new-symbol?]}]
+  `new-measure?` says whether the commit also added what a measure counts: its linter, or the module measure.
+  `new-symbol?` says the same of a symbol under `linter`."
+  [{:keys [ratcheted before after symbols-before symbols-after]} {:keys [new-measure? new-symbol?]}]
   (let [symbolic (into #{}
                        (map (fn [[side linter _]] [side :ignore linter]))
                        (concat (keys symbols-before) (keys symbols-after)))
@@ -199,7 +200,7 @@
                              (symbolic measure) (assoc :per-symbol? true))]
            :when   (not= old new)]
        (cond
-         (and (nil? old) (new-linter? (peek measure)))
+         (and (nil? old) (new-measure? measure))
          (assoc change :kind :introduce)
 
          ;; no ratchet of this kind on this side before: the commit added the ratchet itself
@@ -353,20 +354,27 @@
 
 (def ^:private symbol-delimiter "[^A-Za-z0-9*+!?<>=._/-]")
 
+(def ^:private linter-sources
+  "Where a linter or a discouraged symbol is defined: the kondo config and hooks, without the ratchet files."
+  (cons ".clj-kondo" (map #(str ":(exclude)" %) ratchet-paths)))
+
+(def ^:private module-measure-sources
+  "Where the module ratchet's measures are defined."
+  ["dev/src/dev/kondo_ratchet.clj"])
+
 (defn- mentioned?
-  "Does a tracked file under `.clj-kondo` other than a ratchet file name one of `names` at `rev`?"
-  [repo rev names]
+  "Does a tracked file under the pathspecs `sources` name one of `names` at `rev`?"
+  [repo rev sources names]
   (let [quoted (map #(str/replace % #"[.*+?|()\[\]{}^$\\]" "\\\\$0") names)]
     (apply git-ok? repo "grep" "-q" "-E"
            "-e" (str "(^|" symbol-delimiter ")(" (str/join "|" quoted) ")(" symbol-delimiter "|$)")
-           rev "--" ".clj-kondo"
-           (map #(str ":(exclude)" %) ratchet-paths))))
+           rev "--" sources)))
 
 (defn- added-in?
-  "Did commit `sha` add the first mention of one of `names` to the kondo config or hooks?"
-  [repo sha names]
-  (and (not (mentioned? repo (str sha "^") names))
-       (mentioned? repo sha names)))
+  "Did commit `sha` add the first mention of one of `names` under the pathspecs `sources`?"
+  [repo sha sources names]
+  (and (not (mentioned? repo (str sha "^") sources names))
+       (mentioned? repo sha sources names)))
 
 (defn- symbol-names
   "The symbols a discouraged-symbol ratchet key may stand for; see [[ratchet/discouraged-count-key]]."
@@ -385,8 +393,14 @@
              ;; TODO (Chris 2026-10-10) -- also report linters that landed with no budget at all, because nothing
              ;; needed an ignore. No ratchet file changes for those, so this history never sees them.
              (vec (budget-changes (commit-view repo sha)
-                                  {:new-linter? #(added-in? repo sha [(str %)])
-                                   :new-symbol? (fn [_linter sym] (added-in? repo sha (symbol-names sym)))})))))
+                                  {:new-measure? (fn [[_ kind measured]]
+                                                   (added-in? repo sha
+                                                              (if (= :module kind)
+                                                                module-measure-sources
+                                                                linter-sources)
+                                                              [(str measured)]))
+                                   :new-symbol?  (fn [_linter sym]
+                                                   (added-in? repo sha linter-sources (symbol-names sym)))})))))
 
 (defn tightening?
   "Did a commit only lower budgets, as the post-merge automation does?
