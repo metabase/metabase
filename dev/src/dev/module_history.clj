@@ -435,9 +435,9 @@
      (structure-metrics deps modules stats graph ns-graph)
      (retest-metrics deps graph ns-graph namespaces)
      ;; Each cycle's members, so a report can follow a cycle as it splits or merges.
-     {:cycles (mapv (fn [{:keys [modules edges cycle-rank strong-bridges]} namespaces density]
-                      {:modules        modules
-                       :namespaces     namespaces
+     {:cycles (mapv (fn [{members :modules, :keys [edges cycle-rank strong-bridges]} ns-size density]
+                      {:modules        members
+                       :namespaces     ns-size
                        :edges          edges
                        :density        density
                        :cycle-rank     cycle-rank
@@ -492,6 +492,18 @@
         [sha committed-at subject] (str/split line #"\u0000" 3)]
     {:sha sha, :committed-at committed-at, :subject subject}))
 
+(defn- resolve-commit
+  "The full sha of `commit`, throwing when it names no commit."
+  [commit]
+  (str/trim (git! ["rev-parse" (str commit "^{commit}")])))
+
+(defn- commit-snapshot
+  "The dependency rows and module map at the commit `sha`, as `{:deps rows, :modules map}`."
+  [reader sha]
+  (let [modules (commit-modules #(read-object reader (str sha ":" %)))]
+    {:deps    (commit-dependencies reader sha modules)
+     :modules modules}))
+
 (defn measure
   "Metrics for `commit`, from the cache when this code has measured it before.
   The `:module-system?` key is false before #42250, when the whole backend counts as one module."
@@ -502,13 +514,13 @@
        (finally
          (close-object-reader reader)))))
   ([reader commit]
-   (let [sha  (str/trim (git! ["rev-parse" (str commit "^{commit}")]))
+   (let [sha  (resolve-commit commit)
          file (metrics-file sha)]
      (or (read-cached file)
-         (let [modules (commit-modules #(read-object reader (str sha ":" %)))]
+         (let [{:keys [deps modules]} (commit-snapshot reader sha)]
            (write-cached! file (merge (commit-info sha)
                                       {:module-system? (not= modules whole-backend)}
-                                      (commit-metrics (commit-dependencies reader sha modules) modules))))))))
+                                      (commit-metrics deps modules))))))))
 
 (defn snapshot
   "The dependency rows and module map at `commit`, as `{:deps rows, :modules map}`.
@@ -516,10 +528,7 @@
   [commit]
   (let [reader (open-object-reader)]
     (try
-      (let [sha     (str/trim (git! ["rev-parse" (str commit "^{commit}")]))
-            modules (commit-modules #(read-object reader (str sha ":" %)))]
-        {:deps    (commit-dependencies reader sha modules)
-         :modules modules})
+      (commit-snapshot reader (resolve-commit commit))
       (finally
         (close-object-reader reader)))))
 
@@ -580,8 +589,7 @@
         months   (when monthly-since
                    (dates-from (.withDayOfMonth (LocalDate/parse monthly-since) 1) #(.plusMonths ^LocalDate % 1)))
         anchors  (last-commit-before ref (concat weeks months))
-        resolved (map #(str/trim (git! ["rev-parse" (str % "^{commit}")]))
-                      (concat changed anchors extra [ref]))
+        resolved (map resolve-commit (concat changed anchors extra [ref]))
         order    (into {}
                        (map-indexed (fn [i sha] [sha i]))
                        (str/split-lines (git! ["rev-list" "--first-parent" "--reverse" ref])))]
@@ -609,7 +617,8 @@
    :leaf-modules :leaf-module-namespaces :leaf-namespaces])
 
 (defn backfill!
-  "Measure every commit [[sample-commits]] picks for `opts`, plus any explicit `:commits`, and return the rows.
+  "Measure the commits [[sample-commits]] picks for `opts` and return the rows.
+  With `:commits`, measure those, adding the sample only when a `-since` option is given.
   With `:out`, also write them there as CSV, or as one EDN map per line when the name ends in `.edn`.
 
     clojure -X:dev dev.module-history/backfill! \\

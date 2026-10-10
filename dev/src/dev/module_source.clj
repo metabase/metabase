@@ -24,8 +24,7 @@
                     (= (:value fst) 'comment)))))))
 
 (defn walk-parsed-ignore-comments!
-  "Simple fast recursive walker over `tree` which should be a file parsed with rewrite-clj. The passed consumer function
-  `f` should use side-effects to accumulate the results."
+  "Call `f`, for its side effects, on each node of `tree`, a rewrite-clj parse, skipping comments and their contents."
   [f tree]
   (letfn [(walk [node]
             (when-not (skip-node? node)
