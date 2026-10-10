@@ -350,6 +350,27 @@
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
+  kondo-ratchets-history
+  {:doc "Report which commits, pull requests and authors shrank, grew and introduced ratchet budgets."
+   :examples [["./bin/mage kondo-ratchets-history" "Summarize the last 7 days"]
+              ["./bin/mage kondo-ratchets-history --days 30" "Summarize the last 30 days"]
+              ["./bin/mage kondo-ratchets-history --all" "Summarize every change since the first ratchet"]
+              ["./bin/mage kondo-ratchets-history --html ratchets.html" "Write a page with every week, every month and all time"]
+              ["./bin/mage kondo-ratchets-history 57e0ad66ea5" "Summarize every change after that commit"]
+              ["./bin/mage kondo-ratchets-history --pardon 78082 --why \"the stricter hook flagged requires that already existed\"" "Count the budget raises in PR 78082 against nobody"]
+              ["./bin/mage kondo-ratchets-history --confirm 8d5db3195d" "Keep counting that commit's raises as growth"]
+              ["./bin/mage kondo-ratchets-history --recount 79531 --why \"the same ignores, named per linter\"" "Count none of a commit's changes: it only changed how suppressions are counted"]]
+   :options [["-d" "--days DAYS" "Days to look back (default 7)" :parse-fn parse-long]
+             ["-a" "--all" "Look back to the first ratchet"]
+             ["-o" "--html FILE" "Write a single-file HTML page covering every week, every month and all time"]
+             [nil "--pardon COMMIT" "Count a commit's budget raises against nobody; takes a commit or PR number"]
+             [nil "--confirm COMMIT" "Keep a questioned commit's raises as growth"]
+             [nil "--recount COMMIT" "Count none of a commit's changes: it only changed how suppressions are counted"]
+             ["-w" "--why REASON" "The reason for a verdict; a pardon or a recount needs one"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "commit" :description "Summarize the changes after this commit; not with --days or --all"}]]]
+   :requires [[mage.kondo-ratchets-history]]
+   :task (task! (mage.kondo-ratchets-history/history parsed))}
+
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]

@@ -1,0 +1,32 @@
+;; Verdicts on the budget raises `./bin/mage kondo-ratchets-history` questions: a raise beyond the
+;; suppressions its commit added. A :pardon counts the commit's raises against nobody; a :confirm keeps them.
+;; A :recount marks a commit that only changed how suppressions are counted: none of its changes count.
+;; Written by `./bin/mage kondo-ratchets-history --pardon`, `--confirm` and `--recount`.
+[{:sha     "e24150083f0b0ceed609329fa1bb985714cee5c2"
+  :pr      78082
+  :subject "Report dynamic requires which linter cannot verify (#78082)"
+  :verdict :pardon
+  :why     "The modules hook started reporting dynamic requires it cannot check. The 13 ignores mark requires that already existed."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}
+ {:sha     "dd1cb0f0ba7344ba9a8ef7b42f9ffad7112dafb2"
+  :pr      77820
+  :subject "Require justifications for linter ignores (#77820)"
+  :verdict :recount
+  :why     "Two ignores in the Mongo driver had their key where the scanner did not read it. Moving the key first made the scanner count 4 suppressions that already existed."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}
+ {:sha     "e4471f76d3dbf85ef14322e01570e0a3dc793866"
+  :pr      83383
+  :subject "Split kondo ratchet budgets into separate prod and test files (#83383)"
+  :verdict :pardon
+  :why     "Splitting the ratchet file needed one new dynamic var, with its ignore, to hold the test file's path. The other unit was spare, and the automation took it back the same day (#83450)."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}
+ {:sha     "ec3b24fadd18ad7458943e9b13b067f375b97d7a"
+  :pr      79531
+  :subject "Make every kondo ignore name the linters it suppresses (#79531)"
+  :verdict :recount
+  :why     "Every bare ignore now names its linters, so one that covered two warnings counts under both. The `:all` budget went away, and the named budgets absorbed it."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}]
