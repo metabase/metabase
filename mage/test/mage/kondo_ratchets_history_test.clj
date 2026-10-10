@@ -158,15 +158,16 @@
 
 (deftest unify-authors-test
   (testing "commits and causes that share an author email take the newest name used with it"
-    (is (= [{:sha "new", :author "Bryan Maass", :email "b@x", :date "2026-10-02"
-             :causes {:a [{:sha "old", :author "Bryan Maass", :email "b@x", :date "2026-09-01", :delta -1}
-                          {:sha "other", :author "Ada", :email "a@x", :date "2026-09-02", :delta -2}]}}
-            {:sha "old", :author "Bryan Maass", :email "b@x", :date "2026-09-01"}]
-           (history/unify-authors
-            [{:sha "new", :author "Bryan Maass", :email "b@x", :date "2026-10-02"
-              :causes {:a [{:sha "old", :author "bryan", :email "b@x", :date "2026-09-01", :delta -1}
-                           {:sha "other", :author "Ada", :email "a@x", :date "2026-09-02", :delta -2}]}}
-             {:sha "old", :author "bryan", :email "b@x", :date "2026-09-01"}])))))
+    ;; the older commit has the later clock time, in a zone ahead of UTC
+    (let [newer {:sha "new", :email "b@x", :date "2026-10-02T01:00:00Z"}
+          older {:sha "old", :email "b@x", :date "2026-10-02T02:30:00+02:00"}
+          other {:sha "other", :author "Ada", :email "a@x", :date "2026-09-02T00:00:00Z"}
+          as    (fn [author commit] (assoc commit :author author))]
+      (is (= [(assoc (as "Bryan Maass" newer) :causes {:a [(as "Bryan Maass" older) other]})
+              (as "Bryan Maass" older)]
+             (history/unify-authors
+              [(assoc (as "Bryan Maass" newer) :causes {:a [(as "bryan" older) other]})
+               (as "bryan" older)]))))))
 
 (def ^:private a [:prod :ignore :a])
 (def ^:private b [:test :ignore :b])
@@ -211,6 +212,20 @@
             :by-commit   (map (juxt :sha :net) (history/by-commit (history/attributions records)))
             :leaderboard (map (juxt :author :unattributed? :shrunk :grown :net :linters :ignores)
                               (history/leaderboard records))}))))
+
+(deftest pardoned-shrink-test
+  (testing "a shrink that is a net raise once a pardoned raise is taken out of it still goes to its causes"
+    (is (= [["hid" "Bob" 3]]
+           (map (juxt :sha :author :delta)
+                (history/attributions
+                 (history/pardon
+                  {:pardons {"stale" #{a}}}
+                  [{:sha      "tighten"
+                    :author   "automation"
+                    :tighten? true
+                    :changes  [{:measure a, :kind :shrink, :delta -2}]
+                    :causes   {a [{:sha "hid", :author "Bob", :delta 3}
+                                  {:sha "stale", :author "Cy", :delta -5}]}}])))))))
 
 (deftest report-test
   (testing "names measures and picks out the commits behind the biggest changes"
