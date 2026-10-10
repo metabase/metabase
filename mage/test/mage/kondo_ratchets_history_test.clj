@@ -1,6 +1,8 @@
 (ns mage.kondo-ratchets-history-test
   (:require
+   [babashka.fs :as fs]
    [babashka.json :as json]
+   [babashka.process :as p]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -455,3 +457,115 @@
                         ["abc" {:html "page.html"}]
                         [nil {:pardon "12", :confirm "13"}]
                         [nil {:days 3, :why "No verdict to explain."}]])))))
+
+;;; ---------------------------------------------- Against a repository ----------------------------------------
+
+(defn- commit!
+  "Write `files`, a map from path to content, in the repository at `dir` and commit them as `author` on `day` of
+  September 2026."
+  [dir author day subject files]
+  (doseq [[path content] files]
+    (fs/create-dirs (fs/parent (fs/path dir path)))
+    (spit (str (fs/path dir path)) content))
+  (let [date (format "2026-09-%02dT10:00:00Z" day)
+        git  (fn [& args]
+               (apply p/shell {:dir       (str dir)
+                               :out       :string
+                               :err       :string
+                               :extra-env {"GIT_AUTHOR_NAME"     author
+                                           "GIT_AUTHOR_EMAIL"    (str (str/lower-case author) "@example.com")
+                                           "GIT_AUTHOR_DATE"     date
+                                           "GIT_COMMITTER_NAME"  author
+                                           "GIT_COMMITTER_EMAIL" (str (str/lower-case author) "@example.com")
+                                           "GIT_COMMITTER_DATE"  date}}
+                      "git" "-c" "commit.gpgsign=false" "-c" "core.hooksPath=/dev/null" args))]
+    (git "add" "-A")
+    (git "commit" "-q" "-m" subject)))
+
+(defn- fixture-repo!
+  "A [[history/repo]] over a new repository with five commits, with its cache and verdicts file in temp dirs.
+  Chris adds a ratchet over three ignores. Ada removes an ignore, and Bob edits only the continuation line of a
+  multi-line ignore to drop a linter. The automation tightens. Cy then raises a budget by 2 for 1 new ignore."
+  []
+  (let [dir      (fs/create-temp-dir {:prefix "ratchets-history-repo"})
+        ratchets ".clj-kondo/ratchets.edn"
+        source   "src/app/a.clj"
+        lines    (fn [& lines] (str (str/join "\n" lines) "\n"))]
+    (p/shell {:dir (str dir), :out :string} "git" "init" "-q" "-b" "master")
+    (commit! dir "Chris" 1 "Add ratchets (#1)"
+             {ratchets "{:ignore-counts {:deprecated-var 2, :unused-binding 1}}\n"
+              source   (lines "(ns app.a)"
+                              "#_{:clj-kondo/ignore [:deprecated-var]}"
+                              "(a)"
+                              "#_{:clj-kondo/ignore [:deprecated-var"
+                              "                      :unused-binding]}"
+                              "(b)")})
+    (commit! dir "Ada" 2 "Stop using a (#2)"
+             {source (lines "(ns app.a)"
+                            "(a)"
+                            "#_{:clj-kondo/ignore [:deprecated-var"
+                            "                      :unused-binding]}"
+                            "(b)")})
+    (commit! dir "Bob" 3 "Use the binding (#3)"
+             {source (lines "(ns app.a)"
+                            "(a)"
+                            "#_{:clj-kondo/ignore [:deprecated-var"
+                            "                      ]}"
+                            "(b)")})
+    (commit! dir "automation" 4 "Tighten ratchets (#4)"
+             {ratchets "{:ignore-counts {:deprecated-var 1}}\n"})
+    (commit! dir "Cy" 5 "Add a feature (#5)"
+             {ratchets      "{:ignore-counts {:deprecated-var 3}}\n"
+              "src/app/b.clj" (lines "(ns app.b)" "#_{:clj-kondo/ignore [:deprecated-var]}" "(c)")})
+    (history/repo {:dir      (str dir)
+                   :cache    (fs/create-temp-dir {:prefix "ratchets-history-cache"})
+                   :verdicts (fs/file (str (fs/create-temp-dir {:prefix "ratchets-history-verdicts"}))
+                                      "verdicts.edn")})))
+
+(def ^:private deprecated [:prod :ignore :deprecated-var])
+(def ^:private unused [:prod :ignore :unused-binding])
+
+(deftest records-test
+  (testing "reads a repository's history: seeds, a tighten credited to the commits before it, and a raise"
+    (is (= [[5 "Cy" nil [[:grow deprecated 2 1]] {}]
+            [4 "automation" true
+             [[:shrink deprecated -1 nil] [:shrink unused -1 nil]]
+             ;; Bob's commit touched no line that names the ignore marker
+             {deprecated [["Ada" 2 -1]], unused [["Bob" 3 -1]]}]
+            [1 "Chris" nil [[:seed deprecated nil nil] [:seed unused nil nil]] {}]]
+           (for [{:keys [pr author tighten? changes causes]} (history/records (fixture-repo!))]
+             [pr author tighten?
+              (map (juxt :kind :measure :delta :added) changes)
+              (update-vals (or causes {}) #(map (juxt :author :pr :delta) %))])))))
+
+(deftest run-test
+  (binding [c/*disable-colors* true]
+    (let [repo    (fixture-repo!)
+          summary #(str/split-lines (with-out-str (history/run repo {:options {:all true}, :arguments []})))
+          total   (fn [lines] (some #(when (str/starts-with? % "  total ") (str/split (str/trim %) #"\s+")) lines))
+          warned? (fn [lines] (boolean (some #{"Raises beyond the suppressions added, with no verdict"} lines)))]
+      (testing "counts the raise as growth and asks for a verdict on it"
+        (is (= [["total" "-2" "+2" "0"] true]
+               ((juxt total warned?) (summary)))))
+      (testing "a verdict on a PR that changed no ratchet file is refused"
+        (is (= 1
+               (try
+                 (with-out-str (history/run repo {:options {:pardon "2", :why "Not a ratchet commit."}, :arguments []}))
+                 (catch clojure.lang.ExceptionInfo e
+                   (:babashka/exit (ex-data e)))))))
+      (testing "a pardon, given by PR number, is written to the verdicts file and takes the raise out"
+        (with-out-str (history/run repo {:options {:pardon "5", :why "A stale budget."}, :arguments []}))
+        (is (= {:verdicts [[5 "Add a feature (#5)" :pardon "A stale budget."]]
+                :total    ["total" "-2" "0" "-2"]
+                :warned?  false}
+               {:verdicts (map (juxt :pr :subject :verdict :why) (edn/read-string (slurp (:verdicts-file repo))))
+                :total    (total (summary))
+                :warned?  (warned? (summary))}))))))
+
+(deftest unparseable-ratchet-test
+  (testing "a ratchet file that does not parse at some commit reads as absent there, with a warning"
+    (let [err (java.io.StringWriter.)]
+      (is (= [nil true]
+             [(binding [*err* err]
+                (#'history/read-ratchet "abc123" ".clj-kondo/ratchets.edn" "{:ignore-counts {:a 1}"))
+              (str/includes? (str err) "WARNING: .clj-kondo/ratchets.edn at abc123 does not parse")])))))
