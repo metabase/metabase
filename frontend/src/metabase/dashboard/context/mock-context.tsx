@@ -22,6 +22,7 @@ const DashboardContextWithReduxProps = (
   props: PropsWithChildren<DashboardContextReturned>,
 ) => {
   const {
+    dashboard,
     isEditing,
     downloadsEnabled,
     withSubscriptions,
@@ -32,6 +33,7 @@ const DashboardContextWithReduxProps = (
   const dashboardActions =
     typeof dashboardActionsOrGetter === "function"
       ? dashboardActionsOrGetter({
+          dashboard,
           isEditing,
           downloadsEnabled,
           withSubscriptions,

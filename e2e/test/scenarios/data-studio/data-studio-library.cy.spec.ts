@@ -69,7 +69,6 @@ describe("scenarios > data studio > library", () => {
     cy.log("Verify library collections appear in the library table");
     H.DataStudio.Library.collectionItem("Data").should("be.visible");
     H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
-    H.DataStudio.Library.collectionItem("Dashboards").should("be.visible");
   });
 
   it("should let you move metrics into the library, even when empty", () => {

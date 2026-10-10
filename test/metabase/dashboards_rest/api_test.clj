@@ -386,6 +386,14 @@
                                    :dashboard_id       dashboard-id}]
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
 
+(deftest get-dashboard-creator-test
+  (testing "GET /api/dashboard/:id includes the dashboard's creator"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:creator_id (mt/user->id :rasta)}]
+      (is (=? {:creator {:id         (mt/user->id :rasta)
+                         :email      "rasta@metabase.com"
+                         :first_name "Rasta"}}
+              (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id)))))))
+
 (deftest get-dashboard-param-fields-has-target-test
   (testing "param-fields for fk has target (#44231)"
     (mt/with-temp

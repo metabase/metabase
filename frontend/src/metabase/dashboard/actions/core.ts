@@ -1,6 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import type { Dispatch } from "metabase/redux/store";
+import { getDataStudioReturnPath } from "metabase/common/data-studio/utils/return-to";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { type Location, navigate } from "metabase/router";
 import type {
   DashCardId,
@@ -10,6 +11,7 @@ import type {
   DashboardId,
 } from "metabase-types/api";
 
+import { getIsEditing } from "../shell-selectors";
 import type { NewDashboardCard } from "../utils";
 
 import type { fetchDashboard } from "./data-fetching";
@@ -19,16 +21,20 @@ export const setEditingDashboard = (
   dashboard: Dashboard | null,
   location?: Omit<Location, "query" | "action">,
 ) => {
-  return (dispatch: Dispatch) => {
-    // Leaving edit mode drops any hash params from the URL. The caller passes the
-    // current location, since this no longer reads the retired routing slice.
-    //
-    // Only navigate when there is actually a hash to strip. The location is
-    // captured when the caller rendered, so navigating unconditionally would
+  return (dispatch: Dispatch, getState: GetState) => {
+    // Save leaves edit mode twice, in the thunk and then in the button, so only
+    // the call made while still editing navigates
+    const isLeavingEditMode = dashboard === null && getIsEditing(getState());
+    const returnPath = isLeavingEditMode
+      ? getDataStudioReturnPath(location?.state)
+      : undefined;
+
+    // Leaving edit mode drops hash params from the URL. The location is captured
+    // when the caller rendered, so navigating with no hash to strip would
     // clobber query params written since then (e.g. the tab the dashboard URL
     // sync just selected, which it will not re-add because it dedupes on the
     // previous params).
-    if (dashboard === null && location?.hash) {
+    if (isLeavingEditMode && returnPath == null && location?.hash) {
       navigate(`${location.pathname}${location.search}`);
     }
 
@@ -36,6 +42,11 @@ export const setEditingDashboard = (
       type: SET_EDITING_DASHBOARD,
       payload: dashboard,
     });
+
+    // After the dispatch, so the unsaved-changes guard lets the return through
+    if (returnPath != null) {
+      navigate(returnPath, { replace: true });
+    }
   };
 };
 

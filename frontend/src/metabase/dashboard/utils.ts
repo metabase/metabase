@@ -2,6 +2,7 @@ import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import {
@@ -417,6 +418,13 @@ export {
 export const isDashboardCacheable = (
   dashboard: Dashboard,
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
+
+/** Library dashboards are edited from Data Studio, not from the main app */
+export function isLibraryDashboard(
+  dashboard: Pick<Dashboard, "collection"> | null,
+): boolean {
+  return PLUGIN_LIBRARY.isLibraryCollectionType(dashboard?.collection?.type);
+}
 
 export function parseTabSlug(location: Location) {
   const slugs = new URLSearchParams(location.search).getAll("tab");
