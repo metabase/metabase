@@ -1,5 +1,6 @@
 (ns metabase.core.module-history-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.module-history :as module-history]
@@ -163,3 +164,93 @@
                                                     :cycle-rank     2
                                                     :strong-bridges 4}]}
            (module-history/commit-metrics deps modules)))))
+
+(deftest ^:parallel columns-test
+  (testing "every metric is a CSV column, except the two that are not a single value"
+    (is (= #{:cycles :retest-histogram}
+           (set/difference (set (keys (module-history/commit-metrics [] {})))
+                           (set @#'module-history/columns))))))
+
+(deftest ^:parallel commit-metrics-without-cycles-test
+  (testing "modules that form no cycle report zero for every cycle measure"
+    (is (=? {:namespaces                    2
+             :modules                       2
+             :module-edges                  1
+             :top-level-edges               1
+             :scc-largest-modules           0
+             :scc-largest-namespaces        0
+             :scc-largest-pct               0.0
+             :scc-cyclic-modules            0
+             :scc-cyclic-namespaces         0
+             :scc-components                0
+             :scc-static-largest-namespaces 0
+             :scc-dynamic-only-namespaces   0
+             :scc1-modules                  0
+             :scc1-namespaces               0
+             :largest-ns-level-scc          0
+             :mutual-dependency-pairs       0
+             :cycles                        []}
+            (module-history/commit-metrics
+             '[{:namespace metabase.a.core
+                :filename  "src/metabase/a/core.clj"
+                :module    a
+                :deps      [{:namespace metabase.b.core, :module b}]}
+               {:namespace metabase.b.core
+                :filename  "src/metabase/b/core.clj"
+                :module    b
+                :deps      []}]
+             '{a {}, b {}})))))
+
+(deftest ^:parallel commit-metrics-whole-backend-test
+  (testing "before the module system the backend is one module, which has no edges and no cycle"
+    (is (=? {:namespaces             2
+             :modules                1
+             :configured-modules     1
+             :top-level-modules      1
+             :nested-modules         0
+             :module-edges           0
+             :top-level-edges        0
+             :scc-largest-pct        0.0
+             :scc-components         0
+             ;; Every change retests the one module.
+             :retest-module-mean     100.0
+             :retest-module-median   100.0
+             :leaf-modules           1
+             :leaf-module-namespaces 2
+             :cycles                 []}
+            (module-history/commit-metrics
+             '[{:namespace metabase.lib.core
+                :filename  "src/metabase/lib/core.clj"
+                :module    backend
+                :deps      [{:namespace metabase.util, :module backend}]}
+               {:namespace metabase.util
+                :filename  "src/metabase/util.clj"
+                :module    backend
+                :deps      []}]
+             @#'module-history/whole-backend)))))
+
+(def ^:private legacy-config
+  (pr-str '{:linters {:metabase/ns-module-checker {:api-namespaces {metabase.lib #{metabase.lib.core}}}}}))
+
+(deftest ^:parallel commit-modules-modern-test
+  (testing "the modules config is read as it is, without the library module, even beside the older config"
+    (is (= '{lib {:api #{metabase.lib.core}, :uses #{util}}}
+           (#'module-history/commit-modules
+            {".clj-kondo/config/modules/config.edn"
+             (pr-str '{:metabase/modules {connection-pool {:api :any}
+                                          lib             {:api #{metabase.lib.core}, :uses #{util}}}})
+             ".clj-kondo/config.edn"
+             legacy-config})))))
+
+(deftest ^:parallel commit-modules-legacy-test
+  (testing "a commit with only the older linter config gets its modules translated"
+    (is (= '{lib {:api #{metabase.lib.core}}}
+           (#'module-history/commit-modules {".clj-kondo/config.edn" legacy-config})))))
+
+(deftest ^:parallel commit-modules-whole-backend-test
+  (testing "a commit with no config at all counts the backend as one module"
+    (is (= @#'module-history/whole-backend
+           (#'module-history/commit-modules {}))))
+  (testing "so does a commit whose linter config names no modules"
+    (is (= @#'module-history/whole-backend
+           (#'module-history/commit-modules {".clj-kondo/config.edn" (pr-str '{:linters {}})})))))

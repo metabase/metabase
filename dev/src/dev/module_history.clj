@@ -135,14 +135,14 @@
   ".clj-kondo/config.edn")
 
 (defn- commit-modules
-  "The `:metabase/modules` map at `commit`.
+  "The `:metabase/modules` map of a commit, where `read-file` returns the contents of a path in it, or nil.
   Before #53583 it is translated from the older linter config.
   Before #42250 there is no module config, so it is [[whole-backend]]."
-  [reader commit]
-  (if-let [config (read-object reader (str commit ":" modules-config-path))]
+  [read-file]
+  (if-let [config (read-file modules-config-path)]
     ;; Same exclusion as [[deps-graph/kondo-config]].
     (dissoc (:metabase/modules (edn/read-string config)) 'connection-pool)
-    (or (not-empty (some-> (read-object reader (str commit ":" legacy-config-path)) legacy-modules))
+    (or (not-empty (some-> (read-file legacy-config-path) legacy-modules))
         whole-backend)))
 
 (defn- prefix->module
@@ -505,7 +505,7 @@
    (let [sha  (str/trim (git! ["rev-parse" (str commit "^{commit}")]))
          file (metrics-file sha)]
      (or (read-cached file)
-         (let [modules (commit-modules reader sha)]
+         (let [modules (commit-modules #(read-object reader (str sha ":" %)))]
            (write-cached! file (merge (commit-info sha)
                                       {:module-system? (not= modules whole-backend)}
                                       (commit-metrics (commit-dependencies reader sha modules) modules))))))))
