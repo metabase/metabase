@@ -44,7 +44,10 @@
       (is (= [["clojure" "-M:test"]
               ["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
                (str '[dev.modules-config-test
+                      metabase.core.module-cuts-test
                       metabase.core.module-cycles-test
+                      metabase.core.module-history-report-test
+                      metabase.core.module-history-test
                       metabase.core.modules-test
                       metabase.core.kondo-ratchet-test
                       metabase.core.kondo-ratchet-check-test
@@ -93,7 +96,12 @@
 (deftest targeted-suites-test
   (testing "modules runs only its own namespaces"
     (is (= [["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
-             "[dev.modules-config-test metabase.core.module-cycles-test metabase.core.modules-test]"]]
+             (str '[dev.modules-config-test
+                    metabase.core.module-cuts-test
+                    metabase.core.module-cycles-test
+                    metabase.core.module-history-report-test
+                    metabase.core.module-history-test
+                    metabase.core.modules-test])]]
            (:calls (run-suites! [] ["modules"])))))
   (testing "ratchets checks the repository's policy file"
     (is (= [["./bin/mage" "kondo-ratchets"]]
