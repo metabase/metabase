@@ -1,7 +1,7 @@
 (ns dev.module-history-report
   "The history of the backend module graph as CSV files, for charting how its cycles and boundaries changed.
 
-  [[update!]] measures a fixed sample of master commits with [[dev.module-history]] and writes three files:
+  [[update!]] measures a fixed sample of master commits with [[dev.module-history]] and writes four files:
 
   - `history.csv`: one row per sampled commit since the first one, with cycle, exposure, `:friends` and
     upward-require counts
@@ -159,9 +159,10 @@
   (= #{'backend} (set (:modules cycle))))
 
 (defn- as-one-tangle
-  "Before the module system the whole backend is one module, which a module graph cannot show as a cycle. Report it
-  as one tangle holding every namespace, which every later cycle split from."
+  "The `row`, with one cycle holding every namespace when it is from before the module system."
   [row]
+  ;; Before the module system the whole backend is one module, which a module graph cannot show as a cycle.
+  ;; Every later cycle split from that one tangle.
   (if-not (module-system? row)
     (merge row {:scc-largest-modules           1
                 :scc-largest-namespaces        (:namespaces row)
@@ -335,7 +336,8 @@
 
 (defn- cluster-name
   "The first of `names` whose anchor `cycle` holds, else its [[gone-clusters]] entry, else `unnamed`.
-  A cycle that holds several anchors is those clusters before they split, and it takes the name of the largest."
+  A cycle that holds several anchors is those clusters before they split, and it takes the name of the largest.
+  The one tangle from before the module system takes the first of `names`."
   [anchors names cycle]
   (let [members (set (:modules cycle))]
     (or (when (whole-backend? cycle) (str (first names)))
@@ -347,9 +349,9 @@
   (.toInstant (OffsetDateTime/parse (:committed-at row))))
 
 (defn- last-commit-of-each-instant
-  "A merge queue can land two commits in the same second, and a stacked chart with time on its axis would add them
-  together. Keep the later one."
+  "The `rows` with only the last of any commits that share an instant."
   [rows]
+  ;; A merge queue can land two commits in the same second, and a chart stacked over time would add them together.
   (map last (partition-by instant rows)))
 
 (defn cycles-table
@@ -524,9 +526,9 @@
         position  (positions ref)
         anchors   (cluster-anchors ref)
         page      (page-data anchors position history)]
-    (doseq [[file-name lines] [["history.csv" (history-table position history)]
+    (doseq [[file-name lines] [["history.csv"   (history-table position history)]
                                ["structure.csv" (structure-table position structure)]
-                               ["cycles.csv" (cycles-table anchors position (concat history structure))]]]
+                               ["cycles.csv"    (cycles-table anchors position (concat history structure))]]]
       (println (format "%-13s %5d rows" file-name (write-csv! (io/file dir file-name) lines))))
     (write-atomically! (io/file dir "history.json") #(json/encode-to page % {}))
     (println (format "%-13s %5d commits" "history.json" (count (:commits page))))
