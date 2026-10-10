@@ -19,7 +19,6 @@
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
    [clojure.string :as str]
-   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.app-db.core :as mdb]
@@ -546,21 +545,16 @@
   For a job that implements more than `org.quartz.Job`, see [[defjob-type]]."
   {:arglists '([type-name docstring? options args & body])}
   [type-name & args]
-  (if (vector? (first args))
-    ;; the form without options, which names the class after its namespace, until every job is converted
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    `(jobs/defjob ~type-name ~(first args)
-       ~(job-body-form type-name (rest args)))
-    (let [{[job-args & body] :more, :as definition} (parse-job-definition "defjob" type-name args)]
-      (when-not (and (vector? job-args) (= 1 (count job-args)))
-        (throw (job-definition-error "defjob" type-name
-                                     "its argument vector takes one binding, for the `JobExecutionContext`."
-                                     {:args job-args})))
-      (job-type-form type-name
-                     definition
-                     `[org.quartz.Job
-                       (~'execute [~'_this ~@job-args]
-                                  ~(job-body-form type-name body))]))))
+  (let [{[job-args & body] :more, :as definition} (parse-job-definition "defjob" type-name args)]
+    (when-not (and (vector? job-args) (= 1 (count job-args)))
+      (throw (job-definition-error "defjob" type-name
+                                   "its argument vector takes one binding, for the `JobExecutionContext`."
+                                   {:args job-args})))
+    (job-type-form type-name
+                   definition
+                   `[org.quartz.Job
+                     (~'execute [~'_this ~@job-args]
+                                ~(job-body-form type-name body))])))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will
