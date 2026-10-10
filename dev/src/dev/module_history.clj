@@ -510,6 +510,19 @@
                                       {:module-system? (not= modules whole-backend)}
                                       (commit-metrics (commit-dependencies reader sha modules) modules))))))))
 
+(defn snapshot
+  "The dependency rows and module map at `commit`, as `{:deps rows, :modules map}`.
+  For analyses of one commit that [[measure]] does not record."
+  [commit]
+  (let [reader (open-object-reader)]
+    (try
+      (let [sha     (str/trim (git! ["rev-parse" (str commit "^{commit}")]))
+            modules (commit-modules #(read-object reader (str sha ":" %)))]
+        {:deps    (commit-dependencies reader sha modules)
+         :modules modules})
+      (finally
+        (close-object-reader reader)))))
+
 (def ^:private backend-pathspecs
   "Pathspecs for the backend sources [[source-path]] matches, plus the module config."
   ;; A `*` in a plain pathspec does not stop at `/`, so `modules/drivers/*/src` matches no file under a driver's
