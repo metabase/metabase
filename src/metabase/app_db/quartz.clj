@@ -51,12 +51,12 @@
 ;; at startup, even while an old node is running it, and reschedules it under the new name. With it, upgraded
 ;; nodes load the stored row under the current class.
 ;;
-;; Quartz asks for a class by name only, so the lookup goes by class name alone, and `:job-key` is a label for
-;; readers. No code reads it, and a test checks it against the keys that jobs are scheduled under. So when a
-;; job's key changes, remove its entry: a row under the old key would otherwise still load, and keep running
-;; beside the newly scheduled job. Without the entry the row is deleted as classless. Record the change in
-;; [[job-key-renames]], and a test then checks that the entry is gone. Otherwise keep entries for good, because
-;; stored rows keep the old name.
+;; Quartz asks for a class by name only, so the lookup goes by class name alone. The `:job-key` is a label for
+;; readers, which no code reads, and which a test checks against the keys that jobs are scheduled under.
+;;
+;; Keep an entry for good, because stored rows keep the old name. The exception is a job whose key changes:
+;; remove its entry, and record the change in [[job-key-renames]]. A row under the old key would otherwise
+;; still load, and keep running beside the newly scheduled job. Without the entry it is deleted as classless.
 (def job-history
   "The class names each renamed Quartz job has had, oldest first, so the last is its current name.
   The `:job-key` says which job an entry is for."
