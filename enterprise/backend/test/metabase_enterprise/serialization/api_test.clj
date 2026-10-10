@@ -167,7 +167,7 @@
                          (tar-file-types f)))))
               (testing "On exception API returns tar.gz with error in export.log"
                 (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                                  (mt/dynamic-value serdes/extract-one))]
+                                                                                  (mt/original-fn #'serdes/extract-one))]
                   (let [res (binding [api.serialization/*additive-logging* false]
                               (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
@@ -392,7 +392,7 @@
   (testing "Export with error still returns tar.gz with export.log containing error details"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/dynamic-value serdes/extract-one))]
+                                                                        (mt/original-fn #'serdes/extract-one))]
         (testing "Error details are in export.log inside the archive"
           (binding [api.serialization/*additive-logging* false]
             (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
@@ -434,7 +434,7 @@
   (testing "Export with continue_on_error=true succeeds partially despite errors"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/dynamic-value serdes/extract-one))]
+                                                                        (mt/original-fn #'serdes/extract-one))]
         (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                         :collection (:id coll) :data_model false :settings false
                                         :continue_on_error true)]
