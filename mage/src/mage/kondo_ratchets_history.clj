@@ -386,9 +386,28 @@
       [(str "metabase-enterprise." (subs s 3))]
       [s (str "metabase." s)])))
 
+(defn- last-readable
+  "The ratchet files as they were before commit `sha`, with each that does not parse there taken from the
+  nearest earlier commit where it does."
+  [repo sha]
+  (let [broken? (fn [files] (some #{::unreadable} (vals files)))
+        before  (budgets-at repo (str sha "^"))]
+    (if-not (broken? before)
+      before
+      (reduce (fn [files earlier]
+                (if (broken? files)
+                  (merge-with (fn [file older] (if (= ::unreadable file) older file))
+                              files
+                              (budgets-at repo earlier))
+                  (reduced files)))
+              before
+              (ratchet-commits repo (str sha "^"))))))
+
 (def ^:private commit-view
   (memoize (fn [repo sha]
-             (budget-view (budgets-at repo (str sha "^")) (budgets-at repo sha)))))
+             ;; Measured from the last readable version, so that the commit that repairs a broken ratchet file
+             ;; carries whatever changed across the gap. The commit that broke it shows no change.
+             (budget-view (last-readable repo sha) (budgets-at repo sha)))))
 
 (def ^:private commit-changes
   (memoize (fn [repo sha]
@@ -545,12 +564,15 @@
             changes))))
 
 (defn- budgeted-from-count
-  "The measures that commit `sha` gave a first budget taken to match their count, leaving no slack: the seeds
-  and the new linters. A first budget in a ratchet that already existed is growth, and can leave slack."
+  "The measures that commit `sha` gave a first budget taken to match their count, leaving no slack: the seeds,
+  the new linters and measures, and the linters it newly discouraged a symbol under.
+  A first budget in a ratchet that already existed is growth, and can leave slack."
   [repo sha]
-  (for [{:keys [kind key measure]} (commit-changes repo sha)
-        :when (and (#{:seed :introduce} kind) (not key))]
-    measure))
+  ;; For a newly discouraged symbol this sets aside the commit's whole effect on its linter: the diff does not
+  ;; say which ignores cover the new symbol, so its budget cannot be told from slack.
+  (distinct (for [{:keys [kind measure]} (commit-changes repo sha)
+                  :when (#{:seed :introduce} kind)]
+              measure)))
 
 (defn- contributions
   "The `[commit deltas]` pairs [[attribute]] takes, for the shrink in commit `sha` and the commits back to
@@ -655,17 +677,26 @@
     #{:grow :shrink}
     #{:grow}))
 
+(defn- unused-budget
+  "How much of a raise, a `:grow` change, went beyond the suppressions its commit added, or nil when none did.
+  A commit that removed suppressions while raising a budget added none.
+  A measure budgeted per symbol is counted per ignore, which is only approximate, so its raises are never
+  held to the count."
+  [{:keys [kind measure delta added per-symbol?]}]
+  (when (and (= :grow kind)
+             added
+             (< added delta)
+             (not per-symbol?)
+             (not (uncounted-linters (peek measure))))
+    (- delta (max 0 added))))
+
 (defn suspects
   "The commits in `records` not in `settled` that raised a budget beyond the suppressions they added.
   Each keeps only those raises as its `:changes`."
   [settled records]
   (for [record records
         :when  (not (settled (:sha record)))
-        :let   [raises (filter (fn [{:keys [kind measure delta added]}]
-                                 (and (= :grow kind)
-                                      (some-> added (< delta))
-                                      (not (uncounted-linters (peek measure)))))
-                               (:changes record))]
+        :let   [raises (filter unused-budget (:changes record))]
         :when  (seq raises)]
     (assoc record :changes raises)))
 
@@ -705,11 +736,10 @@
         (for [{:keys [sha changes]} records
               :when (not (settled sha))
               :let  [spare (into {}
-                                 (for [{:keys [kind measure delta added]} changes
-                                       :when (and (= :grow kind)
-                                                  (some-> added (< delta))
-                                                  (not (uncounted-linters (peek measure))))]
-                                   [measure (- delta added)]))]
+                                 (for [{:keys [measure], :as change} changes
+                                       :let  [unused (unused-budget change)]
+                                       :when unused]
+                                   [measure unused]))]
               :when (seq spare)]
           [sha spare])))
 
@@ -1171,7 +1201,7 @@
    :grown   {:header "grown", :key :grown, :show signed, :color (tint c/red)}
    :net     {:header "net", :key :net, :show signed, :color net-tint}
    :ignores {:header "ignores", :key :ignores, :show str, :color (tint c/green)}
-   :linters {:header "linters", :key :linters, :show str, :color (tint c/green)}})
+   :linters {:header "new", :key :linters, :show str, :color (tint c/green)}})
 
 ;; TODO (Chris 2026-10-10) -- also rank by team. The module config gives each module a `:team`, so a count could be
 ;; charged to the team that owns the file. People move between teams, so a ranking by author's team needs a
@@ -1188,7 +1218,7 @@
    {:title   "Net, from most shrunk to most grown"
     :order   (fn [{:keys [shrunk grown net]}] (when-not (= 0 shrunk grown) [net]))
     :columns [:shrunk :grown :net]}
-   {:title   "Most introduced, by the ignores the new linters started with"
+   {:title   "Most introduced, by the ignores the new linters and measures started with"
     :order   (fn [{:keys [linters ignores]}] (when (pos? linters) [(- ignores) (- linters)]))
     :columns [:ignores :linters]}])
 
@@ -1215,7 +1245,7 @@
                                     "budgeted per symbol, counted here per ignore."))])))
    (section "Biggest improvement" (some-> best biggest-lines))
    (section "Biggest regression" (some-> worst biggest-lines))
-   (section "New linters"
+   (section "New linters and measures"
             (group-lines introduced (fn [{:keys [measure budget]}]
                                       (c/green (str measure "  starting at " budget)))))
    (section "New ratchets over existing debt" (seed-lines seeded))

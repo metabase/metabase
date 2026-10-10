@@ -290,7 +290,7 @@ function render(p) {
   const good = n => `<td class="num good">${n}</td>`;
   return head +
     `<div class="tiles">${tile("Shrunk", signed(t.shrunk), tone(t.shrunk))}${tile("Grown", signed(t.grown), tone(t.grown))}` +
-      `${tile("Net", signed(t.net), tone(t.net, "net"))}${tile("New linters", linters, linters ? "good" : "zero")}</div>` +
+      `${tile("Net", signed(t.net), tone(t.net, "net"))}${tile("Introduced", linters, linters ? "good" : "zero")}</div>` +
     trends(p) +
     section("Biggest commits", "The commits responsible for the most change, whoever lowered or raised the number.",
       (r.best || r.worst) ? `<div class="grid2">${biggest("Biggest improvement", r.best)}${biggest("Biggest regression", r.worst)}</div>` : "") +
@@ -301,9 +301,9 @@ function render(p) {
       section("Most shrunk", "", ranking(r.board, x => x.shrunk < 0, x => x.shrunk, [["shrunk", "shrunk", n => num(n)]])) +
       section("Most grown", "", ranking(r.board, x => x.grown > 0, x => -x.grown, [["grown", "grown", n => num(n)]])) +
     `</div>` +
-    section("Most introduced", "Ranked by the ignores the new linters started with: more debt put under a ratchet is better.",
-      ranking(r.board, x => x.linters > 0, x => -x.ignores, [["ignores", "ignores", good], ["linters", "linters", good]])) +
-    section("New linters", "A linter, or a newly discouraged symbol, that got its first budget in the commit that added it.",
+    section("Most introduced", "Ranked by the ignores the new linters and measures started with: more debt put under a ratchet is better.",
+      ranking(r.board, x => x.linters > 0, x => -x.ignores, [["ignores", "ignores", good], ["new", "linters", good]])) +
+    section("New linters and measures", "A linter, a newly discouraged symbol or a measure of the module ratchet that got its first budget in the commit that added it.",
       groups(r.introduced, i => `<li><span class="num good">${esc(i.budget)}</span><span class="name good">${esc(i.measure)}</span></li>`)) +
     section("New ratchets over existing debt", "First budgets for linters that already existed, from a commit that added a whole ratchet. They count for nobody.",
       groups(r.seeded.map(g => g.items.length > 6
