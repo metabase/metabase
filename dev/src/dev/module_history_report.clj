@@ -390,6 +390,11 @@
                   ;; Mean share of the backend a change retests, selecting tests by module and by namespace.
                   :rtm     (:retest-module-mean row)
                   :rtn     (:retest-namespace-mean row)
+                  ;; Leaves: nothing else requires them. Before modules existed the one module is not a leaf worth
+                  ;; counting.
+                  :lfm     (when-not (false? (:module-system? row)) (:leaf-modules row))
+                  :lfmn    (when-not (false? (:module-system? row)) (:leaf-module-namespaces row))
+                  :lfn     (:leaf-namespaces row)
                   :up      (:upward-requires row)
                   :upcyc   (:upward-cycle-requires row)
                   :upint   (:upward-internal-requires row)
