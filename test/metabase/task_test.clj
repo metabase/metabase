@@ -15,6 +15,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
+   (java.time Duration Instant)
+   (java.util Date)
    (org.quartz CronTrigger JobDetail)))
 
 (set! *warn-on-reflection* true)
@@ -172,13 +174,14 @@
           (task/stop-scheduler!))))))
 
 (defmacro ^:private with-jdbc-scheduler!
-  "Runs `body` with the JDBC-backed scheduler started, and stops it afterwards unless it was already running."
+  "Runs `body` with a JDBC-backed scheduler, and stops it afterwards unless one was already running.
+  A scheduler that this starts stays in standby: it stores and loads jobs, and fires no trigger."
   [& body]
   `(let [running?# (some? (#'task/scheduler))]
      (when-not running?#
        ;; the tasks' initializers start threads that outlive the scheduler, so only the scheduler starts
        (mt/with-dynamic-fn-redefs [task.impl/init-tasks! (constantly nil)]
-         (task/start-scheduler!)))
+         (task/init-scheduler!)))
      (try
        ~@body
        (finally
@@ -199,13 +202,27 @@
               (capitalize-if-mysql :job_name) "metabase.task-test.job"
               {(capitalize-if-mysql :job_class_name) class-name}))
 
+(defn- trigger-that-starts-next-week
+  "An hourly trigger like [[trigger-1]] that can't fire while a test runs."
+  ^CronTrigger []
+  (triggers/build
+   (triggers/with-identity (triggers/key "metabase.task-test.trigger"))
+   (triggers/start-at (Date/from (.plus (Instant/now) (Duration/ofDays 7))))
+   (triggers/with-schedule
+    (cron/schedule
+     (cron/cron-schedule "0 0 * * * ? *")
+     (cron/with-misfire-handling-instruction-do-nothing)))))
+
 (deftest startup-cleanup-keeps-a-job-stored-under-an-old-class-name-test
   ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it.
   ;; Upgraded nodes load the current class under it.
   (require 'metabase.version.task.upgrade-checks)
   (with-jdbc-scheduler!
     (try
-      (task/schedule-task! (job) (trigger-1))
+      ;; Once the old name is stored, this row loads as the real version-check job, which must not run here.
+      ;; A scheduler that this test started is in standby and fires nothing.
+      ;; One that was already running could fire an hourly trigger, so the trigger starts next week.
+      (task/schedule-task! (job) (trigger-that-starts-next-week))
       (set-stored-job-class-name! old-upgrade-checks-class-name)
       (#'task.impl/delete-jobs-with-no-class!)
       ;; the trigger survives too, which matters for per-database sync schedules, as no `init!` recreates them
