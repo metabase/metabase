@@ -413,7 +413,8 @@
   (memoize (fn [repo sha]
              ;; TODO (Chris 2026-10-10) -- also report linters that landed with no budget at all, because nothing
              ;; needed an ignore. No ratchet file changes for those, so this history never sees them.
-             (let [changes (budget-changes (commit-view repo sha)
+             (let [view    (commit-view repo sha)
+                   changes (budget-changes view
                                            {:new-measure? (fn [[_ kind measured]]
                                                             (added-in? repo sha
                                                                        (if (= :module kind)
@@ -427,7 +428,9 @@
                    ;; its last readable version, while the suppressions counted for it are this commit's own.
                    broken  (into #{}
                                  (keep (fn [[side file]] (when (= ::unreadable file) side)))
-                                 (budgets-at repo (str sha "^")))]
+                                 (budgets-at repo (str sha "^")))
+                   ;; a view with test budgets folded into prod reports the test file's changes as prod's
+                   broken  (cond-> broken (and (:merged? view) (broken :test)) (conj :prod))]
                (mapv (fn [{[side] :measure, :as change}]
                        (cond-> change (broken side) (assoc :bridged? true)))
                      changes)))))
