@@ -71,16 +71,23 @@ function claimOf(node) {
  * Deepest first, then literal patterns before ones with a parameter or a
  * wildcard, so the order the backend walks is deterministic and a narrower row
  * always precedes the wider row it sits inside.
+ *
+ * A trailing `*` matches any number of segments, so it names no level of its
+ * own and does not count towards depth. Counting it would put a catch-all ahead
+ * of the row naming the segment beside it, and the router resolves the named one.
  */
 function sortBySpecificity(rows) {
   const rank = (pattern) =>
     pattern.includes("*") ? 2 : pattern.includes(":") ? 1 : 0;
 
+  const depthOf = (pattern) =>
+    segmentsOf(pattern).filter((segment) => segment !== "*").length;
+
   return [...rows].sort((a, b) => {
     const [first] = a.patterns;
     const [second] = b.patterns;
     return (
-      segmentsOf(second).length - segmentsOf(first).length ||
+      depthOf(second) - depthOf(first) ||
       rank(first) - rank(second) ||
       first.localeCompare(second)
     );

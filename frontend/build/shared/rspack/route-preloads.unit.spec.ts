@@ -312,25 +312,20 @@ describe("the first row a URL matches", () => {
       .filter(([, chunks]) => chunks.length > 0)
       .map(([url, chunks]) => `${url} ${chunks.join("+")}`);
 
-  /**
-   * A missing chunk costs a slow page. The one below is a catch-all route that
-   * carries fewer chunks than the route beside it:
-   *
-   *   /monitor/sessions            monitor + monitor-session-management
-   *   /monitor/sessions/*          monitor
-   *   /monitor/sessions/:sessionId monitor + monitor-session-management
-   *
-   * Rows sort deepest first, so the three-segment `*` row is matched ahead of
-   * the two-segment row carrying both chunks, where the router would have taken
-   * `:sessionId`. A row ought to carry at least what it inherits.
-   */
-  it("carries every chunk the URL needs, bar one known gap", () => {
-    expect(report("missing")).toEqual([
-      "/monitor/sessions/1 monitor-session-management",
-    ]);
+  it("carries every chunk the URL needs", () => {
+    expect(report("missing")).toEqual([]);
   });
 
-  it("hints nothing the URL does not use", () => {
-    expect(report("extra")).toEqual([]);
+  /**
+   * One extra, and it is the cheaper side of a trade. `/monitor/sessions/*` is a
+   * catch-all beside `/monitor/sessions/:sessionId`, and both share the row that
+   * names the segment, so a URL landing on the catch-all also fetches the
+   * session page's chunk. A row nobody matches costs one download. A missing row
+   * costs a page.
+   */
+  it("hints nothing the URL does not use, bar one catch-all", () => {
+    expect(report("extra")).toEqual([
+      "/monitor/sessions/x monitor-session-management",
+    ]);
   });
 });
