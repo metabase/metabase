@@ -789,6 +789,10 @@
                :error    {:code "server_error" :message "Provider disconnected unexpectedly"}
                :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}
               "Provider disconnected unexpectedly"]
+             ["OpenRouter's error finish reason without an error envelope"
+              (openrouter/openrouter->aisdk-chunks-xf)
+              {:choices [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "The model provider failed to complete the response"]
              ["Mistral's error finish reason, which carries no message"
               (mistral/mistral->aisdk-chunks-xf)
               {:id      "cmpl-e5cc70bb28c444948073e77776eb30ef"
