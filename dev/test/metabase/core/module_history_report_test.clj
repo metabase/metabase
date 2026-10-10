@@ -120,8 +120,10 @@
                                           :strong-bridges 0, :edges 5}]})]]
     (is (=? {:clusters ["galactic-center" "tardis" "magellanic-cloud" "sub-etha"]
              :commits  [{:sha   "aaaaaaaaaaa"
-                         :pct   100.0
-                         :exp   nil
+                         :pct     100.0
+                         :exp     nil
+                         :bridges 0
+                         :rank    0
                          ;; Every cluster was inside the one tangle.
                          :lanes {"galactic-center"  [100 "galactic-center"]
                                  "tardis"           [100 "galactic-center"]
@@ -133,6 +135,9 @@
                          :scc     60
                          :pct     60.0
                          :exp     40
+                         ;; Of the cycle with the most namespaces.
+                         :bridges 0
+                         :rank    3
                          :lanes   {"galactic-center"  [60 "galactic-center"]
                                    "tardis"           [20 "tardis"]
                                    "magellanic-cloud" [0 nil]

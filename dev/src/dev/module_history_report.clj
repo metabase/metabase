@@ -357,8 +357,9 @@
   "What a page needs to chart measured `rows`, as a map ready for JSON:
 
   - `:clusters`: every cluster name, today's largest first, then those that are gone
-  - `:commits`: one map per commit with its headline counts under short keys, and under `:lanes` the
-    `[namespaces label]` of the cycle holding each cluster's anchor, `[0 nil]` when there is none
+  - `:commits`: one map per commit with its headline counts under short keys, the largest cycle's strong bridges
+    and cycle rank, and under `:lanes` the `[namespaces label]` of the cycle holding each cluster's anchor,
+    `[0 nil]` when there is none
   - `:today`: the cycles at the latest commit, largest first"
   [anchors position rows]
   (let [rows   (mapv as-one-tangle (in-order position rows))
@@ -366,7 +367,9 @@
         label  #(cluster-name anchors names (:modules %))
         named  (concat (map (juxt str anchors) names)
                        (map (fn [[cluster anchor]] [(str cluster) anchor]) gone-clusters))
-        number #(some-> % parse-double)]
+        number #(some-> % parse-double)
+        ;; The cycle with the most namespaces, which the `:scc-largest-*` counts describe.
+        largest #(when-let [cycles (seq (:cycles %))] (apply max-key :namespaces cycles))]
     {:clusters (mapv first named)
      :commits  (for [row rows]
                  {:at      (:committed-at row)
@@ -380,6 +383,8 @@
                   :pct     (number (percent (:scc-largest-namespaces row) (:namespaces row)))
                   :cyc     (:scc-cyclic-namespaces row)
                   :dyn     (:scc-dynamic-only-namespaces row)
+                  :bridges (:strong-bridges (largest row))
+                  :rank    (:cycle-rank (largest row))
                   :up      (:upward-requires row)
                   :upcyc   (:upward-cycle-requires row)
                   :upint   (:upward-internal-requires row)
