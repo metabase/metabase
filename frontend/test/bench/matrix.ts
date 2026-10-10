@@ -19,6 +19,7 @@
  * signed in.
  */
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 
 /** One reading, as `timings` in `measure.ts` builds it. */
@@ -43,6 +44,7 @@ interface Series {
   secondLoad: Timings | null;
   steady: Timings | null;
   everyRunMs: number[];
+  calibrationMs: number;
 }
 
 interface Conditions {
@@ -169,6 +171,40 @@ function representativeSeries(
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+function readProc(file: string): string {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+const cpuModel =
+  readProc("/proc/cpuinfo").match(/^model name\s*:\s*(.+)$/m)?.[1] ?? "";
+
+/** What the host and the runner itself kept from the page, up to now. */
+function contention() {
+  // user nice system idle iowait irq softirq steal
+  const jiffies = readProc("/proc/stat")
+    .split("\n")[0]
+    .trim()
+    .split(/\s+/)
+    .slice(1, 9)
+    .map(Number);
+  const stalled = readProc("/proc/pressure/cpu").match(/^some .*total=(\d+)/m);
+  return {
+    stealJiffies: jiffies[7] ?? 0,
+    totalJiffies: jiffies.reduce((total, value) => total + value, 0),
+    // -1 when the kernel reports no pressure.
+    stalledMicros: stalled ? Number(stalled[1]) : -1,
+    atMs: Date.now(),
+  };
+}
+
+function percent(part: number, whole: number) {
+  return whole > 0 ? Number(((part / whole) * 100).toFixed(2)) : 0;
+}
+
 function spreadPercent(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
   const at = (fraction: number) => sorted[Math.floor(sorted.length * fraction)];
@@ -188,6 +224,7 @@ function spreadPercent(values: number[]) {
       const { mbps, latency } = NETWORKS[network];
       const throttle = CPUS[cpu];
 
+      const before = contention();
       const cold = await measure({
         mbps,
         latency,
@@ -217,6 +254,10 @@ function spreadPercent(values: number[]) {
       const steadiest = representativeSeries(warmBatch, (series) =>
         required(series.steady, "steady"),
       );
+      const after = contention();
+      const calibrations = [cold, ...warmBatch]
+        .map((series) => series.calibrationMs)
+        .sort((a, b) => a - b);
 
       // Every cold reading in the row comes from `cold.median`, and every warm
       // reading from `warm.secondLoad`. Each is one load, so the readings in a
@@ -266,6 +307,19 @@ function spreadPercent(values: number[]) {
         cssKb: cold.cssKb,
         totalKb: cold.totalKb,
         runs: cold.runs,
+        cpuModel,
+        stealPercent: percent(
+          after.stealJiffies - before.stealJiffies,
+          after.totalJiffies - before.totalJiffies,
+        ),
+        cpuPressurePercent:
+          after.stalledMicros < 0
+            ? -1
+            : percent(
+                after.stalledMicros - before.stalledMicros,
+                (after.atMs - before.atMs) * 1000,
+              ),
+        calibrationMs: calibrations[Math.floor(calibrations.length / 2)],
       });
 
       console.error(`measured ${cpu} cpu on a ${network} network`);
