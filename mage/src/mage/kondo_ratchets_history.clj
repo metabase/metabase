@@ -108,14 +108,35 @@
              {}
              by-measure))
 
+(defn- ratchets
+  "The `[side kind]` of every ratchet that exists in `files`, whether or not it holds a budget yet."
+  [files]
+  (set (concat
+        (for [side  [:prod :test]
+              :let  [policies (get files side)]
+              :when policies
+              kind  (cond-> []
+                      (some #(contains? policies %)
+                            (cons :ignore-counts (map ratchet/discouraged-count-field ratchet/discouragement-linters)))
+                      (conj :ignore)
+
+                      (contains? policies :config-counts)
+                      (conj :config))]
+          [side kind])
+        (when (:modules files)
+          [[:modules :module]]))))
+
 (defn budget-view
   "The budgets on each side of a commit, from the parsed ratchet files `before` and `after` it.
   The commit that adds or removes the test file is viewed with both sides merged.
-  Moving a budget from one file to the other is then not a change."
+  Moving a budget from one file to the other is then not a change.
+  `:ratcheted` holds the `[side kind]` of the ratchets that existed before the commit."
   [before after]
   (let [merged? (not= (some? (:test before)) (some? (:test after)))
-        view    (if merged? merge-sides identity)]
+        view    (if merged? merge-sides identity)
+        side    (fn [[side kind]] [(if (and merged? (= :test side)) :prod side) kind])]
     {:merged?        merged?
+     :ratcheted      (into #{} (map side) (ratchets before))
      :before         (view (measures before))
      :after          (view (measures after))
      :symbols-before (view (symbol-budgets before))
@@ -133,10 +154,13 @@
   "Classify what a commit did to each budget in `view` ([[budget-view]]).
   Returns maps of `:measure`, `:kind`, `:old` and `:new`, with a `:delta` for a `:shrink` or `:grow`.
   The kinds are those the namespace docstring lists.
+  A change to a measure that has per-symbol budgets is marked `:per-symbol?`.
   A newly discouraged symbol is its own `:introduce`, with the symbol as `:key`.
   `new-linter?` and `new-symbol?` say whether the commit also added the linter, or the symbol under `linter`."
-  [{:keys [before after symbols-before symbols-after]} {:keys [new-linter? new-symbol?]}]
-  (let [ratcheted (into #{} (map #(subvec % 0 2)) (keys before))
+  [{:keys [ratcheted before after symbols-before symbols-after]} {:keys [new-linter? new-symbol?]}]
+  (let [symbolic (into #{}
+                       (map (fn [[side linter _]] [side :ignore linter]))
+                       (concat (keys symbols-before) (keys symbols-after)))
         symbols (for [[[side linter sym :as k] n] (sort-by (comp str key) symbols-after)
                       :when (and (not (contains? symbols-before k))
                                  (new-symbol? linter sym))]
@@ -153,7 +177,9 @@
                     old    (cond-> (get before measure) (pos? seed) (or 0))
                     new    (get after measure)
                     new    (cond-> new (and (pos? seed) (number? new)) (- seed))
-                    change {:measure measure, :old old, :new new}]
+                    ;; budgeted per symbol, so counting its ignores only approximates it
+                    change (cond-> {:measure measure, :old old, :new new}
+                             (symbolic measure) (assoc :per-symbol? true))]
            :when   (not= old new)]
        (cond
          (and (nil? old) (new-linter? (peek measure)))
@@ -498,22 +524,6 @@
         (spit (fs/file cache-dir (str sha ".edn")) (pr-str record))
         record)))
 
-(def ^:private tips-file (fs/file cache-dir "tips.edn"))
-
-(defn- analysed-tips []
-  (if (fs/exists? tips-file)
-    (edn/read-string (slurp tips-file))
-    []))
-
-(defn- last-analysed
-  "The most recently analysed commit that `head` descends from, if any."
-  [head]
-  (first (filter #(git-ok? "merge-base" "--is-ancestor" % head) (analysed-tips))))
-
-(defn- remember-tip! [head]
-  (fs/create-dirs cache-dir)
-  (spit tips-file (pr-str (vec (take 50 (distinct (cons head (analysed-tips))))))))
-
 ;;; -------------------------------------------------- Verdicts ------------------------------------------------
 
 (def ^:private uncounted-linters
@@ -574,43 +584,57 @@
 
 (defn- split-causes
   "The `causes` of the shrinks in commit `sha`, per measure, split in two.
-  `:returned` is how much of them only takes back a pardoned raise of another commit: up to the size of that
-  raise in `pardons`, or the whole cause when the commit is one that `recount?` holds for.
-  `:kept` holds the causes with what is left of each."
-  [pardons recount? sha causes]
-  (into {}
-        (for [[measure entries] causes]
-          [measure (reduce (fn [acc {cause :sha, :keys [delta], :as entry}]
-                             (let [raise    (when (not= sha cause) (get-in pardons [cause measure]))
-                                   returned (cond
-                                              (nil? raise)     0
-                                              (recount? cause) delta
-                                              ;; what the commit removed beyond its own raise is a real improvement
-                                              :else            (min 0 (max delta (- raise))))
-                                   left     (- delta returned)]
-                               (cond-> (update acc :returned + returned)
-                                 (not (zero? left)) (update :kept conj (assoc entry :delta left)))))
-                           {:returned 0, :kept []}
-                           entries)])))
+  `:returned` is how much of them only takes back another commit's raise: the whole cause when that commit is
+  one `recount?` holds for, or else up to what is `left` of its pardoned raise, a map from commit to measure.
+  `:kept` holds the causes with what remains of each.
+  Returns `[left split]`, with what was taken back removed from `left`."
+  [left recount? sha causes]
+  (reduce-kv
+   (fn [[left split] measure entries]
+     (let [[left returned kept]
+           (reduce (fn [[left returned kept] {cause :sha, :keys [delta], :as entry}]
+                     (let [allowance (get-in left [cause measure])
+                           back      (cond
+                                       (= sha cause)    0
+                                       (recount? cause) delta
+                                       (nil? allowance) 0
+                                       ;; what the commit removed beyond its own raise is a real improvement
+                                       :else            (min 0 (max delta (- allowance))))
+                           remains   (- delta back)]
+                       [(cond-> left (and allowance (neg? back)) (update-in [cause measure] + back))
+                        (+ returned back)
+                        (cond-> kept (not (zero? remains)) (conj (assoc entry :delta remains)))]))
+                   [left 0 []]
+                   entries)]
+       [left (assoc split measure {:returned returned, :kept kept})]))
+   [left {}]
+   causes))
 
 (defn pardon
-  "`records` with the verdicts applied.
+  "`records`, the whole history newest first, with the verdicts applied.
   A raise in `pardons`, a map from commit to measure to the size of the raise, turns from `:grow` into `:pardon`.
   A shrink loses the part that only takes a pardoned raise back, and the credit for it.
-  A commit in `recounts` only changed how suppressions are counted, so its own shrinks go too."
+  A raise is taken back once: the oldest shrinks after it use it up.
+  A commit in `recounts` only changed how suppressions are counted, so its own shrinks go too, and so does any
+  credit it has for a later shrink."
   [{:keys [pardons recounts]} records]
-  (let [recount? (or recounts #{})]
-    (for [{:keys [sha causes], :as record} records
-          :let [split  (split-causes pardons recount? sha causes)
-                settle (fn [{:keys [kind measure delta], :as change}]
-                         (case kind
-                           :grow   (cond-> change (get-in pardons [sha measure]) (assoc :kind :pardon))
-                           :shrink (let [delta (- delta (get-in split [measure :returned] 0))]
-                                     (when-not (or (recount? sha) (zero? delta))
-                                       (assoc change :delta delta :kind (if (neg? delta) :shrink :grow))))
-                           change))]]
-      (cond-> (update record :changes #(keep settle %))
-        causes (assoc :causes (update-vals split :kept))))))
+  (let [recount? (or recounts #{})
+        settle   (fn [split sha {:keys [kind measure delta], :as change}]
+                   (case kind
+                     :grow   (cond-> change (get-in pardons [sha measure]) (assoc :kind :pardon))
+                     :shrink (let [delta (- delta (get-in split [measure :returned] 0))]
+                               (when-not (or (recount? sha) (zero? delta))
+                                 (assoc change :delta delta :kind (if (neg? delta) :shrink :grow))))
+                     change))]
+    (second
+     (reduce (fn [[left settled] {:keys [sha causes], :as record}]
+               (let [[left split] (split-causes left recount? sha causes)]
+                 ;; consing onto a list puts the records back newest first
+                 [left (cons (cond-> (update record :changes #(keep (partial settle split sha) %))
+                               causes (assoc :causes (update-vals split :kept)))
+                             settled)]))
+             [pardons ()]
+             (reverse records)))))
 
 (defn counted
   "`records` without the changes to budgets of [[uncounted-linters]], and without the commits that leaves empty."
@@ -619,6 +643,16 @@
        (map (fn [record]
               (update record :changes (partial remove (comp uncounted-linters peek :measure)))))
        (filter (comp seq :changes))))
+
+(defn settle
+  "`records`, the whole history newest first, as the summaries count them: with `verdicts` applied by [[pardon]],
+  without what [[counted]] leaves out, and with the raises [[suspects]] flags kept on each record as `:doubted`.
+  `verdicts` holds `:pardons` and `:recounts` as [[pardon]] takes them, and `:settled`, every commit with a
+  verdict."
+  [{:keys [settled], :as verdicts} records]
+  (let [doubted (into {} (map (juxt :sha :changes)) (suspects settled records))]
+    (for [{:keys [sha], :as record} (counted (pardon verdicts records))]
+      (cond-> record (doubted sha) (assoc :doubted (doubted sha))))))
 
 ;;; -------------------------------------------------- Report --------------------------------------------------
 
@@ -652,7 +686,7 @@
   When that commit only lowered budgets, the entry is `:unattributed?` and has no `:author`."
   [records]
   (for [{:keys [changes causes unaccounted tighten?], :as record} records
-        :let  [commit (dissoc record :changes :causes :unaccounted :tighten? :email)]
+        :let  [commit (dissoc record :changes :causes :unaccounted :tighten? :email :doubted)]
         {:keys [kind measure delta]} changes
         :when (#{:shrink :grow} kind)
         :let  [explained (concat (get causes measure)
@@ -754,9 +788,7 @@
     {:commit (commit-ref record), :items (map describe changes)}))
 
 (defn report
-  "What `records` say once `verdicts` are applied, as plain data: measures are named and budgets are strings.
-  `verdicts` holds `:pardons` and `:recounts` as [[pardon]] takes them, and `:settled`, every commit with a
-  verdict.
+  "What `records`, as [[settle]] returns them, say, as plain data: measures are named and budgets are strings.
 
   - `:commits` counts the commits that changed a counted budget.
   - `:totals` has a row of `:measure`, `:shrunk`, `:grown` and `:net` per measure, and `:total` their sums.
@@ -768,10 +800,8 @@
     shrinks of the automation that no commit explains, and the raises beyond the suppressions added that have
     no verdict.
   - `:board` is the [[leaderboard]]."
-  [{:keys [settled], :as verdicts} records]
-  (let [doubted (suspects settled records)
-        records (counted (pardon verdicts records))
-        ranked  (by-commit (attributions records))
+  [records]
+  (let [ranked  (by-commit (attributions records))
         biggest (fn [{:keys [net measures], :as entry}]
                   {:commit (commit-ref entry), :net net, :measures (named-deltas measures)})
         rows    (->> (totals records)
@@ -783,9 +813,9 @@
                      (sort-by (juxt :net :measure)))]
     {:commits     (count records)
      :totals      rows
-     :approximate (sort (for [[_ _ linter :as measure] (keys (totals records))
-                              :when (ratchet/discouragement-linters linter)]
-                          (measure-name measure)))
+     :approximate (sort (distinct (for [{:keys [kind measure per-symbol?]} (mapcat :changes records)
+                                        :when (and per-symbol? (#{:shrink :grow} kind))]
+                                    (measure-name measure))))
      :total       (into {} (for [k [:shrunk :grown :net]] [k (reduce + (map k rows))]))
      :best        (when (some-> (first ranked) :net neg?) (biggest (first ranked)))
      :worst       (when (some-> (last ranked) :net pos?) (biggest (last ranked)))
@@ -805,19 +835,20 @@
      :unaccounted (for [{:keys [unaccounted tighten?], :as record} records
                         :when (and tighten? (seq unaccounted))]
                     {:commit (commit-ref record), :items (named-deltas unaccounted)})
-     :suspects    (for [record doubted]
+     :suspects    (for [{:keys [doubted], :as record} records
+                        :when (seq doubted)]
                     {:commit (commit-ref record)
-                     :items  (for [{:keys [measure delta added]} (:changes record)]
+                     :items  (for [{:keys [measure delta added]} doubted]
                                {:measure (measure-name measure), :delta delta, :added added})})}))
 
 (defn series
-  "One point per commit in `records`, which run newest first, in the order they landed.
-  A point holds how far the commit `:shrunk` and `:grown` the counted budgets once `verdicts` are applied, as
-  for [[report]], and the `:level` after it: the sum of every counted numeric budget."
-  [verdicts records]
+  "One point per commit in `records`, the whole history newest first, in the order they landed.
+  A point holds how far the commit `:shrunk` and `:grown` the budgets in `settled`, those records as [[settle]]
+  returns them, and the `:level` after it: the sum of every counted numeric budget."
+  [records settled]
   (let [numeric #(if (number? %) % 0)
         moved   (into {}
-                      (for [{:keys [sha changes]} (counted (pardon verdicts records))]
+                      (for [{:keys [sha changes]} settled]
                         [sha (reduce (fn [acc {:keys [kind delta]}]
                                        (cond-> acc (#{:shrink :grow} kind) (update kind + delta)))
                                      {:shrink 0, :grow 0}
@@ -848,8 +879,8 @@
   "All time, then every week (from its Monday) and every calendar month from the first of `records` up to
   `today`, an ISO date, newest first.
   Each is a map of `:id`, `:kind`, `:label`, the `:from` date and the `:to` date it ends before, and the
-  [[report]] of the records committed in it. `verdicts` are those [[report]] takes."
-  [verdicts today records]
+  [[report]] of the records committed in it. `records` are as [[settle]] returns them."
+  [today records]
   (let [day    (fn [record] (LocalDate/parse (subs (:date record) 0 10)))
         today  (LocalDate/parse today)
         oldest (reduce (fn [^LocalDate a ^LocalDate b] (if (.isBefore b a) b a)) today (map day records))
@@ -858,13 +889,12 @@
         text   (fn [pattern ^LocalDate date]
                  (.format (DateTimeFormatter/ofPattern pattern Locale/ENGLISH) date))
         within (fn [^LocalDate start ^LocalDate end]
-                 (report verdicts
-                         (filter (fn [record]
+                 (report (filter (fn [record]
                                    (let [^LocalDate date (day record)]
                                      (and (not (.isBefore date start)) (.isBefore date end))))
                                  records)))]
     (concat
-     [{:id "all", :kind "all", :label "All time", :report (report verdicts records)}]
+     [{:id "all", :kind "all", :label "All time", :report (report records)}]
      (for [[^LocalDate start end] (spans monday ChronoUnit/WEEKS oldest today)]
        {:id     (str "week-" start)
         :kind   "week"
@@ -1185,14 +1215,13 @@
       (str/replace #"\.git$" "")))
 
 (defn- backfill!
-  "Analyse and cache the commits in `all` after `resume`, or all of them when it is nil, up to `head`."
-  [all head resume]
-  (let [pending (remove cached (if resume (ratchet-commits (str resume ".." head)) all))]
+  "Analyse and cache the commits in `all`, every commit that changed a ratchet file, that are not cached yet."
+  [all]
+  (let [pending (remove cached all)]
     (when (seq pending)
       (println (c/dark (format "Analysing %d commits that changed a ratchet file" (count pending)))))
     (doseq [sha pending]
-      (println (c/dark (str "  " (commit-line (record! all sha))))))
-    (remember-tip! head)))
+      (println (c/dark (str "  " (commit-line (record! all sha))))))))
 
 (defn- summarize
   "Bring the cache up to `HEAD`, then print or write what `by` and `arg`, from [[request]], ask for."
@@ -1201,32 +1230,27 @@
         all     (ratchet-commits head)
         record  #(record! all %)
         entries (filter (comp (set all) :sha) (read-verdicts))]
-    (backfill! all head (case by
-                          :since       arg
-                          (:all :html) nil
-                          :days        (last-analysed head)))
-    (let [verdicts (verdict-options entries record)
-          ;; the period can reach behind the commit the backfill resumed from, to commits no run has analysed yet
-          records  (unify-authors
-                    (mapv record (case by
-                                   :since       (ratchet-commits (str arg ".." head))
-                                   (:all :html) all
-                                   :days        (ratchet-commits (format "--since=%d.days.ago" arg) head))))]
+    (backfill! all)
+    ;; a verdict on one commit changes what later ones count for, so the whole history is settled before a
+    ;; period is picked out of it
+    (let [records (unify-authors (mapv record all))
+          settled (settle (verdict-options entries record) records)]
       (if (= :html by)
         (let [today (str (LocalDate/now))]
           (spit arg (page {:repo      (repo-url)
                            :generated today
-                           :series    (series verdicts records)
+                           :series    (series records settled)
                            :verdicts  (rulings entries record)
                            :excluded  (for [[linter why] uncounted-linters]
                                         {:linter (str linter), :why why})
-                           :periods   (periods verdicts today records)}))
+                           :periods   (periods today settled)}))
           (println "Wrote" arg))
-        (run! println (summary (case by
-                                 :since (str "since " (subs arg 0 10))
-                                 :all   "of all time"
-                                 :days  (format "in the last %d days" arg))
-                               (report verdicts records)))))))
+        (let [[title shas] (case by
+                             :since [(str "since " (subs arg 0 10)) (ratchet-commits (str arg ".." head))]
+                             :all   ["of all time" all]
+                             :days  [(format "in the last %d days" arg)
+                                     (ratchet-commits (format "--since=%d.days.ago" arg) head)])]
+          (run! println (summary title (report (filter (comp (set shas) :sha) settled)))))))))
 
 (defn history
   "Bring the cache up to `HEAD`, then print a [[summary]] of the ratchet changes since the commit given as the
