@@ -4,11 +4,7 @@ import {
   LoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
 } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  TextArea,
-  type TextAreaProps,
-} from "metabase/common/components/TextArea";
-import { Box, type BoxProps } from "metabase/ui";
+import { Box, type BoxProps, Textarea, type TextareaProps } from "metabase/ui";
 
 import S from "./ValuesSourceTypeModal.module.css";
 
@@ -36,8 +32,18 @@ export const ModalLabel = (props: BoxPropsWithChildren) => {
   return <Box component="label" className={S.ModalLabel} {...props} />;
 };
 
-export const ModalTextArea = (props: TextAreaProps) => {
-  return <TextArea className={S.ModalTextArea} {...props} />;
+export const ModalTextArea = (props: TextareaProps) => {
+  return (
+    <Textarea
+      autosize={false}
+      classNames={{
+        root: S.ModalTextAreaRoot,
+        wrapper: S.ModalTextAreaWrapper,
+        input: S.ModalTextAreaInput,
+      }}
+      {...props}
+    />
+  );
 };
 
 export const ModalHelpMessage = (props: BoxPropsWithChildren) => {
