@@ -228,23 +228,29 @@
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
+(defn- job-definition
+  "The parts of `job` that Quartz stores and reads back."
+  [^JobDetail job]
+  ;; Quartz also stores whether the class disallows concurrent execution and persists its job data, but it never
+  ;; reads those columns back. It takes both from the loaded class's annotations, so they are left out.
+  {:class              (.getJobClass job)
+   :data               (into {} (.getJobDataMap job))
+   :description        (.getDescription job)
+   :durable?           (.isDurable job)
+   :requests-recovery? (.requestsRecovery job)})
+
 (defn- stored-as-is?
   "Whether `scheduler` already stores `job` exactly as it is."
   [^Scheduler scheduler ^JobDetail job]
-  (when-let [^JobDetail stored (try
-                                 (.getJobDetail scheduler (.getKey job))
-                                 (catch JobPersistenceException _
-                                   nil))]
-    ;; Quartz also stores whether the class disallows concurrent execution and persists its job data, but it never
-    ;; reads those columns back. It takes both from the loaded class's annotations, so they need no comparing.
-    (= [(.getJobClass stored) (.getDescription stored) (.isDurable stored) (.requestsRecovery stored)
-        (into {} (.getJobDataMap stored))]
-       [(.getJobClass job) (.getDescription job) (.isDurable job) (.requestsRecovery job)
-        (into {} (.getJobDataMap job))])))
+  ;; a stored job whose class can't be loaded counts as not stored, so that it gets replaced
+  (when-let [stored (try
+                      (.getJobDetail scheduler (.getKey job))
+                      (catch JobPersistenceException _
+                        nil))]
+    (= (job-definition stored) (job-definition job))))
 
 (mu/defn add-job!
-  "Add a job separately from a trigger. Replaces a stored job only when its definition has changed, so a job stored
-  under an old class name keeps that name."
+  "Add a job separately from a trigger. Replaces a stored job only when its definition has changed."
   [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
     ;; Replacing a job writes its current class name. A job stored under an old class name has to keep that name
