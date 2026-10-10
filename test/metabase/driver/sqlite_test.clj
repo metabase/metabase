@@ -6,6 +6,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -22,6 +23,43 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest db-file-must-be-in-readable-paths-test
+  ;; the database file is a path on the Metabase host that an admin types in, so it has to be somewhere
+  ;; `readable-paths` allows -- in every form SQLite accepts for naming a file
+  (mt/with-premium-features #{}
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (testing "a file outside the allowed directories is refused"
+        (doseq [db ["/etc/x.db"
+                    "/allowed-dir/../etc/x.db"
+                    "file:/etc/x.db?mode=ro"
+                    "file:///etc/x.db"
+                    "file://localhost/etc/x.db"
+                    ":resource:file:/etc/x.db"
+                    ":resource:jar:file:/etc/x.jar!/x.db"
+                    ;; SQLite drops a URI's `#` fragment, `..` segments and `?mode=memory` in it included
+                    "file:/etc/x.db#/../../allowed-dir/x.db"
+                    "file:/etc/x.db#frag?mode=memory"
+                    ;; outside a `file:` URI, `?` is part of the file name
+                    "/etc/x.db?mode=memory"
+                    ;; the prefixes are case-sensitive, so these are paths relative to the working directory
+                    "FILE:/../allowed-dir/x.db"
+                    ":RESOURCE:file:/../allowed-dir/x.db"]]
+          (testing db
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (driver/validate-db-details! :sqlite {:db db}))))))
+      (testing "a file inside one, and databases that are not a local file, are allowed"
+        (doseq [db ["/allowed-dir/x.db"
+                    "file:/allowed-dir/x.db?mode=ro"
+                    "file:/allowed-dir/x.db#frag"
+                    ":memory:"
+                    "file::memory:?cache=shared"
+                    "file:shared?mode=memory"
+                    ":resource:http://example.com/x.db"]]
+          (testing db
+            (is (nil? (driver/validate-db-details! :sqlite {:db db}))))))
+      (testing "Metabase's own flows, such as the bundled Sample Database, are not subject to it"
+        (binding [driver.settings/*allow-testing-sqlite-connections* true]
+          (is (nil? (driver/validate-db-details! :sqlite {:db "/etc/x.db"}))))))))
 (deftest default-schema-test
   (mt/test-driver :sqlite
     (is (nil? (driver.sql/default-schema :sqlite (mt/db))))))
