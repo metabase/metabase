@@ -163,7 +163,7 @@
   "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
   if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
   don't include them in our deps tree."
-  ;; `metabase.config` is the same namespace before it moved to `config.core`, for [[dev.module-history]].
+  ;; Older commits, which [[dev.module-history]] measures, name this namespace `metabase.config`.
   '{metabase.config      #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}
     metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
@@ -209,13 +209,6 @@
   [prefix->module :- PrefixToModule
    filename       :- :string
    {ns-symb :namespace, :keys [static dynamic]} :- SourceRequires]
-  ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
-  ;; rationale.
-  ;;
-  ;; defenterprise-deps (for [symb (find-defenterprises file)]
-  ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
-  ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
-  ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
   {:namespace ns-symb
    :filename  filename
    :module    (modules/resolve-module prefix->module ns-symb)
@@ -235,6 +228,13 @@
    file :- File]
   (try
     (let [decl (ns.file/read-file-ns-decl file)]
+      ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
+      ;; rationale.
+      ;;
+      ;; defenterprise-deps (for [symb (find-defenterprises file)]
+      ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
+      ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+      ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
       (resolve-requires prefix->module
                         (file->path-relative-to-project-root file)
                         {:namespace (ns.parse/name-from-ns-decl decl)
