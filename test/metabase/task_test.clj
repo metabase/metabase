@@ -351,6 +351,7 @@
 (deftest defjob-rejects-an-invalid-definition-test
   (is (=? {;; the entry to paste, with the class name that this namespace gives the type
            :no-saved-class   #"(?s).*\n\n  :saved-class \"metabase\.task_test\.NewJob\"\n\n.*"
+           :no-options       #"(?s).*\n\n  \{:saved-class \"metabase\.task_test\.NewJob\"\}\n"
            :unknown-option   #".*unknown options \[:durable\?\]\. The options are \[.*\]\."
            :not-a-literal    #".*its `:saved-class` must be a string literal\."
            :not-a-class-name #".*\"metabase\.task-test\.NewJob\" is not a fully qualified Java class name.*"
@@ -361,6 +362,7 @@
            :valid            nil}
           (update-vals
            '{:no-saved-class   (task/defjob NewJob {:concurrent? false} [_])
+             :no-options       (task/defjob NewJob [_])
              :unknown-option   (task/defjob NewJob {:saved-class "a.NewJob", :durable? true} [_])
              :not-a-literal    (task/defjob NewJob {:saved-class (str "a." "NewJob")} [_])
              :not-a-class-name (task/defjob NewJob {:saved-class "metabase.task-test.NewJob"} [_])
