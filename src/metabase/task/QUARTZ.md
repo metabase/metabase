@@ -13,6 +13,24 @@ In Quartz, there are two fundamental concepts:
 
 Jobs and triggers are created separately and then associated with each other when scheduled in the Quartz system.
 
+## Defining a job
+
+Define a job with `task/defjob`. It takes a type name, an optional docstring, an options map, an argument vector, and the job's code:
+
+```clojure
+(task/defjob MyJob
+  "What the job does."
+  {:saved-class "metabase.my_module.task.my_job.MyJob"}
+  [job-context]
+  (do-the-work!))
+```
+
+Every job needs a `:saved-class`. It's the exact name of the job's class, which Quartz stores in the app DB and uses to find the job's code. For a new job, leave it out and compile: the error prints the entry to paste, with the name the job's namespace gives it.
+
+Once a job has shipped, keep its `:saved-class` the same, even when you move its namespace or rename its type. During a rolling upgrade, old and new nodes share the Quartz tables, and a node that can't load a stored class name deletes the job and its triggers at startup. To change a stored name on purpose, add the new name to the job's entry in `metabase.app-db.quartz/job-history`.
+
+For a job that implements more than `org.quartz.Job`, such as an `InterruptableJob`, use `task/defjob-type`.
+
 ## Use cases at Metabase
 
 This list is not complete and is open to additions. If you have other use cases or patterns for Quartz tasks in Metabase, please feel free to add them here.
@@ -36,7 +54,10 @@ These tasks execute once when Metabase starts up. They're useful for initializat
 (def startup-job-key     (jobs/key "my.startup.task.job"))
 (def startup-trigger-key (triggers/key "my.startup.task.trigger"))
 
-(task/defjob StartupTask [_]
+(task/defjob StartupTask
+  "Runs the startup initialization."
+  {:saved-class "my.startup.task.StartupTask"}
+  [_]
   (println "Running startup initialization task"))
 
 (defmethod task/init! ::StartupTask [_]
@@ -59,7 +80,10 @@ These tasks run on a recurring schedule defined by a cron expression.
 (def daily-job-key     (jobs/key "my.scheduled.daily.task.job"))
 (def daily-trigger-key (triggers/key "my.scheduled.daily.task.trigger"))
 
-(task/defjob DailyTask [_]
+(task/defjob DailyTask
+  "Runs the daily scheduled task."
+  {:saved-class "my.scheduled.task.DailyTask"}
+  [_]
   (println "Running daily scheduled task"))
 
 (defmethod task/init! ::DailyTask [_]
@@ -105,7 +129,9 @@ You can pass data to jobs using the job data map:
 Inside the job, you can access this data:
 
 ```clojure
-(task/defjob MyJob [job-context]
+(task/defjob MyJob
+  {:saved-class "my.task.MyJob"}
+  [job-context]
   (let [data-map (qc/from-job-data job-context)
         db-id (get data-map "db-id")]
     ;; Use the data...
@@ -126,14 +152,17 @@ Choose the appropriate misfire handling based on your task's requirements.
 
 ### Preventing Concurrent Execution
 
-By default, Quartz allows multiple instances of the same job to run concurrently. To prevent concurrent execution of a job, use the `DisallowConcurrentExecution` annotation:
+By default, Quartz allows multiple instances of the same job to run concurrently. To prevent concurrent execution of a job, give it the `:concurrent? false` option, which puts the Quartz `DisallowConcurrentExecution` annotation on its class:
 
 ```clojure
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true} MyNonConcurrentJob [job-context]
+(task/defjob MyNonConcurrentJob
+  {:saved-class "my.task.MyNonConcurrentJob"
+   :concurrent? false}
+  [job-context]
   (println "This job will not run concurrently with itself"))
 ```
 
-When this annotation is applied, Quartz will block a new instance of the job from starting if a previous instance is still running.
+With this option, Quartz will block a new instance of the job from starting if a previous instance is still running.
 This is particularly important for long-running tasks that:
 - we need to make sure they don't run concurrently across instances
 - operate on shared resources
@@ -143,7 +172,9 @@ This is particularly important for long-running tasks that:
 Metabase provides a `rerun-on-error` macro to automatically retry a job if it fails with an exception:
 
 ```clojure
-(task/defjob MyJob [job-context]
+(task/defjob MyJob
+  {:saved-class "my.task.MyJob"}
+  [job-context]
   (task/rerun-on-error job-context
     ;; Your job code here
     (do-something-that-might-fail)))

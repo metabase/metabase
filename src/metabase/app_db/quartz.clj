@@ -46,7 +46,11 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
-;; Quartz stores each job's class name in the app DB, and moving or renaming a job renames its class.
+;; Quartz stores each job's class name in the app DB, which is the job's `:saved-class`.
+;; A job keeps that name when its namespace moves or its type is renamed, and then needs no entry here.
+;; The entries are for a name that did change.
+;; Some are from before jobs had a `:saved-class`, when a move renamed the class.
+;; The rest are for a `:saved-class` that is changed on purpose.
 ;; Without the old name here, the first upgraded node can't find the stored job's class, and deletes the job.
 ;; It does so at startup, even while an old node is running the job, then reschedules it under the new name.
 ;; With the old name here, upgraded nodes load the stored row under the current class.
