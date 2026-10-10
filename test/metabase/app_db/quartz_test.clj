@@ -73,17 +73,14 @@
                 (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
                 (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
 
-(deftest current-class-name-test
-  (let [history {"a.job" ["a.Oldest" "a.Old" "a.Current"]
-                 "b.job" ["b.Old" "b.Current"]}]
-    (are [stored-name expected] (= expected (mdb.quartz/current-class-name history stored-name))
-      ;; every old name maps to the current one
-      "a.Oldest"  "a.Current"
-      "a.Old"     "a.Current"
-      "b.Old"     "b.Current"
-      ;; current and unlisted names stay as they are
-      "a.Current" "a.Current"
-      "c.Other"   "c.Other")))
+(deftest current-class-names-test
+  (is (= {"a.Oldest"  "a.Current"
+          "a.Old"     "a.Current"
+          "a.Current" "a.Current"
+          "b.Old"     "b.Current"
+          "b.Current" "b.Current"}
+         (#'mdb.quartz/current-class-names [{:job-key "a.job", :class-names ["a.Oldest" "a.Old" "a.Current"]}
+                                            {:job-key "b.job", :class-names ["b.Old" "b.Current"]}]))))
 
 (defn- class-exists? [class-name]
   (letfn [(loaded? []
@@ -93,28 +90,84 @@
                 false)))]
     ;; a job class is a `deftype`, which exists only once its namespace has loaded
     (or (loaded?)
-        (and (try
-               (require (symbol (str/replace (str/replace class-name #"\.[^.]+$" "") "_" "-")))
-               true
-               (catch java.io.FileNotFoundException _
-                 false))
-             (loaded?)))))
+        (let [ns-symb (-> class-name
+                          (str/replace #"\.[^.]+$" "")
+                          (str/replace "_" "-")
+                          symbol)]
+          (and (try
+                 (require ns-symb)
+                 true
+                 (catch java.io.FileNotFoundException _
+                   false))
+               (loaded?))))))
 
 (defn- repeated [xs]
   (for [[x n] (frequencies xs) :when (> n 1)] x))
 
 (deftest job-history-test
   (testing "no class name belongs to two jobs, or twice to one"
-    (is (= [] (repeated (mapcat val mdb.quartz/job-history)))))
-  (doseq [[job-key class-names] mdb.quartz/job-history
-          :when (or config/ee-available?
-                    (not (str/starts-with? (peek class-names) "metabase_enterprise.")))]
+    (is (= [] (repeated (mapcat :class-names mdb.quartz/job-history)))))
+  (doseq [{:keys [job-key class-names]} mdb.quartz/job-history
+          :when                         (or config/ee-available?
+                                            (not (str/starts-with? (peek class-names) "metabase_enterprise.")))]
     (testing job-key
       (is (= {:current-exists? true, :old-names-that-exist []}
              {:current-exists?      (class-exists? (peek class-names))
               :old-names-that-exist (filterv class-exists? (pop class-names))})))))
 
-(def ^:private unrenamed-job-classes
+(def ^:private past-job-key-renames
+  "Job keys renamed in the past, each with the class it had, to help explain a stored row under a key no job
+  uses."
+  [{:release   "0.50"
+    :old-key   "metabase-enterprise.Caching.job"
+    :old-class "metabase_enterprise.task.caching.Caching"
+    :new-key   "metabase-enterprise.cache.job"
+    :new-class "metabase_enterprise.task.cache.Cache"
+    :change    "Renamed only, and within 0.50 development, so the old key never shipped."}
+   {:release   "0.52"
+    :old-key   "metabase.task.search-index.job"
+    :old-class "metabase.task.search_index.SearchIndexing"
+    :new-key   "metabase.task.search-index.reindex.job"
+    :new-class "metabase.task.search_index.SearchIndexReindex"
+    :change    "Became durable, when a separate job for incremental updates was added beside it."}
+   {:release   "0.59"
+    :old-key   "metabase-enterprise.transforms.canceling"
+    :old-class "metabase_enterprise.transforms.canceling.CancelOldTransformRuns"
+    :new-key   "metabase.transforms.canceling"
+    :new-class "metabase.transforms.canceling.CancelOldTransformRuns"
+    :change    "Moved out of enterprise, with no change to the job."}
+   {:release   "0.59"
+    :old-key   "metabase-enterprise.transforms.jobs.timeout-job"
+    :old-class "metabase_enterprise.transforms.jobs.TimeoutOldRuns"
+    :new-key   "metabase.transforms.jobs.timeout-job"
+    :new-class "metabase.transforms.jobs.TimeoutOldRuns"
+    :change    "Moved out of enterprise, with no change to the job, which was removed in 0.63."}
+   {:release   "0.59"
+    :old-key   "metabase-enterprise.transforms.timeout"
+    :old-class "metabase_enterprise.transforms.timeout.TimeoutTransforms"
+    :new-key   "metabase.transforms.timeout"
+    :new-class "metabase.transforms.timeout.TimeoutTransforms"
+    :change    "Moved out of enterprise, with no change to the job."}
+   {:release   "0.60"
+    :old-key   "metabase.task.metabot-v3.suggested-prompts-generator.job"
+    :old-class "metabase_enterprise.metabot_v3.task.suggested_prompts_generator.SuggestedPromptsGenerator"
+    :new-key   "metabase.task.metabot.suggested-prompts-generator.job"
+    :new-class "metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator"
+    :change    "Moved out of enterprise with the rest of Metabot."}])
+
+(deftest job-history-has-no-entry-for-a-renamed-job-key-test
+  (let [old-keys    (into #{} (map :old-key) past-job-key-renames)
+        old-classes (into #{} (map :old-class) past-job-key-renames)]
+    (is (= []
+           (filter (fn [{:keys [job-key class-names]}]
+                     (or (old-keys job-key)
+                         (some old-classes class-names)))
+                   mdb.quartz/job-history))
+        (str "Remove these entries from `metabase.app-db.quartz/job-history`. Each is for a job key that"
+             " `past-job-key-renames` lists as renamed, or holds the class that key had. With the entry, a row"
+             " stored under the old key still loads, and keeps running beside the job scheduled under the new key."))))
+
+(def ^:private job-classes-without-history
   "Job classes with no entry in [[mdb.quartz/job-history]], because their job has had no other class name under
   its current job key."
   #{"metabase.audit_app.task.partitions.ManagePartitions"
@@ -189,23 +242,23 @@
           (.getName c))))
 
 (deftest every-job-class-is-listed-test
-  (let [current   (job-class-names)
-        renamed   (set (map peek (vals mdb.quartz/job-history)))
-        unrenamed (cond->> unrenamed-job-classes
-                    (not config/ee-available?) (remove #(str/starts-with? % "metabase_enterprise.")))]
+  (let [current                  (job-class-names)
+        renamed                  (into #{} (map (comp peek :class-names)) mdb.quartz/job-history)
+        loadable-without-history (cond->> job-classes-without-history
+                                   (not config/ee-available?) (remove #(str/starts-with? % "metabase_enterprise.")))]
     (testing "every job class is listed"
-      (is (= [] (remove (into renamed unrenamed-job-classes) current))
+      (is (= [] (remove (into renamed job-classes-without-history) current))
           (str "For an existing job's class under a new name, with the same job key: add the new name to the end"
-               " of the job's entry in `metabase.app-db.quartz/job-history`. If the job has no entry, add one"
-               " under its job key with the old name first, and remove the old name from"
-               " `unrenamed-job-classes`.\n"
-               "For a new job, or a job whose key changed too: add the class to `unrenamed-job-classes`. For a"
-               " changed key, also remove the job's entry from `job-history` and add the rename to the comment"
-               " above it.")))
-    (testing "every name in `unrenamed-job-classes` is a job class"
-      (is (= [] (remove current unrenamed))
+               " of the `:class-names` of the job's entry in `metabase.app-db.quartz/job-history`. If the job has"
+               " no entry, add one with its job key and the old name first, and remove the old name from"
+               " `job-classes-without-history`.\n"
+               "For a new job, or a job whose key changed too: add the class to `job-classes-without-history`."
+               " For a changed key, also remove the job's entry from `job-history` and add the rename to"
+               " `past-job-key-renames`.")))
+    (testing "every name in `job-classes-without-history` is a job class"
+      (is (= [] (remove current loadable-without-history))
           (str "For a job that was renamed and kept its job key: move the name into an entry in"
                " `metabase.app-db.quartz/job-history`, before the new name.\n"
                "For a job that was removed, or whose key changed too: remove the name.")))
-    (testing "no job class is listed as both renamed and unrenamed"
-      (is (= [] (filter renamed unrenamed-job-classes))))))
+    (testing "no job class is listed as both renamed and without history"
+      (is (= [] (filter renamed job-classes-without-history))))))

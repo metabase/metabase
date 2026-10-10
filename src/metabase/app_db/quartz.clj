@@ -5,6 +5,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.classloader.core :as classloader]
    [metabase.task.secure-delegate.core :as secure-delegate]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -44,139 +45,101 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
-;; Quartz stores each job's class name in the app DB, and moving a job's namespace or renaming its type renames
-;; its class. Without the old name here, the first upgraded node deletes the stored job as classless at startup,
-;; even while an old node is running it, and reschedules it under the new name. With it, upgraded nodes load the
-;; stored row under the current class.
+;; Quartz stores each job's class name in the app DB, and moving a job's namespace or renaming its type
+;; renames its class. Without the old name here, the first upgraded node deletes the stored job as classless
+;; at startup, even while an old node is running it, and reschedules it under the new name. With it, upgraded
+;; nodes load the stored row under the current class.
 ;;
-;; Each entry is keyed by the job's key, to record which job the names belong to, and lists the names the class
-;; has had under that key. The lookup goes by class name alone, because Quartz asks for a class by name only. So
-;; when a job's key changes, remove its entry: a row under the old key would otherwise still load, and keep running
-;; beside the newly scheduled job. Without the entry the row is deleted as classless. Otherwise keep entries for
-;; good: stored rows keep the old name.
-;;
-;; Job keys renamed in the past, to help explain a stored row under a key no job uses.
-;; Add to it when a key changes, with the release, each key above the class it had, and how the job changed:
-;;
-;;   0.50  old  metabase-enterprise.Caching.job
-;;              metabase_enterprise.task.caching.Caching
-;;         new  metabase-enterprise.cache.job
-;;              metabase_enterprise.task.cache.Cache
-;;         > renamed only, and within 0.50 development, so the old key never shipped
-;;
-;;   0.52  old  metabase.task.search-index.job
-;;              metabase.task.search_index.SearchIndexing
-;;         new  metabase.task.search-index.reindex.job
-;;              metabase.task.search_index.SearchIndexReindex
-;;         > became durable, when a separate job for incremental updates was added beside it
-;;
-;;   0.59  old  metabase-enterprise.transforms.canceling
-;;              metabase_enterprise.transforms.canceling.CancelOldTransformRuns
-;;         new  metabase.transforms.canceling
-;;              metabase.transforms.canceling.CancelOldTransformRuns
-;;         > moved out of enterprise, with no change to the job
-;;
-;;   0.59  old  metabase-enterprise.transforms.jobs.timeout-job
-;;              metabase_enterprise.transforms.jobs.TimeoutOldRuns
-;;         new  metabase.transforms.jobs.timeout-job
-;;              metabase.transforms.jobs.TimeoutOldRuns
-;;         > moved out of enterprise, with no change to the job, which was removed in 0.63
-;;
-;;   0.59  old  metabase-enterprise.transforms.timeout
-;;              metabase_enterprise.transforms.timeout.TimeoutTransforms
-;;         new  metabase.transforms.timeout
-;;              metabase.transforms.timeout.TimeoutTransforms
-;;         > moved out of enterprise, with no change to the job
-;;
-;;   0.60  old  metabase.task.metabot-v3.suggested-prompts-generator.job
-;;              metabase_enterprise.metabot_v3.task.suggested_prompts_generator.SuggestedPromptsGenerator
-;;         new  metabase.task.metabot.suggested-prompts-generator.job
-;;              metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator
-;;         > moved out of enterprise with the rest of Metabot
+;; Quartz asks for a class by name only, so the lookup goes by class name alone, and `:job-key` is a label for
+;; readers that no code reads. So when a job's key changes, remove its entry: a row under the old key would
+;; otherwise still load, and keep running beside the newly scheduled job. Without the entry the row is deleted
+;; as classless. Record the change in `past-job-key-renames` in `metabase.app-db.quartz-test`, which then
+;; checks that the entry is gone. Otherwise keep entries for good, because stored rows keep the old name.
 (def job-history
-  "Every name each renamed Quartz job's class has had, by the job's key, oldest first, so the last is its
-  current name."
-  {"metabase-enterprise.cache.job"
-   ["metabase_enterprise.task.cache.Cache"
-    "metabase_enterprise.cache.task.refresh_cache_configs.Cache"]
-   "metabase.task.IndexValues.job"
-   ["metabase.task.index_values.ModelIndexRefresh"
-    "metabase.indexed_entities.task.index_values.ModelIndexRefresh"]
-   "metabase.task.PersistencePrune.job"
-   ["metabase.task.persist_refresh.PersistencePrune"
-    "metabase.model_persistence.task.persist_refresh.PersistencePrune"]
-   "metabase.task.PersistenceRefresh.job"
-   ["metabase.task.persist_refresh.PersistenceRefresh"
-    "metabase.model_persistence.task.persist_refresh.PersistenceRefresh"]
-   "metabase.task.anonymous-stats.job"
-   ["metabase.task.send_anonymous_stats.SendAnonymousUsageStats"
-    "metabase.analytics.task.send_anonymous_stats.SendAnonymousUsageStats"]
-   "metabase.task.creator-sentiment-emails.job"
-   ["metabase.task.creator_sentiment_emails.CreatorSentimentEmail"
-    "metabase.product_feedback.task.creator_sentiment_emails.CreatorSentimentEmail"]
-   "metabase.task.email-remove-legacy-pulse.job"
-   ["metabase.task.email_remove_legacy_pulse.EmailRemoveLegacyPulse"
-    "metabase.pulse.task.email_remove_legacy_pulse.EmailRemoveLegacyPulse"]
-   "metabase.task.follow-up-emails.job"
-   ["metabase.task.follow_up_emails.FollowUpEmail"
-    "metabase.product_feedback.task.follow_up_emails.FollowUpEmail"]
-   "metabase.task.notification.send.job"
-   ["metabase.task.notification.SendNotification"
-    "metabase.notification.task.send.SendNotification"]
-   "metabase.task.on-startup-refresh-channel-cache.job"
-   ["metabase.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"
-    "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"]
-   "metabase.task.refresh-channel-cache.job"
-   ["metabase.task.refresh_slack_channel_user_cache.RefreshCache"
-    "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCache"]
-   "metabase.task.search-index.init.job"
-   ["metabase.task.search_index.SearchIndexInit"
-    "metabase.search.task.search_index.SearchIndexInit"]
-   "metabase.task.search-index.reindex.job"
-   ["metabase.task.search_index.SearchIndexReindex"
-    "metabase.search.task.search_index.SearchIndexReindex"]
-   "metabase.task.send-pulses.init-send-pulse-triggers.job"
-   ["metabase.task.send_pulses.InitSendPulseTriggers"
-    "metabase.pulse.task.send_pulses.InitSendPulseTriggers"]
-   "metabase.task.send-pulses.send-pulse.job"
-   ["metabase.task.send_pulses.SendPulse"
-    "metabase.pulse.task.send_pulses.SendPulse"]
-   "metabase.task.session-cleanup.job"
-   ["metabase.task.session_cleanup.SessionCleanup"
-    "metabase.session.task.session_cleanup.SessionCleanup"]
-   "metabase.task.sync-and-analyze.job"
-   ["metabase.task.sync_databases.SyncAndAnalyzeDatabase"
-    "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"]
-   "metabase.task.task-history-cleanup.job"
-   ["metabase.task.task_history_cleanup.TaskHistoryCleanup"
-    "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"]
-   ;; There is one job per transform job, so this is the prefix their keys share. Nothing looks an entry up by
-   ;; its key, so a prefix works here.
-   "metabase.task.transforms.schedule."
-   ["metabase_enterprise.transforms.schedule.RunTransforms"
-    "metabase.transforms.schedule.RunTransforms"]
-   "metabase.task.truncate-audit-tables.job"
-   ["metabase.task.truncate_audit_tables.TruncateAuditTables"
-    "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"]
-   "metabase.task.update-field-values.job"
-   ["metabase.task.sync_databases.UpdateFieldValues"
-    "metabase.sync.task.sync_databases.UpdateFieldValues"]
-   "metabase.task.upgrade-checks.job"
-   ["metabase.task.upgrade_checks.CheckForNewVersions"
-    "metabase.version.task.upgrade_checks.CheckForNewVersions"]})
+  "The class names each renamed Quartz job has had, oldest first, so the last is its current name.
+  The `:job-key` says which job an entry is for."
+  [{:job-key     "metabase-enterprise.cache.job"
+    :class-names ["metabase_enterprise.task.cache.Cache"
+                  "metabase_enterprise.cache.task.refresh_cache_configs.Cache"]}
+   {:job-key     "metabase.task.IndexValues.job"
+    :class-names ["metabase.task.index_values.ModelIndexRefresh"
+                  "metabase.indexed_entities.task.index_values.ModelIndexRefresh"]}
+   {:job-key     "metabase.task.PersistencePrune.job"
+    :class-names ["metabase.task.persist_refresh.PersistencePrune"
+                  "metabase.model_persistence.task.persist_refresh.PersistencePrune"]}
+   {:job-key     "metabase.task.PersistenceRefresh.job"
+    :class-names ["metabase.task.persist_refresh.PersistenceRefresh"
+                  "metabase.model_persistence.task.persist_refresh.PersistenceRefresh"]}
+   {:job-key     "metabase.task.anonymous-stats.job"
+    :class-names ["metabase.task.send_anonymous_stats.SendAnonymousUsageStats"
+                  "metabase.analytics.task.send_anonymous_stats.SendAnonymousUsageStats"]}
+   {:job-key     "metabase.task.creator-sentiment-emails.job"
+    :class-names ["metabase.task.creator_sentiment_emails.CreatorSentimentEmail"
+                  "metabase.product_feedback.task.creator_sentiment_emails.CreatorSentimentEmail"]}
+   {:job-key     "metabase.task.email-remove-legacy-pulse.job"
+    :class-names ["metabase.task.email_remove_legacy_pulse.EmailRemoveLegacyPulse"
+                  "metabase.pulse.task.email_remove_legacy_pulse.EmailRemoveLegacyPulse"]}
+   {:job-key     "metabase.task.follow-up-emails.job"
+    :class-names ["metabase.task.follow_up_emails.FollowUpEmail"
+                  "metabase.product_feedback.task.follow_up_emails.FollowUpEmail"]}
+   {:job-key     "metabase.task.notification.send.job"
+    :class-names ["metabase.task.notification.SendNotification"
+                  "metabase.notification.task.send.SendNotification"]}
+   {:job-key     "metabase.task.on-startup-refresh-channel-cache.job"
+    :class-names ["metabase.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"
+                  "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"]}
+   {:job-key     "metabase.task.refresh-channel-cache.job"
+    :class-names ["metabase.task.refresh_slack_channel_user_cache.RefreshCache"
+                  "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCache"]}
+   {:job-key     "metabase.task.search-index.init.job"
+    :class-names ["metabase.task.search_index.SearchIndexInit"
+                  "metabase.search.task.search_index.SearchIndexInit"]}
+   {:job-key     "metabase.task.search-index.reindex.job"
+    :class-names ["metabase.task.search_index.SearchIndexReindex"
+                  "metabase.search.task.search_index.SearchIndexReindex"]}
+   {:job-key     "metabase.task.send-pulses.init-send-pulse-triggers.job"
+    :class-names ["metabase.task.send_pulses.InitSendPulseTriggers"
+                  "metabase.pulse.task.send_pulses.InitSendPulseTriggers"]}
+   {:job-key     "metabase.task.send-pulses.send-pulse.job"
+    :class-names ["metabase.task.send_pulses.SendPulse"
+                  "metabase.pulse.task.send_pulses.SendPulse"]}
+   {:job-key     "metabase.task.session-cleanup.job"
+    :class-names ["metabase.task.session_cleanup.SessionCleanup"
+                  "metabase.session.task.session_cleanup.SessionCleanup"]}
+   {:job-key     "metabase.task.sync-and-analyze.job"
+    :class-names ["metabase.task.sync_databases.SyncAndAnalyzeDatabase"
+                  "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"]}
+   {:job-key     "metabase.task.task-history-cleanup.job"
+    :class-names ["metabase.task.task_history_cleanup.TaskHistoryCleanup"
+                  "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"]}
+   ;; There is one job per transform job, so this is the prefix their keys share.
+   {:job-key     "metabase.task.transforms.schedule."
+    :class-names ["metabase_enterprise.transforms.schedule.RunTransforms"
+                  "metabase.transforms.schedule.RunTransforms"]}
+   {:job-key     "metabase.task.truncate-audit-tables.job"
+    :class-names ["metabase.task.truncate_audit_tables.TruncateAuditTables"
+                  "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"]}
+   {:job-key     "metabase.task.update-field-values.job"
+    :class-names ["metabase.task.sync_databases.UpdateFieldValues"
+                  "metabase.sync.task.sync_databases.UpdateFieldValues"]}
+   {:job-key     "metabase.task.upgrade-checks.job"
+    :class-names ["metabase.task.upgrade_checks.CheckForNewVersions"
+                  "metabase.version.task.upgrade_checks.CheckForNewVersions"]}])
 
-(defn current-class-name
-  "Returns the current name of a job class stored as `stored-name`, given `history` shaped like [[job-history]].
-  A name `history` doesn't list is returned as is."
-  [history stored-name]
-  (or (some (fn [class-names]
-              (when (some #{stored-name} class-names)
-                (peek class-names)))
-            (vals history))
-      stored-name))
+(defn- current-class-names
+  "Returns a map from every class name in `history`, shaped like [[job-history]], to its job's current
+  class name."
+  [history]
+  (u/for-map [{:keys [class-names]} history
+              class-name            class-names]
+    [class-name (peek class-names)]))
+
+(def ^:private stored-class-name->current
+  (current-class-names job-history))
 
 (defn- load-class ^Class [^String class-name]
-  (Class/forName (current-class-name job-history class-name) true (classloader/the-classloader)))
+  ;; a name with no history is its own current name
+  (Class/forName (get stored-class-name->current class-name class-name) true (classloader/the-classloader)))
 
 (defrecord ^:private ClassLoadHelper []
   org.quartz.spi.ClassLoadHelper
