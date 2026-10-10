@@ -15,9 +15,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
+   (java.lang.annotation Annotation)
    (java.time Duration Instant)
    (java.util Date)
-   (org.quartz CronTrigger JobDetail)))
+   (org.quartz CronTrigger InterruptableJob Job JobDetail)))
 
 (set! *warn-on-reflection* true)
 
@@ -276,3 +277,101 @@
                             class-name-after-add-job!)))
         (finally
           (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job")))))))
+
+;;; ------------------------------------------------- defjob --------------------------------------------------
+
+(task/defjob AnnotatedJob
+  "A job with both Quartz annotations."
+  {:saved-class   "metabase.task_test.AnnotatedJob"
+   :concurrent?   false
+   :persist-data? true}
+  [_])
+
+(task/defjob DefaultsJob
+  {:saved-class "metabase.task_test.DefaultsJob", :concurrent? true, :persist-data? false}
+  [_])
+
+(task/defjob-type InterruptableTestJob
+  "A job that implements more than `org.quartz.Job`."
+  {:saved-class "metabase.task_test.InterruptableTestJob", :concurrent? false}
+  org.quartz.Job
+  (execute [_ _])
+  org.quartz.InterruptableJob
+  (interrupt [_]))
+
+(defn- annotation-names [^Class c]
+  (into #{} (map #(.getSimpleName (.annotationType ^Annotation %))) (.getAnnotations c)))
+
+(deftest defjob-options-put-quartz-annotations-on-the-class-test
+  (is (= {:annotated     {:class-name                       "metabase.task_test.AnnotatedJob"
+                          :annotations                      #{"DisallowConcurrentExecution"
+                                                              "PersistJobDataAfterExecution"}
+                          :concurrent-execution-disallowed? true
+                          :persist-job-data?                true}
+          :defaults      {:class-name                       "metabase.task_test.DefaultsJob"
+                          :annotations                      #{}
+                          :concurrent-execution-disallowed? false
+                          :persist-job-data?                false}
+          :interruptable {:class-name                       "metabase.task_test.InterruptableTestJob"
+                          :annotations                      #{"DisallowConcurrentExecution"}
+                          :concurrent-execution-disallowed? true
+                          :persist-job-data?                false}}
+         (update-vals {:annotated     AnnotatedJob
+                       :defaults      DefaultsJob
+                       :interruptable InterruptableTestJob}
+                      (fn [^Class c]
+                        (let [^JobDetail detail (jobs/build (jobs/of-type c))]
+                          {:class-name                       (.getName c)
+                           :annotations                      (annotation-names c)
+                           :concurrent-execution-disallowed? (.isConcurrentExectionDisallowed detail)
+                           :persist-job-data?                (.isPersistJobDataAfterExecution detail)}))))))
+
+(deftest defjob-defines-a-factory-test
+  ;; Kondo lints `task/defjob` as a `defn`, so it does not know the factory of a job defined with it.
+  (let [->annotated-job (ns-resolve 'metabase.task-test '->AnnotatedJob)]
+    (is (= {:job?           true
+            :interruptable? true
+            :docstring      "A job with both Quartz annotations."}
+           {:job?           (instance? Job (->annotated-job))
+            :interruptable? (instance? InterruptableJob (->InterruptableTestJob))
+            :docstring      (:doc (meta ->annotated-job))}))))
+
+(defn- definition-error
+  "Returns the message of the error that expanding the job definition `form` in this namespace throws."
+  [form]
+  (binding [*ns* (the-ns 'metabase.task-test)]
+    (try
+      (when (macroexpand-1 form)
+        nil)
+      (catch Throwable e
+        (ex-message (or (ex-cause e) e))))))
+
+(deftest defjob-rejects-an-invalid-definition-test
+  (is (=? {;; the entry to paste, with the class name that this namespace gives the type
+           :no-saved-class   #"(?s).*\n\n  :saved-class \"metabase\.task_test\.NewJob\"\n\n.*"
+           :unknown-option   #".*unknown options \[:durable\?\]\. The options are \[.*\]\."
+           :not-a-literal    #".*its `:saved-class` must be a string literal\."
+           :not-a-class-name #".*\"metabase\.task-test\.NewJob\" is not a fully qualified Java class name.*"
+           :no-package       #".*\"NewJob\" is not a fully qualified Java class name.*"
+           :not-a-boolean    #".*its `:concurrent\?` must be `true` or `false`\."
+           :metadata         #".*its type name has metadata\..*"
+           :two-arguments    #".*its argument vector takes one binding.*"
+           :valid            nil}
+          (update-vals
+           '{:no-saved-class   (task/defjob NewJob {:concurrent? false} [_])
+             :unknown-option   (task/defjob NewJob {:saved-class "a.NewJob", :durable? true} [_])
+             :not-a-literal    (task/defjob NewJob {:saved-class (str "a." "NewJob")} [_])
+             :not-a-class-name (task/defjob NewJob {:saved-class "metabase.task-test.NewJob"} [_])
+             :no-package       (task/defjob-type NewJob {:saved-class "NewJob"} org.quartz.Job)
+             :not-a-boolean    (task/defjob NewJob {:saved-class "a.NewJob", :concurrent? nil} [_])
+             :metadata         (task/defjob ^{:doc "A job."} NewJob {:saved-class "a.NewJob"} [_])
+             :two-arguments    (task/defjob NewJob {:saved-class "a.NewJob"} [_ _])
+             :valid            (task/defjob NewJob "A job." {:saved-class "a.NewJob"} [_])}
+           definition-error))))
+
+(deftest defjob-allows-the-position-metadata-of-a-reader-test
+  ;; Eastwood reads the source with a reader that puts the line and column on every symbol.
+  (is (nil? (definition-error (list 'task/defjob
+                                    (with-meta 'NewJob {:line 1, :column 14})
+                                    {:saved-class "a.NewJob"}
+                                    '[_])))))
