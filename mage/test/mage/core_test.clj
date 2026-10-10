@@ -20,6 +20,7 @@
    [mage.kondo-ratchet-test]
    [mage.merge-kondo-ratchets-test]
    [mage.merge-yaml-migrations-test]
+   [mage.module-history-test]
    [mage.modules-test]
    [mage.openapi-diff-test]
    [mage.project-tests-test]
