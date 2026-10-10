@@ -4,7 +4,7 @@ const path = require("path");
 const { sources } = require("@rspack/core");
 
 const { preloadRows } = require("./route-preloads-rows");
-const { readRoutes } = require("./routes");
+const { allRouteChunks } = require("./route-chunks");
 
 const MANIFEST_FILENAME = "route-preloads.json";
 
@@ -98,7 +98,7 @@ class RoutePreloadManifest {
               }
             }
 
-            const rows = preloadRows(readRoutes(this.root).routes);
+            const rows = preloadRows(allRouteChunks(this.root));
 
             const missing = [];
             const entries = rows.flatMap((route) => {

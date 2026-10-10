@@ -7,6 +7,8 @@ import MetabaseSettings from "metabase/utils/settings";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
+import fs from "fs";
+
 import type { RouteChunk, Unnamed } from "./derive-route-preloads";
 import { collectRouteChunks } from "./derive-route-preloads";
 import { preloadRows } from "./route-preloads-rows";
@@ -14,6 +16,12 @@ import { readRoutes } from "./routes";
 // The lint rule `bounded-route-gate` holds route gates to this many features.
 // Reading the same constant is what keeps the sweep and the rule in step.
 import { ROUTE_GATE_STRENGTH } from "./route-gate-strength";
+import {
+  GENERATED,
+  allRouteChunks,
+  executedRouteChunks,
+  keyOf,
+} from "./route-chunks";
 
 const key = ({ pattern, chunks }: { pattern: string; chunks: string[] }) =>
   `${pattern} -> ${[...chunks].sort().join("+")}`;
@@ -132,91 +140,6 @@ const sweep = () => {
 const executed = sweep();
 const derived = readRoutes(process.cwd());
 
-/**
- * Routes a plugin registers at runtime, which source cannot reach, so they get
- * no hint and load a moment after the app does.
- *
- * The sweep is what makes this list honest. A plugin writes its route slots once
- * when it initialises, reading the features in place at that moment, so a single
- * tree shows one instance's routes. Re-initialising per configuration showed 74
- * of these rather than the 8 a single enterprise tree found.
- */
-const ROUTES_WITHOUT_HINTS = [
-  "/admin/databases/:databaseId/write-data -> admin+writable-connection",
-  "/admin/metabot/customization -> admin+metabot-customization",
-  "/admin/metabot/system-prompts/metabot-chat -> admin+metabot-system-prompts",
-  "/admin/metabot/system-prompts/natural-language-queries -> admin+metabot-system-prompts",
-  "/admin/metabot/system-prompts/sql-generation -> admin+metabot-system-prompts",
-  "/admin/metabot/usage-controls/ai-feature-access -> admin+metabot-feature-access",
-  "/admin/metabot/usage-controls/ai-usage-limits -> admin+metabot-usage-limits",
-  "/admin/people/tenants/groups -> admin+tenants",
-  "/admin/people/tenants/groups/:groupId -> admin+tenants",
-  "/admin/people/tenants/people -> admin+tenants",
-  "/admin/permissions/application -> admin+application-permissions",
-  "/admin/security-center -> admin+security-center",
-  "/admin/settings/authentication/2fa/enrolled -> admin+admin-settings+mfa-enrolled-users",
-  "/admin/settings/authentication/2fa/unenrolled -> admin+admin-settings+mfa-unenrolled-users",
-  "/admin/settings/authentication/jwt -> admin+admin-settings+auth-jwt",
-  "/admin/settings/authentication/oidc -> admin+admin-settings+auth-oidc",
-  "/admin/settings/authentication/saml -> admin+admin-settings+auth-saml",
-  "/admin/settings/python-runner -> admin+admin-settings+python-runner-settings",
-  "/apps/:name -> data-apps",
-  "/apps/:name/* -> data-apps",
-  "/browse/databases/:dbId/tables/:tableId/edit/:objectId? -> table-editing",
-  "/collection/tenant-specific -> tenant-collections",
-  "/collection/tenant-users -> tenant-users",
-  "/collection/tenant-users/:tenantId -> tenant-user-collections",
-  "/data-studio/dependencies -> data-studio+dependency-graph",
-  "/data-studio/library -> data-studio+data-studio-library",
-  "/data-studio/library/metrics/:cardId -> data-studio+metrics",
-  "/data-studio/library/metrics/:cardId/dependencies -> data-studio+metrics",
-  "/data-studio/library/metrics/:cardId/dimensions -> data-studio+metrics",
-  "/data-studio/library/metrics/:cardId/history -> data-studio+metrics",
-  "/data-studio/library/metrics/:cardId/overview -> data-studio+metrics",
-  "/data-studio/library/metrics/:cardId/query -> data-studio+metrics",
-  "/data-studio/library/metrics/new -> data-studio+metrics",
-  "/data-studio/library/snippets/:snippetId -> data-studio+data-studio-snippets",
-  "/data-studio/library/snippets/:snippetId/dependencies -> data-studio+data-studio-snippets",
-  "/data-studio/library/snippets/archived -> data-studio+data-studio-snippets",
-  "/data-studio/library/snippets/new -> data-studio+data-studio-snippets",
-  "/data-studio/library/tables/:tableId -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/dependencies -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/fields -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/fields/:fieldId -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/measures -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/measures/:measureId -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/measures/:measureId/dependencies -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/measures/:measureId/revisions -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/measures/new -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/segments -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/segments/:segmentId -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/segments/:segmentId/dependencies -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/segments/:segmentId/revisions -> data-studio+data-studio-tables",
-  "/data-studio/library/tables/:tableId/segments/new -> data-studio+data-studio-tables",
-  "/data-studio/schema-viewer -> data-studio+schema-viewer",
-  "/data-studio/transforms -> data-studio+transforms-python",
-  "/data-studio/transforms/:transformId/inspect -> data-studio+transforms-inspector",
-  "/data-studio/transforms/:transformId/inspect -> data-studio+transforms-inspector-upsell",
-  "/data-studio/transforms/:transformId/inspect/:lensId -> data-studio+transforms-inspector",
-  "/data-studio/transforms/:transformId/inspect/:lensId -> data-studio+transforms-inspector-upsell",
-  "/data-studio/transforms/library/:path -> data-studio+transforms-python",
-  "/data-studio/transforms/new/python -> data-studio+transforms-python",
-  "/data-studio/transforms/tools/migrate-models -> data-studio+model-replacement",
-  "/monitor/ai-auditing/cli -> ai-auditing+monitor",
-  "/monitor/ai-auditing/cli/calls -> ai-auditing+monitor",
-  "/monitor/ai-auditing/cli/usage -> ai-auditing+monitor",
-  "/monitor/ai-auditing/conversations -> ai-auditing+monitor",
-  "/monitor/ai-auditing/conversations/:convoId -> ai-auditing+monitor",
-  "/monitor/ai-auditing/mcp -> ai-auditing+monitor",
-  "/monitor/ai-auditing/mcp/events -> ai-auditing+monitor",
-  "/monitor/ai-auditing/mcp/usage -> ai-auditing+monitor",
-  "/monitor/ai-auditing/usage/* -> ai-auditing+monitor",
-  "/monitor/ai-auditing/usage/:metric -> ai-auditing+monitor",
-  "/monitor/dependency-diagnostics/broken -> dependency-diagnostics+monitor",
-  "/monitor/dependency-diagnostics/unreferenced -> dependency-diagnostics+monitor",
-  "/monitor/sessions -> monitor+monitor-session-management",
-  "/monitor/sessions/:sessionId -> monitor+monitor-session-management",
-];
 
 /**
  * A note names the construct the reader could not follow, not where it sits, so
@@ -269,22 +192,23 @@ const UNRESOLVED_IDIOMS = [
 
 describe("the route preload manifest", () => {
   /**
-   * The build derives the manifest by reading source, because importing the app
-   * would need the asset loaders and the ClojureScript build. Reading source can
-   * only miss an idiom it has not been taught, and nothing about a missing row is
-   * visible at a glance. Building the real tree here is the check on that.
+   * The manifest carries what source reports plus what only building the tree
+   * finds, so this file is half of it rather than a check on the other half. It
+   * is committed because a production build has no module environment to run
+   * the tree in, and it holds chunk names and no hashes, so it is stable.
+   *
+   * Regenerate with `UPDATE_ROUTE_CHUNKS=1`.
    */
-  it("covers every route that building the tree finds", () => {
-    const found = new Set(
-      derived.routes
-        .filter((route: { chunks: string[] }) => route.chunks.length > 0)
-        .map(key),
-    );
-    const missing = executed.routes
-      .map(key)
-      .filter((route) => !found.has(route));
+  it("keeps the generated route chunks current", () => {
+    const found = [...new Map(executed.routes.map((r) => [keyOf(r), r])).values()]
+      .map(({ pattern, chunks }) => ({ pattern, chunks: [...chunks].sort() }))
+      .sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
 
-    expect([...new Set(missing)].sort()).toEqual(ROUTES_WITHOUT_HINTS);
+    if (process.env.UPDATE_ROUTE_CHUNKS) {
+      fs.writeFileSync(GENERATED, `${JSON.stringify(found, null, 2)}\n`);
+    }
+
+    expect(executedRouteChunks()).toEqual(found);
   });
 
   /**
@@ -359,12 +283,13 @@ const urlFor = (pattern: string) =>
  * renders.
  */
 describe("the first row a URL matches", () => {
-  const rows: Row[] = preloadRows(derived.routes);
+  const manifest = allRouteChunks(process.cwd());
+  const rows: Row[] = preloadRows(manifest);
 
   // Routes sharing a URL render together, so the URL needs their chunks united.
   const needed = new Map<string, Set<string>>();
   // `readRoutes` is plain JavaScript, so its rows arrive untyped here.
-  for (const route of derived.routes as Route[]) {
+  for (const route of manifest as Route[]) {
     if (route.chunks.length === 0) {
       continue;
     }
@@ -388,21 +313,24 @@ describe("the first row a URL matches", () => {
       .map(([url, chunks]) => `${url} ${chunks.join("+")}`);
 
   /**
-   * A missing chunk costs a slow page. The three below are one Data Studio
-   * subtree, where `coalesce` gives a `/*` fallback the chunks of the route that
-   * owns the node rather than of everything under it. Fixing that trades these
-   * for the opposite error, so it is left as it is and pinned here.
+   * A missing chunk costs a slow page. The one below is a catch-all route that
+   * carries fewer chunks than the route beside it:
+   *
+   *   /monitor/sessions            monitor + monitor-session-management
+   *   /monitor/sessions/*          monitor
+   *   /monitor/sessions/:sessionId monitor + monitor-session-management
+   *
+   * Rows sort deepest first, so the three-segment `*` row is matched ahead of
+   * the two-segment row carrying both chunks, where the router would have taken
+   * `:sessionId`. A row ought to carry at least what it inherits.
    */
   it("carries every chunk the URL needs, bar one known gap", () => {
     expect(report("missing")).toEqual([
-      "/data-studio/data/database/1/schema/1/table/1 data-model",
+      "/monitor/sessions/1 monitor-session-management",
     ]);
   });
 
-  it("hints nothing the URL does not use, bar two known extras", () => {
-    expect(report("extra")).toEqual([
-      "/data-studio/data/database/1/schema/1/table/1/settings data-model",
-      "/data-studio/data/database/1/schema/1/table/1/field/1/1 data-model",
-    ]);
+  it("hints nothing the URL does not use", () => {
+    expect(report("extra")).toEqual([]);
   });
 });
