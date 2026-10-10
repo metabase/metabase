@@ -2836,6 +2836,7 @@
            metabase.task-history.init}
    :uses #{api
            lib.schema
+           logger
            models
            permissions
            premium-features
@@ -3320,6 +3321,7 @@
            sample-data
            settings
            sync
+           task.history
            upload
            util
            util.config

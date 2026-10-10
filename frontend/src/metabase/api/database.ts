@@ -20,6 +20,7 @@ import type {
   ListDatabasesRequest,
   ListDatabasesResponse,
   ListVirtualDatabaseTablesRequest,
+  ManualSyncRequest,
   SchemaName,
   Table,
   UpdateDatabaseRequest,
@@ -260,10 +261,11 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("database"), idTag("database", id)]),
     }),
-    syncDatabaseSchema: builder.mutation<void, DatabaseId>({
-      query: (databaseId) => ({
+    syncDatabaseSchema: builder.mutation<void, ManualSyncRequest>({
+      query: ({ id, debug }) => ({
         method: "POST",
-        url: `/api/database/${databaseId}/sync_schema`,
+        url: `/api/database/${id}/sync_schema`,
+        body: { debug },
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
@@ -275,10 +277,11 @@ export const databaseApi = Api.injectEndpoints({
           tag("card"),
         ]),
     }),
-    rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
-      query: (databaseId) => ({
+    rescanDatabaseFieldValues: builder.mutation<void, ManualSyncRequest>({
+      query: ({ id, debug }) => ({
         method: "POST",
-        url: `/api/database/${databaseId}/rescan_values`,
+        url: `/api/database/${id}/rescan_values`,
+        body: { debug },
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),

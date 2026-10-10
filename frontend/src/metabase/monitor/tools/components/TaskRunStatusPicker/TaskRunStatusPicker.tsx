@@ -2,11 +2,12 @@ import { t } from "ttag";
 
 import { Select, type SelectProps } from "metabase/ui";
 import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
-import type { TaskRunStatus } from "metabase-types/api";
+/** The outcome filter of the tasks list; "failed" covers abandoned runs too. */
+export type TaskRunOutcome = "success" | "failed";
 
 type TaskRunStatusPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
-  value: TaskRunStatus | null;
-  onChange: (value: TaskRunStatus | null) => void;
+  value: TaskRunOutcome | null;
+  onChange: (value: TaskRunOutcome | null) => void;
 };
 
 export const TaskRunStatusPicker = ({
@@ -14,11 +15,9 @@ export const TaskRunStatusPicker = ({
   onChange,
   ...props
 }: TaskRunStatusPicker) => {
-  const data: SelectData<TaskRunStatus> = [
-    { label: t`Started`, value: "started" },
+  const data: SelectData<TaskRunOutcome> = [
     { label: t`Success`, value: "success" },
     { label: t`Failed`, value: "failed" },
-    { label: t`Abandoned`, value: "abandoned" },
   ];
 
   return (
@@ -35,7 +34,7 @@ export const TaskRunStatusPicker = ({
       }}
       clearable
       data={data}
-      placeholder={t`Filter by status`}
+      placeholder={t`Status`}
       value={value}
       onChange={onChange}
       {...props}

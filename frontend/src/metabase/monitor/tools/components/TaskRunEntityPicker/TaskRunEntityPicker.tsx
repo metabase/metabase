@@ -77,7 +77,7 @@ export const TaskRunEntityPicker = ({
       clearable
       data={data}
       disabled={isDisabled}
-      placeholder={t`Filter by entity`}
+      placeholder={t`Entity`}
       rightSection={isLoading ? <Loader size="xs" /> : undefined}
       searchable
       value={serializedValue}

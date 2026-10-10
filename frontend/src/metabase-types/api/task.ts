@@ -17,6 +17,8 @@ export interface Task {
   task_details: Record<string, unknown> | null;
   status: TaskStatus;
   logs: Log[] | null;
+  /** Size of the plain-text debug log, when the task ran inside a debug sync. Download it from /api/task/:id/logs. */
+  debug_log_bytes?: number | null;
   run_id: number | null;
 }
 
@@ -124,7 +126,7 @@ export type ListTaskRunsRequest = {
   "run-type"?: TaskRunType;
   "entity-type"?: TaskRunEntityType;
   "entity-id"?: number;
-  status?: TaskRunStatus;
+  status?: TaskRunStatus | TaskRunStatus[];
   "started-at"?: TaskRunStartedAtParam;
   "sort-column"?: ListTaskRunsSortColumn;
   "sort-direction"?: SortDirection;

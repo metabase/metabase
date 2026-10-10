@@ -1,54 +1,33 @@
-import { useElementSize } from "@mantine/hooks";
-import { t } from "ttag";
-
 import { useGetTasksInfoQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
-import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import { useParams } from "metabase/router";
-import { Center, Code, Flex } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 
-import { JobTriggersSidebar } from "./JobTriggersSidebar";
 import { JobsTable } from "./JobsTable";
 
-type RouteParams = {
-  jobKey?: string;
-};
-
-export const JobInfoApp = () => {
+/**
+ * The scheduler's jobs. Rendered by the "Scheduled tasks" tab of the
+ * Background tasks page, which also shows the trigger sidebar for a job.
+ */
+export const ScheduledJobs = () => {
   const { data, error, isLoading, isFetching } = useGetTasksInfoQuery();
-  const { ref: containerRef, width: containerWidth } = useElementSize();
-  const { jobKey } = useParams<RouteParams>();
 
+  if (error != null) {
+    return (
+      <Center flex={1}>
+        <DelayedLoadingAndErrorWrapper loading={isFetching} error={error} />
+      </Center>
+    );
+  }
+
+  // a Stack, not a fragment: the table card shrinks to fit a flex column, so
+  // on its own it would scroll inside itself instead of letting the page scroll
   return (
-    <Flex ref={containerRef} h="100%" wrap="nowrap">
-      <MonitorMain>
-        <MonitorHeaderTitle mb="sm">{t`Scheduled jobs`}</MonitorHeaderTitle>
-        {error != null ? (
-          <Center flex={1}>
-            <DelayedLoadingAndErrorWrapper loading={isFetching} error={error} />
-          </Center>
-        ) : (
-          <>
-            {data != null && data.scheduler.length > 0 && (
-              <Code block p="xxl" style={{ flexShrink: 0 }}>
-                {data.scheduler.join("\n")}
-              </Code>
-            )}
-            <JobsTable
-              jobs={data?.jobs ?? []}
-              isFetching={isFetching}
-              isLoading={isLoading}
-            />
-          </>
-        )}
-      </MonitorMain>
-      {jobKey != null && data != null && (
-        <Sidebar containerWidth={containerWidth}>
-          <JobTriggersSidebar jobKey={jobKey} />
-        </Sidebar>
-      )}
-    </Flex>
+    <Stack gap="md">
+      <JobsTable
+        jobs={data?.jobs ?? []}
+        isFetching={isFetching}
+        isLoading={isLoading}
+      />
+    </Stack>
   );
 };

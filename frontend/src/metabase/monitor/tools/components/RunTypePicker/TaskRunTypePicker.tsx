@@ -38,7 +38,7 @@ export const TaskRunTypePicker = ({
       }}
       clearable
       data={data}
-      placeholder={t`Filter by run type`}
+      placeholder={t`Task`}
       value={value}
       onChange={onChange}
       {...props}

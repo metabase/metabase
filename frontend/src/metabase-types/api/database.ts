@@ -128,6 +128,14 @@ export interface DatabaseUsageInfo {
   transform: number;
 }
 
+export type DebugLogLevel = "debug" | "trace";
+
+export interface ManualSyncRequest {
+  id: DatabaseId;
+  /** Capture the full log of the run at this level into its tasks (see /api/task/:id/logs). */
+  debug?: DebugLogLevel;
+}
+
 export interface GetDatabaseRequest {
   id: DatabaseId;
   include?: "tables" | "tables.fields";

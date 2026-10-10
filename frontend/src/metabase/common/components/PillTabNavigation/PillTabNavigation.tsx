@@ -14,6 +14,7 @@ export type PillTab = {
   icon?: IconName;
   isGated?: boolean;
   isSelected?: boolean | ((pathname: string) => boolean);
+  onClick?: () => void;
 };
 
 type PillTabNavigationProps = {
@@ -44,6 +45,7 @@ export function PillTabNavigation({ tabs }: PillTabNavigationProps) {
             className={cx(S.tab, { [S.selected]: selected })}
             aria-label={tab.label}
             aria-current={selected ? "page" : undefined}
+            onClick={tab.onClick}
           >
             {tab.icon !== undefined && <FixedSizeIcon name={tab.icon} />}
             <Ellipsified className={S.label}>{tab.label}</Ellipsified>

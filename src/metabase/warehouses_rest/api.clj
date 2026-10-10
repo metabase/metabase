@@ -29,6 +29,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
+   [metabase.task-history.core :as task-history]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -1129,6 +1130,36 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
+(defn- debug-log-loggers
+  "The loggers a debug sync/scan raises to DEBUG or TRACE: the sync and driver namespaces, the connection pool, and the
+  engine's own JDBC driver and SDK packages where we know them."
+  [engine]
+  (into ["metabase.sync" "metabase.driver" "com.mchange"]
+        (case (keyword engine)
+          :athena ["com.amazon.athena" "software.amazon.awssdk"]
+          [])))
+
+(defn- check-debug-log-capture-available
+  "Only one debug sync/scan runs per instance; a second one would compete for the same 10 MB log budget."
+  [debug?]
+  (when (and debug? (task-history/debug-log-capture-active?))
+    (throw (ex-info (tru "A sync or scan with debug logging is already running. Wait for it to finish.")
+                    {:status-code 409}))))
+
+(defn- submit-sync-task!
+  "Run `f` in the background. With a `debug` level, capture its full DEBUG or TRACE logs into the tasks it records."
+  [{:keys [engine]} debug f]
+  (quick-task/submit-task!
+   (if debug
+     (fn [] (task-history/with-debug-log-capture (debug-log-loggers engine) (keyword debug) (f)))
+     f)))
+
+(def ^:private ManualSyncBody
+  [:maybe [:map {:closed true}
+           ;; capture the full log of this run at that level into its tasks, see
+           ;; `metabase.task-history.core/with-debug-log-capture`
+           [:debug {:optional true} [:maybe [:enum "debug" "trace"]]]]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -1137,9 +1168,12 @@
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [debug]} :- ManualSyncBody]
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
+    (check-debug-log-capture-available debug)
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
@@ -1153,7 +1187,8 @@
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
-        (quick-task/submit-task!
+        (submit-sync-task!
+         db debug
          (fn []
            (database-routing/with-database-routing-off
              ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
@@ -1204,9 +1239,12 @@
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [debug]} :- ManualSyncBody]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
+    (check-debug-log-capture-available debug)
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/simple_event {:event "database_manual_scan" :target_id id})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -1215,7 +1253,8 @@
     (request/as-admin
       (database-routing/with-database-routing-off
         (if *rescan-values-async*
-          (quick-task/submit-task!
+          (submit-sync-task!
+           db debug
            (fn []
              (sync/update-field-values! db)))
           (sync/update-field-values! db)))))

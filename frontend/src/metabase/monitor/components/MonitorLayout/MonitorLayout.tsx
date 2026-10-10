@@ -38,7 +38,6 @@ function getActiveSection(pathname: string): MonitorSection | null {
     )
     .with(P.string.startsWith(Urls.monitorNotifications()), () => "alerts")
     .with(P.string.startsWith(Urls.monitorTasks()), () => "tasks")
-    .with(P.string.startsWith(Urls.monitorJobs()), () => "jobs")
     .with(P.string.startsWith(Urls.monitorLogs()), () => "logs")
     .with(
       P.string.startsWith(Urls.monitorModelPersistenceLog()),
@@ -144,14 +143,6 @@ export function MonitorLayout() {
             isSelected={activeSection === "tasks"}
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("tasks")}
-          />
-          <AreaTab
-            label={t`Scheduled jobs`}
-            icon="clock"
-            to={Urls.monitorJobs()}
-            isSelected={activeSection === "jobs"}
-            showLabel={isNavbarOpened}
-            onClick={() => trackMonitorSectionClicked("jobs")}
           />
           <AreaTab
             label={t`Application logs`}

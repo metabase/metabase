@@ -12,7 +12,6 @@ import type {
   SortingOptions,
   TaskRunDateFilterOption,
   TaskRunEntityType,
-  TaskRunStatus,
   TaskRunType,
 } from "metabase-types/api";
 
@@ -20,16 +19,12 @@ import {
   guardTaskRunEntityType,
   guardTaskRunRunType,
   guardTaskRunStartedAtRange,
-  guardTaskRunStatus,
 } from "../../utils";
+import type { TaskRunOutcome } from "../TaskRunStatusPicker/TaskRunStatusPicker";
 
 export const TASK_RUN_SORT_COLUMNS = [
   "started_at",
-  "ended_at",
-  "run_type",
-  "status",
   "entity_name",
-  "task_count",
 ] satisfies readonly ListTaskRunsSortColumn[];
 
 const DEFAULT_SORT_COLUMN: ListTaskRunsSortColumn = "started_at";
@@ -40,14 +35,17 @@ export const DEFAULT_SORTING: SortingOptions<ListTaskRunsSortColumn> = {
   sort_direction: DEFAULT_SORT_DIRECTION,
 };
 
+export type TaskRunsTab = "tasks" | "scheduled";
+
 type UrlState = {
   page: number;
+  tab: TaskRunsTab;
+  status: TaskRunOutcome | null;
   sort_column: ListTaskRunsSortColumn;
   sort_direction: SortDirection;
   "run-type": TaskRunType | null;
   "entity-type": TaskRunEntityType | null;
   "entity-id": number | null;
-  status: TaskRunStatus | null;
   "started-at": TaskRunDateFilterOption | null;
   "include-today": boolean;
 };
@@ -63,6 +61,8 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
 
     return {
       page: parsePage(query.page),
+      tab: parseTab(query.tab),
+      status: parseOutcome(query.status),
       sort_column: parseSortColumn(
         query.sort_column,
         TASK_RUN_SORT_COLUMNS,
@@ -75,33 +75,42 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
       "run-type": parseTaskRunRunType(query["run-type"]),
       "entity-type": hasEntityPair ? entityType : null,
       "entity-id": hasEntityPair ? entityId : null,
-      status: parseTaskRunStatus(query.status),
       "started-at": parseTaskRunStartedAt(query["started-at"]),
       "include-today": parseIncludeToday(query["include-today"]),
     };
   },
   serialize: ({
     page,
+    tab,
+    status,
     sort_column,
     sort_direction,
     "run-type": runType,
     "entity-type": entityType,
     "entity-id": entityId,
-    status,
     "started-at": startedAt,
     "include-today": includeToday,
   }) => ({
     page: page === 0 ? undefined : String(page),
+    tab: tab === "tasks" ? undefined : tab,
+    status: status === null ? undefined : status,
     sort_column: sort_column === DEFAULT_SORT_COLUMN ? undefined : sort_column,
     sort_direction:
       sort_direction === DEFAULT_SORT_DIRECTION ? undefined : sort_direction,
     "run-type": runType === null ? undefined : runType,
     "entity-type": entityType === null ? undefined : entityType,
     "entity-id": entityId === null ? undefined : String(entityId),
-    status: status === null ? undefined : status,
     "started-at": startedAt === null ? undefined : startedAt,
     "include-today": includeToday ? "true" : undefined,
   }),
+};
+
+const parseTab = (param: QueryParam): TaskRunsTab =>
+  getFirstParamValue(param) === "scheduled" ? "scheduled" : "tasks";
+
+const parseOutcome = (param: QueryParam): TaskRunOutcome | null => {
+  const value = getFirstParamValue(param);
+  return value === "success" || value === "failed" ? value : null;
 };
 
 const parseTaskRunRunType = (param: QueryParam): UrlState["run-type"] => {
@@ -121,11 +130,6 @@ const parseTaskRunEntityId = (param: QueryParam): UrlState["entity-id"] => {
   }
   const parsed = parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : null;
-};
-
-const parseTaskRunStatus = (param: QueryParam): UrlState["status"] => {
-  const value = getFirstParamValue(param);
-  return value && guardTaskRunStatus(value) ? value : null;
 };
 
 const parseTaskRunStartedAt = (param: QueryParam): UrlState["started-at"] => {

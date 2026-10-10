@@ -51,15 +51,15 @@ export function monitorTasksRunsFor(opts: {
   if (opts.includeToday) {
     params["include-today"] = "true";
   }
-  return `${monitorTasksRuns()}?${new URLSearchParams(params).toString()}`;
+  return `${monitorTasks()}?${new URLSearchParams(params).toString()}`;
 }
 
 export function monitorJobs() {
-  return `${ROOT_URL}/jobs`;
+  return `${monitorTasks()}?tab=scheduled`;
 }
 
 export function monitorJobTriggers(jobKey: string) {
-  return `${monitorJobs()}/${jobKey}`;
+  return `${monitorTasks()}/jobs/${jobKey}`;
 }
 
 export function monitorLogs() {

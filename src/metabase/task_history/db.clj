@@ -42,7 +42,7 @@
                      run-type          (conj [:= :task_run.run_type run-type])
                      entity-type       (conj [:= :task_run.entity_type entity-type])
                      entity-id         (conj [:= :task_run.entity_id entity-id])
-                     status            (conj [:= :task_run.status status])
+                     (seq status)      (conj [:in :task_run.status status])
                      started-at-start  (conj [:>= :task_run.started_at started-at-start])
                      started-at-end    (conj [:< :task_run.started_at started-at-end]))]
     (when (seq conditions)
@@ -82,7 +82,7 @@
    [:run-type          [:maybe :string]]
    [:entity-type       [:maybe :string]]
    [:entity-id         [:maybe ms/PositiveInt]]
-   [:status            [:maybe [:or :keyword :string]]]
+   [:status            [:maybe [:sequential [:or :keyword :string]]]]
    [:started-at-start  [:maybe ms/TemporalInstant]]
    [:started-at-end    [:maybe ms/TemporalInstant]]])
 
@@ -109,10 +109,29 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/TaskRun :id id))
 
+(def ^:private columns-without-logs
+  "Every `task_history` column, with `logs` selected as NULL: a debug log capture can grow it to 10 MB. Lists fetch
+  these; only the single-task endpoints read `logs`."
+  [:task_history.id :task_history.task :task_history.db_id :task_history.started_at :task_history.ended_at
+   :task_history.duration :task_history.task_details :task_history.status :task_history.run_id
+   [[:inline nil] :logs]])
+
 (mu/defn tasks-for-run
-  "The TaskHistory rows of the TaskRun with `run-id`, oldest first."
+  "The TaskHistory rows of the TaskRun with `run-id`, oldest first, without their `logs`. `debug_log_bytes` is the
+  size of a plain-text debug log, or nil for the usual JSON-array capture (which starts with `[`)."
   [run-id :- ms/PositiveInt]
-  (t2/select :model/TaskHistory :run_id run-id {:order-by [[:started_at :asc]]}))
+  (t2/select :model/TaskHistory :run_id run-id
+             {:select   (conj columns-without-logs
+                              [[:case
+                                [:or [:= :logs nil] [:like :logs "[%"]] nil
+                                :else [:length :logs]]
+                               :debug_log_bytes])
+              :order-by [[:started_at :asc]]}))
+
+(mu/defn task-logs-for-run
+  "The id, task name and `logs` of every TaskHistory row of the TaskRun with `run-id`, oldest first."
+  [run-id :- ms/PositiveInt]
+  (t2/select [:model/TaskHistory :id :task :logs] :run_id run-id {:order-by [[:started_at :asc]]}))
 
 (mu/defn distinct-run-entities
   "The distinct entity type and id of the TaskRuns of `run-type` started in [`started-at-start`, `started-at-end`)."
@@ -163,11 +182,10 @@
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskHistory
              (cond-> (if-let [where (task-history-where status task)]
-                       {:where where}
-                       {})
+                       {:select columns-without-logs, :where where}
+                       {:select columns-without-logs})
                (join-sort-columns sort-column)
-               (merge {:select    [:task_history.*]
-                       :left-join [:metabase_database [:= :task_history.db_id :metabase_database.id]]
+               (merge {:left-join [:metabase_database [:= :task_history.db_id :metabase_database.id]]
                        :order-by  [[(join-sort-columns sort-column) sort-direction] [:task_history.id :desc]]})
 
                (not (join-sort-columns sort-column))

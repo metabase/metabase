@@ -9,6 +9,7 @@ import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
+  Loader,
   LoadingOverlay,
   Text,
   TreeTable,
@@ -24,14 +25,17 @@ import type {
   TaskRun,
 } from "metabase-types/api";
 
-import { formatTaskRunType, renderTaskRunCounters } from "../../utils";
+import { formatTaskDuration, formatTaskRunType } from "../../utils";
 import { TaskRunStatusBadge } from "../TaskRunStatusBadge";
 
 import { DEFAULT_SORTING, TASK_RUN_SORT_COLUMNS } from "./utils";
 
-const COLUMN_WIDTHS = [0.2, 0.2, 0.17, 0.17, 0.13, 0.13];
+const COLUMN_WIDTHS = [0.15, 0.2, 0.2, 0.3, 0.15];
 
 type TaskRunsTableProps = {
+  /** Leave out the status column, for a table where every run has the same status. */
+  hideStatus?: boolean;
+  emptyLabel?: string;
   isFetching: boolean;
   isLoading: boolean;
   page: number;
@@ -43,6 +47,8 @@ type TaskRunsTableProps = {
 };
 
 export const TaskRunsTable = ({
+  hideStatus = false,
+  emptyLabel = t`No results`,
   isFetching,
   isLoading,
   page,
@@ -52,7 +58,11 @@ export const TaskRunsTable = ({
 }: TaskRunsTableProps) => {
   const navigate = useNavigate();
 
-  const columns = useMemo(() => getColumns(), []);
+  const columns = useMemo(
+    () =>
+      getColumns().filter((column) => !hideStatus || column.id !== "status"),
+    [hideStatus],
+  );
   const { sortingState, onSortingChange } = useSortingStateChange({
     sortingOptions,
     columns: TASK_RUN_SORT_COLUMNS,
@@ -86,7 +96,9 @@ export const TaskRunsTable = ({
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="task-runs-table">
       {isLoading ? (
-        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
+        <TreeTableSkeleton
+          columnWidths={hideStatus ? COLUMN_WIDTHS.slice(1) : COLUMN_WIDTHS}
+        />
       ) : (
         <>
           <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
@@ -94,7 +106,7 @@ export const TaskRunsTable = ({
             instance={treeTableInstance}
             hierarchical={false}
             ariaLabel={t`Task runs`}
-            emptyState={<MonitorEmptyState label={t`No results`} />}
+            emptyState={<MonitorEmptyState label={emptyLabel} />}
             getRowProps={() => ({ "data-testid": "task-run" })}
             onRowClick={handleRowActivate}
           />
@@ -107,8 +119,45 @@ export const TaskRunsTable = ({
 function getColumns(): TreeTableColumnDef<TaskRun>[] {
   return [
     {
+      id: "status",
+      header: t`Status`,
+      width: "auto",
+      minWidth: 100,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (taskRun) => taskRun.status,
+      cell: ({ row }) =>
+        row.original.status === "started" ? (
+          <Loader size="xs" data-testid="task-run-running" />
+        ) : (
+          <TaskRunStatusBadge taskRun={row.original} />
+        ),
+    },
+    {
+      id: "started_at",
+      header: t`Started at`,
+      width: "auto",
+      minWidth: 150,
+      enableSorting: true,
+      sortDescFirst: true,
+      accessorFn: (taskRun) => taskRun.started_at,
+      cell: ({ row }) => (
+        <Ellipsified
+          style={{ maxWidth: 180 }}
+          alwaysShowTooltip
+          tooltip={row.original.started_at}
+        >
+          <DateTime
+            value={row.original.started_at}
+            unit="minute"
+            data-testid="started-at"
+          />
+        </Ellipsified>
+      ),
+    },
+    {
       id: "run_type",
-      header: t`Run Type`,
+      header: t`Task`,
       width: "auto",
       minWidth: 150,
       maxAutoWidth: 240,
@@ -135,70 +184,24 @@ function getColumns(): TreeTableColumnDef<TaskRun>[] {
       ),
     },
     {
-      id: "started_at",
-      header: t`Started at`,
+      id: "duration",
+      header: t`Duration`,
       width: "auto",
-      minWidth: 150,
-      enableSorting: true,
-      sortDescFirst: true,
-      accessorFn: (taskRun) => taskRun.started_at,
+      minWidth: 120,
+      enableSorting: false,
+      accessorFn: (taskRun) => taskRun.ended_at,
       cell: ({ row }) => (
-        <Ellipsified
-          style={{ maxWidth: 180 }}
-          alwaysShowTooltip
-          tooltip={row.original.started_at}
-        >
-          <DateTime
-            value={row.original.started_at}
-            unit="minute"
-            data-testid="started-at"
-          />
-        </Ellipsified>
+        <Text data-testid="duration">{formatRunDuration(row.original)}</Text>
       ),
     },
-    {
-      id: "ended_at",
-      header: t`Ended at`,
-      width: "auto",
-      minWidth: 150,
-      enableSorting: true,
-      sortDescFirst: false,
-      accessorFn: (taskRun) => taskRun.ended_at,
-      cell: ({ row }) =>
-        row.original.ended_at ? (
-          <Ellipsified
-            style={{ maxWidth: 180 }}
-            tooltip={row.original.ended_at}
-          >
-            <DateTime
-              value={row.original.ended_at}
-              unit="minute"
-              data-testid="ended-at"
-            />
-          </Ellipsified>
-        ) : (
-          EMPTY_CELL_PLACEHOLDER
-        ),
-    },
-    {
-      id: "status",
-      header: t`Status`,
-      width: "auto",
-      minWidth: 100,
-      enableSorting: true,
-      sortDescFirst: false,
-      accessorFn: (taskRun) => taskRun.status,
-      cell: ({ row }) => <TaskRunStatusBadge taskRun={row.original} />,
-    },
-    {
-      id: "task_count",
-      header: t`Task Count`,
-      width: "auto",
-      minWidth: 150,
-      enableSorting: true,
-      sortDescFirst: false,
-      accessorFn: (taskRun) => taskRun.task_count,
-      cell: ({ row }) => renderTaskRunCounters(row.original),
-    },
   ];
+}
+
+function formatRunDuration({ started_at, ended_at }: TaskRun) {
+  if (!ended_at) {
+    return EMPTY_CELL_PLACEHOLDER;
+  }
+  return formatTaskDuration(
+    new Date(ended_at).getTime() - new Date(started_at).getTime(),
+  );
 }

@@ -141,3 +141,25 @@ export const guardTaskRunStartedAtRange = (
   )
     // Unjustified type cast. FIXME
     .includes(value as TaskRunDateFilterOption);
+
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+
+/** Milliseconds below 100 ms, tenths of a second below a minute, then minutes and hours. */
+export function formatTaskDuration(ms: number) {
+  if (ms < 100) {
+    return t`${Math.max(0, Math.round(ms))} ms`;
+  }
+  if (ms < MINUTE) {
+    return t`${(ms / SECOND).toFixed(1)} s`;
+  }
+  if (ms < HOUR) {
+    const minutes = Math.floor(ms / MINUTE);
+    const seconds = Math.round((ms % MINUTE) / SECOND);
+    return t`${minutes} m ${seconds} s`;
+  }
+  const hours = Math.floor(ms / HOUR);
+  const minutes = Math.round((ms % HOUR) / MINUTE);
+  return t`${hours} h ${minutes} m`;
+}

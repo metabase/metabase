@@ -66,11 +66,6 @@ const dependencyDiagnosticsUpsellPage = () =>
     Component: DependencyDiagnosticsUpsellPage,
   }));
 
-const jobInfoApp = () =>
-  import(
-    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/JobInfoApp"
-  ).then(({ JobInfoApp }) => ({ Component: JobInfoApp }));
-
 const logs = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/Logs"
@@ -121,9 +116,11 @@ export function getMonitorRoutes() {
 
         <Route element={<CanAccessMonitoringTools />}>
           <Route path="tasks">{getTasksRoutes()}</Route>
-          <Route path="jobs" lazy={jobInfoApp}>
-            <Route path=":jobKey" />
-          </Route>
+          <Route path="jobs" element={redirect(Urls.monitorJobs())} />
+          <Route
+            path="jobs/:jobKey"
+            element={redirect(`${Urls.monitorTasks()}/jobs/:jobKey`)}
+          />
           <Route path="logs" lazy={logs}>
             {lazyModalRouteElement("levels", logLevelsModal)}
           </Route>
@@ -194,7 +191,7 @@ export function getMonitorRedirects() {
       <Route path="/admin/tools/jobs" element={redirect(Urls.monitorJobs())} />
       <Route
         path="/admin/tools/jobs/*"
-        element={redirect(`${Urls.monitorJobs()}/*`)}
+        element={redirect(`${Urls.monitorTasks()}/jobs/*`)}
       />
       <Route path="/admin/tools/logs" element={redirect(Urls.monitorLogs())} />
       <Route

@@ -1,6 +1,7 @@
 (ns metabase.task-history.api
   "/api/task endpoints"
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
@@ -10,10 +11,13 @@
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -34,10 +38,41 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `TaskHistory` entry with ID."
+  "Get `TaskHistory` entry with ID. A task that ran inside a debug log capture has a plain-text log that can reach
+  10 MB; it is left out of this response and `debug_log_bytes` gives its size. Fetch it from `GET /api/task/:id/logs`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-404 (api/read-check :model/TaskHistory id)))
+  (let [{:keys [logs] :as task} (api/check-404 (api/read-check :model/TaskHistory id))]
+    (if (string? logs)
+      (assoc task :logs nil, :debug_log_bytes (alength (.getBytes ^String logs "UTF-8")))
+      task)))
+
+(defn- log-entry->line
+  [{:keys [timestamp level fqns msg exception]}]
+  (str timestamp " " (some-> level name u/upper-case-en) " " fqns " - " msg
+       (when (seq exception)
+         (str "\n" (str/join "\n" exception)))))
+
+(defn- logs->text
+  "The `:logs` of a TaskHistory as plain text: a debug log as is, the usual JSON-array capture one entry per line."
+  [logs]
+  (if (string? logs)
+    logs
+    (str/join "\n" (map log-entry->line logs))))
+
+(defn- text-download-response [filename body]
+  {:status  200
+   :headers {"Content-Type"        "text/plain; charset=utf-8"
+             "Content-Disposition" (format "attachment; filename=\"%s\"" filename)}
+   :body    body})
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:id/logs"
+  "Download the captured logs of the `TaskHistory` entry with ID as a plain-text file."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (let [{:keys [logs]} (api/check-404 (api/read-check :model/TaskHistory id))]
+    (text-download-response (format "task-%d.log" id) (logs->text logs))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -73,7 +108,8 @@
    [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
    [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
    [:entity-id   {:optional true} ms/PositiveInt]
-   [:status      {:optional true} [:enum "started" "success" "failed" "abandoned"]]
+   ;; one status, or several (`?status=success&status=abandoned`)
+   [:status      {:optional true} (ms/QueryVectorOf [:enum "started" "success" "failed" "abandoned"])]
    [:started-at  {:optional true} ms/NonBlankString]])
 
 (def ^:private run-sort-columns
@@ -213,6 +249,17 @@
         hydrate-task-counts
         first
         (assoc :tasks tasks))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/runs/:id/logs"
+  "Download the captured logs of every task of a run, oldest task first, as one plain-text file."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (perms/check-has-application-permission :monitoring)
+  (api/check-404 (task-history.db/task-run id))
+  (text-download-response
+   (format "run-%d.log" id)
+   (str/join "\n" (for [{task-id :id, :keys [task logs]} (task-history.db/task-logs-for-run id)]
+                    (str "===== task " task-id " " task " =====\n" (logs->text logs))))))
 
 (api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
   "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."

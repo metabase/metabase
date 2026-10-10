@@ -1,17 +1,12 @@
 import { Route, redirect } from "metabase/router";
 
 /**
- * The task pages, in one chunk. Moving between the task list, a task and its
- * runs is one flow, so they arrive together.
+ * The task pages, in one chunk. Moving between the runs list, a run and its
+ * tasks is one flow, so they arrive together.
  *
  * They sit under `components/` rather than a `pages/` directory, which is why
  * the route-file lint rule does not reach them.
  */
-const taskListPage = () =>
-  import(
-    /* webpackChunkName: "monitor-tasks" */ "./components/TaskListPage"
-  ).then(({ TaskListPage }) => ({ Component: TaskListPage }));
-
 const taskDetailsPage = () =>
   import(
     /* webpackChunkName: "monitor-tasks" */ "./components/TaskDetailsPage"
@@ -29,10 +24,12 @@ const taskRunDetailsPage = () =>
 
 export const getTasksRoutes = () => (
   <>
-    <Route index element={redirect("list")} />
-    <Route path="list" lazy={taskListPage} />
+    <Route index lazy={taskRunsPage} />
+    <Route path="jobs/:jobKey" lazy={taskRunsPage} />
+    {/* old tab URLs */}
+    <Route path="list" element={redirect("..")} />
+    <Route path="runs" element={redirect("..")} />
     <Route path="list/:taskId" lazy={taskDetailsPage} />
-    <Route path="runs" lazy={taskRunsPage} />
     <Route path="runs/:runId" lazy={taskRunDetailsPage} />
   </>
 );

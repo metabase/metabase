@@ -184,7 +184,8 @@
    [:task_details {:optional true} [:maybe ::task-history.task-details]]
    [:status       {:optional true} [:maybe [:or :keyword :string]]]
    [:run_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:logs         {:optional true} [:maybe [:sequential ::task-history.log]]]])
+   ;; a string when the task ran inside a debug log capture: the plain-text log itself
+   [:logs         {:optional true} [:maybe [:or :string [:sequential ::task-history.log]]]]])
 
 (mr/def ::task-run
   "A TaskRun as selected from the app DB: every column of `:task_run`."

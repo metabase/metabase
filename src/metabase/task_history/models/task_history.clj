@@ -1,11 +1,13 @@
 (ns metabase.task-history.models.task-history
   (:require
+   [clojure.string :as str]
    ;; installs a capturing LoggerFactory via *logger-factory*; util.log doesn't expose the factory plumbing
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -69,9 +71,16 @@
   (assert-task-history-status (:status task-history))
   task-history)
 
+(defn- logs-out
+  "`:logs` is a JSON array of captured entries, or, for a task run with debug log capture, the plain-text log itself."
+  [s]
+  (if (and (string? s) (str/starts-with? s "["))
+    (mi/json-out-with-keywordization s)
+    s))
+
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding
-   :logs         mi/transform-json
+   :logs         {:in mi/json-in, :out logs-out}
    :status       mi/transform-keyword})
 
 (def FilterParams
@@ -209,6 +218,72 @@
               nil)
             (clojure.tools.logging.impl/write! base-logger level ex msg)))))))
 
+;;; Debug log capture: a user-triggered sync/scan runs inside [[with-debug-log-capture]], which raises the relevant
+;;; loggers to DEBUG or TRACE and stores every line the task's thread logs, as plain text in `:logs`, instead of the 100-entry
+;;; summary above. One byte budget is shared by all the tasks of the capture.
+
+(def ^:private debug-log-max-bytes (* 10 1024 1024))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^:private *debug-capture*
+  "`{:remaining (atom bytes), :dropped (atom lines)}` while inside [[with-debug-log-capture]]."
+  nil)
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^:private ^StringBuilder *debug-task-log*
+  "The buffer of the innermost task on this thread, while a debug capture is active."
+  nil)
+
+(defonce ^:private debug-capture-running? (atom false))
+
+(defn debug-log-capture-active?
+  "Whether a debug log capture is running on this instance. Only one runs at a time."
+  []
+  @debug-capture-running?)
+
+(defn- redact
+  "Connection details and JDBC specs get logged at TRACE. Mask the values of their secret-looking keys, in Clojure
+  map, JSON, and `key=value` spellings, and basic-auth headers like the server log does."
+  [^String line]
+  (-> line
+      (str/replace #":basic-auth \[[^\]]*\]" ":basic-auth [redacted]")
+      (str/replace #"(?i)((?:password|passwd|secret|token|private[-_]?key|access[-_]?key)[\w-]*\"?\s*[=:]?\s*)(\"[^\"]*\"|\S+)"
+                   "$1[redacted]")))
+
+(defn- capture-debug-line! [^String line]
+  (when-let [^StringBuilder sb *debug-task-log*]
+    (let [{:keys [remaining dropped]} *debug-capture*
+          ^String line                (redact line)
+          n                           (alength (.getBytes line "UTF-8"))]
+      (if (>= (swap! remaining - n) 0)
+        (.append sb line)
+        (swap! dropped inc)))))
+
+(defn- debug-task-log-text [^StringBuilder sb]
+  (let [dropped @(:dropped *debug-capture*)]
+    (cond-> (str sb)
+      (pos? dropped) (str (format "Debug log limit of %d MB reached; %d lines were dropped.%n"
+                                  (quot debug-log-max-bytes (* 1024 1024)) dropped)))))
+
+(defn do-with-debug-log-capture
+  "Impl for [[with-debug-log-capture]]."
+  [logger-names level f]
+  (when-not (compare-and-set! debug-capture-running? false true)
+    (throw (ex-info "A debug log capture is already running." {:status-code 409})))
+  (try
+    (binding [*debug-capture* {:remaining (atom debug-log-max-bytes), :dropped (atom 0)}]
+      (logger/do-with-level-capture logger-names level capture-debug-line! f))
+    (finally
+      (reset! debug-capture-running? false))))
+
+(defmacro with-debug-log-capture
+  "Run `body` with the loggers named by `logger-names` raised to `level` (`:debug` or `:trace`), storing every line
+  logged by the tasks inside it as plain text in their `:logs`, up to 10 MB in total. The server log is not affected.
+  Only one capture runs at a time; a second one fails with a 409."
+  {:style/indent 2}
+  [logger-names level & body]
+  `(do-with-debug-log-capture ~logger-names ~level (fn [] ~@body)))
+
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
   [info :- TaskHistoryInfo
@@ -223,14 +298,22 @@
                                         :status     :started
                                         :started_at (t/instant))
                            run-id (assoc :run_id run-id)))
-        logs-atom       (log-capture-atom)]
-    (binding [clojure.tools.logging/*logger-factory*
-              (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
+        debug?          (some? *debug-capture*)
+        logs-atom       (log-capture-atom)
+        debug-log       (when debug? (StringBuilder.))
+        logs            (fn []
+                          (if debug?
+                            (debug-task-log-text debug-log)
+                            (log-capture-entries @logs-atom)))]
+    (binding [clojure.tools.logging/*logger-factory* (if debug?
+                                                       clojure.tools.logging/*logger-factory*
+                                                       (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom))
+              *debug-task-log*                       debug-log]
       (try
         (u/prog1 (f)
           (update-task-history! th-id start-time-ns (on-success-info {:status       :success
                                                                       :task_details (:task_details info)
-                                                                      :logs         (log-capture-entries @logs-atom)}
+                                                                      :logs         (logs)}
                                                                      <>)))
         (catch Throwable e
           (update-task-history! th-id start-time-ns
@@ -240,7 +323,7 @@
                                                               :stacktrace    (u/filtered-stacktrace e)
                                                               :ex-data       (ex-data e)
                                                               :original-info (:task_details info)}
-                                               :logs         (log-capture-entries @logs-atom)
+                                               :logs         (logs)
                                                :status       :failed}
                                               e))
           (throw e))))))

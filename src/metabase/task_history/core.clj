@@ -9,6 +9,8 @@
 
 (p/import-vars
  [metabase.task-history.models.task-history
+  debug-log-capture-active?
+  with-debug-log-capture
   with-task-history]
  [metabase.task-history.models.task-run
   complete-task-run!

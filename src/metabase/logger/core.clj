@@ -280,3 +280,85 @@
     (.removeLogger (configuration) a-namespace)
     (.updateLoggers
      (context))))
+
+;;; Trace capture
+
+(defn- level-int ^long [^Level level]
+  (.intLevel level))
+
+(defn- raised-logger-old-level
+  "The pre-capture level of the most specific raised logger that covers `logger-name`, or nil if none does."
+  ^Level [old-levels ^String logger-name]
+  (some (fn [[^String prefix level]]
+          (when (or (= logger-name prefix)
+                    (.startsWith logger-name (str prefix ".")))
+            level))
+        ;; most specific prefix first
+        (sort-by (comp - count key) old-levels)))
+
+(defn- pre-capture-visibility-filter
+  "A log4j filter that denies events a raised logger would not have emitted before the capture, so the appenders it is
+  attached to keep their pre-capture output."
+  ^org.apache.logging.log4j.core.Filter [old-levels]
+  (proxy [org.apache.logging.log4j.core.filter.AbstractFilter] []
+    (filter [^LogEvent event]
+      (if-let [old-level (raised-logger-old-level old-levels (.getLoggerName event))]
+        (if (> (level-int (.getLevel event)) (level-int old-level))
+          org.apache.logging.log4j.core.Filter$Result/DENY
+          org.apache.logging.log4j.core.Filter$Result/NEUTRAL)
+        org.apache.logging.log4j.core.Filter$Result/NEUTRAL))))
+
+(defn- line-appender
+  "An appender that formats each event with the configured log layout, so the lines look like the server log, and
+  hands the string to `on-line`."
+  ^AbstractAppender [on-line]
+  (let [^org.apache.logging.log4j.core.Layout layout (find-logger-layout (.getRootLogger (configuration)))
+        ^org.apache.logging.log4j.core.Filter filter                   nil
+        ^"[Lorg.apache.logging.log4j.core.config.Property;" properties nil]
+    (proxy [AbstractAppender] ["trace-capture-appender" filter layout false properties]
+      (append [^LogEvent event]
+        (on-line (str (.toSerializable layout event)))
+        nil))))
+
+(defonce ^:private trace-capture-lock (Object.))
+
+(defn do-with-level-capture
+  "Run `f` with the loggers named by `logger-names` (namespace or Java package prefixes) raised to `level` (`:debug`
+  or `:trace`). Every event they emit, from any thread, is formatted like the server log and passed as a string to
+  `on-line`. Events those loggers would not have emitted before the capture reach no other appender, so the server
+  log, the log file and the in-memory log buffer are unchanged. `on-line` is called on the logging thread; it decides
+  which lines to keep.
+
+  Only one capture runs at a time per JVM; a second caller waits for the first to finish."
+  [logger-names level on-line f]
+  (locking trace-capture-lock
+    (let [^AbstractConfiguration config (configuration)
+          pre-existing (set (filter exact-ns-logger logger-names))
+          old-levels   (into {} (for [logger-name logger-names]
+                                  [(str logger-name) (.getLevel (effective-ns-logger logger-name))]))
+          filter       (pre-capture-visibility-filter old-levels)
+          appender     (line-appender on-line)
+          filtered     (vec (for [^Appender a (vals (.getAppenders config))
+                                  :when (instance? org.apache.logging.log4j.core.filter.AbstractFilterable a)]
+                              a))
+          root         (.getRootLogger config)]
+      (try
+        (doseq [^org.apache.logging.log4j.core.filter.AbstractFilterable a filtered]
+          (.addFilter a filter))
+        (.start appender)
+        (.addAppender config appender)
+        (.addAppender root appender Level/ALL nil)
+        (doseq [logger-name logger-names]
+          (set-ns-log-level! logger-name level))
+        (f)
+        (finally
+          (doseq [logger-name logger-names]
+            (if (pre-existing logger-name)
+              (set-ns-log-level! logger-name (get old-levels (str logger-name)))
+              (remove-ns-logger! logger-name)))
+          (.removeAppender root (.getName appender))
+          (.removeAppender config (.getName appender))
+          (.stop appender)
+          (doseq [^org.apache.logging.log4j.core.filter.AbstractFilterable a filtered]
+            (.removeFilter a filter))
+          (.updateLoggers (context)))))))

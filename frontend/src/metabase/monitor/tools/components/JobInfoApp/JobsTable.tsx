@@ -1,7 +1,9 @@
-import type { Row } from "@tanstack/react-table";
-import { useCallback, useMemo } from "react";
+import { useInterval } from "@mantine/hooks";
+import type { Row, SortingState } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useNavigate } from "metabase/router";
@@ -14,11 +16,13 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Job } from "metabase-types/api";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import type { Job, Trigger } from "metabase-types/api";
 
-const COLUMN_WIDTHS = [0.34, 0.33, 0.33];
+const COLUMN_WIDTHS = [0.4, 0.3, 0.3];
 
-type JobRow = Job & { id: string };
+/** One row per trigger; `jobKey` opens the trigger details of its job. */
+type TriggerRow = Trigger & { id: string; jobKey: string };
 
 type JobsTableProps = {
   isFetching: boolean;
@@ -29,23 +33,44 @@ type JobsTableProps = {
 export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
   const navigate = useNavigate();
 
-  const rows: JobRow[] = useMemo(
-    () => jobs.map((job) => ({ ...job, id: job.key })),
+  const rows: TriggerRow[] = useMemo(
+    () =>
+      jobs.flatMap((job) =>
+        job.triggers.map((trigger) => ({
+          ...trigger,
+          id: trigger.key,
+          jobKey: job.key,
+        })),
+      ),
     [jobs],
   );
-  const columns = useMemo(() => getColumns(), []);
+  // "in 5 minutes" has to keep moving without refetching: re-render the time
+  // cells on a timer by rebuilding the columns with the current moment
+  const [now, setNow] = useState(() => Date.now());
+  const tick = useInterval(() => setNow(Date.now()), 30_000);
+  useEffect(() => {
+    tick.start();
+    return tick.stop;
+  }, [tick]);
+  const columns = useMemo(() => getColumns(now), [now]);
+  // soonest trigger first
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "next-fire-time", desc: false },
+  ]);
 
   const handleRowActivate = useCallback(
-    (row: Row<JobRow>) => {
-      navigate(Urls.monitorJobTriggers(row.original.key));
+    (row: Row<TriggerRow>) => {
+      navigate(Urls.monitorJobTriggers(row.original.jobKey));
     },
     [navigate],
   );
 
-  const treeTableInstance = useTreeTableInstance<JobRow>({
+  const treeTableInstance = useTreeTableInstance<TriggerRow>({
     data: rows,
     columns,
-    getNodeId: (job) => job.id,
+    getNodeId: (row) => row.id,
+    sorting,
+    onSortingChange: setSorting,
     onRowActivate: handleRowActivate,
   });
 
@@ -59,7 +84,7 @@ export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
           <TreeTable
             instance={treeTableInstance}
             hierarchical={false}
-            ariaLabel={t`Jobs`}
+            ariaLabel={t`Scheduled jobs`}
             emptyState={<MonitorEmptyState label={t`No results`} />}
             getRowProps={() => ({ "data-testid": "job" })}
             onRowClick={handleRowActivate}
@@ -70,40 +95,85 @@ export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
   );
 };
 
-function getColumns(): TreeTableColumnDef<JobRow>[] {
+/**
+ * `metabase.task.sync-and-analyze.trigger.5` reads as `sync-and-analyze.5`: the
+ * shared prefix and the `.trigger` segment say nothing about the trigger.
+ */
+function formatTriggerKey(key: string) {
+  return key.replace(/^metabase\.task\./, "").replace(/\.trigger(?=\.|$)/, "");
+}
+
+function getColumns(now: number): TreeTableColumnDef<TriggerRow>[] {
   return [
     {
       id: "key",
-      header: t`Key`,
+      header: t`Trigger`,
       width: "auto",
       minWidth: 200,
-      maxAutoWidth: 300,
+      maxAutoWidth: 320,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (job) => job.key,
-      cell: ({ row }) => <Ellipsified>{row.original.key}</Ellipsified>,
+      accessorFn: (row) => formatTriggerKey(row.key),
+      cell: ({ row }) => (
+        <Ellipsified tooltip={row.original.key}>
+          {formatTriggerKey(row.original.key)}
+        </Ellipsified>
+      ),
     },
     {
-      id: "class",
-      header: t`Class`,
+      id: "next-fire-time",
+      header: t`Next fire time`,
       width: "auto",
-      minWidth: 200,
-      maxAutoWidth: 350,
+      minWidth: 150,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (job) => job.class,
-      cell: ({ row }) => <Ellipsified>{row.original.class}</Ellipsified>,
+      accessorFn: (row) => row["next-fire-time"] ?? "",
+      cell: ({ row }) => (
+        <FireTime value={row.original["next-fire-time"]} now={now} upcoming />
+      ),
     },
     {
-      id: "description",
-      header: t`Description`,
+      id: "previous-fire-time",
+      header: t`Last fired`,
       width: "auto",
-      minWidth: 200,
-      maxAutoWidth: 350,
+      minWidth: 150,
       enableSorting: true,
-      sortDescFirst: false,
-      accessorFn: (job) => job.description,
-      cell: ({ row }) => <Ellipsified>{row.original.description}</Ellipsified>,
+      sortDescFirst: true,
+      accessorFn: (row) => row["previous-fire-time"] ?? "",
+      cell: ({ row }) => (
+        <FireTime
+          value={row.original["previous-fire-time"]}
+          now={now}
+          emptyLabel={t`Never`}
+        />
+      ),
     },
   ];
+}
+
+/** "in an hour" / "3 hours ago"; the tooltip keeps the exact time. */
+function FireTime({
+  value,
+  now,
+  upcoming = false,
+  emptyLabel = EMPTY_CELL_PLACEHOLDER,
+}: {
+  value: string | null;
+  /** The moment to be relative to; changes on a timer so the text stays current. */
+  now: number;
+  /** A time that should be in the future reads "Due 5 minutes ago" once it has passed. */
+  upcoming?: boolean;
+  emptyLabel?: string;
+}) {
+  if (!value) {
+    return emptyLabel;
+  }
+  const time = dayjs(value);
+  const isOverdue = upcoming && !time.isAfter(now);
+  const relative = time.from(now);
+  return (
+    <Ellipsified style={{ maxWidth: 180 }} alwaysShowTooltip tooltip={value}>
+      {isOverdue ? t`Due ${relative}` : relative}
+    </Ellipsified>
+  );
 }

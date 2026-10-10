@@ -41,7 +41,7 @@ export const DatabaseConnectionInfoSection = ({
   const [dismissSyncSpinner] = useDismissDatabaseSyncSpinnerMutation();
 
   const handleSyncDatabaseSchema = async () => {
-    await syncDatabaseSchema(database.id).unwrap();
+    await syncDatabaseSchema({ id: database.id }).unwrap();
     // refresh any table lists now that the schema may have changed
     dispatch(tableApi.util.invalidateTags([listTag("table")]));
   };
@@ -103,7 +103,9 @@ export const DatabaseConnectionInfoSection = ({
           />
           <ActionButton
             className={S.actionButton}
-            actionFn={() => rescanDatabaseFieldValues(database.id).unwrap()}
+            actionFn={() =>
+              rescanDatabaseFieldValues({ id: database.id }).unwrap()
+            }
             normalText={t`Re-scan field values`}
             activeText={t`Starting…`}
             failedText={t`Failed to start scan`}

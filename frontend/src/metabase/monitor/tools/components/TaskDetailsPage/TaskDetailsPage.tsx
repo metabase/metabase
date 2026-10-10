@@ -62,10 +62,7 @@ export const TaskDetailsPage = () => {
   return (
     <Flex h="100%" wrap="nowrap">
       <MonitorMain gap="xl">
-        <MonitorBackLink
-          to={Urls.monitorTasksList()}
-          label={t`Back to Tasks`}
-        />
+        <MonitorBackLink to={Urls.monitorTasks()} label={t`Back to Tasks`} />
 
         <MonitorPageContent className={S.content}>
           <Stack gap="sm">
@@ -175,7 +172,21 @@ export const TaskDetailsPage = () => {
             </Box>
 
             <MonitorHeaderTitle>{t`Logs`}</MonitorHeaderTitle>
-            {hasLogs ? (
+            {task.debug_log_bytes != null ? (
+              <Flex gap="lg" align="center">
+                <Text>
+                  {t`This task captured a full debug log of ${task.debug_log_bytes} bytes. It is too large to show here.`}
+                </Text>
+                <Button
+                  component="a"
+                  href={`/api/task/${task.id}/logs`}
+                  download={`task-${task.id}.log`}
+                  leftSection={<Icon name="download" />}
+                  variant="filled"
+                  style={{ flexShrink: 0 }}
+                >{t`Download log`}</Button>
+              </Flex>
+            ) : hasLogs ? (
               <Box className={S.codeContainer}>
                 <LogsViewer
                   logs={task?.logs ?? []}
