@@ -983,6 +983,9 @@
    :ignores {:header "ignores", :key :ignores, :show str, :color (tint c/green)}
    :linters {:header "linters", :key :linters, :show str, :color (tint c/green)}})
 
+;; TODO (Chris 2026-10-10) -- also rank by team. The module config gives each module a `:team`, so a count could be
+;; charged to the team that owns the file. People move between teams, so a ranking by author's team needs a
+;; record of who was on which team when.
 (def ^:private rankings
   "The author rankings of a [[summary]].
   `:order` gives a [[leaderboard]] row its rank, as a vector to sort by, or nil to leave the row out."
