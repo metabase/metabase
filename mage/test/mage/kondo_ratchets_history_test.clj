@@ -509,7 +509,9 @@
   [dir author day subject files]
   (doseq [[path content] files]
     (fs/create-dirs (fs/parent (fs/path dir path)))
-    (spit (str (fs/path dir path)) content))
+    (if content
+      (spit (str (fs/path dir path)) content)
+      (fs/delete (fs/path dir path))))
   (let [date  (format "2026-09-%02dT10:00:00Z" day)
         email (str (str/lower-case author) "@example.com")
         git   (fn [& args]
@@ -679,6 +681,24 @@
                  (fn [repo]
                    (vec (for [{:keys [pr author changes]} (history/records repo)]
                           [pr author (map (juxt :kind :measure :delta :bridged?) changes)]))))))))))
+
+(deftest unreadable-test-ratchet-removed-test
+  (testing "a broken test ratchet file that is removed marks the prod changes its budgets are folded into"
+    (let [tests ".clj-kondo/ratchets-test.edn"]
+      (is (= [[:grow [:prod :ignore :b] 3 true]]
+             (binding [*err* (java.io.StringWriter.)]
+               (with-repo!
+                 [["Chris" 1 "Add ratchets (#1)"
+                   {ratchets "{:ignore-counts {:a 2}}\n"
+                    tests    "{:ignore-counts {:b 1}}\n"}]
+                  ["Ada" 2 "Break the test ratchet file (#2)"
+                   {tests "{:ignore-counts {:b 1\n"}]
+                  ["Bob" 3 "Fold it into the other, with a raise (#3)"
+                   {ratchets "{:ignore-counts {:a 2, :b 4}}\n"
+                    tests    nil}]]
+                 (fn [repo]
+                   (mapv (juxt :kind :measure :delta :bridged?)
+                         (:changes (first (history/records repo))))))))))))
 
 (deftest newly-discouraged-symbol-test
   (testing "the first budget of a newly discouraged symbol is where it starts, not slack that a shrink takes back"
