@@ -27,6 +27,16 @@
 
 (defmethod semantic.embedding/embedder-circuit-endpoint test-provider [_] test-endpoint)
 
+(def ^:private misconfigured-provider ::misconfigured)
+
+(defmethod semantic.embedding/embedder-circuit-endpoint misconfigured-provider [_]
+  (throw (ex-info "embedding service misconfigured" {})))
+
+(def ^:private interrupted-provider ::interrupted)
+
+(defmethod semantic.embedding/embedder-circuit-endpoint interrupted-provider [_]
+  (throw (InterruptedException. "cancelled")))
+
 (def ^:private call-through* #'semantic.embedding/call-through-embedder-breaker)
 (def ^:private openai-compatible-get-embeddings-batch* #'semantic.embedding/openai-compatible-get-embeddings-batch)
 (def ^:private validate-embeddings!* #'semantic.embedding/validate-embeddings!)
@@ -62,6 +72,20 @@
                                             :config {:api-key "test-key" :base-url "https://openai.example"}})]
       (is (= "https://openai.example/v1/embeddings"
              (semantic.embedding/embedder-circuit-endpoint {:provider "openai"}))))))
+
+(deftest misconfigured-provider-counts-as-untrusted-test
+  (testing "a provider whose endpoint resolution throws is untrusted, not an error"
+    (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
+      (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                  (constantly {:provider misconfigured-provider})]
+        (is (true? (semantic.embedding/embedder-circuit-untrusted?)))))))
+
+(deftest interruption-during-resolution-propagates-test
+  (testing "an interruption during endpoint resolution propagates, rather than counting as untrusted"
+    (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
+      (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                  (constantly {:provider interrupted-provider})]
+        (is (thrown? InterruptedException (semantic.embedding/embedder-circuit-untrusted?)))))))
 
 (deftest ^:synchronized request-failure-does-not-change-service-failure-history-test
   (testing "request-, model-, and policy-specific failures neither trip the circuit nor reset service-failure history"
