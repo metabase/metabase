@@ -223,7 +223,6 @@ function trends(p) {
   const before = data.series[data.series.findIndex(s => s.sha === pts[0].sha) - 1];
   const end = Math.min(p.to ? Date.parse(p.to) : Infinity, Date.parse(data.generated) + 864e5);
   const span = [p.from ? Date.parse(p.from) : pts[0].t, Math.max(end, pts[pts.length - 1].t)];
-  const last = pts[pts.length - 1];
   const rows = pts.map(pt => `<tr><td>${esc(pt.date.slice(0, 10))} ${commitLink(pt)}</td>${num(pt.shrunk)}${num(pt.grown)}` +
     `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
   return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
@@ -301,7 +300,7 @@ function render(p) {
     `</div>` +
     section("Most introduced", "Ranked by the ignores the new linters started with: more debt put under a ratchet is better.",
       ranking(r.board, x => x.linters > 0, x => -x.ignores, [["ignores", "ignores", good], ["linters", "linters", good]])) +
-    section("New linters", "A linter that got its first budget in the commit that added it.",
+    section("New linters", "A linter, or a newly discouraged symbol, that got its first budget in the commit that added it.",
       groups(r.introduced, i => `<li><span class="num good">${esc(i.budget)}</span><span class="name good">${esc(i.measure)}</span></li>`)) +
     section("Total deltas by linter", "",
       table(["", "shrunk", "grown", "net"],
@@ -340,7 +339,7 @@ function verdicts() {
     return `<div class="card verdict">${commit(v.commit)}<p class="why">${esc(v.why || "No reason recorded.")}</p>` +
       `<p class="hint">${signed(sum(v))} across ${v.raises.length} budget${v.raises.length === 1 ? "" : "s"}</p><ul class="items">${items.join("")}</ul></div>`;
   };
-  const of = kind => data.verdicts.filter(v => (kind === "pardon" ? v.verdict !== "confirm" : v.verdict === kind)).sort((a, b) => b.commit.date.localeCompare(a.commit.date));
+  const of = kind => data.verdicts.filter(v => (kind === "pardon" ? v.verdict !== "confirm" : v.verdict === kind)).sort((a, b) => Date.parse(b.commit.date) - Date.parse(a.commit.date));
   const total = of("pardon").reduce((a, v) => a + sum(v), 0);
   return `<header><h2>Pardons and exclusions</h2><p>What the numbers on the other pages leave out, and why</p></header>` +
     section("Pardoned", `These budget changes count for and against nobody, ${signed(total)} in all: each says nothing about the commit that made it. A later shrink that only takes one back is left out too.`,
@@ -354,7 +353,7 @@ function verdicts() {
 function show() {
   const fallback = (data.periods.find(p => p.kind === "week") || byId.all).id;
   const hash = location.hash.slice(1);
-  const id = (byId[hash] || hash === "verdicts") ? hash : fallback;
+  const id = (Object.hasOwn(byId, hash) || hash === "verdicts") ? hash : fallback;
   for (const key of Object.keys(drawn)) delete drawn[key];
   document.getElementById("nav").innerHTML = nav(id);
   document.getElementById("main").innerHTML =

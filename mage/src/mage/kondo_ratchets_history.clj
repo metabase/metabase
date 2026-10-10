@@ -38,7 +38,7 @@
    [mage.shell :as shell]
    [mage.util :as u])
   (:import
-   (java.time LocalDate)
+   (java.time Instant LocalDate OffsetDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoUnit)
    (java.util Locale)))
@@ -58,7 +58,7 @@
 
 ;; Bump the last segment when the shape or meaning of a cached record changes.
 (def ^:private cache-dir
-  (fs/path (fs/home) ".cache" "mage" "kondo-ratchets-history" "v3"))
+  (fs/path (fs/home) ".cache" "mage" "kondo-ratchets-history" "v4"))
 
 ;;; ------------------------------------------------- Budgets --------------------------------------------------
 
@@ -245,8 +245,8 @@
           lines))
 
 (defn- log [& args]
-  (parse-log (apply git "log" "--first-parent" "--diff-merges=first-parent" "--no-renames" "--raw" "--no-abbrev"
-                    log-format args)))
+  (parse-log (apply git "log" "--first-parent" "--topo-order" "--diff-merges=first-parent" "--no-renames" "--raw"
+                    "--no-abbrev" log-format args)))
 
 (defn- ratchet-commits
   "Shas of the commits that changed a ratchet file, newest first. `args` select the commits, as for `git log`."
@@ -294,12 +294,18 @@
   "Did commit `sha` only lower budgets, as the post-merge automation does? Such a commit leaves no slack."
   ;; memoized: the search for a shrink's boundary asks this of every older commit, each time with a git call
   (memoize (fn [sha]
-             (and (every? ratchet-paths (git "diff-tree" "--no-commit-id" "--name-only" "-r" sha))
-                  (boolean (some #(= :shrink (:kind %)) (commit-changes sha)))))))
+             ;; without a merge diff mode a merge commit lists no paths at all
+             (let [paths (git "diff-tree" "--no-commit-id" "--name-only" "-r" "--diff-merges=first-parent" sha)
+                   kinds (map :kind (commit-changes sha))]
+               ;; a commit that also raises or adds a budget, as a seeding one does, may leave slack behind
+               (boolean (and (seq paths)
+                             (every? ratchet-paths paths)
+                             (every? #{:shrink :limit} kinds)
+                             (some #{:shrink} kinds)))))))
 
 (defn- blobs
-  "The contents of the git blobs `shas`, keyed by sha."
-  [shas]
+  "`f` of the sha and content of each of the git blobs `shas`, keyed by sha."
+  [f shas]
   (if (empty? shas)
     {}
     (let [^bytes out (:out (p/shell {:in (str/join "\n" shas), :out :bytes, :dir u/project-root-directory}
@@ -311,7 +317,7 @@
                 [sha _ n] (str/split (String. out (int pos) (int (- eol pos)) "UTF-8") #" ")]
             ;; a missing object has a header and no content
             (if-let [size (some-> n parse-long)]
-              (recur (+ eol size 2) (assoc acc sha (String. out (int (inc eol)) (int size) "UTF-8")))
+              (recur (+ eol size 2) (assoc acc sha (f sha (String. out (int (inc eol)) (int size) "UTF-8"))))
               (recur (inc eol) acc))))))))
 
 (def ^:private no-blob (apply str (repeat 40 "0")))
@@ -324,9 +330,6 @@
   "What `content`, the file at `path`, adds to each measure's actual count. Sides are those of the file's path."
   [path content]
   (cond
-    (nil? content)
-    {}
-
     (= path kondo-config-file)
     (update-keys (ratchet/config-suppressions (edn/read-string content)) #(vector :prod :config %))
 
@@ -342,33 +345,51 @@
     :else
     {}))
 
+(defn- tallies
+  "What each blob in `files`, the files some commits changed, adds to each measure's actual count.
+  Returns a map from blob sha to path to counts, or to `::unreadable` when the blob does not parse at that path.
+  Only the counts are kept, since a window can change far more source than fits in memory."
+  [files]
+  (let [paths (reduce (fn [acc {:keys [path old new]}]
+                        (-> acc
+                            (update old (fnil conj #{}) path)
+                            (update new (fnil conj #{}) path)))
+                      {}
+                      files)
+        tally (fn [sha content]
+                (into {}
+                      (for [path (paths sha)]
+                        [path (try
+                                (counts path content)
+                                (catch Exception _
+                                  ::unreadable))])))]
+    (into {}
+          (mapcat #(blobs tally %))
+          (partition-all 500 (remove #{no-blob} (keys paths))))))
+
 (defn- actual-delta
-  "How far `commit` moved each measure's actual count. A file that cannot be read on both sides counts nothing."
-  [contents commit]
+  "How far `commit` moved each measure's actual count, from the [[tallies]] of its files.
+  A file that cannot be read on both sides counts nothing."
+  [tallies commit]
   (apply merge-with + {}
-         (for [{:keys [path old new]} (:files commit)]
-           (try
-             (subtract (counts path (contents new)) (counts path (contents old)))
-             (catch Exception _
-               {})))))
+         (for [{:keys [path old new]} (:files commit)
+               :let  [before (get-in tallies [old path] {})
+                      after  (get-in tallies [new path] {})]
+               :when (not-any? #{::unreadable} [before after])]
+           (subtract after before))))
 
 (defn- load-window
   "The commits after `boundary` up to `sha`, newest first, that could have moved an actual count or a budget.
   Returns them as `:commits`, with `:actual`, a function from one of them to how far it moved each actual count."
   [boundary sha]
-  (let [span     (str boundary ".." sha)
-        touched  (concat (apply log span "-Gclj-kondo/ignore" "--" ratchet/source-roots)
-                         (log span "--" kondo-config-file module-config-file)
-                         (apply log span "--" ratchet-paths))
-        by-sha   (reduce (fn [acc commit]
-                           (update acc (:sha commit) #(update commit :files into (:files %))))
-                         {}
-                         touched)
-        commits  (vec (keep by-sha (git "rev-list" "--first-parent" span)))
-        contents (blobs (distinct (remove #{no-blob} (mapcat (juxt :old :new) (mapcat :files commits)))))]
+  (let [counted? (some-fn source-file? ratchet-paths #{kondo-config-file module-config-file})
+        commits  (mapv (fn [commit] (update commit :files #(filterv (comp counted? :path) %)))
+                       (apply log (str boundary ".." sha) "--"
+                              (concat ratchet/source-roots [kondo-config-file module-config-file] ratchet-paths)))
+        counts   (tallies (mapcat :files commits))]
     {:boundary boundary
      :commits  commits
-     :actual   (memoize #(actual-delta contents %))}))
+     :actual   (memoize #(actual-delta counts %))}))
 
 (def ^:private last-window (atom nil))
 
@@ -570,6 +591,9 @@
 
 ;;; -------------------------------------------------- Report --------------------------------------------------
 
+(defn- instant ^Instant [date]
+  (.toInstant (OffsetDateTime/parse date)))
+
 (defn unify-authors
   "`records` with one name per person.
   Every commit, and every cause of a shrink, whose author email matches takes the author name of the newest of
@@ -577,8 +601,9 @@
   [records]
   (let [newest (reduce (fn [acc {:keys [email author date]}]
                          (cond-> acc
-                           (and email (neg? (compare (get-in acc [email :date] "") date)))
-                           (assoc email {:date date, :author author})))
+                           ;; committer dates carry offsets, so compare them as instants, not as text
+                           (and email (.isBefore ^Instant (get-in acc [email :at] Instant/MIN) (instant date)))
+                           (assoc email {:at (instant date), :author author})))
                        {}
                        (concat records (mapcat #(apply concat (vals (:causes %))) records)))
         rename (fn [{:keys [email], :as commit}]
@@ -591,6 +616,7 @@
   "One entry per commit and measure it is responsible for moving, across `records`.
   An entry is the commit's `:sha`, `:author`, `:pr` and `:subject`, with the `:measure` and its `:delta`.
   A grow belongs to the commit that raised the budget and a shrink to its causes.
+  A grow that has causes was a shrink before a pardoned raise was taken out of it, and belongs to them too.
   The unexplained part of a shrink belongs to the shrinking commit too.
   When that commit only lowered budgets, the entry is `:unattributed?` and has no `:author`."
   [records]
@@ -598,12 +624,14 @@
         :let  [commit (dissoc record :changes :causes :unaccounted :tighten? :email)]
         {:keys [kind measure delta]} changes
         :when (#{:shrink :grow} kind)
-        entry (if (= kind :grow)
+        :let  [explained (concat (get causes measure)
+                                 (when-let [left (get unaccounted measure)]
+                                   [(cond-> (assoc commit :delta left)
+                                      tighten? (assoc :author nil :unattributed? true))]))]
+        ;; a shrink can turn into a net raise once a pardoned raise is taken out of it, and keeps its causes
+        entry (if (and (= kind :grow) (empty? explained))
                 [(assoc commit :delta delta)]
-                (concat (get causes measure)
-                        (when-let [left (get unaccounted measure)]
-                          [(cond-> (assoc commit :delta left)
-                             tighten? (assoc :author nil :unattributed? true))])))]
+                explained)]
     (assoc entry :measure measure)))
 
 (defn totals
@@ -631,6 +659,7 @@
   "One row per author across `records`, in author order.
   A row holds how far they `:shrunk` and `:grown` budgets and the `:net` of the two, and the `:linters` they
   introduced with the `:ignores` those started with.
+  A newly discouraged symbol counts as a linter: it is a new rule with its own budget.
   A linter that starts with more ignores was the bigger one to land, and an `:unlimited` one counts none.
   The row for what no commit explains is `:unattributed?` and has no `:author`."
   [records]
