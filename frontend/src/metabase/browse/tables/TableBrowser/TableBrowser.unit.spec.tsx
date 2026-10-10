@@ -19,6 +19,13 @@ import {
 
 import { TableBrowser } from "./TableBrowser";
 
+// The test asserts that the browser polls while a sync is in progress, not how
+// long it waits between polls.
+jest.mock("metabase/browse/constants", () => ({
+  ...jest.requireActual("metabase/browse/constants"),
+  RELOAD_INTERVAL: 50,
+}));
+
 describe("TableBrowser", () => {
   beforeEach(() => {
     // The database breadcrumb reads the database list that the app fetches on launch.
