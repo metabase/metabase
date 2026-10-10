@@ -733,6 +733,28 @@ serdes/meta:
               (is (t2/exists? :model/PythonLibrary :entity_id transforms-python/builtin-entity-id)
                   "Built-in PythonLibrary should NOT be deleted after import"))))))))
 
+(deftest first-import-does-not-conflict-on-builtin-python-library-test
+  (testing "A fresh instance's built-in common.py does not block a first import that contains common.py"
+    (mt/with-premium-features #{:transforms-basic}
+      (doseq [transforms-synced? [false true]]
+        (testing (str "remote-sync-transforms " transforms-synced?)
+          (mt/with-temporary-setting-values [remote-sync-transforms transforms-synced?
+                                             remote-sync-enabled true]
+            (mt/with-model-cleanup [:model/RemoteSyncTask :model/PythonLibrary]
+              (t2/insert! :model/PythonLibrary {:path      "common.py"
+                                                :source    ""
+                                                :entity_id transforms-python/builtin-entity-id})
+              (let [task-id    (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                               :initiated_by   (mt/user->id :rasta)})
+                    test-files {"main" {"python_libraries/common.py.yaml"
+                                        (generate-python-library-yaml transforms-python/builtin-entity-id
+                                                                      "common.py"
+                                                                      "def shared_func():\n    return 42")}}
+                    result     (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files test-files))
+                                             task-id)]
+                (is (= :success (:status result))
+                    (str "First import should not conflict. Result: " result))))))))))
+
 (deftest import-replaces-python-library-with-remote-version-test
   (testing "Import updates local PythonLibrary when remote has same entity_id"
     (mt/with-premium-features #{:transforms-basic}
