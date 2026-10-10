@@ -3,11 +3,8 @@
   Provides tool vars and state-aware wrapping.
 
   Each tool is a var whose metadata contains `:tool-name`, `:schema`, and optionally
-  `:capabilities`, `:prompt`, `:decode`, `:system-instructions`, and `:doc-fn`. The var itself
-  is a function that takes the tool arguments and returns a result map.
-
-  `:doc-fn` takes the set of tool names the session offers and returns the description the model
-  reads, or nil to keep the docstring. It lets a tool stop pointing at a tool the profile lacks."
+  `:capabilities`, `:prompt`, `:decode`, and `:system-instructions`. The var itself
+  is a function that takes the tool arguments and returns a result map."
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
@@ -173,9 +170,7 @@
                         (wrap-with-scope-check base-fn tool-name tool-scope)
                         base-fn)
            tool-def   {:tool-name            (:tool-name m)
-                       :doc                  (or (when-let [doc-fn (:doc-fn m)]
-                                                   (doc-fn (set (keys tools))))
-                                                 (:doc m))
+                       :doc                  (:doc m)
                        :schema               (:schema m)
                        :prompt               (:prompt m)
                        :decode               (:decode m)

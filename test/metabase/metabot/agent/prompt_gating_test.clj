@@ -80,7 +80,7 @@
     (testing "explicit denial for NLQ is included when not permitted"
       (is (re-find #"You cannot use natural language querying" without-nql)))
     (testing "denial points to SQL instead"
-      (is (re-find #"write SQL for them instead" without-nql)))))
+      (is (re-find #"offer to write SQL for them instead" without-nql)))))
 
 (deftest ^:parallel prompt-gates-other-tools-section-test
   (let [with-other    (render-internal-template all-yes-perms)

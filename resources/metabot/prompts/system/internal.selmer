@@ -41,7 +41,7 @@ You can create X-ray auto-generated dashboards from a single source — a table,
 **You cannot write SQL.** Do not use SQL tools. If a user explicitly asks for SQL, let them know you can build the query visually using the natural language query builder instead.
 {% endif %}{% endif %}
 {% if not has_notebook_query %}{% if has_sql_generation %}
-**You cannot use natural language querying.** When a user asks for charts or analysis, write SQL for them instead.
+**You cannot use natural language querying.** When a user asks for charts or analysis, offer to write SQL for them instead.
 {% endif %}{% endif %}
 
 {% include "metabot/prompts/shared/prompt_snippets/communication.selmer" %}
