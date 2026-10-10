@@ -25,36 +25,23 @@ function guestEmbedSuite() {
     });
   });
 
-  it("shows a static question", () => {
-    cy.get("@questionId").then(async (questionId) => {
-      const token = await getSignedJwtForResource({
-        // Unjustified type cast. FIXME
-        resourceId: questionId as unknown as number,
-        resourceType: "question",
-      });
-
-      const frame = H.loadSdkIframeEmbedTestPage({
-        metabaseConfig: { isGuest: true },
-        elements: [
-          {
-            component: "metabase-question",
-            attributes: {
-              token,
-            },
-          },
-        ],
-      });
-
-      cy.wait("@getCardQuery");
-
-      frame.within(() => {
-        cy.findByText("Product ID").should("be.visible");
-        cy.findByText("Max of Quantity").should("be.visible");
-      });
+  it("shows an error for a component without guest embed support, and shows and downloads a static question", () => {
+    cy.log("component without guest embed support shows an error");
+    H.loadSdkIframeEmbedTestPage({
+      metabaseConfig: { isGuest: true },
+      elements: [
+        {
+          component: "metabase-browser",
+          attributes: {},
+        },
+      ],
+    }).within(() => {
+      cy.findByText("This component does not support guest embeds").should(
+        "be.visible",
+      );
     });
-  });
 
-  it("allows to download a static question as CSV", () => {
+    cy.log("static question shows and downloads as CSV");
     cy.get("@questionId").then(async (questionId) => {
       const token = await getSignedJwtForResource({
         // Unjustified type cast. FIXME
@@ -78,6 +65,9 @@ function guestEmbedSuite() {
       cy.wait("@getCardQuery");
 
       frame.within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
+
         H.downloadAndAssert({
           isDashboard: false,
           isEmbed: true,
@@ -89,24 +79,6 @@ function guestEmbedSuite() {
           downloadMethod: "GET",
         });
       });
-    });
-  });
-
-  it("shows an error for a component without guest embed support", () => {
-    const frame = H.loadSdkIframeEmbedTestPage({
-      metabaseConfig: { isGuest: true },
-      elements: [
-        {
-          component: "metabase-browser",
-          attributes: {},
-        },
-      ],
-    });
-
-    frame.within(() => {
-      cy.findByText("This component does not support guest embeds").should(
-        "be.visible",
-      );
     });
   });
 }
