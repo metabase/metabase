@@ -96,8 +96,7 @@
 
 (deftest ^:parallel request-body-keeps-temperature-for-models-that-accept-it-test
   (testing "every other whitelisted model still gets the profile's temperature"
-    (doseq [model ["anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1"
-                   "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"
+    (doseq [model ["anthropic/claude-opus-4.5" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"
                    "deepseek/deepseek-v4-pro" "mistralai/mistral-medium-3-5" "z-ai/glm-5.2"]]
       (testing model
         (is (= 0.3 (request-body-temperature model))))))
@@ -275,8 +274,7 @@
                                "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max-0902" "z-ai/glm-5.3" "z-ai/glm-5.2"}
           renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
                                "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
-          budget             #{"anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1" "anthropic/claude-sonnet-4.5"
-                               "anthropic/claude-haiku-4.5"}]
+          budget             #{"anthropic/claude-opus-4.5" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"}]
       (is (= (set (keys @#'openrouter/supported-models))
              (into renderable (concat renderable-default budget))))
       (doseq [model renderable]
@@ -522,6 +520,7 @@
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
                                                     {:id "anthropic/claude-opus-5"     :name "Anthropic: Claude Opus 5"     :created 26}
                                                     {:id "anthropic/claude-sonnet-4.6"                                      :created 25}
+                                                    {:id "anthropic/claude-opus-4.1"   :name "Anthropic: Claude Opus 4.1"   :created 21}
                                                     {:id "anthropic/claude-haiku-4.5"  :name "Anthropic: Claude Haiku 4.5"  :created 20}
                                                     {:id "z-ai/glm-5.3"                :name "Z.AI: GLM 5.3"                :created 15}
                                                     {:id "openai/gpt-4o"               :name "OpenAI: GPT-4o"               :created 10}
