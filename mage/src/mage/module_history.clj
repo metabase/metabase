@@ -74,12 +74,21 @@
   (if-not (map? config)
     ["it must hold one map"]
     (let [{:keys [pages metabase shares]} config
-          unknown       (remove #{:pages :metabase :shares} (keys config))
+          unknown-keys  (fn [m known] (when (map? m) (remove known (keys m))))
+          unknown       (unknown-keys config #{:pages :metabase :shares})
+          unknown-page  (when (sequential? pages) (distinct (mapcat #(unknown-keys % #{:template :file}) pages)))
+          unknown-mb    (unknown-keys metabase #{:profile :uploads :cards})
           string-keyed? (fn [m valid-value?]
                           (and (map? m) (every? string? (keys m)) (every? valid-value? (vals m))))]
       (cond-> []
         (seq unknown)
         (conj (str "unknown keys: " (str/join ", " unknown)))
+
+        (seq unknown-page)
+        (conj (str "unknown keys in :pages: " (str/join ", " unknown-page)))
+
+        (seq unknown-mb)
+        (conj (str "unknown keys in :metabase: " (str/join ", " unknown-mb)))
 
         (not (and (sequential? (or pages []))
                   (every? #(and (map? %) (string? (:template %)) (string? (:file %))) pages)))
@@ -111,12 +120,28 @@
       (u/exit (c/red (str file " is not a publishing config:\n  " (str/join "\n  " problems))) 1))
     config))
 
+(defn- missing-tools
+  "The command-line tools that publishing `config` runs and that are not installed."
+  [{:keys [metabase shares]}]
+  (binding [u/*skip-warning* true]
+    (into [] (remove u/can-run?) (cond-> []
+                                   metabase     (conj "mb")
+                                   (seq shares) (conj "share")))))
+
 ;;;; Pages
 
 (defn- script-safe-json
   "`value` as JSON that can sit inside a `<script>` element."
   [value]
   (str/replace (json/generate-string value) "</" "<\\/"))
+
+(def ^:private placeholders
+  "Placeholder in a page template -> the key of `history.json` it shows, and how to write that key's value."
+  [["/*DATA*/"    "commits"  script-safe-json]
+   ["/*TODAY*/"   "today"    script-safe-json]
+   ["/*ANCHORS*/" "clusters" script-safe-json]
+   ["/*RETEST*/"  "retest"   script-safe-json]
+   ["/*COUNT*/"   "commits"  count]])
 
 (defn fill-template
   "The page `template` with its placeholders replaced from `page-data`, the contents of `history.json`:
@@ -127,23 +152,40 @@
   - `/*RETEST*/`: the latest commit's namespaces per tenth of retest share, a JSON object
   - `/*COUNT*/`: how many commits there are"
   [template page-data]
-  (-> template
-      (str/replace "/*DATA*/" (script-safe-json (get page-data "commits")))
-      (str/replace "/*TODAY*/" (script-safe-json (get page-data "today")))
-      (str/replace "/*ANCHORS*/" (script-safe-json (get page-data "clusters")))
-      (str/replace "/*RETEST*/" (script-safe-json (get page-data "retest")))
-      (str/replace "/*COUNT*/" (str (count (get page-data "commits"))))))
+  (reduce (fn [page [placeholder k write]]
+            (str/replace page placeholder (str (write (get page-data k)))))
+          template
+          placeholders))
+
+(defn- missing-page-keys
+  "Keys that a placeholder in `template` shows and that `page-data` lacks."
+  [template page-data]
+  (distinct (for [[placeholder k] placeholders
+                  :when           (and (str/includes? template placeholder) (not (contains? page-data k)))]
+              k)))
+
+(defn- read-template
+  "The page template at `path`. Exits when there is none, or when it shows a key that `page-data` lacks."
+  [path page-data]
+  (when-not (fs/exists? path)
+    (u/exit (c/red (str "No page template at " path)) 1))
+  (let [template (slurp (str path))
+        missing  (missing-page-keys template page-data)]
+    (when (seq missing)
+      (u/exit (c/red (str "history.json has no " (str/join ", " (map pr-str missing)) ", which " path
+                          " shows. Run without --no-measure to write it again."))
+              1))
+    template))
 
 (defn- write-pages!
   "Fill each of `pages` and write it into `dir`. A template path is relative to `config-dir`."
   [dir config-dir pages]
   (when (seq pages)
-    (let [page-data (json/parse-string (slurp (str (fs/path dir "history.json"))))]
-      (doseq [{:keys [template file]} pages
-              :let [template (fs/path config-dir template)]]
-        (when-not (fs/exists? template)
-          (u/exit (c/red (str "No page template at " template)) 1))
-        (spit (str (fs/path dir file)) (fill-template (slurp (str template)) page-data))
+    (let [page-data (json/parse-string (slurp (str (fs/path dir "history.json"))))
+          ;; Every template is read and checked before any page is written.
+          templates (mapv #(read-template (fs/path config-dir (:template %)) page-data) pages)]
+      (doseq [[{:keys [file]} template] (map vector pages templates)]
+        (spit (str (fs/path dir file)) (fill-template template page-data))
         (println (c/green "Wrote") (str (fs/path dir file)))))))
 
 ;;;; Metabase
@@ -230,6 +272,9 @@
           ;; Read the config first, so a mistake in it shows before the measuring, not after.
           config      (some-> config-file read-config)
           timer       (u/start-timer)]
+      ;; A dry run checks too, so that it predicts what a real run does.
+      (when-let [missing (seq (some-> config missing-tools))]
+        (u/exit (c/red (str "Not installed, but needed to publish: " (str/join ", " missing))) 1))
       (when-not no-measure
         (when-not no-fetch
           (println "Fetching origin/master...")
