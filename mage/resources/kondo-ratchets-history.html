@@ -153,10 +153,12 @@ function biggest(title, b) {
 }
 
 function ranking(rows, keep, order, cols) {
-  const picked = rows.filter(keep).sort((a, b) => order(a) - order(b) || a.author.localeCompare(b.author));
+  // the row for what no commit explains has no author
+  const who = r => r.author ?? "(unattributed)";
+  const picked = rows.filter(keep).sort((a, b) => order(a) - order(b) || who(a).localeCompare(who(b)));
   if (!picked.length) return "";
   return table(["", ...cols.map(c => c[0])],
-    picked.map(r => `<tr><td>${esc(r.author)}</td>${cols.map(c => c[2](r[c[1]])).join("")}</tr>`));
+    picked.map(r => `<tr><td>${esc(who(r))}</td>${cols.map(c => c[2](r[c[1]])).join("")}</tr>`));
 }
 
 function groups(list, item, cls) {
