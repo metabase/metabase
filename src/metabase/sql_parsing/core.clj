@@ -567,16 +567,20 @@
   [dialect sql replacements]
   (protocol/replace-names (parser) dialect sql replacements))
 
+;; Parsing time and memory grow with the length of the SQL, whatever it holds, and the "read-only" check runs on SQL
+;; a user or a model wrote.
+;; As of 2026-10-10, the densest SQL that fits, a list of about 8,000 one-character items, takes about a second to
+;; check, and six such checks at once complete on a 1 GB heap. At 60,000 characters one check took 1 to 3 seconds.
 (def ^:private max-read-only-sql-chars
-  "The longest SQL the \"read-only\" check parses. Parsing time and memory grow with length, whatever the SQL holds, and
-   the check runs on SQL a user or a model wrote.
-   As of 2026-10-10, one check of dense 60,000-character SQL took 1 to 3 seconds and grew the heap by 500 to 900 MB."
+  "The longest SQL, in characters, that the \"read-only\" check parses."
   (* 16 1024))
 
 (defn is-single-stmt-of-type?
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
    and returns the query reconstructed from the parsed AST. `stmt-type` is \"read\", \"write\", or \"read-only\": a
-   read statement that also holds nothing that writes or locks anywhere in its tree."
+   read statement that also holds nothing that writes or locks anywhere in its tree.
+   For \"read-only\", SQL that is not allowed carries a `:reason`, and SQL that is too long or holds a literal list
+   too large to parse whole is refused without being parsed."
   [dialect sql stmt-type]
   ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that grows with it.
   (if (and (= stmt-type "read-only") (< max-read-only-sql-chars (count sql)))

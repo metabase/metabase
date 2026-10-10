@@ -404,30 +404,34 @@
   (testing "SQL that is not one names the reason"
     (are [driver reason detail sql] (= {:reason reason, :detail detail}
                                        (sql-tools/read-only-select-problem driver sql))
-      :postgres  :multiple-statements nil    "SELECT 1; SELECT 2"
-      :postgres  :not-a-select        nil    "DELETE FROM t"
-      :postgres  :writes-or-locks     nil    "SELECT * FROM t FOR UPDATE"
-      :sparksql  :writes-or-locks     nil    "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :postgres  :multiple-statements nil                "SELECT 1; SELECT 2"
+      :postgres  :not-a-select        nil                "DELETE FROM t"
+      :postgres  :writes-or-locks     nil                "SELECT * FROM t FOR UPDATE"
+      :sparksql  :writes-or-locks     nil                "SELECT TRANSFORM (a) USING 'cat' FROM t"
       :postgres  :session-function    "pg_advisory_lock" "SELECT pg_advisory_lock(42)"
-      :mysql     :session-function    "get_lock" "SELECT GET_LOCK('x', 10)"
-      :postgres  :unparseable         nil    "SELECT ("
-      :sqlserver :statement-word      "EXEC" "SELECT 1 FROM t exec('DROP TABLE x')"
-      :mysql     :executable-comment  nil    "SELECT * FROM t /*! FOR UPDATE */"
-      :mysql     :bare-dash-comment   nil    "SELECT id --1 FROM t"
-      :mysql     :backslash-quote     nil    "SELECT 'it\\'s' FROM t"
-      :postgres  :not-a-select        nil    "-- nothing here"
-      :postgres  :large-literal-list  nil    (str "SELECT * FROM t WHERE id IN ("
-                                                  (str/join "," (range 200)) ")"))))
+      :mysql     :session-function    "get_lock"         "SELECT GET_LOCK('x', 10)"
+      :postgres  :unparseable         nil                "SELECT ("
+      :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
+      :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"
+      :mysql     :bare-dash-comment   nil                "SELECT id --1 FROM t"
+      :mysql     :backslash-quote     nil                "SELECT 'it\\'s' FROM t"
+      :postgres  :not-a-select        nil                "-- nothing here"
+      :postgres  :large-literal-list  nil                (str "SELECT * FROM t WHERE id IN ("
+                                                              (str/join "," (range 200)) ")"))))
 
 (deftest ^:parallel read-only-select?-too-long-test
-  (testing "SQL too long to check is refused whatever it holds, and is never parsed"
-    (let [nulls (fn [n] (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat n "NULL")) ")"))]
+  (let [limit  (* 16 1024)
+        padded (fn [length] (str "SELECT 1" (str/join (repeat (- length 8) " "))))
+        nulls  (fn [n] (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat n "NULL")) ")"))]
+    (testing "SQL as long as the limit is checked"
+      (is (nil? (sql-tools/read-only-select-problem :postgres (padded limit)))))
+    (testing "SQL one character longer is refused, however harmless"
+      (is (= {:reason :too-long, :detail nil}
+             (sql-tools/read-only-select-problem :postgres (padded (inc limit))))))
+    (testing "a list of NULLs is judged by its length alone"
       (is (true? (sql-tools/read-only-select? :postgres (nulls 150))))
       (is (= {:reason :too-long, :detail nil}
-             (sql-tools/read-only-select-problem :postgres (nulls 20000))))
-      (is (= {:reason :too-long, :detail nil}
-             (sql-tools/read-only-select-problem :postgres (str "SELECT 1 FROM t WHERE x IN ("
-                                                                (str/join ", " (repeat 20000 "TRUE")) ")")))))))
+             (sql-tools/read-only-select-problem :postgres (nulls 20000)))))))
 
 (deftest ^:parallel read-only-select?-large-literal-list-test
   (let [tuples (str/join ", " (repeat 105 "(1)"))]

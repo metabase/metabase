@@ -488,7 +488,7 @@
       "It calls pg_advisory_lock, which takes a lock, waits, or changes the session."
       :postgres "SELECT pg_advisory_lock(42)"
 
-      "It is too long to check."
+      "It is too long to check. Shorten it, for example with a subquery in place of a long list."
       :postgres (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat 20000 "NULL")) ")")
 
       "It holds a list of 100 or more literal values. Filter with a range or a subquery instead."

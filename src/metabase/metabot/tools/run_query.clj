@@ -226,7 +226,8 @@
         :backslash-quote     "It holds a backslash before a quote. Write a quote inside a string by doubling it."
         :large-literal-list  (str "It holds a list of 100 or more literal values."
                                   " Filter with a range or a subquery instead.")
-        :too-long            "It is too long to check."
+        :too-long            (str "It is too long to check."
+                                  " Shorten it, for example with a subquery in place of a long list.")
         :unparseable         "It could not be parsed as SQL."
         nil))))
 

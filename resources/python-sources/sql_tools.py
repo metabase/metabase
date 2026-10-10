@@ -1900,6 +1900,8 @@ def _function_name(node: exp.Expression):
     """The lower-case name of the function `node` calls, or None when it is not a function call."""
     if isinstance(node, exp.Anonymous):
         return node.name.lower()
+    # None of the names in `_SESSION_EFFECT_FUNCTIONS` has a node of its own today. This keeps the list working if a
+    # sqlglot upgrade gives one of them its own node.
     if isinstance(node, exp.Func):
         return node.sql_name().lower()
     return None
