@@ -129,56 +129,24 @@
               :current-exists?      current-exists?
               :old-names-that-exist old-names-that-exist})))))
 
-(def ^:private past-job-key-renames
-  "Past job key renames, to help explain a stored row under a key that no job uses."
-  [{:release   "0.50"
-    :old-key   "metabase-enterprise.Caching.job"
-    :old-class "metabase_enterprise.task.caching.Caching"
-    :new-key   "metabase-enterprise.cache.job"
-    :new-class "metabase_enterprise.task.cache.Cache"
-    :change    "Renamed only, and within 0.50 development, so the old key never shipped."}
-   {:release   "0.52"
-    :old-key   "metabase.task.search-index.job"
-    :old-class "metabase.task.search_index.SearchIndexing"
-    :new-key   "metabase.task.search-index.reindex.job"
-    :new-class "metabase.task.search_index.SearchIndexReindex"
-    :change    "Became durable, when a separate job for incremental updates was added beside it."}
-   {:release   "0.59"
-    :old-key   "metabase-enterprise.transforms.canceling"
-    :old-class "metabase_enterprise.transforms.canceling.CancelOldTransformRuns"
-    :new-key   "metabase.transforms.canceling"
-    :new-class "metabase.transforms.canceling.CancelOldTransformRuns"
-    :change    "Moved out of enterprise, with no change to the job."}
-   {:release   "0.59"
-    :old-key   "metabase-enterprise.transforms.jobs.timeout-job"
-    :old-class "metabase_enterprise.transforms.jobs.TimeoutOldRuns"
-    :new-key   "metabase.transforms.jobs.timeout-job"
-    :new-class "metabase.transforms.jobs.TimeoutOldRuns"
-    :change    "Moved out of enterprise, with no change to the job, which was removed in 0.63."}
-   {:release   "0.59"
-    :old-key   "metabase-enterprise.transforms.timeout"
-    :old-class "metabase_enterprise.transforms.timeout.TimeoutTransforms"
-    :new-key   "metabase.transforms.timeout"
-    :new-class "metabase.transforms.timeout.TimeoutTransforms"
-    :change    "Moved out of enterprise, with no change to the job."}
-   {:release   "0.60"
-    :old-key   "metabase.task.metabot-v3.suggested-prompts-generator.job"
-    :old-class "metabase_enterprise.metabot_v3.task.suggested_prompts_generator.SuggestedPromptsGenerator"
-    :new-key   "metabase.task.metabot.suggested-prompts-generator.job"
-    :new-class "metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator"
-    :change    "Moved out of enterprise with the rest of Metabot."}])
-
 (deftest job-history-has-no-entry-for-a-renamed-job-key-test
-  (let [old-keys    (into #{} (map :old-key) past-job-key-renames)
-        old-classes (into #{} (map :old-class) past-job-key-renames)]
+  (let [old-keys    (into #{} (map :old-key) mdb.quartz/job-key-renames)
+        old-classes (into #{} (map :old-class) mdb.quartz/job-key-renames)]
     (is (= []
            (filter (fn [{:keys [job-key class-names]}]
                      (or (old-keys job-key)
                          (some old-classes class-names)))
                    mdb.quartz/job-history))
         (str "Remove these entries from `metabase.app-db.quartz/job-history`. Each is for a job key that"
-             " `past-job-key-renames` lists as renamed, or holds the class that key had. With the entry, a row"
-             " stored under the old key still loads, and keeps running beside the job scheduled under the new key."))))
+             " `metabase.app-db.quartz/job-key-renames` lists as renamed, or holds the class that key had."
+             " With the entry, a row stored under the old key still loads, and keeps running beside the job"
+             " scheduled under the new key."))))
+
+(deftest no-renamed-job-key-keeps-a-class-that-loads-test
+  (is (= []
+         (filter (comp class-exists? :old-class) mdb.quartz/job-key-renames))
+      (str "The class these job keys had still loads, so a row stored under the old key keeps running beside the"
+           " job scheduled under the new key. Rename the job's class too, so that the row is deleted at startup.")))
 
 (def ^:private job-classes-without-history
   "Job classes with no entry in [[mdb.quartz/job-history]], because their job has had no other class name under
@@ -256,7 +224,7 @@
 
 (def ^:private changed-job-key-instructions
   (str "remove its entry from `metabase.app-db.quartz/job-history`, add its class to"
-       " `job-classes-without-history`, and add the rename to `past-job-key-renames`."))
+       " `job-classes-without-history`, and add the rename to `metabase.app-db.quartz/job-key-renames`."))
 
 (deftest every-job-class-is-listed-test
   (let [current                  (job-class-names)
@@ -316,9 +284,17 @@
                  :let                          [scheduled-as (scheduled (peek class-names) #{})]
                  :when                         (not (and (seq scheduled-as)
                                                          (every? #(label-for? job-key %) scheduled-as)))]
-             {:job-key job-key, :scheduled-as scheduled-as}))
+             (cond-> {:job-key job-key, :scheduled-as scheduled-as}
+               (seq scheduled-as)
+               (assoc :rename-if-the-key-changed {:release   "<the release>"
+                                                  :old-key   job-key
+                                                  :old-class (peek class-names)
+                                                  :new-key   (first scheduled-as)
+                                                  :new-class (peek class-names)
+                                                  :change    "<how the job changed>"}))))
         (str "The `:job-key` of these entries in `metabase.app-db.quartz/job-history` is not the key their job is"
              " scheduled under. If the label is wrong, correct it.\n"
-             "If the job's key changed: " changed-job-key-instructions "\n"
+             "If the job's key changed: " changed-job-key-instructions
+             " Complete `:rename-if-the-key-changed` to get the rename.\n"
              "If `:scheduled-as` is empty, the job's `task/init!` did not schedule it in this test: set up what it"
              " needs in `scheduled-job-keys!`."))))

@@ -89,6 +89,13 @@
 (defn- set-jdbc-backend-properties! []
   (metabase.app-db.quartz/set-jdbc-backend-properties! (mdb/db-type)))
 
+(defn- no-class-message
+  "The log message for deleting the job under `job-key`, whose class can't be found."
+  [job-key class-not-found-message]
+  (let [{:keys [new-key release change]} (metabase.app-db.quartz/job-key-rename job-key)]
+    (cond-> (format "Deleting job %s due to class not found (%s)" job-key class-not-found-message)
+      new-key (str (format ". Its key was renamed to %s in %s. %s" new-key release change)))))
+
 (defn- delete-jobs-with-no-class!
   "Delete any jobs that have been scheduled but whose class is no longer available."
   []
@@ -98,9 +105,7 @@
         (qs/get-job scheduler job-key)
         (catch JobPersistenceException e
           (when (instance? ClassNotFoundException (.getCause e))
-            (log/warnf "Deleting job %s due to class not found (%s)"
-                       (.getName ^JobKey job-key)
-                       (ex-message (.getCause e)))
+            (log/warn (no-class-message (.getName ^JobKey job-key) (ex-message (.getCause e))))
             (qs/delete-job scheduler job-key)))))))
 
 (defn- reset-errored-triggers!
