@@ -15,6 +15,8 @@
   `[:test :ignore :deprecated-var]`, `[:prod :config :deprecated-var]` or `[:modules :module :ns-prefixes]`.
   The per-symbol budgets of a discouragement linter add up to one measure.
   A commit's diff shows how many `:discouraged-var` ignores it removed, but not which symbols they covered.
+  The budget counts each symbol an ignore covers and this history counts each ignore, so the credit for those
+  linters is approximate.
 
   To explain a shrink, walk back from the commit that lowered the budget.
   Every commit on the way contributes its change in the actual count less its own change to the budget.
@@ -56,9 +58,13 @@
 
 (def ^:private module-config-file ".clj-kondo/config/modules/config.edn")
 
-;; Bump the last segment when the shape or meaning of a cached record changes.
+;; A record holds what this namespace and the scanner made of a commit, so the cache is named for the content
+;; of both: a change to either starts a new one.
 (def ^:private cache-dir
-  (fs/path (fs/home) ".cache" "mage" "kondo-ratchets-history" "v4"))
+  (let [sources (for [path ["dev/src/dev/kondo_ratchet.clj" "mage/src/mage/kondo_ratchets_history.clj"]]
+                  (slurp (fs/file u/project-root-directory path)))]
+    (fs/path (fs/home) ".cache" "mage" "kondo-ratchets-history"
+             (format "%08x" (bit-and 0xffffffff (hash (str/join sources)))))))
 
 ;;; ------------------------------------------------- Budgets --------------------------------------------------
 
@@ -746,6 +752,7 @@
 
   - `:commits` counts the commits that changed a counted budget.
   - `:totals` has a row of `:measure`, `:shrunk`, `:grown` and `:net` per measure, and `:total` their sums.
+  - `:approximate` names the measures among them whose credit is approximate: those budgeted per symbol.
   - `:best` and `:worst` are the commits behind the largest net shrink and net raise, if any: the `:commit`,
     its `:net` and its `:measures`.
   - `:introduced`, `:unlimited`, `:unaccounted` and `:suspects` each list commits with `:items`: the new
@@ -767,6 +774,9 @@
                      (sort-by (juxt :net :measure)))]
     {:commits     (count records)
      :totals      rows
+     :approximate (sort (for [[_ _ linter :as measure] (keys (totals records))
+                              :when (ratchet/discouragement-linters linter)]
+                          (measure-name measure)))
      :total       (into {} (for [k [:shrunk :grown :net]] [k (reduce + (map k rows))]))
      :best        (when (some-> (first ranked) :net neg?) (biggest (first ranked)))
      :worst       (when (some-> (last ranked) :net pos?) (biggest (last ranked)))
@@ -1014,10 +1024,14 @@
 
 (defn summary
   "Lines for the terminal saying what `report` ([[report]]) holds, for the period called `period`."
-  [period {:keys [commits totals total best worst introduced unlimited board unaccounted suspects]}]
+  [period {:keys [commits totals total approximate best worst introduced unlimited board unaccounted suspects]}]
   (concat
    [(c/bold (format "Ratchet changes %s: %d commits" period commits))]
-   (section "Total deltas" (totals-lines totals total))
+   (section "Total deltas"
+            (concat (totals-lines totals total)
+                    (when (seq approximate)
+                      [(c/dark (str "Credit for " (str/join ", " approximate) " is approximate: "
+                                    "budgeted per symbol, counted here per ignore."))])))
    (section "Biggest improvement" (some-> best biggest-lines))
    (section "Biggest regression" (some-> worst biggest-lines))
    (section "New linters"

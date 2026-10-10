@@ -308,6 +308,18 @@
                         :unaccounted (groups (:unaccounted report))
                         :suspects    (groups (:suspects report)))))))))
 
+(deftest approximate-credit-test
+  (testing "names the measures that are budgeted per symbol, whose credit is approximate"
+    (is (= [":discouraged-namespace (test)" ":discouraged-var"]
+           (:approximate
+            (history/report
+             {:settled #{}}
+             [{:sha     "mixed"
+               :author  "Ada"
+               :changes [{:measure [:prod :ignore :discouraged-var], :kind :grow, :delta 1, :added 1}
+                         {:measure [:test :ignore :discouraged-namespace], :kind :grow, :delta 2, :added 2}
+                         {:measure a, :kind :grow, :delta 3, :added 3}]}]))))))
+
 (deftest series-test
   (testing "gives each commit's counted change and the total budget after it, oldest first"
     (is (= [["seed" 0 0 5] ["mixed" 0 0 9] ["tighten" -2 0 7]]
