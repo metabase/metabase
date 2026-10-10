@@ -154,7 +154,12 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"must start with"
          (llm.provider/validate-config! "openrouter" {:api-key "sk-or-v2-nope"})))
-    (is (nil? (llm.provider/validate-config! "openrouter" {:api-key "sk-or-v1-valid"}))))
+    (is (nil? (llm.provider/validate-config! "openrouter" {:api-key "sk-or-v1-valid"})))
+    (testing "and OpenAI's points a key from another server to the OpenAI-compatible type"
+      (is (= (str "Invalid API key for openai. It must start with 'sk-'. "
+                  "For another server that implements OpenAI's API, add an OpenAI-compatible API provider instead.")
+             (try (llm.provider/validate-config! "openai" {:api-key "company-gateway-key"})
+                  (catch clojure.lang.ExceptionInfo e (ex-message e)))))))
   (testing "a type with several required fields rejects the first one missing"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"API base URL is required for azure"
@@ -480,6 +485,16 @@
         (is (=? {:connection-key "metabase" :type "anthropic" :ai-proxy? true}
                 (llm.provider/resolve-model-ref "metabase/anthropic/claude-sonnet-4-6")))))))
 
+(deftest openai-compatible-connection-from-the-environment-test
+  (testing "an OpenAI-compatible server's base URL synthesizes a usable connection, which runs the model a reference names"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-openai-compatible-api-base-url "https://inference.internal/v1"]
+        (is (true? (llm.provider/connection-usable? "openai-compatible")))
+        (is (=? {:type        "openai-compatible"
+                 :model       "gpt-oss-120b"
+                 :credentials {:base-url "https://inference.internal/v1"}}
+                (llm.provider/resolve-model-ref "openai-compatible/gpt-oss-120b")))))))
+
 (deftest connections-shadowed-by-the-environment-test
   (testing "the environment shadows a stored connection with the same key field by field, not wholesale"
     (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
@@ -757,7 +772,7 @@
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
     (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-             "bedrock" "vllm" "ollama" "metabase"}
+             "bedrock" "vllm" "ollama" "openai-compatible" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -800,6 +815,7 @@
             ;; connecting adopts the model its probe exercised
             "vllm"       nil
             "ollama"     nil
+            "openai-compatible" nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -821,6 +837,7 @@
             ;; to fall back to
             "vllm"       nil
             "ollama"     nil
+            "openai-compatible" nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/mini-model "evilai")))))

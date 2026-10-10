@@ -62,10 +62,10 @@
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
       (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-               "bedrock" "vllm" "ollama" "metabase"}
+               "bedrock" "vllm" "ollama" "openai-compatible" "metabase"}
              (set (map :type types))))
       (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-              "bedrock" "vllm" "ollama"]
+              "bedrock" "vllm" "ollama" "openai-compatible"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -401,6 +401,30 @@
                                                {:type   "vllm"
                                                 :config {:base-url "http://vllm.internal:8000/v1"}}))))
         (is (= [] (llm.provider/connections)))))))
+
+(deftest create-openai-compatible-connection-test
+  (testing "connecting checks the model the connection names, which Metabot then runs on, on a server with no model list"
+    (let [checked (atom #{})]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   (throw (ex-info "clj-http: status 404" {:status 404 :body "Not Found"}))
+                                                   (do (swap! checked conj (:model (json/decode+kw (str body))))
+                                                       {:status 200
+                                                        :body   {:choices [{:message       {:content    ""
+                                                                                            :tool_calls [{:id       "call-1"
+                                                                                                          :type     "function"
+                                                                                                          :function {:name      "record_table_name"
+                                                                                                                     :arguments "{\"table_name\": \"orders\"}"}}]}
+                                                                            :finish_reason "tool_calls"}]}})))]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                  {:type   "openai-compatible"
+                                   :config {:base-url "https://inference.internal/v1" :model-id "gpt-oss-120b"}})
+            (is (= #{"gpt-oss-120b"} @checked))
+            (is (= {:base-url "https://inference.internal/v1" :model-id "gpt-oss-120b" :model-reasoning "false"}
+                   (stored-config "openai-compatible")))
+            (is (= "openai-compatible/gpt-oss-120b" (metabot.settings/llm-metabot-provider)))))))))
 
 (deftest create-rejects-a-malformed-model-catalog-test
   (testing (str "a 2xx whose body is not a model list means the base URL reached something that is not the API. "
