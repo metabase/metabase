@@ -1,7 +1,7 @@
 import { useDndContext } from "@dnd-kit/core";
 import { useCallback, useLayoutEffect, useState } from "react";
 
-import { Box, Popover } from "metabase/ui";
+import { Box, Popover, useStablePopoverPosition } from "metabase/ui";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
 
 import S from "./ClausePopover.module.css";
@@ -22,6 +22,7 @@ export function ClausePopover({
   renderPopover,
 }: ClausePopoverProps) {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
+  const stablePosition = useStablePopoverPosition("bottom-start");
   const { active } = useDndContext();
 
   const handleOpen = useCallback(() => {
@@ -48,8 +49,8 @@ export function ClausePopover({
   return (
     <PreventPopoverExitProvider>
       <Popover
+        {...stablePosition}
         opened={isOpen}
-        position="bottom-start"
         offset={{ mainAxis: 4 }}
         trapFocus
         onChange={handleChange}
