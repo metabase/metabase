@@ -3,8 +3,8 @@
 
   [[update!]] measures a fixed sample of master commits with [[dev.module-history]] and writes three files:
 
-  - `history.csv`: one row per sampled commit since late 2023, with cycle, exposure, `:friends` and upward-require
-    counts
+  - `history.csv`: one row per sampled commit since the first one, with cycle, exposure, `:friends` and
+    upward-require counts
   - `structure.csv`: every recent backend-touching commit, thinned to the ends of each run of unchanged metrics
   - `cycles.csv`: one row per commit and module cycle, named after the cluster it is today
   - `history.json`: the commits of `history.csv` with each named cluster's size, for a page that charts them
@@ -27,7 +27,7 @@
   (:import
    (java.io File)
    (java.nio.file CopyOption Files StandardCopyOption)
-   (java.time Instant OffsetDateTime)
+   (java.time Instant LocalDate OffsetDateTime)
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
@@ -36,13 +36,10 @@
 
 (def ^:private default-ref "origin/master")
 
-(def ^:private epoch
-  "Rows start here, a month before the first one, and `seq` counts master commits from this day."
-  "2023-11-01")
-
 (def ^:private history-sample
-  "Commits in `history.csv`: one a month from before the first module linter (#42250), one a week since that
-  linter, and every commit that changed the module config since the dense sample starts."
+  "Commits in `history.csv`, besides the [[quarterly-commits]] before it: one a month from before the first module
+  linter (#42250), one a week since that linter, and every commit that changed the module config since the dense
+  sample starts."
   {:monthly-since "2023-12-01"
    :weekly-since  "2024-05-08"
    :since         "2025-10-01"})
@@ -92,12 +89,21 @@
     (remove str/blank? (str/split-lines out))))
 
 (defn- positions
-  "First-parent position of every commit of `ref` since [[epoch]], oldest first, by sha."
+  "First-parent position of every commit of `ref`, oldest first, by sha. This is `seq` in the files."
   ;; Commit timestamps carry mixed UTC offsets and two commits can share one, so rows are ordered by this and never
   ;; by timestamp.
   [ref]
-  (zipmap (git-lines ["rev-list" "--first-parent" "--reverse" (str "--since=" epoch "T00:00:00Z") ref])
+  (zipmap (git-lines ["rev-list" "--first-parent" "--reverse" ref])
           (range)))
+
+(defn- quarterly-commits
+  "The first commit of `ref` and the last one before each quarter until the monthly sample starts: a sparse view of
+  the years before there were modules."
+  [ref]
+  (let [quarters (take-while #(neg? (compare (str %) (:monthly-since history-sample)))
+                             (iterate #(.plusMonths ^LocalDate % 3) (LocalDate/parse "2015-04-01")))]
+    (cons (first (git-lines ["rev-list" "--max-parents=0" "--first-parent" ref]))
+          (mapcat #(git-lines ["rev-list" "-1" "--first-parent" (str "--before=" % "T00:00:00Z") ref]) quarters))))
 
 (defn- key-commits-with-parents
   "Full shas of each of [[key-commits]] and its first parent."
@@ -451,7 +457,9 @@
   (when (str/blank? (str dir))
     (throw (ex-info "update! needs :dir, the directory to write the files into" {})))
   (let [ref       (str ref)
-        history   (module-history/backfill! (assoc history-sample :ref ref, :extra (key-commits-with-parents)))
+        history   (module-history/backfill! (assoc history-sample
+                                                   :ref   ref
+                                                   :extra (concat (quarterly-commits ref) (key-commits-with-parents))))
         structure (module-history/backfill! (assoc structure-sample :ref ref))
         position  (positions ref)
         anchors   (cluster-anchors ref)
