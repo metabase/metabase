@@ -120,18 +120,18 @@
 (def ^:private job-history-in-this-edition
   (filter (comp in-this-edition? current-name) mdb.quartz/job-history))
 
-(deftest job-history-test
-  (testing "no class name belongs to two jobs, or twice to one"
-    (is (= [] (repeated (mapcat :class-names mdb.quartz/job-history)))))
-  (testing "the current class of each entry exists, and none of its old ones do"
-    (is (= []
-           (for [entry job-history-in-this-edition
-                 :let  [current-exists?      (class-exists? (current-name entry))
-                        old-names-that-exist (filterv class-exists? (pop (:class-names entry)))]
-                 :when (or (not current-exists?) (seq old-names-that-exist))]
-             {:job-key              (:job-key entry)
-              :current-exists?      current-exists?
-              :old-names-that-exist old-names-that-exist})))))
+(deftest job-history-lists-each-class-name-once-test
+  (is (= [] (repeated (mapcat :class-names mdb.quartz/job-history)))))
+
+(deftest job-history-current-classes-exist-and-old-ones-do-not-test
+  (is (= []
+         (for [entry job-history-in-this-edition
+               :let  [current-exists?      (class-exists? (current-name entry))
+                      old-names-that-exist (filterv class-exists? (pop (:class-names entry)))]
+               :when (or (not current-exists?) (seq old-names-that-exist))]
+           {:job-key              (:job-key entry)
+            :current-exists?      current-exists?
+            :old-names-that-exist old-names-that-exist}))))
 
 (deftest job-history-has-no-entry-for-a-renamed-job-key-test
   (let [old-keys    (into #{} (map :old-key) mdb.quartz/job-key-renames)
@@ -227,6 +227,7 @@
           (.getName c))))
 
 (def ^:private changed-job-key-instructions
+  "The end of the sentence that says what to do when a job's key changed, for the failure messages that need it."
   (str "remove its entry from `metabase.app-db.quartz/job-history`, add its class to"
        " `job-classes-without-history`, and add the rename to `metabase.app-db.quartz/job-key-renames`."))
 
