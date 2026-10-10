@@ -31,13 +31,13 @@
    [metabase.embedding-rest.api]
    [metabase.explorations.api]
    [metabase.frontend-errors.api]
-   [metabase.geojson.api]
+   [metabase.geojson.rest.api]
    [metabase.glossary.api]
    [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
    [metabase.indexes-rest.api]
    [metabase.llm.api]
-   [metabase.logger.api]
+   [metabase.logger.rest.api]
    [metabase.login-history.api]
    [metabase.mcp.callback-api]
    [metabase.mcp.core :as mcp]
@@ -101,11 +101,11 @@
          metabase.eid-translation.api/keep-me
          metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
-         metabase.geojson.api/keep-me
+         metabase.geojson.rest.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.indexes-rest.api/keep-me
-         metabase.logger.api/keep-me
+         metabase.logger.rest.api/keep-me
          metabase.login-history.api/keep-me
          metabase.mcp.callback-api/keep-me
          metabase.mcp.v2.api/keep-me
@@ -233,14 +233,14 @@
    "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
-   "/geojson"              'metabase.geojson.api
+   "/geojson"              'metabase.geojson.rest.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/health-inspector"     (+auth 'metabase.health-inspector.api)
    "/index"                (+auth 'metabase.indexes-rest.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
-   "/logger"               (+auth 'metabase.logger.api)
+   "/logger"               (+auth 'metabase.logger.rest.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
    ;; existing clients. See [[metabase.mcp.paths/endpoint-paths]].

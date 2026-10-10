@@ -1131,14 +1131,16 @@
 
   geojson
   {:team "UX West"
-   :api  #{metabase.geojson.api
-           metabase.geojson.init
-           metabase.geojson.settings}
+   :api  #{metabase.geojson.core metabase.geojson.init metabase.geojson.settings}
+   :uses #{settings util util.config}}
+
+  geojson.rest
+  {:team "UX West"
+   :api  #{metabase.geojson.rest.api}
    :uses #{api
+           geojson
            permissions
-           settings
-           util
-           util.config}}
+           util}}
 
   glossary
   {:team "Gadget"
@@ -1352,15 +1354,17 @@
 
   logger
   {:team "DevEx"
-   :api  #{metabase.logger.api
-           metabase.logger.core
-           metabase.logger.init}
+   :api  #{metabase.logger.core metabase.logger.init}
+   :uses #{util.classloader util.config}}
+
+  logger.rest
+  {:team "DevEx"
+   :api  #{metabase.logger.rest.api}
    :uses #{analytics
            api
+           logger
            permissions
-           util
-           util.classloader
-           util.config}}
+           util}}
 
   mcp
   {:team "Metabot"
