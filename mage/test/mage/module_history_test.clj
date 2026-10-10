@@ -58,10 +58,21 @@
                        {:share    {}
                         :pages    [{:template "t.html", :path "page.html"}]
                         :metabase {:uploads {"history.csv" "1"}, :cards [:a], :card 2}})))))
+  (testing "a value of the wrong kind is a problem at its key, whatever it is"
+    (is (= [[[:metabase]] [[:metabase]] [[:pages]] [[:pages]] [[:shares]] [[:shares]]]
+           (for [config [{:metabase 5} {:metabase "stats"} {:pages 5} {:pages {:file "a"}} {:shares {"a" 1}}
+                         {:shares false}]]
+             (distinct (map :path (#'module-history/config-problems config)))))))
   (testing "a problem reads as its path and what is wrong there"
-    (is (= ["the config has unknown keys: :share" ":metabase :cards must be a vector of card ids"]
+    (is (= ["the config has unknown keys: :share"
+            ":metabase has unknown keys: :card"
+            ":pages has unknown keys: :path"
+            ":pages must be a vector of {:template \"path\", :file \"name\"}"
+            ":metabase :cards must be a vector of card ids"]
            (map #'module-history/problem-line
-                (#'module-history/config-problems {:share {}, :metabase {:profile "p", :cards [:a]}}))))
+                (#'module-history/config-problems {:share    {}
+                                                   :pages    [{:template "t.html", :path "p.html"}]
+                                                   :metabase {:profile "p", :cards [:a], :card 1}}))))
     (is (= [{:path [], :message "must hold one map"}]
            (#'module-history/config-problems [])))))
 
