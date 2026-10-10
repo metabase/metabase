@@ -22,6 +22,7 @@ module.exports = {
     "no-unsafe-element-filtering": require("./rules/no-unsafe-element-filtering"),
     "no-unscoped-text-selectors": require("./rules/no-unscoped-text-selectors"),
     "no-analytics-import-outside-analytics-files": require("./rules/no-analytics-import-outside-analytics-files"),
+    "bounded-route-gate": require("./rules/bounded-route-gate"),
     "no-plugin-slot-outside-plugins-files": require("./rules/no-plugin-slot-outside-plugins-files"),
     "no-unjustified-type-casts": require("./rules/no-unjustified-type-casts"),
     "valid-theme-tokens": require("./rules/valid-theme-tokens"),

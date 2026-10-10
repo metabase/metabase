@@ -17,9 +17,9 @@ export type ModalComponentProps = {
   onClose: () => void;
 };
 
-export type ModalComponent = React.ComponentType<ModalComponentProps>;
+type ModalComponent = React.ComponentType<ModalComponentProps>;
 
-export type ModalRouteOptions = {
+type ModalRouteOptions = {
   /**
    * Render the modal component on its own instead of wrapping it in a `<Modal>`,
    * for components that bring their own overlay.
@@ -61,9 +61,7 @@ export function lazyModalRouteElement(
     <Route
       key={path}
       path={path}
-      lazy={async () => ({
-        Component: createModalRouteComponent(await loadModal(), options),
-      })}
+      lazy={lazyModalComponent(loadModal, options)}
     />
   );
 }
@@ -80,15 +78,31 @@ export function lazyModalRoute(
   loadModal: () => Promise<ModalComponent>,
   options: ModalRouteOptions = {},
 ): RouteObject {
-  return {
-    path,
-    lazy: async () => ({
-      Component: createModalRouteComponent(await loadModal(), options),
-    }),
-  };
+  return { path, lazy: lazyModalComponent(loadModal, options) };
 }
 
-export function createModalRouteComponent(
+/**
+ * The `lazy` of a route that renders a modal from a code-split chunk, for a
+ * route that `lazyModalRoute` cannot describe, such as an index route.
+ */
+export function lazyModalComponent(
+  loadModal: () => Promise<ModalComponent>,
+  options: ModalRouteOptions = {},
+) {
+  const lazy = async () => ({
+    Component: createModalRouteComponent(await loadModal(), options),
+  });
+
+  // The preload generator reads chunk names out of loader source, and this
+  // wrapper hides the `import()` inside `loadModal`. Hanging the modal's own
+  // loader off the wrapper lets the generator see it, so a modal is skipped
+  // because it is a modal rather than because nothing could read it.
+  lazy.loadModal = loadModal;
+
+  return lazy;
+}
+
+function createModalRouteComponent(
   ComposedModal: ModalComponent,
   { noWrap = false, modalProps, closeTo = ".." }: ModalRouteOptions,
 ) {
