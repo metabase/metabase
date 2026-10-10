@@ -1,5 +1,6 @@
 (ns metabase.core.module-history-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.module-history :as module-history]
    [dev.module-source :as module-source]
@@ -28,16 +29,37 @@
 
 (deftest ^:parallel legacy-modules-test
   (testing "the pre-:metabase/modules linter config translates root namespaces to module names"
-    (is (= '{api            {:api :any}
-             enterprise/sso {:api #{metabase-enterprise.sso.core}}
-             lib            {:api #{metabase.lib.core}}
+    (is (= '{api            {:api :any, :uses :any}
+             enterprise/sso {:api #{metabase-enterprise.sso.core}, :uses #{api lib}}
+             lib            {:api #{metabase.lib.core}, :uses #{}}
              setup          {}}
            (#'module-history/legacy-modules
             (pr-str '{:linters {:metabase/ns-module-checker
-                                {:api-namespaces {metabase.api                 :any
-                                                  metabase.lib                 #{metabase.lib.core}
-                                                  metabase-enterprise.sso      #{metabase-enterprise.sso.core}
-                                                  metabase.setup               nil}}}}))))))
+                                {:api-namespaces  {metabase.api             :any
+                                                   metabase.lib             #{metabase.lib.core}
+                                                   metabase-enterprise.sso  #{metabase-enterprise.sso.core}
+                                                   metabase.setup           nil
+                                                   ;; The modern config leaves this module out, so this does too.
+                                                   metabase.connection-pool #{metabase.connection-pool}}
+                                 :allowed-modules {metabase.api            :any
+                                                   metabase.lib            #{}
+                                                   metabase-enterprise.sso #{metabase.api metabase.lib}
+                                                   ;; Not a module, since it has no :api-namespaces entry.
+                                                   metabase.unlisted       :any}}}}))))))
+
+(deftest backend-pathspecs-test
+  (testing "each pathspec used to find backend-touching commits matches files in this tree"
+    (is (= []
+           (remove (fn [pathspec] (seq (#'module-history/git! "ls-files" "--" pathspec)))
+                   @#'module-history/backend-pathspecs))))
+  (testing "a driver's sources are covered"
+    (is (some #(re-find #"^modules/drivers/[^/]+/src/.+\.clj$" %)
+              (str/split-lines (apply #'module-history/git! "ls-files" "--" @#'module-history/backend-pathspecs))))))
+
+(deftest ^:parallel midnight-utc-test
+  (testing "a sampling date is pinned to the start of its day, so git does not read it at the current time of day"
+    (is (= "2023-12-01T00:00:00Z"
+           (#'module-history/midnight-utc "2023-12-01")))))
 
 (deftest ^:parallel commit-metrics-test
   ;; x.y is nested in x, which does not export it; z lets x into its internals; w has `:api :any`.

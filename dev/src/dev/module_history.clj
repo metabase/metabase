@@ -96,20 +96,39 @@
 
 ;;;; Module config
 
+(defn- legacy-module-name
+  "Today's name for the module the old linter keyed by its root namespace: `metabase.lib` is `lib`, and
+  `metabase-enterprise.sso` is `enterprise/sso`. Nil for a namespace outside both roots."
+  [root-ns]
+  (when-let [[_ enterprise module] (re-matches #"metabase(-enterprise)?\.(.+)" (str root-ns))]
+    (if enterprise (symbol "enterprise" module) (symbol module))))
+
 (defn- legacy-modules
   "Module map from the `:metabase/ns-module-checker` linter that predates `:metabase/modules`. It keyed
-  `:api-namespaces` by the module's root namespace (`metabase.lib`) and had no `:uses`, friends or nesting."
+  `:api-namespaces` and `:allowed-modules` by the module's root namespace (`metabase.lib`), and had no friends or
+  nesting. `:allowed-modules` becomes `:uses`."
   [config-source]
   ;; Before #53583 an unlisted module's API was its root namespace; today's default is `.api`, `.core` and `.init`,
   ;; so exposure measured against this config is approximate.
-  (let [config (binding [*read-eval* false] (read-string config-source))]
+  (let [linter     (get-in (binding [*read-eval* false] (read-string config-source))
+                           [:linters :metabase/ns-module-checker])
+        translated (fn [k translate]
+                     (into {}
+                           (for [[root-ns value] (get linter k)
+                                 :let  [module (legacy-module-name root-ns)]
+                                 :when module]
+                             [module (cond
+                                       (nil? value)   nil
+                                       (= :any value) :any
+                                       :else          (translate value))])))
+        apis       (translated :api-namespaces set)
+        uses       (translated :allowed-modules #(into #{} (keep legacy-module-name) %))]
+    ;; Same exclusion as [[deps-graph/kondo-config]].
     (into {}
-          (keep (fn [[root-ns api]]
-                  (when-let [[_ enterprise module] (re-matches #"metabase(-enterprise)?\.(.+)" (str root-ns))]
-                    [(if enterprise (symbol "enterprise" module) (symbol module))
-                     (cond-> {}
-                       (some? api) (assoc :api (if (= :any api) :any (set api))))])))
-          (get-in config [:linters :metabase/ns-module-checker :api-namespaces]))))
+          (for [module (keys (dissoc apis 'connection-pool))]
+            [module (cond-> {}
+                      (some? (apis module)) (assoc :api (apis module))
+                      (some? (uses module)) (assoc :uses (uses module)))]))))
 
 (def ^:private whole-backend
   "The module map before #42250, when there were no modules: the whole backend is one."
@@ -328,16 +347,16 @@
     (merge
      (structure-metrics deps modules stats)
      ;; Each cycle's members, so a report can follow a cycle as it splits or merges.
-     {:cycles (mapv (fn [{:keys [modules edges density cycle-rank strong-bridges]} namespaces]
+     {:cycles (mapv (fn [{:keys [modules edges cycle-rank strong-bridges]} namespaces density]
                       {:modules        modules
                        :namespaces     namespaces
                        :edges          edges
-                       ;; Two decimals, as [[deps-graph/module-boundary-stats]] reports densities.
-                       :density        (/ (Math/round (* 100.0 density)) 100.0)
+                       :density        density
                        :cycle-rank     cycle-rank
                        :strong-bridges (count strong-bridges)})
                     cycles
-                    (:scc-namespace-sizes stats))}
+                    (:scc-namespace-sizes stats)
+                    (:scc-densities stats))}
      (select-keys stats [:api-any-namespaces
                          :upward-requires
                          :upward-module-edges
@@ -405,29 +424,71 @@
                                       {:module-system? (not= modules whole-backend)}
                                       (commit-metrics (commit-dependencies reader sha modules) modules))))))))
 
+(def ^:private modules-config-path ".clj-kondo/config/modules/config.edn")
+
+(def ^:private legacy-config-path
+  "Where the module linter's config lived before #53583 gave it [[modules-config-path]]."
+  ".clj-kondo/config.edn")
+
+(def ^:private backend-pathspecs
+  "Pathspecs for the backend sources [[source-path]] matches, plus the module config."
+  ;; A `*` in a plain pathspec does not stop at `/`, so `modules/drivers/*/src` matches no file under a driver's
+  ;; `src` directory. The glob form does.
+  ["src" "enterprise/backend/src" ":(glob)modules/drivers/*/src/**" "modules/embedder/src" modules-config-path])
+
+(defn- midnight-utc
+  "The instant `date` starts in UTC, as git reads it. A bare date means that day at the current time of day, in the
+  local zone, so the same sample would differ from run to run."
+  [date]
+  (str date "T00:00:00Z"))
+
+(defn- commits-since
+  "First-parent commits of `ref` since `date` that touch any of `pathspecs`, newest first."
+  [ref date pathspecs]
+  (remove str/blank?
+          (str/split-lines (apply git! "log" "--first-parent" "--format=%H" (str "--since=" (midnight-utc date)) ref
+                                  "--" pathspecs))))
+
+(defn- config-commits
+  "Commits of `ref` since `date` that changed the module config. Before [[modules-config-path]] existed that is a
+  change to [[legacy-config-path]], which is followed only up to the commit that moved the config out of it."
+  [ref date]
+  (let [introduced (last (str/split-lines (git! "log" "--first-parent" "--diff-filter=A" "--format=%H" ref
+                                                "--" modules-config-path)))]
+    (concat (commits-since ref date [modules-config-path])
+            (when-not (str/blank? introduced)
+              (commits-since (str introduced "^") date [legacy-config-path])))))
+
+(defn- last-commit-before
+  "The last first-parent commit of `ref` before each of `dates`."
+  [ref dates]
+  (keep #(not-empty (str/trim (git! "rev-list" "-1" "--first-parent" (str "--before=" (midnight-utc %)) ref)))
+        dates))
+
+(defn- dates-from
+  "Every date from `start` up to today, `step` apart."
+  [^LocalDate start step]
+  (take-while #(not (.isAfter ^LocalDate % (LocalDate/now))) (iterate step start)))
+
 (defn sample-commits
   "Commits to measure on the first-parent history of `ref` (default `origin/master`), oldest first:
 
   - every one since `since` that changed the module config, which changes on every boundary shift
   - every one since `backend-since` that changed a backend source or the module config
-  - the last commit before the first of each month from `monthly-since`
-  - each of `extra`, and the tip of `ref`"
-  [{:keys [ref since backend-since monthly-since extra], :or {ref "origin/master"}}]
-  (let [log-since      (fn [date & paths]
-                         (when date
-                           (str/split-lines (apply git! "log" "--first-parent" "--format=%H" (str "--since=" date) ref
-                                                   "--" paths))))
-        config-commits (concat (log-since since ".clj-kondo/config/modules/config.edn")
-                               (log-since backend-since "src" "enterprise/backend/src" "modules/drivers/*/src"
-                                          "modules/embedder/src" ".clj-kondo/config/modules/config.edn"))
+  - the last commit before each week from `weekly-since`, and before the first of each month from `monthly-since`
+  - each of `extra`, and the tip of `ref`
+
+  Dates are days in UTC."
+  [{:keys [ref since backend-since weekly-since monthly-since extra], :or {ref "origin/master"}}]
+  (let [changed        (concat (when since (config-commits ref since))
+                               (when backend-since (commits-since ref backend-since backend-pathspecs)))
+        weeks          (when weekly-since
+                         (dates-from (LocalDate/parse weekly-since) #(.plusWeeks ^LocalDate % 1)))
         months         (when monthly-since
-                         (take-while #(not (.isAfter ^LocalDate % (LocalDate/now)))
-                                     (iterate #(.plusMonths ^LocalDate % 1)
-                                              (.withDayOfMonth (LocalDate/parse monthly-since) 1))))
-        anchors        (keep #(not-empty (str/trim (git! "rev-list" "-1" "--first-parent" (str "--before=" %) ref)))
-                             months)
+                         (dates-from (.withDayOfMonth (LocalDate/parse monthly-since) 1) #(.plusMonths ^LocalDate % 1)))
+        anchors        (last-commit-before ref (concat weeks months))
         resolved       (map #(str/trim (git! "rev-parse" (str % "^{commit}")))
-                            (concat config-commits anchors extra [ref]))
+                            (concat changed anchors extra [ref]))
         order          (into {}
                              (map-indexed (fn [i sha] [sha i]))
                              (str/split-lines (git! "rev-list" "--first-parent" "--reverse" ref)))]
@@ -460,16 +521,19 @@
       :since '\"2025-10-01\"' :monthly-since '\"2023-12-01\"' :out '\"history.csv\"'"
   [{:keys [commits out], :as opts}]
   (let [shas   (if (seq commits)
-                 (vec (distinct (concat commits (when (some opts [:since :backend-since :monthly-since])
-                                                  (sample-commits opts)))))
+                 (vec (distinct (concat commits
+                                        (when (some opts [:since :backend-since :weekly-since :monthly-since])
+                                          (sample-commits opts)))))
                  (sample-commits opts))
         reader (open-object-reader)
         rows   (try
                  (into []
                        (map-indexed (fn [i sha]
                                       (let [row (measure reader sha)]
+                                        ;; An explicit commit can be any revision, such as `HEAD`: print what it
+                                        ;; resolved to.
                                         (println (format "%d/%d %s %s largest cycle %d" (inc i) (count shas)
-                                                         (subs sha 0 11) (:committed-at row)
+                                                         (subs (:sha row) 0 11) (:committed-at row)
                                                          (:scc-largest-namespaces row)))
                                         row)))
                        shas)
