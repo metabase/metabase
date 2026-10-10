@@ -727,6 +727,66 @@
               (is (=? {:type :text :text "The orders table has what you need."}
                       (last (filter #(= :text (:type %)) result)))))))))))
 
+(deftest next-call-ends-on-the-tool-result-test
+  (testing "even when the text before the tool call ends like the start of a link"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [call-count (atom 0)
+            next-input (atom nil)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [{:keys [input]}]
+                                                            (if (= 1 (swap! call-count inc))
+                                                              (mut/mock-llm-response
+                                                               [{:type :text :id "t1" :text "Looking up [Orders"}
+                                                                {:type      :tool-input
+                                                                 :id        "call-1"
+                                                                 :function  "search"
+                                                                 :arguments {:keyword_queries ["orders"]}}])
+                                                              (do (reset! next-input input)
+                                                                  (mut/mock-llm-response [{:type :text :text "Found it."}]))))
+                                    metabot-search/search (constantly [])]
+          (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {}})
+          (is (=? {:type :tool-output :id "call-1"} (last @next-input))))))))
+
+(deftest next-call-replays-link-split-by-reasoning-test
+  (testing "reasoning between two text parts preserves the link and the tool result ends the next input"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [call-count (atom 0)
+            next-input (atom nil)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [{:keys [input]}]
+                                                            (if (= 1 (swap! call-count inc))
+                                                              [{:type :text-start :id "t1"}
+                                                               {:type :text-delta :id "t1" :delta "Looking up [Ord"}
+                                                               {:type :text-end :id "t1"}
+                                                               {:type :reasoning-start :id "r1"}
+                                                               {:type :reasoning-delta :id "r1" :delta "Thinking"}
+                                                               {:type :reasoning-end :id "r1"}
+                                                               {:type :text-start :id "t2"}
+                                                               {:type :text-delta :id "t2" :delta "ers](metabase://model/1)"}
+                                                               {:type :text-end :id "t2"}
+                                                               {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                                                               {:type           :tool-input-delta
+                                                                :toolCallId     "call-1"
+                                                                :inputTextDelta (json/encode {:keyword_queries ["orders"]})}
+                                                               {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]
+                                                              (do (reset! next-input input)
+                                                                  (mut/mock-llm-response [{:type :text :text "Found it."}]))))
+                                    metabot-search/search (constantly [])]
+          (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {}})
+          (is (=? [{:type :text :id "t1" :text "Looking up "}
+                   {:type :reasoning :id "r1" :text "Thinking"}
+                   {:type :text :id "t2" :text "[Orders](metabase://model/1)"}
+                   {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                   {:type :tool-output :id "call-1" :function "search"}]
+                  (filterv :type @next-input)))
+          (is (=? {:type :tool-output :id "call-1"} (last @next-input))))))))
+
 (deftest later-calls-resend-what-the-turn-already-sent-test
   (testing "edits made during a turn don't change the system prompt, tools or messages its earlier calls sent"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Ops original"}]
