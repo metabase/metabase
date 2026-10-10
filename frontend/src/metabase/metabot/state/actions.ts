@@ -56,13 +56,14 @@ import {
   getPromptText,
   getUserPromptMessage,
 } from "./selectors";
-import type {
-  MetabotAgentDataPartMessage,
-  MetabotAgentId,
-  MetabotAgentTurnDisplayError,
-  MetabotAgentTurnError,
-  MetabotUserChatMessage,
-  SlashCommand,
+import {
+  type MetabotAgentDataPartMessage,
+  type MetabotAgentId,
+  type MetabotAgentTurnDisplayError,
+  type MetabotAgentTurnError,
+  type MetabotUserChatMessage,
+  RETRIABLE_METABOT_TURN_ERROR_CODES,
+  type SlashCommand,
 } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
 
@@ -594,6 +595,9 @@ export const sendAgentRequest = createAsyncThunk<
                 }
                 pushDataPart({ type: "data_part", part });
               })
+              .with({ type: "data-model_fallback" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
               .with({ type: "data-tool_title" }, (part) => {
                 const { tool_call_id, title } = part.data;
                 dispatch(
@@ -721,15 +725,16 @@ export const sendAgentRequest = createAsyncThunk<
             {
               type: P.union(
                 "ai_usage_limit_reached",
-                "ai_provider_billing",
-                "ai_provider_rate_limit",
-                "ai_provider_auth",
+                "prompt_blocked",
+                ...RETRIABLE_METABOT_TURN_ERROR_CODES,
               ),
               message: P.string,
             },
             streamedError,
           )
-            ? // special case where we want to show the returned error from the backend
+            ? // cases where we want to show the returned error from the backend: usage limits, and a
+              // provider turning us down — whose message the adapters write for a person, and whose
+              // retry lands on the fallback provider now that the failure is recorded
               { type: "message" as const, message: streamedError.message }
             : undefined,
         });

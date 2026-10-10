@@ -856,6 +856,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-mini-model"?: string | null;
   "ee-embedding-provider"?: string | null;
   "llm-fast-mode"?: boolean | null;
+  "llm-provider-fallback-enabled?": boolean;
   "llm-anthropic-api-key"?: string | null;
   "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;

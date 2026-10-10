@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -17,6 +18,7 @@
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
@@ -162,6 +164,136 @@
   (testing "throws for an unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (registry/required "unknown" :stream)))))
+
+(deftest call-llm-records-provider-health-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! []
+                (into [] (self/call-llm "anthropic/claude-haiku-4-5" nil [] {}
+                                        {:tag "agent" :required-permission :permission/metabot}
+                                        nil)))]
+        (testing "a call that throws leaves the connection recorded as failing, so the next one routes around it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (throw (ex-info "invalid x-api-key" {:status 401})))]
+            (is (thrown? clojure.lang.ExceptionInfo (call!)))
+            (is (=? {:message "invalid x-api-key" :fatal? true} (llm.health/failure "anthropic")))))
+        (testing "a call that works clears it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (call!)
+            (is (nil? (llm.health/failure "anthropic")))))
+        (testing "a provider that streams an error part instead of throwing still counts as a failure"
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (test-util/mock-llm-response
+                                         [{:type :error :error {:message "upstream is overloaded"}}]))]
+            (mt/with-log-level [metabase.metabot.self :fatal]
+              (call!))
+            (is (=? {:message "upstream is overloaded" :fatal? false}
+                    (llm.health/failure "anthropic")))))
+        (testing "an account out of credit is fatal even though Anthropic answers it with a 400"
+          (llm.health/record-success! "anthropic")
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (throw (ex-info "Anthropic API error (HTTP 400)"
+                                                        {:status    400
+                                                         :body      {:type  "error"
+                                                                     :error {:type    "invalid_request_error"
+                                                                             :message "Your credit balance is too low to access the Anthropic API."}}
+                                                         :api-error true
+                                                         :provider  "anthropic"})))]
+            (is (thrown? clojure.lang.ExceptionInfo (call!)))
+            (is (=? {:message "Anthropic API error (HTTP 400)" :fatal? true} (llm.health/failure "anthropic")))))
+        (testing "a consumer that throws while the provider is streaming is not the provider failing"
+          (llm.health/record-success! "anthropic")
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bug in a downstream xf"
+                                  (transduce (map (fn [_] (throw (ex-info "bug in a downstream xf" {}))))
+                                             conj
+                                             (self/call-llm "anthropic/claude-haiku-4-5" nil [] {}
+                                                            {:tag "agent" :required-permission :permission/metabot}
+                                                            nil))))
+            (is (true? (llm.health/healthy? "anthropic")))))))))
+
+(deftest call-llm-structured-records-only-provider-failures-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! []
+                (self/call-llm-structured-with-trace "anthropic/claude-haiku-4-5" [] {} 0.0 100
+                                                     {:tag "agent" :required-permission :permission/metabot}))]
+        (testing "a provider that answers without the tool call has served the request, so nothing is recorded"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call!)))
+            (is (true? (llm.health/healthy? "anthropic")))))
+        (testing "a provider that rejects the request is still recorded"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (throw (ex-info "invalid x-api-key" {:status 401})))]
+            (try
+              (is (thrown? clojure.lang.ExceptionInfo (call!)))
+              (is (=? {:message "invalid x-api-key" :fatal? true} (llm.health/failure "anthropic")))
+              (finally
+                (llm.health/record-success! "anthropic")))))
+        (testing "an error streamed after the tool call is not cleared by the tool call that preceded it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (test-util/mock-llm-response
+                                         [{:type :tool-input :id "c1" :function "json" :arguments {:answer 42}}
+                                          {:type :error :errorText "upstream is overloaded"}]))]
+            (try
+              (mt/with-log-level [metabase.metabot.self :fatal]
+                (call!))
+              (is (=? {:message "upstream is overloaded" :fatal? false} (llm.health/failure "anthropic")))
+              (finally
+                (llm.health/record-success! "anthropic")))))))))
+
+(deftest call-llm-records-only-provider-failures-from-gemini-streams-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(stream! [events]
+                (mt/with-dynamic-fn-redefs [google/google-raw (constantly events)]
+                  (mt/with-log-level [metabase.metabot.self :fatal]
+                    (into [] (self/call-llm "google/google/gemini-3.5-flash" nil [] {}
+                                            {:tag "agent" :required-permission :permission/metabot}
+                                            nil)))))]
+        (llm.health/record-success! "google")
+        (try
+          (testing "a blocked prompt is about the prompt, so the connection stays healthy"
+            (stream! [{:responseId "r1" :promptFeedback {:blockReason "PROHIBITED_CONTENT"}}])
+            (is (true? (llm.health/healthy? "google"))))
+          (testing "a malformed function call is about the response, so the connection stays healthy"
+            (stream! [{:responseId "r2" :candidates [{:finishReason "MALFORMED_FUNCTION_CALL"}]}])
+            (is (true? (llm.health/healthy? "google"))))
+          (testing "an error envelope in the middle of the stream is the provider failing"
+            (stream! [{:responseId "r3" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
+                      {:error {:code 503 :message "The model is overloaded."}}])
+            (is (=? {:message "The model is overloaded." :fatal? false} (llm.health/failure "google"))))
+          (finally
+            (llm.health/record-success! "google")))))))
+
+(deftest call-llm-records-only-provider-failures-from-openai-streams-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(stream! [error]
+                (mt/with-dynamic-fn-redefs [openai/openai-raw
+                                            (constantly [{:type "response.created" :response {:id "resp_1"}}
+                                                         {:type "response.failed" :response {:id "resp_1" :error error}}])]
+                  (mt/with-log-level [metabase.metabot.self :fatal]
+                    (into [] (self/call-llm "openai/gpt-5.4" nil [] {}
+                                            {:tag "agent" :required-permission :permission/metabot}
+                                            nil)))))]
+        (llm.health/record-success! "openai")
+        (try
+          (testing "a prompt OpenAI flags under its usage policy is about the prompt, so the connection stays healthy"
+            (stream! {:code "invalid_prompt" :message "Invalid prompt: flagged as potentially violating our usage policy."})
+            (is (true? (llm.health/healthy? "openai"))))
+          (testing "a server error is the provider failing"
+            (stream! {:code "server_error" :message "The server had an error while processing your request."})
+            (is (=? {:message "The server had an error while processing your request." :fatal? false}
+                    (llm.health/failure "openai"))))
+          (finally
+            (llm.health/record-success! "openai")))))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
@@ -462,6 +594,18 @@
         (is (> @cnt 20) "SHOULD have stopped writing when reduction terminated early"))
       (finally
         (.stop server)))))
+
+(deftest lite-aisdk-xf-error-tagging-test
+  (testing "tags an adapter-streamed error as the provider's, so the client shows its message"
+    (is (= [{:type :error :error {:message    "Your account is not active, please check your billing details"
+                                  :error-code "provider_error"}}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :error :errorText "Your account is not active, please check your billing details"}]))))
+  (testing "an error part that already carries an :error map — a pre-flight gate, the agent loop's catch — passes
+            through with whatever code fits it"
+    (is (= [{:type :error :error {:message "limit reached" :error-code "ai_usage_limit_reached"}}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :error :error {:message "limit reached" :error-code "ai_usage_limit_reached"}}])))))
 
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
@@ -2601,12 +2745,13 @@
    :error {:type    "invalid_request_error"
            :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
 
+(def ^:private byok-model "anthropic/claude-sonnet-4-6")
+
 (deftest byok-provider-error-test
-  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                     llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+  (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections]
     (testing "classifies the failures that the customer can fix on their side"
       (are [code provider status body]
-           (= code (:error-code (mt/as-admin (self/byok-provider-error (provider-api-error! provider status body)))))
+           (= code (:error-code (mt/as-admin (self/byok-provider-error (provider-api-error! provider status body) byok-model))))
         "ai_provider_billing"    "anthropic"  400 anthropic-credit-balance-body
         "ai_provider_billing"    "anthropic"  400 {:error {:type    "invalid_request_error"
                                                            :message "You have reached your specified API usage limits."}}
@@ -2632,15 +2777,76 @@
     (testing "admins are told which provider failed, everyone else is not"
       (doseq [status [402 429 401]]
         (let [e (provider-api-error! "anthropic" status {})]
-          (is (str/includes? (:message (mt/as-admin (self/byok-provider-error e)))
+          (is (str/includes? (:message (mt/as-admin (self/byok-provider-error e byok-model)))
                              "Anthropic"))
           (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
-                                              (self/byok-provider-error e)))
+                                              (self/byok-provider-error e byok-model)))
                                   "Anthropic"))))))
     (testing "the managed provider keeps the generic error, since its failures are Metabase's to fix"
-      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
-        (is (nil? (mt/as-admin
-                    (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))))))
+      (is (nil? (mt/as-admin
+                  (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)
+                                            "metabase/anthropic/claude-sonnet-4-6")))))))
+
+(defn- google-token-refresh-failure
+  [^Exception cause]
+  (caught #(#'google/fresh-bearer-headers
+            (proxy [com.google.auth.oauth2.GoogleCredentials] []
+              (refreshIfExpired [] (throw cause))))))
+
+(deftest call-llm-health-classifies-what-the-adapters-throw-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! [model-ref]
+                (mt/with-log-level [metabase.metabot.self :fatal]
+                  (caught #(into [] (self/call-llm model-ref nil [] {}
+                                                   {:tag "agent" :required-permission :permission/metabot}
+                                                   nil)))))
+              (with-clean-record [conn-key thunk]
+                (llm.health/record-success! conn-key)
+                (try
+                  (thunk)
+                  (finally
+                    (llm.health/record-success! conn-key))))]
+        (testing "a prompt longer than the model's window is about that one request, so the connection stays healthy"
+          (with-clean-record
+            "anthropic"
+            #(mt/with-dynamic-fn-redefs [self.claude/claude
+                                         (fn [_]
+                                           (throw (provider-api-error!
+                                                   "anthropic" 400
+                                                   {:type  "error"
+                                                    :error {:type    "invalid_request_error"
+                                                            :message "prompt is too long: 215000 tokens > 200000 maximum"}})))]
+               (call! "anthropic/claude-haiku-4-5")
+               (is (true? (llm.health/healthy? "anthropic"))))))
+        (testing "an empty balance takes the connection out, though Anthropic answers it with a 400 too"
+          (with-clean-record
+            "anthropic"
+            #(mt/with-dynamic-fn-redefs [self.claude/claude
+                                         (fn [_] (throw (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))]
+               (call! "anthropic/claude-haiku-4-5")
+               (is (=? {:fatal? true} (llm.health/failure "anthropic"))))))
+        (testing "a Google token refresh that fails for a disabled service account takes the connection out"
+          (with-clean-record
+            "google"
+            #(let [failure (google-token-refresh-failure (java.io.IOException. "invalid_grant: account disabled"))]
+               (mt/with-dynamic-fn-redefs [google/google-raw (fn [& _] (throw failure))]
+                 (call! "google/google/gemini-3.5-flash")
+                 (is (=? {:fatal? true} (llm.health/failure "google")))))))
+        (testing "but one that never reached Google's token endpoint is transient, since the network is not the configuration"
+          (with-clean-record
+            "google"
+            #(let [failure (google-token-refresh-failure (java.net.UnknownHostException. "oauth2.googleapis.com"))]
+               (mt/with-dynamic-fn-redefs [google/google-raw (fn [& _] (throw failure))]
+                 (call! "google/google/gemini-3.5-flash")
+                 (is (=? {:fatal? false} (llm.health/failure "google")))))))
+        (testing "a Bedrock connection with an unknown region takes itself out, through the real adapter"
+          (llm.tu/with-connections [(llm.tu/connection "bedrock" {:region "mars-north-1"})]
+            (with-clean-record
+              "bedrock"
+              #(do (call! (str "bedrock/" (llm.provider/default-model "bedrock")))
+                   (is (=? {:fatal? true :message #"Invalid AWS Bedrock region.*"}
+                           (llm.health/failure "bedrock")))))))))))
 
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"

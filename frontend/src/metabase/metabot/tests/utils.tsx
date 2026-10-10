@@ -8,6 +8,10 @@ import {
   setupGetMetabotConversationTitleEndpoint,
   setupListMetabotConversationsEndpoint,
 } from "__support__/server-mocks";
+import {
+  type LlmProviderEndpointsOpts,
+  setupLlmProviderEndpoints,
+} from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
@@ -372,6 +376,7 @@ export function setup(
     conversationTitle?: string | null;
     withRouter?: boolean;
     initialRoute?: string;
+    llmProviders?: LlmProviderEndpointsOpts;
   } | void,
 ) {
   mockReducedMotion(); // induce reduced motion to avoid waiting for streaming to finish
@@ -411,6 +416,9 @@ export function setup(
     createMockUserMetabotPermissions(),
   );
   setupDatabaseListEndpoint([]);
+  if (options?.llmProviders) {
+    setupLlmProviderEndpoints(options.llmProviders);
+  }
   setupListMetabotConversationsEndpoint(conversations);
   setupGetMetabotConversationTitleEndpoint(
     conversationTitle

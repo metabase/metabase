@@ -217,16 +217,6 @@
   {:type     "context"
    :elements [{:type "mrkdwn" :text (str "_" no-response-copy "_")}]})
 
-(def ^:private provider-config-error-codes
-  "Error codes that mean the LLM provider connection is misconfigured.
-
-   Thrown by [[metabase.metabot.self/parse-provider-model]] and by the provider
-   adapters' own setup validation; all deserve the same check-your-AI-settings copy."
-  #{"llm-not-configured" "api-key-missing" "credentials-unavailable" "base-url-missing"
-    "model-missing" "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
-    "not-a-service-account-key" "invalid-location" "project-id-required"
-    "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
-
 (defn- known-error-message
   "User-facing copy for a failure this namespace recognizes, or nil.
 
@@ -238,19 +228,22 @@
    everything else, raw provider errors and permission keywords included, must stay out
    of shared Slack channels."
   [error]
-  (let [code (some-> (or (:error-code error) (get-in error [:data :error-code])) name)]
+  (let [codes (into #{} (keep #(some-> % name)) [(get-in error [:data :error-code]) (:error-code error)])]
     (cond
-      (or (= code "permission_denied")
+      (or (contains? codes "permission_denied")
           (= :metabot/permission-denied (:type error))
           (= :metabot/permission-denied (get-in error [:data :type])))
       "You do not have permission to use the AI assistant."
 
-      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
-         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} code)
+      (some #{"metabase_ai_managed_locked" "ai_usage_limit_reached"
+              "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} codes)
       (:message error)
 
-      (provider-config-error-codes code)
+      (some metabot.self/provider-config-error-codes codes)
       "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."
+
+      (contains? codes "prompt_blocked")
+      "The AI provider declined to answer this message. Try rephrasing it."
 
       :else nil)))
 
@@ -277,9 +270,9 @@
    carries; it is nil when the turn also produced an `:error` part."
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
-           request-prompt team-id thread-ts]}]
+           request-prompt team-id thread-ts model-selection]}]
   (let [message         (metabot.envelope/user-message prompt)
-        model-ref       (metabot.settings/llm-metabot-provider)
+        model-ref       (:model-ref model-selection)
         ai-proxy?       (llm.provider/managed-model-ref? model-ref)
         ;; Read with `ai-proxy?`, before the loop, so the row's verdict uses the model the turn ran on.
         window          (metabot.self/context-window-tokens model-ref)
@@ -364,6 +357,7 @@
                    :conversation-id conversation-id
                    :context         context
                    :memory-atom     memory-atom
+                   :model-selection model-selection
                    :tracking-opts   {:source     "slackbot"
                                      :session-id conversation-id}}))
       (catch Throwable t
@@ -699,7 +693,8 @@
      :conversation-id conversation-id}))
 
 (defn- send-dm-response
-  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}]
+  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id
+                                      model-selection]}]
   (let [{:keys [on-text on-tool-start on-tool-end on-data
                 request-flush! start-with-thinking! stream-state slack-writer prefetched-viz
                 dismiss-thinking! text-streamed? tools-streamed?]}
@@ -726,7 +721,8 @@
               :team-id              (:team_id auth-info)
               :thread-ts            thread-ts
               :req-slack-msg-id     (:ts event)
-              :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
+              :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))
+              :model-selection      model-selection})]
         (request-flush! true)
         ;; With no text there was nothing to drain, so at most a tool update has taken the placeholder
         ;; down; deleting it again is a no-op.
@@ -790,8 +786,9 @@
   ([client event extra-history]
    (let [message-ctx (slackbot.events/event->reply-context event)]
      (try
-       (metabot.usage/check-metabase-managed-free-limit!)
-       (let [ctx (prepare-response-context client event)]
+       (let [selection (metabot.settings/metabot-model-selection)
+             _         (metabot.usage/check-metabase-managed-free-limit! (:model-ref selection))
+             ctx       (assoc (prepare-response-context client event) :model-selection selection)]
          (if (slackbot.events/dm? event)
            (send-dm-response client event extra-history ctx)
            (slackbot.channel/send-channel-response client

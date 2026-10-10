@@ -6,16 +6,22 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { setupLlmModelsEndpoint } from "__support__/server-mocks/metabot";
+import {
+  setupLlmActiveModelEndpoint,
+  setupLlmModelsEndpoint,
+} from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { LlmConnectionModels } from "metabase-types/api";
+import type { LlmActiveModels, LlmConnectionModels } from "metabase-types/api";
 import {
+  createMockLlmActiveModel,
+  createMockLlmActiveModels,
   createMockLlmConnectionModels,
   createMockLlmModel,
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -55,6 +61,7 @@ type SetupOpts = {
   metabotModelEnvVar?: string;
   miniModel?: string | null;
   supportsFastMode?: boolean;
+  activeModels?: LlmActiveModels;
 };
 
 function renderSection({
@@ -63,6 +70,7 @@ function renderSection({
   metabotModelEnvVar,
   miniModel = "anthropic/claude-haiku-4-5",
   supportsFastMode = false,
+  activeModels = createMockLlmActiveModels(),
 }: SetupOpts = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -71,6 +79,8 @@ function renderSection({
     "llm-metabot-provider": metabotModel,
     "llm-mini-model": miniModel,
     "llm-metabot-supports-fast-mode?": supportsFastMode,
+    "llm-provider-fallback-enabled?": true,
+    "token-features": createMockTokenFeatures({ ai_controls: true }),
   });
 
   setupPropertiesEndpoints(sessionProperties);
@@ -86,6 +96,7 @@ function renderSection({
   ]);
   setupUpdateSettingEndpoint();
   setupLlmModelsEndpoint(models);
+  setupLlmActiveModelEndpoint(activeModels);
 
   renderWithProviders(
     <>
@@ -257,5 +268,59 @@ describe("AIModelSettingsSection", () => {
     await waitFor(() => {
       expect(screen.queryByText("Fast mode")).not.toBeInTheDocument();
     });
+  });
+
+  it("notes under each picker which provider is carrying its requests while the fallback is engaged", async () => {
+    await setup({
+      activeModels: createMockLlmActiveModels({
+        default: createMockLlmActiveModel({
+          connection_name: "OpenAI",
+          model: "gpt-5.4",
+          model_name: "GPT-5.4",
+          is_fallback: true,
+        }),
+        mini: createMockLlmActiveModel({
+          connection_name: "Mistral",
+          model: "mistral-medium",
+          model_name: "Mistral Medium",
+          is_fallback: true,
+        }),
+      }),
+    });
+
+    const notices = await screen.findAllByTestId("active-provider-notice");
+    expect(notices).toHaveLength(2);
+    expect(notices[0]).toHaveTextContent(
+      "Metabot is currently running on OpenAI using GPT-5.4.",
+    );
+    expect(notices[1]).toHaveTextContent(
+      "Quick tasks are currently running on Mistral using Mistral Medium.",
+    );
+  });
+
+  it("keeps showing the picked model while its provider is failing, so the preference can still be changed", async () => {
+    await setup({
+      activeModels: createMockLlmActiveModels({
+        mini: createMockLlmActiveModel({
+          connection_name: "OpenAI",
+          model: "gpt-5.4",
+          model_name: "GPT-5.4",
+          is_fallback: true,
+        }),
+      }),
+    });
+
+    expect(screen.getByLabelText("Mini model")).toHaveValue(
+      "Anthropic · Claude Haiku 4.5",
+    );
+    expect(screen.getByLabelText("Mini model")).toBeEnabled();
+  });
+
+  it("says nothing about the provider in use while the selected providers are serving requests", async () => {
+    await setup();
+
+    expect(
+      screen.queryByTestId("active-provider-notice"),
+    ).not.toBeInTheDocument();
   });
 });

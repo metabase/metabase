@@ -1,4 +1,5 @@
 export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
+  "ai-controls": "metabase-enterprise/ai-controls",
   database_routing: "metabase-enterprise/database_routing",
   snippets: "metabase-enterprise/snippets",
   embedding_iframe_sdk_setup: "metabase-enterprise/embedding_iframe_sdk_setup",

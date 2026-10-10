@@ -201,6 +201,62 @@
                       (setting/set-value-of-type! :string :llm-metabot-provider
                                                   (llm.provider/canonical-model-ref new-value))))
 
+;;; -------------------------------------------------- Fallback ---------------------------------------------------
+
+(defn- connection-display-name
+  [model-ref]
+  (:name (llm.provider/connection (llm.provider/model-ref->connection-key model-ref))))
+
+(defn- can-serve-turn?
+  "[[metabase.llm.provider/serviceable?]] plus what only this module can know: the managed connection cannot serve a
+  turn while its free tier is locked, so the fallback must neither stay on it nor route to it. Resolved late —
+  [[metabase.metabot.usage]] reads settings from this namespace."
+  [conn]
+  (and (llm.provider/serviceable? conn)
+       (or (not (llm.provider/managed-type? (:type conn)))
+           (not ((requiring-resolve 'metabase.metabot.usage/managed-usage-locked?))))))
+
+(defn effective-model-ref
+  "The model reference to actually run on when `model-ref` was asked for.
+
+  Normally that is `model-ref` itself. When the connection it names cannot serve requests — its credentials are
+  incomplete, [[metabase.llm.health]] has it recorded as failing, or it is the managed connection with the free tier
+  locked — and `llm-provider-fallback-enabled?` is on, this is the default model of the next connection in the list
+  that can. With nothing to fall back to, `model-ref` is returned unchanged so the request fails against the
+  provider the admin chose rather than silently doing nothing.
+
+  Resolved per request against the current record, so this is not a rotation: it reads as `model-ref` again the
+  moment that connection stops failing, without anything having to switch back."
+  [model-ref]
+  (or (when (and (llm.settings/llm-provider-fallback-enabled?)
+                 (not (boolean (some-> (llm.provider/connection
+                                        (llm.provider/model-ref->connection-key model-ref))
+                                       can-serve-turn?))))
+        (llm.provider/first-model-ref can-serve-turn?))
+      model-ref))
+
+(defn- model-fallback
+  "How `model-ref` was moved off the connection it names, or nil when it was not. Shaped for the client: this is
+  what Metabot tells the user it switched to, so it carries the connection names an admin would recognize
+  alongside the references."
+  [model-ref effective-ref]
+  (when (not= model-ref effective-ref)
+    {:model                  effective-ref
+     :model_name             (registry/model-name effective-ref)
+     :provider_name          (connection-display-name effective-ref)
+     :previous_model         model-ref
+     :previous_provider_name (connection-display-name model-ref)}))
+
+(defn metabot-model-selection
+  "What Metabot runs on right now, as `{:model-ref :selected-model-ref :fallback}`. `:fallback` is nil unless the
+  selected connection was unavailable and [[effective-model-ref]] moved the request to another one."
+  []
+  (let [selected  (llm-metabot-provider)
+        effective (effective-model-ref selected)]
+    {:model-ref          effective
+     :selected-model-ref selected
+     :fallback           (model-fallback selected effective)}))
+
 (defn- mini-model-ref
   "The model reference for the mini model the connection `model-ref` names was listed as serving, or nil when it
   names the one model it serves."
@@ -224,7 +280,10 @@
   "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
   model Metabot chats on, so with nothing stored this resolves to the fastest model the
   connection [[llm-metabot-provider]] names was listed as serving. Connections with no such model fall through to
-  the Metabot model itself, so this always names a model as long as Metabot does."
+  the Metabot model itself, so this always names a model as long as Metabot does.
+
+  This is the model the admin picked, whether or not its provider is currently failing; callers about to run
+  inference want [[mini-model-selection]], which applies the fallback."
   []
   (or (explicit-mini-model)
       (let [metabot-ref (llm-metabot-provider)]
@@ -241,6 +300,22 @@
                 (when new-value
                   (validate-model-ref! new-value))
                 (setting/set-value-of-type! :string :llm-mini-model (llm.provider/canonical-model-ref new-value))))
+
+(defn mini-model-selection
+  "What quick background tasks run on right now, in the same `{:model-ref :selected-model-ref :fallback}` shape
+  as [[metabot-model-selection]]. Quick tasks follow the same [[effective-model-ref]] fallback as Metabot itself,
+  so a failing provider does not leave every conversation unnamed."
+  []
+  (let [selected  (llm-mini-model)
+        effective (effective-model-ref selected)
+        ;; landing on another connection, quick tasks belong on its fastest model, not the default one Metabot
+        ;; itself would chat on
+        effective (if (= selected effective)
+                    effective
+                    (or (mini-model-ref effective) effective))]
+    {:model-ref          effective
+     :selected-model-ref selected
+     :fallback           (model-fallback selected effective)}))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."

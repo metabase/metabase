@@ -8,6 +8,7 @@
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.usage :as metabot.usage]
@@ -19,24 +20,30 @@
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
 
+;;; These tests mock the one adapter `test-provider` names and assert on the model that served the request, so
+;;; each pins the provider fallback off — as a raw value, because the setter needs the :ai-controls feature
+;;; nothing here grants. A failure recorded against the connection by any test running alongside would otherwise
+;;; divert the request to a connection with no mock behind it.
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest generate-content-backwards-compatible-route-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
-    (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                (fn [_]
-                                  (mut/mock-llm-response
-                                   [{:type :start :id "msg-1"}
-                                    {:type :text :text "No chart available"}
-                                    {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                     :model "test-model" :id "msg-1"}]))]
-      (is (= {:draft_card nil
-              :description nil
-              :error "No chart available"}
-             (mt/user-http-request :crowberto
-                                   :post 200 "metabot/document/generate-content"
-                                   {:instructions "Show me sales data"}))))))
+    (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [_]
+                                    (mut/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type :text :text "No chart available"}
+                                      {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                       :model "test-model" :id "msg-1"}]))]
+        (is (= {:draft_card nil
+                :description nil
+                :error "No chart available"}
+               (mt/user-http-request :crowberto
+                                     :post 200 "metabot/document/generate-content"
+                                     {:instructions "Show me sales data"})))))))
 
 (deftest generate-content-permission-denied-body-test
   (testing "the 403 body is the plain denial sentence, not a map carrying a stack trace"
@@ -49,37 +56,56 @@
 
 (deftest generate-content-free-limit-body-test
   (testing "the 402 body is the message and error code alone, not a map carrying a stack trace"
-    (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
+    (mt/with-dynamic-fn-redefs [metabot.usage/managed-model-locked? (constantly true)]
       (is (= {:message    "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
               :error-code "metabase_ai_managed_locked"}
              (mt/user-http-request :crowberto
                                    :post 402 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
 
+(deftest generate-content-resolves-the-serving-model-once-test
+  (testing "the usage check and the agent loop share one resolution of the model serving the request, so a
+            provider's health changing mid-request cannot split them across providers"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+        (let [resolutions (atom 0)
+              original    (mt/original-fn #'metabot.settings/metabot-model-selection)]
+          (mt/with-dynamic-fn-redefs [metabot.settings/metabot-model-selection (fn []
+                                                                                 (swap! resolutions inc)
+                                                                                 (original))
+                                      openrouter/openrouter (fn [_]
+                                                              (mut/mock-llm-response
+                                                               [{:type :text :text "No chart available"}]))]
+            (mt/user-http-request :crowberto :post 200 "metabot/document/generate-content"
+                                  {:instructions "Show me sales data"})
+            (is (= 1 @resolutions))))))))
+
 (deftest generate-content-prometheus-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
-    (mt/with-prometheus-system! [_ system]
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                  (fn [_]
-                                    (mut/mock-llm-response
-                                     [{:type :start :id "msg-1"}
-                                      {:type :text :text "No chart available"}
-                                      {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                       :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
-        (mt/user-http-request :crowberto
-                              :post 200 "metabot/document/generate-content"
-                              {:instructions "Show me sales data"}))
-      (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
-                                 {:profile-id "document-generate-content"})))
-      (is (== 1 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
-                                       {:profile-id "document-generate-content"}))))
-      (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
-                                 {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))
-      (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens
+    (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (mut/mock-llm-response
+                                       [{:type :start :id "msg-1"}
+                                        {:type :text :text "No chart available"}
+                                        {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                         :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
+          (mt/user-http-request :crowberto
+                                :post 200 "metabot/document/generate-content"
+                                {:instructions "Show me sales data"}))
+        (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
+                                   {:profile-id "document-generate-content"})))
+        (is (== 1 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
+                                         {:profile-id "document-generate-content"}))))
+        (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
                                    {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))
-      (is (== 20 (mt/metric-value system :metabase-metabot/llm-output-tokens
-                                  {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"}))))))
+        (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens
+                                     {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))
+        (is (== 20 (mt/metric-value system :metabase-metabot/llm-output-tokens
+                                    {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))))))
 
 (deftest generate-content-tool-call-produces-draft-card-test
   (testing "a document_construct_sql_chart tool call round trip produces a :draft_card (#73690)"
@@ -88,38 +114,39 @@
     (let [db-id (mt/id)]
       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                          llm-metabot-provider test-provider]
-        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                    (fn [_]
-                                      {:validation-result {:valid? true, :dialect "h2"}
-                                       :action-result      {:query-id "q-1"
-                                                            :query    {:database db-id
-                                                                       :type     "native"
-                                                                       :native   {:query         "SELECT COUNT(*) FROM ORDERS"
-                                                                                  :template-tags {}}}}})
-                                    qp/process-query (fn [_] nil)
-                                    openrouter/openrouter
-                                    (let [call-count (atom 0)]
+        (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+          (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                       (fn [_]
-                                        (if (= 1 (swap! call-count inc))
-                                          (mut/mock-llm-response
-                                           [{:type      :tool-input
-                                             :id        "t1"
-                                             :function  "document_construct_sql_chart"
-                                             :arguments {:database_id  db-id
-                                                         :name         "Orders by day"
-                                                         :description  "Count of orders"
-                                                         :analysis     "Simple count"
-                                                         :approach     "Direct SQL"
-                                                         :sql          "SELECT COUNT(*) FROM ORDERS"
-                                                         :viz_settings {:chart_type "bar"}}}])
-                                          (mut/mock-llm-response
-                                           [{:type :text :text "Chart created"}]))))]
-          (let [response (mt/user-http-request :crowberto
-                                               :post 200 "metabot/document/generate-content"
-                                               {:instructions "chart it"})]
-            (is (=? {:error      nil
-                     :draft_card {:name "Orders by day"}}
-                    response))))))))
+                                        {:validation-result {:valid? true, :dialect "h2"}
+                                         :action-result      {:query-id "q-1"
+                                                              :query    {:database db-id
+                                                                         :type     "native"
+                                                                         :native   {:query         "SELECT COUNT(*) FROM ORDERS"
+                                                                                    :template-tags {}}}}})
+                                      qp/process-query (fn [_] nil)
+                                      openrouter/openrouter
+                                      (let [call-count (atom 0)]
+                                        (fn [_]
+                                          (if (= 1 (swap! call-count inc))
+                                            (mut/mock-llm-response
+                                             [{:type      :tool-input
+                                               :id        "t1"
+                                               :function  "document_construct_sql_chart"
+                                               :arguments {:database_id  db-id
+                                                           :name         "Orders by day"
+                                                           :description  "Count of orders"
+                                                           :analysis     "Simple count"
+                                                           :approach     "Direct SQL"
+                                                           :sql          "SELECT COUNT(*) FROM ORDERS"
+                                                           :viz_settings {:chart_type "bar"}}}])
+                                            (mut/mock-llm-response
+                                             [{:type :text :text "Chart created"}]))))]
+            (let [response (mt/user-http-request :crowberto
+                                                 :post 200 "metabot/document/generate-content"
+                                                 {:instructions "chart it"})]
+              (is (=? {:error      nil
+                       :draft_card {:name "Orders by day"}}
+                      response)))))))))
 
 (deftest generate-content-model-chart-round-trip-test
   (testing "the model loads the query skills, then charts a model by its column names"
@@ -128,69 +155,71 @@
                                         :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
         (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                            llm-metabot-provider test-provider]
-          (let [requests  (atom [])
-                responses [[{:type      :tool-input
-                             :id        "t1"
-                             :function  "load_skill"
-                             :arguments {:ids ["construct-notebook-query-core" "construct-notebook-query-advanced"]}}]
-                           [{:type      :tool-input
-                             :id        "t2"
-                             :function  "document_construct_model_chart"
-                             :arguments {:name         "Orders by month"
-                                         :description  "Count of orders per month."
-                                         :query        {"lib/type" "mbql/query"
-                                                        "stages"   [{"lib/type"    "mbql.stage/mbql"
-                                                                     "source-card" (:entity_id model)
-                                                                     "aggregation" [["count" {}]]
-                                                                     "breakout"    [["field" {"temporal-unit" "month"}
-                                                                                     "CREATED_AT"]]}]}
-                                         :viz_settings {:chart_type "line"}}}]]]
-            (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                        (fn [request]
-                                          (let [n (count (swap! requests conj request))]
-                                            (mut/mock-llm-response
-                                             (get responses (dec n) [{:type :text :text "Chart created"}]))))]
-              (let [response (mt/user-http-request :crowberto
-                                                   :post 200 "metabot/document/generate-content"
-                                                   {:instructions "Chart orders by month"})
-                    [first-request second-request] @requests]
-                (is (some #{"load_skill"} (map :tool-name (:tools first-request))))
-                (is (some #(and (string? %)
-                                (str/includes? % "<skill id=\"construct-notebook-query-advanced\">"))
-                          (tree-seq coll? seq (:input second-request)))
-                    "the skill body reaches the model before it writes the query")
-                (is (=? {:error      nil
-                         :draft_card {:name          "Orders by month"
-                                      :display       "line"
-                                      :database_id   (mt/id)
-                                      :dataset_query {:stages [{:source-card (:id model)}]}}}
-                        response))))))))))
+          (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+            (let [requests  (atom [])
+                  responses [[{:type      :tool-input
+                               :id        "t1"
+                               :function  "load_skill"
+                               :arguments {:ids ["construct-notebook-query-core" "construct-notebook-query-advanced"]}}]
+                             [{:type      :tool-input
+                               :id        "t2"
+                               :function  "document_construct_model_chart"
+                               :arguments {:name         "Orders by month"
+                                           :description  "Count of orders per month."
+                                           :query        {"lib/type" "mbql/query"
+                                                          "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                                       "source-card" (:entity_id model)
+                                                                       "aggregation" [["count" {}]]
+                                                                       "breakout"    [["field" {"temporal-unit" "month"}
+                                                                                       "CREATED_AT"]]}]}
+                                           :viz_settings {:chart_type "line"}}}]]]
+              (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                          (fn [request]
+                                            (let [n (count (swap! requests conj request))]
+                                              (mut/mock-llm-response
+                                               (get responses (dec n) [{:type :text :text "Chart created"}]))))]
+                (let [response (mt/user-http-request :crowberto
+                                                     :post 200 "metabot/document/generate-content"
+                                                     {:instructions "Chart orders by month"})
+                      [first-request second-request] @requests]
+                  (is (some #{"load_skill"} (map :tool-name (:tools first-request))))
+                  (is (some #(and (string? %)
+                                  (str/includes? % "<skill id=\"construct-notebook-query-advanced\">"))
+                            (tree-seq coll? seq (:input second-request)))
+                      "the skill body reaches the model before it writes the query")
+                  (is (=? {:error      nil
+                           :draft_card {:name          "Orders by month"
+                                        :display       "line"
+                                        :database_id   (mt/id)
+                                        :dataset_query {:stages [{:source-card (:id model)}]}}}
+                          response)))))))))))
 
 (deftest generate-content-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
-    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-      (let [rasta-id (mt/user->id :rasta)]
-        (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                    (fn [_]
-                                      (mut/mock-llm-response
-                                       [{:type :start :id "msg-1"}
-                                        {:type :text :text "No chart available"}
-                                        {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                         :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
-          (snowplow-test/with-fake-snowplow-collector
-            (mt/user-http-request :rasta
-                                  :post 200 "metabot/document/generate-content"
-                                  {:instructions "Show me sales data"})
-            (let [events       (snowplow-test/pop-event-data-and-user-id!)
-                  token-events (filter #(contains? (:data %) "total_tokens") events)]
-              (is (=? [{:user-id (str rasta-id)
-                        :data    {"model_id"           "openrouter/anthropic/claude-haiku-4-5"
-                                  "total_tokens"        120
-                                  "prompt_tokens"       100
-                                  "completion_tokens"   20
-                                  "estimated_costs_usd" 0.0
-                                  "duration_ms"         nat-int?
-                                  "source"              "document_generate_content"
-                                  "tag"                 "agent"}}]
-                      token-events)))))))))
+    (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [rasta-id (mt/user->id :rasta)]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (fn [_]
+                                        (mut/mock-llm-response
+                                         [{:type :start :id "msg-1"}
+                                          {:type :text :text "No chart available"}
+                                          {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                           :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
+            (snowplow-test/with-fake-snowplow-collector
+              (mt/user-http-request :rasta
+                                    :post 200 "metabot/document/generate-content"
+                                    {:instructions "Show me sales data"})
+              (let [events       (snowplow-test/pop-event-data-and-user-id!)
+                    token-events (filter #(contains? (:data %) "total_tokens") events)]
+                (is (=? [{:user-id (str rasta-id)
+                          :data    {"model_id"           "openrouter/anthropic/claude-haiku-4-5"
+                                    "total_tokens"        120
+                                    "prompt_tokens"       100
+                                    "completion_tokens"   20
+                                    "estimated_costs_usd" 0.0
+                                    "duration_ms"         nat-int?
+                                    "source"              "document_generate_content"
+                                    "tag"                 "agent"}}]
+                        token-events))))))))))

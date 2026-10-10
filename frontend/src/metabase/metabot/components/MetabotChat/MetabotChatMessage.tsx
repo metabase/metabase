@@ -2,7 +2,7 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -18,6 +18,7 @@ import {
   type MetabotMessage,
   type MetabotMessagePart,
   type MetabotMessageStatus,
+  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
   forkConversation,
   getIncompleteTurnMessage,
   getIncompleteTurnReason,
@@ -28,13 +29,10 @@ import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
-  Box,
   Button,
-  Card,
   Flex,
   type FlexProps,
   Icon,
-  Text,
   Tooltip,
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
@@ -42,6 +40,7 @@ import type { IconName, MetabotFeedback } from "metabase-types/api";
 import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
+import { AgentTurnAlert } from "./AgentTurnAlert";
 import { AgentDataPart } from "./MetabotAgentDataPart";
 import { AgentToolCallPart } from "./MetabotAgentToolCallPart";
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
@@ -57,6 +56,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
     .with({ type: "data-entity_saved" }, () => true)
+    .with({ type: "data-model_fallback" }, () => true)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .with({ type: "data-research_plan_update" }, () => false)
@@ -378,6 +378,10 @@ const MessageActions = ({
   );
 };
 
+const UNRETRIABLE_ERROR_TYPES = new Set<string | undefined>(
+  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
+);
+
 export const AgentMessage = ({
   message,
   debug,
@@ -402,6 +406,9 @@ export const AgentMessage = ({
   const messageId = message.externalId ?? "";
   const isFailed =
     message.status.type === "errored" || message.status.type === "aborted";
+  const isUnretriable =
+    message.status.type === "errored" &&
+    UNRETRIABLE_ERROR_TYPES.has(message.status.error.type);
   const canActOnMessage = !readonly && !!messageId;
 
   const visibleParts = debug
@@ -422,7 +429,7 @@ export const AgentMessage = ({
       isForking={isForking}
       submittedFeedback={submittedFeedback}
       setFeedbackMessage={setFeedbackMessage}
-      onRetry={onRetry}
+      onRetry={isUnretriable ? undefined : onRetry}
       onFork={onFork}
       extraActions={extraActions}
     />
@@ -478,88 +485,57 @@ export const AgentMessage = ({
   );
 };
 
-const AgentTurnAlert = ({
-  variant,
-  message,
-  cta,
-  footer,
-  debugDetails,
-}: {
-  variant: "error" | "info";
-  message: string;
-  cta?: ReactNode;
-  footer?: ReactNode;
-  debugDetails?: MetabotAgentTurnError;
-}) => (
-  <Flex
-    direction="column"
-    gap="xxs"
-    p="sm"
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="xs"
-    data-testid="metabot-chat-message-turn-alert"
-    bg="background_page-primary"
-  >
-    <Flex align="center" gap="sm">
-      <Icon
-        name={variant === "error" ? "warning" : "info"}
-        c={variant === "error" ? "feedback-negative" : "text-secondary"}
-        size="1rem"
-        flex="0 0 auto"
-      />
-      <Text c="text-secondary" size="sm" flex="1">
-        {message}
-      </Text>
-      {cta}
-    </Flex>
-    {debugDetails && (
-      <Card
-        bdrs="xxs"
-        ml="xl"
-        p="sm"
-        withBorder
-        shadow="none"
-        c="text-secondary"
-        fz="xs"
-        ff="monospace"
-        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-        data-testid="metabot-chat-message-turn-alert-debug"
-      >
-        {JSON.stringify(debugDetails, null, 2)}
-      </Card>
-    )}
-    {footer && <Box ml="xl">{footer}</Box>}
-  </Flex>
-);
-
 const AgentErroredTurnAlert = ({
   error,
   display,
   debug,
+  onRetry,
   onRefreshConversation,
 }: {
   error: MetabotAgentTurnError;
   display?: MetabotAgentTurnDisplayError;
   debug: boolean;
+  onRetry?: () => void;
   onRefreshConversation?: () => void;
 }) => {
-  const isOutOfSync = error.type === "conversation_out_of_sync";
+  const cta = match({ error, onRefreshConversation, onRetry })
+    .with(
+      {
+        error: { type: "conversation_out_of_sync" },
+        onRefreshConversation: P.nonNullable,
+      },
+      ({ onRefreshConversation }) => (
+        <Button
+          size="sm"
+          onClick={onRefreshConversation}
+          data-testid="metabot-chat-message-refresh"
+        >
+          {t`Refresh`}
+        </Button>
+      ),
+    )
+    .with(
+      {
+        error: { type: P.when((type) => !UNRETRIABLE_ERROR_TYPES.has(type)) },
+        onRetry: P.nonNullable,
+      },
+      ({ onRetry }) => (
+        <Button
+          size="sm"
+          onClick={onRetry}
+          data-testid="metabot-chat-message-retry"
+        >
+          {t`Retry`}
+        </Button>
+      ),
+    )
+    .otherwise(() => undefined);
 
   return (
     <AgentTurnAlert
       variant="error"
       message={display?.message ?? t`Something went wrong`}
-      cta={
-        isOutOfSync && onRefreshConversation ? (
-          <Button
-            size="sm"
-            onClick={onRefreshConversation}
-            data-testid="metabot-chat-message-refresh"
-          >
-            {t`Refresh`}
-          </Button>
-        ) : undefined
-      }
+      cta={cta}
       footer={
         error.type === "metabase_ai_managed_locked" && (
           <MetabotManagedProviderLimitActions inline />
@@ -591,6 +567,7 @@ const MessageStatus = ({
         error={o.error}
         display={o.display}
         debug={debug}
+        onRetry={onRetry}
         onRefreshConversation={onRefreshConversation}
       />
     ))

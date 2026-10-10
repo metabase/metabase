@@ -5,6 +5,8 @@
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.llm.health :as llm.health]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -155,6 +157,27 @@
           (is (= "mine" (:title response)))
           (is (= user-id (:user_id response)))
           (is (= 1 (count (:messages response)))))))))
+
+(deftest get-conversation-context-window-follows-the-serving-model-test
+  (testing "the context window is the fallback model's while the selected provider is failing, matching the stream"
+    (mt/with-premium-features #{:ai-controls}
+      (llm.tu/with-connections [(llm.tu/connection "anthropic") (llm.tu/connection "openai")]
+        (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+          (let [user-id (mt/user->id :rasta)]
+            (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                           :model/MetabotMessage _ {:conversation_id convo-id
+                                                    :user_id         user-id
+                                                    :role            "user"
+                                                    :data            [{:type "text" :text "hello"}]}]
+              (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+              (try
+                (let [fallback-window (metabot.self/context-window-tokens "openai/gpt-5.4")]
+                  (is (not= (metabot.self/context-window-tokens "anthropic/claude-sonnet-4-6") fallback-window))
+                  (is (= fallback-window
+                         (:context_window_tokens (mt/user-http-request :rasta :get 200
+                                                                       (str "metabot/conversations/" convo-id))))))
+                (finally
+                  (llm.health/record-success! "anthropic"))))))))))
 
 (deftest get-conversation-second-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id is readable by any participant, not just the originator"

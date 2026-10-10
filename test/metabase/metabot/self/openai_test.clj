@@ -155,6 +155,17 @@
                 :errorText "The server had an error while processing your request. Sorry about that!"}]
               (into [] (openai/openai->aisdk-chunks-xf) raw))))))
 
+(deftest ^:parallel openai-flagged-prompt-is-request-specific-test
+  (let [failed (fn [error]
+                 (second (into [] (openai/openai->aisdk-chunks-xf)
+                               [{:type "response.created" :response {:id "resp_1"}}
+                                {:type "response.failed" :response {:id "resp_1" :error error}}])))]
+    (testing "a prompt flagged under the usage policy is the prompt's doing, so it gets a code of its own"
+      (is (=? {:type :error :request-specific? true :error-code "prompt_blocked"}
+              (failed {:code "invalid_prompt" :message "Invalid prompt: flagged as potentially violating our usage policy."}))))
+    (testing "a server error is the provider's"
+      (is (not (contains? (failed {:code "server_error" :message "boom"}) :request-specific?))))))
+
 (deftest ^:parallel openai-response-failed-without-message-test
   (testing "response.failed with no message falls back to the error code, then a generic message"
     (let [code-only [{:type "response.created" :response {:id "resp_1"}}

@@ -5,10 +5,14 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
+   [metabase.llm.health :as llm.health]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.google.stream-generate-content :as sgc]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
@@ -386,11 +390,32 @@
                                                 :required-permission :permission/metabot-nlq}}})]
       (is (str/includes? text "You do not have permission to use the AI assistant."))))
   (testing "a provider config error the agent loop caught becomes check-your-settings copy"
-    (let [text (dm-error-part-appended-text!
-                {:type :error :error {:message "No LLM provider connection named \"anthropic\" is configured."
-                                      :type    "clojure.lang.ExceptionInfo"
-                                      :data    {:status-code 400 :api-error true :error-code :llm-not-configured}}})]
-      (is (str/includes? text "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."))))
+    (doseq [e [(ex-info "No LLM provider connection named \"anthropic\" is configured."
+                        {:status-code 400 :api-error true :error-code :llm-not-configured})
+               (self.core/missing-api-key-ex "anthropic")]]
+      (let [part (#'agent/error-part e "anthropic/claude-sonnet-4-6")]
+        (doseq [part [part (#'agent/user-facing-error-part false part)]]
+          (is (str/includes? (dm-error-part-appended-text! part)
+                             "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings.")
+              (ex-message e))))))
+  (testing "a blocked prompt gets fixed copy, never the provider's own text, streamed or thrown"
+    (let [streamed (some #(when (= :error (:type %)) %)
+                         (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf))
+                               [{:responseId "r1" :promptFeedback {:blockReason "PROHIBITED_CONTENT"}}]))
+          thrown   (#'agent/error-part
+                    (ex-info "OpenAI API error (HTTP 400) — Invalid prompt: flagged as potentially violating our usage policy."
+                             {:api-error  true
+                              :status     400
+                              :provider   "openai"
+                              :error-code :provider-api-error
+                              :body       {:error {:code    "invalid_prompt"
+                                                   :message "Invalid prompt: flagged as potentially violating our usage policy."}}})
+                    "openai/gpt-5.4")]
+      (doseq [part [streamed thrown (#'agent/user-facing-error-part false thrown)]]
+        (let [text (dm-error-part-appended-text! part)]
+          (is (str/includes? text "The AI provider declined to answer this message. Try rephrasing it."))
+          (is (not (str/includes? text "PROHIBITED_CONTENT")))
+          (is (not (str/includes? text "usage policy")))))))
   (testing "a provider failure the customer can fix keeps the message the agent loop wrote for it"
     (doseq [code ["ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"]]
       (let [text (dm-error-part-appended-text!
@@ -795,6 +820,38 @@
       (is (str/includes? appended "You do not have permission to use the AI assistant."))
       (is (empty? (context-texts blocks))
           "the error is the whole story; web reload treats such a turn as errored too"))))
+
+(deftest ^:synchronized slackbot-streaming-records-the-fallback-provider-test
+  (testing "a turn that falls back off a failing managed selection is persisted and run as the BYOK turn it is"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            start-opts (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls ai-request-calls]}]
+            (mt/with-premium-features #{:ai-controls}
+              (llm.tu/with-connections [(llm.tu/connection "metabase") (llm.tu/connection "anthropic")]
+                (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+                  (llm.health/record-failure! "metabase" "invalid x-api-key" true)
+                  (try
+                    (mt/with-dynamic-fn-redefs [metabot.persistence/start-turn!
+                                                (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                                  (swap! start-opts conj opts)
+                                                  {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                                metabot.persistence/finalize-assistant-turn!
+                                                (fn [& _] nil)]
+                      (mt/client :post 200 "metabot/slack/events"
+                                 (tu/slack-request-options event-body)
+                                 event-body)
+                      (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                               :done?      true?
+                               :timeout-ms 5000}))
+                    (finally
+                      (llm.health/record-success! "metabase"))))))
+            (is (=? [{:ai-proxy? false}] @start-opts))
+            (is (=? [{:model-selection {:model-ref          #(str/starts-with? % "anthropic/")
+                                        :selected-model-ref "metabase/anthropic/claude-sonnet-4-6"}}]
+                    @ai-request-calls))))))))
 
 ;;; ------------------------------------------------ Flush throttle tests ------------------------------------------------
 
