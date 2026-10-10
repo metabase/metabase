@@ -2,17 +2,7 @@
 ;; suppressions its commit added. A :pardon counts the commit's raises against nobody; a :confirm keeps them.
 ;; A :recount marks a commit that only changed how suppressions are counted: none of its changes count.
 ;; Written by `./bin/mage kondo-ratchets-history --pardon`, `--confirm` and `--recount`.
-[{:sha     "57e0ad66ea59f4b57c51e01a074d45519425084c"
-  :pr      77773
-  :subject "Add kondo ignore ratchets (#77773)"
-  :verdict :pardon
-  :why     "First budgets for debt that was already there."}
- {:sha     "42cf92479ad249dcf0c9b3a9e64e3ac2c7ca322b"
-  :pr      78217
-  :subject "Ratchet config-level kondo suppressions too (#78217)"
-  :verdict :pardon
-  :why     "First budgets for debt that was already there."}
- {:sha     "e24150083f0b0ceed609329fa1bb985714cee5c2"
+[{:sha     "e24150083f0b0ceed609329fa1bb985714cee5c2"
   :pr      78082
   :subject "Report dynamic requires which linter cannot verify (#78082)"
   :verdict :pardon
@@ -27,11 +17,6 @@
   :subject "Refine kondo ratchet commands and prompts (#81776)"
   :verdict :pardon
   :why     "Changed how the ratchet tooling counts; added no suppression."}
- {:sha     "dd9d8d05796b6190d60de11e4310a99075dc65ea"
-  :pr      82300
-  :subject "Ratchet module boundary escape hatches (#82300)"
-  :verdict :pardon
-  :why     "First budgets for debt that was already there."}
  {:sha     "4f02379e40db15676b4dc7df04e28643f230e455"
   :pr      82367
   :subject "Organize backend modules into domain subtrees (#82367)"
