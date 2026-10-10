@@ -97,7 +97,8 @@
           {:keys [query-id query]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?))]
+              instr       (instructions/query-created-instructions-for query-id
+                                                                       (tools.run-query/sql-results-readable?))]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr

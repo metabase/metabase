@@ -137,11 +137,12 @@
   :max-iterations  15
   :tools           internal-tools})
 
-;; :internal without the notebook query builder, so SQL is the only way to a value: the model writes it with
-;; create_sql_query and reads it with run_query. It measures how well the model answers in SQL alone. The SQL tools
-;; keep their own gates, the write_sql_queries capability and the SQL execution setting.
-;; Its run_query needs the scope Metabot's SQL permission grants, not the NLQ one, so a user with only the SQL
-;; permission can read what they run. That is the one thing the profile grants that :internal doesn't.
+;; :internal without the notebook query builder: the model writes a query with create_sql_query and reads it with
+;; run_query. It measures how well the model answers in SQL. Values can still reach the model without SQL through
+;; analyze_chart, for a chart the user is viewing, and through the field values read_resource returns.
+;; The SQL tools keep their own checks, the write_sql_queries capability and the SQL execution setting.
+;; Its run_query runs SQL only, and needs the scope Metabot's SQL permission grants, not the NLQ one, so a user with
+;; only the SQL permission can read what they run. That is the one thing the profile grants that :internal doesn't.
 (register-profile!
  {:name            :internal-sql
   :prompt-template "internal.selmer"

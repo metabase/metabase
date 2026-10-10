@@ -466,7 +466,7 @@
   "Map from profile-id to the metabot permission that must be `:yes` for a user
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
-   ;; SQL is this profile's only way to a value.
+   ;; This profile queries in SQL only.
    :internal-sql              :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
    :document-generate-content :permission/metabot-other-tools

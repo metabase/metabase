@@ -656,9 +656,32 @@
                    (run-sql-tool! {"q1" query} {:query_id "q1"})))))
         (is (= [] @driver-ran-sql))))))
 
+(deftest run-query-viewed-question-kinds-test
+  (mt/with-temp [:model/Card {sql-card :id}      {:dataset_query (venues-sql)}
+                 :model/Card {metric-card :id}   {:dataset_query (venues-count), :type :metric}
+                 :model/Card {archived-card :id} {:dataset_query (venues-count), :archived true}]
+    (let [run-viewing! (fn [viewing query-id]
+                         (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                                            metabot-sql-execution-enabled?   false]
+                           (call-tool! {:state   {:queries {}}
+                                        :context {:user_is_viewing viewing}}
+                                       {:query_id query-id})))
+          unknown-id   {:output #"No query with id -?\d+\. Known query ids: \[\]\. .*"}]
+      (testing "a viewed SQL question that Metabot did not save runs with SQL execution off"
+        (is (=? {:structured-output {:returned 1}}
+                (run-viewing! [{:type "question", :id sql-card}] (str sql-card)))))
+      (testing "a viewed question in the trash runs like any other the user can read"
+        (is (=? {:structured-output {:returned 1}}
+                (run-viewing! [{:type "question", :id archived-card}] (str archived-card)))))
+      (testing "a viewed metric does not run by its id"
+        (is (=? unknown-id (run-viewing! [{:type "metric", :id metric-card}] (str metric-card)))))
+      (testing "an id that can't name a question is refused like any unknown id"
+        (doseq [id [0 -5]]
+          (is (=? unknown-id (run-viewing! [{:type "question", :id id}] (str id)))))))))
+
 (defn- run-sql-only-tool!
-  "[[run-sql-tool!]] in a session whose tools, as the agent loop records them, lack construct_notebook_query. SQL
-  execution is on unless `sql-execution?` says otherwise."
+  "Call the SQL-only profile's `run_query` in a session whose tools, as the agent loop records them, lack
+  construct_notebook_query. SQL execution is on unless `sql-execution?` says otherwise."
   ([queries args]
    (run-sql-only-tool! true queries args))
   ([sql-execution? queries args]
@@ -669,7 +692,7 @@
        (mt/with-current-user (mt/user->id :rasta)
          (binding [shared/*memory-atom* (atom {:state      {:queries queries}
                                                :tool-names #{"create_sql_query" "run_query"}})]
-           (run-query/run-query-tool args)))))))
+           (run-query/run-sql-query-tool args)))))))
 
 (deftest run-query-without-notebook-builder-test
   (testing "without construct_notebook_query, refusals point at SQL or at telling the user, never at the builder"
@@ -690,20 +713,12 @@
             (run-sql-only-tool! {"q1" (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})} {:query_id "q1"})))))
 
 (deftest run-query-description-test
-  (let [description (fn [tool-names]
-                      (-> (tools/wrap-tools-with-state (select-keys {"run_query"                #'tools/run-query-tool
-                                                                     "construct_notebook_query" #'tools/construct-notebook-query-tool}
-                                                                    tool-names)
-                                                       (atom nil) nil :internal)
-                          (get-in ["run_query" :doc])))]
-    (testing "with the notebook builder the description is the docstring"
-      (is (= (:doc (meta #'tools/run-query-tool))
-             (description ["run_query" "construct_notebook_query"]))))
-    (testing "without it the description points at SQL only"
-      (let [doc (description ["run_query"])]
-        (is (str/includes? doc "write SQL that reads it with create_sql_query"))
-        (is (not (str/includes? doc "construct_notebook_query")))
-        (is (not (str/includes? doc "notebook")))))))
+  (testing "the ordinary tool's description names the notebook builder"
+    (is (str/includes? (:doc (meta #'tools/run-query-tool)) "construct_notebook_query")))
+  (testing "the SQL-only tool's description points at SQL and never at the builder"
+    (let [doc (:doc (meta #'tools/run-sql-query-tool))]
+      (is (str/includes? doc "write SQL that reads it with create_sql_query"))
+      (is (not (str/includes? doc "notebook"))))))
 
 (deftest run-sql-query-tool-test
   (let [sql-only (assoc scope/perm-type-defaults
@@ -724,5 +739,25 @@
               (run-as sql-only (venues-count)))))
     (testing "a notebook stage over a SQL stage counts as SQL, so the same user runs it"
       (is (=? {:structured-output {:returned 1}} (run-as sql-only (venues-sql-then-notebook)))))
-    (testing "a user who also has the NLQ permission runs both"
-      (is (=? {:structured-output {:returned 1}} (run-as scope/all-yes-permissions (venues-count)))))))
+    (testing "a user who also has the NLQ permission is refused it too"
+      (is (=? {:output #"You may only run SQL queries, and query q1 is not one\..*"}
+              (run-as scope/all-yes-permissions (venues-count)))))))
+
+(deftest run-sql-query-tool-viewed-question-test
+  (testing "the SQL-only tool never runs a viewed saved question by its id, whatever the user's permissions"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-count)}]
+      (doseq [perms [(assoc scope/perm-type-defaults
+                            :permission/metabot                :yes
+                            :permission/metabot-sql-generation :yes)
+                     scope/all-yes-permissions]]
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                           metabot-sql-execution-enabled?   true]
+          (mt/with-current-user (mt/user->id :rasta)
+            (binding [scope/*current-user-metabot-permissions* perms
+                      scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)
+                      shared/*memory-atom*                     (atom {:state      {:queries {}}
+                                                                      :tool-names #{"create_sql_query" "run_query"}
+                                                                      :context    {:user_is_viewing
+                                                                                   [{:type "question", :id card-id}]}})]
+              (is (=? {:output #"No query with id \d+\. .*write SQL that reads it using create_sql_query.*"}
+                      (run-query/run-sql-query-tool {:query_id (str card-id)}))))))))))
