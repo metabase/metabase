@@ -13,6 +13,7 @@
    [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [rewrite-clj.zip :as z]
    [toucan2.connection :as t2.conn])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -91,16 +92,64 @@
   (with-redefs [mdb.quartz/stored-class-name->current {"a.Old" "a.Missing"}]
     (is (thrown-with-msg? ClassNotFoundException #"a\.Old" (#'mdb.quartz/load-class "a.Old")))))
 
+(defn- job-source-files
+  "Source files of this edition that mention Quartz, which include every file that defines a job class."
+  []
+  (for [dir                ["src" "enterprise/backend/src"]
+        :when              (or config/ee-available? (= dir "src"))
+        ^java.io.File file (file-seq (io/file dir))
+        :when              (and (str/ends-with? (.getName file) ".clj")
+                                (re-find #"defjob|org\.quartz|quartzite" (slurp file)))]
+    {:file      file
+     :namespace (-> (subs (.getPath file) (inc (count dir)))
+                    (str/replace #"\.clj$" "")
+                    (str/replace "/" ".")
+                    (str/replace "_" "-")
+                    symbol)}))
+
+(defn- job-definition-options
+  "Returns the options map of the form at `zloc` if it is a `task/defjob` or a `task/defjob-type`."
+  [zloc]
+  (when (z/list? zloc)
+    (let [head (z/down zloc)]
+      (when (and (= :token (z/tag head))
+                 (symbol? (z/sexpr head))
+                 (#{"defjob" "defjob-type"} (name (z/sexpr head))))
+        (some-> (z/find head z/right #(= :map (z/tag %)))
+                z/sexpr)))))
+
+(def ^:private job-definitions
+  "The job definitions of this edition, each as its `:namespace`, `:type-name` and `:saved-class`."
+  ;; These come from the source text, so they don't depend on which namespaces are loaded, or were reloaded.
+  (delay
+    (vec (for [{:keys [^java.io.File file], ns-symb :namespace} (job-source-files)
+               :when (str/includes? (slurp file) "defjob")
+               zloc  (take-while (complement z/end?) (iterate z/next (z/of-file file)))
+               :let  [options (job-definition-options zloc)]
+               :when options]
+           {:namespace   ns-symb
+            :type-name   (-> zloc z/down z/right z/sexpr)
+            :saved-class (:saved-class options)}))))
+
+(defn- class-namespace
+  "The name of the namespace that defines the class named `class-name`."
+  [class-name]
+  (or (some (fn [{:keys [saved-class], ns-symb :namespace}]
+              (when (= saved-class class-name)
+                (str ns-symb)))
+            @job-definitions)
+      ;; a class with no `:saved-class`, such as a job's old name, is named after its namespace
+      (-> class-name
+          (str/replace #"\.[^.]+$" "")
+          (str/replace "_" "-"))))
+
 (defn- in-this-edition?
   "Whether this edition has the class named `class-name`."
   [class-name]
   (or config/ee-available?
+      ;; a job that moved out of enterprise can keep an enterprise class name
+      (some #(= class-name (:saved-class %)) @job-definitions)
       (not (str/starts-with? class-name "metabase_enterprise."))))
-
-(defn- class-namespace [class-name]
-  (-> class-name
-      (str/replace #"\.[^.]+$" "")
-      (str/replace "_" "-")))
 
 (defn- class-exists? [class-name]
   ;; a job class is a `deftype`, which exists only once its namespace has loaded
@@ -216,29 +265,47 @@
 (defn- job-namespaces
   "Source namespaces that mention Quartz, which include every namespace that defines a job class."
   []
-  (for [dir                ["src" "enterprise/backend/src"]
-        :when              (or config/ee-available? (= dir "src"))
-        ^java.io.File file (file-seq (io/file dir))
-        :when              (and (str/ends-with? (.getName file) ".clj")
-                                (re-find #"defjob|org\.quartz|quartzite" (slurp file)))]
-    (-> (subs (.getPath file) (inc (count dir)))
-        (str/replace #"\.clj$" "")
-        (str/replace "/" ".")
-        (str/replace "_" "-")
-        symbol)))
+  (map :namespace (job-source-files)))
+
+(defn- defined-in-clojure?
+  "Whether Clojure source defines the class `c`, as a `deftype`, a `defrecord` or a `task/defjob` does."
+  [^Class c]
+  (or (.isAssignableFrom clojure.lang.IType c)
+      (.isAssignableFrom clojure.lang.IRecord c)))
 
 (defn- job-class-names
   "The name of every job class defined in the source that Quartz can store."
   []
+  ;; A namespace imports each class that it defines, whatever the class is named.
+  ;; The classes that Clojure source defines are ours, and the rest come from Quartz itself.
   (into (sorted-set)
         (for [ns-symb  (job-namespaces)
               :let     [_ (classloader/require ns-symb)]
               ^Class c (vals (ns-imports ns-symb))
               :when    (and (.isAssignableFrom org.quartz.Job c)
-                            (str/starts-with? (.getName c) (str (munge ns-symb) "."))
+                            (defined-in-clojure? c)
                             ;; stands in for a job whose class is missing, so it is never stored
                             (not= (.getName c) "metabase.task.job_factory.NoOpJob"))]
           (.getName c))))
+
+(deftest no-two-jobs-declare-the-same-saved-class-test
+  (is (= {}
+         (-> (group-by :saved-class @job-definitions)
+             (update-vals #(mapv (juxt :namespace :type-name) %))
+             (->> (into {} (filter #(> (count (val %)) 1))))))
+      (str "These jobs declare the same `:saved-class`. Quartz finds a job's class by that name, so the job"
+           " that loads last would run for all of them. Give each job its own name.")))
+
+(deftest every-job-class-declares-its-saved-class-test
+  (let [job-classes   (job-class-names)
+        saved-classes (into #{} (map :saved-class) @job-definitions)]
+    (is (= {:job-classes-with-no-saved-class #{}
+            :saved-classes-with-no-job-class #{}}
+           {:job-classes-with-no-saved-class (set/difference job-classes saved-classes)
+            :saved-classes-with-no-job-class (set/difference saved-classes job-classes)})
+        (str "Define each job class with `task/defjob` or `task/defjob-type`. They take the `:saved-class`"
+             " that keeps the class name the same when the job moves. A plain `deftype` or `defrecord`"
+             " is named after its namespace."))))
 
 (def ^:private changed-job-key-instructions
   "The end of a failure message's sentence that says what to do when a job's key changed."
