@@ -58,6 +58,9 @@
 (defn- messages [tree]
   (mapv :message (data-apps/problems (files tree))))
 
+(defn- warnings [tree]
+  (mapv :message (data-apps/warnings (files tree))))
+
 (defn- first-problem [tree]
   (first (data-apps/problems (files tree))))
 
@@ -108,10 +111,6 @@
     (testing "a file whose serdes/meta doesn't identify what it holds"
       (refused (edit-file (shop (question-resources)) question-path #(assoc % :serdes/meta [{:model "Card" :id "someOtherEntityId0001"}]))
                "must hold a single Card whose serdes/meta ID is its entity_id"))
-    (testing "a table that doesn't exist"
-      (refused (edit-file (shop (question-resources)) question-path
-                          #(assoc-in % [:dataset_query :stages 0 :source-table] [(:name (mt/db)) "PUBLIC" "NO_SUCH_TABLE"]))
-               "NO_SUCH_TABLE"))
     (testing "a manifest that doesn't identify the app, which a load would refuse"
       (refused (edit-file (shop nil) "data_apps/shop/data_app.yaml" #(dissoc % :entity_id))
                "must hold a single DataApp whose serdes/meta ID is its entity_id")
@@ -170,8 +169,8 @@
                      :model/Card       _ {:name "Mine" :entity_id question-eid :collection_id collection-id}]
         (is (= [] (messages (shop (question-resources)))))))))
 
-(deftest refuses-a-field-that-doesnt-exist-test
-  (testing "a field a query names has to exist, on a database without schemas too"
+(deftest warns-of-a-field-that-doesnt-exist-test
+  (testing "a field a query names that doesn't exist loads as a placeholder and is logged, on a database without schemas too"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :name "no-schemas"}
                    :model/Table    {table-id :id} {:db_id db-id :name "T" :schema nil :active true}
                    :model/Field    _ {:table_id table-id :name "ID" :base_type :type/Integer}]
@@ -183,17 +182,19 @@
                                                               :stages   [{:lib/type     "mbql.stage/mbql"
                                                                           :source-table [db schema table]
                                                                           :filters      [["=" {} ["field" {} [db schema table field]] 1]]}]})))]
-        (is (some #(str/includes? % "NOPE") (messages (filtering-on "no-schemas" nil "T" "NOPE"))))
-        (is (= [] (messages (filtering-on "no-schemas" nil "T" "ID"))))
-        (is (some #(str/includes? % "NOPE") (messages (filtering-on (:name (mt/db)) "PUBLIC" "VENUES" "NOPE"))))))))
+        (is (= [] (messages (filtering-on "no-schemas" nil "T" "NOPE"))))
+        (is (some #(str/includes? % "NOPE") (warnings (filtering-on "no-schemas" nil "T" "NOPE"))))
+        (is (= [] (warnings (filtering-on "no-schemas" nil "T" "ID"))))
+        (is (some #(str/includes? % "NOPE") (warnings (filtering-on (:name (mt/db)) "PUBLIC" "VENUES" "NOPE"))))))))
 
-(deftest refuses-a-table-or-field-named-in-any-reference-test
-  (testing "serialization makes a placeholder for a missing table or field wherever a file references one"
+(deftest warns-of-a-table-or-field-named-in-any-reference-test
+  (testing "serialization makes a placeholder for a missing table or field wherever a file references one, and the pull
+            logs it"
     (let [db      (:name (mt/db))
           refused (fn [missing f]
-                    (is (some #(str/includes? % missing)
-                              (messages (edit-file (shop (question-resources)) question-path f)))
-                        missing))]
+                    (let [tree (edit-file (shop (question-resources)) question-path f)]
+                      (is (= [] (messages tree)) missing)
+                      (is (some #(str/includes? % missing) (warnings tree)) missing)))]
       (testing "result metadata"
         (refused "NOPE_META" #(assoc % :result_metadata [{:name      "NOPE"
                                                           :base_type "type/Text"
@@ -217,10 +218,22 @@
                                                                             :id           "7f2c2a0e-6c1e-4b53-9d0a-0d5a3a1d1c12"
                                                                             :table-id     [db "PUBLIC" "NOPE_TAG_TABLE"]}}}]})))
       (testing "a list of strings that isn't a reference is left alone, even when it starts with a database's name"
-        (is (= [] (messages (edit-file (shop (question-resources)) question-path
+        (is (= [] (warnings (edit-file (shop (question-resources)) question-path
                                        #(assoc % :visualization_settings {:some.custom/labels [db "Alpha" "Beta"]}))))))
-      (testing "and a file that names only what exists has no problems"
-        (is (= [] (messages (shop (question-resources)))))))))
+      (testing "and a file that names only what exists has nothing to log"
+        (is (= [] (warnings (shop (question-resources)))))))))
+
+(deftest accepts-a-database-the-instance-does-not-have-yet-test
+  (testing "a query on a database that isn't connected yet loads as a card's does, against a stub database that a
+            later connection and sync fill in"
+    (let [tree (edit-file (shop (question-resources)) question-path
+                          #(-> %
+                               (assoc :database_id "Not connected yet")
+                               (assoc-in [:dataset_query :database] "Not connected yet")
+                               (assoc-in [:dataset_query :stages 0 :source-table] ["Not connected yet" "analytics" "accounts"])))]
+      (is (= [] (messages tree)))
+      (is (some #(str/includes? % "references table [\"Not connected yet\" \"analytics\" \"accounts\"], which does not exist")
+                (warnings tree))))))
 
 (deftest refuses-more-of-what-a-resource-may-not-hold-test
   (let [refused (fn [tree message]
@@ -383,11 +396,12 @@
           (is (some #(str/includes? % "already exists outside this data app's collection")
                     (messages (shop (question-resources))))))))))
 
-(deftest refuses-a-table-that-is-inactive-test
-  (testing "an inactive table is one that sync no longer finds, so the app's query would run against nothing"
+(deftest warns-of-a-table-that-is-inactive-test
+  (testing "an inactive table is one that sync no longer finds, or a placeholder a load made, so the pull logs it"
     (let [resources (question-resources)]
       (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
-        (is (some #(str/includes? % "references table [") (messages (shop resources))))))))
+        (is (= [] (messages (shop resources))))
+        (is (some #(str/includes? % "references table [") (warnings (shop resources))))))))
 
 (deftest warns-of-a-field-that-is-inactive-test
   (testing "an inactive field is one that sync no longer finds: one column isn't the app, so the file loads and the
@@ -397,8 +411,7 @@
                      [{:entity_id question-eid :name "VenuePrices"
                        :query {:stages [{:source {:type "table" :id (mt/id :venues)}
                                          :fields [{:type "column" :name "PRICE"}]}]}}]
-                     [])
-          warnings  (fn [tree] (mapv :message (data-apps/warnings (files tree))))]
+                     [])]
       (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:active false}
         (is (= [] (messages (shop resources))))
         (is (some #(str/includes? % "references field") (warnings (shop resources)))))
