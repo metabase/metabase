@@ -62,6 +62,27 @@
     (testing "Things that you can connect to, but are not DBs, should fail"
       (is (not (driver.u/can-connect-with-details? :postgres {:host "google.com", :port 80}))))))
 
+;;; postgres passes detail keys it does not recognize to the client as connection properties, which is the case under
+;;; test. [kondo-keep]
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest disallowed-connection-parameters-checked-before-connecting-test
+  ;; `validate-db-details!` only runs when a connection is tested. A database that never was -- saved before a
+  ;; parameter was disallowed, imported through serialization, provisioned from a config file -- must still be refused
+  ;; when its pool is created.
+  (doseq [details [{:host "db.example.com" :port 5432 :dbname "db" :additional-options "socketFactory=a.b.C"}
+                   {:host "db.example.com" :port 5432 :dbname "db" :sslfactory "a.b.C"}]]
+    (testing (pr-str details)
+      (testing "when a connection pool is created"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (#'sql-jdbc.conn/create-pool! (t2/instance :model/Database
+                                                        {:id Integer/MAX_VALUE :engine :postgres :details details})))))
+      (testing "when a connection is tested"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (sql-jdbc.conn/with-connection-spec-for-testing-connection [_spec [:postgres details]]
+               ::reached)))))))
+
 (deftest db->pooled-connection-spec-test
   (mt/test-driver :h2
     (testing "creating and removing specs works"

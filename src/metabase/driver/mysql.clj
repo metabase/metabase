@@ -228,13 +228,10 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
-(def ^:private disallowed-additional-opts #"(?:allowLocalInfile|allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
-
-(defmethod driver/validate-db-details! :mysql
-  [_driver details]
-  (sql-jdbc/reject-dangerous-additional-options! details)
-  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+(defmethod driver/disallowed-connection-parameters :mysql
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile", "allowLoadLocalInfileInPath"]))
 
 (defmethod driver/can-connect? :mysql
   [driver details]

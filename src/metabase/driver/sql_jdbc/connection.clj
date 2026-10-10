@@ -277,6 +277,8 @@
         ;; went through a connection test (serialization import, config files).
         _                   (driver.u/with-database-network-policy database
                               (driver.u/validate-connection-hosts! driver details))
+        ;; likewise for parameters that were disallowed after the database was saved
+        _                   (driver.u/validate-connection-parameters! driver details)
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
@@ -520,6 +522,7 @@
 (defn do-with-connection-spec-for-testing-connection
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
+  (driver.u/validate-connection-parameters! driver details)
   (let [details (-> details
                     (update :port #(or % (default-ssh-tunnel-target-port driver)))
                     (ssh/resolve-known-hosts driver))]

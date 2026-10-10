@@ -136,6 +136,29 @@
                      {:additional-options "prepareThreshold=5&tcpKeepAlive=true"}]]
       (is (nil? (driver/validate-db-details! :sql-jdbc details))))))
 
+(deftest validate-db-details-detail-keys-test
+  ;; several drivers (postgres, mysql, redshift, vertica, snowflake, ...) hand detail keys they do not recognize to the
+  ;; client as connection properties, so a disallowed property sent as a detail key is as dangerous as one written
+  ;; into `:additional-options`
+  (testing "validate-db-details! rejects disallowed connection properties sent as detail keys"
+    (doseq [details [{:host "h" :socketFactory "a.b.C"}
+                     {:host "h" :sslfactory "a.b.C"}
+                     {:host "h" :queryInterceptors "a.b.C"}
+                     {:host "h" "dnsResolver" "a.b.C"}
+                     ;; matching is case-insensitive
+                     {:host "h" :SOCKETFACTORY "a.b.C"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :sql-jdbc details))))))
+  (testing "Metabase's own detail keys are allowed"
+    (is (nil? (driver/validate-db-details! :sql-jdbc {:host                  "h"
+                                                      :ssl                   true
+                                                      :ssl-root-cert-options "uploaded"
+                                                      :ssl-root-cert-value   "..."
+                                                      :tunnel-enabled        false
+                                                      :additional-options    "tcpKeepAlive=true"})))))
+
 (defn- test-spliced-count-of [table filter-clause expected]
   (let [query        (mt/mbql-query nil
                        {:source-table (mt/id table)

@@ -287,6 +287,19 @@ title: Driver interface changelog
   `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
   See `metabase.driver.mysql` for an example of using the abstract driver.
 
+## Metabase 0.58.36
+
+- `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
+  connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
+  details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
+  Names match case-insensitively and as substrings. Extend the parent's list rather than replacing it:
+
+  ```clj
+  (defmethod driver/disallowed-connection-parameters :my-driver
+    [driver]
+    (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
+  ```
+
 ## Metabase 0.58.23
 
 - `metabase.driver/connection-hosts` `[driver details]` -- new multimethod returning the host names pointed to for a set

@@ -26,6 +26,7 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-tools.core :as sql-tools]
@@ -289,14 +290,23 @@
                (when-not (str/blank? instance) {:instanceName instance}))
         (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon))))
 
-(def ^:private disallowed-additional-opts
-  #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
+(def ^:private sqlserver-disallowed-parameters
+  ["socketFactoryClass" "socketFactoryConstructorArg" "trustManagerClass" "trustManagerConstructorArg"
+   "accessTokenCallbackClass"])
+
+(defmethod driver/disallowed-connection-parameters :sqlserver
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) sqlserver-disallowed-parameters))
+
+(def ^:private disallowed-in-host-or-additional-options
+  (re-pattern (str "(?i)(?:" (str/join "|" sqlserver-disallowed-parameters) ")")))
 
 (defmethod driver/validate-db-details! :sqlserver
-  [_driver {:keys [host additional-options] :as details}]
-  (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
+  [driver {:keys [host additional-options] :as details}]
+  ;; `host` is written into the connection string too, so a property can be smuggled in through it after a `;`
+  (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-in-host-or-additional-options))]
     (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match})))
-  (sql-jdbc/reject-dangerous-additional-options! details))
+  (driver.u/validate-connection-parameters! driver details))
 
 (defmethod driver/can-connect? :sqlserver
   [driver details]

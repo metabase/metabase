@@ -19,7 +19,7 @@
                                 :deprecated-namespace                                                66
                                 :deprecated-var                                                      33
                                 :equals-true                                                         1
-                                :metabase/disallow-hardcoded-driver-names-in-tests                   34
+                                :metabase/disallow-hardcoded-driver-names-in-tests                   35
                                 :metabase/discourage-dynamic-vars                                    41
                                 :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
                                 :metabase/namespace-name                                             1
