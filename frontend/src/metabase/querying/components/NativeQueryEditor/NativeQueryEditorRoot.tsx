@@ -12,7 +12,6 @@ import {
   useState,
 } from "react";
 import { useLatest, useMount } from "react-use";
-import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
@@ -27,7 +26,7 @@ import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryE
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
 import type { QueryModalType } from "metabase/redux/store";
-import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -66,7 +65,7 @@ import {
  */
 export type NativeQueryEditorCoreProps = Omit<
   CodeMirrorEditorProps,
-  "query"
+  "query" | "onAcceptProposed"
 > & {
   availableHeight?: number;
   canAutoOpenDataReference?: boolean;
@@ -256,6 +255,15 @@ export const NativeQueryEditorRoot = forwardRef<
     onBlur?.();
   }, [handleChange, onBlur]);
 
+  const handleAcceptProposed = useCallback(() => {
+    const proposedQuery = proposedQuestion?.legacyNativeQuery();
+    if (proposedQuery) {
+      handleChange(proposedQuery.queryText());
+      handleChange.flush();
+      onAcceptProposed?.(proposedQuery.datasetQuery());
+    }
+  }, [proposedQuestion, handleChange, onAcceptProposed]);
+
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
       // get the query instance with the latest Metadata that has the updated snippet
@@ -398,6 +406,10 @@ export const NativeQueryEditorRoot = forwardRef<
                   onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                   onRightClickSelection={handleRightClickSelection}
                   onFormatQuery={handleFormatQuery}
+                  onAcceptProposed={
+                    onAcceptProposed ? handleAcceptProposed : undefined
+                  }
+                  onRejectProposed={onRejectProposed}
                 />
 
                 <Stack
@@ -406,42 +418,6 @@ export const NativeQueryEditorRoot = forwardRef<
                   justify="flex-end"
                   p="lg"
                 >
-                  {proposedQuestion && onRejectProposed && onAcceptProposed && (
-                    <>
-                      <Tooltip
-                        label={t`Accept proposed changes`}
-                        position="top"
-                      >
-                        <Button
-                          data-testid="accept-proposed-changes-button"
-                          variant="light"
-                          color="positive"
-                          onClick={() => {
-                            const proposedQuery =
-                              proposedQuestion.legacyNativeQuery();
-                            if (proposedQuery) {
-                              handleChange(proposedQuery.queryText());
-                              handleChange.flush();
-                              onAcceptProposed(proposedQuery.datasetQuery());
-                            }
-                          }}
-                          leftSection={<Icon name="check" />}
-                        />
-                      </Tooltip>
-                      <Tooltip
-                        label={t`Reject proposed changes`}
-                        position="top"
-                      >
-                        <Button
-                          data-testid="reject-proposed-changes-button"
-                          variant="light"
-                          color="negative"
-                          onClick={onRejectProposed}
-                          leftSection={<Icon name="close" />}
-                        />
-                      </Tooltip>
-                    </>
-                  )}
                   <Flex gap="sm">{bodySlots}</Flex>
                 </Stack>
               </Flex>
