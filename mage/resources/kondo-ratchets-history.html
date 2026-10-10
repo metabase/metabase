@@ -72,8 +72,9 @@
   @media (prefers-color-scheme: dark) { :root { --grid: #2c2c2a; --axis: #45453f; } }
   .chart-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 8px;
                 position: relative; }
-  .chart-card h4 { margin: 0; font-size: 14px; }
-  .chart-card .sub { color: var(--muted); font-size: 12px; margin: 0 0 6px; }
+  .chart-card h4 { margin: 0; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; }
+  .chart-card h4 .now { font-family: var(--mono); }
+  .chart-card .sub { color: var(--muted); font-size: 12px; margin: 0 0 6px; text-wrap: balance; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; margin: 0 0 4px; }
   .legend span.key { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle;
                      margin-right: 6px; }
@@ -204,7 +205,7 @@ function chart(id, title, sub, pts, span, series, start, zero) {
   const legend = series.length > 1 ? `<p class="legend">${series.map(s =>
     `<span><span class="key" style="border-color: var(${s.color})"></span>${esc(s.name)} <b>${signed(last[s.key])}</b></span>`).join("")}</p>` : "";
   drawn[id] = {pts, series, x, y, zero};
-  return `<div class="chart-card"><h4>${esc(title)}</h4><p class="sub">${esc(sub)}</p>${legend}` +
+  return `<div class="chart-card"><h4><span>${esc(title)}</span>${series.length === 1 ? `<span class="now">${last[series[0].key]}</span>` : ""}</h4><p class="sub">${esc(sub)}</p>${legend}` +
     `<svg class="chart" id="${id}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${grid}${dates}${areas}${lines}` +
     `<line class="cross" y1="${M.t}" y2="${H - M.b}"/>${dots}</svg><div class="tip"></div></div>`;
 }
@@ -220,13 +221,13 @@ function trends(p) {
     `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
   return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
     `<div class="grid2">` +
-    chart("c-change", "Cumulative change", "Suppressions grown (up) and shrunk (down) since the start of the period, and their net.",
+    chart("c-change", "Cumulative change", "Running totals from the start of the period. Up is worse.",
       pts, span,
       [{key: "cumGrown", name: "Grown", color: "--grown", area: true},
        {key: "cumNet", name: "Net", color: "--net"},
        {key: "cumShrunk", name: "Shrunk", color: "--shrunk", area: true}],
       {cumGrown: 0, cumNet: 0, cumShrunk: 0}, true) +
-    chart("c-level", "Total budget", `Every numeric budget added up: ${last.level} at the end of the period. A new ratchet lifts it without any new suppression.`,
+    chart("c-level", "Total budget", "All budgets summed. A ratchet on existing debt raises it.",
       pts, span, [{key: "level", name: "Total budget", color: "--level"}],
       {level: before ? before.level : pts[0].level}, false) +
     `</div><details class="data"><summary>Data table</summary>` +
