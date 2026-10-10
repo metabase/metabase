@@ -309,7 +309,7 @@ function render(p) {
       groups(r.unlimited, i => `<li><span></span><span><span class="name">${esc(i.measure)}</span> ${esc(i.old)} → ${esc(i.new)}</span></li>`)) +
     section("Shrinks no commit accounts for", "The automation lowered these budgets, but no commit removed that many suppressions.",
       groups(r.unaccounted, i => `<li><span class="num ${tone(i.delta)}">${signed(i.delta)}</span><span class="name">${esc(i.measure)}</span></li>`, "warn")) +
-    section("Raises with no verdict", "The budget rose by more than the suppressions the commit added. Pardon or confirm each with ./bin/mage kondo-ratchets-verdict.",
+    section("Raises with no verdict", "The budget rose by more than the suppressions the commit added. Pardon or confirm each with ./bin/mage kondo-ratchets-history --pardon or --confirm.",
       groups(r.suspects, i => `<li><span class="num bad">${signed(i.delta)}</span><span><span class="name">${esc(i.measure)}</span>, with ${i.added} suppressions added</span></li>`, "warn"));
 }
 
@@ -338,10 +338,10 @@ function verdicts() {
     return `<div class="card verdict">${commit(v.commit)}<p class="why">${esc(v.why || "No reason recorded.")}</p>` +
       `<p class="hint">${signed(sum(v))} across ${v.raises.length} budget${v.raises.length === 1 ? "" : "s"}</p><ul class="items">${items.join("")}</ul></div>`;
   };
-  const of = kind => data.verdicts.filter(v => v.verdict === kind).sort((a, b) => b.commit.date.localeCompare(a.commit.date));
+  const of = kind => data.verdicts.filter(v => (kind === "pardon" ? v.verdict !== "confirm" : v.verdict === kind)).sort((a, b) => b.commit.date.localeCompare(a.commit.date));
   const total = of("pardon").reduce((a, v) => a + sum(v), 0);
   return `<header><h2>Pardons and exclusions</h2><p>What the numbers on the other pages leave out, and why</p></header>` +
-    section("Pardoned raises", `These budget raises count against nobody, ${signed(total)} in all: each says nothing about the commit that made it. A later shrink that only takes one back is left out too.`,
+    section("Pardoned", `These budget changes count for and against nobody, ${signed(total)} in all: each says nothing about the commit that made it. A later shrink that only takes one back is left out too.`,
       of("pardon").map(card).join("")) +
     section("Confirmed raises", "These raises outran the suppressions their commit added, were looked at, and still count as growth.",
       of("confirm").map(card).join("")) +

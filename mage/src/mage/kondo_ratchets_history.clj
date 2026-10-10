@@ -665,7 +665,7 @@
                             (format "  %s %s, with %d suppressions added"
                                     (colored-delta delta) (measure-name measure) added))))]
        line)
-     ["Settle each with: ./bin/mage kondo-ratchets-verdict pardon|confirm <commit or PR> --why <reason>"])))
+     ["Settle each with: ./bin/mage kondo-ratchets-history --pardon|--confirm <commit or PR> --why <reason>"])))
 
 (defn- unaccounted-lines [records]
   (for [{:keys [unaccounted tighten?], :as record} records
@@ -695,7 +695,9 @@
 "
        ";; suppressions its commit added. A :pardon counts the commit's raises against nobody; a :confirm keeps them.
 "
-       ";; Written by `./bin/mage kondo-ratchets-verdict`.
+       ";; A :recount marks a commit that only changed how suppressions are counted: none of its changes count.
+"
+       ";; Written by `./bin/mage kondo-ratchets-history --pardon`, `--confirm` and `--recount`.
 "
        "["
        (str/join "
@@ -726,10 +728,12 @@
     (assoc record :changes raises)))
 
 (defn pardon
-  "`records` with the raises in `pardons` turned from `:grow` into `:pardon`.
-  A shrink loses the part that only takes a pardoned raise back, and the credit for it."
-  [pardons records]
-  (let [pardoned? (fn [sha measure]
+  "`records` with the raises in `pardons`, a map from commit to the measures it raised, turned from `:grow`
+  into `:pardon`. A shrink loses the part that only takes a pardoned raise back, and the credit for it.
+  A commit in `recounts` only changed how suppressions are counted, so its own shrinks go too."
+  [{:keys [pardons recounts]} records]
+  (let [recounts  (or recounts #{})
+        pardoned? (fn [sha measure]
                     (when-let [measures (pardons sha)]
                       (or (= :all measures) (contains? measures measure))))]
     (for [{:keys [sha causes], :as record} records
@@ -744,6 +748,9 @@
                                       (cond
                                         (and (= :grow kind) (pardoned? sha measure))
                                         (assoc change :kind :pardon)
+
+                                        (and (= :shrink kind) (recounts sha))
+                                        nil
 
                                         (and (= :shrink kind) (taken-back measure))
                                         (let [delta (- delta (taken-back measure))]
@@ -768,9 +775,9 @@
   "Lines summarizing `records`, the analysed commits of the period called `period`.
   `pardons` maps a pardoned commit to the measures it raised, and `settled` holds every commit with a verdict.
   Leaves out the [[uncounted-linters]]."
-  [{:keys [pardons settled]} period records]
+  [{:keys [settled], :as verdicts} period records]
   (let [doubted (suspects settled records)
-        records (counted (pardon pardons records))
+        records (counted (pardon verdicts records))
         ranked (by-commit (attributions records))
         board  (leaderboard records)
         best   (first ranked)
@@ -806,9 +813,9 @@
 (defn report
   "What a [[summary]] of `records` says, as plain data for the HTML page: measures are named and budgets are
   strings. Takes the same verdicts as [[summary]]."
-  [{:keys [pardons settled]} records]
+  [{:keys [settled], :as verdicts} records]
   (let [doubted (suspects settled records)
-        records (counted (pardon pardons records))
+        records (counted (pardon verdicts records))
         ranked  (by-commit (attributions records))
         commit  #(select-keys % [:sha :pr :author :subject :date])
         deltas  (fn [by-measure]
@@ -850,10 +857,10 @@
   "One point per commit in `records`, which run newest first, in the order they landed: how far the commit
   `:shrunk` and `:grew` the counted budgets once the verdicts [[report]] takes are applied, and the `:level`
   after it, the sum of every counted numeric budget."
-  [{:keys [pardons]} records]
+  [verdicts records]
   (let [numeric #(if (number? %) % 0)
         moved   (into {}
-                      (for [{:keys [sha changes]} (counted (pardon pardons records))]
+                      (for [{:keys [sha changes]} (counted (pardon verdicts records))]
                         [sha (reduce (fn [acc {:keys [kind delta]}]
                                        (cond-> acc (#{:shrink :grow} kind) (update kind + delta)))
                                      {:shrink 0, :grow 0}
@@ -934,29 +941,73 @@
 (def ^:private default-days 7)
 
 (defn- period
-  "What to produce, from the task's `since` commit and `options`: a summary by `[:since sha]`, `[:all]` or
-  `[:days n]`, or `[:html file]` for the page of every period. Exits when more than one is asked for."
-  [since {:keys [all days html]}]
+  "What to do, from the task's `since` commit and `options`: a summary by `[:since sha]`, `[:all]` or
+  `[:days n]`, `[:html file]` for the page of every period, or `[:verdict [kind target]]` to record a verdict.
+  Exits when more than one is asked for."
+  [since {:keys [all days html pardon confirm recount]}]
   (let [asked (cond-> []
                 since (conj "a commit")
                 all   (conj "--all")
                 days  (conj "--days")
-                html  (conj "--html"))]
+                html    (conj "--html")
+                pardon  (conj "--pardon")
+                confirm (conj "--confirm")
+                recount (conj "--recount"))]
     (when (next asked)
       (u/exit (str "Give only one of " (str/join ", " asked) ".") 1))
     (cond
-      since [:since since]
-      html  [:html html]
-      all   [:all]
+      since   [:since since]
+      pardon  [:verdict [:pardon pardon]]
+      confirm [:verdict [:confirm confirm]]
+      recount [:verdict [:recount recount]]
+      html    [:html html]
+      all     [:all]
       :else [:days (or days default-days)])))
 
-(defn history
-  "Bring the cache up to `HEAD`, then print a [[summary]] of the ratchet changes since the commit given as the
-  first argument, over all time with `--all`, or else over the last `--days` days.
-  With `--html`, write the [[page]] of every week, every month and all time to that file instead."
-  [{:keys [options arguments]}]
+(defn- ratchet-commit
+  "The sha in `all`, the commits that changed a ratchet file, that `target` names: a commit, or a PR as `1234`
+  or `#1234`. Exits when there is not exactly one."
+  [all target]
+  (if-let [pr (second (re-matches #"#?(\d{1,6})" target))]
+    (let [found (for [line  (apply git "log" "--first-parent" "--format=%H %s" "HEAD" "--" (vals ratchet-files))
+                      :let  [[sha subject] (str/split line #" " 2)]
+                      :when (= (parse-long pr) (pr-number subject))]
+                  sha)]
+      (if (= 1 (count found))
+        (first found)
+        (u/exit (format "Found %d commits for PR #%s that changed a ratchet file." (count found) pr) 1)))
+    (let [sha (resolve-commit target)]
+      (if (some #{sha} all)
+        sha
+        (u/exit (str "Commit " (subs sha 0 10) " did not change a ratchet file.") 1)))))
+
+(defn- verdict!
+  "Record in [[verdicts-file]] a verdict of `kind` on the commit `target` names, as a sha or a PR number, with
+  the reason `why`. A `:pardon` counts the commit's budget raises against nobody and a `:confirm` keeps them as
+  growth. A `:recount` says the commit only changed how suppressions are counted, so neither its raises nor its
+  own shrinks count."
+  [kind target why]
+  (let [all     (ratchet-commits (resolve-commit "HEAD"))
+        sha     (ratchet-commit all target)
+        record  (record! all sha)
+        covered (if (= :recount kind) #{:grow :shrink} #{:grow})
+        changes (filter (comp covered :kind) (:changes record))
+        entry   (cond-> (assoc (select-keys record [:sha :pr :subject]) :verdict kind)
+                  why (assoc :why why))
+        others  (remove #(= sha (:sha %)) (read-verdicts))]
+    (when (empty? changes)
+      (u/exit (str "Nothing to " (name kind) ": " (commit-line record) " raised no budget.") 1))
+    (when (and (not= :confirm kind) (not why))
+      (u/exit (str "A " (name kind) " needs a reason: add --why <reason>.") 1))
+    (spit (fs/file u/project-root-directory verdicts-file) (render-verdicts (concat others [entry])))
+    (println (str ({:pardon "Pardoned ", :confirm "Confirmed ", :recount "Recounted "} kind) (commit-line record)))
+    (doseq [{:keys [measure delta]} changes]
+      (println (str "  " (signed delta) " " (measure-name measure))))))
+
+(defn- summarize
+  "Bring the cache up to `HEAD`, then print or write what `by` and `arg`, from [[period]], ask for."
+  [by arg]
   (let [head      (resolve-commit "HEAD")
-        [by arg]  (period (some-> (first arguments) resolve-commit) options)
         all       (ratchet-commits head)
         resume    (case by
                     :since       arg
@@ -980,14 +1031,15 @@
                       :verdict (name verdict)
                       :why     why
                       :raises  (for [{:keys [kind measure delta]} (:changes record)
-                                     :when (= :grow kind)]
+                                     :when (or (= :grow kind) (and (= :recount verdict) (= :shrink kind)))]
                                  {:measure (measure-name measure), :delta delta})})
-          verdicts {:settled (set (map :sha verdicts))
-                    :pardons (into {}
-                                   (for [{:keys [sha verdict]} verdicts
-                                         :when (= :pardon verdict)]
-                                     [sha (set (map :measure (filter #(= :grow (:kind %))
-                                                                     (:changes (record! all sha)))))]))}
+          verdicts {:settled  (set (map :sha verdicts))
+                    :recounts (set (map :sha (filter #(= :recount (:verdict %)) verdicts)))
+                    :pardons  (into {}
+                                    (for [{:keys [sha verdict]} verdicts
+                                          :when (#{:pardon :recount} verdict)]
+                                      [sha (set (map :measure (filter #(= :grow (:kind %))
+                                                                      (:changes (record! all sha)))))]))}
           ;; the period can reach behind the commit the backfill resumed from, to commits no run has analysed yet
           records  (unify-authors
                     (mapv #(record! all %)
@@ -1012,41 +1064,13 @@
                                  :days  (format "in the last %d days" arg))
                                records))))))
 
-(defn- ratchet-commit
-  "The sha in `all`, the commits that changed a ratchet file, that `target` names: a commit, or a PR as `1234`
-  or `#1234`. Exits when there is not exactly one."
-  [all target]
-  (if-let [pr (second (re-matches #"#?(\d{1,6})" target))]
-    (let [found (for [line  (apply git "log" "--first-parent" "--format=%H %s" "HEAD" "--" (vals ratchet-files))
-                      :let  [[sha subject] (str/split line #" " 2)]
-                      :when (= (parse-long pr) (pr-number subject))]
-                  sha)]
-      (if (= 1 (count found))
-        (first found)
-        (u/exit (format "Found %d commits for PR #%s that changed a ratchet file." (count found) pr) 1)))
-    (let [sha (resolve-commit target)]
-      (if (some #{sha} all)
-        sha
-        (u/exit (str "Commit " (subs sha 0 10) " did not change a ratchet file.") 1)))))
-
-(defn verdict
-  "Record in [[verdicts-file]] that the budget raises of one commit are pardoned, so that they count against
-  nobody, or confirmed as growth. The arguments are `pardon` or `confirm`, then the commit or its PR number."
+(defn history
+  "Bring the cache up to `HEAD`, then print a [[summary]] of the ratchet changes since the commit given as the
+  first argument, over all time with `--all`, or else over the last `--days` days.
+  With `--html`, write the [[page]] of every week, every month and all time to that file instead.
+  With `--pardon`, `--confirm` or `--recount`, record that [[verdict!]] on a commit and print nothing else."
   [{:keys [options arguments]}]
-  (let [[word target] arguments
-        kind    (keyword word)
-        all     (ratchet-commits (resolve-commit "HEAD"))
-        sha     (ratchet-commit all target)
-        record  (record! all sha)
-        raises  (filter #(= :grow (:kind %)) (:changes record))
-        entry   (cond-> (assoc (select-keys record [:sha :pr :subject]) :verdict kind)
-                  (:why options) (assoc :why (:why options)))
-        others  (remove #(= sha (:sha %)) (read-verdicts))]
-    (when (empty? raises)
-      (u/exit (str "Nothing to " word ": " (commit-line record) " raised no budget.") 1))
-    (when (and (= :pardon kind) (not (:why options)))
-      (u/exit "A pardon needs a reason: add --why <reason>." 1))
-    (spit (fs/file u/project-root-directory verdicts-file) (render-verdicts (concat others [entry])))
-    (println (str (if (= :pardon kind) "Pardoned " "Confirmed ") (commit-line record)))
-    (doseq [{:keys [measure delta]} raises]
-      (println (str "  " (signed delta) " " (measure-name measure))))))
+  (let [[by arg] (period (some-> (first arguments) resolve-commit) options)]
+    (if (= :verdict by)
+      (verdict! (first arg) (second arg) (:why options))
+      (summarize by arg))))
