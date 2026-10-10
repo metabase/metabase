@@ -155,7 +155,6 @@
             (compare-results export-format (mt/native-query {:query  sql
                                                              :params args}))))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *number-of-cans* nil)
 
 (deftest ^:parallel preserve-thread-bindings-test

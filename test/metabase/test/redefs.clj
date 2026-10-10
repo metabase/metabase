@@ -10,7 +10,6 @@
    [toucan2.connection :as t2.connection]
    [toucan2.tools.with-temp]))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *in-with-temp*
   "Used to detect whether we're in a nested [[with-temp]]. Default is false."
   false)

@@ -79,7 +79,6 @@
             delete-queries     (atom [])]
         ;; A dynamic redef permanently proxies this hot var. This test is synchronized, so a temporary root swap is
         ;; both safe and cheaper for the rest of the test JVM.
-        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [t2/query-one (fn [& args]
                                      (swap! delete-queries into (filter :delete-from args))
                                      (apply original-query-one args))]
@@ -94,6 +93,7 @@
                    :model/Field    _               {:table_id table-id :parent_id parent-id}]
       (t2/with-call-count [call-count]
         ;; This only deletes the test-local Database Fields created above.
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/validate-deftest]}
         (#'database/delete-database-fields! db-id)
         (is (= 4 (call-count))
@@ -420,7 +420,6 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *secret-can-connect?* (constantly true))
 
 (defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))
