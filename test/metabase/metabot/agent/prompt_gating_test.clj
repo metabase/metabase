@@ -42,6 +42,17 @@
    :permission/metabot-nlq            :no
    :permission/metabot-other-tools    :no})
 
+(deftest ^:parallel fullscreen-prompts-show-existing-content-test
+  (doseq [template ["natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
+    (let [rendered (prompts/build-system-message-content
+                    {:prompt-template template}
+                    {:current_time "2026-09-11T12:00:00Z"}
+                    {"search" nil "read_resource" nil "show_entity" nil}
+                    [])]
+      (is (re-find #"# Showing existing content" rendered))
+      (is (re-find #"`show_entity`" rendered))
+      (is (not (re-find #"Finding existing saved content: direct the user to search/browse" rendered))))))
+
 ;; Gating is asserted on real, intentional content: the section headings that only
 ;; appear when a capability is enabled, and the "You cannot …" denial sentences that
 ;; only appear when it's disabled. These are load-bearing prose we keep regardless, so
