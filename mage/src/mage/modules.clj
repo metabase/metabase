@@ -208,6 +208,7 @@
      transforms.feature-gating
      lib.types
      users
+     users.schema
      util
      core.version
      audit-app.view-log
