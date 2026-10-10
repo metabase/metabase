@@ -171,12 +171,19 @@
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
 
-(defmacro ^:private without-task-initializers!
-  "Runs `body` with [[task/start-scheduler!]] starting the scheduler only."
+(defmacro ^:private with-jdbc-scheduler!
+  "Runs `body` with the JDBC-backed scheduler started, and stops it afterwards unless it was already running."
   [& body]
-  ;; the tasks' initializers start threads that outlive the scheduler, and a restart would start them again
-  `(mt/with-dynamic-fn-redefs [task.impl/init-tasks! (constantly nil)]
-     ~@body))
+  `(let [running?# (some? (#'task/scheduler))]
+     (when-not running?#
+       ;; the tasks' initializers start threads that outlive the scheduler, so only the scheduler starts
+       (mt/with-dynamic-fn-redefs [task.impl/init-tasks! (constantly nil)]
+         (task/start-scheduler!)))
+     (try
+       ~@body
+       (finally
+         (when-not running?#
+           (task/stop-scheduler!))))))
 
 (def ^:private old-upgrade-checks-class-name "metabase.task.upgrade_checks.CheckForNewVersions")
 
@@ -192,34 +199,27 @@
               (capitalize-if-mysql :job_name) "metabase.task-test.job"
               {(capitalize-if-mysql :job_class_name) class-name}))
 
-(deftest start-scheduler-keeps-a-job-stored-under-an-old-class-name-test
+(deftest startup-cleanup-keeps-a-job-stored-under-an-old-class-name-test
   ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it.
   ;; Upgraded nodes load the current class under it.
-  (without-task-initializers!
-   (let [scheduler-initialized? (some? (#'task/scheduler))]
-     (require 'metabase.version.task.upgrade-checks)
-     (try
-       (when-not scheduler-initialized?
-         (task/start-scheduler!))
-       (task/schedule-task! (job) (trigger-1))
-       (set-stored-job-class-name! old-upgrade-checks-class-name)
-       (task/stop-scheduler!)
-       (task/start-scheduler!)
-       ;; the trigger survives too, which matters for per-database sync schedules, as no `init!` recreates them
-       (is (= {:stored-class-name old-upgrade-checks-class-name
-               :loaded-class-name upgrade-checks-class-name
-               :triggers          #{{:cron-expression     "0 0 * * * ? *"
-                                     :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}}
-              {:stored-class-name (stored-job-class-name)
-               :loaded-class-name (-> ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))
-                                      .getJobClass
-                                      .getName)
-               :triggers          (triggers)}))
-       (finally
-         (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))
-         (if scheduler-initialized?
-           (task/start-scheduler!)
-           (task/stop-scheduler!)))))))
+  (require 'metabase.version.task.upgrade-checks)
+  (with-jdbc-scheduler!
+    (try
+      (task/schedule-task! (job) (trigger-1))
+      (set-stored-job-class-name! old-upgrade-checks-class-name)
+      (#'task.impl/delete-jobs-with-no-class!)
+      ;; the trigger survives too, which matters for per-database sync schedules, as no `init!` recreates them
+      (is (= {:stored-class-name old-upgrade-checks-class-name
+              :loaded-class-name upgrade-checks-class-name
+              :triggers          #{{:cron-expression     "0 0 * * * ? *"
+                                    :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}}
+             {:stored-class-name (stored-job-class-name)
+              :loaded-class-name (-> ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))
+                                     .getJobClass
+                                     .getName)
+              :triggers          (triggers)}))
+      (finally
+        (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))))))
 
 (defn- upgrade-checks-job ^JobDetail [{:keys [data description requests-recovery?]}]
   (jobs/build
@@ -242,25 +242,20 @@
 
 (deftest add-job!-replaces-a-stored-job-only-when-it-changed-test
   ;; Replacing a stored job writes its current class name, which old nodes in a rolling upgrade can't load
-  (without-task-initializers!
-   (let [scheduler-initialized? (some? (#'task/scheduler))
-         old-name               old-upgrade-checks-class-name]
-     (require 'metabase.version.task.upgrade-checks)
-     (try
-       (when-not scheduler-initialized?
-         (task/start-scheduler!))
-       (is (= {:unchanged               old-name
-               :new-description         upgrade-checks-class-name
-               :new-data                upgrade-checks-class-name
-               :new-recovery-request    upgrade-checks-class-name
-               :unloadable-stored-class upgrade-checks-class-name}
-              (update-vals {:unchanged               [old-name {}]
-                            :new-description         [old-name {:description "a new description"}]
-                            :new-data                [old-name {:data {"a" "b"}}]
-                            :new-recovery-request    [old-name {:requests-recovery? true}]
-                            :unloadable-stored-class ["metabase.task_test.NotAClass" {}]}
-                           class-name-after-add-job!)))
-       (finally
-         (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job"))
-         (when-not scheduler-initialized?
-           (task/stop-scheduler!)))))))
+  (require 'metabase.version.task.upgrade-checks)
+  (with-jdbc-scheduler!
+    (let [old-name old-upgrade-checks-class-name]
+      (try
+        (is (= {:unchanged               old-name
+                :new-description         upgrade-checks-class-name
+                :new-data                upgrade-checks-class-name
+                :new-recovery-request    upgrade-checks-class-name
+                :unloadable-stored-class upgrade-checks-class-name}
+               (update-vals {:unchanged               [old-name {}]
+                             :new-description         [old-name {:description "a new description"}]
+                             :new-data                [old-name {:data {"a" "b"}}]
+                             :new-recovery-request    [old-name {:requests-recovery? true}]
+                             :unloadable-stored-class ["metabase.task_test.NotAClass" {}]}
+                            class-name-after-add-job!)))
+        (finally
+          (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job")))))))

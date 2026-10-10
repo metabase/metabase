@@ -191,7 +191,12 @@
 
 (defn- load-class ^Class [^String class-name]
   ;; a name with no history is its own current name
-  (Class/forName (get stored-class-name->current class-name class-name) true (classloader/the-classloader)))
+  (let [current-name (get stored-class-name->current class-name class-name)]
+    (try
+      (Class/forName current-name true (classloader/the-classloader))
+      (catch ClassNotFoundException e
+        ;; name the class as the app DB stores it, which is the name an operator can search for
+        (throw (ClassNotFoundException. class-name e))))))
 
 (defrecord ^:private ClassLoadHelper []
   org.quartz.spi.ClassLoadHelper
