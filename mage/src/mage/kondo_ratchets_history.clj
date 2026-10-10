@@ -344,7 +344,7 @@
 
     (and (source-file? path) (str/includes? content "clj-kondo/ignore"))
     (let [side (if (ratchet/test-occurrence? {:file path}) :test :prod)]
-      (update-keys (frequencies (mapcat :linters (ratchet/ignore-matches content)))
+      (update-keys (frequencies (ratchet/ignored-linters content))
                    #(vector side :ignore %)))
 
     :else

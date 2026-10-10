@@ -575,14 +575,13 @@
         :when  (not-any? #(<= (:start %) offset (dec (:end %))) matches)]
     (offset->line masked offset)))
 
-(defn ignore-matches
-  "Inline ignore matches in `content`, in file order:
-  `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
+(defn- ignore-forms
+  "Inline ignore forms in `masked` ([[mask-strings-and-comments]]), in file order: `{:start _, :end _, :linters [...]}`
+  with character offsets.
   The ignore must be the first key of its map. Any other spelling is rejected rather than guessed at,
-  so a suppression cannot silently bypass the ratchet. Matches inside strings and comments are excluded."
-  [content]
-  (let [masked      (mask-strings-and-comments content)
-        matches     (vec (concat (matches-with-offsets vector-form-re masked false)
+  so a suppression cannot silently bypass the ratchet."
+  [masked]
+  (let [matches     (vec (concat (matches-with-offsets vector-form-re masked false)
                                  (matches-with-offsets bare-form-re masked true)))
         unsupported (vec (unsupported-ignore-lines masked matches))]
     (when (seq unsupported)
@@ -591,11 +590,26 @@
                               (if (= 1 (count unsupported)) "" "s")
                               (str/join ", " unsupported))
                       {:lines unsupported})))
-    (->> matches
-         (sort-by :start)
-         (map #(assoc %
-                      :line       (offset->line masked (:start %))
-                      :justified? (has-justification-comment? content masked (:start %) (:end %)))))))
+    (sort-by :start matches)))
+
+(defn ignored-linters
+  "Linter keywords suppressed by the inline ignore forms in `content`, one per form that names it.
+  The bare vector-less form counts as `:all`. Forms inside strings and comments are excluded.
+  Throws on an ignore that is not the first key of its map, as [[ignore-matches]] does."
+  [content]
+  (mapcat :linters (ignore-forms (mask-strings-and-comments content))))
+
+(defn ignore-matches
+  "Inline ignore matches in `content`, in file order:
+  `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
+  The ignore must be the first key of its map. Any other spelling is rejected rather than guessed at,
+  so a suppression cannot silently bypass the ratchet. Matches inside strings and comments are excluded."
+  [content]
+  (let [masked (mask-strings-and-comments content)]
+    (map #(assoc %
+                 :line       (offset->line masked (:start %))
+                 :justified? (has-justification-comment? content masked (:start %) (:end %)))
+         (ignore-forms masked))))
 
 (defn line-linters
   "Linter keywords suppressed by inline ignore forms on `line`.
