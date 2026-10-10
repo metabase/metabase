@@ -139,6 +139,14 @@
     u/upper-case-en
     true keyword))
 
+(deftest no-class-message-test
+  (is (= {:renamed-key (str "Deleting job metabase-enterprise.transforms.timeout due to class not found (a.Class)."
+                            " Its key was renamed to metabase.transforms.timeout in 0.59."
+                            " Moved out of enterprise, with no change to the job.")
+          :other-key   "Deleting job some.job due to class not found (a.Class)"}
+         {:renamed-key (#'task.impl/no-class-message "metabase-enterprise.transforms.timeout" "a.Class")
+          :other-key   (#'task.impl/no-class-message "some.job" "a.Class")})))
+
 (deftest start-scheduler-will-cleanup-jobs-without-class-test
   ;; we can't use the temp scheduler in this test because the temp scheduler use an in-memory jobstore
   ;; and we need update the job class in the database to trigger the cleanup
@@ -245,11 +253,3 @@
         (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job"))
         (when-not scheduler-initialized?
           (task/stop-scheduler!))))))
-
-(deftest no-class-message-test
-  (is (= {:renamed-key (str "Deleting job metabase-enterprise.transforms.timeout due to class not found (a.Class)."
-                            " Its key was renamed to metabase.transforms.timeout in 0.59."
-                            " Moved out of enterprise, with no change to the job.")
-          :other-key   "Deleting job some.job due to class not found (a.Class)"}
-         {:renamed-key (#'task.impl/no-class-message "metabase-enterprise.transforms.timeout" "a.Class")
-          :other-key   (#'task.impl/no-class-message "some.job" "a.Class")})))
