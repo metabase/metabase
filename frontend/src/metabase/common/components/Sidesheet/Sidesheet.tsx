@@ -59,7 +59,11 @@ export function Sidesheet({
       h="100dvh"
     >
       {withOverlay && (
-        <Modal.Overlay {...overlayProps} data-testid="modal-overlay" />
+        <Modal.Overlay
+          bg="overlay"
+          {...overlayProps}
+          data-testid="modal-overlay"
+        />
       )}
       <Modal.Content
         transitionProps={{ duration: 0 }}
@@ -78,6 +82,7 @@ export function Sidesheet({
         aria-labelledby={titleId}
       >
         <Modal.Header
+          className={Styles.SidesheetHeader}
           bg="background_surface-primary"
           px={SIDESHEET_HORIZONTAL_PADDING}
           pt="xl"

@@ -3,9 +3,9 @@
 }
 
 .title {
-  font-size: var(--mantine-font-size-xl);
+  font-size: var(--mantine-h4-font-size);
   font-weight: var(--mantine-heading-font-weight);
-  line-height: var(--mantine-line-height-md);
+  line-height: var(--mantine-h4-line-height);
   flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: break-word;
@@ -17,26 +17,73 @@
 }
 
 .content {
-  background-color: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_surface-primary);
+  border: 0.5px solid var(--mb-color-modal-border);
 }
 
 .header {
-  background-color: var(--mb-color-background_page-primary);
+  align-items: flex-start;
+  gap: var(--mantine-spacing-md);
+  padding-bottom: var(--mantine-spacing-lg);
+  padding-inline-end: var(--mantine-spacing-xl);
+  background-color: var(--mb-color-background_surface-primary);
+
+  /* Centres a single-line title against the close button */
+  .title {
+    padding-block: var(--mantine-spacing-xxxs);
+  }
 }
 
 .ModalCloseButton {
-  color: var(--mb-color-text-disabled) !important;
-  padding: 0;
-  width: rem(18px);
-  height: rem(18px);
+  --cb-size: rem(24px);
+  --cb-icon-size: rem(12px);
+  --cb-radius: var(--mantine-radius-xxs);
+
+  color: var(--mb-color-icon-primary);
+  background-color: var(--mb-color-button-subtle-neutral-default);
 
   &:hover {
-    color: var(--mb-color-text-secondary) !important;
+    background-color: var(--mb-color-button-subtle-neutral-hover);
   }
 
-  svg {
-    width: 20px !important;
-    height: 20px !important;
+  &:active {
+    background-color: var(--mb-color-button-subtle-neutral-pressed);
+  }
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
+}
+
+.centeredHeading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mantine-spacing-xl);
+  margin-bottom: var(--mantine-spacing-xxs);
+}
+
+.root[data-layout="centered"] {
+  .header {
+    justify-content: flex-end;
+  }
+
+  .body {
+    padding-inline: var(--mantine-spacing-xxl);
+    padding-bottom: rem(64px);
+    text-align: center;
+  }
+
+  .footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    width: rem(256px);
+    max-width: 100%;
+    margin-top: var(--mantine-spacing-xl);
+    margin-inline: auto;
   }
 }

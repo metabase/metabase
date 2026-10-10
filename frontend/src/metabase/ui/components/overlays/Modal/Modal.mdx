@@ -14,6 +14,33 @@ Our themed wrapper around [Mantine Modal](https://v6.mantine.dev/core/modal/).
 
 - [Mantine Modal Docs](https://v6.mantine.dev/core/modal/)
 
+## Usage
+
+Pass the heading as `title` and put the action buttons in a `Modal.Footer` as the last child, so the title, body and buttons always get the same placement and spacing.
+
+```tsx
+<Modal title={t`Delete this database?`} opened={opened} onClose={onClose}>
+  <Text>{t`This can't be undone.`}</Text>
+  <Modal.Footer>
+    <Button onClick={onClose}>{t`Cancel`}</Button>
+    <Button variant="filled" color="negative">{t`Delete`}</Button>
+  </Modal.Footer>
+</Modal>
+```
+
+### Layouts
+
+- `layout="default"` left-aligns the title and body, and right-aligns the buttons.
+- `layout="centered"` centre-aligns everything, stacks the buttons with the primary one on top, and shows an optional `illustration` above the title.
+
+Don't confuse `layout` with Mantine's `centered` prop, which sets the modal's vertical position in the viewport.
+
+<Canvas of={ModalStories.Overview} />
+
+### Custom layouts
+
+`Modal.Root`, `Modal.Overlay`, `Modal.Content`, `Modal.Header`, `Modal.Title`, `Modal.CloseButton` and `Modal.Body` are an escape hatch for modals that don't fit the standard structure, such as side sheets. Prefer the props above where you can.
+
 ## Guidelines
 
 ### Modal headings should be in sentence case.
