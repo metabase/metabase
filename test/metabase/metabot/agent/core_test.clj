@@ -14,6 +14,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
@@ -42,12 +43,17 @@
                       (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
                         (thunk))))
 
+(defn- run-agent-loop
+  [opts]
+  (agent/run-agent-loop (merge {:metabot (metabot.config/resolve-metabot metabot.config/internal-metabot-id)}
+                               opts)))
+
 (defn- run-agent-loop!
   "run-agent-loop for side effects, discarding results.
   Runs as admin so the base metabot permission check passes."
   [opts]
   (mt/as-admin
-    (reduce (fn [_ _]) nil (agent/run-agent-loop opts))))
+    (reduce (fn [_ _]) nil (run-agent-loop opts))))
 
 (deftest has-tool-calls-test
   (testing "detects tool calls in parts"
@@ -124,7 +130,7 @@
        (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts tools _tracking-opts _llm-opts]
                                                    (reset! captured (set (keys tools)))
                                                    (mut/mock-llm-response [{:type :text :text "Hello"}]))]
-         (into [] (agent/run-agent-loop
+         (into [] (run-agent-loop
                    {:messages   [{:role :user :content "Open the SQL editor"}]
                     :state      {}
                     :profile-id profile-id
@@ -206,7 +212,7 @@
                                                                            :sql_query   "SELECT 1"
                                                                            :title       "Results"}}])
                                                             (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
-        (let [parts (into [] (agent/run-agent-loop
+        (let [parts (into [] (run-agent-loop
                               {:messages   [{:role :user :content "Query that database"}]
                                :state      {}
                                :profile-id profile-id
@@ -266,7 +272,7 @@
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
                                                              [{:type :text :text "Hello"}]))]
-          (let [result (into [] (agent/run-agent-loop
+          (let [result (into [] (run-agent-loop
                                  {:messages   [{:role :user :content "Hi"}]
                                   :state      {}
                                   :profile-id :embedding_next
@@ -282,7 +288,7 @@
                                                       (reset! captured llm-opts)
                                                       (mut/mock-llm-response
                                                        [{:type :text :text "Hello"}]))]
-            (into [] (agent/run-agent-loop
+            (into [] (run-agent-loop
                       {:messages   [{:role :user :content "Hi"}]
                        :state      {}
                        :profile-id :sql
@@ -301,7 +307,7 @@
                                                                      :arguments {:query "test"}}])
                                                                   (mut/mock-llm-response
                                                                    [{:type :text :text "Found results"}]))))]
-            (let [result (into [] (agent/run-agent-loop
+            (let [result (into [] (run-agent-loop
                                    {:messages   [{:role :user :content "Search for test"}]
                                     :state      {}
                                     :profile-id :embedding_next
@@ -325,7 +331,7 @@
                                                                 {:type :usage :model "m"
                                                                  :usage {:promptTokens 1 :completionTokens 64 :totalTokens 65}
                                                                  :finish-reason "length" :raw-finish-reason "max_tokens"}]))]
-            (let [result (into [] (agent/run-agent-loop
+            (let [result (into [] (run-agent-loop
                                    {:messages   [{:role :user :content "Hi"}]
                                     :state      {}
                                     :profile-id :embedding_next
@@ -347,7 +353,7 @@
                                                                  :function  "search"
                                                                  :arguments {:query "test"}}
                                                                 {:type :error :errorText "Overloaded"}]))]
-            (let [result (into [] (agent/run-agent-loop
+            (let [result (into [] (run-agent-loop
                                    {:messages   [{:role :user :content "Hi"}]
                                     :state      {}
                                     :profile-id :embedding_next
@@ -358,7 +364,7 @@
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (throw (ex-info "Mock error" {})))]
           (let [result (mt/with-log-level [metabase.metabot.agent.core :fatal]
-                         (into [] (agent/run-agent-loop
+                         (into [] (run-agent-loop
                                    {:messages   [{:role :user :content "Hi"}]
                                     :state      {}
                                     :profile-id :embedding_next
@@ -386,8 +392,8 @@
                                                                                  ((nth responses (dec n)) n))))
                                                       metabot-search/search (constantly [])]
                             (mt/with-log-level [metabase.metabot.agent.core :warn]
-                              (->> (agent/run-agent-loop {:messages [{:role :user :content "Hi"}]
-                                                          :profile-id :embedding_next})
+                              (->> (run-agent-loop {:messages [{:role :user :content "Hi"}]
+                                                    :profile-id :embedding_next})
                                    (into [])
                                    last))))]
         (testing "still calling tools at the cap"
@@ -434,7 +440,7 @@
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
                                                              [{:type :text :text "Test response"}]))]
-          (let [result (into [] (agent/run-agent-loop
+          (let [result (into [] (run-agent-loop
                                  {:messages   [{:role :user :content "Hello"}]
                                   :state      {}
                                   :profile-id :embedding_next
@@ -656,7 +662,7 @@
                          {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
                           (into [] (metabot.persistence/combine-text-parts-xf)
-                                (agent/run-agent-loop
+                                (run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
                                   :state      {}
@@ -710,7 +716,7 @@
                                                                   :moderated_status nil
                                                                   :collection       {:id nil :name nil}}])]
             (let [result      (mt/with-log-level [metabase.metabot.agent.core :fatal]
-                                (into [] (agent/run-agent-loop
+                                (into [] (run-agent-loop
                                           {:messages   [{:role :user :content "Where are the orders?"}]
                                            :state      {}
                                            :profile-id :internal
@@ -749,7 +755,7 @@
                                                                            :function  "load_skill"
                                                                            :arguments {:ids ["read-resource"]}}]))
                                               (mut/mock-llm-response [{:type :text :text "Done."}])))]
-                (into [] (agent/run-agent-loop
+                (into [] (run-agent-loop
                           {:messages   [{:role :user :content "Help me with this dashboard."}]
                            :state      {}
                            :profile-id :internal
@@ -807,7 +813,7 @@
                                                                 :database_id  (mt/id)}])]
             (let [{:keys [trace result]} (mt/with-log-level [metabase.metabot.agent.core :warn]
                                            (ait/capture-reducible
-                                            (agent/run-agent-loop
+                                            (run-agent-loop
                                              {:messages   [{:role :user :content "Show me orders"}]
                                               :state      {}
                                               :profile-id :internal
@@ -866,7 +872,7 @@
                                               {:type :usage :usage {:promptTokens 150 :completionTokens 30}
                                                :model "gpt-4" :id "msg-2"}]))))]
             (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
-                           (into [] (agent/run-agent-loop
+                           (into [] (run-agent-loop
                                      {:messages   [{:role :user :content "test"}]
                                       :state      {}
                                       :profile-id :embedding_next
@@ -900,7 +906,7 @@
                                               {:type :usage :usage {:promptTokens 200 :completionTokens 40}
                                                :model "model-b" :id "msg-2"}]))))]
             (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
-                           (into [] (agent/run-agent-loop
+                           (into [] (run-agent-loop
                                      {:messages   [{:role :user :content "test"}]
                                       :state      {}
                                       :profile-id :embedding_next
@@ -933,7 +939,7 @@
                      {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
                       (into [] (metabot.persistence/combine-text-parts-xf)
-                            (agent/run-agent-loop
+                            (run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}
                               :profile-id :embedding_next
@@ -957,10 +963,10 @@
                          (mt/with-dynamic-fn-redefs [claude/claude (fn [_] (throw credit-error))]
                            (mt/with-log-level [metabase.metabot.agent.core :fatal]
                              (filterv #(= :error (:type %))
-                                      (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
-                                                             :state      {}
-                                                             :profile-id :embedding_next
-                                                             :context    {}}))))))]
+                                      (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                       :state      {}
+                                                       :profile-id :embedding_next
+                                                       :context    {}}))))))]
     (testing "on the customer's own key, the error part says what to fix instead of passing the provider's text on"
       (is (=? [{:error {:error-code "ai_provider_billing" :message #"Anthropic rejected the request .*"}}]
               (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6"))))

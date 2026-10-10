@@ -5,7 +5,6 @@ import * as Yup from "yup";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
-import { getMetabotId } from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
@@ -65,14 +64,12 @@ export const MetabotFeedbackModal = ({
 }: MetabotFeedbackModalProps) => {
   const applicationName = useSelector(getApplicationName);
   const metabotName = useSetting("metabot-name");
-  const metabotId = useSelector(getMetabotId);
 
   const handleSubmit = (values: {
     freeform_feedback: string;
     issue_type?: MetabotIssueType | "";
   }) => {
     const base = {
-      metabot_id: metabotId,
       message_id: messageId,
       freeform_feedback: values.freeform_feedback,
     };

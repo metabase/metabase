@@ -3,8 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
@@ -772,6 +774,30 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest embedded-metabot-search-test
+  (mt/with-test-user :crowberto
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Embedded sources" :authority_level "official"}
+                     :model/Collection {elsewhere-id :id} {:name "Other sources" :authority_level "official"}
+                     :model/Collection {drafts-id :id} {:name "Embedded drafts"
+                                                        :location (collection/location-path collection-id)}
+                     :model/Dashboard {included-id :id} {:name "Embedded report" :collection_id collection-id}
+                     :model/Dashboard {draft-id :id} {:name "Embedded report draft" :collection_id drafts-id}
+                     :model/Dashboard _ {:name "Embedded report elsewhere" :collection_id elsewhere-id}]
+        (mt/with-temp-vals-in-db :model/Metabot
+                                 (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))
+                                 {:collection_id collection-id :use_verified_content true}
+          (doseq [request-id [metabot.config/embedded-metabot-id "c61bf5f5-1025-47b6-9298-bf1827105bb6"]]
+            (let [metabot (metabot.config/resolve-metabot request-id)
+                  search-args {:term-queries ["Embedded report"]
+                               :entity-types ["dashboard"]
+                               :collection-id elsewhere-id
+                               :metabot metabot}]
+              (is (= #{included-id draft-id}
+                     (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
+              (is (= [included-id]
+                     (mapv :id (search/search search-args)))))))))))
+
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
             containment boundary, not a default. An explicit collection-id, which the v2 search tool
@@ -780,8 +806,8 @@
     (mt/with-test-user :crowberto
       (mt/with-temp [:model/Collection {confined-id :id}  {:name "Bot's collection"}
                      :model/Collection {elsewhere-id :id} {:name "Somewhere else"}
-                     :model/Metabot {metabot-eid :entity_id} {:name          "confined bot"
-                                                              :collection_id confined-id}]
+                     :model/Metabot metabot {:name          "confined bot"
+                                             :collection_id confined-id}]
         (let [collection-for (fn [search-args]
                                (let [captured (atom ::unset)]
                                  (mt/with-dynamic-fn-redefs [search-core/ranked-results
@@ -791,7 +817,7 @@
                                    (search/search (merge {:term-queries ["anything"]
                                                           :entity-types ["dashboard"]
                                                           :profile-id   "nlq"
-                                                          :metabot-id   metabot-eid}
+                                                          :metabot      metabot}
                                                          search-args)))
                                  @captured))]
           (testing "with no collection-id, the metabot's own collection scopes the search"
@@ -799,8 +825,8 @@
           (testing "an explicit collection-id elsewhere cannot escape the confinement"
             (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
           (testing "an unconfined metabot still honours an explicit collection-id"
-            (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
-              (is (= elsewhere-id (collection-for {:metabot-id    open-eid
+            (mt/with-temp [:model/Metabot open-metabot {:name "open bot" :collection_id nil}]
+              (is (= elsewhere-id (collection-for {:metabot       open-metabot
                                                    :collection-id elsewhere-id}))))))))))
 
 (deftest transform-visibility-is-superuser-only-test

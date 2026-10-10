@@ -699,7 +699,7 @@
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
           (let [{:keys [structured-output]} (entity-details/answer-sources
-                                             {:metabot-id (:entity_id metabot)})]
+                                             {:metabot metabot})]
             (is (not (contains? (set (map :id (:models structured-output))) model-id)))))))))
 
 (deftest related-tables-with-fields-capped-test

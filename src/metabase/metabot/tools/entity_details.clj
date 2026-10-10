@@ -8,7 +8,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
@@ -711,12 +710,12 @@
             cards))))
 
 (defn answer-sources
-  "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`.
-  Accepts a map with `:metabot-id` and optional options for field values."
-  [{:keys [metabot-id] :as options}]
-  (if-let [normalized-metabot-id (metabot.config/normalize-metabot-id metabot-id)]
+  "Get the details of metrics and models in the scope of a Metabot row.
+  Accepts a map with `:metabot` and optional options for field values."
+  [{:keys [metabot] :as options}]
+  (if-let [metabot-id (:id metabot)]
     (lib-be/with-metadata-provider-cache
-      (let [metrics-and-models (metabot.tools.u/get-metrics-and-models normalized-metabot-id)
+      (let [metrics-and-models (metabot.tools.u/get-metrics-and-models metabot-id)
             {metrics :metric, models :model}
             (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
                        detail (cards-details card-type database-id cards options)]
@@ -729,8 +728,8 @@
         {:structured-output {:result-type :answer-sources
                              :metrics (vec metrics)
                              :models  (vec models)}}))
-    (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
-                    {:metabot_id metabot-id, :status-code 400}))))
+    (throw (ex-info (i18n/tru "Unknown Metabot.")
+                    {:status-code 400}))))
 
 (defn get-table-details
   "Get information about the table, question or model with .

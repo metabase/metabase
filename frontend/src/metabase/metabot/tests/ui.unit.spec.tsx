@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
@@ -25,6 +26,7 @@ import { Metabot } from "../components/Metabot";
 import { MetabotChat } from "../components/MetabotChat";
 
 import {
+  TEST_METABOT_IDS,
   assertConversation,
   assertNotVisible,
   assertVisible,
@@ -421,7 +423,7 @@ describe("metabot > ui", () => {
       const prompts = [
         {
           id: 1,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt: "What is the total revenue for this quarter?",
           model: "metric" as const,
           model_id: 1,
@@ -431,7 +433,7 @@ describe("metabot > ui", () => {
         },
         {
           id: 2,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt:
             "Show me the customer acquisition trends over the last 6 months",
           model: "model" as const,
@@ -442,7 +444,7 @@ describe("metabot > ui", () => {
         },
         {
           id: 3,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt: "What are our top performing products by sales volume?",
           model: "metric" as const,
           model_id: 3,
@@ -480,7 +482,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/metabot/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
           ),
         ).toHaveLength(1);
       });
@@ -490,7 +492,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/metabot/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
           ),
         ).toHaveLength(2);
       });

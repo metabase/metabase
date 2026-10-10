@@ -487,7 +487,7 @@
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
   does (see [[turn-input-parts]])."
-  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
+  [{:keys [messages state metabot profile-id context tracking-opts conversation-id]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -504,7 +504,7 @@
                          (assoc :conversation-id conversation-id)
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+        tools        (update-vals (tools/wrap-tools-with-state base-tools memory-atom metabot profile-id)
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
@@ -704,7 +704,7 @@
   [opts :- [:map {:closed true}
             [:messages ::messages]
             [:profile-id ::profile-id]
-            [:metabot-id {:optional true} [:maybe :string]]
+            [:metabot ::metabot.schema/metabot]
             [:conversation-id {:optional true} [:maybe :string]]
             [:state {:optional true} [:maybe ::metabot.schema/state]]
             [:context {:optional true} [:maybe ::context]]
@@ -718,8 +718,7 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
-  (let [opts               (m/update-existing-in opts [:context :capabilities]
-                                                 capabilities/enforce-permissions)
+  (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)
         profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}

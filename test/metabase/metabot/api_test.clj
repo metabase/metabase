@@ -17,6 +17,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
@@ -38,6 +39,61 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
+
+(deftest agent-streaming-metabot-resolution-test
+  (mt/with-temporary-setting-values [metabot-enabled? true
+                                     embedded-metabot-enabled? true]
+    (doseq [[request-id entity-id profile-id]
+            [["metabotmetabotmetabot" "metabotmetabotmetabot" :internal]
+             ["embeddedmetabotmetabo" "embeddedmetabotmetabo" :embedding_next]
+             ["b5716059-ad40-4d83-a4e1-673af020b2d8" "metabotmetabotmetabot" :internal]
+             ["c61bf5f5-1025-47b6-9298-bf1827105bb6" "embeddedmetabotmetabo" :embedding_next]
+             [nil "metabotmetabotmetabot" :internal]]]
+      (testing (str "Metabot request id " request-id)
+        (let [received (atom nil)
+              received-context (atom nil)
+              create-context (mt/original-fn #'metabot.context/create-context)]
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
+            (mt/with-dynamic-fn-redefs [metabot.context/create-context (fn [ctx opts]
+                                                                         (reset! received-context opts)
+                                                                         (create-context ctx opts))
+                                        agent/run-agent-loop (fn [opts]
+                                                               (reset! received opts)
+                                                               [])
+                                        conversation-title/ensure-title! (constantly {:status :missing})]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (cond-> {:message "Hello"
+                                             :context {}
+                                             :conversation_id (str (random-uuid))}
+                                      request-id (assoc :metabot_id request-id)))
+              (is (= (t2/select-one :model/Metabot :entity_id entity-id)
+                     (:metabot @received)))
+              (is (= (:metabot @received) (:metabot @received-context)))
+              (is (= profile-id (:profile-id @received))))))))))
+
+(deftest agent-streaming-unknown-metabot-test
+  (let [conversation-id (str (random-uuid))]
+    (is (= "Unknown Metabot."
+           (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
+                                 {:metabot_id "nonexistent-entity-id"
+                                  :message "Hello"
+                                  :context {}
+                                  :conversation_id conversation-id})))
+    (is (not (t2/exists? :model/MetabotConversation :id conversation-id)))))
+
+(deftest feedback-metabot-id-test
+  (mt/with-temp [:model/Metabot {:keys [id entity_id]} {:name "Feedback Metabot"}]
+    (mt/with-temporary-setting-values [metabot-enabled? false
+                                       embedded-metabot-enabled? true]
+      (mt/with-dynamic-fn-redefs [metabot.feedback/persist-feedback! (constantly nil)
+                                  metabot.feedback/persist-source-feedback! (constantly nil)]
+        (doseq [metabot-id [nil id entity_id]
+                [endpoint feedback] [["feedback" {:positive true}]
+                                     ["source-feedback" {:positive true :source_id 42 :source_type "table"}]]]
+          (is (nil? (mt/user-http-request :rasta :post 204 (str "metabot/" endpoint)
+                                          (cond-> (assoc feedback :message_id "test-message")
+                                            metabot-id (assoc :metabot_id metabot-id))))))))))
 
 (deftest native-agent-streaming-test
   (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
@@ -1373,8 +1429,8 @@
                {:type "model" :query native :chart_configs [{:query native}]}]
               result)))))
 
-(deftest streaming-request-passes-metabot-id-test
-  (testing "streaming-request passes metabot-id to native-agent-streaming-request"
+(deftest streaming-request-metabot-test
+  (testing "streaming requests include the resolved Metabot"
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
       (mt/with-model-cleanup [:model/MetabotMessage
@@ -1400,11 +1456,8 @@
                                   :state           {}
                                   :debug           false}
                                  {:origin nil :referer nil :user-agent nil :ip-address nil})
-          (testing "metabot-id is included in the arguments"
-            (is (some? (:metabot-id @captured-args))
-                "metabot-id should not be nil")
-            (is (= test-metabot-id (:metabot-id @captured-args))
-                "metabot-id should match the input metabot_id")))))))
+          (is (= (t2/select-one :model/Metabot :entity_id test-metabot-id)
+                 (:metabot @captured-args))))))))
 
 (deftest streaming-request-ip-address-test
   (mt/with-model-cleanup [:model/MetabotMessage
