@@ -88,20 +88,24 @@
                                       :kind    :shrink, :delta -2}]}])))))
 
 (deftest pardon-test
-  (testing "a pardoned raise is no growth, and the shrink that takes it back is no shrink and credits nobody"
+  (testing "a pardoned raise is no growth, the shrink that takes it back is no shrink and credits nobody, and a recount
+           loses its own shrinks too"
     (is (= [{:sha     "tighten"
              :changes [{:measure :a, :kind :shrink, :delta -2}]
              :causes  {:a [{:sha "fix", :delta -2}], :b []}}
             {:sha "stale", :changes [{:measure :a, :kind :pardon, :delta 3} {:measure :c, :kind :grow, :delta 1}]}
-            {:sha "ratchet", :changes [{:measure :d, :kind :pardon, :delta 9}]}]
+            {:sha "ratchet", :changes [{:measure :d, :kind :pardon, :delta 9}]}
+            {:sha "regroup", :changes [{:measure :f, :kind :pardon, :delta 5}], :causes {:e [{:sha "regroup", :delta -4}]}}]
            (history/pardon
-            {"stale" #{:a :b}, "ratchet" :all}
+            {:pardons {"stale" #{:a :b}, "ratchet" :all, "regroup" :all}, :recounts #{"regroup"}}
             [{:sha     "tighten"
               :changes [{:measure :a, :kind :shrink, :delta -5} {:measure :b, :kind :shrink, :delta -4}]
               :causes  {:a [{:sha "stale", :delta -3} {:sha "fix", :delta -2}]
                         :b [{:sha "stale", :delta -4}]}}
              {:sha "stale", :changes [{:measure :a, :kind :grow, :delta 3} {:measure :c, :kind :grow, :delta 1}]}
-             {:sha "ratchet", :changes [{:measure :d, :kind :grow, :delta 9}]}])))))
+             {:sha "ratchet", :changes [{:measure :d, :kind :grow, :delta 9}]}
+             {:sha "regroup", :changes [{:measure :e, :kind :shrink, :delta -4} {:measure :f, :kind :grow, :delta 5}]
+              :causes {:e [{:sha "regroup", :delta -4}]}}])))))
 
 (deftest suspects-test
   (testing "flags a raise beyond the suppressions its commit added, unless the commit has a verdict"

@@ -1,6 +1,7 @@
 ;; Verdicts on the budget raises `./bin/mage kondo-ratchets-history` questions: a raise beyond the
 ;; suppressions its commit added. A :pardon counts the commit's raises against nobody; a :confirm keeps them.
-;; Written by `./bin/mage kondo-ratchets-verdict`.
+;; A :recount marks a commit that only changed how suppressions are counted: none of its changes count.
+;; Written by `./bin/mage kondo-ratchets-history --pardon`, `--confirm` and `--recount`.
 [{:sha     "57e0ad66ea59f4b57c51e01a074d45519425084c"
   :pr      77773
   :subject "Add kondo ignore ratchets (#77773)"
@@ -45,4 +46,9 @@
   :pr      81406
   :subject "Implement the UNION ALL approach for running pivot queries (#81406)"
   :verdict :pardon
-  :why     "A long-lived branch merged with a stale budget and no new suppression; taken back the same day."}]
+  :why     "A long-lived branch merged with a stale budget and no new suppression; taken back the same day."}
+ {:sha     "ec3b24fadd18ad7458943e9b13b067f375b97d7a"
+  :pr      79531
+  :subject "Make every kondo ignore name the linters it suppresses (#79531)"
+  :verdict :recount
+  :why     "The same ignores, named per linter: each bare ignore became one ignore per linter, with no change to app or linter code."}]
