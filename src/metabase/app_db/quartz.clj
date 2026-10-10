@@ -51,15 +51,18 @@
 ;; at startup, even while an old node is running it, and reschedules it under the new name. With it, upgraded
 ;; nodes load the stored row under the current class.
 ;;
-;; Quartz asks for a class by name only, so the lookup goes by class name alone. The `:job-key` is a label for
-;; readers, which no code reads, and which a test checks against the keys that jobs are scheduled under.
+;; Quartz asks for a class by name only, so the lookup goes by class name alone. The `:job-key` or
+;; `:job-key-prefix` is a label for readers, which no code reads, and which a test checks against the keys that
+;; jobs are scheduled under.
 ;;
 ;; Keep an entry for good, because stored rows keep the old name. The exception is a job whose key changes:
 ;; remove its entry, and record the change in [[job-key-renames]]. A row under the old key would otherwise
 ;; still load, and keep running beside the newly scheduled job. Without the entry it is deleted as classless.
 (def job-history
   "The class names each renamed Quartz job has had, oldest first, so the last is its current name.
-  The `:job-key` says which job an entry is for."
+  The `:job-key` says which job an entry is for.
+  A job that is scheduled many times, each under its own key, has a `:job-key-prefix` instead: the prefix that
+  those keys share."
   [{:job-key     "metabase-enterprise.cache.job"
     :class-names ["metabase_enterprise.task.cache.Cache"
                   "metabase_enterprise.cache.task.refresh_cache_configs.Cache"]}
@@ -114,10 +117,9 @@
    {:job-key     "metabase.task.task-history-cleanup.job"
     :class-names ["metabase.task.task_history_cleanup.TaskHistoryCleanup"
                   "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"]}
-   ;; There is one job per transform job, so this is the prefix their keys share.
-   {:job-key     "metabase.task.transforms.schedule."
-    :class-names ["metabase_enterprise.transforms.schedule.RunTransforms"
-                  "metabase.transforms.schedule.RunTransforms"]}
+   {:job-key-prefix "metabase.task.transforms.schedule."
+    :class-names    ["metabase_enterprise.transforms.schedule.RunTransforms"
+                     "metabase.transforms.schedule.RunTransforms"]}
    {:job-key     "metabase.task.truncate-audit-tables.job"
     :class-names ["metabase.task.truncate_audit_tables.TruncateAuditTables"
                   "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"]}
@@ -131,38 +133,40 @@
 (def job-key-renames
   "Past renames of job keys, each with the class the job had under the old key and under the new one.
   The row stored under an old key is deleted at startup as classless, and the log says why from `:release`
-  and `:change`."
-  [{:release   "0.50"
+  and `:change`.
+  The `:release` is the first version with the new key, with its patch number when it has one.
+  It names each release line when the rename was backported, as in \"x.58.7 and x.59.3\"."
+  [{:release   "x.50"
     :old-key   "metabase-enterprise.Caching.job"
     :old-class "metabase_enterprise.task.caching.Caching"
     :new-key   "metabase-enterprise.cache.job"
     :new-class "metabase_enterprise.task.cache.Cache"
-    :change    "Renamed only, and within 0.50 development, so the old key never shipped."}
-   {:release   "0.52"
+    :change    "Renamed only, and within x.50 development, so the old key never shipped."}
+   {:release   "x.52"
     :old-key   "metabase.task.search-index.job"
     :old-class "metabase.task.search_index.SearchIndexing"
     :new-key   "metabase.task.search-index.reindex.job"
     :new-class "metabase.task.search_index.SearchIndexReindex"
     :change    "Became durable, when a separate job for incremental updates was added beside it."}
-   {:release   "0.59"
+   {:release   "x.59"
     :old-key   "metabase-enterprise.transforms.canceling"
     :old-class "metabase_enterprise.transforms.canceling.CancelOldTransformRuns"
     :new-key   "metabase.transforms.canceling"
     :new-class "metabase.transforms.canceling.CancelOldTransformRuns"
     :change    "Moved out of enterprise, with no change to the job."}
-   {:release   "0.59"
+   {:release   "x.59"
     :old-key   "metabase-enterprise.transforms.jobs.timeout-job"
     :old-class "metabase_enterprise.transforms.jobs.TimeoutOldRuns"
     :new-key   "metabase.transforms.jobs.timeout-job"
     :new-class "metabase.transforms.jobs.TimeoutOldRuns"
-    :change    "Moved out of enterprise, with no change to the job, which was removed in 0.63."}
-   {:release   "0.59"
+    :change    "Moved out of enterprise, with no change to the job, which was removed in x.63."}
+   {:release   "x.59"
     :old-key   "metabase-enterprise.transforms.timeout"
     :old-class "metabase_enterprise.transforms.timeout.TimeoutTransforms"
     :new-key   "metabase.transforms.timeout"
     :new-class "metabase.transforms.timeout.TimeoutTransforms"
     :change    "Moved out of enterprise, with no change to the job."}
-   {:release   "0.60"
+   {:release   "x.60"
     :old-key   "metabase.task.metabot-v3.suggested-prompts-generator.job"
     :old-class "metabase_enterprise.metabot_v3.task.suggested_prompts_generator.SuggestedPromptsGenerator"
     :new-key   "metabase.task.metabot.suggested-prompts-generator.job"
