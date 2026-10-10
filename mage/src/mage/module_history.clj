@@ -74,13 +74,14 @@
   (if-not (map? config)
     ["it must hold one map"]
     (let [{:keys [pages metabase shares]} config
+          unknown       (remove #{:pages :metabase :shares} (keys config))
           string-keyed? (fn [m valid-value?]
                           (and (map? m) (every? string? (keys m)) (every? valid-value? (vals m))))]
       (cond-> []
-        (seq (remove #{:pages :metabase :shares} (keys config)))
-        (conj (str "unknown keys: " (str/join ", " (remove #{:pages :metabase :shares} (keys config)))))
+        (seq unknown)
+        (conj (str "unknown keys: " (str/join ", " unknown)))
 
-        (not (and (sequential? pages)
+        (not (and (sequential? (or pages []))
                   (every? #(and (map? %) (string? (:template %)) (string? (:file %))) pages)))
         (conj ":pages must be a vector of {:template \"path\", :file \"name\"}")
 
@@ -97,7 +98,7 @@
         (conj ":shares must map a file name to an mb-shares slug")))))
 
 (defn- read-config
-  "The publishing config in `file`, with `:pages` defaulting to none. Exits when the file is missing or malformed."
+  "The publishing config in `file`. Exits when the file is missing or malformed."
   [file]
   (when-not (fs/exists? file)
     (u/exit (c/red (str "No publishing config at " file)) 1))
@@ -105,7 +106,6 @@
                    (edn/read-string (slurp (str file)))
                    (catch Exception e
                      (u/exit (c/red (str file " is not readable EDN: " (ex-message e))) 1)))
-        config   (cond-> config (map? config) (update :pages #(or % [])))
         problems (config-problems config)]
     (when (seq problems)
       (u/exit (c/red (str file " is not a publishing config:\n  " (str/join "\n  " problems))) 1))
@@ -168,17 +168,17 @@
   [dry-run? profile stamp id]
   (if dry-run?
     (println (c/yellow "Would refresh card") id)
-    (let [card  (json/parse-string (str/join "\n" (sh! {:quiet? true} (mb profile ["card" "get" (str id) "--full"])))
-                                   true)
-          query (:dataset_query card)
-          sql   (get-in query [:stages 0 :native])]
+    ;; String keys, so that names inside the query, such as template tags, are sent back as they came.
+    (let [card  (json/parse-string (str/join "\n" (sh! {:quiet? true} (mb profile ["card" "get" (str id) "--full"]))))
+          query (get card "dataset_query")
+          sql   (get-in query ["stages" 0 "native"])]
       (when-not (string? sql)
         (u/exit (c/red (str "Card " id " is not a native query, so its results cannot be refreshed this way")) 1))
       (let [tmp  (fs/create-temp-dir {:prefix "module-history"})
             body (str (fs/path tmp "card.json"))]
         (try
           (spit body (json/generate-string
-                      {:dataset_query (assoc-in query [:stages 0 :native] (refreshed-sql sql stamp))}))
+                      {"dataset_query" (assoc-in query ["stages" 0 "native"] (refreshed-sql sql stamp))}))
           (sh! {:quiet? true} (mb profile ["card" "update" (str id) "--file" body]))
           (finally
             (fs/delete-tree tmp))))
@@ -203,14 +203,13 @@
        distinct))
 
 (defn- publish!
-  "Publish the files in `dir` as the config in `config-file` says. With `dry-run?`, write the pages but only print
-  the commands that would change Metabase or a share."
-  [dry-run? dir config-file]
-  (let [config  (read-config config-file)
-        missing (missing-files dir config)]
+  "Publish the files in `dir` as `config` says, with page templates relative to `config-dir`. With `dry-run?`, write
+  the pages but only print the commands that would change Metabase or a share."
+  [dry-run? dir config config-dir]
+  (let [missing (missing-files dir config)]
     (when (seq missing)
       (u/exit (c/red (str "Not in " dir ": " (str/join ", " missing))) 1))
-    (write-pages! dir (fs/parent (fs/absolutize config-file)) (:pages config))
+    (write-pages! dir config-dir (:pages config))
     (when-let [metabase (:metabase config)]
       (publish-to-metabase! dry-run? dir metabase))
     (doseq [[file slug] (sort (:shares config))]
@@ -226,17 +225,17 @@
       (u/exit (c/red "Pass --dir DIR, the directory to keep the files in.") 1))
     (when (and dry-run (not publish))
       (u/exit (c/red "--dry-run only applies to --publish.") 1))
-    (let [dir   (fs/absolutize (fs/expand-home dir))
-          timer (u/start-timer)]
-      ;; Read the config first, so a mistake in it shows before the measuring, not after.
-      (when publish
-        (read-config (fs/expand-home publish)))
+    (let [dir         (fs/absolutize (fs/expand-home dir))
+          config-file (some-> publish fs/expand-home)
+          ;; Read the config first, so a mistake in it shows before the measuring, not after.
+          config      (some-> config-file read-config)
+          timer       (u/start-timer)]
       (when-not no-measure
         (when-not no-fetch
           (println "Fetching origin/master...")
           (sh! {} ["git" "fetch" "--quiet" "origin" "master"]))
         (measure! dir ref))
-      (when publish
-        (publish! (boolean dry-run) dir (fs/expand-home publish)))
+      (when config
+        (publish! (boolean dry-run) dir config (fs/parent (fs/absolutize config-file))))
       (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
       (flush))))
