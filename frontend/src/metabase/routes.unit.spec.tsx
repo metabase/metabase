@@ -1,4 +1,6 @@
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCurrentUserEndpoint,
@@ -6,8 +8,12 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { setup as setupAccountPassword } from "metabase/account/password/containers/UserPasswordApp/tests/setup";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
+import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { LegacyBrowseRedirect, getRoutes } from "./routes";
@@ -159,6 +165,137 @@ describe("application routes", () => {
         expect(router?.location.pathname).toBe("/unauthorized");
       });
     });
+  });
+});
+
+describe("disconnecting Slack with application routes", () => {
+  afterEach(reinitialize);
+
+  it.each([200, 401])(
+    "should confirm Disconnect after leaving the page when the refresh returns %s",
+    async (currentUserStatus) => {
+      const user = createMockUser({
+        sso_source: "slack",
+        slack_account_status: "active",
+      });
+      const expectedPathname =
+        currentUserStatus === 401 ? "/auth/login" : "/account/profile";
+      const expectedUser =
+        currentUserStatus === 401
+          ? null
+          : { ...user, slack_account_status: null };
+      const response = defer<{ status: number }>();
+      fetchMock.delete(
+        `path:/api/user/${user.id}/slack`,
+        () => response.promise,
+      );
+      const { router, store, disconnect } = setupAccountPassword({
+        user,
+        currentUserStatus,
+        routes: getRoutes,
+      });
+
+      await disconnect();
+      await userEvent.click(
+        await screen.findByRole("tab", { name: "Profile" }),
+      );
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/account/profile"),
+      );
+
+      await act(async () => response.resolve({ status: 204 }));
+
+      expect(
+        await screen.findByText("Your Slack account has been disconnected."),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(expectedPathname),
+      );
+      expect(getUser(store.getState())).toEqual(expectedUser);
+    },
+  );
+
+  it("should stay on the chosen page when the refresh finishes after leaving Authentication", async () => {
+    const user = createMockUser({
+      sso_source: "google",
+      slack_account_status: "active",
+    });
+    const response = defer<User>();
+    fetchMock.get("path:/api/user/current", () => response.promise, {
+      name: "current-user-refresh",
+    });
+    fetchMock.get("path:/api/pulse", []);
+    fetchMock.get("path:/api/notification", []);
+    const { router, disconnect } = setupAccountPassword({
+      user,
+      hasAuthPlugin: true,
+      tokenFeatures: { disable_password_login: true },
+      routes: getRoutes,
+    });
+
+    await disconnect();
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("current-user-refresh")).toBe(true),
+    );
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Notifications" }),
+    );
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/account/notifications"),
+    );
+
+    await act(async () =>
+      response.resolve({ ...user, slack_account_status: null }),
+    );
+
+    expect(
+      await screen.findByText("Your Slack account has been disconnected."),
+    ).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/account/notifications");
+  });
+
+  it("should clear the cached user and render sign in when the Slack session ends", async () => {
+    const { router, store, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "slack",
+        slack_account_status: "active",
+      }),
+      currentUserStatus: 401,
+      routes: getRoutes,
+    });
+    const visited: string[] = [];
+    router?.onLocationChange((location) => visited.push(location.pathname));
+
+    await disconnect();
+
+    expect(await screen.findByText(/Sign in to/)).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/auth/login");
+    expect(getUser(store.getState())).toBeNull();
+    expect(visited).not.toContain("/");
+    expect(screen.queryByText("Slack")).not.toBeInTheDocument();
+  });
+
+  it("should replace the empty Authentication page in browser history", async () => {
+    const { router, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "google",
+        slack_account_status: "active",
+      }),
+      hasAuthPlugin: true,
+      tokenFeatures: { disable_password_login: true },
+      routes: getRoutes,
+    });
+
+    await disconnect();
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/account/profile"),
+    );
+    expect(await screen.findByTestId("user-locale-select")).toBeInTheDocument();
+
+    act(() => router?.back());
+
+    expect(router?.location.pathname).toBe("/account/profile");
+    expect(screen.getByTestId("user-locale-select")).toBeInTheDocument();
   });
 });
 

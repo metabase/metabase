@@ -11,7 +11,7 @@
   [slack-user-id :- :string]
   (t2/select-one [:model/AuthIdentity :user_id :metadata]
                  :provider "slack-connect"
-                 :provider_id slack-user-id
+                 :provider_id [:auto/param slack-user-id]
                  {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
                   :where    [:= :user.is_active true]
                   :order-by [[:created_at :desc]]}))
