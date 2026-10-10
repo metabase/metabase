@@ -190,3 +190,60 @@
                   (is (= #{"baseline" "belligerent" "ancillary" "adjunct"}
                          (query {:term-queries     ["baseline" "belligerent"]
                                  :semantic-queries ["ancillary"]}))))))))))))
+
+(deftest search-by-query-test
+  ;; Fully mocked: each sub-test redefs search-core/search, so no engine or index runs. active-engines is
+  ;; pinned to include semantic so search/search-by-query picks the semantic engine, regardless of whether this
+  ;; instance has pgvector.
+  (mt/with-additional-premium-features #{:content-verification}
+    (mt/with-test-user :rasta
+      (let [order-table {:id 1
+                         :model "table"
+                         :table_name "orders"
+                         :name "Orders"
+                         :description "Order table"
+                         :database_id 42
+                         :table_schema "public"}
+            dashboard {:id 2
+                       :model "dashboard"
+                       :name "Sales Dashboard"
+                       :description "Dashboard for sales"
+                       :verified true}]
+        (with-redefs [perms/impersonated-user? (fn [] false)
+                      perms/sandboxed-user? (fn [] false)
+                      search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])]
+          (testing "search returns postprocessed results"
+            (with-redefs [search-core/search (fn [_] {:data [order-table]})]
+              (let [args {:query "orders"
+                          :entity-types ["table"]}
+                    results (search/search-by-query args)
+                    expected [(#'search/postprocess-search-result order-table)]]
+                (is (= expected results)))))
+          (testing "search returns postprocessed results for a natural-language query"
+            (with-redefs [search-core/search (fn [_] {:data [dashboard]})]
+              (let [args {:query "sales metrics"
+                          :entity-types ["dashboard"]}
+                    results (search/search-by-query args)
+                    expected [(#'search/postprocess-search-result dashboard)]]
+                (is (= expected results)))))
+          (testing "search handles empty results"
+            (with-redefs [search-core/search (fn [_] {:data []})]
+              (let [args {:query "nonexistent"
+                          :entity-types ["table"]}
+                    results (search/search-by-query args)]
+                (is (empty? results)))))
+          (testing "search with metabot verified-or-curated content flag"
+            (let [metabot {:entity_id "test-bot"
+                           :use_verified_content true}]
+              (with-redefs [metabot.db/metabot-by-entity-id (fn [entity-id]
+                                                              (is (= "test-bot" entity-id) "Should look up the Metabot")
+                                                              metabot)
+                            search-core/search (fn [context]
+                                                 ;; use_verified_content now drives the curated filter, not :verified
+                                                 (is (true? (:curated? context)))
+                                                 {:data [dashboard]})]
+                (let [results (search/search-by-query {:query "test"
+                                                       :metabot-id "test-bot"
+                                                       :entity-types ["dashboard"]})]
+                  (is (= 1 (count results)))
+                  (is (= 2 (:id (first results)))))))))))))

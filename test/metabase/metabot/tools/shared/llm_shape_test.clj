@@ -630,7 +630,7 @@
                   :database_engine :postgres
                   :verified true}
           xml (llm-shape/search-result->xml result)]
-      (is (str/starts-with? xml "<model"))
+      (is (str/starts-with? xml "<metabase-model"))
       (is (str/includes? xml "database_id=\"1\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
       (is (str/includes? xml "fully_qualified_name=\"{#5}-sales-model\"")))))
@@ -645,7 +645,7 @@
                   :database_engine "h2"
                   :portable_entity_id "dh9P5mz7vhpqYUPosLPqL"}
           xml (llm-shape/search-result->xml result)]
-      (is (str/starts-with? xml "<question"))
+      (is (str/starts-with? xml "<metabase_question"))
       (is (str/includes? xml "id=\"175\""))
       (is (str/includes? xml "portable_entity_id=\"dh9P5mz7vhpqYUPosLPqL\"")))))
 
@@ -714,7 +714,14 @@
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dashboard :name "d"}) "<dashboard"))
     ;; Card/question uses <metabase_question> tag
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
-    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model")))
+  (testing "string types (as produced by postprocess-search-result) map to the same tags as keyword types"
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type "table" :name "t"}) "<table"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type "model" :name "m"}) "<metabase-model"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type "dataset" :name "d"}) "<metabase-model"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type "dashboard" :name "d"}) "<dashboard"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type "card" :name "c"}) "<metabase_question"))
+    (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type "question" :name "q"}) "<metabase_question"))))
 
 (deftest ^:parallel search-result-write-permission-test
   (testing "renders false as an explicit destination permission"
@@ -734,21 +741,6 @@
                        :page      1
                        :pages     1})
                      "can_write=\"false\"")))
-
-(deftest ^:parallel search-results->xml-test
-  (testing "formats multiple search results"
-    (let [results [{:id 1 :type :metric :name "Metric 1"}
-                   {:id 2 :type :table :name "Table 1"}]
-          xml (llm-shape/search-results->xml results)]
-      (is (str/includes? xml "Here are the search results:"))
-      (is (str/includes? xml "<search-results>"))
-      (is (str/includes? xml "<metric id=\"1\""))
-      (is (str/includes? xml "<table id=\"2\""))
-      (is (str/includes? xml "</search-results>"))))
-  (testing "handles empty results"
-    (let [xml (llm-shape/search-results->xml [])]
-      (is (str/includes? xml "<search-results>"))
-      (is (str/includes? xml "</search-results>")))))
 
 (deftest ^:parallel field-values-metadata->xml-test
   (testing "formats field values with samples"

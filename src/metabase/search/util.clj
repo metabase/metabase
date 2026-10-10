@@ -137,18 +137,42 @@
   [expression]
   (str/replace expression #"(\S+)(?=\s*$)" "$1:*"))
 
+(defn- token-words
+  "The bare words in a token: quotes and a leading negation stripped, phrases split into their words."
+  [token]
+  (-> token
+      (str/replace #"^-|\"" "")
+      str/trim
+      (str/split #"\s+")))
+
+;; TODO (Chris 2026-09-30) -- A repeated word could also mean "at least that many occurrences": today tsquery ANDs
+;; the repeats, so "revenue revenue" matches exactly what "revenue" does. Terms that another term already implies
+;; (the bare `revenue` in `"monthly revenue" revenue`) could likewise be dropped from the expression.
+(defn- last-word-complete?
+  "Whether the final word should match as a prefix of a longer word. Not when it closes a quoted phrase, and not
+  when it already appears earlier in the input: a repeated word was evidently typed in full."
+  [tokens]
+  ;; Bare `and`/`or` connectives are dropped when the expression is built, so the word that gets completed comes
+  ;; from the last token that isn't one, not necessarily the last token.
+  (let [kept  (remove #{"and" "or"} tokens)
+        words (into [] (comp (mapcat token-words) (remove str/blank?)) kept)
+        final (last kept)]
+    (and (seq words)
+         (not (and (str/starts-with? final "\"") (str/ends-with? final "\"")))
+         (not-any? #{(peek words)} (pop words)))))
+
 (defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
   [input]
   (str
    (when input
      (let [trimmed        (str/trim input)
-           complete?      (not (str/ends-with? trimmed "\""))
+           tokens         (->> (str/replace trimmed "\\" "\\\\")
+                               split-preserving-quotes
+                               (remove str/blank?))
            ;; TODO also only complete if the :context is appropriate
-           maybe-complete (if complete? complete-last-word identity)]
-       (->> (str/replace trimmed "\\" "\\\\")
-            split-preserving-quotes
-            (remove str/blank?)
+           maybe-complete (if (last-word-complete? tokens) complete-last-word identity)]
+       (->> tokens
             (partition-by #{"or"})
             (remove #(= (first %) "or"))
             (map process-clause)
