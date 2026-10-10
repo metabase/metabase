@@ -3,6 +3,10 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -106,6 +110,54 @@
              (upd-series [card-id-2 card-id-1])))
       (is (= #{"card3" "card1"}
              (upd-series [card-id-1 card-id3]))))))
+
+(deftest update-dashboard-cards-series!-keeps-existing-rows-test
+  (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                 :model/Card          {a :id} {}
+                 :model/Card          {b :id} {}
+                 :model/Card          {c :id} {}
+                 :model/DashboardCard {dc-1 :id} {:dashboard_id dashboard-id :card_id a}
+                 :model/DashboardCard {dc-2 :id} {:dashboard_id dashboard-id :card_id a}]
+    (let [series  (fn [dashcard-id]
+                    (t2/select-fn-vec (juxt :card_id :position) :model/DashboardCardSeries
+                                      :dashboardcard_id dashcard-id {:order-by [[:position :asc]]}))
+          row-ids (fn [dashcard-id]
+                    (t2/select-fn->fn :card_id :id :model/DashboardCardSeries :dashboardcard_id dashcard-id))]
+      (dashboard-card/update-dashboard-cards-series! {dc-1 [a b] dc-2 [c]})
+      (is (= [[a 0] [b 1]] (series dc-1)))
+      (is (= [[c 0]] (series dc-2)))
+      (let [before (row-ids dc-1)]
+        (testing "reordering keeps the existing rows and updates their positions"
+          (dashboard-card/update-dashboard-cards-series! {dc-1 [b a]})
+          (is (= [[b 0] [a 1]] (series dc-1)))
+          (is (= before (row-ids dc-1))))
+        (testing "only the dashcards passed are touched"
+          (is (= [[c 0]] (series dc-2)))))
+      (testing "adds, removes, and repeats"
+        (dashboard-card/update-dashboard-cards-series! {dc-1 [c a c] dc-2 []})
+        (is (= [[c 0] [a 1] [c 2]] (series dc-1)))
+        (is (empty? (series dc-2)))))))
+
+(deftest moving-dashcard-to-another-dashboard-requires-run-permission-test
+  (testing "Moving a dashcard to another dashboard is adding its Card there"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Dashboard     {from-id :id} {}
+                         :model/Dashboard     {to-id :id} {}
+                         :model/Card          {blocked-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id from-id :card_id blocked-id}]
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have permissions to run the query for this card"
+                                    (t2/update! :model/DashboardCard dashcard-id {:dashboard_id to-id})))
+              (is (= from-id (t2/select-one-fn :dashboard_id :model/DashboardCard dashcard-id)))
+              (testing "other edits to the dashcard are fine"
+                (t2/update! :model/DashboardCard dashcard-id {:size_x 7})
+                (is (= 7 (t2/select-one-fn :size_x :model/DashboardCard dashcard-id))))
+              (testing "an update that changes nothing is fine"
+                (is (some? (t2/update! :model/DashboardCard dashcard-id {:size_x 7})))))))))))
 
 (deftest create-dashboard-card!-test
   (testing "create-dashboard-card! simple example with a single card"

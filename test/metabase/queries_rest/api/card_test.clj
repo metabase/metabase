@@ -1748,6 +1748,92 @@
                 (is (= (:display newcard) (:display card)))
                 (is (not= (:id newcard) (:id card)))))))))))
 
+(defn- do-with-nested-unreadable-card-fixture!
+  "V (crowberto's, in a collection rasta cannot read) and W (`card__V`, in a collection rasta curates). View-data on
+  the test DB is unrestricted but create-queries is `:no`, so rasta is never authoring. `f` gets a map of the ids."
+  [f]
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+      (mt/with-temp [:model/Collection {hidden-coll :id}  {}
+                     :model/Collection {curated-coll :id} {}
+                     :model/Card {v-id :id} {:name          "V"
+                                             :creator_id    (mt/user->id :crowberto)
+                                             :collection_id hidden-coll
+                                             :dataset_query (mt/mbql-query venues {:limit 2})}
+                     :model/Card {w-id :id} {:name          "W"
+                                             :creator_id    (mt/user->id :crowberto)
+                                             :collection_id curated-coll
+                                             :dataset_query (mt/mbql-query nil {:source-table (format "card__%d" v-id)})}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) curated-coll)
+        (mt/with-model-cleanup [:model/Card]
+          (f {:hidden-coll hidden-coll, :curated-coll curated-coll, :v-id v-id, :w-id w-id}))))))
+
+(deftest copy-card-nested-unreadable-source-card-test
+  (testing "POST /api/card/:id/copy refuses a readable card whose query reads a card the caller cannot"
+    (do-with-nested-unreadable-card-fixture!
+     (fn [{:keys [v-id w-id curated-coll]}]
+       (let [rasta-owned (fn [] (t2/select-fn-set :id :model/Card :creator_id (mt/user->id :rasta)))
+             before      (rasta-owned)]
+         (is (= "You cannot copy this question because you do not have permissions to run its query."
+                (mt/user-http-request :rasta :post 403 (format "card/%d/copy" w-id)))
+             "a plain-text 403: nothing about the query or the nested card leaks")
+         (testing "nothing was written"
+           (is (= #{w-id} (t2/select-fn-set :id :model/Card :collection_id curated-coll)))
+           (is (= before (rasta-owned))
+               "rasta ends up owning no new card, so there is nothing to point a parameter's source at"))
+         (testing "an admin can still copy it"
+           (is (= "Copy of W" (:name (mt/user-http-request :crowberto :post 200 (format "card/%d/copy" w-id))))))
+         (testing "V cannot be reached through any card rasta owns"
+           (doseq [card-id (rasta-owned)]
+             (is (not (str/includes? (pr-str (t2/select-one-fn :dataset_query :model/Card :id card-id))
+                                     (format "card__%d" v-id))))))
+         (testing "and the other end of the chain is closed too: a parameter drawing values from W itself is refused"
+           (mt/with-temp [:model/Card {probe-id :id} {:collection_id curated-coll
+                                                      :dataset_query (mt/mbql-query venues {:limit 2})
+                                                      :parameters    [{:id                   "p1"
+                                                                       :type                 "category"
+                                                                       :name                 "P1"
+                                                                       :values_source_type   "card"
+                                                                       :values_source_config {:card_id     w-id
+                                                                                              :value_field (mt/$ids $venues.name)}}]}]
+             (is (= (format "You do not have permissions to view Card %d." v-id)
+                    (mt/user-http-request :rasta :get 403 (format "card/%d/params/p1/values" probe-id)))))))))))
+
+(deftest copy-card-parameter-source-card-unreadable-test
+  (testing "copying a card whose parameters draw values from a card the caller cannot read is refused"
+    (do-with-nested-unreadable-card-fixture!
+     (fn [{:keys [v-id curated-coll]}]
+       (mt/with-temp [:model/Card {probe-id :id} {:name          "Probe"
+                                                  :creator_id    (mt/user->id :crowberto)
+                                                  :collection_id curated-coll
+                                                  :dataset_query (mt/mbql-query venues {:limit 2})
+                                                  :parameters    [{:id                   "p1"
+                                                                   :type                 "category"
+                                                                   :name                 "P1"
+                                                                   :values_source_type   "card"
+                                                                   :values_source_config {:card_id     v-id
+                                                                                          :value_field (mt/$ids $venues.name)}}]}]
+         (is (= "You don't have permissions to do that."
+                (mt/user-http-request :rasta :post 403 (format "card/%d/copy" probe-id))))
+         (is (zero? (t2/count :model/Card :name "Copy of Probe"))))))))
+
+(deftest copy-card-is-not-authoring-test
+  (testing "copying is not authoring: a user who can read and run a native card but cannot author native queries can still copy it"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {card-id :id} {:name          "Native"
+                                                  :collection_id coll-id
+                                                  :dataset_query (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+          (mt/with-model-cleanup [:model/Card]
+            (is (= "Copy of Native"
+                   (:name (mt/user-http-request :rasta :post 200 (format "card/%d/copy" card-id)))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -5837,3 +5923,52 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
+
+(deftest move-card-onto-dashboard-requires-run-permission-test
+  (testing "PUT /api/card/:id with dashboard_id can't place a Card the user can't run on a dashboard"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/Card      {blocked-id :id} {:database_id   (mt/id)
+                                                          :table_id      (mt/id :venues)
+                                                          :dataset_query (mt/mbql-query venues)}]
+          (mt/user-http-request :rasta :put 403 (str "card/" blocked-id) {:dashboard_id dash-id})
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card blocked-id)))
+          (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id))))))))
+
+(deftest card-parameter-values-source-requires-run-permission-test
+  (testing "A Card's parameter can't draw values from a Card the user can read but can't run"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (mt/with-temp [:model/Card {blocked-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :venues)
+                                                     :dataset_query (mt/mbql-query venues)}
+                       :model/Card {card-id :id}    {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories)}]
+          (let [param {:id                   "_P_"
+                       :name                 "P"
+                       :slug                 "p"
+                       :type                 "category"
+                       :values_source_type   "card"
+                       :values_source_config {:card_id     blocked-id
+                                              :value_field (mt/$ids $venues.name)}}]
+            (testing "the Card is readable but the user can't run it"
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (mi/can-read? :model/Card blocked-id)))
+              (mt/user-http-request :rasta :post 403 (format "card/%d/query" blocked-id)))
+            (testing "POST /api/card"
+              (mt/with-model-cleanup [:model/Card]
+                (mt/user-http-request :rasta :post 403 "card"
+                                      (assoc (card-with-name-and-query "With blocked source" (mt/mbql-query categories))
+                                             :parameters [param]))))
+            (testing "PUT /api/card/:id"
+              (mt/user-http-request :rasta :put 403 (format "card/%d" card-id) {:parameters [param]})
+              (is (empty? (t2/select-one-fn :parameters :model/Card card-id))))
+            (testing "an admin can"
+              (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id) {:parameters [param]}))))))))

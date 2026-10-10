@@ -17,6 +17,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.custom-values :as custom-values]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api :as api.public]
@@ -2514,6 +2515,37 @@
       (let [response (client/client :get 200 "public/oembed?url=path/to/url&format=json")]
         (is (= "1.0" (:version response)))
         (is (= "rich" (:type response)))))))
+
+(deftest public-dashboard-cannot-run-card-its-editor-cannot-run-test
+  (testing "An editor can't put a Card they can't run onto a public dashboard"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (with-temp-public-dashboard [dash]
+          (mt/with-temp [:model/Card          blocked  {:database_id   (mt/id)
+                                                        :table_id      (mt/id :venues)
+                                                        :dataset_query (mt/mbql-query venues)}
+                         :model/Card          runnable {:database_id   (mt/id)
+                                                        :table_id      (mt/id :categories)
+                                                        :dataset_query (mt/mbql-query categories)}
+                         :model/DashboardCard dashcard {:dashboard_id (:id dash) :card_id (:id runnable)}]
+            (let [url      (format "dashboard/%d" (:id dash))
+                  existing (select-keys dashcard [:id :card_id :row :col :size_x :size_y])]
+              (testing "the editor can't run the Card themselves"
+                (mt/user-http-request :rasta :post 403 (format "card/%d/query" (:id blocked))))
+              (testing "as a dashcard's card"
+                (mt/user-http-request :rasta :put 403 url
+                                      {:dashcards [existing {:id -1 :card_id (:id blocked) :row 4 :col 0 :size_x 4 :size_y 4}]
+                                       :tabs      []})
+                (is (= [(:id runnable)] (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id (:id dash)))))
+              (testing "as an additional series"
+                (mt/user-http-request :rasta :put 403 url {:dashcards [(assoc existing :series [{:id (:id blocked)}])]
+                                                           :tabs      []})
+                (is (empty? (t2/select :model/DashboardCardSeries :dashboardcard_id (:id dashcard)))))
+              (testing "so the public endpoint won't run it"
+                (is (= "Not found."
+                       (client/client :get 404 (dashcard-url dash blocked dashcard))))))))))))
 
 (defn- public-dashboard-properties []
   {:public_uuid       (str (random-uuid))

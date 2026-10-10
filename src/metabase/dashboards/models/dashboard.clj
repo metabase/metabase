@@ -7,6 +7,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.dashboards.card-run-perms :as card-run-perms]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
@@ -89,6 +90,7 @@
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
+      (card-run-perms/check-can-add-cards-to-dashboard! nil :parameter-source (queries/values-source-card-ids (:parameters dashboard)))
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
 (t2/define-after-insert :model/Dashboard
@@ -107,6 +109,8 @@
                  public-sharing/add-public-uuid-prefix-if-changed)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
+        (card-run-perms/check-can-add-cards-to-dashboard! (:id dashboard) :parameter-source
+                                                          (queries/values-source-card-ids (:parameters dashboard)))
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 

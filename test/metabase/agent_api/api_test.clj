@@ -1956,3 +1956,24 @@
       (is (not (contains? q :qp/source-card-id)))
       (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
           "internal keys are stripped from every stage"))))
+
+(deftest dashboard-cards-require-run-permission-test
+  (testing "The agent API can't put a Card the user can't run on a dashboard"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/Card      {blocked-id :id} {:database_id   (mt/id)
+                                                          :table_id      (mt/id :venues)
+                                                          :dataset_query (lib/query (mt/metadata-provider)
+                                                                                    (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+          (testing "adding a dashcard"
+            (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                  {:dashcards [{:action "add" :card_id blocked-id}]})
+            (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id))))
+          (testing "creating a dashboard with the Card"
+            (let [dash-count (t2/count :model/Dashboard)]
+              (mt/user-http-request :rasta :post 403 "agent/v1/dashboard"
+                                    {:name "Blocked" :collection_id nil :question_ids [blocked-id]})
+              (is (= dash-count (t2/count :model/Dashboard))))))))))

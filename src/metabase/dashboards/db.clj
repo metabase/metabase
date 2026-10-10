@@ -235,6 +235,25 @@
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
 
+(mu/defn series-for-dashcards
+  "The `:id`, `:dashboardcard_id`, `:card_id`, and `:position` of the DashboardCardSeries of the DashboardCards with
+  `dashcard-ids`."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (t2/select [:model/DashboardCardSeries :id :dashboardcard_id :card_id :position]
+             :dashboardcard_id [:in dashcard-ids]
+             {:order-by [[:position :asc]]}))
+
+(mu/defn delete-series!
+  "Delete the DashboardCardSeries with `series-ids`, returning the number deleted."
+  [series-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/DashboardCardSeries :id [:in series-ids]))
+
+(mu/defn update-series-position!
+  "Set the `position` of the DashboardCardSeries with `series-id`."
+  [series-id :- ms/PositiveInt
+   position  :- :int]
+  (t2/update! :model/DashboardCardSeries series-id {:position position}))
+
 (mu/defn insert-dashcard-series!
   "Insert the DashboardCardSeries `rows`, returning the number inserted."
   [rows :- [:sequential
@@ -261,6 +280,19 @@
                              ^:allow-subquery {:select [:id]
                                                :from   [(t2/table-name :model/DashboardCard)]
                                                :where  [:= :dashboard_id dashboard-id]}]}))
+
+(defn dashboard-referenced-card-ids
+  "The ids of every Card the Dashboard with `dashboard-id` references: dashcard Cards, additional series, and parameter
+  values sources."
+  [dashboard-id]
+  (into #{} (concat (dashcard-card-ids dashboard-id)
+                    (dashcard-series-card-ids dashboard-id)
+                    (parameter-card-card-ids dashboard-id))))
+
+(mu/defn dashcard-dashboard-id
+  "The Dashboard id of the DashboardCard with `dashcard-id`, or nil."
+  [dashcard-id :- ::lib.schema.id/dashcard]
+  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
 
 (defn dashcard-action-ids
   "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."

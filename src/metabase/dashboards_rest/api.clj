@@ -18,6 +18,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
+   [metabase.dashboards.card-run-perms :as card-run-perms]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
@@ -431,12 +432,16 @@
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        ;; copied or referenced cards must be runnable by the caller, not just readable
+        runnable? (memoize (fn [card] (card-run-perms/can-run-card? (:id card) (:dataset_query card))))
         card->decision (fn [parent-card card]
                          (cond
                            (or
                             (not (readable? parent-card))
                             (not (readable? card))
-                            (:archived card))
+                            (:archived card)
+                            (not (runnable? parent-card))
+                            (not (runnable? card)))
                            :discard
 
                            (or (:dashboard_id card)
@@ -477,20 +482,22 @@
         dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
         {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
                                            dashboards-only? reference-metrics)]
-    {:copied     (into {} (for [[id to-copy] copy]
-                            [id (queries/with-copy-source-card to-copy
-                                  (queries/create-card!
-                                   (cond-> to-copy
-                                     true                    (assoc :collection_id dest-coll-id)
-                                     same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                     (or (:dashboard_id to-copy)
-                                         dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
-                                                                 (dissoc :collection_position)))
-                                   @api/*current-user*
-                                   ;; creating cards from a transaction. wait until tx complete to signal event
-                                   true
-                                   ;; do not autoplace these cards. we will create the dashboard cards ourselves.
-                                   false))]))
+    {:copied     (u/prog1 (into {} (for [[id to-copy] copy]
+                                    [id (queries/with-copy-source-card to-copy
+                                          (queries/create-card!
+                                           (cond-> to-copy
+                                             true                    (assoc :collection_id dest-coll-id)
+                                             same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                             (or (:dashboard_id to-copy)
+                                                 dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
+                                                                         (dissoc :collection_position)))
+                                           @api/*current-user*
+                                           ;; creating cards from a transaction. wait until tx complete to signal event
+                                           true
+                                           ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                           false))]))
+                  ;; the copies run the same queries as the originals, which were checked above
+                  (card-run-perms/mark-runnable! (map :id (vals <>))))
      :discarded  discard
      :referenced reference}))
 
@@ -547,9 +554,16 @@
               (some-> dashboard-card :visualization_settings :virtual_card :display #{"text" "heading"})
               dashboard-card
 
-              ;; referenced cards need no manipulation
+              ;; referenced cards keep their dashcard; its series follow their own copy decisions, so a discarded
+              ;; series card is dropped rather than carried over
               (get id->referenced-card (:card_id dashboard-card))
-              dashboard-card
+              (m/update-existing dashboard-card :series
+                                 (fn [series]
+                                   (keep (fn [card]
+                                           (cond
+                                             (get id->referenced-card (:id card)) card
+                                             (get id->new-card (:id card))        (assoc card :id (:id (id->new-card (:id card))))))
+                                         series)))
 
               ;; if we didn't duplicate, it doesn't go in the dashboard
               (not (get id->new-card (:card_id dashboard-card)))
@@ -597,49 +611,51 @@
   (api/check-400 (not (and (= is_deep_copy false)
                            (dashboards-rest.db/unarchived-dashboard-question-exists? from-dashboard-id)))
                  (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
-  (let [existing-dashboard (get-dashboard from-dashboard-id)
-        dashboard-data {:name                (or name (:name existing-dashboard))
-                        :description         (or description (:description existing-dashboard))
-                        :parameters          (or (:parameters existing-dashboard) [])
-                        :creator_id          api/*current-user-id*
-                        :collection_id       collection_id
-                        :collection_position collection_position
-                        :width               (:width existing-dashboard)}
-        new-cards      (atom nil)
-        dashboard      (t2/with-transaction [_conn]
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
-                         ;; Ok, now save the Dashboard
-                         (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
-                               {id->new-card :copied
-                                id->referenced-card :referenced
-                                uncopied :discarded}
-                               (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+  ;; checked once here; the insert hooks reuse the results
+  (card-run-perms/with-run-check-cache
+    (let [existing-dashboard (get-dashboard from-dashboard-id)
+          dashboard-data {:name                (or name (:name existing-dashboard))
+                          :description         (or description (:description existing-dashboard))
+                          :parameters          (card-run-perms/remove-unrunnable-values-sources (or (:parameters existing-dashboard) []))
+                          :creator_id          api/*current-user-id*
+                          :collection_id       collection_id
+                          :collection_position collection_position
+                          :width               (:width existing-dashboard)}
+          new-cards      (atom nil)
+          dashboard      (t2/with-transaction [_conn]
+                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                           ;; collection to change position, check that and fix up if needed
+                           (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
+                           ;; Ok, now save the Dashboard
+                           (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
+                                 {id->new-card :copied
+                                  id->referenced-card :referenced
+                                  uncopied :discarded}
+                                 (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
 
-                               id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
-                                                (duplicate-tabs dash existing-tabs))]
-                           (reset! new-cards (vals id->new-card))
-                           (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
-                                                                            id->new-card
-                                                                            id->referenced-card
-                                                                            id->new-tab-id))]
-                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                           (u/prog1 (cond-> dash
-                                      (seq uncopied)
-                                      (assoc :uncopied uncopied))
-                             (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
-                                                                           collection_id)
-                               (collections/check-non-remote-synced-dependencies <>)))))]
-    (analytics/track-event! :snowplow/dashboard
-                            {:event        :dashboard-created
-                             :dashboard-id (u/the-id dashboard)})
-    ;; must signal event outside of tx so cards are visible from other threads
-    (when-let [newly-created-cards (seq @new-cards)]
-      (doseq [card newly-created-cards]
-        (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
-    dashboard))
+                                 id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
+                                                  (duplicate-tabs dash existing-tabs))]
+                             (reset! new-cards (vals id->new-card))
+                             (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
+                                                                              id->new-card
+                                                                              id->referenced-card
+                                                                              id->new-tab-id))]
+                               (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                             (u/prog1 (cond-> dash
+                                        (seq uncopied)
+                                        (assoc :uncopied uncopied))
+                               (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
+                                                                             collection_id)
+                                 (collections/check-non-remote-synced-dependencies <>)))))]
+      (analytics/track-event! :snowplow/dashboard
+                              {:event        :dashboard-created
+                               :dashboard-id (u/the-id dashboard)})
+      ;; must signal event outside of tx so cards are visible from other threads
+      (when-let [newly-created-cards (seq @new-cards)]
+        (doseq [card newly-created-cards]
+          (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
+      (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
+      dashboard)))
 
 ;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
 
@@ -861,20 +877,24 @@
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
-  (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
-    (queries/check-newly-exposed-dashcards-timeline-permissions!
-     dashboard (:dashcards dashboard) (concat to-create to-update))
-    (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
-    ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
-    ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
-    ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
-    (assert-dashcards-are-not-internal-to-other-dashboards dashboard (concat to-create to-update))
-    (when (seq to-update)
-      (update-dashcards! dashboard to-update))
-    {:deleted-dashcards (when (seq to-delete)
-                          (delete-dashcards! (map :id to-delete)))
-     :created-dashcards (when (seq to-create)
-                          (create-dashcards! dashboard to-create))}))
+  ;; one write: a Card removed below can be added back without counting as new
+  (card-run-perms/with-run-check-cache
+    (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+      ;; Grandfather against the dashboard as it was before this update, as REST does: a card that already showed
+      ;; its events keeps them even if its tab is deleted and it is re-added elsewhere in the same request.
+      (queries/check-newly-exposed-dashcards-timeline-permissions!
+       dashboard (:dashcards dashboard) (concat to-create to-update))
+      (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
+      ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
+      ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
+      ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
+      (assert-dashcards-are-not-internal-to-other-dashboards dashboard (concat to-create to-update))
+      (when (seq to-update)
+        (update-dashcards! dashboard to-update))
+      {:deleted-dashcards (when (seq to-delete)
+                            (delete-dashcards! (map :id to-delete)))
+       :created-dashcards (when (seq to-create)
+                            (create-dashcards! dashboard to-create))})))
 
 (def ^:private UpdatedDashboardCard
   [:map {:closed true}

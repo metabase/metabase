@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.dashboards.card-run-perms :as card-run-perms]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
@@ -62,6 +63,7 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (card-run-perms/check-can-add-cards-to-dashboard! (:dashboard_id dashcard) :dashcard [(:card_id dashcard)])
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -70,6 +72,10 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
+  ;; moving a dashcard to another Dashboard adds its Card there
+  (when (let [changes (t2/changes dashcard)]
+          (or (contains? changes :card_id) (contains? changes :dashboard_id)))
+    (card-run-perms/check-can-add-cards-to-dashboard! (:dashboard_id dashcard) :dashcard [(:card_id dashcard)]))
   (validate-dashcard-on-write dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
@@ -170,23 +176,50 @@
   [dashcard]
   (dashboards.db/multi-cards-for-dashcard (:id dashcard)))
 
+(defn do-with-run-check-cache
+  "Run `thunk` as one Dashboard write for the Card run-permission checks: results are cached, and Cards removed during
+  the write can be added back without counting as new."
+  [thunk]
+  (card-run-perms/do-with-run-check-cache thunk))
+
 (defn update-dashboard-cards-series!
   "Batch update the DashboardCardSeries for multiple DashboardCards.
   Each `card-ids` list should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
 
   *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
   *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
-  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
+  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`
+
+  Existing series are kept rather than re-inserted, so only genuinely new ones go through the insert hook."
   {:arglists '([dashcard-id->card-ids])}
   [dashcard-id->card-ids]
   (when (seq dashcard-id->card-ids)
-    ;; first off, just delete all series on the dashboard card (we add them again below)
-    (dashboards.db/delete-series-for-dashcards! (keys dashcard-id->card-ids))
-    ;; now just insert all of the series that were given to us
-    (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
-                                      [i card-id]            (map-indexed vector card-ids)]
-                                  {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
-      (dashboards.db/insert-dashcard-series! card-series))))
+    (let [row-key  (juxt :dashboardcard_id :card_id)
+          wanted   (for [[dashcard-id card-ids] dashcard-id->card-ids
+                         [i card-id]            (map-indexed vector card-ids)]
+                     {:dashboardcard_id dashcard-id, :card_id card-id, :position i})
+          ;; match each wanted row to an existing one (a Card can appear twice on a dashcard); leftovers are stale
+          {:keys [kept added unmatched]}
+          (reduce (fn [acc row]
+                    (if-let [[match & others] (seq (get-in acc [:unmatched (row-key row)]))]
+                      (-> acc
+                          (assoc-in [:unmatched (row-key row)] others)
+                          (update :kept conj (assoc match :new-position (:position row))))
+                      (update acc :added conj row)))
+                  {:kept      []
+                   :added     []
+                   :unmatched (group-by row-key (dashboards.db/series-for-dashcards (keys dashcard-id->card-ids)))}
+                  wanted)]
+      (when-let [stale (seq (apply concat (vals unmatched)))]
+        (when (card-run-perms/tracking-removals?)
+          (doseq [[dashcard-id rows] (group-by :dashboardcard_id stale)]
+            (card-run-perms/note-removed-cards! (dashboards.db/dashcard-dashboard-id dashcard-id) (map :card_id rows))))
+        (dashboards.db/delete-series! (map :id stale)))
+      (doseq [{:keys [id position new-position]} kept
+              :when (not= position new-position)]
+        (dashboards.db/update-series-position! id new-position))
+      (when (seq added)
+        (dashboards.db/insert-dashcard-series! added)))))
 
 (def ^:private DashboardCardUpdates
   [:merge
@@ -239,25 +272,30 @@
   DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-cards :- [:sequential NewDashboardCard]]
   (when (seq dashboard-cards)
-    (t2/with-transaction [_conn]
-      (let [card-ids (keep :card_id dashboard-cards)]
-        (when (seq card-ids)
-          (let [in-report-cards (dashboards.db/document-cards-among card-ids)]
-            (when (seq in-report-cards)
-              (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
-                              {:status-code 400
-                               :in-report-card-ids (map :id in-report-cards)}))))))
-      (let [dashboard-card-ids (dashboards.db/insert-dashcards!
-                                (for [dashcard dashboard-cards]
-                                  (merge {:parameter_mappings []
-                                          :visualization_settings {}
-                                          :inline_parameters []}
-                                         (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
-        ;; add series to the DashboardCard
-        (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
-        ;; return the full DashboardCard
-        (-> (dashboards.db/dashcards-by-ids dashboard-card-ids)
-            (t2/hydrate :series))))))
+    (card-run-perms/with-run-check-cache
+      (t2/with-transaction [_conn]
+        ;; check every new Card once up front; the insert hooks then find them already checked
+        (doseq [[dashboard-id dashcards] (group-by :dashboard_id dashboard-cards)]
+          (card-run-perms/check-can-add-cards-to-dashboard! dashboard-id :dashcard (mapcat #(cons (:card_id %) (:series %))
+                                                                                           dashcards)))
+        (let [card-ids (keep :card_id dashboard-cards)]
+          (when (seq card-ids)
+            (let [in-report-cards (dashboards.db/document-cards-among card-ids)]
+              (when (seq in-report-cards)
+                (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
+                                {:status-code 400
+                                 :in-report-card-ids (map :id in-report-cards)}))))))
+        (let [dashboard-card-ids (dashboards.db/insert-dashcards!
+                                  (for [dashcard dashboard-cards]
+                                    (merge {:parameter_mappings []
+                                            :visualization_settings {}
+                                            :inline_parameters []}
+                                           (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
+          ;; add series to the DashboardCard
+          (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
+          ;; return the full DashboardCard
+          (-> (dashboards.db/dashcards-by-ids dashboard-card-ids)
+              (t2/hydrate :series)))))))
 
 (defn- cleanup-orphaned-inline-parameters!
   "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
@@ -284,6 +322,13 @@
   [dashboard-card-ids]
   {:pre [(coll? dashboard-card-ids)]}
   (t2/with-transaction [_conn]
+    (when (and (seq dashboard-card-ids) (card-run-perms/tracking-removals?))
+      (let [dashcards (dashboards.db/dashcards-by-ids (vec dashboard-card-ids))
+            series    (when (seq dashcards) (dashboards.db/series-for-dashcards (mapv :id dashcards)))
+            dash-of   (into {} (map (juxt :id :dashboard_id)) dashcards)]
+        (doseq [[dashboard-id card-ids] (group-by first (concat (map (juxt :dashboard_id :card_id) dashcards)
+                                                                (map (juxt (comp dash-of :dashboardcard_id) :card_id) series)))]
+          (card-run-perms/note-removed-cards! dashboard-id (map second card-ids)))))
     ;; Clean up inline parameters before deletion (since we need to read the cards first)
     (cleanup-orphaned-inline-parameters! dashboard-card-ids)
     ;; Delete the cards
