@@ -1383,13 +1383,26 @@
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
 
+(defn- schema-already-exists-error?
+  "Whether `e` or one of its causes is the error Postgres raises when concurrent `CREATE SCHEMA IF NOT EXISTS` calls race."
+  [e]
+  (boolean
+   (some (fn [ex]
+           (and (instance? java.sql.SQLException ex)
+                (contains? #{"23505" "42P06"} (sql-jdbc/get-sql-state ex))))
+         (take-while some? (iterate ex-cause e)))))
+
 (defmethod driver/create-schema-if-needed! :postgres
   [driver conn-spec schema]
   ;; Without the blank check, `format` stringifies nil to "null" and creates a schema
   ;; literally named "null" on the target DB.
   (when-not (str/blank? schema)
     (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
-      (driver/execute-raw-queries! driver conn-spec sql))))
+      (try
+        (driver/execute-raw-queries! driver conn-spec sql)
+        (catch Exception e
+          (when-not (schema-already-exists-error? e)
+            (throw e)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |

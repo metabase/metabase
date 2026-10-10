@@ -1357,6 +1357,30 @@
         (is (empty? @executed-queries)
             "nil/blank schema should not issue any SQL")))))
 
+(deftest create-schema-if-needed-swallows-concurrent-creation-test
+  (testing "create-schema-if-needed! treats unique_violation and duplicate_schema as success"
+    (doseq [state ["23505" "42P06"]]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec _queries]
+                                                  (throw (ex-info "wrapped" {} (java.sql.SQLException. "boom" state))))]
+        (is (nil? (driver/create-schema-if-needed! :postgres ::fake-conn "analytics"))))))
+  (testing "other errors still propagate"
+    (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec _queries]
+                                                (throw (java.sql.SQLException. "denied" "42501")))]
+      (is (thrown? java.sql.SQLException
+                   (driver/create-schema-if-needed! :postgres ::fake-conn "analytics"))))))
+
+(deftest create-schema-if-needed-concurrent-test
+  (mt/test-driver :postgres
+    (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+          schema    "mb_concurrent_schema_race"]
+      (try
+        (dotimes [_ 20]
+          (jdbc/execute! conn-spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" schema)])
+          (let [futures (doall (repeatedly 8 #(future (driver/create-schema-if-needed! :postgres conn-spec schema))))]
+            (is (= 8 (count (mapv deref futures))))))
+        (finally
+          (jdbc/execute! conn-spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" schema)]))))))
+
 (deftest ^:parallel describe-fields-sql-nil-schema-test
   (testing "describe-fields-sql for Postgres handles nil schema-names correctly (GDGT-2144)"
     (let [[nil-schema-sql]   (sql-jdbc.sync/describe-fields-sql
