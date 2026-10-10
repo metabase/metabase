@@ -1959,8 +1959,7 @@
            util.config
            warehouse-schema-overlay
            warehouses
-           warehouses.schema
-           enterprise/permissions}
+           warehouses.schema}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
                     :model/DataPermissions
@@ -2114,10 +2113,7 @@
            task.history
            tracing
            util
-           util.classloader
-           util.config
-           enterprise/permissions
-           enterprise/permissions.sandbox}
+           util.config}
    :model-exports #{:model/Pulse
                     :model/PulseCard
                     :model/PulseChannel
@@ -3201,8 +3197,7 @@
            users.schema
            users.tenants
            util
-           util.config
-           enterprise/permissions}
+           util.config}
    :model-exports #{:model/User :model/UserParameterValue}
    :model-imports #{:model/Dashboard
                     :model/Database
@@ -3232,8 +3227,7 @@
            users.schema
            users.tenants
            util
-           util.config
-           enterprise/permissions}
+           util.config}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -4145,7 +4139,7 @@
    :module-exports #{enterprise/permissions.debug
                      enterprise/permissions.impersonation
                      enterprise/permissions.sandbox}
-   :api #{metabase-enterprise.advanced-permissions.api.routes metabase-enterprise.advanced-permissions.common metabase-enterprise.advanced-permissions.models.permissions.group-manager}
+   :api #{metabase-enterprise.advanced-permissions.api.routes}
    :uses #{api
            audit-app
            lib
