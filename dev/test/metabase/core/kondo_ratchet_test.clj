@@ -52,6 +52,65 @@
       (is (= (count content) (count masked)))
       (is (= [5 13] (keep-indexed #(when (= %2 \newline) %1) masked))))))
 
+(defn- reference-mask
+  "What [[kondo-ratchet/mask-strings-and-comments]] must return for `content`, found one character at a time.
+  Slow, and easy to check against the three states it names."
+  [^String content]
+  (let [sb (StringBuilder. content)
+        n  (count content)
+        blank-at! (fn [i]
+                    (when (and (< i n) (not= \newline (.charAt sb (int i))))
+                      (.setCharAt sb (int i) \space)))]
+    (loop [i 0, state :code]
+      (if (>= i n)
+        (str sb)
+        (let [c (.charAt sb (int i))]
+          (case state
+            :code    (case c
+                       \" (recur (inc i) :string)
+                       \; (recur (inc i) :comment)
+                       \\ (do (blank-at! (inc i)) (recur (+ i 2) :code))
+                       (recur (inc i) :code))
+            :string  (case c
+                       \" (recur (inc i) :code)
+                       \\ (do (blank-at! i) (blank-at! (inc i)) (recur (+ i 2) :string))
+                       (do (blank-at! i) (recur (inc i) :string)))
+            :comment (if (= c \newline)
+                       (recur (inc i) :code)
+                       (do (blank-at! i) (recur (inc i) :comment)))))))))
+
+(deftest ^:parallel mask-matches-reference-test
+  (testing "inputs that end mid-token"
+    (are [content] (= (reference-mask content) (kondo-ratchet/mask-strings-and-comments content))
+      ""
+      "\""
+      "(f \"never closed"
+      "(f \"ends on an escape\\"
+      "(f) \\"
+      "(f) ; no newline"
+      "\"a\\\nb\" \\\n ; c"))
+  (testing "characters outside the basic plane keep their two-char length"
+    (let [content "(f \"\uD83D\uDE00 caf\u00e9\") ; \uD83D\uDE00\n(g \\\uD83D\uDE00)"]
+      (is (= (reference-mask content) (kondo-ratchet/mask-strings-and-comments content)))))
+  (testing "a string with more escapes than a recursive regex could match"
+    (let [content (str "(def x \"" (str/join (repeat 20000 "\\\"a")) "\")")]
+      (is (= (reference-mask content) (kondo-ratchet/mask-strings-and-comments content)))))
+  (testing "random text over the characters that change the masker's state"
+    (let [alphabet [\" \" \\ \\ \; \newline \a \space \# \{ (char 0xD83D) (char 0xDE00)]
+          rnd      (java.util.Random. 42)
+          pick     (fn [] (nth alphabet (.nextInt rnd (count alphabet))))
+          texts    (repeatedly 20000 #(str/join (repeatedly (.nextInt rnd 16) pick)))]
+      (is (= []
+             (remove #(= (reference-mask %) (kondo-ratchet/mask-strings-and-comments %)) texts)))))
+  (testing "this repository's own backend source"
+    (is (= []
+           (for [root  ["src" "test" "enterprise/backend" "dev" "mage"]
+                 ^java.io.File file (file-seq (io/file root))
+                 :when (and (.isFile file) (re-find #"\.clj[cs]?$" (.getName file)))
+                 :let  [content (slurp file)]
+                 :when (not= (reference-mask content) (kondo-ratchet/mask-strings-and-comments content))]
+             (.getPath file))))))
+
 (deftest ^:parallel line-linters-test
   (are [expected line] (= expected (kondo-ratchet/line-linters line))
     [:discouraged-var]  "  #_{:clj-kondo/ignore [:discouraged-var]}"

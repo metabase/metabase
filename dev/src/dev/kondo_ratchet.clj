@@ -472,6 +472,19 @@
 (def ^:private namespaced-ignore-prefix-re
   (re-pattern (str reader-form-start "#:clj-kondo" ignore-marker-boundary)))
 
+;; One alternative per thing to mask: a string, a line comment, a char literal.
+;; The string's closing quote is captured so that an unterminated string, which runs to the end of the input,
+;; can be told apart. The loops are unrolled and possessive: `(?:a|b)*` recurses once per character and
+;; overflows the regex engine's stack on a long string.
+(def ^:private maskable-re
+  #"\"[^\"\\]*+(?:\\[\s\S]?[^\"\\]*+)*+(\")?|;[^\n]*|\\[\s\S]?")
+
+(defn- blank
+  "`s` with everything but its newlines replaced by spaces, at the same length."
+  [s]
+  ;; a character class matches a whole code point, so the run is measured in chars to keep the length
+  (str/replace s #"[^\n]+" (fn [^String run] (.repeat " " (.length run)))))
+
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
   Same length as the input, so offsets and line numbers carry over.
@@ -480,35 +493,18 @@
   [[has-justification-comment?]] can locate real trailing comments."
   [content]
   (let [sb (StringBuilder. ^String content)
-        n  (count content)]
-    (loop [i 0, state :code]
-      (if (>= i n)
-        (str sb)
-        (let [c (.charAt sb i)]
-          (case state
-            :code    (case c
-                       \" (recur (inc i) :string)
-                       \; (recur (inc i) :comment)
-                       ;; char literal: mask the next char so it can't open a string or start a comment
-                       \\ (do (when (< (inc i) n)
-                                (when-not (= (.charAt sb (inc i)) \newline)
-                                  (.setCharAt sb (inc i) \space)))
-                              (recur (+ i 2) :code))
-                       (recur (inc i) :code))
-            :string  (case c
-                       \" (recur (inc i) :code)
-                       \\ (do (.setCharAt sb i \space)
-                              (when (< (inc i) n)
-                                (when-not (= (.charAt sb (inc i)) \newline)
-                                  (.setCharAt sb (inc i) \space)))
-                              (recur (+ i 2) :string))
-                       \newline (recur (inc i) :string)
-                       (do (.setCharAt sb i \space)
-                           (recur (inc i) :string)))
-            :comment (if (= c \newline)
-                       (recur (inc i) :code)
-                       (do (.setCharAt sb i \space)
-                           (recur (inc i) :comment)))))))))
+        m  (re-matcher maskable-re content)]
+    (while (.find m)
+      ;; the opening quote, `;` or backslash survives, and so does a string's closing quote
+      (let [start (inc (.start m))
+            end   (cond
+                    (.group m 1)                            (dec (.end m))
+                    ;; a char literal masks one char, though the regex takes a whole code point
+                    (= \\ (.charAt content (.start m)))     (min (.end m) (inc start))
+                    :else                                   (.end m))]
+        (when (< start end)
+          (.replace sb start end ^String (blank (subs content start end))))))
+    (str sb)))
 
 (defn- linter-keywords
   [vector-contents]
