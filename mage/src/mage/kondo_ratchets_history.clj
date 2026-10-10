@@ -130,13 +130,26 @@
         (when (:modules files)
           [[:modules :module]]))))
 
+(defn- readable
+  "`files`, the parsed ratchet files on one side of a commit, with each that is `::unreadable` taken to be what
+  it is in `others`, the other side, or absent when it is unreadable there too."
+  [files others]
+  (into {}
+        (for [[k file] files]
+          [k (if (= ::unreadable file)
+               (let [other (get others k)]
+                 (when (not= ::unreadable other) other))
+               file)])))
+
 (defn budget-view
   "The budgets on each side of a commit, from the parsed ratchet files `before` and `after` it.
   The commit that adds or removes the test file is viewed with both sides merged.
   Moving a budget from one file to the other is then not a change.
+  A file that is `::unreadable` on one side is taken to be unchanged: nothing can be read across it.
   `:ratcheted` holds the `[side kind]` of the ratchets that existed before the commit."
   [before after]
-  (let [merged? (not= (some? (:test before)) (some? (:test after)))
+  (let [[before after] [(readable before after) (readable after before)]
+        merged? (not= (some? (:test before)) (some? (:test after)))
         view    (if merged? merge-sides identity)
         side    (fn [[side kind]] [(if (and merged? (= :test side)) :prod side) kind])]
     {:merged?        merged?
@@ -209,12 +222,12 @@
   (into {} (remove (comp zero? val)) (merge-with + new (update-vals old -))))
 
 (defn- budget-delta
-  "How far a commit moved each numeric budget it did not add, from its `view`.
+  "How far a commit moved each numeric budget, from its `view`. A budget it added or removed counts from zero.
   A move into or out of `:unlimited` is no number."
   [{:keys [before after]}]
   (into {}
-        (for [measure (keys before)
-              :let    [old (get before measure)
+        (for [measure (set (concat (keys before) (keys after)))
+              :let    [old (get before measure 0)
                        new (get after measure 0)]
               :when   (and (number? old) (number? new) (not= old new))]
           [measure (- new old)])))
@@ -247,39 +260,52 @@
 
 ;;; ---------------------------------------------------- Git ---------------------------------------------------
 
-(defn repo
-  "What a run works on and the state it keeps: the git repository in `:dir`, the `:cache-dir` for its records,
-  the `:verdicts-file`, the blob tallies so far and the last window loaded.
-  `dir`, `cache` and `verdicts` default to this repository, its cache and its verdicts file."
-  [{:keys [dir cache verdicts]}]
-  {:dir           (or dir u/project-root-directory)
-   :cache-dir     (or cache cache-dir)
-   :verdicts-file (or verdicts (fs/file u/project-root-directory verdicts-file))
-   :tallied       (atom {})
-   :window        (atom nil)})
+(defn- shell-options
+  "Options for a command run in `repo`: quiet, in its directory, and in its environment when it has one."
+  [{:keys [dir env]}]
+  (cond-> {:quiet? true, :dir dir}
+    env (assoc :env env)))
 
 (defn- git [repo & args]
-  (apply shell/sh {:quiet? true, :dir (:dir repo)} "git" args))
+  (apply shell/sh (shell-options repo) "git" args))
 
 (defn- git-ok? [repo & args]
-  (zero? (:exit (apply shell/sh* {:quiet? true, :dir (:dir repo)} "git" args))))
+  (zero? (:exit (apply shell/sh* (shell-options repo) "git" args))))
+
+(defn repo
+  "What a run works on and the state it keeps: the git repository in `:dir`, the `:head` commit it was on when
+  the run began, the `:cache-dir` for its records, the `:verdicts-file`, the blob tallies so far and the last
+  window loaded.
+  `dir` defaults to this repository, `cache` to its cache, and `verdicts` to the verdicts file in `dir`.
+  `env` adds variables to the environment of every git call."
+  [{:keys [dir cache verdicts env]}]
+  (let [dir  (or dir u/project-root-directory)
+        repo {:dir           dir
+              :env           (when env (merge (into {} (System/getenv)) env))
+              :cache-dir     (or cache cache-dir)
+              :verdicts-file (or verdicts (fs/file dir verdicts-file))
+              :tallied       (atom {})
+              :window        (atom nil)}]
+    ;; resolved once, so that a commit landing during a long run cannot split it across two histories
+    (assoc repo :head (first (git repo "rev-parse" "HEAD")))))
 
 (defn- file-at [repo rev path]
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true, :dir (:dir repo)} "git" "show" (str rev ":" path))]
+  (let [{:keys [exit out]} (shell/sh* (shell-options repo) "git" "show" (str rev ":" path))]
     (when (zero? exit)
       (str/join "\n" out))))
 
 (defn- read-ratchet
   "The ratchet file `path` at `rev`, parsed from its `text`.
-  Warns and returns nil when it does not parse, so that one broken commit reads as the file being absent there
-  and does not stop the run."
+  Warns and returns `::unreadable` when it does not parse, so that one broken commit does not stop the run and
+  is not mistaken for the file being absent."
   [rev path text]
   (try
     (edn/read-string text)
     (catch Exception e
       (binding [*out* *err*]
-        (println (format "WARNING: %s at %s does not parse and is read as absent: %s" path rev (ex-message e))))
-      nil)))
+        (println (format "WARNING: %s at %s does not parse, so changes to it there are skipped: %s"
+                         path rev (ex-message e))))
+      ::unreadable)))
 
 (def ^:private budgets-at
   (memoize (fn [repo rev]
@@ -385,7 +411,8 @@
   [repo f shas]
   (if (empty? shas)
     {}
-    (let [^bytes out (:out (p/shell {:in (str/join "\n" shas), :out :bytes, :dir (:dir repo)}
+    (let [^bytes out (:out (p/shell (cond-> {:in (str/join "\n" shas), :out :bytes, :dir (:dir repo)}
+                                      (:env repo) (assoc :env (:env repo)))
                                     "git" "cat-file" "--batch"))]
       (loop [pos 0, acc {}]
         (if (>= pos (alength out))
@@ -501,6 +528,14 @@
               (cond-> change (= :grow kind) (assoc :added (get added measure 0))))
             changes))))
 
+(defn- budgeted-from-count
+  "The measures that commit `sha` gave a first budget taken to match their count, leaving no slack: the seeds
+  and the new linters. A first budget in a ratchet that already existed is growth, and can leave slack."
+  [repo sha]
+  (for [{:keys [kind key measure]} (commit-changes repo sha)
+        :when (and (#{:seed :introduce} kind) (not key))]
+    measure))
+
 (defn- contributions
   "The `[commit deltas]` pairs [[attribute]] takes, for the shrink in commit `sha` and the commits back to
   `boundary`."
@@ -519,10 +554,9 @@
                      [(dissoc commit :files)
                       (cond
                         (= sha (:sha commit)) (subtract actual seeded)
-                        (ratchet? commit)     (let [view (commit-view repo (:sha commit))]
-                                                ;; a first budget is taken to match the count, leaving no slack
-                                                (apply dissoc (subtract actual (budget-delta view))
-                                                       (remove (set (keys (:before view))) (keys (:after view)))))
+                        (ratchet? commit)     (apply dissoc
+                                                     (subtract actual (budget-delta (commit-view repo (:sha commit))))
+                                                     (budgeted-from-count repo (:sha commit)))
                         :else                 actual)]))
                  commits)))
 
@@ -562,7 +596,7 @@
   "The record of every commit that changed a ratchet file in the history of `HEAD`, newest first.
   Analyses and caches the ones that are not cached yet."
   [repo]
-  (let [all (ratchet-commits repo "HEAD")]
+  (let [all (ratchet-commits repo (:head repo))]
     (mapv #(record! repo all %) all)))
 
 ;;; -------------------------------------------------- Verdicts ------------------------------------------------
@@ -1144,7 +1178,7 @@
 ;;; ---------------------------------------------------- Task --------------------------------------------------
 
 (defn- resolve-commit [repo rev]
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true, :dir (:dir repo)}
+  (let [{:keys [exit out]} (shell/sh* (shell-options repo)
                                       "git" "rev-parse" "--verify" "--quiet" (str rev "^{commit}"))]
     (if (zero? exit)
       (first out)
@@ -1182,7 +1216,7 @@
 (defn- backfill!
   "Every record, newest first, as [[records]] gives them, naming each commit as it is analysed."
   [repo]
-  (let [all     (ratchet-commits repo "HEAD")
+  (let [all     (ratchet-commits repo (:head repo))
         pending (set (remove #(cached repo %) all))]
     (when (seq pending)
       (println (c/dark (format "Analysing %d commits that changed a ratchet file" (count pending)))))
@@ -1280,10 +1314,10 @@
                          :periods   (periods today settled)}))
         (println "Wrote" arg))
       (let [[title shas] (case by
-                           :since [(str "since " (subs arg 0 10)) (ratchet-commits repo (str arg "..HEAD"))]
+                           :since [(str "since " (subs arg 0 10)) (ratchet-commits repo (str arg ".." (:head repo)))]
                            :all   ["of all time" (map :sha records)]
                            :days  [(format "in the last %d days" arg)
-                                   (ratchet-commits repo (format "--since=%d.days.ago" arg) "HEAD")])]
+                                   (ratchet-commits repo (format "--since=%d.days.ago" arg) (:head repo))])]
         (run! println (summary title (report (filter (comp (set shas) :sha) settled))))))))
 
 (defn run
