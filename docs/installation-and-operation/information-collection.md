@@ -6,7 +6,7 @@ redirect_from:
 
 # About the anonymous usage data we collect
 
-If you're self-hosting Metabase and you've opted in to provide us with anonymous usage data (thank you!), Metabase will phone home some data collected via Snowplow.
+If you're self-hosting Metabase and you've opted in to provide us with anonymous usage data (thank you!), Metabase will phone home some data collected via Snowplow and Metabase Track, our own product analytics service.
 
 **[We only collect anonymous Metabase data; we don't collect any of your data](https://www.metabase.com/security).** We don't collect any usernames, emails, server IPs, database details of any kind, or any personally identifiable information (PII).
 
