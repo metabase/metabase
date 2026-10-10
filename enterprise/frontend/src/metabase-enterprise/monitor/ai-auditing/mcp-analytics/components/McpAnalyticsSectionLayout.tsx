@@ -7,6 +7,7 @@ import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
+import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
 import {
   VIEW_GROUP_MEMBERS,
   VIEW_MCP_TOOL_CALLS,
@@ -126,6 +127,7 @@ export function McpAnalyticsSectionLayout() {
     <AiAnalyticsSectionLayout
       title={t`MCP analytics`}
       tabs={tabs}
+      tabsAction={<NewQuestionButton viewName={VIEW_MCP_TOOL_CALLS} />}
       filters={
         <McpToolCallsFilter
           date={date}

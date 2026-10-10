@@ -176,6 +176,10 @@ function setupEndpoints(
   datasetError = false,
 ) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
+  fetchMock.get(
+    `path:/api/database/${AUDIT_DB_ID}/schema/public`,
+    auditDatabase.tables ?? [],
+  );
   fetchMock.post("path:/api/dataset/query_metadata", {
     databases: [auditDatabase],
     tables: auditDatabase.tables ?? [],

@@ -13,6 +13,7 @@ import {
 import { useCliHasData } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/hooks/useCliHasData";
 import { cliUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
+import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
 import {
   ConversationFilters as CliCallsFilter,
   useFilterOptions,
@@ -125,6 +126,7 @@ export function CliAnalyticsSectionLayout() {
   return (
     <AiAnalyticsSectionLayout
       title={t`CLI analytics`}
+      tabsAction={<NewQuestionButton viewName={VIEW_AGENT_API_CALLS} />}
       tabs={tabs}
       filters={
         <CliCallsFilter
