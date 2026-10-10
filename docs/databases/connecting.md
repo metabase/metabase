@@ -46,6 +46,8 @@ The databases listed below have official drivers maintained by the Metabase team
 - [Starburst](./connections/starburst.md)
 - [Vertica](./connections/vertica.md)
 
+To check which Metabase features each of these databases supports, see [Database feature support](./feature-support.md).
+
 If you don't see your database listed here, see [Community drivers](../developers-guide/community-drivers.md).
 
 As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/vulnerability-post-mortem). But Metabase still ships with an H2 database to include an embedded application database.

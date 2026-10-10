@@ -365,6 +365,8 @@ categories:
         pages:
           - name: "Adding and managing databases"
             url: "databases/connecting"
+          - name: "Database feature support"
+            url: "databases/feature-support"
           - name: "Supported databases"
             pages:
               - name: "Athena"

@@ -71,6 +71,7 @@
                                 :compojure.core/context                                2
                                 :compojure.core/defroutes                              4
                                 :compojure.core/routes                                 2
+                                :driver/database-supports?                             1
                                 :ee.transform-testing.expectations.empty/->Empty       1
                                 :ee.transform-testing.expectations.equals/->EqualsRows 1
                                 :ee.transform-testing.expectations.equals/->EqualsSql  1
