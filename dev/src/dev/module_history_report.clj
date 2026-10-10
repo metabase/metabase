@@ -1,13 +1,15 @@
 (ns dev.module-history-report
   "The history of the backend module graph as CSV files, for charting how its cycles and boundaries changed.
 
-  [[update!]] measures a fixed sample of master commits with [[dev.module-history]] and writes four files:
+  [[update!]] measures a fixed sample of master commits with [[dev.module-history]] and writes these files:
 
   - `history.csv`: one row per sampled commit since the first one, with cycle, exposure, `:friends` and
     upward-require counts
   - `structure.csv`: every recent backend-touching commit, thinned to the ends of each run of unchanged metrics
   - `cycles.csv`: one row per commit and module cycle, named after the cluster it is today
   - `history.json`: the commits of `history.csv` with each named cluster's size, for a page that charts them
+  - `upward-pairs.csv` and `cuts.csv`: at the latest commit, the module pairs whose upward requires close a cycle,
+    and the cheapest ways to split the largest cycle; see [[dev.module-cuts]]. Both are in `history.json` too.
 
   The sample depends only on the history of `origin/master`, so two runs at the same commit write the same files.
   A later run adds rows and keeps the earlier ones, except the tip of an earlier run, which stays only when the
@@ -21,6 +23,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
    [clojure.string :as str]
+   [dev.module-cuts :as module-cuts]
    [dev.module-cycle-names :as cycle-names]
    [dev.module-history :as module-history]
    [metabase.util.json :as json])
@@ -509,9 +512,58 @@
                                                  lines)))
   (dec (count lines)))
 
+;;;; upward-pairs.csv and cuts.csv
+
+(def ^:private cut-require-limit
+  "A cut that severs more requires than this is not offered."
+  30)
+
+(defn- module-edges
+  "The module edges behind `requires`, a seq of `[from-namespace to-namespace]`, with how many requires each has:
+  `[[from to count] ...]`, the edge with the most first."
+  [namespace->module requires]
+  (->> (frequencies (map (fn [[from to]] [(namespace->module from) (namespace->module to)]) requires))
+       (map (fn [[[from to] n]] [(str from) (str to) n]))
+       (sort-by (juxt (comp - last) first second))
+       vec))
+
+(defn tip-tables
+  "The two tables about one commit's `deps` and `modules`, as maps ready for JSON:
+
+  - `:pairs`: [[module-cuts/upward-pairs]], with names as strings
+  - `:cuts`: [[module-cuts/cut-candidates]], each as `{:base, :of, :requires, :after, :pct, :freed, :edges,
+    :severed}`, where `:pct` is `:after` as a share of all namespaces, `:edges` is [[module-edges]] and `:severed`
+    lists each require as `from-namespace -> to-namespace`"
+  [deps modules]
+  (let [namespace->module (into {} (map (juxt :namespace :module)) deps)]
+    {:pairs (for [pair (module-cuts/upward-pairs deps modules)]
+              (-> pair (update :module str) (update :ancestor str)))
+     :cuts  (for [{:keys [base-modules cycle-modules requires largest-after freed]}
+                  (module-cuts/cut-candidates deps cut-require-limit)]
+              {:base     base-modules
+               :of       cycle-modules
+               :requires (count requires)
+               :after    largest-after
+               :pct      (rounded-percent largest-after (count deps))
+               :freed    freed
+               :edges    (module-edges namespace->module requires)
+               :severed  (mapv (fn [[from to]] (str from " -> " to)) requires)})}))
+
+(defn- pairs-table [sha pairs]
+  (cons ["sha" "module" "ancestor" "requires" "internal"]
+        (for [{:keys [module ancestor requires internal]} pairs]
+          [sha module ancestor requires internal])))
+
+(defn- cuts-table [sha cuts]
+  (cons ["sha" "base_modules" "cycle_modules" "requires" "largest_cycle_after" "share_after_pct" "namespaces_freed"
+         "severed"]
+        (for [{:keys [base of requires after pct freed severed]} cuts]
+          [sha base of requires after pct freed (str/join "; " severed)])))
+
 (defn update!
   "Measure the sample on `:ref` (default `origin/master`, as last fetched) and write `history.csv`,
-  `structure.csv`, `cycles.csv` and `history.json` into `:dir`. Commits measured before come from the cache.
+  `structure.csv`, `cycles.csv`, `upward-pairs.csv`, `cuts.csv` and `history.json` into `:dir`.
+  Commits measured before come from the cache.
 
     clojure -X:dev dev.module-history-report/update! :dir '\"target/module-history\"'"
   [{:keys [dir ref], :or {ref default-ref}}]
@@ -525,11 +577,15 @@
         structure (module-history/backfill! (assoc structure-sample :ref ref))
         position  (positions ref)
         anchors   (cluster-anchors ref)
-        page      (page-data anchors position history)]
-    (doseq [[file-name lines] [["history.csv"   (history-table position history)]
-                               ["structure.csv" (structure-table position structure)]
-                               ["cycles.csv"    (cycles-table anchors position (concat history structure))]]]
-      (println (format "%-13s %5d rows" file-name (write-csv! (io/file dir file-name) lines))))
+        sha       (subs (first (git-lines ["rev-parse" (str ref "^{commit}")])) 0 11)
+        tables    (let [{:keys [deps modules]} (module-history/snapshot ref)] (tip-tables deps modules))
+        page      (merge (page-data anchors position history) tables)]
+    (doseq [[file-name lines] [["history.csv"      (history-table position history)]
+                               ["structure.csv"    (structure-table position structure)]
+                               ["cycles.csv"       (cycles-table anchors position (concat history structure))]
+                               ["upward-pairs.csv" (pairs-table sha (:pairs tables))]
+                               ["cuts.csv"         (cuts-table sha (:cuts tables))]]]
+      (println (format "%-16s %5d rows" file-name (write-csv! (io/file dir file-name) lines))))
     (write-atomically! (io/file dir "history.json") #(json/encode-to page % {}))
-    (println (format "%-13s %5d commits" "history.json" (count (:commits page))))
+    (println (format "%-16s %5d commits" "history.json" (count (:commits page))))
     (println "Written to" (.getCanonicalPath dir))))

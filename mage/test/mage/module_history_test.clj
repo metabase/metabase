@@ -28,15 +28,20 @@
               "const TODAY = [{\"cluster\":\"tardis\"}];"
               "const ANCHORS = [\"tardis\"];"
               "const RETEST = {\"module\":[1,2]};"
+              "const PAIRS = [{\"module\":\"x.y\"}];"
+              "const CUTS = [];"
               "</script>")
          (module-history/fill-template
           (str "<p>/*COUNT*/ commits</p><script>"
                "const DATA = /*DATA*/;const TODAY = /*TODAY*/;"
-               "const ANCHORS = /*ANCHORS*/;const RETEST = /*RETEST*/;</script>")
+               "const ANCHORS = /*ANCHORS*/;const RETEST = /*RETEST*/;"
+               "const PAIRS = /*PAIRS*/;const CUTS = /*CUTS*/;</script>")
           {"commits"  [{"subject" "Close </script> early"} {"subject" "$1 \\ kept"}]
            "today"    [{"cluster" "tardis"}]
            "clusters" ["tardis"]
-           "retest"   {"module" [1 2]}}))))
+           "retest"   {"module" [1 2]}
+           "pairs"    [{"module" "x.y"}]
+           "cuts"     []}))))
 
 (deftest config-problems-test
   (testing "a full config and an empty one are both usable"

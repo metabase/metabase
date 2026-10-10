@@ -285,3 +285,24 @@
                         "xreq"}}
              {:page   (set (keys page))
               :commit (set (keys (first (get page "commits"))))})))))
+
+(deftest ^:parallel tip-tables-test
+  ;; x requires its child x.y, which requires x's API and one internal namespace back. Cutting those two requires
+  ;; leaves no cycle.
+  (let [dep     (fn [namespace module] {:namespace namespace, :module module})
+        deps    [{:namespace 'metabase.x.core, :module 'x, :deps [(dep 'metabase.x.y.core 'x.y)]}
+                 {:namespace 'metabase.x.impl, :module 'x, :deps []}
+                 {:namespace 'metabase.x.y.core
+                  :module    'x.y
+                  :deps      [(dep 'metabase.x.core 'x) (dep 'metabase.x.impl 'x)]}
+                 {:namespace 'metabase.z.core, :module 'z, :deps []}]]
+    (is (= {:pairs [{:module "x.y", :ancestor "x", :requires 2, :internal 1}]
+            :cuts  [{:base     1
+                     :of       2
+                     :requires 1
+                     :after    0
+                     :pct      0.0
+                     :freed    3
+                     :edges    [["x" "x.y" 1]]
+                     :severed  ["metabase.x.core -> metabase.x.y.core"]}]}
+           (report/tip-tables deps '{x {}, x.y {}, z {}})))))
