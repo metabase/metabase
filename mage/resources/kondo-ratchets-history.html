@@ -21,7 +21,12 @@
          font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
   .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100vh; }
   nav { border-right: 1px solid var(--line); padding: 20px 12px; position: sticky; top: 0; height: 100vh;
-        overflow-y: auto; }
+        overflow-y: auto; display: flex; flex-direction: column; }
+  /* the footer link is about the numbers, not a period, so it sits apart at the bottom */
+  nav .foot { margin: auto -12px -20px; padding: 10px 12px 14px; position: sticky; bottom: -20px;
+              background: var(--bg); border-top: 1px solid var(--line); }
+  nav .foot a { color: var(--muted); font-size: 13px; }
+  nav .foot a.on { color: var(--accent); }
   nav h1 { font-size: 15px; margin: 0 8px 4px; }
   nav .asof { color: var(--muted); font-size: 12px; margin: 0 8px 16px; }
   nav h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
@@ -318,9 +323,9 @@ function nav(current) {
     (weeks[0] ? link(weeks[0], "This week") : "") +
     (months[1] ? link(months[1], "Last month") : "") +
     link(byId.all) +
-    `<a href="#verdicts" class="${current === "verdicts" ? "on" : ""}"><span>Pardons and exclusions</span><span class="n zero">${data.verdicts.length + data.excluded.length}</span></a>` +
     `<h2>Weeks</h2>${weeks.map(p => link(p)).join("")}` +
-    `<h2>Months</h2>${months.map(p => link(p)).join("")}`;
+    `<h2>Months</h2>${months.map(p => link(p)).join("")}` +
+    `<div class="foot">${`<a href="#verdicts" class="${current === "verdicts" ? "on" : ""}"><span>Pardons and exclusions</span><span class="n zero">${data.verdicts.length + data.excluded.length}</span></a>`}</div>`;
 }
 
 // What the numbers leave out, and why: pardoned raises, confirmed ones, and linters that are not counted.
