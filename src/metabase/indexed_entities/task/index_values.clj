@@ -46,9 +46,11 @@
           (indexed-entities.db/delete-model-index! model-index-id)))
       (model-index/add-values! model-index))))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Refresh model indexed columns"}
-  ModelIndexRefresh [job-context]
+(task/defjob ModelIndexRefresh
+  "Refresh model indexed columns"
+  {:saved-class "metabase.indexed_entities.task.index_values.ModelIndexRefresh"
+   :concurrent? false}
+  [job-context]
   (let [{:strs [model-index-id]} (qc/from-job-data job-context)]
     (refresh-index! model-index-id)))
 

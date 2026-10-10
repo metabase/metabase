@@ -21,9 +21,11 @@
 
 (set! *warn-on-reflection* true)
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Reconciles the library entity index (pgvector) with the appdb."}
-  OsiAiContextSync [_ctx]
+(task/defjob OsiAiContextSync
+  "Reconciles the library entity index (pgvector) with the appdb."
+  {:saved-class "metabase_enterprise.entity_retrieval.task.sync.OsiAiContextSync"
+   :concurrent? false}
+  [_ctx]
   (when (entity-retrieval.core/available?)
     (try
       ;; Full reconcile via the shared coalescing schedule: it waits out a concurrent node rather than

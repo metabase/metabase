@@ -15,8 +15,7 @@
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import (java.time Duration Instant)
-           (java.util Date)
-           (org.quartz DisallowConcurrentExecution)))
+           (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,9 +34,10 @@
   (contains? search.config/hnsw-index-backed-strategies
              (semantic.settings/semantic-search-vector-strategy)))
 
-(deftype ^{DisallowConcurrentExecution true
-           :doc                        "Runs an indexer process for a time, expects to be rescheduled to continue"}
- SemanticSearchIndexer []
+(task/defjob-type SemanticSearchIndexer
+  "Runs an indexer process for a time, expects to be rescheduled to continue"
+  {:saved-class "metabase_enterprise.semantic_search.task.indexer.SemanticSearchIndexer"
+   :concurrent? false}
   org.quartz.Job
   (execute [_ _]
     (when (semantic.u/semantic-search-active?)

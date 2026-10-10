@@ -8,8 +8,7 @@
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
-   (java.sql Timestamp)
-   (org.quartz DisallowConcurrentExecution)))
+   (java.sql Timestamp)))
 
 (set! *warn-on-reflection* true)
 
@@ -26,9 +25,11 @@
       (semantic-search.db/delete-token-tracking-created-before! t))
     (log/info "Semantic search old data cleanup successful.")))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Clean up inactive semantic search index tables"}
-  SemanticSearchUsageTrimmer [_ctx]
+(task/defjob SemanticSearchUsageTrimmer
+  "Clean up inactive semantic search index tables"
+  {:saved-class "metabase_enterprise.semantic_search.task.usage_trimmer.SemanticSearchUsageTrimmer"
+   :concurrent? false}
+  [_ctx]
   (trim-old-token-data!))
 
 (defmethod task/init! ::SemanticSearchUsageTrimmer

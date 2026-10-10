@@ -26,7 +26,9 @@
 
 ;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
 
-(task/defjob TestJob [_])
+(task/defjob TestJob
+  {:saved-class "metabase.task_test.TestJob"}
+  [_])
 
 (defn- job ^JobDetail []
   (jobs/build

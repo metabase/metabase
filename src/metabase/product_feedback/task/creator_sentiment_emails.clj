@@ -80,7 +80,10 @@
           (catch Throwable e
             (log/errorf "Problem sending creator sentiment email: %s" (ex-message e))))))))
 
-(task/defjob ^{:doc "Sends out a monthly survey to a portion of the creators."} CreatorSentimentEmail [_]
+(task/defjob CreatorSentimentEmail
+  "Sends out a monthly survey to a portion of the creators."
+  {:saved-class "metabase.product_feedback.task.creator_sentiment_emails.CreatorSentimentEmail"}
+  [_]
   (let [current-week (.get (t/local-date) (.weekOfWeekBasedYear (WeekFields/of (Locale/getDefault))))]
     (send-creator-sentiment-emails! current-week)))
 
