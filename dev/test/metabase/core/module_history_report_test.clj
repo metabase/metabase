@@ -1,7 +1,8 @@
 (ns metabase.core.module-history-report-test
   (:require
    [clojure.test :refer :all]
-   [dev.module-history-report :as report]))
+   [dev.module-history-report :as report]
+   [metabase.util.json :as json]))
 
 (defn- lines->maps
   "Each line after the header as a map of column name to value."
@@ -14,6 +15,14 @@
    "bbbbbbbbbbbb2" 11
    "cccccccccccc3" 12
    "dddddddddddd4" 13})
+
+(deftest ^:parallel quarter-starts-test
+  (testing "a quarter that starts on the end date is left out"
+    (is (= ["2015-04-01" "2015-07-01" "2015-10-01" "2016-01-01"]
+           (map str (#'report/quarter-starts "2015-04-01" "2016-04-01")))))
+  (testing "a quarter that starts before the end date is kept"
+    (is (= ["2015-04-01" "2015-07-01"]
+           (map str (#'report/quarter-starts "2015-04-01" "2015-07-02"))))))
 
 (deftest ^:parallel history-table-test
   (let [rows [{:sha                    "bbbbbbbbbbbb2"
@@ -30,24 +39,34 @@
                :subject        "Before the module system"
                :module-system? false
                :namespaces     120}
-              {:sha "off-master", :committed-at "2026-01-03T00:00:00Z", :subject "On a branch", :namespaces 1}]]
+              {:sha          "off-master"
+               :committed-at "2026-01-03T00:00:00Z"
+               :subject      "On a branch"
+               :namespaces   1}]]
     (testing "rows follow master, not the clock, and a commit that is not on master is left out"
-      (is (=? [{:seq 10, :sha "aaaaaaaaaaa", :date "2026-01-02", :subject "Before the module system"}
-               {:seq 11, :sha "bbbbbbbbbbb", :date "2026-01-02", :subject "Carve \"x\", then y (#2)"}]
-              (lines->maps (report/history-table position rows)))))
-    (testing "before the module system the backend is one tangle of every namespace, with no exposure to report"
-      (is (=? {:module_system          false
-               :scc_largest_modules    1
-               :scc_largest_namespaces 120
-               :scc_largest_pct        "100.0"
-               :scc_cyclic_pct         "100.0"
-               :scc_components         1
-               :exposed_namespaces     nil
-               :exposed_pct            nil}
-              (first (lines->maps (report/history-table position rows))))))
-    (testing "percentages have one decimal"
-      (is (=? {:module_system true, :scc_largest_pct "25.0", :scc_cyclic_pct "37.5", :exposed_pct "15.0"}
-              (second (lines->maps (report/history-table position rows))))))))
+      (is (=? [;; Before the module system the backend is one tangle of every namespace, with no exposure to report.
+               {:seq                    10
+                :sha                    "aaaaaaaaaaa"
+                :date                   "2026-01-02"
+                :subject                "Before the module system"
+                :module_system          false
+                :scc_largest_modules    1
+                :scc_largest_namespaces 120
+                :scc_largest_pct        "100.0"
+                :scc_cyclic_pct         "100.0"
+                :scc_components         1
+                :exposed_namespaces     nil
+                :exposed_pct            nil}
+               ;; Percentages have one decimal.
+               {:seq             11
+                :sha             "bbbbbbbbbbb"
+                :date            "2026-01-02"
+                :subject         "Carve \"x\", then y (#2)"
+                :module_system   true
+                :scc_largest_pct "25.0"
+                :scc_cyclic_pct  "37.5"
+                :exposed_pct     "15.0"}]
+              (lines->maps (report/history-table position rows)))))))
 
 (deftest ^:parallel key-commit-label-test
   (let [[sha label] (first report/key-commits)]
@@ -83,77 +102,186 @@
                   deep-thought    metabot
                   tardis          lib}
         cycle   (fn [modules namespaces]
-                  {:modules modules, :namespaces namespaces, :edges 9, :density 0.5, :cycle-rank 2, :strong-bridges 1})
-        rows    [{:sha "aaaaaaaaaaaa1", :committed-at "2026-01-01T00:00:00Z", :subject "No modules yet"
-                  :module-system? false, :namespaces 700}
-                 {:sha "bbbbbbbbbbbb2", :committed-at "2026-01-02T00:00:00Z", :subject "One big cycle"
-                  :cycles [(cycle '[lib metabot query-processor] 600)
-                           (cycle '[segments xrays] 20)
-                           (cycle '[a b] 5)]}
+                  {:modules        modules
+                   :namespaces     namespaces
+                   :edges          9
+                   :density        0.5
+                   :cycle-rank     2
+                   :strong-bridges 1})
+        rows    [{:sha            "aaaaaaaaaaaa1"
+                  :committed-at   "2026-01-01T00:00:00Z"
+                  :subject        "No modules yet"
+                  :module-system? false
+                  :namespaces     700}
+                 {:sha          "bbbbbbbbbbbb2"
+                  :committed-at "2026-01-02T00:00:00Z"
+                  :subject      "One big cycle"
+                  :cycles       [(cycle '[lib metabot query-processor] 600)
+                                 (cycle '[segments xrays] 20)
+                                 (cycle '[a b] 5)]}
                  ;; The same second as the commit after it, written with another offset.
-                 {:sha "cccccccccccc3", :committed-at "2026-01-03T02:00:00+02:00", :subject "Dropped"
-                  :cycles [(cycle '[lib metabot query-processor] 600)]}
-                 {:sha "dddddddddddd4", :committed-at "2026-01-03T00:00:00Z", :subject "Split"
+                 {:sha          "cccccccccccc3"
+                  :committed-at "2026-01-03T02:00:00+02:00"
+                  :subject      "Dropped"
+                  :cycles       [(cycle '[lib metabot query-processor] 600)]}
+                 {:sha          "dddddddddddd4"
+                  :committed-at "2026-01-03T00:00:00Z"
+                  :subject      "Split"
                   ;; metabot's cycle is the largest at the latest commit, so its name goes first in a merge.
-                  :cycles [(cycle '[metabot slackbot] 300)
-                           (cycle '[lib query-processor] 200)]}]]
-    (is (=? [{:seq 10, :cluster "deep-thought", :anchors 3, :modules 1, :namespaces 700, :members "backend"}
-             {:seq 11, :cluster "deep-thought", :anchors 3, :modules 3, :namespaces 600
-              :members "lib metabot query-processor", :density 0.5, :cycle_rank 2, :strong_bridges 1, :edges 9}
-             {:seq 11, :cluster "magellanic-cloud", :anchors 0, :members "segments xrays"}
-             {:seq 11, :cluster "unnamed", :anchors 0, :members "a b"}
-             {:seq 13, :cluster "deep-thought", :anchors 1, :sha "ddddddddddd", :subject "Split"}
+                  :cycles       [(cycle '[metabot slackbot] 300)
+                                 (cycle '[lib query-processor] 200)]}]]
+    (is (=? [{:seq        10
+              :cluster    "deep-thought"
+              :anchors    3
+              :modules    1
+              :namespaces 700
+              :members    "backend"}
+             {:seq            11
+              :cluster        "deep-thought"
+              :anchors        3
+              :modules        3
+              :namespaces     600
+              :members        "lib metabot query-processor"
+              :density        0.5
+              :cycle_rank     2
+              :strong_bridges 1
+              :edges          9}
+             {:seq     11
+              :cluster "magellanic-cloud"
+              :anchors 0
+              :members "segments xrays"}
+             {:seq     11
+              :cluster "unnamed"
+              :anchors 0
+              :members "a b"}
+             {:seq     13
+              :cluster "deep-thought"
+              :anchors 1
+              :sha     "ddddddddddd"
+              :subject "Split"}
              ;; tardis ties with galactic-center on this cycle's size, and the names then sort by letter.
-             {:seq 13, :cluster "galactic-center", :anchors 2, :members "lib query-processor"}]
+             {:seq     13
+              :cluster "galactic-center"
+              :anchors 2
+              :members "lib query-processor"}]
             (lines->maps (report/cycles-table anchors position rows))))))
 
+(def ^:private page-anchors
+  '{galactic-center query-processor
+    tardis          lib})
+
+(def ^:private page-rows
+  "A commit from before the module system and one after it, for [[report/page-data]]."
+  (let [counts {:namespaces                 100
+                :scc-largest-namespaces     60
+                :exposed-namespaces         40
+                :retest-module-mean         70.0
+                :retest-namespace-mean      20.0
+                :retest-histogram           {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}
+                :leaf-modules               3
+                :leaf-module-namespaces     12
+                :leaf-namespaces            30
+                :friend-internal-namespaces 4}]
+    [(merge counts {:sha            "aaaaaaaaaaaa1"
+                    :committed-at   "2026-01-01T00:00:00Z"
+                    :subject        "No modules yet"
+                    :module-system? false})
+     (merge counts {:sha          "bbbbbbbbbbbb2"
+                    :committed-at "2026-01-02T00:00:00Z"
+                    :subject      "Split (#2)"
+                    :cycles       [{:modules        '[lib lib.schema]
+                                    :namespaces     20
+                                    :density        0.5
+                                    :cycle-rank     1
+                                    :strong-bridges 2
+                                    :edges          2}
+                                   {:modules        '[query-processor b a]
+                                    :namespaces     60
+                                    :density        0.4
+                                    :cycle-rank     3
+                                    :strong-bridges 0
+                                    :edges          5}]})]))
+
 (deftest ^:parallel page-data-test
-  (let [anchors '{galactic-center query-processor
-                  tardis          lib}
-        counts  {:namespaces 100, :scc-largest-namespaces 60, :exposed-namespaces 40, :retest-module-mean 70.0
-                 :retest-namespace-mean 20.0, :retest-histogram {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}
-                 :leaf-modules 3, :leaf-module-namespaces 12, :leaf-namespaces 30, :friend-internal-namespaces 4}
-        rows    [(merge counts {:sha "aaaaaaaaaaaa1", :committed-at "2026-01-01T00:00:00Z", :subject "No modules yet"
-                                :module-system? false})
-                 (merge counts {:sha "bbbbbbbbbbbb2", :committed-at "2026-01-02T00:00:00Z", :subject "Split (#2)"
-                                :cycles [{:modules '[lib lib.schema], :namespaces 20, :density 0.5, :cycle-rank 1
-                                          :strong-bridges 2, :edges 2}
-                                         {:modules '[query-processor b a], :namespaces 60, :density 0.4, :cycle-rank 3
-                                          :strong-bridges 0, :edges 5}]})]]
-    (is (=? {:clusters ["galactic-center" "tardis" "magellanic-cloud" "sub-etha"]
-             :retest   {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}
-             :commits  [{:sha   "aaaaaaaaaaa"
-                         :pct     100.0
-                         :lfm     nil
-                         :lfn     30
-                         :exp     nil
-                         :bridges 0
-                         :rank    0
-                         ;; Every cluster was inside the one tangle.
-                         :lanes {"galactic-center"  [100 "galactic-center"]
+  (is (=? {:clusters ["galactic-center" "tardis" "magellanic-cloud" "sub-etha"]
+           :retest   {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}
+           :commits  [{:sha     "aaaaaaaaaaa"
+                       :pct     100.0
+                       :lfm     nil
+                       :lfn     30
+                       :exp     nil
+                       :bridges 0
+                       :rank    0
+                       ;; Every cluster was inside the one tangle.
+                       :lanes   {"galactic-center"  [100 "galactic-center"]
                                  "tardis"           [100 "galactic-center"]
                                  "magellanic-cloud" [100 "galactic-center"]}}
-                        {:sha     "bbbbbbbbbbb"
-                         :date    "2026-01-02"
-                         :subject "Split (#2)"
-                         :ns      100
-                         :scc     60
-                         :pct     60.0
-                         :rtm     70.0
-                         :rtn     20.0
-                         :fxu     4
-                         :lfm     3
-                         :lfmn    12
-                         :lfn     30
-                         :exp     40
-                         ;; Of the cycle with the most namespaces.
-                         :bridges 0
-                         :rank    3
-                         :lanes   {"galactic-center"  [60 "galactic-center"]
-                                   "tardis"           [20 "tardis"]
-                                   "magellanic-cloud" [0 nil]
-                                   "sub-etha"         [0 nil]}}]
-             :today    [{:cluster "galactic-center", :modules 3, :namespaces 60, :members "a b query-processor"
-                         :rank 3, :bridges 0}
-                        {:cluster "tardis", :modules 2, :namespaces 20, :members "lib lib.schema"}]}
-            (report/page-data anchors position rows)))))
+                      {:sha     "bbbbbbbbbbb"
+                       :date    "2026-01-02"
+                       :subject "Split (#2)"
+                       :ns      100
+                       :scc     60
+                       :pct     60.0
+                       :rtm     70.0
+                       :rtn     20.0
+                       :fxu     4
+                       :lfm     3
+                       :lfmn    12
+                       :lfn     30
+                       :exp     40
+                       ;; Of the cycle with the most namespaces.
+                       :bridges 0
+                       :rank    3
+                       :lanes   {"galactic-center"  [60 "galactic-center"]
+                                 "tardis"           [20 "tardis"]
+                                 "magellanic-cloud" [0 nil]
+                                 "sub-etha"         [0 nil]}}]
+           :today    [{:cluster    "galactic-center"
+                       :modules    3
+                       :namespaces 60
+                       :members    "a b query-processor"
+                       :rank       3
+                       :bridges    0}
+                      {:cluster    "tardis"
+                       :modules    2
+                       :namespaces 20
+                       :members    "lib lib.schema"}]}
+          (report/page-data page-anchors position page-rows))))
+
+(deftest ^:parallel page-data-json-test
+  (testing "history.json has exactly the keys that page templates and `mage module-history` read"
+    (let [page (json/decode (json/encode (report/page-data page-anchors position page-rows)))]
+      (is (= {:page   #{"clusters" "commits" "retest" "today"}
+              :commit #{"at"
+                        "bridges"
+                        "cyc"
+                        "date"
+                        "dyn"
+                        "exp"
+                        "fx"
+                        "fxu"
+                        "key"
+                        "lanes"
+                        "lfm"
+                        "lfmn"
+                        "lfn"
+                        "mutual"
+                        "nested"
+                        "nonapi"
+                        "ns"
+                        "nslvl"
+                        "pct"
+                        "rank"
+                        "rtm"
+                        "rtn"
+                        "scc"
+                        "sccm"
+                        "sha"
+                        "subject"
+                        "top"
+                        "up"
+                        "upcyc"
+                        "upint"
+                        "xreq"}}
+             {:page   (set (keys page))
+              :commit (set (keys (first (get page "commits"))))})))))
