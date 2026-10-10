@@ -140,8 +140,8 @@
     true keyword))
 
 (deftest no-class-message-test
-  (is (= {:renamed-key (str "Deleting job metabase-enterprise.transforms.timeout due to class not found (a.Class)."
-                            " Its key was renamed to metabase.transforms.timeout in x.59."
+  (is (= {:renamed-key (str "Deleting job metabase-enterprise.transforms.timeout due to class not found"
+                            " (a.Class). Its key was renamed to metabase.transforms.timeout in x.59.1."
                             " Moved out of enterprise, with no change to the job.")
           :other-key   "Deleting job some.job due to class not found (a.Class)"}
          {:renamed-key (#'task.impl/no-class-message "metabase-enterprise.transforms.timeout" "a.Class")
@@ -193,8 +193,8 @@
               {(capitalize-if-mysql :job_class_name) class-name}))
 
 (deftest start-scheduler-keeps-a-job-stored-under-an-old-class-name-test
-  ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it, while
-  ;; upgraded nodes load the current class under it
+  ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it.
+  ;; Upgraded nodes load the current class under it.
   (without-task-initializers!
    (let [scheduler-initialized? (some? (#'task/scheduler))]
      (require 'metabase.version.task.upgrade-checks)
@@ -205,13 +205,15 @@
        (set-stored-job-class-name! old-upgrade-checks-class-name)
        (task/stop-scheduler!)
        (task/start-scheduler!)
-       ;; the trigger survives too, which matters for triggers no `init!` recreates, like per-database sync schedules
+       ;; the trigger survives too. No `init!` recreates some triggers, like per-database sync schedules.
        (is (= {:stored-class-name old-upgrade-checks-class-name
                :loaded-class-name upgrade-checks-class-name
                :triggers          #{{:cron-expression     "0 0 * * * ? *"
                                      :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}}
               {:stored-class-name (stored-job-class-name)
-               :loaded-class-name (.getName (.getJobClass ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))))
+               :loaded-class-name (-> ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))
+                                      .getJobClass
+                                      .getName)
                :triggers          (triggers)}))
        (finally
          (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))
