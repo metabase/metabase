@@ -1,6 +1,8 @@
 (ns metabase.driver.vertica
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -20,8 +22,10 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]])
   (:import
+   (java.net URLDecoder)
    (java.sql ResultSet ResultSetMetaData Types)))
 
 (set! *warn-on-reflection* true)
@@ -79,6 +83,18 @@
     (keyword "Long Varchar")   :type/Text
     (keyword "Long Varbinary") :type/*} database-type))
 
+(defn- copy-local-parameter?
+  "Whether a connection parameter name, as a user may have written it, is the client's `disablecopylocal`. The client
+  reads names case-insensitively; decoded and trimmed too, so no spelling of it survives to compete with ours."
+  [parameter-name]
+  (let [s (str/trim (str parameter-name))]
+    (str/includes? (u/lower-case-en (try (URLDecoder/decode s "UTF-8") (catch Exception _ s))) "copylocal")))
+
+(defn- remove-copy-local-option [additional-options]
+  (when-not (str/blank? additional-options)
+    (not-empty (str/join "&" (remove #(copy-local-parameter? (first (str/split % #"=" 2)))
+                                     (str/split additional-options #"&"))))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :vertica
   [_ {:keys [host port db dbname]
       :or   {host "localhost", port 5433, db ""}
@@ -86,8 +102,14 @@
   (-> (merge {:classname   "com.vertica.jdbc.Driver"
               :subprotocol "vertica"
               :subname     (str "//" host ":" port "/" (or dbname db))}
-             (dissoc details :host :port :dbname :db :ssl))
-      (sql-jdbc.common/handle-additional-options details)))
+             ;; detail keys reach the client as connection properties
+             (into {}
+                   (remove (comp copy-local-parameter? name key))
+                   (dissoc details :host :port :dbname :db :ssl)))
+      (sql-jdbc.common/handle-additional-options (update details :additional-options remove-copy-local-option))
+      ;; `COPY ... FROM LOCAL` reads files on the Metabase host and loads them into the warehouse, where a native query
+      ;; can read them back. Metabase never uses it, so it is disabled for every connection whatever the details say.
+      (assoc :disablecopylocal "true")))
 
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_driver]

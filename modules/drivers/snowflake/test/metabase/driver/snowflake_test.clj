@@ -60,6 +60,7 @@
    (java.io StringWriter)
    (java.security KeyFactory)
    (java.security.spec PKCS8EncodedKeySpec)
+   (net.snowflake.client.internal.jdbc SnowflakeConnectString)
    (org.bouncycastle.openssl PKCS8Generator)
    (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
@@ -171,6 +172,17 @@
   (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
   (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
 
+(defn- put-get-as-the-client-reads-it
+  "The `enablePutGet` value the Snowflake client resolves `spec` to, asking its own parser. `clojure.java.jdbc` hands
+  it the URL built from `:subname` and every other spec key as a connection property."
+  [spec]
+  (let [url   (str "jdbc:" (:subprotocol spec) ":" (:subname spec))
+        props (java.util.Properties.)]
+    (doseq [[k v] (dissoc spec :classname :subprotocol :subname)
+            :when (some? v)]
+      (.setProperty props (name k) (str v)))
+    (get (.getParameters (SnowflakeConnectString/parse url props)) "ENABLEPUTGET")))
+
 (deftest ^:parallel connection-details->spec-test
   (let [details {:role nil
                  :warehouse "COMPUTE_WH"
@@ -215,6 +227,11 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "...including through a detail key in another casing, which the client would read in place of ours"
+      (doseq [k ["Enableputget" "eNableputget" "ENablePutGet" "enableputget" "ENABLEPUTGET" " enablePutGet "]]
+        (testing (pr-str k)
+          (is (= "false" (put-get-as-the-client-reads-it
+                          (sql-jdbc.conn/connection-details->spec :snowflake (assoc details (keyword k) "true"))))))))
     (testing "additional options wins over top-level schema"
       ;; https://github.com/metabase/metabase/issues/65493
       (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")
