@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { dayjs } from "metabase/dayjs";
@@ -25,6 +26,7 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { RouteContent } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
 import {
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
@@ -44,6 +46,7 @@ import {
   VIEW_USAGE_LOG,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
+import { useHasData } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useHasData";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { BreakoutChart } from "./BreakoutChart";
@@ -55,6 +58,7 @@ import { DataComplexityCards } from "./DataComplexityCards";
 import {
   type StatsFilters,
   type UsageStatsMetric,
+  buildCountQuery,
   buildGroupBreakoutQuery,
   buildSourceBreakoutQuery,
   buildTenantBreakoutQuery,
@@ -135,6 +139,18 @@ const tenantTitles: Record<UsageStatsMetric, string> = {
   },
 };
 
+const emptyStateTitles: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`No conversations`;
+  },
+  get messages() {
+    return t`No messages`;
+  },
+  get tokens() {
+    return t`No token usage`;
+  },
+};
+
 const buildSourceQuery = (opts: StatsFilters & ChartDataSources) =>
   buildSourceBreakoutQuery({ ...opts, breakoutColumn: "source_name" });
 
@@ -211,6 +227,24 @@ function UsageStats({ metric }: UsageStatsProps) {
     tenantId,
     metric,
   };
+
+  const { provider, table, groupMembersTable } = sharedChartProps;
+  const countQuery = useMemo(
+    () =>
+      provider && table && groupMembersTable
+        ? buildCountQuery({
+            provider,
+            table,
+            groupMembersTable,
+            dateFilter,
+            userId,
+            groupId,
+            tenantId,
+          })
+        : null,
+    [provider, table, groupMembersTable, dateFilter, userId, groupId, tenantId],
+  );
+  const { currentCount, error } = useHasData(countQuery);
 
   const tenantNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -338,65 +372,81 @@ function UsageStats({ metric }: UsageStatsProps) {
       />
 
       <Stack gap="xl">
-        <ConversationsByDayChart
-          {...sharedChartProps}
-          onDimensionClick={handleDayClick}
-        />
-
-        <SimpleGrid cols={2} spacing="xl">
-          <BreakoutChart
+        <RouteContent
+          emptyState={
+            <EmptyState
+              icon="audit"
+              title={emptyStateTitles[metric]}
+              message={t`Try widening the date range or check back once people start using Metabot.`}
+            />
+          }
+          error={error}
+          isInitialLoading={currentCount === undefined}
+          showEmpty={currentCount === 0}
+        >
+          <ConversationsByDayChart
             {...sharedChartProps}
-            titles={sourceTitles}
-            display="bar"
-            buildQuery={buildSourceQuery}
+            onDimensionClick={handleDayClick}
           />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={profileTitles}
-            display="bar"
-            buildQuery={buildProfileQuery}
-          />
-        </SimpleGrid>
 
-        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="xl">
-          {hasTenants && (
+          <SimpleGrid cols={2} spacing="xl">
             <BreakoutChart
               {...sharedChartProps}
-              titles={tenantTitles}
+              titles={sourceTitles}
+              display="bar"
+              buildQuery={buildSourceQuery}
+            />
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={profileTitles}
+              display="bar"
+              buildQuery={buildProfileQuery}
+            />
+          </SimpleGrid>
+
+          <SimpleGrid cols={hasTenants ? 2 : 3} spacing="xl">
+            {hasTenants && (
+              <BreakoutChart
+                {...sharedChartProps}
+                titles={tenantTitles}
+                display="row"
+                buildQuery={buildTenantBreakoutQuery}
+                labelMapper={labelTenantName}
+                onDimensionClick={handleTenantClick}
+                h={500}
+              />
+            )}
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={groupTitles}
               display="row"
-              buildQuery={buildTenantBreakoutQuery}
-              labelMapper={labelTenantName}
-              onDimensionClick={handleTenantClick}
+              buildQuery={(opts) =>
+                buildGroupBreakoutQuery({
+                  ...opts,
+                  excludeAllUsers: !hasTenants,
+                })
+              }
+              onDimensionClick={handleGroupClick}
               h={500}
             />
-          )}
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={groupTitles}
-            display="row"
-            buildQuery={(opts) =>
-              buildGroupBreakoutQuery({ ...opts, excludeAllUsers: !hasTenants })
-            }
-            onDimensionClick={handleGroupClick}
-            h={500}
-          />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={userTitles}
-            display="row"
-            buildQuery={buildUserQuery}
-            onDimensionClick={handleUserClick}
-            h={500}
-          />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={ipAddressTitles}
-            display="row"
-            buildQuery={buildIpAddressQuery}
-            labelMapper={labelUnknownIpAddress}
-            h={500}
-          />
-        </SimpleGrid>
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={userTitles}
+              display="row"
+              buildQuery={buildUserQuery}
+              onDimensionClick={handleUserClick}
+              h={500}
+            />
+            <BreakoutChart
+              {...sharedChartProps}
+              titles={ipAddressTitles}
+              display="row"
+              buildQuery={buildIpAddressQuery}
+              labelMapper={labelUnknownIpAddress}
+              h={500}
+            />
+          </SimpleGrid>
+        </RouteContent>
 
         <DataComplexitySection />
       </Stack>
