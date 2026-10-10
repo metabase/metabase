@@ -52,18 +52,18 @@
              :shares   {"page.html" "slug-a1"}})))
     (is (= []
            (#'module-history/config-problems {}))))
-  (testing "each mistake is named"
-    (is (= ["unknown keys: :share"
-            "unknown keys in :pages: :path"
-            "unknown keys in :metabase: :card"
-            ":pages must be a vector of {:template \"path\", :file \"name\"}"
-            ":metabase needs :profile, the mb profile to use"
-            ":metabase :uploads must map a file name to an upload table id"
-            ":metabase :cards must be a vector of card ids"]
-           (#'module-history/config-problems
-            {:share    {}
-             :pages    [{:template "t.html", :path "page.html"}]
-             :metabase {:uploads {"history.csv" "1"}, :cards [:a], :card 2}})))))
+  (testing "each mistake is reported at the key it is under"
+    (is (= [[] [:metabase] [:pages] [:pages] [:metabase] [:metabase :uploads] [:metabase :cards]]
+           (map :path (#'module-history/config-problems
+                       {:share    {}
+                        :pages    [{:template "t.html", :path "page.html"}]
+                        :metabase {:uploads {"history.csv" "1"}, :cards [:a], :card 2}})))))
+  (testing "a problem reads as its path and what is wrong there"
+    (is (= ["the config has unknown keys: :share" ":metabase :cards must be a vector of card ids"]
+           (map #'module-history/problem-line
+                (#'module-history/config-problems {:share {}, :metabase {:profile "p", :cards [:a]}}))))
+    (is (= [{:path [], :message "must hold one map"}]
+           (#'module-history/config-problems [])))))
 
 (defn- fake-sh
   "A [[mage.shell/sh*]] stand-in that records each command in `calls` and answers `mb card get` with a native card.
