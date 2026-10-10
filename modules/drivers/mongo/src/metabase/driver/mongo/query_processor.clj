@@ -607,7 +607,7 @@ function(bin) {
           :week-of-year     (let [week-start (if supports-dateTrunc?
                                                (truncate :week)
                                                (week column))]
-                              {:$ceil {$divide [{$dayOfYear week-start}
+                              {:$ceil {$divide [(extract $dayOfYear week-start)
                                                 7.0]}})
           :week-of-year-iso (extract :$isoWeek column)
           :week-of-year-us  (week-of-year metadata-providerable column :us)

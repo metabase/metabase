@@ -178,8 +178,11 @@
       :quarter-of-year (tru "Q{0}" (u.date/extract options dt :quarter-of-year))
       (:minute-of-hour
        :day-of-month
-       :day-of-year
-       :week-of-year)  (u.date/extract options dt unit))))
+       :day-of-year)   (u.date/extract options dt unit)
+      :week-of-year    (if (integer? t)
+                         ;; Already the number to show. A round trip through a date can change it.
+                         t
+                         (u.time/extract options dt unit)))))
 
 (mu/defmethod humanize-filter-value :=
   [root                            :- ::ads/root
