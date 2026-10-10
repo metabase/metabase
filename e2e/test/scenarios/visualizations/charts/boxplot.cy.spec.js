@@ -35,7 +35,7 @@ describe("scenarios > visualizations > boxplot", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should render boxplot and update chart on display settings changes", () => {
+  it("should render boxplot with tooltips and update chart on display and axis settings changes", () => {
     H.visitQuestionAdhoc(singleSeriesQuestion);
 
     // 5 Boxes: 2025-2029
@@ -45,12 +45,38 @@ describe("scenarios > visualizations > boxplot", () => {
     H.BoxPlot.getPoints().should("have.length", 1); // Only one outlier
     H.BoxPlot.getMeanMarkers().should("have.length", 5);
 
+    // Hover over a box element from the left side to avoid mean marker overlap
+    H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
+    H.assertEChartsTooltip({
+      header: "2025",
+      rows: [
+        { name: "Upper whisker", value: "84" },
+        { name: "Q3 (75th percentile)", value: "59" },
+        { name: "Median", value: "35" },
+        { name: "Mean", value: "39.16" },
+        { name: "Q1 (25th percentile)", value: "15.5" },
+        { name: "Lower whisker", value: "1" },
+      ],
+    });
+
+    // Hover over the outlier point
+    H.BoxPlot.getPoints().first().trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "2029 (outlier)",
+      rows: [
+        { name: "Count", value: "189" },
+        { name: "Total: 50 bins", value: "70 – 75" },
+      ],
+      blurAfter: true,
+    });
+
     // Open settings and change whisker type to Min/Max
     H.openVizSettingsSidebar();
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Whiskers extend to").should("exist");
       cy.findByText("1.5 × interquartile range").should("exist");
+      cy.findByText("Outliers only").should("be.visible");
       cy.findByText("Min/Max").click();
     });
 
@@ -75,70 +101,7 @@ describe("scenarios > visualizations > boxplot", () => {
     // Toggle mean back on
     H.leftSidebar().findByText("Show mean").click();
     H.BoxPlot.getMeanMarkers().should("have.length", 5);
-  });
 
-  it("should show and configure data labels", () => {
-    H.visitQuestionAdhoc(singleSeriesQuestion);
-
-    H.openVizSettingsSidebar();
-    H.leftSidebar().within(() => {
-      cy.findByText("Display").click();
-      cy.findByText("Show values on data points").click();
-    });
-
-    // After enabling, "Values to display" option appears with segmented buttons
-    H.leftSidebar().within(() => {
-      cy.findByText("Values to display").should("exist");
-      cy.findByRole("button", { name: "Median only" }).should("exist");
-      cy.findByRole("button", { name: "All" }).click();
-    });
-
-    // Verify label value appears
-    H.echartsContainer().findByText("412").should("exist");
-
-    // Disable "Hide overlapping labels" to show more labels
-    H.leftSidebar().findByText("Hide overlapping labels").click();
-    H.echartsContainer().findByText("91.75").should("exist");
-
-    // Test "Auto formatting" segmented button
-    H.leftSidebar().within(() => {
-      cy.findByText("Auto formatting").should("exist");
-      cy.findByRole("button", { name: "Full" }).click();
-    });
-  });
-
-  it("should display tooltips on hover", () => {
-    H.visitQuestionAdhoc(singleSeriesQuestion);
-
-    // Hover over a box element from the left side to avoid mean marker overlap
-    H.BoxPlot.getBoxes().first().trigger("mousemove", "left");
-    H.assertEChartsTooltip({
-      header: "2025",
-      rows: [
-        { name: "Upper whisker", value: "84" },
-        { name: "Q3 (75th percentile)", value: "59" },
-        { name: "Median", value: "35" },
-        { name: "Mean", value: "39.16" },
-        { name: "Q1 (25th percentile)", value: "15.5" },
-        { name: "Lower whisker", value: "1" },
-      ],
-    });
-
-    // Hover over the outlier point
-    H.BoxPlot.getPoints().first().trigger("mousemove");
-    H.assertEChartsTooltip({
-      header: "2029 (outlier)",
-      rows: [
-        { name: "Count", value: "189" },
-        { name: "Total: 50 bins", value: "70 – 75" },
-      ],
-    });
-  });
-
-  it("should support axis customization", () => {
-    H.visitQuestionAdhoc(singleSeriesQuestion);
-
-    H.openVizSettingsSidebar();
     H.leftSidebar().findByText("Axes").click();
 
     // Add y-axis label
@@ -164,11 +127,44 @@ describe("scenarios > visualizations > boxplot", () => {
     });
   });
 
-  it("should display goal line when configured", () => {
+  it("should show and configure data labels and the goal line", () => {
     H.visitQuestionAdhoc(singleSeriesQuestion);
 
     H.openVizSettingsSidebar();
-    H.leftSidebar().findByText("Display").click();
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Show values on data points").click();
+    });
+
+    // After enabling, "Values to display" option appears with segmented buttons
+    H.leftSidebar().within(() => {
+      cy.findByText("Values to display").should("exist");
+      cy.findByRole("button", { name: "Median only" }).should("exist");
+    });
+
+    // With "Median only", the median labels show (2025 median is 35), but not the other values
+    H.echartsContainer().findAllByText("35").should("exist");
+    H.echartsContainer().findByText("412").should("not.exist");
+
+    H.leftSidebar().findByRole("button", { name: "All" }).click();
+
+    // Verify label value appears
+    H.echartsContainer().findByText("412").should("exist");
+
+    H.leftSidebar().findByText("Hide overlapping labels").click();
+    H.echartsContainer().findByText("91.75").should("exist");
+
+    // Test "Auto formatting" segmented button
+    H.leftSidebar().within(() => {
+      cy.findByText("Auto formatting").should("exist");
+      cy.findByRole("button", { name: "Full" }).click();
+      cy.findByRole("button", { name: "Full" }).should(
+        "have.attr",
+        "data-variant",
+        "filled",
+      );
+    });
+
     H.leftSidebar().findByText("Goal line").click();
 
     H.leftSidebar().within(() => {
