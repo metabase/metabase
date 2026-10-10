@@ -2,7 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [mage.module-history :as module-history]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -52,29 +52,35 @@
              :shares   {"page.html" "slug-a1"}})))
     (is (= []
            (#'module-history/config-problems {}))))
-  (testing "each mistake is reported at the key it is under"
-    (is (= [[] [:metabase] [:pages] [:pages] [:metabase] [:metabase :uploads] [:metabase :cards]]
+  (testing "each mistake is reported at the key it is under, a key's problems together"
+    (is (= [[] [:pages] [:pages] [:metabase] [:metabase] [:metabase :uploads] [:metabase :cards]]
            (map :path (#'module-history/config-problems
                        {:share    {}
                         :pages    [{:template "t.html", :path "page.html"}]
                         :metabase {:uploads {"history.csv" "1"}, :cards [:a], :card 2}})))))
   (testing "a value of the wrong kind is a problem at its key, whatever it is"
-    (is (= [[[:metabase]] [[:metabase]] [[:pages]] [[:pages]] [[:shares]] [[:shares]]]
-           (for [config [{:metabase 5} {:metabase "stats"} {:pages 5} {:pages {:file "a"}} {:shares {"a" 1}}
-                         {:shares false}]]
-             (distinct (map :path (#'module-history/config-problems config)))))))
+    (are [config path] (= [path] (distinct (map :path (#'module-history/config-problems config))))
+      {:metabase 5}                                    [:metabase]
+      {:metabase "stats"}                              [:metabase]
+      {:metabase {:profile "p", :uploads {:a.csv 1}}}  [:metabase :uploads]
+      {:pages 5}                                       [:pages]
+      {:pages {:file "a"}}                             [:pages]
+      {:shares {"a" 1}}                                [:shares]
+      {:shares {:a "slug"}}                            [:shares]
+      {:shares false}                                  [:shares]))
+  (testing "a config that is not a map is one problem"
+    (is (= [{:path [], :message "must hold one map"}]
+           (#'module-history/config-problems []))))
   (testing "a problem reads as its path and what is wrong there"
     (is (= ["the config has unknown keys: :share"
-            ":metabase has unknown keys: :card"
             ":pages has unknown keys: :path"
             ":pages must be a vector of {:template \"path\", :file \"name\"}"
+            ":metabase has unknown keys: :card"
             ":metabase :cards must be a vector of card ids"]
            (map #'module-history/problem-line
                 (#'module-history/config-problems {:share    {}
                                                    :pages    [{:template "t.html", :path "p.html"}]
-                                                   :metabase {:profile "p", :cards [:a], :card 1}}))))
-    (is (= [{:path [], :message "must hold one map"}]
-           (#'module-history/config-problems [])))))
+                                                   :metabase {:profile "p", :cards [:a], :card 1}}))))))
 
 (defn- fake-sh
   "A [[mage.shell/sh*]] stand-in that records each command in `calls` and answers `mb card get` with a native card.

@@ -69,41 +69,45 @@
 ;;;; Publishing config
 
 (defn- unknown-keys
-  "A check that the map at `path`, or each map of the vector there, holds only `known` keys."
+  "A row for [[config-checks]]: the map at `path`, or each map in the sequence there, holds only `known` keys.
+  Any other value passes, and is left to the row that checks its shape."
   [path known]
-  [path
-   (fn [value]
-     (let [maps (cond (map? value) [value], (sequential? value) (filter map? value))]
-       (distinct (mapcat #(remove known (keys %)) maps))))
-   (fn [unknown] (str "has unknown keys: " (str/join ", " unknown)))])
+  (let [unknown (fn [value]
+                  (let [maps (cond (map? value) [value], (sequential? value) (filter map? value))]
+                    (distinct (mapcat #(remove known (keys %)) maps))))]
+    [path
+     (comp empty? unknown)
+     #(str "has unknown keys: " (str/join ", " (unknown %)))]))
 
-(defn- string-keyed?
+(defn- map-from-strings-to
+  "A predicate for a map from strings to values that pass `valid-value?`."
   [valid-value?]
   (fn [m] (and (map? m) (every? string? (keys m)) (every? valid-value? (vals m)))))
 
+(defn- page? [page]
+  (and (map? page) (string? (:template page)) (string? (:file page))))
+
 (def ^:private config-checks
-  "What a publishing config must satisfy, as `[path valid? message]`.
-  The value at `path` passes when `valid?` returns true, or a seq with nothing in it.
-  A `message` is a string, or a function of what `valid?` returned."
-  [(unknown-keys [] #{:pages :metabase :shares})
-   (unknown-keys [:metabase] #{:profile :uploads :cards})
-   (unknown-keys [:pages] #{:template :file})
+  "What a publishing config must satisfy, as `[path valid? message]` in the order problems are reported.
+  A check is skipped when nothing is at `path`.
+  A `message` is a string, or a function of the value there."
+  [(unknown-keys [] #{:metabase :pages :shares})
+   (unknown-keys [:pages] #{:file :template})
    [[:pages]
-    (fn [pages] (or (nil? pages)
-                    (and (sequential? pages)
-                         (every? #(and (map? %) (string? (:template %)) (string? (:file %))) pages))))
+    #(and (sequential? %) (every? page? %))
     "must be a vector of {:template \"path\", :file \"name\"}"]
+   (unknown-keys [:metabase] #{:cards :profile :uploads})
    [[:metabase]
-    (fn [metabase] (or (nil? metabase) (string? (:profile metabase))))
+    #(string? (:profile %))
     "needs :profile, the mb profile to use"]
    [[:metabase :uploads]
-    (fn [uploads] (or (nil? uploads) ((string-keyed? pos-int?) uploads)))
+    (map-from-strings-to pos-int?)
     "must map a file name to an upload table id"]
    [[:metabase :cards]
-    (fn [cards] (or (nil? cards) (and (sequential? cards) (every? pos-int? cards))))
+    #(and (sequential? %) (every? pos-int? %))
     "must be a vector of card ids"]
    [[:shares]
-    (fn [shares] (or (nil? shares) ((string-keyed? string?) shares)))
+    (map-from-strings-to string?)
     "must map a file name to an mb-shares slug"]])
 
 (defn- config-problems
@@ -113,10 +117,10 @@
   (if-not (map? config)
     [{:path [], :message "must hold one map"}]
     (for [[path valid? message] config-checks
-          :let  [result (valid? (get-in config path))]
-          :when (if (seqable? result) (seq result) (not result))]
+          :let  [value (get-in config path)]
+          :when (and (some? value) (not (valid? value)))]
       {:path    path
-       :message (if (fn? message) (message result) message)})))
+       :message (if (fn? message) (message value) message)})))
 
 (defn- problem-line
   [{:keys [path message]}]
