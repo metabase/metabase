@@ -1,0 +1,48 @@
+;; Verdicts on the budget raises `./bin/mage kondo-ratchets-history` questions: a raise beyond the
+;; suppressions its commit added. A :pardon counts the commit's raises against nobody; a :confirm keeps them.
+;; Written by `./bin/mage kondo-ratchets-verdict`.
+[{:sha     "57e0ad66ea59f4b57c51e01a074d45519425084c"
+  :pr      77773
+  :subject "Add kondo ignore ratchets (#77773)"
+  :verdict :pardon
+  :why     "First budgets for debt that was already there."}
+ {:sha     "42cf92479ad249dcf0c9b3a9e64e3ac2c7ca322b"
+  :pr      78217
+  :subject "Ratchet config-level kondo suppressions too (#78217)"
+  :verdict :pardon
+  :why     "First budgets for debt that was already there."}
+ {:sha     "e24150083f0b0ceed609329fa1bb985714cee5c2"
+  :pr      78082
+  :subject "Report dynamic requires which linter cannot verify (#78082)"
+  :verdict :pardon
+  :why     "The stricter require hook flagged existing code."}
+ {:sha     "dd1cb0f0ba7344ba9a8ef7b42f9ffad7112dafb2"
+  :pr      77820
+  :subject "Require justifications for linter ignores (#77820)"
+  :verdict :pardon
+  :why     "Changed how the ratchet tooling counts; added no suppression."}
+ {:sha     "30f9f25ba959d41c6612febd75d11b00cefff2cb"
+  :pr      81776
+  :subject "Refine kondo ratchet commands and prompts (#81776)"
+  :verdict :pardon
+  :why     "Changed how the ratchet tooling counts; added no suppression."}
+ {:sha     "dd9d8d05796b6190d60de11e4310a99075dc65ea"
+  :pr      82300
+  :subject "Ratchet module boundary escape hatches (#82300)"
+  :verdict :pardon
+  :why     "First budgets for debt that was already there."}
+ {:sha     "4f02379e40db15676b4dc7df04e28643f230e455"
+  :pr      82367
+  :subject "Organize backend modules into domain subtrees (#82367)"
+  :verdict :pardon
+  :why     "Nesting modules under their domains showed that their namespaces had never matched their module names."}
+ {:sha     "e4471f76d3dbf85ef14322e01570e0a3dc793866"
+  :pr      83383
+  :subject "Split kondo ratchet budgets into separate prod and test files (#83383)"
+  :verdict :pardon
+  :why     "Split the ratchet file; the excess was taken back the next day."}
+ {:sha     "8d5db3195d2182a0a4f388601084f803d2074882"
+  :pr      81406
+  :subject "Implement the UNION ALL approach for running pivot queries (#81406)"
+  :verdict :pardon
+  :why     "A long-lived branch merged with a stale budget and no new suppression; taken back the same day."}]
