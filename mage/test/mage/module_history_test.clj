@@ -1,9 +1,6 @@
 (ns mage.module-history-test
   (:require
    [babashka.fs :as fs]
-   ;; mage runs under babashka, which bundles cheshire; metabase.util.json isn't on its classpath
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.module-history :as module-history]
@@ -65,11 +62,11 @@
       (swap! calls conj (cond-> args
                           ;; The update's body is in a temporary file: record what it holds instead of its path.
                           (= ["mb" "card" "update"] (take 3 args))
-                          (update 5 #(get-in (json/parse-string (slurp %)) ["dataset_query" "stages" 0 "native"]))))
+                          (update 5 slurp)))
       {:exit 0
        :err  []
        :out  (if (= ["mb" "card" "get"] (take 3 args))
-               [(json/generate-string {:dataset_query {:database 1, :stages [{:native "select 1"}]}})]
+               ["{\"id\": 21, \"dataset_query\": {\"database\": 1, \"stages\": [{\"native\": \"select 1\"}]}}"]
                [])})))
 
 (defn- publish!
@@ -113,7 +110,7 @@
 (def ^:private files
   {"history.csv"  "sha\n"
    "cycles.csv"   "sha\n"
-   "history.json" (json/generate-string {:commits [{} {}], :today [], :clusters ["tardis"]})})
+   "history.json" "{\"commits\": [{}, {}], \"today\": [], \"clusters\": [\"tardis\"]}"})
 
 (deftest publish-test
   (testing "pages are written, then uploads replaced, cards refreshed and shares updated"
@@ -124,7 +121,10 @@
                     ["mb" "upload" "replace" "11" "--file" "DIR/history.csv" "--profile" "stats" "--json"
                      "--max-bytes" "0"]
                     ["mb" "card" "get" "21" "--full" "--profile" "stats" "--json" "--max-bytes" "0"]
-                    ["mb" "card" "update" "21" "--file" "select 1\n-- refreshed by mage module-history at STAMP"
+                    ;; Only the query is sent, with the rest of it unchanged.
+                    ["mb" "card" "update" "21" "--file"
+                     (str "{\"dataset_query\":{\"database\":1,\"stages\":"
+                          "[{\"native\":\"select 1\\n-- refreshed by mage module-history at STAMP\"}]}}")
                      "--profile" "stats" "--json" "--max-bytes" "0"]
                     ["share" "-e" "DIR/page.html" "slug-a1"]]}
            (dissoc (publish! config files {}) :printed)))))
