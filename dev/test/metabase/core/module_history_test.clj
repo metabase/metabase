@@ -102,7 +102,7 @@
             :top-level-edges                     3
             :scc-largest-modules                 3
             :scc-largest-namespaces              5
-            :scc-largest-pct                     (* 100.0 (/ 5 6))
+            :scc-largest-pct                     83.3
             :scc-cyclic-modules                  3
             :scc-cyclic-namespaces               5
             :scc-components                      1
