@@ -136,6 +136,7 @@
     [class-name (peek class-names)]))
 
 (def ^:private stored-class-name->current
+  "The current class name for each class name in [[job-history]]."
   (current-class-names job-history))
 
 (defn- load-class ^Class [^String class-name]

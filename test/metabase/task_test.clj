@@ -213,9 +213,9 @@
    (jobs/store-durably)))
 
 (defn- class-name-after-add-job!
-  "The class name stored after [[task/add-job!]] adds a job built with `job-options`, over the default job stored
-  under `stored-class-name`."
-  [stored-class-name job-options]
+  "Returns the class name stored after [[task/add-job!]] adds a job built with `job-options`.
+  The default job is stored under `stored-class-name` first."
+  [[stored-class-name job-options]]
   (task/add-job! (upgrade-checks-job {}))
   (set-stored-job-class-name! stored-class-name)
   (task/add-job! (upgrade-checks-job job-options))
@@ -223,23 +223,23 @@
 
 (deftest add-job!-replaces-a-stored-job-only-when-it-changed-test
   ;; Replacing a stored job writes its current class name, which old nodes in a rolling upgrade can't load
-  (let [scheduler-initialized? (some? (#'task/scheduler))]
+  (let [scheduler-initialized? (some? (#'task/scheduler))
+        old-name               old-upgrade-checks-class-name]
     (require 'metabase.version.task.upgrade-checks)
     (try
       (when-not scheduler-initialized?
         (task/start-scheduler!))
-      (is (= {:unchanged               old-upgrade-checks-class-name
+      (is (= {:unchanged               old-name
               :new-description         upgrade-checks-class-name
               :new-data                upgrade-checks-class-name
               :new-recovery-request    upgrade-checks-class-name
               :unloadable-stored-class upgrade-checks-class-name}
-             {:unchanged               (class-name-after-add-job! old-upgrade-checks-class-name {})
-              :new-description         (class-name-after-add-job! old-upgrade-checks-class-name
-                                                                  {:description "a new description"})
-              :new-data                (class-name-after-add-job! old-upgrade-checks-class-name {:data {"a" "b"}})
-              :new-recovery-request    (class-name-after-add-job! old-upgrade-checks-class-name
-                                                                  {:requests-recovery? true})
-              :unloadable-stored-class (class-name-after-add-job! "metabase.task_test.NotAClass" {})}))
+             (update-vals {:unchanged               [old-name {}]
+                           :new-description         [old-name {:description "a new description"}]
+                           :new-data                [old-name {:data {"a" "b"}}]
+                           :new-recovery-request    [old-name {:requests-recovery? true}]
+                           :unloadable-stored-class ["metabase.task_test.NotAClass" {}]}
+                          class-name-after-add-job!)))
       (finally
         (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job"))
         (when-not scheduler-initialized?
