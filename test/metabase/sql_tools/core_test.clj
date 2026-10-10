@@ -293,3 +293,155 @@
         query true true
         (str "SELECT 1; " query) false false
         (str query "; SELECT 1") false false))))
+
+(deftest ^:parallel read-only-select?-test
+  (doseq [driver [:postgres :mysql :h2]]
+    (testing driver
+      (testing "a single plain query is read-only"
+        (are [sql] (true? (sql-tools/read-only-select? driver sql))
+          "SELECT * FROM t"
+          "WITH x AS (SELECT a FROM t) SELECT a, ROW_NUMBER() OVER (ORDER BY a) FROM x"
+          "SELECT a FROM t UNION SELECT a FROM u INTERSECT SELECT a FROM v EXCEPT SELECT a FROM w"
+          "SELECT * FROM (SELECT 1) s WHERE a IN (SELECT b FROM u)"
+          "SELECT 1;"
+          "-- leading\nSELECT 1 -- trailing"
+          "/* leading */ SELECT 1; -- trailing"))
+      (testing "anything else is not"
+        (are [sql] (false? (sql-tools/read-only-select? driver sql))
+          "SELECT 1; DROP TABLE t"
+          "SELECT 1; SELECT 2"
+          "INSERT INTO t VALUES (1)"
+          "UPDATE t SET a = 1"
+          "DELETE FROM t"
+          "MERGE INTO t USING u ON t.id = u.id WHEN MATCHED THEN UPDATE SET a = u.a"
+          "TRUNCATE TABLE t"
+          "CREATE TABLE t (a INT)"
+          "DROP TABLE t"
+          "ALTER TABLE t ADD COLUMN b INT"
+          "GRANT SELECT ON t TO u"
+          "CALL p()"
+          "EXEC p"
+          "EXECUTE p"
+          "SET search_path TO x"
+          "COPY t TO '/tmp/t'"
+          "SELECT * INTO t2 FROM t"
+          "WITH d AS (DELETE FROM t RETURNING *) SELECT * FROM d"
+          "SELECT * FROM t FOR UPDATE"
+          "SELECT * FROM t FOR SHARE"
+          "SELECT ("
+          ""
+          ";")))))
+
+(deftest ^:parallel read-only-select?-side-effects-test
+  (testing "a SELECT that advances a sequence or takes locks through a table hint is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :sqlserver "SELECT NEXT VALUE FOR dbo.seq"
+      :sqlserver "SELECT * FROM t WITH (UPDLOCK)"
+      :sqlserver "SELECT * FROM t WITH (ROWLOCK, XLOCK)"
+      :postgres  "SELECT nextval('seq')"
+      :postgres  "SELECT SETVAL('seq', 1)"
+      :sqlserver "SELECT * FROM t (TABLOCKX)"
+      :oracle    "SELECT seq.NEXTVAL FROM dual"
+      :snowflake "SELECT seq.nextval"
+      :snowflake "SELECT 1 FROM TABLE(GETNEXTVAL(seq))"))
+  (testing "a SELECT that pipes rows through a program on the cluster is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :sparksql   "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :sparksql   "SELECT TRANSFORM (a, b) USING 'rm -rf /tmp/x' AS (c) FROM t"
+      :databricks "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :hive       "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :sparksql   "SELECT * FROM (SELECT TRANSFORM (a) USING 'cat' FROM t) x"))
+  (testing "a SELECT that calls a built-in function which locks, waits or changes the session is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :postgres "SELECT pg_advisory_lock(42)"
+      :postgres "SELECT pg_try_advisory_lock(42)"
+      :postgres "SELECT pg_advisory_xact_lock_shared(42)"
+      :postgres "SELECT pg_catalog.pg_advisory_unlock_all()"
+      :postgres "SELECT set_config('search_path', 'x', false)"
+      :postgres "SELECT pg_terminate_backend(pid) FROM pg_stat_activity"
+      :postgres "SELECT 1 WHERE pg_sleep(10) IS NULL"
+      :mysql    "SELECT GET_LOCK('x', 10)"
+      :mysql    "SELECT RELEASE_ALL_LOCKS()"
+      :mysql    "SELECT SLEEP(10)"
+      :mysql    "SELECT BENCHMARK(1000000, MD5('x'))"))
+  (testing "reading a sequence or hinting a plain read is read-only"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :sqlserver "SELECT * FROM t WITH (NOLOCK)"
+      :sqlserver "SELECT * FROM dbo.fn(1)"
+      :postgres  "SELECT currval('seq')")))
+
+(deftest ^:parallel read-only-select?-hidden-sql-test
+  (testing "SQL the database would run and the parser reads as something else is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      ;; SQL Server ends the SELECT at a statement word, with no semicolon
+      :sqlserver "SELECT 1 FROM t EXEC('DROP TABLE x')"
+      :sqlserver "SELECT * FROM t SHUTDOWN"
+      :sqlserver "SELECT * FROM t WAITFOR DELAY '00:00:10'"
+      :sqlserver "SELECT * FROM t REVERT"
+      ;; MySQL runs the body of an executable comment, and reads -- as a comment only before whitespace
+      :mysql     "SELECT * FROM t /*! FOR UPDATE */"
+      :mysql     "SELECT 1 /*!50000 INTO OUTFILE '/tmp/x' */"
+      :mysql     "SELECT id --1 FROM t FOR UPDATE"
+      ;; both marks are refused inside a string literal too: MySQL can end a literal where the parser does not
+      :mysql     "SELECT '--draft' FROM t"
+      :mysql     "SELECT 'x\\' FROM t FOR UPDATE # '"
+      :mysql     "SELECT 'it\\'s' FROM t"
+      :mysql     "SELECT 'x\\' /*!50000 INTO OUTFILE \"/tmp/x\" */ -- '"))
+  (testing "the same words and marks are allowed where the database reads them as the parser does"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :sqlserver "SELECT [update], 'drop it' FROM t ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY"
+      :sqlserver "SELECT CASE WHEN x = 1 THEN 'a' ELSE 'b' END FROM t"
+      :mysql     "SELECT a - -1 FROM t"
+      :mysql     "SELECT 'it''s', 'a\\\\b' FROM t"
+      :postgres  "SELECT E'it\\'s'"
+      :mysql     "SELECT a /* plain */ FROM t -- trailing"
+      :postgres  "SELECT a --no space\n FROM t"
+      :postgres  "SELECT 1 AS exec")))
+
+(deftest ^:parallel read-only-select-problem-test
+  (testing "SQL that is a read-only select has no problem"
+    (is (nil? (sql-tools/read-only-select-problem :postgres "SELECT 1"))))
+  (testing "SQL that is not one names the reason"
+    (are [driver reason detail sql] (= {:reason reason, :detail detail}
+                                       (sql-tools/read-only-select-problem driver sql))
+      :postgres  :multiple-statements nil                "SELECT 1; SELECT 2"
+      :postgres  :not-a-select        nil                "DELETE FROM t"
+      :postgres  :writes-or-locks     nil                "SELECT * FROM t FOR UPDATE"
+      :sparksql  :writes-or-locks     nil                "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :postgres  :session-function    "pg_advisory_lock" "SELECT pg_advisory_lock(42)"
+      :mysql     :session-function    "get_lock"         "SELECT GET_LOCK('x', 10)"
+      :postgres  :unparseable         nil                "SELECT ("
+      :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
+      :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"
+      :mysql     :bare-dash-comment   nil                "SELECT id --1 FROM t"
+      :mysql     :backslash-quote     nil                "SELECT 'it\\'s' FROM t"
+      :postgres  :not-a-select        nil                "-- nothing here"
+      :postgres  :large-literal-list  nil                (str "SELECT * FROM t WHERE id IN ("
+                                                              (str/join "," (range 200)) ")"))))
+
+(deftest ^:parallel read-only-select?-too-long-test
+  (let [limit  (* 16 1024)
+        padded (fn [length] (str "SELECT 1" (str/join (repeat (- length 8) " "))))
+        nulls  (fn [n] (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat n "NULL")) ")"))]
+    (testing "SQL as long as the limit is checked"
+      (is (nil? (sql-tools/read-only-select-problem :postgres (padded limit)))))
+    (testing "SQL one character longer is refused, however harmless"
+      (is (= {:reason :too-long, :detail nil}
+             (sql-tools/read-only-select-problem :postgres (padded (inc limit))))))
+    (testing "a list of NULLs is judged by its length alone"
+      (is (true? (sql-tools/read-only-select? :postgres (nulls 150))))
+      (is (= {:reason :too-long, :detail nil}
+             (sql-tools/read-only-select-problem :postgres (nulls 20000)))))))
+
+(deftest ^:parallel read-only-select?-large-literal-list-test
+  (let [tuples (str/join ", " (repeat 105 "(1)"))]
+    (testing "a second statement that literal-list stripping would fold into a comment is not missed"
+      (is (false? (sql-tools/read-only-select?
+                   :postgres
+                   (str "SELECT 1 /* VALUES ( */; DROP TABLE t; /* ), " tuples " */")))))
+    (testing "a literal list too large to parse whole is refused rather than parsed stripped"
+      (is (false? (sql-tools/read-only-select? :postgres (str "SELECT x FROM (VALUES " tuples ") AS v(x)")))))))
+
+(deftest ^:parallel read-only-select?-druid-test
+  (testing "a Druid SELECT is read in the dialect sqlglot registers for Druid"
+    (is (true? (sql-tools/read-only-select? :druid-jdbc "SELECT __time, COUNT(*) FROM wikipedia GROUP BY 1")))))

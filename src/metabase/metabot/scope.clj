@@ -7,6 +7,7 @@
   scope grants."
   (:require
    [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -312,3 +313,14 @@
        acc))
    always-granted-scopes
    (or perms perm-type-defaults)))
+
+(defn sql-execution-allowed?
+  "Whether Metabot may run SQL for the current user: SQL execution is on, the user has Metabot's SQL
+  generation permission, and the request's scope satisfies `agent:sql:run`, the scope MCP's `execute_sql` requires.
+  NLQ alone grants `agent:query:run`, which is all `run_query` itself needs, so running SQL checks this too.
+  Native query permission on the query's database is checked separately, per query."
+  []
+  (boolean
+   (and (metabot.settings/metabot-sql-execution-enabled?)
+        (= :yes (:permission/metabot-sql-generation (or *current-user-metabot-permissions* perm-type-defaults)))
+        (api-scope/scope-matches? *current-user-scope* agent-sql-run))))

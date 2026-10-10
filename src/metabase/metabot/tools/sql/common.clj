@@ -39,16 +39,22 @@
    [:validation-result ::metabot.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
 
-(defn check-native-query-access!
-  "Throw an agent error unless the current user may write native queries against `database-id`.
+(defn native-query-access?
+  "Whether the current user may write and run native queries against `database-id`.
   No nil-user escape, unlike `qp.perms/current-user-has-adhoc-native-query-perms?`, and a
   non-integer `database-id` fails closed."
   [database-id]
-  (when-not (and (int? database-id)
-                 (= :query-builder-and-native
-                    (perms/full-database-permission-for-user api/*current-user-id*
-                                                             :perms/create-queries
-                                                             database-id)))
+  (and (int? database-id)
+       (= :query-builder-and-native
+          (perms/full-database-permission-for-user api/*current-user-id*
+                                                   :perms/create-queries
+                                                   database-id))))
+
+(defn check-native-query-access!
+  "Throw an agent error unless the current user may write native queries against `database-id`
+  (see [[native-query-access?]])."
+  [database-id]
+  (when-not (native-query-access? database-id)
     (throw (ex-info (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
                     {:agent-error?    true
                      :terminal-error? true
