@@ -290,18 +290,23 @@
                                   {:new-linter? #(added-in? sha [(str %)])
                                    :new-symbol? (fn [_linter sym] (added-in? sha (symbol-names sym)))})))))
 
+(defn tightening?
+  "Did a commit only lower budgets, as the post-merge automation does?
+  `paths` are the files it changed and `kinds` the kinds of its budget changes."
+  [paths kinds]
+  ;; a commit that also raises or adds a budget, as a seeding one does, may leave slack behind
+  (boolean (and (seq paths)
+                (every? ratchet-paths paths)
+                (every? #{:shrink :limit} kinds)
+                (some #{:shrink} kinds))))
+
 (def ^:private tighten?
-  "Did commit `sha` only lower budgets, as the post-merge automation does? Such a commit leaves no slack."
+  "Is commit `sha` one that [[tightening?]] holds for? Such a commit leaves no slack."
   ;; memoized: the search for a shrink's boundary asks this of every older commit, each time with a git call
   (memoize (fn [sha]
              ;; without a merge diff mode a merge commit lists no paths at all
-             (let [paths (git "diff-tree" "--no-commit-id" "--name-only" "-r" "--diff-merges=first-parent" sha)
-                   kinds (map :kind (commit-changes sha))]
-               ;; a commit that also raises or adds a budget, as a seeding one does, may leave slack behind
-               (boolean (and (seq paths)
-                             (every? ratchet-paths paths)
-                             (every? #{:shrink :limit} kinds)
-                             (some #{:shrink} kinds)))))))
+             (tightening? (git "diff-tree" "--no-commit-id" "--name-only" "-r" "--diff-merges=first-parent" sha)
+                          (map :kind (commit-changes sha))))))
 
 (defn- blobs
   "`f` of the sha and content of each of the git blobs `shas`, keyed by sha."
@@ -326,7 +331,7 @@
   (and (some #(str/starts-with? path (str % "/")) ratchet/source-roots)
        (some #(str/ends-with? path %) ratchet/source-extensions)))
 
-(defn- counts
+(defn counts
   "What `content`, the file at `path`, adds to each measure's actual count. Sides are those of the file's path."
   [path content]
   (cond
@@ -345,29 +350,35 @@
     :else
     {}))
 
+(def ^:private tallied
+  "The [[tallies]] so far in this run, so that windows that share a blob scan it once."
+  (atom {}))
+
 (defn- tallies
   "What each blob in `files`, the files some commits changed, adds to each measure's actual count.
-  Returns a map from blob sha to path to counts, or to `::unreadable` when the blob does not parse at that path.
-  Only the counts are kept, since a window can change far more source than fits in memory."
+  Returns a map from blob sha to path to [[counts]], or to `::unreadable` when the blob does not parse at that
+  path. Only the counts are kept, since a window can change far more source than fits in memory."
   [files]
-  (let [paths (reduce (fn [acc {:keys [path old new]}]
-                        (-> acc
-                            (update old (fnil conj #{}) path)
-                            (update new (fnil conj #{}) path)))
-                      {}
-                      files)
-        tally (fn [sha content]
-                (into {}
-                      (for [path (paths sha)]
-                        [path (try
-                                (counts path content)
-                                (catch Exception _
-                                  ::unreadable))])))]
-    (into {}
-          (mapcat #(blobs tally %))
-          (partition-all 500 (remove #{no-blob} (keys paths))))))
+  (let [paths   (reduce (fn [acc {:keys [path old new]}]
+                          (-> acc
+                              (update old (fnil conj #{}) path)
+                              (update new (fnil conj #{}) path)))
+                        {}
+                        files)
+        seen    @tallied
+        pending (for [[sha at] (dissoc paths no-blob)
+                      :when    (not-every? (get seen sha {}) at)]
+                  sha)
+        tally   (fn [sha content]
+                  (into {}
+                        (for [path (paths sha)]
+                          [path (try
+                                  (counts path content)
+                                  (catch Exception _
+                                    ::unreadable))])))]
+    (swap! tallied #(merge-with merge % (into {} (mapcat (partial blobs tally)) (partition-all 500 pending))))))
 
-(defn- actual-delta
+(defn actual-delta
   "How far `commit` moved each measure's actual count, from the [[tallies]] of its files.
   A file that cannot be read on both sides counts nothing."
   [tallies commit]
@@ -386,10 +397,10 @@
         commits  (mapv (fn [commit] (update commit :files #(filterv (comp counted? :path) %)))
                        (apply log (str boundary ".." sha) "--"
                               (concat ratchet/source-roots [kondo-config-file module-config-file] ratchet-paths)))
-        counts   (tallies (mapcat :files commits))]
+        by-blob  (tallies (mapcat :files commits))]
     {:boundary boundary
      :commits  commits
-     :actual   (memoize #(actual-delta counts %))}))
+     :actual   (memoize #(actual-delta by-blob %))}))
 
 (def ^:private last-window (atom nil))
 
@@ -549,35 +560,41 @@
 
 (defn- split-causes
   "The `causes` of the shrinks in commit `sha`, per measure, split in two.
-  `:returned` holds the raises of other commits that `pardoned?` holds, which the shrink only takes back.
-  `:kept` holds the rest."
-  [pardoned? sha causes]
+  `:returned` is how much of them only takes back a pardoned raise of another commit: up to the size of that
+  raise in `pardons`, or the whole cause when the commit is one that `recount?` holds for.
+  `:kept` holds the causes with what is left of each."
+  [pardons recount? sha causes]
   (into {}
-        (for [[measure entries] causes
-              :let [returned? #(and (not= sha (:sha %)) (pardoned? (:sha %) measure))]]
-          [measure {:returned (filter returned? entries)
-                    :kept     (vec (remove returned? entries))}])))
+        (for [[measure entries] causes]
+          [measure (reduce (fn [acc {cause :sha, :keys [delta], :as entry}]
+                             (let [raise    (when (not= sha cause) (get-in pardons [cause measure]))
+                                   returned (cond
+                                              (nil? raise)     0
+                                              (recount? cause) delta
+                                              ;; what the commit removed beyond its own raise is a real improvement
+                                              :else            (min 0 (max delta (- raise))))
+                                   left     (- delta returned)]
+                               (cond-> (update acc :returned + returned)
+                                 (not (zero? left)) (update :kept conj (assoc entry :delta left)))))
+                           {:returned 0, :kept []}
+                           entries)])))
 
 (defn pardon
   "`records` with the verdicts applied.
-  A raise in `pardons`, a map from commit to the measures it raised or `:all`, turns from `:grow` into `:pardon`.
+  A raise in `pardons`, a map from commit to measure to the size of the raise, turns from `:grow` into `:pardon`.
   A shrink loses the part that only takes a pardoned raise back, and the credit for it.
   A commit in `recounts` only changed how suppressions are counted, so its own shrinks go too."
   [{:keys [pardons recounts]} records]
-  (let [recount?  (or recounts #{})
-        pardoned? (fn [sha measure]
-                    (when-let [measures (get pardons sha)]
-                      (or (= :all measures) (contains? measures measure))))]
+  (let [recount? (or recounts #{})]
     (for [{:keys [sha causes], :as record} records
-          :let [split    (split-causes pardoned? sha causes)
-                returned (fn [measure] (reduce + (map :delta (get-in split [measure :returned]))))
-                settle   (fn [{:keys [kind measure delta], :as change}]
-                           (case kind
-                             :grow   (cond-> change (pardoned? sha measure) (assoc :kind :pardon))
-                             :shrink (let [delta (- delta (returned measure))]
-                                       (when-not (or (recount? sha) (zero? delta))
-                                         (assoc change :delta delta :kind (if (neg? delta) :shrink :grow))))
-                             change))]]
+          :let [split  (split-causes pardons recount? sha causes)
+                settle (fn [{:keys [kind measure delta], :as change}]
+                         (case kind
+                           :grow   (cond-> change (get-in pardons [sha measure]) (assoc :kind :pardon))
+                           :shrink (let [delta (- delta (get-in split [measure :returned] 0))]
+                                     (when-not (or (recount? sha) (zero? delta))
+                                       (assoc change :delta delta :kind (if (neg? delta) :shrink :grow))))
+                           change))]]
       (cond-> (update record :changes #(keep settle %))
         causes (assoc :causes (update-vals split :kept))))))
 
@@ -843,13 +860,16 @@
   "The HTML page [[page]] fills in, relative to the repo root."
   "mage/resources/kondo-ratchets-history.html")
 
+(defn script-json
+  "`data` as JSON that is safe inside an HTML script element."
+  [data]
+  ;; a `<` can end the element or, as `<!--<script>`, stop its real end from being seen
+  (str/replace (json/write-str data) "<" "\\u003c"))
+
 (defn- page
   "The single-file HTML page showing `data`."
   [data]
-  (str/replace (slurp (fs/file u/project-root-directory page-template))
-               "__DATA__"
-               ;; the JSON sits in a script element, which a literal closing tag would end
-               (str/replace (json/write-str data) "</" "<\\/")))
+  (str/replace (slurp (fs/file u/project-root-directory page-template)) "__DATA__" (script-json data)))
 
 ;;; ------------------------------------------------- Terminal -------------------------------------------------
 
@@ -1094,7 +1114,10 @@
    :pardons  (into {}
                    (for [{:keys [sha verdict]} entries
                          :when (#{:pardon :recount} verdict)]
-                     [sha (set (map :measure (filter #(= :grow (:kind %)) (:changes (record sha)))))]))})
+                     [sha (into {}
+                                (for [{:keys [kind measure delta]} (:changes (record sha))
+                                      :when (= :grow kind)]
+                                  [measure delta]))]))})
 
 (defn- rulings
   "The `entries` of [[verdicts-file]] for the page: each commit, its verdict and reason, and the changes the
