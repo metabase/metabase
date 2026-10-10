@@ -673,6 +673,31 @@
                        :current "v0")]
               (is (= :error (:status (import-at! src "v0" :force? true)))))))))))
 
+(deftest pull-loads-a-resource-on-a-database-not-connected-yet-test
+  (testing "a resource whose database isn't connected yet loads as a card's does, against a stub database and an
+            inactive table that a later connection and sync fill in"
+    (with-data-apps-sync
+      (mt/with-model-cleanup [:model/Database]
+        (let [db-name   "Data app warehouse not connected yet"
+              resources (question-resources)
+              path      (some #(when (str/includes? % question-eid) %) (keys resources))
+              elsewhere (-> (yaml/parse-string (get resources path))
+                            (assoc :database_id db-name)
+                            (dissoc :result_metadata)
+                            (assoc-in [:dataset_query :database] db-name)
+                            (assoc-in [:dataset_query :stages 0 :source-table] [db-name "analytics" "accounts"]))
+              src       (test-helpers/versioned-source
+                         :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string elsewhere)))}
+                         :current "v0")
+              result    (import-at! src "v0" :force? true)
+              db-id     (t2/select-one-pk :model/Database :name db-name)
+              table-id  (t2/select-one-pk :model/Table :db_id db-id :schema "analytics" :name "accounts")]
+          (is (= :success (:status result)) (:message result))
+          (is (=? {:is_stub true} (t2/select-one :model/Database :id db-id)))
+          (is (=? {:active false} (t2/select-one :model/Table :id table-id)))
+          (is (=? {:database_id db-id :collection_id (shop-collection-id)}
+                  (t2/select-one :model/Card :entity_id question-eid))))))))
+
 (deftest pull-records-the-table-a-native-query-names-test
   (testing "a native query's table is matched by name whatever its case"
     (with-data-apps-sync

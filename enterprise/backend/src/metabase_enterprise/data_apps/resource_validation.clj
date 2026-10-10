@@ -4,7 +4,7 @@
   reads: it updates whatever row carries an entity ID and resolves references to any local entity. These checks run
   on the ingested files first, so an app's resources can only be its own collection, in the `data-apps` namespace,
   and, in it, questions, metrics, and query actions that belong to no model, referencing nothing else of Metabase's
-  but what already exists."
+  but what already exists, apart from the databases, tables and fields that a load stubs as it does for any card."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -16,7 +16,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private external-dependency-models
-  "Models a resource may reference outside the app. They must already exist: a load never creates them."
+  "Models a resource may reference outside the app. A snippet, segment or measure must already exist or come with the
+  same pull; a database, table or field is never a dependency, as a load stubs one that is missing."
   #{"Database" "Table" "Field" "NativeQuerySnippet" "Segment" "Measure"})
 
 (def ^:private card-types #{"question" "metric"})
@@ -196,33 +197,26 @@
                    (select-keys entity [:dataset_query :query :parameter_mappings :result_metadata]))
     @refs))
 
-(defn- missing-table-and-field-problems
-  "Serialization creates an inactive placeholder for a table or field a query names that this instance doesn't
-  have. A data app's query would then run against nothing, so the file is refused instead."
-  [{:keys [path] :as file}]
-  (let [table-id (fn [[db-name schema table-name]]
-                   (some-> (models.db/database-id-by-name db-name)
-                           (as-> database-id (models.db/table-id-by-name table-name schema database-id))
-                           ;; an inactive table is one that sync no longer finds, or a placeholder
-                           (as-> id (when (data-apps.db/active-table? id) id))))]
-    (for [[kind [db-name schema table-name & field-names :as ref]] (sort-by second (portable-refs (:entity file)))
-          :when (or (nil? (table-id [db-name schema table-name]))
-                    (and (= kind :field)
-                         (nil? (models.db/field-pk-in-path (table-id [db-name schema table-name]) (reverse field-names)))))]
-      (problem path (tru "{0} references {1} {2}, which does not exist on this instance."
-                         path (if (= kind :table) "table" "field") (pr-str ref))))))
-
-(defn- inactive-field-warnings
-  "A warning for each inactive field `file` references: one sync no longer finds, which the app's query would run
-  against. One column isn't the app, so the file loads with the field logged, unlike an inactive table."
+(defn- table-and-field-warnings
+  "A warning for each table or field `file` references that this instance lacks or that is inactive, which the load
+  resolves as it does for any card, through a stub database and inactive placeholders that a sync later fills in."
   [{:keys [path] :as file}]
   (for [[kind [db-name schema table-name & field-names :as ref]] (sort-by second (portable-refs (:entity file)))
-        :when (= kind :field)
-        :let  [field-id (some-> (models.db/database-id-by-name db-name)
-                                (as-> database-id (models.db/table-id-by-name table-name schema database-id))
-                                (models.db/field-pk-in-path (reverse field-names)))]
-        :when (and field-id (not (data-apps.db/active-field? field-id)))]
-    (problem path (tru "{0} references field {1}, which is inactive on this instance." path (pr-str ref)))))
+        :let  [table-id (some->> (models.db/database-id-by-name db-name)
+                                 (models.db/table-id-by-name table-name schema))
+               id       (if (= kind :table)
+                          table-id
+                          (some-> table-id (models.db/field-pk-in-path (reverse field-names))))
+               label    (if (= kind :table) "table" "field")
+               message  (cond
+                          (nil? id)
+                          (tru "{0} references {1} {2}, which does not exist on this instance yet, so the app''s queries fail until it is synced."
+                               path label (pr-str ref))
+
+                          (not (if (= kind :table) (data-apps.db/active-table? id) (data-apps.db/active-field? id)))
+                          (tru "{0} references {1} {2}, which is inactive on this instance." path label (pr-str ref)))]
+        :when message]
+    (problem path message)))
 
 (defn- ownership-problems
   "Serdes would update any row carrying an entity ID a file names, so a file may only name what this app owns:
@@ -322,8 +316,7 @@
            (mapcat numeric-reference-problems resources)
            (mapcat (partial dependency-problems collection-entity-id card-entity-ids) resources)
            (ownership-problems app-entity-id (:path manifest) collection-entity-id resources)
-           (external-dependency-problems defined resources)
-           (mapcat missing-table-and-field-problems resources)))))))
+           (external-dependency-problems defined resources)))))))
 
 (defn- shared-collection-problems
   "Two apps can't name one collection: only one of them would own it."
@@ -412,7 +405,7 @@
   [files]
   (for [{:keys [entity]} (manifests-among files)
         resource         (app-resources (:collection entity) files)
-        warning          (inactive-field-warnings resource)]
+        warning          (table-and-field-warnings resource)]
     warning))
 
 (defn problems
