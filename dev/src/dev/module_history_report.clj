@@ -518,39 +518,26 @@
   "A cut that severs more requires than this is not offered."
   30)
 
-(defn- module-edges
-  "The module edges behind `requires`, a seq of `[from-namespace to-namespace]`, with how many requires each has:
-  `[[from to count] ...]`, the edge with the most first."
-  [namespace->module requires]
-  (->> (frequencies (map (fn [[from to]] [(namespace->module from) (namespace->module to)]) requires))
-       (map (fn [[[from to] n]] [(str from) (str to) n]))
-       (sort-by (juxt (comp - last) first second))
-       vec))
-
 (defn tip-tables
   "The two tables about one commit's `deps` and `modules`, as maps ready for JSON:
 
   - `:pairs`: [[module-cuts/upward-pairs]], with names as strings
   - `:cuts`: [[module-cuts/cut-candidates]], each as `{:base, :of, :requires, :after, :pct, :freed, :edges,
-    :severed}`, where `:pct` is `:after` as a share of all namespaces, `:edges` is [[module-edges]] and `:severed`
-    lists each require as `from-namespace -> to-namespace`"
+    :severed}`, where `:pct` is `:after` as a share of all namespaces, `:edges` has names as strings and
+    `:severed` lists each require as `from-namespace -> to-namespace`"
   [deps modules]
-  (let [namespace->module (into {}
-                                (map (juxt :namespace :module))
-                                ;; A required namespace need not have a row of its own.
-                                (concat (mapcat :deps deps) deps))]
-    {:pairs (for [pair (module-cuts/upward-pairs deps modules)]
-              (-> pair (update :module str) (update :ancestor str)))
-     :cuts  (for [{:keys [base-modules cycle-modules requires largest-after freed]}
-                  (module-cuts/cut-candidates deps cut-require-limit)]
-              {:base     base-modules
-               :of       cycle-modules
-               :requires (count requires)
-               :after    largest-after
-               :pct      (rounded-percent largest-after (count deps))
-               :freed    freed
-               :edges    (module-edges namespace->module requires)
-               :severed  (mapv (fn [[from to]] (str from " -> " to)) requires)})}))
+  {:pairs (for [pair (module-cuts/upward-pairs deps modules)]
+            (-> pair (update :module str) (update :ancestor str)))
+   :cuts  (for [{:keys [base-modules cycle-modules requires edges largest-after freed]}
+                (module-cuts/cut-candidates deps cut-require-limit)]
+            {:base     base-modules
+             :of       cycle-modules
+             :requires (count requires)
+             :after    largest-after
+             :pct      (rounded-percent largest-after (count deps))
+             :freed    freed
+             :edges    (mapv (fn [[from to n]] [(str from) (str to) n]) edges)
+             :severed  (mapv (fn [[from to]] (str from " -> " to)) requires)})})
 
 (defn- pairs-table [sha pairs]
   (cons ["sha" "module" "ancestor" "requires" "internal"]
@@ -580,8 +567,9 @@
         structure (module-history/backfill! (assoc structure-sample :ref ref))
         position  (positions ref)
         anchors   (cluster-anchors ref)
-        sha       (subs (first (git-lines ["rev-parse" (str ref "^{commit}")])) 0 11)
-        tables    (let [{:keys [deps modules]} (module-history/snapshot ref)] (tip-tables deps modules))
+        tip       (first (git-lines ["rev-parse" (str ref "^{commit}")]))
+        sha       (subs tip 0 11)
+        tables    (let [{:keys [deps modules]} (module-history/snapshot tip)] (tip-tables deps modules))
         page      (merge (page-data anchors position history) tables)]
     (doseq [[file-name lines] [["history.csv"      (history-table position history)]
                                ["structure.csv"    (structure-table position structure)]
