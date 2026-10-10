@@ -4,7 +4,6 @@
    This namespace handles MBQL/native query transform execution and returns
    results in memory rather than writing to transform_run rows."
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.indexes.schema :as indexes.schema]
@@ -129,10 +128,7 @@
         (throw (ex-info "The database does not support the requested transform target type."
                         {:driver driver, :database database, :features features})))
       (log/info "Executing transform" id "with target" (pr-str target))
-      ;; Create schema if needed
-      (when (and (not (str/blank? (:schema target)))
-                 (not (driver/schema-exists? driver db (:schema target))))
-        (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:schema target)))
+      (transforms-base.u/create-target-schema! driver db (:conn-spec transform-details) (:schema target))
       ;; Check cancellation before running query
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before query execution" {:status :cancelled})))

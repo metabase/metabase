@@ -361,6 +361,27 @@
           (finally
             (t2/delete! :model/Database (mt/id))))))))
 
+(deftest untyped-field-getting-its-base-type-keeps-user-settings-test
+  (testing "A Field that never had a real base type, like one serdes synthesized for a stub database, keeps its user settings"
+    (mt/with-temp [:model/Field {field-id :id} {:base_type :type/* :active false}]
+      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (is (= [["Field"
+               field-id
+               {:base_type           :type/Text
+                :effective_type      :type/Text
+                :coercion_strategy   nil
+                :fingerprint_version 0
+                :fingerprint         nil
+                :semantic_type       nil}]]
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type      :type/Text
+                      :effective-type :type/Text})
+              (merge default-metadata
+                     {:id             field-id
+                      :base-type      :type/*
+                      :effective-type :type/*})))))))
+
 (deftest create-or-replace-table-updates-effective-type-test
   (testing "GHY-3388: when a column's database type changes in place (e.g. TEXT -> numeric via
            Snowflake's CREATE OR REPLACE TABLE AS SELECT TRY_TO_NUMBER(...)), sync should update

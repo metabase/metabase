@@ -8,7 +8,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -190,9 +189,7 @@
               reliable-row-count? (or (driver.u/supports? driver :transforms/accurate-rows-affected
                                                           {:lib/type :metadata/database :id db-id})
                                       (not full-incremental?))]
-          (when (and (not (str/blank? output-schema))
-                     (not (driver/schema-exists? driver db-id output-schema)))
-            (driver/create-schema-if-needed! driver conn-spec output-schema))
+          (transforms-base.u/create-target-schema! driver db-id conn-spec output-schema)
           (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
           (when-let [{:keys [rows-available] :as srp} source-range-params]
             (tracing/add-span-attrs! :tasks
