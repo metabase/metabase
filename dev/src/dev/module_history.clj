@@ -454,7 +454,7 @@
       :top-level-edges                     (count top-edges)
       :scc-largest-modules                 largest-m
       :scc-largest-namespaces              largest-n
-      :scc-largest-pct                     (if (pos? namespaces) (* 100.0 (/ largest-n namespaces)) 0.0)
+      :scc-largest-pct                     (percent largest-n namespaces)
       :scc-cyclic-modules                  (reduce + (:scc-module-sizes stats))
       :scc-cyclic-namespaces               (reduce + (:scc-namespace-sizes stats))
       :scc-components                      (count (:scc-module-sizes stats))
