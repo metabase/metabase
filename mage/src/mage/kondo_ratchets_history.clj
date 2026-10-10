@@ -676,9 +676,9 @@
     line))
 
 (def ^:private uncounted-linters
-  "Linters whose suppressions say nothing about the code, so the summary leaves their budgets out."
-  ;; ignoring this one works around a bug in the linter itself
-  #{:metabase/prefer-with-dynamic-fn-redefs})
+  "Linters whose suppressions say nothing about the code, so the summary leaves their budgets out, each with
+  the reason."
+  {:metabase/prefer-with-dynamic-fn-redefs "Ignoring it works around a bug in the linter itself."})
 
 (def ^:private verdicts-file
   "Verdicts on budget raises, relative to the repo root. [[verdict]] writes it."
@@ -974,7 +974,15 @@
       (let [record (record! all sha)]
         (println (c/dark (str "  " (commit-line record))))))
     (remember-tip! head)
-    (let [verdicts {:settled (set (map :sha verdicts))
+    (let [rulings  (for [{:keys [sha verdict why]} verdicts
+                         :let [record (record! all sha)]]
+                     {:commit  (select-keys record [:sha :pr :author :subject :date])
+                      :verdict (name verdict)
+                      :why     why
+                      :raises  (for [{:keys [kind measure delta]} (:changes record)
+                                     :when (= :grow kind)]
+                                 {:measure (measure-name measure), :delta delta})})
+          verdicts {:settled (set (map :sha verdicts))
                     :pardons (into {}
                                    (for [{:keys [sha verdict]} verdicts
                                          :when (= :pardon verdict)]
@@ -992,6 +1000,9 @@
           (spit arg (page {:repo      (origin)
                            :generated today
                            :series    (series verdicts records)
+                           :verdicts  rulings
+                           :excluded  (for [[linter why] uncounted-linters]
+                                        {:linter (str linter), :why why})
                            :periods   (periods verdicts today records)}))
           (println "Wrote" arg))
         (run! println (summary verdicts

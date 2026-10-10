@@ -65,6 +65,8 @@
   .items li { display: grid; grid-template-columns: 56px 1fr; gap: 10px; }
   .items li .num { text-align: right; }
   .warn { border-left: 3px solid var(--warn); }
+  .verdict { margin-bottom: 12px; }
+  .why { margin: 4px 0; }
   /* chart roles: grown and shrunk carry the status hues, read by position and legend as well as color */
   :root { --grown: #d03b3b; --shrunk: #0ca30c; --net: #2a78d6; --level: #2a78d6; --grid: #e1e0d9; --axis: #c3c2b7; }
   @media (prefers-color-scheme: dark) { :root { --grid: #2c2c2a; --axis: #45453f; } }
@@ -315,20 +317,43 @@ function nav(current) {
     (weeks[0] ? link(weeks[0], "This week") : "") +
     (months[1] ? link(months[1], "Last month") : "") +
     link(byId.all) +
+    `<a href="#verdicts" class="${current === "verdicts" ? "on" : ""}"><span>Pardons and exclusions</span><span class="n zero">${data.verdicts.length + data.excluded.length}</span></a>` +
     `<h2>Weeks</h2>${weeks.map(p => link(p)).join("")}` +
     `<h2>Months</h2>${months.map(p => link(p)).join("")}`;
 }
 
+// What the numbers leave out, and why: pardoned raises, confirmed ones, and linters that are not counted.
+function verdicts() {
+  const sum = v => v.raises.reduce((a, r) => a + r.delta, 0);
+  const card = v => {
+    const shown = v.raises.slice(0, 6), more = v.raises.slice(6);
+    const items = shown.map(r => `<li><span class="num zero">${signed(r.delta)}</span><span class="name">${esc(r.measure)}</span></li>`);
+    if (more.length) items.push(`<li><span class="num zero">${signed(more.reduce((a, r) => a + r.delta, 0))}</span><span>${more.length} more budgets</span></li>`);
+    return `<div class="card verdict">${commit(v.commit)}<p class="why">${esc(v.why || "No reason recorded.")}</p>` +
+      `<p class="hint">${signed(sum(v))} across ${v.raises.length} budget${v.raises.length === 1 ? "" : "s"}</p><ul class="items">${items.join("")}</ul></div>`;
+  };
+  const of = kind => data.verdicts.filter(v => v.verdict === kind).sort((a, b) => b.commit.date.localeCompare(a.commit.date));
+  const total = of("pardon").reduce((a, v) => a + sum(v), 0);
+  return `<header><h2>Pardons and exclusions</h2><p>What the numbers on the other pages leave out, and why</p></header>` +
+    section("Pardoned raises", `These budget raises count against nobody, ${signed(total)} in all: each says nothing about the commit that made it. A later shrink that only takes one back is left out too.`,
+      of("pardon").map(card).join("")) +
+    section("Confirmed raises", "These raises outran the suppressions their commit added, were looked at, and still count as growth.",
+      of("confirm").map(card).join("")) +
+    section("Linters left out", "Budgets of these linters are not counted anywhere.",
+      data.excluded.length ? `<div class="card">${data.excluded.map(x => `<p><span class="name">${esc(x.linter)}</span><br><span class="why">${esc(x.why)}</span></p>`).join("")}</div>` : "");
+}
+
 function show() {
   const fallback = (data.periods.find(p => p.kind === "week") || byId.all).id;
-  const id = byId[location.hash.slice(1)] ? location.hash.slice(1) : fallback;
+  const hash = location.hash.slice(1);
+  const id = (byId[hash] || hash === "verdicts") ? hash : fallback;
   for (const key of Object.keys(drawn)) delete drawn[key];
   document.getElementById("nav").innerHTML = nav(id);
   document.getElementById("main").innerHTML =
     `<p class="question">Who shrank, grew and introduced kondo ratchet budgets in ${esc(data.repo.replace("https://github.com/", ""))}, per week and month?</p>` +
-    render(byId[id]);
+    (id === "verdicts" ? verdicts() : render(byId[id]));
   wire();
-  document.title = "Ratchet history: " + byId[id].label;
+  document.title = "Ratchet history: " + (id === "verdicts" ? "Pardons and exclusions" : byId[id].label);
   window.scrollTo(0, 0);
 }
 
