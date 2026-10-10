@@ -74,6 +74,15 @@ jobs:
       edition: ${{ matrix.edition }}
       release: false
 
+  # Should only run when we push an image to metabase/metabase-head
+  cross-version-tests:
+    name: Cross-version migration tests
+    needs: [containerize]
+    uses: ./.github/workflows/cross-version.yml
+    secrets: inherit
+    with:
+      digest: ${{ needs.containerize.outputs.digest-ee }}
+
   bundle-size:
     needs: uberjar
     uses: ./.github/workflows/bundle-size.yml
