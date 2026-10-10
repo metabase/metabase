@@ -1,24 +1,19 @@
+import cx from "classnames";
 import { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
+import { Markdown } from "metabase/common/components/Markdown";
 import {
   getEventCount,
   getTimelineName,
 } from "metabase/common/utils/timelines";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
-import {
-  CardBody,
-  CardCount,
-  CardDescription,
-  CardIcon,
-  CardMenu,
-  CardRoot,
-  CardTitle,
-} from "./TimelineCard.styled";
+import S from "./TimelineCard.module.css";
 
 export interface TimelineCardProps {
   timeline: Timeline;
@@ -37,16 +32,32 @@ const TimelineCard = ({
   const hasEventCount = !hasMenuItems && eventCount != null;
 
   return (
-    <CardRoot to={!timeline.archived ? timelineUrl : ""}>
-      <CardIcon name={timeline.icon} />
-      <CardBody>
-        <CardTitle>{getTimelineName(timeline)}</CardTitle>
+    <Flex
+      component={Link}
+      className={cx(S.card, timeline.archived ? CS.cursorDefault : S.cardLink)}
+      to={timeline.archived ? "" : timelineUrl}
+      align="center"
+      p="1.75rem"
+      bdrs="xs"
+    >
+      <Icon className={S.icon} name={timeline.icon} size={22} />
+      <Box component="span" flex="1 1 auto" mx="1.75rem" miw={0}>
+        <Text
+          component="span"
+          className={S.title}
+          display="block"
+          fw="bold"
+          mb="xxxs"
+          lh="normal"
+        >
+          {getTimelineName(timeline)}
+        </Text>
         {timeline.description && (
-          <CardDescription>{timeline.description}</CardDescription>
+          <Markdown className={S.description}>{timeline.description}</Markdown>
         )}
-      </CardBody>
+      </Box>
       {hasMenuItems && (
-        <CardMenu>
+        <Box component="span" flex="0 0 auto">
           <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Timeline menu`}>
@@ -55,18 +66,23 @@ const TimelineCard = ({
             </Menu.Target>
             <Menu.Dropdown>{menuItems}</Menu.Dropdown>
           </Menu>
-        </CardMenu>
+        </Box>
       )}
       {hasEventCount && (
-        <CardCount isTopAligned={hasDescription}>
+        <Text
+          component="span"
+          className={hasDescription ? CS.alignSelfStart : undefined}
+          flex="0 0 auto"
+          lh="normal"
+        >
           {ngettext(
             msgid`${eventCount} event`,
             `${eventCount} events`,
             eventCount,
           )}
-        </CardCount>
+        </Text>
       )}
-    </CardRoot>
+    </Flex>
   );
 };
 

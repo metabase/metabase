@@ -6,16 +6,15 @@ import {
   getDefaultTimelineName,
   getSortedTimelines,
 } from "metabase/common/utils/timelines";
+import CS from "metabase/css/core/index.css";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";
 import TimelineList from "../TimelineList";
-
-import { ModalBody, ModalRoot } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];
@@ -53,7 +52,7 @@ const TimelineListModal = ({
   };
 
   return (
-    <ModalRoot>
+    <Flex direction="column" mih="36rem" mah="90vh">
       <ModalHeader
         title={title}
         onClose={onClose}
@@ -71,7 +70,16 @@ const TimelineListModal = ({
           </Menu>
         )}
       </ModalHeader>
-      <ModalBody isTopAligned={hasTimelines}>
+      <Flex
+        className={CS.overflowYAuto}
+        direction="column"
+        flex="1 1 auto"
+        justify={hasTimelines ? undefined : "center"}
+        mt="lg"
+        pt="lg"
+        px="xxl"
+        pb="xxl"
+      >
         {hasTimelines ? (
           <TimelineList timelines={sortedTimelines} onUnarchive={onUnarchive} />
         ) : isArchive ? (
@@ -79,8 +87,8 @@ const TimelineListModal = ({
         ) : (
           <TimelineEmptyState collection={collection} />
         )}
-      </ModalBody>
-    </ModalRoot>
+      </Flex>
+    </Flex>
   );
 };
 

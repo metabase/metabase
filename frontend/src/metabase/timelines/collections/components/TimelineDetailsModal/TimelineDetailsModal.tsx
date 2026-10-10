@@ -5,8 +5,9 @@ import _ from "underscore";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
+import CS from "metabase/css/core/index.css";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { ActionIcon, Button, Icon, Menu, TextInput } from "metabase/ui";
+import { ActionIcon, Button, Flex, Icon, Menu, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -15,12 +16,6 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import EventList from "../EventList";
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";
-
-import {
-  ModalBody,
-  ModalRoot,
-  ModalToolbar,
-} from "./TimelineDetailsModal.styled";
 
 export interface TimelineDetailsModalProps {
   timeline: Timeline;
@@ -70,7 +65,7 @@ const TimelineDetailsModal = ({
     setInputText(e.target.value);
 
   return (
-    <ModalRoot>
+    <Flex direction="column" mih="36rem" mah="90vh">
       <ModalHeader
         title={title}
         onClose={onClose}
@@ -88,7 +83,7 @@ const TimelineDetailsModal = ({
         )}
       </ModalHeader>
       {(isNotEmpty || isSearching) && (
-        <ModalToolbar>
+        <Flex pt="lg" px="xxl">
           <TextInput
             flex="1 1 auto"
             value={inputText}
@@ -106,9 +101,18 @@ const TimelineDetailsModal = ({
               ml="lg"
             >{t`Create event`}</Button>
           )}
-        </ModalToolbar>
+        </Flex>
       )}
-      <ModalBody isTopAligned={isNotEmpty}>
+      <Flex
+        className={CS.overflowYAuto}
+        direction="column"
+        flex="1 1 auto"
+        justify={isNotEmpty ? undefined : "center"}
+        mt="lg"
+        pt="lg"
+        px="xxl"
+        pb="xxl"
+      >
         {isNotEmpty ? (
           <EventList
             events={events}
@@ -121,8 +125,8 @@ const TimelineDetailsModal = ({
         ) : (
           <TimelineEmptyState timeline={timeline} />
         )}
-      </ModalBody>
-    </ModalRoot>
+      </Flex>
+    </Flex>
   );
 };
 
