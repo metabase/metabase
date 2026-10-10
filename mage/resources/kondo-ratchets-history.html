@@ -145,10 +145,10 @@ function biggest(title, b) {
   const items = shown.map(m => `<li><span class="num ${tone(m.delta)}">${signed(m.delta)}</span><span class="name">${esc(m.measure)}</span></li>`);
   if (more.length) {
     const sum = more.reduce((a, m) => a + m.delta, 0);
-    items.push(`<li><span class="num ${tone(sum)}">${signed(sum)}</span><span>${more.length} more linters</span></li>`);
+    items.push(`<li><span class="num ${tone(sum)}">${signed(sum)}</span><span>${more.length} more budgets</span></li>`);
   }
   return `<div class="card"><h4>${esc(title)}</h4>${commit(b.commit)}` +
-    `<p><span class="num ${tone(b.net)}"><b>${signed(b.net)}</b></span> net, across ${b.measures.length} linter${b.measures.length === 1 ? "" : "s"}</p>` +
+    `<p><span class="num ${tone(b.net)}"><b>${signed(b.net)}</b></span> net, across ${b.measures.length} budget${b.measures.length === 1 ? "" : "s"}</p>` +
     `<ul class="items">${items.join("")}</ul></div>`;
 }
 
@@ -301,11 +301,11 @@ function render(p) {
       section("Most shrunk", "", ranking(r.board, x => x.shrunk < 0, x => x.shrunk, [["shrunk", "shrunk", n => num(n)]])) +
       section("Most grown", "", ranking(r.board, x => x.grown > 0, x => -x.grown, [["grown", "grown", n => num(n)]])) +
     `</div>` +
-    section("Most introduced", "Ranked by the ignores the new linters and measures started with: more debt put under a ratchet is better.",
-      ranking(r.board, x => x.linters > 0, x => -x.ignores, [["ignores", "ignores", good], ["new", "linters", good]])) +
+    section("Most introduced", "Ranked by the budgets the new linters and measures started with: more debt put under a ratchet is better.",
+      ranking(r.board, x => x.linters > 0, x => -x.ignores, [["budget", "ignores", good], ["new", "linters", good]])) +
     section("New linters and measures", "A linter, a newly discouraged symbol or a measure of the module ratchet that got its first budget in the commit that added it.",
       groups(r.introduced, i => `<li><span class="num good">${esc(i.budget)}</span><span class="name good">${esc(i.measure)}</span></li>`)) +
-    section("New ratchets over existing debt", "First budgets for linters that already existed, from a commit that added a whole ratchet. They count for nobody.",
+    section("New ratchets over existing debt", "First budgets for linters and measures that already existed, from a commit that added a whole ratchet. They count for nobody.",
       groups(r.seeded.map(g => g.items.length > 6
           ? {...g, items: [{measure: `${g.items.length} budgets`, budget: g.items.reduce((a, i) => a + i.size, 0)}]}
           : g),

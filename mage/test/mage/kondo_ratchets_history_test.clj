@@ -267,6 +267,11 @@
              (kinds (history/settle {:settled #{}}
                                     [(tighten "tighten" -1 "symbols")
                                      (update-in (raise "symbols" 2 1) [:changes 0] assoc :per-symbol? true)])))))
+    (testing "a raise by the commit that repaired a broken ratchet file is never slack or doubted"
+      (is (= [["tighten" [[:shrink -8 nil]] false] ["repair" [[:grow 8 nil]] false]]
+             (kinds (history/settle {:settled #{}}
+                                    [(tighten "tighten" -8 "repair")
+                                     (update-in (raise "repair" 8 0) [:changes 0] assoc :bridged? true)])))))
     (testing "a confirmed raise is left as growth, and its return as a shrink"
       (is (= [["tighten" [[:shrink -8 nil]] false] ["kept" [[:grow 8 nil]] false]]
              (kinds (history/settle {:settled #{"kept"}} [(tighten "tighten" -8 "kept") (raise "kept" 8 0)])))))))
@@ -449,7 +454,7 @@
                 "Most shrunk"
                 "Most grown"
                 "Net, from most shrunk to most grown"
-                "Most introduced, by the ignores the new linters and measures started with"
+                "Most introduced, by the budgets the new linters and measures started with"
                 "Shrinks no commit accounts for"]
                (headlines lines))))
       (testing "ranks authors by net change and names what no commit explains"
@@ -647,10 +652,11 @@
            is new only when the commit also adds what counts it"
     (let [counter "dev/src/dev/kondo_ratchet.clj"
           modules ".clj-kondo/config/modules/ratchets.edn"]
-      (is (= [[4 "Cy" [[:introduce [:modules :module :ns-prefixes] nil] [:seed [:modules :module :uses-any] nil]]]
-              [3 "Bob" [[:grow [:prod :ignore :a] 3]]]
+      (is (= [[4 "Cy" [[:introduce [:modules :module :ns-prefixes] nil nil]
+                       [:seed [:modules :module :uses-any] nil nil]]]
+              [3 "Bob" [[:grow [:prod :ignore :a] 3 true]]]
               [2 "Ada" []]
-              [1 "Chris" [[:seed [:prod :ignore :a] nil]]]]
+              [1 "Chris" [[:seed [:prod :ignore :a] nil nil]]]]
              (binding [*err* (java.io.StringWriter.)]
                (with-repo!
                  [["Chris" 1 "Add a ratchet (#1)"
@@ -665,4 +671,30 @@
                     counter "{:uses-any (count uses), :ns-prefixes (count prefixes)}\n"}]]
                  (fn [repo]
                    (vec (for [{:keys [pr author changes]} (history/records repo)]
-                          [pr author (map (juxt :kind :measure :delta) changes)]))))))))))
+                          [pr author (map (juxt :kind :measure :delta :bridged?) changes)]))))))))))
+
+(deftest newly-discouraged-symbol-test
+  (testing "the first budget of a newly discouraged symbol is where it starts, not slack that a shrink takes back"
+    (let [config ".clj-kondo/config.edn"
+          ignore "#_{:clj-kondo/ignore [:discouraged-var]}"
+          source (fn [& forms] (apply lines "(ns app.a)" (interleave (repeat ignore) forms)))
+          budget (fn [counts] (str {:ignore-counts {}, :discouraged-var-counts counts} "\n"))]
+      (is (= [[4 [[:shrink nil]] {[:prod :ignore :discouraged-var] [["Bob" 2 -1]]}]
+              [3 [[:introduce :clojure.core/eval]] {}]]
+             (with-repo!
+               [["Chris" 1 "Add a ratchet (#1)"
+                 {ratchets        (budget {:clojure.core/prn 2})
+                  config          "{:linters {:discouraged-var {clojure.core/prn {}}}}\n"
+                  "src/app/a.clj" (source "(prn 1)" "(prn 2)" "(eval 1)")}]
+                ["Bob" 2 "Stop one prn (#2)"
+                 {"src/app/a.clj" (source "(prn 1)" "(eval 1)")}]
+                ["Ada" 3 "Discourage eval (#3)"
+                 {ratchets (budget {:clojure.core/prn 2, :clojure.core/eval 1})
+                  config   "{:linters {:discouraged-var {clojure.core/prn {}, clojure.core/eval {}}}}\n"}]
+                ["automation" 4 "Tighten ratchets (#4)"
+                 {ratchets (budget {:clojure.core/prn 1, :clojure.core/eval 1})}]]
+               (fn [repo]
+                 (vec (for [{:keys [pr changes causes]} (take 2 (history/records repo))]
+                        [pr
+                         (map (juxt :kind :key) changes)
+                         (update-vals (or causes {}) #(map (juxt :author :pr :delta) %))])))))))))

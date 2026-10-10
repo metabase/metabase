@@ -413,15 +413,21 @@
   (memoize (fn [repo sha]
              ;; TODO (Chris 2026-10-10) -- also report linters that landed with no budget at all, because nothing
              ;; needed an ignore. No ratchet file changes for those, so this history never sees them.
-             (vec (budget-changes (commit-view repo sha)
-                                  {:new-measure? (fn [[_ kind measured]]
-                                                   (added-in? repo sha
-                                                              (if (= :module kind)
-                                                                module-measure-sources
-                                                                linter-sources)
-                                                              [(str measured)]))
-                                   :new-symbol?  (fn [_linter sym]
-                                                   (added-in? repo sha linter-sources (symbol-names sym)))})))))
+             (let [changes (budget-changes (commit-view repo sha)
+                                           {:new-measure? (fn [[_ kind measured]]
+                                                            (added-in? repo sha
+                                                                       (if (= :module kind)
+                                                                         module-measure-sources
+                                                                         linter-sources)
+                                                                       [(str measured)]))
+                                            :new-symbol?  (fn [_linter sym]
+                                                            (added-in? repo sha linter-sources
+                                                                       (symbol-names sym)))})
+                   ;; The changes of a commit that repairs a broken ratchet file span every commit since the
+                   ;; last readable version, while the suppressions counted for it are its own.
+                   bridged (some #{::unreadable} (vals (budgets-at repo (str sha "^"))))]
+               (cond->> (vec changes)
+                 bridged (mapv #(assoc % :bridged? true)))))))
 
 (defn tightening?
   "Did a commit only lower budgets, as the post-merge automation does?
@@ -681,12 +687,14 @@
   "How much of a raise, a `:grow` change, went beyond the suppressions its commit added, or nil when none did.
   A commit that removed suppressions while raising a budget added none.
   A measure budgeted per symbol is counted per ignore, which is only approximate, so its raises are never
-  held to the count."
-  [{:keys [kind measure delta added per-symbol?]}]
+  held to the count. Neither is a `:bridged?` raise, made by the commit that repaired a broken ratchet file:
+  the suppressions behind it may have come in while the file was broken."
+  [{:keys [kind measure delta added per-symbol? bridged?]}]
   (when (and (= :grow kind)
              added
              (< added delta)
              (not per-symbol?)
+             (not bridged?)
              (not (uncounted-linters (peek measure))))
     (- delta (max 0 added))))
 
@@ -1160,7 +1168,7 @@
             (for [{:keys [measure delta]} shown]
               (row delta measure))
             (when (seq more)
-              [(row (reduce + (map :delta more)) (format "%d more linters" (count more)))]))))
+              [(row (reduce + (map :delta more)) (format "%d more budgets" (count more)))]))))
 
 (defn- group-lines
   "Lines for `groups`, the commits of a [[report]] list: each commit, then `describe` of each of its `:items`."
@@ -1200,7 +1208,7 @@
   {:shrunk  {:header "shrunk", :key :shrunk, :show signed, :color (tint c/green)}
    :grown   {:header "grown", :key :grown, :show signed, :color (tint c/red)}
    :net     {:header "net", :key :net, :show signed, :color net-tint}
-   :ignores {:header "ignores", :key :ignores, :show str, :color (tint c/green)}
+   :ignores {:header "budget", :key :ignores, :show str, :color (tint c/green)}
    :linters {:header "new", :key :linters, :show str, :color (tint c/green)}})
 
 ;; TODO (Chris 2026-10-10) -- also rank by team. The module config gives each module a `:team`, so a count could be
@@ -1218,7 +1226,7 @@
    {:title   "Net, from most shrunk to most grown"
     :order   (fn [{:keys [shrunk grown net]}] (when-not (= 0 shrunk grown) [net]))
     :columns [:shrunk :grown :net]}
-   {:title   "Most introduced, by the ignores the new linters and measures started with"
+   {:title   "Most introduced, by the budgets the new linters and measures started with"
     :order   (fn [{:keys [linters ignores]}] (when (pos? linters) [(- ignores) (- linters)]))
     :columns [:ignores :linters]}])
 
