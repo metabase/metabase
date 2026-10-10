@@ -310,6 +310,8 @@ function render(p) {
           ? {...g, items: [{measure: `${g.items.length} budgets`, budget: g.items.reduce((a, i) => a + i.size, 0)}]}
           : g),
         i => `<li><span class="num zero">${esc(i.budget)}</span><span class="name">${esc(i.measure)}</span></li>`)) +
+    section("Spare budget that was taken back", "A budget raised by more than its commit added, and lowered again by a later commit. Neither the raise nor the lowering counts for anybody.",
+      groups(r.slack, i => `<li><span class="num zero">${signed(i.size)}</span><span class="name">${esc(i.measure)}</span></li>`)) +
     section("Total deltas by linter",
       r.approximate.length ? `Credit for ${r.approximate.join(", ")} is approximate: those are budgeted per symbol and counted here per ignore.` : "",
       table(["", "shrunk", "grown", "net"],
@@ -345,7 +347,8 @@ function verdicts() {
     const shown = v.raises.slice(0, 6), more = v.raises.slice(6);
     const items = shown.map(r => `<li><span class="num zero">${signed(r.delta)}</span><span class="name">${esc(r.measure)}</span></li>`);
     if (more.length) items.push(`<li><span class="num zero">${signed(more.reduce((a, r) => a + r.delta, 0))}</span><span>${more.length} more budgets</span></li>`);
-    return `<div class="card verdict">${commit(v.commit)}<p class="why">${esc(v.why || "No reason recorded.")}</p>` +
+    const recorded = v.by || v.on ? `<p class="hint">Recorded${v.by ? " by " + esc(v.by) : ""}${v.on ? " on " + esc(v.on) : ""}</p>` : "";
+    return `<div class="card verdict">${commit(v.commit)}<p class="why">${esc(v.why || "No reason recorded.")}</p>${recorded}` +
       `<p class="hint">${signed(sum(v))} across ${v.raises.length} budget${v.raises.length === 1 ? "" : "s"}</p><ul class="items">${items.join("")}</ul></div>`;
   };
   const of = kind => data.verdicts.filter(v => (kind === "pardon" ? v.verdict !== "confirm" : v.verdict === kind)).sort((a, b) => Date.parse(b.commit.date) - Date.parse(a.commit.date));
