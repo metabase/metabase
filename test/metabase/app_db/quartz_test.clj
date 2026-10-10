@@ -10,7 +10,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.task.impl :as task.impl]
-   [metabase.test.initialize :as initialize]
+   [metabase.test :as mt]
    [metabase.test.util :as tu]
    [toucan2.connection :as t2.conn])
   (:import
@@ -87,6 +87,11 @@
          (#'mdb.quartz/current-class-names [{:job-key "a.job", :class-names ["a.Oldest" "a.Old" "a.Current"]}
                                             {:job-key "b.job", :class-names ["b.Old" "b.Current"]}]))))
 
+(defn- class-namespace [class-name]
+  (-> class-name
+      (str/replace #"\.[^.]+$" "")
+      (str/replace "_" "-")))
+
 (defn- class-exists? [class-name]
   (letfn [(loaded? []
             (try
@@ -95,10 +100,7 @@
                 false)))]
     ;; a job class is a `deftype`, which exists only once its namespace has loaded
     (or (loaded?)
-        (let [ns-symb (-> class-name
-                          (str/replace #"\.[^.]+$" "")
-                          (str/replace "_" "-")
-                          symbol)]
+        (let [ns-symb (symbol (class-namespace class-name))]
           (and (try
                  (require ns-symb)
                  true
@@ -269,40 +271,48 @@
       (is (= [] (filter renamed job-classes-without-history))))))
 
 (defn- scheduled-job-keys!
-  "A map from the class name of every job that the tasks schedule at startup to the set of its job keys."
-  []
-  (run! classloader/require (job-namespaces))
-  (initialize/initialize-if-needed! :db)
-  (let [scheduled (atom {})]
-    (tu/do-with-unstarted-temp-scheduler!
-     (fn []
-       (#'task.impl/init-tasks!)
-       (let [^Scheduler scheduler (#'task.impl/scheduler)]
-         (doseq [^JobKey job-key (.getJobKeys scheduler (GroupMatcher/anyGroup))]
-           (swap! scheduled update (.getName (.getJobClass (.getJobDetail scheduler job-key)))
-                  (fnil conj (sorted-set)) (.getName job-key))))))
+  "A map from the current class name of each job in `history` to the set of job keys it is scheduled under at
+  startup."
+  [history]
+  (let [namespaces (into #{} (map (comp class-namespace peek :class-names)) history)
+        scheduled  (atom {})]
+    (run! (comp classloader/require symbol) namespaces)
+    ;; the cache job needs its feature, and there is one transforms job for each active transform job
+    (mt/with-premium-features #{:cache-granular-controls}
+      (mt/with-temp [:model/TransformJob _ {:schedule "0 0 * * * ? *"}]
+        (tu/do-with-unstarted-temp-scheduler!
+         (fn []
+           ;; Only these jobs' initializers run, because other tasks' initializers start threads that outlive
+           ;; the scheduler. They are called directly so that one that throws fails the test.
+           (doseq [[task init!] (methods task.impl/init!)
+                   :when        (namespaces (namespace task))]
+             (init! task))
+           (let [^Scheduler scheduler (#'task.impl/scheduler)]
+             (doseq [^JobKey job-key (.getJobKeys scheduler (GroupMatcher/anyGroup))]
+               (swap! scheduled update (.getName (.getJobClass (.getJobDetail scheduler job-key)))
+                      (fnil conj (sorted-set)) (.getName job-key))))))))
     @scheduled))
 
 (deftest job-history-labels-match-the-scheduled-job-keys-test
-  ;; This catches a job key that changed while its entry stayed. It covers only the jobs that the tasks schedule
-  ;; at startup in the environment the test runs in.
-  (let [scheduled  (scheduled-job-keys!)
+  ;; This catches a job key that changed while its entry stayed
+  (let [history    (cond->> mdb.quartz/job-history
+                     (not config/ee-available?)
+                     (remove #(str/starts-with? (peek (:class-names %)) "metabase_enterprise.")))
+        scheduled  (scheduled-job-keys! history)
         label-for? (fn [label job-key]
                      ;; a label that ends in a dot is the prefix of the keys of a job scheduled many times
                      (if (str/ends-with? label ".")
                        (str/starts-with? job-key label)
-                       (= label job-key)))
-        checked    (for [{:keys [job-key class-names]} mdb.quartz/job-history
-                         :let                          [scheduled-as (scheduled (peek class-names))]
-                         :when                         scheduled-as]
-                     {:job-key job-key, :scheduled-as scheduled-as})]
-    (testing "some entries are checked"
-      (is (seq checked)))
+                       (= label job-key)))]
     (is (= []
-           (remove (fn [{:keys [job-key scheduled-as]}]
-                     (every? #(label-for? job-key %) scheduled-as))
-                   checked))
+           (for [{:keys [job-key class-names]} history
+                 :let                          [scheduled-as (scheduled (peek class-names) #{})]
+                 :when                         (not (and (seq scheduled-as)
+                                                         (every? #(label-for? job-key %) scheduled-as)))]
+             {:job-key job-key, :scheduled-as scheduled-as}))
         (str "The `:job-key` of these entries in `metabase.app-db.quartz/job-history` is not the key their job is"
              " scheduled under. If the label is wrong, correct it.\n"
              "If the job's key changed: remove the entry, add the class to `job-classes-without-history`, and add"
-             " the rename to `past-job-key-renames`."))))
+             " the rename to `past-job-key-renames`.\n"
+             "If `:scheduled-as` is empty, the job's `task/init!` did not schedule it in this test: set up what it"
+             " needs in `scheduled-job-keys!`."))))
