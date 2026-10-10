@@ -413,26 +413,29 @@
                   :deps      [{:namespace metabase.x.y.core, :module x.y}]}
                  {:namespace metabase.x.y.core
                   :module    x.y
-                  :deps      [{:namespace metabase.x.core, :module x}
-                              {:namespace metabase.x.impl, :module x}
+                  :deps      [{:namespace metabase.x.core,   :module x}
+                              {:namespace metabase.x.impl,   :module x}
                               {:namespace metabase.x.y.impl, :module x.y}]}
                  {:namespace metabase.w.v.core
                   :module    w.v
                   :deps      [{:namespace metabase.w.impl, :module w}]}
                  {:namespace metabase.x.y.z.core
                   :module    x.y.z
-                  :deps      [{:namespace metabase.x.core, :module x}]}
+                  ;; In a cycle with `z`, which `x` is not part of.
+                  :deps      [{:namespace metabase.x.core, :module x}
+                              {:namespace metabase.z.core, :module z}]}
                  {:namespace metabase-enterprise.x.core
                   :module    enterprise/x
                   :deps      [{:namespace metabase.x.impl, :module x}]}
                  {:namespace metabase-enterprise.x.y.core
                   :module    enterprise/x.y
-                  ;; Not an ancestor: the parents of `enterprise/x.y` are `enterprise/x` and `x`.
+                  ;; Module `x.y` is not an ancestor: the ancestors of `enterprise/x.y` are `enterprise/x` and `x`.
                   :deps      [{:namespace metabase.x.y.impl, :module x.y}
-                              {:namespace metabase.x.impl, :module x}]}
+                              {:namespace metabase.x.impl,   :module x}]}
                  {:namespace metabase.z.core
                   :module    z
-                  :deps      [{:namespace metabase.x.core, :module x}]}]
+                  :deps      [{:namespace metabase.x.core,     :module x}
+                              {:namespace metabase.x.y.z.core, :module x.y.z}]}]
         config '{enterprise/x   {}
                  enterprise/x.y {}
                  w              {:api :any}
