@@ -323,27 +323,25 @@
 (deftest ^:synchronized streaming-request-args-test
   (testing "POST /events passes correct arguments to agent/run-agent-loop"
     (tu/with-slackbot-setup
-      (doseq [[desc event-body]
-              [["DM message"            (assoc-in tu/base-dm-event [:event :channel] "D-MY-DM-CHANNEL")]
-               ["app_mention in channel" (assoc-in tu/base-mention-event [:event :channel] "C-PUBLIC-CHANNEL")]]]
+      (doseq [[desc event-body poll-key]
+              [["DM message" (assoc-in tu/base-dm-event [:event :channel] "D-MY-DM-CHANNEL") :stop-stream-calls]
+               ["app_mention in channel" (assoc-in tu/base-mention-event [:event :channel] "C-PUBLIC-CHANNEL") :post-calls]]]
         (testing desc
           (tu/with-slackbot-mocks
             {:ai-text "response"}
-            (fn [{:keys [ai-request-calls stop-stream-calls update-calls]}]
+            (fn [{:keys [ai-request-calls] :as state}]
               (mt/client :post 200 "metabot/slack/events"
                          (tu/slack-request-options event-body)
                          event-body)
-              (u/poll {:thunk      #(or (>= (count @stop-stream-calls) 1)
-                                        (>= (count @update-calls) 1))
-                       :done?      true?
+              (u/poll {:thunk      #(count @(get state poll-key))
+                       :done?      pos?
                        :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
               (let [opts (first @ai-request-calls)]
-                (is (= :slackbot (:profile-id opts)))
-                (is (map? (:context opts)))
-                (is (= (get-in event-body [:event :channel])
-                       (get-in opts [:context :slack_channel_id])))
-                (is (sequential? (:messages opts)))
+                (is (=? {:profile-id :slackbot
+                         :messages sequential?
+                         :context {:slack_channel_id (get-in event-body [:event :channel])}}
+                        opts))
                 ;; Last message should be the user's request
                 (let [last-msg (last (:messages opts))]
                   (if (= "im" (get-in event-body [:event :channel_type]))
@@ -1331,15 +1329,15 @@
       (tu/with-slackbot-setup
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
-          (fn [{:keys [update-calls remove-reaction-calls]}]
+          (fn [_]
             (let [response (mt/client :post 200 "metabot/slack/events"
-                                      (tu/slack-request-options tu/base-mention-event) tu/base-mention-event)]
+                                      (tu/slack-request-options tu/base-mention-event) tu/base-mention-event)
+                  response-generated #(mt/metric-value system :metabase-slackbot/responses-generated
+                                                       {:source "channel" :result "success"})]
               (is (= "ok" response))
-              (u/poll {:thunk #(and (>= (count @update-calls) 1) (>= (count @remove-reaction-calls) 1))
-                       :done? true? :timeout-ms 5000})
+              (u/poll {:thunk response-generated, :done? pos?, :timeout-ms 5000})
               (testing "responses-generated counter is incremented for channel/success"
-                (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
-                                                                {:source "channel" :result "success"})))))))))))
+                (is (prometheus-test/approx= 1 (response-generated)))))))))))
 
 (deftest ^:synchronized error-response-metrics-test
   (testing "Failed response increments error counter and records duration"
