@@ -237,6 +237,20 @@
           (is (= {:kind "pulled" :count 3 :branch "main"} (:outcome task)))
           (is (= :successful (:status (t2/hydrate task :status)))))))))
 
+(deftest handle-task-result!-names-the-task-branch-in-outcome-test
+  (testing "an import that switches branches records the branch it imported, not the one the setting held while it ran"
+    (mt/with-temporary-setting-values [remote-sync-branch "main"]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                               {:sync_task_type "import"
+                                                :initiated_by (mt/user->id :rasta)})]
+          (impl/handle-task-result! {:status :success
+                                     :outcome {:kind "pulled" :count 3 :branch "main"}}
+                                    task-id
+                                    "feature")
+          (is (= {:kind "pulled" :count 3 :branch "feature"}
+                 (:outcome (t2/select-one :model/RemoteSyncTask :id task-id)))))))))
+
 (deftest handle-task-result!-stores-conflict-categories-test
   (testing "handle-task-result! records a conflict result's category set on the task as a vector"
     (mt/with-model-cleanup [:model/RemoteSyncTask]
