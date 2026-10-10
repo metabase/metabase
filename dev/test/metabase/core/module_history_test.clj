@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [dev.deps-graph :as deps-graph]
    [dev.module-history :as module-history]
    [dev.module-source :as module-source]
    [hooks.common.modules]))
@@ -20,6 +21,28 @@
   (testing "a source without an ns form has no namespace"
     (is (= {:namespace nil, :static #{}, :dynamic #{}}
            (module-source/source-requires "(def x 1)")))))
+
+(deftest ^:parallel resolve-requires-test
+  (let [prefix->module (#'module-history/prefix->module '{a {}, b {}, config {}, test {}})]
+    (testing "a namespace required both ways counts as static, and one outside every module is left out"
+      (is (= '{:namespace metabase.a.core
+               :filename  "src/metabase/a/core.clj"
+               :module    a
+               :deps      [{:namespace metabase.b.core, :module b}
+                           {:namespace metabase.b.impl, :module b, :dynamic :require-and-friends}]}
+             (deps-graph/resolve-requires prefix->module
+                                          "src/metabase/a/core.clj"
+                                          '{:namespace metabase.a.core
+                                            :static    #{metabase.b.core clojure.string}
+                                            :dynamic   #{metabase.b.core metabase.b.impl}}))))
+    (testing "the config namespace's probe for test code is not a dependency, under its old name too"
+      (is (= [[] []]
+             (for [config-namespace '[metabase.config metabase.config.core]]
+               (:deps (deps-graph/resolve-requires prefix->module
+                                                   "src/metabase/config.clj"
+                                                   {:namespace config-namespace
+                                                    :static    #{}
+                                                    :dynamic   '#{metabase.test.dummy-namespace}}))))))))
 
 (deftest ^:parallel whole-backend-test
   (testing "before the module system every OSS and EE namespace belongs to one module"
@@ -63,13 +86,13 @@
            (#'module-history/midnight-utc "2023-12-01")))))
 
 (deftest ^:parallel commit-metrics-test
-  ;; x.y is nested in x, which does not export it; z lets x into its internals; w has `:api :any`.
-  ;; z requires x only through `requiring-resolve`, so the static-only cycle is smaller than the full one.
+  ;; Module x.y is nested in x, which does not export it; z lets x into its internals; w has `:api :any`.
+  ;; Module z requires x only through `requiring-resolve`, so the static-only cycle is smaller than the full one.
   (let [deps    '[{:namespace metabase.x.core
                    :filename  "src/metabase/x/core.clj"
                    :module    x
                    :deps      [{:namespace metabase.x.y.core, :module x.y}
-                               {:namespace metabase.z.impl, :module z}]}
+                               {:namespace metabase.z.impl,   :module z}]}
                   {:namespace metabase.x.impl
                    :filename  "src/metabase/x/impl.clj"
                    :module    x
@@ -132,11 +155,11 @@
             :scc2-namespaces                     0
             :scc3-modules                        0
             :scc3-namespaces                     0
-            ;; x.core and x.y.core require each other.
+            ;; The namespaces x.core and x.y.core require each other.
             :largest-ns-level-scc                2
-            ;; x and z; x and x.y also require each other, but one is nested in the other.
+            ;; Only x and z; x and x.y also require each other, but one is nested in the other.
             :mutual-dependency-pairs             1
-            ;; x.core requiring z.impl, past z's API, which z's friend grant allows.
+            ;; The require from x.core to z.impl, past z's API, which z's friend grant allows.
             :friend-internal-namespaces          1
             :friend-internal-requires            1
             :non-api-cross-module-requires       1
@@ -147,7 +170,7 @@
             ;; A change to w retests only w; a change anywhere else retests the whole cycle and w.
             :retest-module-mean                  86.1
             :retest-module-median                100.0
-            ;; By namespace x.impl and w.core are required by nothing, and z.impl by everything but those two.
+            ;; Nothing requires the namespaces x.impl and w.core, and a change to z.impl retests everything but x.impl.
             :retest-namespace-mean               47.2
             :retest-namespace-median             66.7
             ;; Nothing requires w, or the namespaces x.impl and w.core.
