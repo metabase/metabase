@@ -101,15 +101,24 @@
           pick     (fn [] (nth alphabet (.nextInt rnd (count alphabet))))
           texts    (repeatedly 20000 #(str/join (repeatedly (.nextInt rnd 16) pick)))]
       (is (= []
-             (remove #(= (reference-mask %) (kondo-ratchet/mask-strings-and-comments %)) texts)))))
-  (testing "this repository's own backend source"
-    (is (= []
-           (for [root  ["src" "test" "enterprise/backend" "dev" "mage"]
-                 ^java.io.File file (file-seq (io/file root))
-                 :when (and (.isFile file) (re-find #"\.clj[cs]?$" (.getName file)))
-                 :let  [content (slurp file)]
-                 :when (not= (reference-mask content) (kondo-ratchet/mask-strings-and-comments content))]
-             (.getPath file))))))
+             (remove #(= (reference-mask %) (kondo-ratchet/mask-strings-and-comments %)) texts))))))
+
+(deftest ^:parallel mask-matches-reference-on-source-test
+  (testing "every source file the scanner reads"
+    ;; the scanner's own roots and extensions, so that this cannot drift from what it scans
+    (let [files (for [root  @#'kondo-ratchet/source-roots
+                      ^java.io.File file (file-seq (io/file root))
+                      :when (and (.isFile file)
+                                 (some #(str/ends-with? (.getPath file) %) @#'kondo-ratchet/source-extensions))]
+                  file)]
+      ;; an empty sweep, from the wrong working directory say, must not pass
+      (is (= {:read-some? true, :differing []}
+             {:read-some? (boolean (seq files))
+              :differing  (for [^java.io.File file files
+                                :let  [content (slurp file)]
+                                :when (not= (reference-mask content)
+                                            (kondo-ratchet/mask-strings-and-comments content))]
+                            (.getPath file))})))))
 
 (deftest ^:parallel line-linters-test
   (are [expected line] (= expected (kondo-ratchet/line-linters line))
