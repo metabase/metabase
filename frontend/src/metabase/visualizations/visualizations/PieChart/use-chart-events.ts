@@ -9,12 +9,14 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
+  type ComputedVisualizationSettings,
   type EChartsEventHandler,
   type EChartsSunburstSeriesMouseEvent,
   type EChartsTooltipModel,
   type EChartsTooltipRow,
   type PieChartFormatters,
   type PieChartModel,
+  type RemappingHydratedDatasetColumn,
   type SliceTreeNode,
   getArrayFromMapValues,
   getMarkerColorClass,
@@ -27,10 +29,21 @@ import {
 import type { ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
+// Prefer the user-defined column title (e.g. renamed in the notebook) over the
+// column display name, matching how tables and row charts label columns.
+const getSliceColumnTitle = (
+  column: RemappingHydratedDatasetColumn | undefined,
+  settings?: ComputedVisualizationSettings,
+): string | undefined => {
+  const columnSettings = column ? settings?.column?.(column) : undefined;
+  return columnSettings?.column_title ?? column?.display_name;
+};
+
 export const getTooltipModel = (
   sliceKeyPath: string[],
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
+  settings?: ComputedVisualizationSettings,
 ): EChartsTooltipModel => {
   const { sliceTreeNode, nodes } = getSliceTreeNodesFromPath(
     chartModel.sliceTree,
@@ -74,7 +87,7 @@ export const getTooltipModel = (
   return {
     header:
       nodes.length === 1
-        ? sliceTreeNode.column?.display_name
+        ? getSliceColumnTitle(sliceTreeNode.column, settings)
         : nodes
             .slice(0, -1)
             .map((node) => node.name)
