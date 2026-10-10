@@ -111,7 +111,8 @@
   (let [anchors '{galactic-center query-processor
                   tardis          lib}
         counts  {:namespaces 100, :scc-largest-namespaces 60, :exposed-namespaces 40, :retest-module-mean 70.0
-                 :retest-namespace-mean 20.0, :retest-histogram {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}}
+                 :retest-namespace-mean 20.0, :retest-histogram {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}
+                 :leaf-modules 3, :leaf-module-namespaces 12, :leaf-namespaces 30}
         rows    [(merge counts {:sha "aaaaaaaaaaaa1", :committed-at "2026-01-01T00:00:00Z", :subject "No modules yet"
                                 :module-system? false})
                  (merge counts {:sha "bbbbbbbbbbbb2", :committed-at "2026-01-02T00:00:00Z", :subject "Split (#2)"
@@ -123,6 +124,8 @@
              :retest   {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}
              :commits  [{:sha   "aaaaaaaaaaa"
                          :pct     100.0
+                         :lfm     nil
+                         :lfn     30
                          :exp     nil
                          :bridges 0
                          :rank    0
@@ -138,6 +141,9 @@
                          :pct     60.0
                          :rtm     70.0
                          :rtn     20.0
+                         :lfm     3
+                         :lfmn    12
+                         :lfn     30
                          :exp     40
                          ;; Of the cycle with the most namespaces.
                          :bridges 0
