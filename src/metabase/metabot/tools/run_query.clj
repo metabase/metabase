@@ -108,9 +108,9 @@
   (when-let [card-id (some (fn [{:keys [id type]}]
                              (when (and (= query-id (str id))
                                         (contains? #{"question" "model"} (some-> type name)))
-                               (let [card-id (parse-long (str id))]
-                                 (when (pos-int? card-id)
-                                   card-id))))
+                               (let [parsed (parse-long (str id))]
+                                 (when (pos-int? parsed)
+                                   parsed))))
                            (get-in (shared/current-memory) [:context :user_is_viewing]))]
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
     (let [card (metabot.db/card card-id)]
