@@ -58,12 +58,13 @@
   (* 3 60 60 1000))
 
 (defn- measure!
-  "Write the files into `dir`."
-  [dir]
+  "Write the files into `dir`, for the history of `ref` when it is given and of `origin/master` otherwise."
+  [dir ref]
   ;; Always a fresh JVM, never the dev REPL: results are cached under a hash of the measuring code on disk, and a
   ;; REPL may have loaded an older version of it.
   (sh! {:timeout-ms measuring-timeout-ms}
-       ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" (pr-str (str dir))]))
+       (cond-> ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" (pr-str (str dir))]
+         ref (conj ":ref" (pr-str ref)))))
 
 ;;;; Publishing config
 
@@ -218,7 +219,7 @@
 (defn cli-update
   "Fetch master, measure its new commits, write the files, and publish them when asked."
   [{:keys [options]}]
-  (let [{:keys [dir publish no-fetch no-measure dry-run]} options]
+  (let [{:keys [dir publish ref no-fetch no-measure dry-run]} options]
     (when (str/blank? dir)
       (u/exit (c/red "Pass --dir DIR, the directory to keep the files in.") 1))
     (when (and dry-run (not publish))
@@ -232,7 +233,7 @@
         (when-not no-fetch
           (println "Fetching origin/master...")
           (sh! {} ["git" "fetch" "--quiet" "origin" "master"]))
-        (measure! dir))
+        (measure! dir ref))
       (when publish
         (publish! (boolean dry-run) dir (fs/expand-home publish)))
       (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
