@@ -355,7 +355,9 @@
 (defn- retest-metrics
   "How much of the backend a change would retest, taking every namespace in turn as the one that changed.
   A test run selected by module reruns every namespace of every module that reaches the changed namespace's module;
-  one selected by namespace reruns only the namespaces that reach it. Shares are percentages of all namespaces."
+  one selected by namespace reruns only the namespaces that reach it. Shares are percentages of all namespaces.
+
+  A leaf is a module or namespace nothing else requires, so a change to it retests only itself."
   [deps]
   (let [total          (count deps)
         mod->count     (update-vals (group-by :module deps) count)
@@ -376,6 +378,9 @@
                                                      total)])
                                   (:nodes by-module)
                                   (:sets by-module)))
+        leaf-modules   (into #{}
+                             (keep (fn [[module ^BitSet reaching]] (when (= 1 (.cardinality reaching)) module)))
+                             (map vector (:nodes by-module) (:sets by-module)))
         per-module     (share-summary (map (comp module-share :module) deps))
         per-namespace  (share-summary (map (fn [^BitSet reaching] (percent (.cardinality reaching) total))
                                            (:sets by-namespace)))]
@@ -383,7 +388,10 @@
      :retest-module-median    (:median per-module)
      :retest-namespace-mean   (:mean per-namespace)
      :retest-namespace-median (:median per-namespace)
-     :retest-histogram        {:module (:histogram per-module), :namespace (:histogram per-namespace)}}))
+     :retest-histogram        {:module (:histogram per-module), :namespace (:histogram per-namespace)}
+     :leaf-modules            (count (filter mod->count leaf-modules))
+     :leaf-module-namespaces  (transduce (map #(mod->count % 0)) + 0 leaf-modules)
+     :leaf-namespaces         (count (filter (fn [^BitSet reaching] (= 1 (.cardinality reaching))) (:sets by-namespace)))}))
 
 (defn commit-metrics
   "Metrics for one commit's dependency rows and module map: [[deps-graph/module-boundary-stats]] plus the sizes,
@@ -588,7 +596,8 @@
    :scc1-modules :scc1-namespaces :scc2-modules :scc2-namespaces :scc3-modules :scc3-namespaces
    :largest-ns-level-scc :mutual-dependency-pairs :friend-internal-namespaces :friend-internal-requires
    :non-api-cross-module-requires :total-api-namespaces :ns-prefixes :model-imports-bypass :legacy-rest-modules
-   :retest-module-mean :retest-module-median :retest-namespace-mean :retest-namespace-median])
+   :retest-module-mean :retest-module-median :retest-namespace-mean :retest-namespace-median
+   :leaf-modules :leaf-module-namespaces :leaf-namespaces])
 
 (defn backfill!
   "Measure every commit [[sample-commits]] picks for `opts`, plus any explicit `:commits`, and return the rows.
