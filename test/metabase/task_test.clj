@@ -205,7 +205,7 @@
        (set-stored-job-class-name! old-upgrade-checks-class-name)
        (task/stop-scheduler!)
        (task/start-scheduler!)
-       ;; the trigger survives too. No `init!` recreates some triggers, like per-database sync schedules.
+       ;; the trigger survives too, which matters for per-database sync schedules, as no `init!` recreates them
        (is (= {:stored-class-name old-upgrade-checks-class-name
                :loaded-class-name upgrade-checks-class-name
                :triggers          #{{:cron-expression     "0 0 * * * ? *"
@@ -227,7 +227,7 @@
    (jobs/with-identity (jobs/key "metabase.task-test.job"))
    (jobs/with-description (or description "a job"))
    (jobs/using-job-data (or data {}))
-   ;; `jobs/build` threads the builder in as the first argument
+   ;; the `jobs/build` macro threads the builder in as the first argument
    (cond-> requests-recovery? jobs/request-recovery)
    (jobs/store-durably)))
 
