@@ -94,21 +94,19 @@ describe("extract shortcut", () => {
   });
 
   describe("date columns", () => {
-    describe("should add a date expression for each option", () => {
+    it("should add a date expression for each option", () => {
+      H.openOrdersTable({ limit: 1 });
       DATE_CASES.forEach(({ option, value, example, expressions }) => {
-        it(option, () => {
-          H.openOrdersTable({ limit: 1 });
-          extractColumnAndCheck({
-            column: "Created At",
-            option,
-            value,
-            example,
-          });
-          H.expectUnstructuredSnowplowEvent({
-            event: "column_extract_via_plus_modal",
-            custom_expressions_used: expressions,
-            database_id: SAMPLE_DB_ID,
-          });
+        extractColumnAndCheck({
+          column: "Created At",
+          option,
+          value,
+          example,
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "column_extract_via_plus_modal",
+          custom_expressions_used: expressions,
+          database_id: SAMPLE_DB_ID,
         });
       });
     });
@@ -143,86 +141,17 @@ describe("extract shortcut", () => {
       });
       H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
+      H.tableHeaderColumn("custom formula").should("be.visible");
       cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
     });
   });
 
-  describe("email columns", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
+  it("should add a url expression for each option", () => {
+    // Make the Email column a URL column for this test, to avoid having to create a new model
+    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+      semantic_type: "type/URL",
     });
 
-    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
-      it(option, () => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": PEOPLE_ID,
-              limit: 1,
-            },
-          },
-          {
-            visitQuestion: true,
-          },
-        );
-
-        extractColumnAndCheck({
-          column: "Email",
-          option,
-          value,
-          example,
-        });
-        H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
-          custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
-        });
-      });
-    });
-  });
-
-  describe("url columns", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-
-      // Make the Email column a URL column for these tests, to avoid having to create a new model
-      cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
-        semantic_type: "type/URL",
-      });
-    });
-
-    URL_CASES.forEach(({ option, value, example, expressions }) => {
-      it(option, () => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": PEOPLE_ID,
-              limit: 1,
-            },
-          },
-          {
-            visitQuestion: true,
-          },
-        );
-
-        extractColumnAndCheck({
-          column: "Email",
-          option,
-          value,
-          example,
-        });
-        H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
-          custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
-        });
-      });
-    });
-  });
-
-  it("should disable the scroll behaviour after it has been rendered", () => {
     H.createQuestion(
       {
         query: {
@@ -235,9 +164,46 @@ describe("extract shortcut", () => {
       },
     );
 
-    extractColumnAndCheck({
-      column: "Email",
-      option: "Host",
+    URL_CASES.forEach(({ option, value, example, expressions }) => {
+      extractColumnAndCheck({
+        column: "Email",
+        option,
+        value,
+        example,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "column_extract_via_plus_modal",
+        custom_expressions_used: expressions,
+        database_id: SAMPLE_DB_ID,
+      });
+    });
+  });
+
+  it("should add an email expression for each option and disable the scroll behaviour after it has been rendered", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 1,
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
+      extractColumnAndCheck({
+        column: "Email",
+        option,
+        value,
+        example,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "column_extract_via_plus_modal",
+        custom_expressions_used: expressions,
+        database_id: SAMPLE_DB_ID,
+      });
     });
 
     H.tableInteractiveScrollContainer().scrollTo("left", {
@@ -246,8 +212,10 @@ describe("extract shortcut", () => {
 
     H.tableHeaderClick("ID");
 
+    cy.intercept("POST", "/api/dataset").as("sortedDataset");
     // Change sort direction
     H.popover().findAllByRole("button").first().click();
+    cy.wait("@sortedDataset");
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
     cy.findAllByRole("columnheader").contains("ID").should("be.visible");
@@ -273,10 +241,6 @@ describe("extract shortcut", () => {
       column: "Created At: Month",
       option: "Month of year",
     });
-
-    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
-      "be.visible",
-    );
   });
 
   it("should be possible to extract columns from table with breakouts", () => {
@@ -299,10 +263,6 @@ describe("extract shortcut", () => {
       column: "Created At: Month",
       option: "Month of year",
     });
-
-    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
-      "be.visible",
-    );
   });
 });
 
@@ -335,14 +295,22 @@ function extractColumnAndCheck({
   cy.wait(`@${requestAlias}`);
 
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByRole("columnheader")
-    .last()
-    .should("have.text", newColumn)
-    .should("be.visible");
-
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("columnheader").last().should("have.text", newColumn);
-  if (value) {
+
+  // With many columns, the "Add column" button can cover the last header,
+  // so the visible value cell shows that the table scrolled to the new column.
+  if (!value) {
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findAllByRole("columnheader").last().should("be.visible");
+  }
+
+  if (value === "") {
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("body-cell-container")
+      .last()
+      .should("have.text", "");
+  } else if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
 }

@@ -11,7 +11,6 @@ const tableQuestion = {
   query: {
     "source-table": ORDERS_ID,
   },
-  limit: 5,
 };
 
 const tableQuestionWithJoin = {
@@ -75,7 +74,6 @@ const tableQuestionWithJoinAndFields = {
       },
     ],
   },
-  limit: 5,
 };
 
 const tableQuestionWithSelfJoinAndFields = {
@@ -163,7 +161,6 @@ const nativeQuestion = {
   native: {
     query: "SELECT * FROM ORDERS",
   },
-  limit: 5,
 };
 
 const nestedQuestion = (card) => ({
@@ -171,7 +168,6 @@ const nestedQuestion = (card) => ({
   query: {
     "source-table": `card__${card.id}`,
   },
-  limit: 5,
 });
 
 const nestedQuestionWithJoinOnTable = (card) => ({
@@ -229,18 +225,24 @@ describe("scenarios > visualizations > table column settings", () => {
     needsScroll = true,
     scrollTimes = 1,
   }) => {
+    const scroll = () => {
+      if (needsScroll) {
+        _.times(scrollTimes, () => {
+          scrollVisualization();
+          cy.wait(200);
+        });
+      }
+    };
+
     cy.log("hide the column");
+    scroll();
+    visualization().findByText(columnName).should("exist");
     visibleColumns().within(() => hideColumn(columnName));
     assertColumnHidden(getColumn(columnName));
     if (sanityCheck) {
       assertColumnEnabled(getColumn(sanityCheck));
     }
-    if (needsScroll) {
-      _.times(scrollTimes, () => {
-        scrollVisualization();
-        cy.wait(200);
-      });
-    }
+    scroll();
     visualization().findByText(columnName).should("not.exist");
 
     cy.findByRole("button", { name: /Add or remove columns/ }).click();
@@ -331,9 +333,20 @@ describe("scenarios > visualizations > table column settings", () => {
   };
 
   describe("tables", () => {
-    it("should be able to show and hide table fields", () => {
+    it("should be able to show and hide table fields, implicitly joinable fields, and rename columns via popover", () => {
       H.createQuestion(tableQuestion, { visitQuestion: true });
       openSettings();
+
+      const implicitColumn = {
+        column: "Category",
+        columnName: "Product → Category",
+        table: "product",
+      };
+
+      _addColumn(implicitColumn);
+      _hideColumn(implicitColumn);
+      _showColumn(implicitColumn);
+      _removeColumn(implicitColumn);
 
       const testData = {
         column: "Tax",
@@ -346,10 +359,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _removeColumn(testData);
       _addColumn(testData);
-    });
-
-    it("should be able to rename table columns via popover", () => {
-      H.createQuestion(tableQuestion, { visitQuestion: true });
 
       H.tableHeaderClick("Product ID");
 
@@ -366,24 +375,7 @@ describe("scenarios > visualizations > table column settings", () => {
       });
     });
 
-    it("should be able to show and hide table fields with in a join", () => {
-      H.createQuestion(tableQuestionWithJoin, { visitQuestion: true });
-      openSettings();
-
-      const testData = {
-        column: "Category",
-        columnName: "Products → Category",
-        sanityCheck: "Products → Ean",
-        table: "products",
-      };
-
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
-    });
-
-    it("should be able to show and hide all table fields with a single click", () => {
+    it("should be able to show and hide all and single table fields in a join", () => {
       H.createQuestion(tableQuestionWithJoin, { visitQuestion: true });
       openSettings();
 
@@ -419,6 +411,19 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByLabelText("Category").should("be.checked");
         cy.findByLabelText("Price").should("be.checked");
       });
+      cy.findByRole("button", { name: /Done picking columns/ }).click();
+
+      const testData = {
+        column: "Category",
+        columnName: "Products → Category",
+        sanityCheck: "Products → Ean",
+        table: "products",
+      };
+
+      _hideColumn(testData);
+      _showColumn(testData);
+      _removeColumn(testData);
+      _addColumn(testData);
     });
 
     it("should be able to show and hide table fields with a join with fields", () => {
@@ -462,22 +467,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _removeColumn(testData);
       _addColumn(testData);
-    });
-
-    it("should be able to show and hide implicitly joinable fields for a table", () => {
-      H.createQuestion(tableQuestion, { visitQuestion: true });
-      openSettings();
-
-      const testData = {
-        column: "Category",
-        columnName: "Product → Category",
-        table: "product",
-      };
-
-      _addColumn(testData);
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
     });
 
     it("should be able to show and hide custom expressions for a table", () => {
@@ -570,27 +559,34 @@ describe("scenarios > visualizations > table column settings", () => {
       it("should not duplicate column in settings when removing and adding it back (metabase#22206)", () => {
         H.openVizSettingsSidebar();
 
-        // remove column
-        cy.findByTestId("sidebar-content")
-          .findByTestId("draggable-item-Subtotal")
-          .icon("eye_outline")
-          .click({ force: true });
+        // The duplicate shows on the second cycle
+        _.times(2, () => {
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_outline")
+            .click({ force: true });
 
-        // rerun query
+          cy.findAllByTestId("run-button").first().click();
+          cy.wait("@dataset");
+          cy.findByTestId("loading-indicator").should("not.exist");
+
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_crossed_out")
+            .click({ force: true });
+
+          cy.findByTestId("sidebar-content")
+            .findByTestId("draggable-item-Subtotal")
+            .icon("eye_outline")
+            .should("exist");
+          cy.findByTestId("sidebar-content")
+            .findAllByTestId("draggable-item-Subtotal")
+            .should("have.length", 1);
+        });
+
         cy.findAllByTestId("run-button").first().click();
         cy.wait("@dataset");
-        cy.findByTestId("loading-indicator").should("not.exist");
-
-        // add column back again
-        cy.findByTestId("sidebar-content")
-          .findByTestId("draggable-item-Subtotal")
-          .icon("eye_crossed_out")
-          .click({ force: true });
-
-        // fails because there are 2 columns, when there should be one
-        cy.findByTestId("sidebar-content").findByText("Subtotal");
-
-        // if you add it back again it crashes the question
+        H.tableInteractive().findByText("Subtotal").should("exist");
       });
     });
   });
@@ -688,11 +684,21 @@ describe("scenarios > visualizations > table column settings", () => {
   });
 
   describe("nested structured questions", () => {
-    it("should be able to show and hide fields from a nested query", () => {
+    it("should be able to show and hide fields and implicitly joinable fields from a nested query", () => {
       H.createQuestion(tableQuestion).then(({ body: card }) => {
         H.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
+
+      const implicitColumn = {
+        column: "Category",
+        columnName: "Product → Category",
+        table: "product",
+      };
+
+      _addColumn(implicitColumn);
+      _hideColumn(implicitColumn);
+      _removeColumn(implicitColumn);
 
       const testData = {
         column: "Tax",
@@ -767,23 +773,6 @@ describe("scenarios > visualizations > table column settings", () => {
         columnName: "User → ID",
         table: "user",
         scrollTimes: 3,
-      };
-
-      _addColumn(newColumn);
-      _hideColumn(newColumn);
-      _removeColumn(newColumn);
-    });
-
-    it("should be able to show and hide implicitly joinable fields for a nested query", () => {
-      H.createQuestion(tableQuestion).then(({ body: card }) => {
-        H.createQuestion(nestedQuestion(card), { visitQuestion: true });
-      });
-      openSettings();
-
-      const newColumn = {
-        column: "Category",
-        columnName: "Product → Category",
-        table: "product",
       };
 
       _addColumn(newColumn);
@@ -1269,7 +1258,8 @@ describe("scenarios > visualizations > table column settings", () => {
           .findAllByTestId("header-cell")
           .should("have.length", 1)
           .first()
-          .should("contain.text", "ID");
+          .findByText("ID")
+          .should("exist");
 
         H.tableHeaderColumn("User ID").as("dragElement");
         H.moveDnDKitElementByAlias("@dragElement", { horizontal: -50 });
@@ -1278,7 +1268,8 @@ describe("scenarios > visualizations > table column settings", () => {
           .findAllByTestId("header-cell")
           .should("have.length", 1)
           .first()
-          .should("contain.text", "User ID");
+          .findByText("User ID")
+          .should("exist");
       });
 
       it("should allow reordering a column from the pinned section into the unpinned section", () => {
@@ -1296,9 +1287,9 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.findByTestId("header-pinned-quadrant")
           .findAllByTestId("header-cell")
           .should("have.length", 2)
-          .then((cells) => {
-            expect(cells.eq(0)).to.contain("ID");
-            expect(cells.eq(1)).to.contain("User ID");
+          .should((cells) => {
+            expect(cells.eq(0).text()).to.match(/^ID/);
+            expect(cells.eq(1).text()).to.match(/^User ID/);
           });
 
         H.tableHeaderColumn("ID").as("dragElement");
@@ -1306,9 +1297,9 @@ describe("scenarios > visualizations > table column settings", () => {
 
         cy.findByTestId("header-pinned-quadrant")
           .findAllByTestId("header-cell")
-          .then((cells) => {
-            expect(cells.eq(0)).to.contain("User ID");
-            expect(cells.eq(1)).to.contain("Product ID");
+          .should((cells) => {
+            expect(cells.eq(0).text()).to.match(/^User ID/);
+            expect(cells.eq(1).text()).to.match(/^Product ID/);
           });
       });
     });
