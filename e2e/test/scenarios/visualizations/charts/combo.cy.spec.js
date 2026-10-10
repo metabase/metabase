@@ -84,6 +84,8 @@ describe("scenarios > visualizations > combo", () => {
       cy.findByText("Stack").click();
     });
 
+    H.getValueLabels().should("have.length.greaterThan", 0);
+
     // First circle of the line series
     H.cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
     H.assertEChartsTooltip({
