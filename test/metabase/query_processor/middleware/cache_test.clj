@@ -51,13 +51,11 @@
                       (initialize/initialize-if-needed! :db)
                       (thunk)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
   because of an Exception or if the byte threshold is passed."
   nil)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *purge-chan*
   "Gets a message whenever old entries are purged from the test backend."
   nil)
@@ -142,10 +140,8 @@
 (defmacro with-mock-cache! [[& bindings] & body]
   `(do-with-mock-cache! (fn [{:keys [~@bindings]}] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-caching-min-ttl*
   "Set this to zero to prevent flakes - we don't want a query to slip under the wire here."
   0)
@@ -163,7 +159,6 @@
           :stages         [{:lib/type :mbql.stage/mbql, :source-table 2}]}
          query-kvs))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *rows*
   "Rows the mock query execution returns. Bind to `[]` to exercise the empty-result path."
   [[:toucan      71]

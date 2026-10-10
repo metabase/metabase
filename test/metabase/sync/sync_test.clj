@@ -29,7 +29,6 @@
 
 (driver/register! ::sync-test, :abstract? true)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *supports-schemas?*
   "Whether the database supports schemas."
   true)
@@ -107,7 +106,6 @@
   [_ _query]
   {:query "SQL string"})
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn- ^:dynamic *execute-response*
   [query respond]
   (mock.util/mock-execute-reducible-query query respond))

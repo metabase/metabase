@@ -1390,7 +1390,6 @@
                     "Model failed to persist")
                 ;; a sandboxed user has no native-query permissions, but only needs to be able to *read* a saved
                 ;; native Card that references the persisted Model to hit this code path.
-                #_{:clj-kondo/ignore [:discouraged-var]}
                 (mt/with-temp [:model/Card card {:dataset_query
                                                  (lib/native-query (mt/metadata-provider)
                                                                    (format "SELECT count(*) FROM {{#%d}} AS m"
