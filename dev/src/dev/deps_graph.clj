@@ -204,7 +204,7 @@
 (mu/defn resolve-requires :- FileDependencies
   "The dependency row for one source file at `filename`, resolving its namespace and each namespace it requires to a
   module through `prefix->module`.
-  The `requires` map has the shape [[module-source/source-requires]] returns.
+  The third argument has the shape [[module-source/source-requires]] returns.
   A namespace required both statically and dynamically counts as static."
   [prefix->module :- PrefixToModule
    filename       :- :string
@@ -784,7 +784,7 @@
     (module-source/walk-parsed-ignore-comments!
      (fn [node]
        (when (= (n/tag node) :list)
-         (let [[fst snd trd :as children] (remove module-source/skip-node? (n/children node))]
+         (let [[fst snd trd] (remove module-source/skip-node? (n/children node))]
            (when (and fst (= (n/tag fst) :token)
                       (some-> (n/string fst) (str/ends-with? "/defmethod")))
              (when (and fst snd trd
