@@ -349,48 +349,72 @@
   #{"billing_error" "enforced_spend_limit_reached" "insufficient_quota" "credit_balance_exhausted"
     "organization_spend_limit_exceeded" "project_spend_limit_exceeded" "organization_usage_limit_exceeded"})
 
+(def ^:private provider-unavailable-error-types
+  "Error types Anthropic uses for a failure on its side, in a 5xx response or in an error event streamed after a 200."
+  #{"api_error" "timeout_error" "overloaded_error"})
+
 (defn- provider-failure
-  "Classify a provider API error's ex-data as `:billing`, `:rate-limit` or `:auth`, or nil for any other failure."
-  [{:keys [status body]}]
-  (let [{error-type :type error-code :code :keys [message details]} (:error body)]
-    (cond
-      (or (= status 402)
-          (some provider-billing-error-codes [error-type error-code (:error_code details)])
-          ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
-          (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
-      :billing
+  "Classify a provider failure as `:billing`, `:rate-limit`, `:auth` or `:unavailable`, or nil for any other failure.
+  Reads its HTTP `status`, nil for an error streamed after a 200, and the `error` object the provider sent."
+  [status {error-type :type error-code :code :keys [message details]}]
+  (cond
+    (or (= status 402)
+        (some provider-billing-error-codes [error-type error-code (:error_code details)])
+        ;; Anthropic reports a used-up credit balance or spend limit as a plain invalid_request_error
+        (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
+    :billing
 
-      (= status 429)
-      :rate-limit
+    (= status 429)
+    :rate-limit
 
-      (or (= status 401) (= "permission_error" error-type))
-      :auth)))
+    (or (= status 401) (= "permission_error" error-type))
+    :auth
 
-(defn byok-provider-error
-  "A user-facing `{:message :error-code}` for a provider failure that the customer can fix on their side, or nil.
-  Always nil on the managed provider, where these failures are Metabase's to fix. Only admins are told which
-  provider failed and where to fix it."
-  [e]
-  (let [{:keys [api-error provider] :as data} (ex-data e)]
-    (when-let [failure (and api-error
-                            provider
-                            (not (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider)))
-                            (provider-failure data))]
-      (let [admin?        api/*is-superuser?*
-            provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
-        (case failure
-          :billing    {:error-code "ai_provider_billing"
-                       :message    (if admin?
-                                     (tru "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account." provider-name)
-                                     (tru "The AI provider rejected the request because of a billing issue. Please contact your administrator."))}
-          :rate-limit {:error-code "ai_provider_rate_limit"
-                       :message    (if admin?
-                                     (tru "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account." provider-name)
-                                     (tru "The AI provider is rate limiting requests right now. Please try again in a moment."))}
-          :auth       {:error-code "ai_provider_auth"
-                       :message    (if admin?
-                                     (tru "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings." provider-name)
-                                     (tru "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."))})))))
+    (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
+    :unavailable))
+
+(defn provider-error
+  "A user-facing `{:message :error-code}` for a provider failure we can explain better than the generic error, or nil.
+  Takes a provider API exception, or the failure's `provider`, `status` and `error` as [[provider-failure]] reads them.
+
+  On the managed provider only an outage gets one, since billing, rate limits and credentials there are Metabase's to
+  fix. Only admins on their own key are told which provider failed and where to fix it."
+  ([e]
+   (let [{:keys [api-error provider status body]} (ex-data e)]
+     (when (and api-error provider)
+       (provider-error provider status (:error body)))))
+  ([provider status error]
+   (when-let [failure (provider-failure status error)]
+     (let [managed?      (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+           admin?        (and api/*is-superuser?* (not managed?))
+           provider-name (or (some-> (llm.provider/provider-type provider) :label str) provider)]
+       (when (or (= :unavailable failure) (not managed?))
+         (case failure
+           :billing     {:error-code "ai_provider_billing"
+                         :message    (if admin?
+                                       (tru "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account." provider-name)
+                                       (tru "The AI provider rejected the request because of a billing issue. Please contact your administrator."))}
+           :rate-limit  {:error-code "ai_provider_rate_limit"
+                         :message    (if admin?
+                                       (tru "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account." provider-name)
+                                       (tru "The AI provider is rate limiting requests right now. Please try again in a moment."))}
+           :auth        {:error-code "ai_provider_auth"
+                         :message    (if admin?
+                                       (tru "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings." provider-name)
+                                       (tru "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."))}
+           :unavailable {:error-code "ai_provider_unavailable"
+                         :message    (if admin?
+                                       (tru "{0} is having problems right now. Try again in a few minutes." provider-name)
+                                       (tru "The AI provider is having problems right now. Please try again in a few minutes."))}))))))
+
+(defn- provider-error-xf
+  "Transducer that replaces the error on a streamed `:error` part with [[provider-error]]'s, when it has one."
+  [provider]
+  (map (fn [part]
+         (if-let [error (when (= :error (:type part))
+                          (provider-error provider nil (:error part)))]
+           (assoc part :error error)
+           part))))
 
 (defn- missing-required-permission
   "Returns the metabot permission keyword that the current user is missing
@@ -515,6 +539,7 @@
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
+                                                (provider-error-xf provider)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
                                           (stream-fn streaming-opts)))]

@@ -246,7 +246,7 @@
       "You do not have permission to use the AI assistant."
 
       (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
-         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} code)
+         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth" "ai_provider_unavailable"} code)
       (:message error)
 
       (provider-config-error-codes code)

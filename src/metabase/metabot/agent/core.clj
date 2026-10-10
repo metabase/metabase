@@ -543,7 +543,7 @@
   {:type :text, :id (str (random-uuid)), :text message})
 
 (defn- error-part [^Exception e]
-  {:type :error, :error (or (self/byok-provider-error e)
+  {:type :error, :error (or (self/provider-error e)
                             {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})})
 
 (defn- accumulate-usage-xf
