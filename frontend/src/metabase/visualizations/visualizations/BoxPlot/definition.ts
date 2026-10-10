@@ -7,6 +7,7 @@ import {
   type ComputedVisualizationSettings,
   GRAPH_AXIS_SETTINGS,
   GRAPH_GOAL_SETTINGS,
+  LEGEND_VISIBILITY_SETTINGS,
   type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
@@ -49,6 +50,7 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
     ...BOXPLOT_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
+    ...LEGEND_VISIBILITY_SETTINGS,
     ...BOXPLOT_DATA_SETTINGS,
   },
 };

@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import {
   GRAPH_GOAL_SETTINGS,
+  LEGEND_VISIBILITY_SETTINGS,
   type VisualizationSettingsDefinitions,
   getDefaultDimensionLabel,
 } from "metabase/viz-core";
@@ -281,4 +282,5 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => "full",
     readDependencies: ["graph.show_values"],
   },
+  ...LEGEND_VISIBILITY_SETTINGS,
 };

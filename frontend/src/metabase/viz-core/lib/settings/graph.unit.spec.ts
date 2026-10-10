@@ -13,6 +13,7 @@ import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
   GRAPH_TREND_SETTINGS,
+  LEGEND_VISIBILITY_SETTINGS,
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
   getDefaultDimensionLabel,
@@ -117,6 +118,59 @@ describe("STACKABLE_SETTINGS", () => {
 
         expect(result).toBe(false);
       });
+    });
+  });
+});
+
+describe("LEGEND_VISIBILITY_SETTINGS", () => {
+  describe("legend.is_visible", () => {
+    const setting = checkNotNull(
+      LEGEND_VISIBILITY_SETTINGS["legend.is_visible"],
+    );
+    const getHidden = checkNotNull(setting.getHidden);
+    const singleSeries = [createMockSingleSeries({ display: "line" })];
+
+    it("should show the legend by default", () => {
+      expect(setting.getDefault?.(singleSeries, {})).toBe(true);
+    });
+
+    it("should hide the toggle for a single series with one dimension and one metric", () => {
+      expect(
+        getHidden(singleSeries, {
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["count"],
+        }),
+      ).toBe(true);
+    });
+
+    it("should show the toggle when there are several series", () => {
+      expect(
+        getHidden(
+          [
+            createMockSingleSeries({ display: "line" }),
+            createMockSingleSeries({ display: "line" }),
+          ],
+          { "graph.dimensions": ["CREATED_AT"], "graph.metrics": ["count"] },
+        ),
+      ).toBe(false);
+    });
+
+    it("should show the toggle when there is a breakout", () => {
+      expect(
+        getHidden(singleSeries, {
+          "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+          "graph.metrics": ["count"],
+        }),
+      ).toBe(false);
+    });
+
+    it("should show the toggle when there are several metrics", () => {
+      expect(
+        getHidden(singleSeries, {
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["count", "sum"],
+        }),
+      ).toBe(false);
     });
   });
 });

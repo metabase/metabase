@@ -50,6 +50,7 @@ export type CartesianVisualizationSettings = Pick<
   | "graph.y_axis.min"
   | "graph.y_axis.max"
   | "stackable.stack_type"
+  | "legend.is_visible"
   | "series_settings"
   | "column_settings"
 >;
@@ -66,6 +67,7 @@ export type ScatterVisualizationSettings = Pick<
   | "graph.x_axis.scale"
   | "graph.y_axis.scale"
   | "scatter.bubble"
+  | "legend.is_visible"
   | "series_settings"
   | "column_settings"
 >;
@@ -112,6 +114,7 @@ export type PieVisualizationSettings = Pick<
   | "pie.dimension"
   | "pie.metric"
   | "pie.sort_rows"
+  | "legend.is_visible"
   | "pie.show_legend"
   | "pie.show_total"
   | "pie.show_labels"
@@ -144,7 +147,7 @@ export type ScalarVisualizationSettings = Pick<
  */
 export type FunnelVisualizationSettings = Pick<
   VisualizationSettings,
-  "funnel.rows" | "column_settings"
+  "funnel.rows" | "legend.is_visible" | "column_settings"
 >;
 
 /**
@@ -172,16 +175,17 @@ export type BoxplotVisualizationSettings = Pick<
   | "boxplot.points_mode"
   | "boxplot.show_mean"
   | "boxplot.show_values_mode"
+  | "legend.is_visible"
   | "column_settings"
 >;
 
 /**
- * Settings for pin and region maps. No map-specific settings are surfaced yet;
- * use `column_settings` for stable column formatting only.
+ * Settings for pin and region maps. Use `legend.is_visible` to hide a region
+ * map's legend and `column_settings` for stable column formatting.
  */
 export type MapVisualizationSettings = Pick<
   VisualizationSettings,
-  "column_settings"
+  "legend.is_visible" | "column_settings"
 >;
 
 /**

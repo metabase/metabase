@@ -251,7 +251,10 @@ const RowChartVisualization = ({
 
   const hasBreakout =
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
-  const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
+  const hasLegend =
+    !hideLegend &&
+    settings["legend.is_visible"] !== false &&
+    (series.length > 1 || hasBreakout);
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>

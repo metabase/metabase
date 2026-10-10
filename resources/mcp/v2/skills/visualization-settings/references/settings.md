@@ -26,13 +26,15 @@ Axes: `graph.x_axis.scale` (`"timeseries"` `"linear"` `"pow"` `"log"` `"histogra
 
 Tooltip: `graph.tooltip_columns` (string[] — extra columns on hover).
 
+Legend: `legend.is_visible` (bool, default true) shows or hides the series legend. It only matters with several series or a breakout; row, scatter, boxplot, and pie take it too.
+
 Extras: `scatter.bubble` (numeric column name → bubble size). Waterfall: `waterfall.increase_color`, `waterfall.decrease_color`, `waterfall.show_total` (bool), `waterfall.total_color`. Row charts: `graph.dimensions` is the y-axis (categories), x-scale `"ordinal"` only.
 
 ## Part-to-whole & single value
 
-**pie** — required `pie.dimension` (string, or array for up to 3 concentric rings), `pie.metric`. Optional: `pie.show_legend`, `pie.show_total`, `pie.show_labels`, `pie.percent_visibility` (`"off"`/`"legend"`/`"inside"`/`"both"`), `pie.decimal_places`, `pie.slice_threshold` (min % before grouping into "Other", default 2.5).
+**pie** — required `pie.dimension` (string, or array for up to 3 concentric rings), `pie.metric`. Optional: `legend.is_visible` (bool, default true), `pie.show_total`, `pie.show_labels`, `pie.percent_visibility` (`"off"`/`"legend"`/`"inside"`/`"both"`), `pie.decimal_places`, `pie.slice_threshold` (min % before grouping into "Other", default 2.5).
 
-**funnel** — required `funnel.dimension` (stage), `funnel.metric` (value). Optional: `funnel.type` (`"funnel"`/`"bar"`), `funnel.rows` (`[{key, name, enabled}]` step order).
+**funnel** — required `funnel.dimension` (stage), `funnel.metric` (value). Optional: `funnel.type` (`"funnel"`/`"bar"`), `legend.is_visible` (bar type only), `funnel.rows` (`[{key, name, enabled}]` step order).
 
 **gauge** — `gauge.segments`: `[{min, max, color?, label?}]` (min/max required per segment).
 
@@ -59,7 +61,7 @@ Conditional formatting — `table.column_formatting` is a list of rules:
 
 **pivot** — needs an aggregated query built in the query builder (not native). `pivot_table.column_split`: `{"rows": [...names], "columns": [...names], "values": [...names]}`; `pivot.show_row_totals`, `pivot.show_column_totals`, `pivot.condense_duplicate_totals` (bools); `pivot_table.column_formatting` (as table's). Per-column under `column_settings`: `pivot_table.column_sort_order` (`"ascending"`/`"descending"`), `pivot_table.column_show_totals` (bool).
 
-**map** — `map.type`: `"region"` (choropleth), `"pin"`, `"grid"`. Region: `map.region` (`"us_states"`, `"world_countries"`, or a custom-geojson key), `map.dimension`, `map.metric`, `map.colors`. Pin/grid: `map.latitude_column`, `map.longitude_column`, `map.metric_column`, `map.pin_type` (`"tiles"`/`"markers"`/`"grid"`/`"heat"`), `map.heat.radius`/`.blur`/`.min-opacity`/`.max-zoom`.
+**map** — `map.type`: `"region"` (choropleth), `"pin"`, `"grid"`. Region: `map.region` (`"us_states"`, `"world_countries"`, or a custom-geojson key), `map.dimension`, `map.metric`, `map.colors`, `legend.is_visible` (bool). Pin/grid: `map.latitude_column`, `map.longitude_column`, `map.metric_column`, `map.pin_type` (`"tiles"`/`"markers"`/`"grid"`/`"heat"`), `map.heat.radius`/`.blur`/`.min-opacity`/`.max-zoom`.
 
 **sankey** — `sankey.source`, `sankey.target`, `sankey.value` (column names; distinct source/target, acyclic, ≤150 nodes); `sankey.node_align` (`"left"`/`"right"`/`"justify"`), `sankey.show_edge_labels` (bool), `sankey.label_value_formatting` (`"auto"`/`"compact"`/`"full"`), `sankey.edge_color` (`"gray"`/`"source"`/`"target"`).
 

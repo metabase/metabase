@@ -399,6 +399,12 @@ export type VisualizationSettings = {
   "graph.split_panels"?: boolean;
 
   /**
+   * Show the legend on charts that have one: pies, cartesian and row charts
+   * with several series, bar-type funnels, and region maps.
+   */
+  "legend.is_visible"?: boolean;
+
+  /**
    * Result column names used for the x-axis, category, or grouping dimension.
    * Prefer Metabase defaults unless the query needs a specific split.
    */
@@ -483,7 +489,7 @@ export type VisualizationSettings = {
   /** Sort pie slices by metric value. */
   "pie.sort_rows"?: boolean;
 
-  /** Show the pie legend. */
+  /** @deprecated Use `legend.is_visible`. Read only as the pie's fallback. */
   "pie.show_legend"?: boolean;
 
   /** Show the total value in the center of the pie. */

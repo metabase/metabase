@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { color } from "metabase/ui/colors";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
@@ -19,6 +19,7 @@ import type {
   RawSeries,
   Settings,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -34,7 +35,7 @@ registerVisualizations();
 
 // Chart components are loaded on demand. Register them up front so each test
 // renders in one pass and can be run on its own.
-beforeAll(() => loadVisualizationComponents(["bar", "scalar"]));
+beforeAll(() => loadVisualizationComponents(["bar", "row", "scalar"]));
 
 // Unjustified type cast. FIXME
 const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
@@ -349,6 +350,111 @@ describe("Visualization", () => {
         expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
         expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
       });
+    });
+
+    describe("legend", () => {
+      const breakoutSeries = (
+        visualizationSettings: VisualizationSettings = {},
+      ): RawSeries => [
+        {
+          card: createMockCard({
+            name: "Card",
+            display: "bar",
+            visualization_settings: visualizationSettings,
+          }),
+          data: createMockDatasetData({
+            cols: [
+              createMockCategoryColumn({ name: "Dimension1" }),
+              createMockCategoryColumn({ name: "Dimension2" }),
+              createMockNumericColumn({ name: "Count" }),
+            ],
+            rows: [
+              ["foo", "a", 1],
+              ["bar", "a", 2],
+              ["foo", "b", 1],
+              ["bar", "b", 2],
+            ],
+          }),
+        },
+      ];
+
+      it("should show a legend item per series by default", async () => {
+        await renderViz(breakoutSeries());
+
+        expect(screen.getAllByTestId("legend-item")).toHaveLength(2);
+      });
+
+      it("should hide the legend but keep the chart when legend.is_visible is false", async () => {
+        await renderViz(breakoutSeries({ "legend.is_visible": false }));
+
+        expect(screen.queryByTestId("legend-item")).not.toBeInTheDocument();
+        expect(chartPathsWithColor(color("accent1"))).toHaveLength(2); // "a"
+        expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "b"
+      });
+
+      it("should draw series hidden from the legend once the legend is turned off", async () => {
+        const { rerender } = renderWithProviders(
+          <VisualizationComponent
+            rawSeries={breakoutSeries()}
+            canToggleSeriesVisibility
+          />,
+        );
+        await delay(0);
+
+        fireEvent.click(
+          screen.getAllByRole("button", { name: "Hide series" })[0],
+        );
+        expect(chartPathsWithColor(color("accent1"))).toHaveLength(0);
+
+        rerender(
+          <VisualizationComponent
+            rawSeries={breakoutSeries({ "legend.is_visible": false })}
+            canToggleSeriesVisibility
+          />,
+        );
+        await delay(0);
+
+        expect(chartPathsWithColor(color("accent1"))).toHaveLength(2);
+      });
+    });
+  });
+
+  describe("row", () => {
+    const rowBreakoutSeries = (
+      visualizationSettings: VisualizationSettings = {},
+    ): RawSeries => [
+      {
+        card: createMockCard({
+          name: "Card",
+          display: "row",
+          visualization_settings: visualizationSettings,
+        }),
+        data: createMockDatasetData({
+          cols: [
+            createMockCategoryColumn({ name: "Dimension1" }),
+            createMockCategoryColumn({ name: "Dimension2" }),
+            createMockNumericColumn({ name: "Count" }),
+          ],
+          rows: [
+            ["foo", "Alpha", 1],
+            ["bar", "Alpha", 2],
+            ["foo", "Beta", 1],
+            ["bar", "Beta", 2],
+          ],
+        }),
+      },
+    ];
+
+    it("should show a legend item per series by default", async () => {
+      await renderViz(rowBreakoutSeries());
+
+      expect(screen.getAllByTestId("legend-item")).toHaveLength(2);
+    });
+
+    it("should hide the legend when legend.is_visible is false", async () => {
+      await renderViz(rowBreakoutSeries({ "legend.is_visible": false }));
+
+      expect(screen.queryByTestId("legend-item")).not.toBeInTheDocument();
     });
   });
 
