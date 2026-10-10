@@ -5,6 +5,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -96,7 +97,8 @@
           {:keys [query-id query]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id)]
+              instr       (instructions/query-created-instructions-for query-id
+                                                                       (tools.run-query/sql-results-readable?))]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr

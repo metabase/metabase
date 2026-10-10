@@ -66,10 +66,13 @@ Reference items using: [name](metabase://type/id)")
 
 (defn query-created-instructions-for
   "Generate instructions for a newly created SQL query, embedding the query ID
-   in the link template. Matches Python CreateSQLQueryToolV2._create_result."
-  [query-id]
+   in the link template. Matches Python CreateSQLQueryToolV2._create_result.
+   With `results-readable?`, the model is told it can read the results with `run_query`."
+  [query-id results-readable?]
   (str "The assistant needs to:\n"
-       "- Remember you cannot view the results directly yourself\n"
+       (if results-readable?
+         "- Run the query with `run_query` when the answer needs a value from its results\n"
+         "- Remember you cannot view the results directly yourself\n")
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
        "- Consider whether to create a chart or graph when that better matches the user's intent\n"
