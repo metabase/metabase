@@ -12,7 +12,13 @@ import type Question from "metabase-lib/v1/Question";
 import { updateQuestion } from "../../../../actions";
 import { getQuestion } from "../../../../store/selectors";
 
-export const NotebookNativePreview = () => {
+type NotebookNativePreviewProps = {
+  hideHeader?: boolean;
+};
+
+export const NotebookNativePreview = ({
+  hideHeader,
+}: NotebookNativePreviewProps) => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
   const cardId = question.id();
@@ -68,6 +74,7 @@ export const NotebookNativePreview = () => {
         question={question}
         onConvertClick={handleConvertClick}
         disableConvert={isLoadingDashboards}
+        hideHeader={hideHeader}
       />
       {pendingQuestion && (
         <ConfirmModal
