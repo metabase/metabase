@@ -122,9 +122,11 @@
       :else
       (sync-and-analyze-database*! database-id))))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Sync and analyze the database"}
-  SyncAndAnalyzeDatabase [job-context]
+(task/defjob SyncAndAnalyzeDatabase
+  "Sync and analyze the database"
+  {:saved-class "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"
+   :concurrent? false}
+  [job-context]
   (sync-and-analyze-database! job-context))
 
 (defn- update-field-values!
@@ -143,9 +145,11 @@
             (sync.field-values/update-field-values! database)
             (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Update field values"}
-  UpdateFieldValues [job-context]
+(task/defjob UpdateFieldValues
+  "Update field values"
+  {:saved-class "metabase.sync.task.sync_databases.UpdateFieldValues"
+   :concurrent? false}
+  [job-context]
   (update-field-values! job-context))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -19,7 +19,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log])
   (:import
-   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
+   (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -81,8 +81,9 @@
       (send-pulse! pulse-id to-send-enabled-channel-ids)
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
-(task/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
-  SendPulse
+(task/defjob SendPulse
+  "Triggers that send a pulse to a list of channels at a specific time"
+  {:saved-class "metabase.pulse.task.send_pulses.SendPulse"}
   [context]
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
         ^JobExecutionContext ctx  context
@@ -104,18 +105,17 @@
                  pulse-id trigger-key scheduled-fire-time fire-time recovering? refire-count scheduler-id)
       (send-pulse!* pulse-id channel-ids))))
 
-(task/defjob
-  ^{:doc
-    "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup.
+(task/defjob InitSendPulseTriggers
+  "Find all notification subscriptions with cron schedules and create a trigger for each.
+  Run once on startup.
 
-    Context: Prior to 50, the SendPulse job has a single trigger that sends all pulses, but in #42316
-    We've changed it to one trigger per PulseChannel. We need this job so that users migrate from < 50
-    have all the triggers initiated properly.
-    The fact that it runs on every startup is because we have no way to have it run only once.
-    Ideally this should be a migration."
-    DisallowConcurrentExecution true}
-  InitSendPulseTriggers
+  Context: Prior to 50, the SendPulse job has a single trigger that sends all pulses, but in #42316 We've
+  changed it to one trigger per PulseChannel.
+  We need this job so that users migrate from < 50 have all the triggers initiated properly.
+  The fact that it runs on every startup is because we have no way to have it run only once.
+  Ideally this should be a migration."
+  {:saved-class "metabase.pulse.task.send_pulses.InitSendPulseTriggers"
+   :concurrent? false}
   [_context]
   (log/info "Initializing SendPulse triggers for dashboard subscriptions")
   (task.send-pulses-trigger/init-dashboard-subscription-triggers!))

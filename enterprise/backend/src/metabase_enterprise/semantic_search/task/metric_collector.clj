@@ -16,8 +16,7 @@
    [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.time Instant)
-   (java.util Date)
-   (org.quartz DisallowConcurrentExecution)))
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -83,9 +82,11 @@
   ;; Keep this outside the try: ordinary failures continue here, while interruption and fatal errors exit.
   (search.index-health/refresh-search-index-metrics!))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Collect expensive semantic search metrics"}
-  SemanticMetricCollector [_ctx]
+(task/defjob SemanticMetricCollector
+  "Collect expensive semantic search metrics"
+  {:saved-class "metabase_enterprise.semantic_search.task.metric_collector.SemanticMetricCollector"
+   :concurrent? false}
+  [_ctx]
   (collect-metrics!))
 
 (def ^:private job-interval-ms (* 10 60 1000))

@@ -129,9 +129,9 @@
 
 ;;; ------------------------------------ Waking the acquire loop ------------------------------------
 
-(task/defjob ^{:doc "Never fires. Exists only to give [[wake-scheduler!]] a durable job key to call
-                     `resumeJob` on."}
-  QueueSlotNudgeJob
+(task/defjob QueueSlotNudgeJob
+  "Never fires. Exists only to give [[wake-scheduler!]] a durable job key to call `resumeJob` on."
+  {:saved-class "metabase.mq.queue.quartz.QueueSlotNudgeJob"}
   [_ctx])
 
 (def ^:private nudge-job-key (jobs/key "queue-slot-nudge" job-group))
@@ -230,14 +230,16 @@
         (backoff-before-refire!)
         (throw (doto (JobExecutionException. t) (.setRefireImmediately true)))))))
 
-(task/defjob ^{:doc "Delivers a queue batch (non-exclusive queues; runs concurrently)."}
-  QueueMessageJob
+(task/defjob QueueMessageJob
+  "Delivers a queue batch (non-exclusive queues; runs concurrently)."
+  {:saved-class "metabase.mq.queue.quartz.QueueMessageJob"}
   [ctx]
   (deliver-batch! ctx))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Delivers a batch for an :exclusive queue — at most one execution per queue cluster-wide."}
-  ExclusiveQueueMessageJob
+(task/defjob ExclusiveQueueMessageJob
+  "Delivers a batch for an :exclusive queue — at most one execution per queue cluster-wide."
+  {:saved-class "metabase.mq.queue.quartz.ExclusiveQueueMessageJob"
+   :concurrent? false}
   [ctx]
   (deliver-batch! ctx))
 
