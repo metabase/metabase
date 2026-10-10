@@ -1,5 +1,6 @@
 (ns mage.kondo-ratchets-history-test
   (:require
+   [babashka.json :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -94,6 +95,56 @@
              ":000000 100644 000 333 A\ttest/b c.clj"
              "\u0001bbb\u001fBob\u001fbob@example.com\u001f2026-09-30T00:00:00Z\u001fNo PR here"])))))
 
+(deftest tightening-test
+  (testing "holds only for a commit that changed ratchet files alone and did nothing but lower budgets"
+    (is (= [true true false false false false]
+           (map (fn [[paths kinds]] (history/tightening? paths kinds))
+                [[[".clj-kondo/ratchets.edn"] [:shrink]]
+                 [[".clj-kondo/ratchets.edn" ".clj-kondo/ratchets-test.edn"] [:shrink :limit]]
+                 ;; a feature commit that also shrinks
+                 [[".clj-kondo/ratchets.edn" "src/metabase/a.clj"] [:shrink]]
+                 ;; a seeding commit that also shrinks
+                 [[".clj-kondo/ratchets.edn"] [:shrink :grow]]
+                 ;; a ratchet commit that lowers nothing
+                 [[".clj-kondo/ratchets.edn"] [:limit]]
+                 ;; a merge commit, which lists no paths without a merge diff mode
+                 [[] [:shrink]]])))))
+
+(deftest counts-test
+  (testing "counts each linter of an ignore, on the side the path belongs to, when the vector spans lines"
+    (let [source "#_{:clj-kondo/ignore [:deprecated-var
+                      :unused-binding]}
+(foo)
+"]
+      (is (= [{[:prod :ignore :deprecated-var] 1, [:prod :ignore :unused-binding] 1}
+              {[:test :ignore :deprecated-var] 1, [:test :ignore :unused-binding] 1}
+              {}]
+             [(history/counts "src/metabase/a.clj" source)
+              (history/counts "test/metabase/a_test.clj" source)
+              (history/counts "docs/a.clj" source)])))))
+
+(deftest actual-delta-test
+  (let [before "#_{:clj-kondo/ignore [:deprecated-var
+                      :unused-binding]}
+(foo)
+"
+        after  "#_{:clj-kondo/ignore [:deprecated-var
+                      :type-mismatch]}
+(foo)
+"
+        path   "src/metabase/a.clj"
+        commit {:files [{:path path, :old "old", :new "new"}]}]
+    (testing "sees an edit to the continuation line of an ignore vector alone"
+      (is (= {[:prod :ignore :unused-binding] -1, [:prod :ignore :type-mismatch] 1}
+             (history/actual-delta {"old" {path (history/counts path before)}
+                                    "new" {path (history/counts path after)}}
+                                   commit))))
+    (testing "counts nothing for a file that cannot be read on one side"
+      (is (= {}
+             (history/actual-delta {"old" {path (history/counts path before)}
+                                    "new" {path ::history/unreadable}}
+                                   commit))))))
+
 ;;; -------------------------------------------------- Verdicts ------------------------------------------------
 
 (deftest suspects-test
@@ -108,11 +159,11 @@
              {:sha "settled", :changes [{:measure [:prod :ignore :a], :kind :grow, :delta 5, :added 0}]}])))))
 
 (deftest pardon-test
-  (testing "a pardoned raise is no growth, for the measures pardoned or for all of them"
+  (testing "a pardoned raise is no growth, and the commit's other raises still are"
     (is (= [{:sha "stale", :changes [{:measure :a, :kind :pardon, :delta 3} {:measure :c, :kind :grow, :delta 1}]}
             {:sha "ratchet", :changes [{:measure :d, :kind :pardon, :delta 9}]}]
            (history/pardon
-            {:pardons {"stale" #{:a}, "ratchet" :all}}
+            {:pardons {"stale" {:a 3}, "ratchet" {:d 9}}}
             [{:sha "stale", :changes [{:measure :a, :kind :grow, :delta 3} {:measure :c, :kind :grow, :delta 1}]}
              {:sha "ratchet", :changes [{:measure :d, :kind :grow, :delta 9}]}]))))
   (testing "a shrink that takes a pardoned raise back loses that part, and the credit for it"
@@ -120,17 +171,26 @@
              :changes [{:measure :a, :kind :shrink, :delta -2}]
              :causes  {:a [{:sha "fix", :delta -2}], :b []}}]
            (history/pardon
-            {:pardons {"stale" #{:a :b}}}
+            {:pardons {"stale" {:a 3, :b 4}}}
             [{:sha     "tighten"
               :changes [{:measure :a, :kind :shrink, :delta -5} {:measure :b, :kind :shrink, :delta -4}]
               :causes  {:a [{:sha "stale", :delta -3} {:sha "fix", :delta -2}]
                         :b [{:sha "stale", :delta -4}]}}]))))
+  (testing "a pardoned commit keeps the credit for what it removed beyond its own raise"
+    (is (= [{:sha     "tighten"
+             :changes [{:measure :a, :kind :shrink, :delta -2}]
+             :causes  {:a [{:sha "stale", :delta -2}]}}]
+           (history/pardon
+            {:pardons {"stale" {:a 5}}}
+            [{:sha     "tighten"
+              :changes [{:measure :a, :kind :shrink, :delta -7}]
+              :causes  {:a [{:sha "stale", :delta -7}]}}]))))
   (testing "a recount loses its own shrinks as well as its raises"
     (is (= [{:sha     "regroup"
              :changes [{:measure :f, :kind :pardon, :delta 5}]
              :causes  {:e [{:sha "regroup", :delta -4}]}}]
            (history/pardon
-            {:pardons {"regroup" :all}, :recounts #{"regroup"}}
+            {:pardons {"regroup" {:f 5}}, :recounts #{"regroup"}}
             [{:sha     "regroup"
               :changes [{:measure :e, :kind :shrink, :delta -4} {:measure :f, :kind :grow, :delta 5}]
               :causes  {:e [{:sha "regroup", :delta -4}]}}])))))
@@ -219,7 +279,7 @@
            (map (juxt :sha :author :delta)
                 (history/attributions
                  (history/pardon
-                  {:pardons {"stale" #{a}}}
+                  {:pardons {"stale" {a 5}}}
                   [{:sha      "tighten"
                     :author   "automation"
                     :tighten? true
@@ -253,7 +313,7 @@
     (is (= [["seed" 0 0 5] ["mixed" 0 0 9] ["tighten" -2 0 7]]
            (map (juxt :sha :shrunk :grown :level)
                 (history/series
-                 {:pardons {"seed" #{a}}}
+                 {:pardons {"seed" {a 5}}}
                  [{:sha "tighten", :changes [{:measure a, :kind :shrink, :delta -2, :old 5, :new 3}]}
                   {:sha     "mixed"
                    :changes [{:measure [:prod :ignore :discouraged-var], :kind :introduce, :key :x/y, :new 4}
@@ -273,6 +333,13 @@
             ["month-2026-09" "September 2026" "2026-09-01" "2026-10-01" 1 -7]]
            (map (juxt :id :label :from :to (comp :commits :report) (comp :net :total :report))
                 (history/periods {:settled #{}} "2026-10-10" records))))))
+
+(deftest script-json-test
+  (testing "data that could end or hide the end of a script element reads back unchanged, with no `<` in it"
+    (let [data {:subject "<!--<script> and </script>"}
+          text (history/script-json data)]
+      (is (= [false data]
+             [(str/includes? text "<") (json/read-str text)])))))
 
 ;;; ------------------------------------------------- Terminal -------------------------------------------------
 

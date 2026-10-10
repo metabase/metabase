@@ -235,7 +235,7 @@ function trends(p) {
       {cumGrown: 0, cumNet: 0, cumShrunk: 0}, true) +
     chart("c-level", "Total budget", "All budgets summed. A ratchet on existing debt raises it.",
       pts, span, [{key: "level", name: "Total budget", color: "--level"}],
-      {level: before ? before.level : pts[0].level}, false) +
+      {level: before ? before.level : 0}, false) +
     `</div><details class="data"><summary>Data table</summary>` +
     table(["commit", "shrunk", "grown", "net so far", "total budget"], rows) + `</details>`);
 }
