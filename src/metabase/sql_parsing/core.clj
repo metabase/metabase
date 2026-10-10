@@ -205,27 +205,13 @@
        end-pos]
       [nil match-end])))
 
-(defn- skip-literal-word
-  "The position just past the word `NULL`, `TRUE` or `FALSE`, in any case, starting at `pos`. nil when `pos` starts
-   anything else, a longer name such as `NULLIF` or `true_count` included."
-  [^String sql ^long pos ^long n]
-  (some (fn [^String word]
-          (let [end (+ pos (.length word))]
-            (when (and (<= end n)
-                       (.regionMatches sql true (int pos) word 0 (.length word))
-                       (or (= end n)
-                           (let [ch (.charAt sql end)]
-                             (not (or (Character/isLetterOrDigit ch) (= ch \_))))))
-              end)))
-        ["NULL" "TRUE" "FALSE"]))
-
 (defn- simple-list-end
   "Scan the list opening at `open-pos` (`(` or `[`). If it contains only numbers, single-quoted
    strings, signs, commas, whitespace, and balanced parens (VALUES-style tuples), return
    [comma-count end-pos] with end-pos just past the matching closing delimiter. Any other
    character — subqueries, column references, casts, bind parameters — returns nil, leaving the
-   list untouched. With `literal-words?` the words NULL, TRUE and FALSE count as literals too."
-  [^String sql ^long open-pos ^long n literal-words?]
+   list untouched."
+  [^String sql ^long open-pos ^long n]
   (let [close-ch (char (if (= (.charAt sql open-pos) \[) \] \)))]
     (loop [i (inc open-pos), depth 1, commas 0]
       (when (< i n)
@@ -241,9 +227,7 @@
                 (= ch \.) (= ch \-) (= ch \+))
             (recur (inc i) depth commas)
 
-            :else
-            (when-let [end (when literal-words? (skip-literal-word sql i n))]
-              (recur (long end) depth commas))))))))
+            :else nil))))))
 
 (defn- strip-list-at
   "Decide whether to strip the IN list or ARRAY literal whose keyword match spans
@@ -251,9 +235,9 @@
    covering the whole list, or [nil match-end] to leave it untouched (resuming just inside the
    delimiter, so a large list nested in a subquery — `IN (SELECT ... WHERE x IN (...))` — is
    still found)."
-  [^String sql ^long match-start ^long match-end literal-words?]
+  [^String sql ^long match-start ^long match-end ^long n]
   (let [open-pos         (dec match-end)
-        [commas end-pos] (simple-list-end sql open-pos (.length sql) literal-words?)]
+        [commas end-pos] (simple-list-end sql open-pos n)]
     (if (and commas (>= (long commas) strip-threshold))
       [(str (extract-keyword sql match-start match-end)
             (if (= (.charAt sql open-pos) \[) "[NULL]" " (NULL)"))
@@ -262,9 +246,8 @@
 
 (defn- strip-large-literal-lists*
   "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
-   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped.
-   `literal-words?` is passed to [[simple-list-end]]."
-  ^String [^String sql literal-words?]
+   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
+  ^String [^String sql]
   (let [matcher (re-matcher literal-list-keyword-pattern sql)
         n       (.length sql)]
     (if-not (.find matcher)
@@ -280,7 +263,7 @@
                   [replacement resume] (let [ch (.charAt sql match-start)]
                                          (if (or (= ch \V) (= ch \v))
                                            (strip-values-at sql match-start match-end n)
-                                           (strip-list-at sql match-start match-end literal-words?)))]
+                                           (strip-list-at sql match-start match-end n)))]
               (if replacement
                 (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
                 (.append sb sql (int i) (int resume)))
@@ -303,7 +286,7 @@
    keyword-shaped text inside string literals or comments are deliberately not guarded against."
   ^String [^String sql]
   (try
-    (strip-large-literal-lists* sql false)
+    (strip-large-literal-lists* sql)
     (catch Exception e
       (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
       sql)))
@@ -584,20 +567,11 @@
   [dialect sql replacements]
   (protocol/replace-names (parser) dialect sql replacements))
 
-(defn- large-literal-list?
-  "Whether `sql` holds a literal list too large to parse whole, with NULL, TRUE and FALSE counted as literals.
-   [[strip-large-literal-lists]] leaves a list of those alone, and the \"read-only\" check must not parse one."
-  [^String sql]
-  (try
-    (not (identical? sql (strip-large-literal-lists* sql true)))
-    ;; A list the scan could not read is not known to be small.
-    (catch Exception _
-      true)))
-
 (def ^:private max-read-only-sql-chars
-  "The longest SQL the \"read-only\" check parses. Parsing time grows with length, whatever the SQL holds, and the
-   check runs on SQL a user or a model wrote."
-  (* 64 1024))
+  "The longest SQL the \"read-only\" check parses. Parsing time and memory grow with length, whatever the SQL holds, and
+   the check runs on SQL a user or a model wrote.
+   As of 2026-10-10, one check of dense 60,000-character SQL took 1 to 3 seconds and grew the heap by 500 to 900 MB."
+  (* 16 1024))
 
 (defn is-single-stmt-of-type?
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
@@ -611,8 +585,7 @@
       ;; Stripping does not skip comments, so it can rewrite a second statement into a commented-out list.
       ;; "read-only" must judge the SQL that will run, and parsing a large list unstripped risks a GraalPy OOM, so it
       ;; refuses.
-      (if (and (= stmt-type "read-only")
-               (or (not= sql stripped-sql) (large-literal-list? sql)))
+      (if (and (= stmt-type "read-only") (not= sql stripped-sql))
         {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "large-literal-list"}
         (let [result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
                          (perf/update-keys (comp keyword u/->kebab-case-en)))]

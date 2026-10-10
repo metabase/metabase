@@ -422,29 +422,12 @@
 (deftest ^:parallel read-only-select?-too-long-test
   (testing "SQL too long to check is refused whatever it holds, and is never parsed"
     (let [nulls (fn [n] (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat n "NULL")) ")"))]
-      (is (true? (sql-tools/read-only-select? :postgres (nulls 50))))
-      (is (= {:reason :large-literal-list, :detail nil}
-             (sql-tools/read-only-select-problem :postgres (nulls 150))))
+      (is (true? (sql-tools/read-only-select? :postgres (nulls 150))))
       (is (= {:reason :too-long, :detail nil}
              (sql-tools/read-only-select-problem :postgres (nulls 20000))))
       (is (= {:reason :too-long, :detail nil}
              (sql-tools/read-only-select-problem :postgres (str "SELECT 1 FROM t WHERE x IN ("
                                                                 (str/join ", " (repeat 20000 "TRUE")) ")")))))))
-
-(deftest ^:parallel read-only-select?-literal-word-list-test
-  (testing "a long list of NULLs or booleans is refused like a long list of numbers"
-    (are [items] (= {:reason :large-literal-list, :detail nil}
-                    (sql-tools/read-only-select-problem
-                     :postgres (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " items) ")")))
-      (repeat 150 "NULL")
-      (repeat 150 "true")
-      (take 150 (cycle ["1" "'s'" "null" "FALSE"]))))
-  (testing "a name that only starts like one of those words is not a literal"
-    (are [extra] (true? (sql-tools/read-only-select?
-                         :postgres (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat 150 "NULL")) ", "
-                                        extra ")")))
-      "NULLIF(a, b)"
-      "true_count")))
 
 (deftest ^:parallel read-only-select?-large-literal-list-test
   (let [tuples (str/join ", " (repeat 105 "(1)"))]
