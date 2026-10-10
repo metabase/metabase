@@ -118,6 +118,11 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           ) : (
             <Route path="library" lazy={libraryUpsellPage} />
           )}
+          {PLUGIN_LIBRARY.isEnabled ? (
+            PLUGIN_LIBRARY.getDataStudioDashboardRoutes()
+          ) : (
+            <Route path="dashboards" lazy={libraryUpsellPage} />
+          )}
           {PLUGIN_DEPENDENCIES.isEnabled ? (
             <Route path="dependencies" lazy={dependenciesSectionLayout}>
               {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
