@@ -26,7 +26,8 @@
    (java.nio.charset StandardCharsets)
    (java.nio.file CopyOption Files StandardCopyOption)
    (java.security MessageDigest)
-   (java.time LocalDate)))
+   (java.time LocalDate)
+   (java.util BitSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -311,11 +312,85 @@
      :model-imports-bypass          (count (filter #(= :bypass (:model-imports %)) (vals modules)))
      :legacy-rest-modules           (count (filter #(re-find #"-rest$" (str %)) (keys modules)))}))
 
+;;;; Retest share
+
+(defn- dependents
+  "For `graph`, a map of node to the nodes it requires, the nodes that reach each node through requires, itself
+  included: what a change to that node could break. Returns `{:nodes [node ...], :sets [BitSet ...]}`, where a
+  set's bits index into `:nodes`."
+  [graph]
+  (let [nodes (vec (into (set (keys graph)) cat (vals graph)))
+        index (zipmap nodes (range))
+        sets  (mapv (fn [i] (doto (BitSet. (count nodes)) (.set (int i)))) (range (count nodes)))
+        edges (vec (for [[user requires] graph
+                         required        requires]
+                     [(sets (index user)) (sets (index required))]))]
+    ;; Whatever reaches a user also reaches what it requires. Repeat until a pass adds nothing, which takes about
+    ;; as many passes as the longest chain of requires.
+    (loop []
+      (when (reduce (fn [changed? [^BitSet user ^BitSet required]]
+                      (let [before (.cardinality required)]
+                        (.or required user)
+                        (or changed? (not= before (.cardinality required)))))
+                    false
+                    edges)
+        (recur)))
+    {:nodes nodes, :sets sets}))
+
+(defn- percent
+  "`part` of `whole` as a percentage with one decimal."
+  [part whole]
+  (if (zero? whole) 0.0 (/ (Math/round (* 1000.0 (/ part whole))) 10.0)))
+
+(defn- share-summary
+  "The mean and median of `shares`, percentages with one entry per namespace, and how many fall in each tenth."
+  [shares]
+  (let [sorted (vec (sort shares))
+        total  (count sorted)]
+    {:mean      (if (zero? total) 0.0 (/ (Math/round (* 10.0 (/ (reduce + sorted) total))) 10.0))
+     :median    (if (zero? total) 0.0 (sorted (quot total 2)))
+     :histogram (let [tenths (frequencies (map #(min 9 (int (/ % 10))) sorted))]
+                  (mapv #(get tenths % 0) (range 10)))}))
+
+(defn- retest-metrics
+  "How much of the backend a change would retest, taking every namespace in turn as the one that changed.
+  A test run selected by module reruns every namespace of every module that reaches the changed namespace's module;
+  one selected by namespace reruns only the namespaces that reach it. Shares are percentages of all namespaces."
+  [deps]
+  (let [total          (count deps)
+        mod->count     (update-vals (group-by :module deps) count)
+        namespaces     (into #{} (map :namespace) deps)
+        by-namespace   (dependents (into {}
+                                         (map (fn [{:keys [namespace deps]}]
+                                                [namespace (into #{} (comp (map :namespace) (filter namespaces)) deps)]))
+                                         deps))
+        by-module      (dependents (merge (zipmap (keys mod->count) (repeat #{}))
+                                          (deps-graph/module-dependencies deps)))
+        module-share   (into {}
+                             (map (fn [module ^BitSet reaching]
+                                    [module (percent (transduce (map #(mod->count ((:nodes by-module) %) 0))
+                                                                +
+                                                                0
+                                                                (take-while nat-int? (iterate #(.nextSetBit reaching (inc (long %)))
+                                                                                              (.nextSetBit reaching 0))))
+                                                     total)])
+                                  (:nodes by-module)
+                                  (:sets by-module)))
+        per-module     (share-summary (map (comp module-share :module) deps))
+        per-namespace  (share-summary (map (fn [^BitSet reaching] (percent (.cardinality reaching) total))
+                                           (:sets by-namespace)))]
+    {:retest-module-mean      (:mean per-module)
+     :retest-module-median    (:median per-module)
+     :retest-namespace-mean   (:mean per-namespace)
+     :retest-namespace-median (:median per-namespace)
+     :retest-histogram        {:module (:histogram per-module), :namespace (:histogram per-namespace)}}))
+
 (defn commit-metrics
   "Metrics for one commit's dependency rows and module map: [[deps-graph/module-boundary-stats]] plus the sizes,
   cycle, exposure and `:friends` measures the history report tracks, and the [[structure-metrics]].
   All are numbers except `:cycles`, one map per module cycle with its `:modules`, `:namespaces`, `:edges`,
-  `:density`, `:cycle-rank` and `:strong-bridges` count, largest first."
+  `:density`, `:cycle-rank` and `:strong-bridges` count, largest first, and `:retest-histogram`, the namespaces in
+  each tenth of retest share; see [[retest-metrics]]."
   [deps modules]
   (let [cycles           (deps-graph/module-cycles deps)
         stats            (deps-graph/module-boundary-stats deps modules cycles)
@@ -346,6 +421,7 @@
         namespaces       (count deps)]
     (merge
      (structure-metrics deps modules stats)
+     (retest-metrics deps)
      ;; Each cycle's members, so a report can follow a cycle as it splits or merges.
      {:cycles (mapv (fn [{:keys [modules edges cycle-rank strong-bridges]} namespaces density]
                       {:modules        modules
@@ -511,7 +587,8 @@
    :distinct-namespaces :configured-top-level-modules
    :scc1-modules :scc1-namespaces :scc2-modules :scc2-namespaces :scc3-modules :scc3-namespaces
    :largest-ns-level-scc :mutual-dependency-pairs :friend-internal-namespaces :friend-internal-requires
-   :non-api-cross-module-requires :total-api-namespaces :ns-prefixes :model-imports-bypass :legacy-rest-modules])
+   :non-api-cross-module-requires :total-api-namespaces :ns-prefixes :model-imports-bypass :legacy-rest-modules
+   :retest-module-mean :retest-module-median :retest-namespace-mean :retest-namespace-median])
 
 (defn backfill!
   "Measure every commit [[sample-commits]] picks for `opts`, plus any explicit `:commits`, and return the rows.

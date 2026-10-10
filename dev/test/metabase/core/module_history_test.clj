@@ -143,6 +143,14 @@
             :ns-prefixes                         0
             :model-imports-bypass                0
             :legacy-rest-modules                 0
+            ;; A change to w retests only w; a change anywhere else retests the whole cycle and w.
+            :retest-module-mean                  86.1
+            :retest-module-median                100.0
+            ;; By namespace x.impl and w.core are required by nothing, and z.impl by everything but those two.
+            :retest-namespace-mean               47.2
+            :retest-namespace-median             66.7
+            :retest-histogram                    {:module    [0 1 0 0 0 0 0 0 0 5]
+                                                  :namespace [0 2 0 1 0 0 2 0 1 0]}
             ;; One cycle of 4 edges, each the only way between its ends.
             :cycles                              '[{:modules        [x x.y z]
                                                     :namespaces     5
