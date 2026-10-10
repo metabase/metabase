@@ -2,6 +2,7 @@
   "Quartz JDBC plumbing over the application DB: a `ConnectionProvider` backed by our connection pool,
   a `ClassLoadHelper` that uses our classloader, and the JDBC backend system properties."
   (:require
+   [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.classloader.core :as classloader]
    [metabase.task.secure-delegate.core :as secure-delegate]
@@ -54,8 +55,8 @@
 ;; readers. No code reads it, and a test checks it against the keys that jobs are scheduled under. So when a
 ;; job's key changes, remove its entry: a row under the old key would otherwise still load, and keep running
 ;; beside the newly scheduled job. Without the entry the row is deleted as classless. Record the change in
-;; `past-job-key-renames` in `metabase.app-db.quartz-test`, which then checks that the entry is gone. Otherwise
-;; keep entries for good, because stored rows keep the old name.
+;; [[job-key-renames]], and a test then checks that the entry is gone. Otherwise keep entries for good, because
+;; stored rows keep the old name.
 (def job-history
   "The class names each renamed Quartz job has had, oldest first, so the last is its current name.
   The `:job-key` says which job an entry is for."
@@ -126,6 +127,52 @@
    {:job-key     "metabase.task.upgrade-checks.job"
     :class-names ["metabase.task.upgrade_checks.CheckForNewVersions"
                   "metabase.version.task.upgrade_checks.CheckForNewVersions"]}])
+
+(def job-key-renames
+  "Past renames of job keys, each with the class the job had under the old key and under the new one.
+  The row stored under an old key is deleted at startup as classless, and the log says why from `:release`
+  and `:change`."
+  [{:release   "0.50"
+    :old-key   "metabase-enterprise.Caching.job"
+    :old-class "metabase_enterprise.task.caching.Caching"
+    :new-key   "metabase-enterprise.cache.job"
+    :new-class "metabase_enterprise.task.cache.Cache"
+    :change    "Renamed only, and within 0.50 development, so the old key never shipped."}
+   {:release   "0.52"
+    :old-key   "metabase.task.search-index.job"
+    :old-class "metabase.task.search_index.SearchIndexing"
+    :new-key   "metabase.task.search-index.reindex.job"
+    :new-class "metabase.task.search_index.SearchIndexReindex"
+    :change    "Became durable, when a separate job for incremental updates was added beside it."}
+   {:release   "0.59"
+    :old-key   "metabase-enterprise.transforms.canceling"
+    :old-class "metabase_enterprise.transforms.canceling.CancelOldTransformRuns"
+    :new-key   "metabase.transforms.canceling"
+    :new-class "metabase.transforms.canceling.CancelOldTransformRuns"
+    :change    "Moved out of enterprise, with no change to the job."}
+   {:release   "0.59"
+    :old-key   "metabase-enterprise.transforms.jobs.timeout-job"
+    :old-class "metabase_enterprise.transforms.jobs.TimeoutOldRuns"
+    :new-key   "metabase.transforms.jobs.timeout-job"
+    :new-class "metabase.transforms.jobs.TimeoutOldRuns"
+    :change    "Moved out of enterprise, with no change to the job, which was removed in 0.63."}
+   {:release   "0.59"
+    :old-key   "metabase-enterprise.transforms.timeout"
+    :old-class "metabase_enterprise.transforms.timeout.TimeoutTransforms"
+    :new-key   "metabase.transforms.timeout"
+    :new-class "metabase.transforms.timeout.TimeoutTransforms"
+    :change    "Moved out of enterprise, with no change to the job."}
+   {:release   "0.60"
+    :old-key   "metabase.task.metabot-v3.suggested-prompts-generator.job"
+    :old-class "metabase_enterprise.metabot_v3.task.suggested_prompts_generator.SuggestedPromptsGenerator"
+    :new-key   "metabase.task.metabot.suggested-prompts-generator.job"
+    :new-class "metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator"
+    :change    "Moved out of enterprise with the rest of Metabot."}])
+
+(defn job-key-rename
+  "Returns the entry of [[job-key-renames]] for the old job key `job-key`, or nil when there is none."
+  [job-key]
+  (m/find-first #(= job-key (:old-key %)) job-key-renames))
 
 (defn- current-class-names
   "Returns a map from every class name in `history`, shaped like [[job-history]], to its job's current

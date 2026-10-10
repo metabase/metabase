@@ -104,8 +104,8 @@ interactive explorer with a dependency graph.
 Quartz stores each job's class name in the app DB, and a `defjob`'s class name comes from its namespace and
 type name. After moving a job's namespace or renaming its type, add the new class name to that job's entry in
 `metabase.app-db.quartz/job-history`, or stored jobs and their triggers are deleted at the next startup.
-Each entry names its job key. If the key changes too, remove the entry, and in `metabase.app-db.quartz-test`
-add the class to `job-classes-without-history` and the rename to `past-job-key-renames`.
+Each entry names its job key. If the key changes too, remove the entry, add the rename to `job-key-renames`
+beside it, and add the class to `job-classes-without-history` in `metabase.app-db.quartz-test`.
 The tests in `metabase.app-db.quartz-test` list every job class, and fail with instructions when one is moved,
 renamed or added.
 
