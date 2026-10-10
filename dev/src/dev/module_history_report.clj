@@ -400,6 +400,8 @@
                   :upint   (:upward-internal-requires row)
                   :exp     (when-not (false? (:module-system? row)) (:exposed-namespaces row))
                   :fx      (:friend-exposed-namespaces row)
+                  ;; Non-API namespaces a friend really requires, against the ones a grant opens.
+                  :fxu     (:friend-internal-namespaces row)
                   :xreq    (:cross-top-level-required-namespaces row)
                   :top     (:top-level-modules row)
                   :nested  (:nested-modules row)
