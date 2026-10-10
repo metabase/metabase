@@ -5,7 +5,6 @@ import * as Yup from "yup";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import type { EntityPickerOptions } from "metabase/common/components/Pickers";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
@@ -18,38 +17,31 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { useNavigate } from "metabase/router";
 import { Button, Modal, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import * as Errors from "metabase/utils/errors";
 import type { CollectionId } from "metabase-types/api";
 
-const DASHBOARD_SCHEMA = Yup.object({
-  name: Yup.string()
-    .required(Errors.required)
-    .max(DASHBOARD_NAME_MAX_LENGTH, Errors.maxLength)
-    .default(""),
-  description: Yup.string()
-    .nullable()
-    .max(DASHBOARD_DESCRIPTION_MAX_LENGTH, Errors.maxLength)
-    .default(null),
-  collection_id: Yup.number().required(Errors.required),
-});
+import { LIBRARY_COLLECTION_PICKER_OPTIONS } from "../../../constants";
+import { trackDataStudioDashboardCreated } from "../../analytics";
+import { useOpenDashboardEditor } from "../../hooks/use-open-dashboard-editor";
+
+const getValidationSchema = () =>
+  Yup.object({
+    name: Yup.string()
+      .required(Errors.required)
+      .max(DASHBOARD_NAME_MAX_LENGTH, Errors.maxLength)
+      .default(""),
+    description: Yup.string()
+      .nullable()
+      .max(DASHBOARD_DESCRIPTION_MAX_LENGTH, Errors.maxLength)
+      .default(null),
+    collection_id: Yup.number().required(Errors.required),
+  });
 
 type CreateLibraryDashboardValues = {
   name: string;
   description: string | null;
   collection_id: CollectionId;
-};
-
-const LIBRARY_DASHBOARD_PICKER_OPTIONS: EntityPickerOptions = {
-  hasLibrary: true,
-  hasRootCollection: false,
-  hasPersonalCollections: false,
-  hasRecents: false,
-  hasSearch: false,
-  hasConfirmButtons: true,
-  canCreateCollections: false,
 };
 
 type CreateLibraryDashboardModalProps = {
@@ -63,17 +55,19 @@ export function CreateLibraryDashboardModal({
   collectionId,
   onClose,
 }: CreateLibraryDashboardModalProps) {
-  const navigate = useNavigate();
+  const openDashboardEditor = useOpenDashboardEditor();
   const [createDashboard] = useCreateDashboardMutation();
 
+  const validationSchema = useMemo(getValidationSchema, []);
   const initialValues = useMemo(
-    () => ({ ...DASHBOARD_SCHEMA.getDefault(), collection_id: collectionId }),
-    [collectionId],
+    () => ({ ...validationSchema.getDefault(), collection_id: collectionId }),
+    [validationSchema, collectionId],
   );
 
   const handleSubmit = async (values: CreateLibraryDashboardValues) => {
     const dashboard = await createDashboard(values).unwrap();
-    navigate(Urls.dashboard(dashboard, { editMode: true }));
+    trackDataStudioDashboardCreated(dashboard.id);
+    openDashboardEditor(dashboard);
   };
 
   return (
@@ -81,7 +75,7 @@ export function CreateLibraryDashboardModal({
       <FormProvider
         initialValues={initialValues}
         enableReinitialize
-        validationSchema={DASHBOARD_SCHEMA}
+        validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
         <Form as={Stack} gap={0}>
@@ -109,7 +103,7 @@ export function CreateLibraryDashboardModal({
             title={t`Collection`}
             entityType="dashboard"
             collectionPickerModalProps={{
-              options: LIBRARY_DASHBOARD_PICKER_OPTIONS,
+              options: LIBRARY_COLLECTION_PICKER_OPTIONS,
             }}
           />
           <FormFooter mt="lg">

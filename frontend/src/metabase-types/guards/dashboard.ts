@@ -7,6 +7,7 @@ import type {
   DashCardSeriesItem,
   LinkEntity,
   RestrictedLinkEntity,
+  UnreadableCard,
   VirtualCard,
   VisualizerDashboardCard,
   VisualizerDataSeries,
@@ -30,6 +31,10 @@ export const isVisualizerDashboardCard = (
 
   return dashcard.visualization_settings["visualization"] !== undefined;
 };
+
+export function isReadableCard(card: Card | UnreadableCard): card is Card {
+  return "dataset_query" in card;
+}
 
 export function isVirtualCard(card: Card | VirtualCard): card is VirtualCard {
   return isVirtualCardDisplayType(card.display);

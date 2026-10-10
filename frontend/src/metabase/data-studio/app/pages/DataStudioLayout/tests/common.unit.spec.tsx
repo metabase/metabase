@@ -33,12 +33,16 @@ describe("DataStudioLayout", () => {
       const nav = await screen.findByTestId("data-studio-nav");
       for (const label of [
         "Semantic layer",
+        "Dashboards",
         "SQL snippets",
         "Data actions",
         "Glossary",
       ]) {
         expect(within(nav).getByText(label)).toBeInTheDocument();
       }
+      expect(
+        within(nav).getByRole("link", { name: /Dashboards/ }),
+      ).toHaveAttribute("href", "/data-studio/dashboards");
       expect(
         within(nav).getByRole("link", { name: /SQL snippets/ }),
       ).toHaveAttribute("href", "/data-studio/snippets");

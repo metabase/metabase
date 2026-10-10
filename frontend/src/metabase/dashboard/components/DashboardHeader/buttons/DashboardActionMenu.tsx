@@ -3,14 +3,17 @@ import { c, t } from "ttag";
 
 import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
+import { isLibraryDashboard } from "metabase/dashboard/utils";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import {
@@ -50,6 +53,7 @@ const DashboardActionMenuInner = ({
     onChangeLocation,
     withTimelineEvents = false,
   } = useDashboardContext();
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
   const [opened, setOpened] = useState(false);
   const [showAutoRefreshOptions, setShowAutoRefreshOptions] = useState(false);
 
@@ -97,6 +101,8 @@ const DashboardActionMenuInner = ({
 
   const canConfigureCaching =
     dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
+  const canViewInDataStudio =
+    hasDataStudioAccess && isLibraryDashboard(dashboard);
 
   return (
     <Menu position="bottom-end" opened={opened} onChange={handleOpenChange}>
@@ -114,6 +120,17 @@ const DashboardActionMenuInner = ({
           <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
         ) : (
           <>
+            {canViewInDataStudio && (
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="grid_bordered" />}
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioDashboard(dashboard.id)}
+                >{t`View in Data Studio`}</Menu.Item>
+                <Menu.Divider />
+              </>
+            )}
+
             {canResetFilters && (
               <Menu.Item
                 leftSection={<Icon name="revert" />}

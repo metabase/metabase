@@ -1,10 +1,34 @@
-import { screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { screen, within } from "__support__/ui";
 import {
   createMockCollection,
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
+
+const setupWithLibrary = ({
+  dashboard,
+  isAdmin,
+}: {
+  dashboard: typeof LIBRARY_DASHBOARD;
+  isAdmin: boolean;
+}) =>
+  setup({
+    dashboard,
+    collections: [LIBRARY_COLLECTION],
+    isAdmin,
+    tokenFeatures: { library: true },
+    enterprisePlugins: ["library"],
+  });
+
+async function openDashboardMenu() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Move, trash, and more…" }),
+  );
+  return within(await screen.findByRole("menu")).getAllByRole("menuitem");
+}
 
 const setupEnterprise = (opts: any) => {
   return setup({
@@ -26,6 +50,26 @@ const INSTANCE_ANALYTICS_COLLECTION = createMockCollection({
   id: 10,
   type: "instance-analytics",
   can_write: false,
+});
+
+const LIBRARY_COLLECTION = createMockCollection({
+  name: "Dashboards",
+  id: 20,
+  type: "library-dashboards",
+});
+
+const LIBRARY_DASHBOARD = createMockDashboard({
+  name: "Library Dashboard",
+  id: 4,
+  collection_id: LIBRARY_COLLECTION.id,
+  collection: LIBRARY_COLLECTION,
+  can_write: true,
+});
+
+const REGULAR_DASHBOARD = createMockDashboard({
+  name: "Regular Dashboard",
+  id: 5,
+  can_write: true,
 });
 
 describe("DashboardHeader - enterprise", () => {
@@ -56,8 +100,45 @@ describe("DashboardHeader - enterprise", () => {
       screen.getByRole("button", { name: /fullscreen/i }),
     ).toBeInTheDocument();
 
+    expect(screen.queryByLabelText("Edit dashboard")).not.toBeInTheDocument();
+  });
+});
+
+describe("DashboardHeader - library dashboard", () => {
+  it("should hide Edit and offer View in Data Studio first in the menu", async () => {
+    await setupWithLibrary({ dashboard: LIBRARY_DASHBOARD, isAdmin: true });
+
     expect(
-      screen.queryByRole("button", { name: /edit dashboard/i }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole("button", { name: "Move, trash, and more…" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Edit dashboard")).not.toBeInTheDocument();
+
+    const [firstItem] = await openDashboardMenu();
+    expect(firstItem).toHaveTextContent("View in Data Studio");
+    expect(firstItem).toHaveAttribute(
+      "href",
+      `/data-studio/dashboards/${LIBRARY_DASHBOARD.id}`,
+    );
+  });
+
+  it("should hide Edit and View in Data Studio for a user without Data Studio access", async () => {
+    await setupWithLibrary({ dashboard: LIBRARY_DASHBOARD, isAdmin: false });
+
+    expect(
+      await screen.findByRole("button", { name: "Move, trash, and more…" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Edit dashboard")).not.toBeInTheDocument();
+
+    const [firstItem] = await openDashboardMenu();
+    expect(firstItem).not.toHaveTextContent("View in Data Studio");
+  });
+
+  it("should keep Edit and no View in Data Studio for a dashboard outside the Library", async () => {
+    await setupWithLibrary({ dashboard: REGULAR_DASHBOARD, isAdmin: true });
+
+    expect(await screen.findByLabelText("Edit dashboard")).toBeInTheDocument();
+
+    const [firstItem] = await openDashboardMenu();
+    expect(firstItem).not.toHaveTextContent("View in Data Studio");
   });
 });

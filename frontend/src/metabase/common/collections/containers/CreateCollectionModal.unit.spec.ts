@@ -1,4 +1,9 @@
-import { createMockCollection } from "metabase-types/api/mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { getCreatedCollectionUrl } from "./CreateCollectionModal";
 
@@ -24,6 +29,46 @@ describe("getCreatedCollectionUrl", () => {
 
     expect(getCreatedCollectionUrl(collection)).toBe(
       "/data-studio/snippets?expandedId=10&expandedId=12",
+    );
+  });
+
+  it.each([
+    {
+      name: "a top-level folder",
+      location: "/7/10/",
+      expectedUrl: "/data-studio/dashboards?expandedId=12",
+    },
+    {
+      name: "a nested folder",
+      location: "/7/10/11/",
+      expectedUrl: "/data-studio/dashboards?expandedId=11&expandedId=12",
+    },
+  ])(
+    "opens $name on the Dashboards tab with only its folders expanded",
+    ({ location, expectedUrl }) => {
+      const collection = createMockCollection({
+        id: 12,
+        type: "library-dashboards",
+        location,
+      });
+
+      expect(getCreatedCollectionUrl(collection)).toBe(expectedUrl);
+    },
+  );
+
+  it("opens a new Semantic layer folder with its whole path expanded", () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    });
+    setupEnterpriseOnlyPlugin("library");
+    const collection = createMockCollection({
+      id: 12,
+      type: "library-metrics",
+      location: "/7/9/",
+    });
+
+    expect(getCreatedCollectionUrl(collection)).toBe(
+      "/data-studio/library?expandedId=7&expandedId=9&expandedId=12",
     );
   });
 

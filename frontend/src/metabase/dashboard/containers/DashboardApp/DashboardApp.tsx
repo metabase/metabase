@@ -2,6 +2,11 @@ import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
+import {
+  getDataStudioDashboardReturnState,
+  isReturningToDataStudio,
+} from "metabase/common/data-studio/utils/return-to";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
@@ -16,6 +21,7 @@ import {
   DASHBOARD_EDITING_ACTIONS,
   DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -25,6 +31,7 @@ import {
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
+import { isLibraryDashboard } from "metabase/dashboard/utils";
 import {
   usePageTitle,
   usePageTitleWithLoadingTime,
@@ -74,14 +81,31 @@ function DashboardAppInner({ location }: { location: Location }) {
   );
 }
 
-export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
-  isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
+const LIBRARY_DASHBOARD_VIEW_ACTIONS = DASHBOARD_VIEW_ACTIONS.filter(
+  (action) => action !== DASHBOARD_ACTION.EDIT_DASHBOARD,
+);
+
+export const DASHBOARD_APP_ACTIONS = ({
+  dashboard,
+  isEditing,
+}: {
+  dashboard: IDashboard | null;
+  isEditing: boolean;
+}) => {
+  if (isEditing) {
+    return DASHBOARD_EDITING_ACTIONS;
+  }
+  return isLibraryDashboard(dashboard)
+    ? LIBRARY_DASHBOARD_VIEW_ACTIONS
+    : DASHBOARD_VIEW_ACTIONS;
+};
 
 export const DashboardApp = () => {
   const location = useLocation();
   const params = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const [error, setError] = useState<string>();
 
@@ -108,6 +132,14 @@ export const DashboardApp = () => {
     );
     const editingOnLoad = options.edit;
     const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
+    const isEditingLibraryDashboardOutsideDataStudio =
+      (editingOnLoad || addCardOnLoad != null) &&
+      hasDataStudioAccess &&
+      isLibraryDashboard(dashboard) &&
+      !isReturningToDataStudio(location);
+    const state = isEditingLibraryDashboardOutsideDataStudio
+      ? getDataStudioDashboardReturnState(dashboard.id)
+      : location.state;
 
     try {
       if (editingOnLoad) {
@@ -132,10 +164,7 @@ export const DashboardApp = () => {
       const hashString = stringifyHashOptions(options);
       const hash = hashString ? "#" + hashString : "";
       if (hash !== location.hash) {
-        await navigate(
-          { ...location, hash },
-          { replace: true, state: location.state },
-        );
+        await navigate({ ...location, hash }, { replace: true, state });
       }
     } catch (error) {
       // 400: provided entity id format is invalid.

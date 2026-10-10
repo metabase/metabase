@@ -215,13 +215,20 @@ describe("dashboard actions", () => {
   });
 
   describe("setEditingDashboard", () => {
-    it("should remove any hash parameters from url when not editing", () => {
+    const getEditingState: GetState = () =>
+      createMockState({
+        dashboard: createMockDashboardState({
+          editingDashboard: createMockDashboard({ id: 1 }),
+        }),
+      });
+
+    it("should remove any hash parameters from url when leaving edit mode", () => {
       const location = createMockLocation({
         pathname: "/dashboard/1",
         hash: "#hashparam",
       });
 
-      setEditingDashboard(null, location)(dispatch);
+      setEditingDashboard(null, location)(dispatch, getEditingState);
 
       expect(navigate).toHaveBeenCalledWith("/dashboard/1");
     });
@@ -235,7 +242,7 @@ describe("dashboard actions", () => {
         hash: "#hashparam",
       });
 
-      setEditingDashboard(null, location)(dispatch);
+      setEditingDashboard(null, location)(dispatch, getEditingState);
 
       expect(navigate).toHaveBeenCalledWith("/dashboard/1?tab=2-tab-two");
     });
@@ -249,13 +256,40 @@ describe("dashboard actions", () => {
         search: "?tab=2-tab-two",
       });
 
-      setEditingDashboard(null, location)(dispatch);
+      setEditingDashboard(null, location)(dispatch, getEditingState);
 
       expect(navigate).not.toHaveBeenCalled();
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_EDITING_DASHBOARD,
         payload: null,
       });
+    });
+
+    it("should return to Data Studio instead of stripping the hash", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        hash: "#hashparam",
+        state: { returnTo: "/data-studio/dashboards/1" },
+      });
+
+      setEditingDashboard(null, location)(dispatch, getEditingState);
+
+      expect(navigate).toHaveBeenCalledTimes(1);
+      expect(navigate).toHaveBeenCalledWith("/data-studio/dashboards/1", {
+        replace: true,
+      });
+    });
+
+    it("should not navigate when edit mode has already ended", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        hash: "#hashparam",
+        state: { returnTo: "/data-studio/dashboards/1" },
+      });
+
+      setEditingDashboard(null, location)(dispatch, getState);
+
+      expect(navigate).not.toHaveBeenCalled();
     });
   });
 });

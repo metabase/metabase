@@ -55,6 +55,11 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
+  /**
+   * The dashboard the host already fetched for `dashboardId`. The provider
+   * loads it instead of fetching it again; a forced refetch still fetches.
+   */
+  prefetchedDashboard?: Dashboard;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -69,7 +74,7 @@ export type DashboardContextOwnProps = {
     | ((
         props: Pick<
           DashboardContextReturned,
-          "isEditing" | "downloadsEnabled" | "withSubscriptions"
+          "dashboard" | "isEditing" | "downloadsEnabled" | "withSubscriptions"
         >,
       ) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
@@ -109,7 +114,7 @@ export type DashboardContextProps = DashboardContextOwnProps &
 type ContextProps = DashboardContextProps & ReduxProps;
 
 export type DashboardContextReturned = DashboardContextOwnResult &
-  Omit<DashboardContextOwnProps, "dashboardId"> &
+  Omit<DashboardContextOwnProps, "dashboardId" | "prefetchedDashboard"> &
   ReduxProps &
   Required<DashboardControls> &
   DashboardContextErrorState &
@@ -135,6 +140,7 @@ const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
       dashboardId,
+      prefetchedDashboard,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -254,6 +260,10 @@ const DashboardContextProviderInner = forwardRef(
             options: {
               clearCache: !effectiveIsNavigatingBackToDashboard,
               preserveParameters: effectiveIsNavigatingBackToDashboard,
+              prefetchedDashboard:
+                !forceRefetch && prefetchedDashboard?.id === dashboardId
+                  ? prefetchedDashboard
+                  : undefined,
             },
           })
             .then((result) => {
@@ -270,6 +280,7 @@ const DashboardContextProviderInner = forwardRef(
         initialize,
         isNavigatingBackToDashboard,
         parameterQueryParams,
+        prefetchedDashboard,
         previousDashboardId,
       ],
     );
@@ -392,6 +403,7 @@ const DashboardContextProviderInner = forwardRef(
     const dashboardActions =
       typeof initDashboardActions === "function"
         ? initDashboardActions({
+            dashboard,
             isEditing,
             downloadsEnabled,
             withSubscriptions,

@@ -11,6 +11,7 @@ import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
+import { LIBRARY_COLLECTION_PICKER_OPTIONS } from "../../../constants";
 import { PublishTableModal } from "../PublishTableModal";
 
 export const CreateMenu = ({
@@ -18,17 +19,11 @@ export const CreateMenu = ({
   canWriteToMetricCollection,
   dataCollectionId,
   canWriteToDataCollection,
-  dashboardCollectionId,
-  canWriteToDashboardCollection,
-  onNewDashboardClick,
 }: {
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
   dataCollectionId?: CollectionId;
   canWriteToDataCollection?: boolean;
-  dashboardCollectionId?: CollectionId;
-  canWriteToDashboardCollection?: boolean;
-  onNewDashboardClick: () => void;
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -41,20 +36,15 @@ export const CreateMenu = ({
   const canCreateMetric =
     hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
-  const canCreateDashboard =
-    dashboardCollectionId && canWriteToDashboardCollection;
-
   const canCreateLibraryCollection =
     (dataCollectionId && canWriteToDataCollection) ||
-    (metricCollectionId && canWriteToMetricCollection) ||
-    canCreateDashboard;
+    (metricCollectionId && canWriteToMetricCollection);
 
   const collectionNamespaces: CollectionNamespace[] = [null];
 
   const initialCollectionId =
     (dataCollectionId && canWriteToDataCollection && dataCollectionId) ||
     (metricCollectionId && canWriteToMetricCollection && metricCollectionId) ||
-    (canCreateDashboard && dashboardCollectionId) ||
     null;
 
   const menuItems = [
@@ -76,15 +66,6 @@ export const CreateMenu = ({
         onClickCapture={() => trackMetricCreateStarted("data_studio_library")}
       >
         {t`Metric`}
-      </Menu.Item>
-    ),
-    canCreateDashboard && (
-      <Menu.Item
-        key="dashboard"
-        leftSection={<FixedSizeIcon name="dashboard" />}
-        onClick={onNewDashboardClick}
-      >
-        {t`Dashboard`}
       </Menu.Item>
     ),
     canCreateLibraryCollection && (
@@ -129,14 +110,4 @@ export const CreateMenu = ({
       />
     </>
   );
-};
-
-const LIBRARY_COLLECTION_PICKER_OPTIONS = {
-  hasLibrary: true,
-  hasRootCollection: false,
-  hasPersonalCollections: false,
-  hasRecents: false,
-  hasSearch: false,
-  hasConfirmButtons: true,
-  canCreateCollections: false,
 };

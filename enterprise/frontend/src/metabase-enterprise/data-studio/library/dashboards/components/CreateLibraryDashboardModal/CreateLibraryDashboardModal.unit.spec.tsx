@@ -7,7 +7,11 @@ import {
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import { CreateLibraryDashboardModal } from ".";
+import { trackDataStudioDashboardCreated } from "../../analytics";
+
+import { CreateLibraryDashboardModal } from "./CreateLibraryDashboardModal";
+
+jest.mock("../../analytics");
 
 const DASHBOARDS_COLLECTION = createMockCollection({
   id: 3,
@@ -61,6 +65,7 @@ describe("CreateLibraryDashboardModal", () => {
       expect(router?.location).toMatchObject({
         pathname: "/dashboard/42-sales",
         hash: "#edit",
+        state: { returnTo: "/data-studio/dashboards/42" },
       }),
     );
     expect(
@@ -72,6 +77,12 @@ describe("CreateLibraryDashboardModal", () => {
       description: "Revenue",
       collection_id: DASHBOARDS_COLLECTION.id,
     });
+    expect(jest.mocked(trackDataStudioDashboardCreated)).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(jest.mocked(trackDataStudioDashboardCreated)).toHaveBeenCalledWith(
+      42,
+    );
   });
 
   it("calls onClose when Cancel is clicked", async () => {
