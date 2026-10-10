@@ -112,6 +112,19 @@
    "cycles.csv"   "sha\n"
    "history.json" "{\"commits\": [{}, {}], \"today\": [], \"clusters\": [\"tardis\"]}"})
 
+(deftest measure-test
+  (testing "measuring runs in a fresh JVM, on another ref when one is given"
+    (let [calls (atom [])]
+      (with-out-str
+        (with-redefs [shell/sh* (fake-sh calls)]
+          (module-history/cli-update {:options {:dir "/tmp/out", :no-fetch true}})
+          (module-history/cli-update {:options {:dir "/tmp/out", :ref "origin/stack-tip"}})))
+      (is (= [["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""]
+              ["git" "fetch" "--quiet" "origin" "master"]
+              ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""
+               ":ref" "\"origin/stack-tip\""]]
+             @calls)))))
+
 (deftest publish-test
   (testing "pages are written, then uploads replaced, cards refreshed and shares updated"
     (is (= {:exit  0
