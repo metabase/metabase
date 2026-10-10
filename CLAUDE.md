@@ -131,6 +131,13 @@ files. Use `--seed :discouraged-var/clojure.core/println` to seed one symbol's b
 To learn which symbol an ignore covers, `./bin/mage kondo-ratchets` runs `clojure -M:kondo` over the files
 carrying one, so it needs the Clojure CLI as well as Babashka.
 
+`./bin/mage kondo-ratchets-history` reports who shrank, grew and introduced budgets, from the history of the ratchet
+files. It takes `--days N` (7 by default), `--all`, or a commit to start after, and `--html FILE` writes a page of every
+week and month. A shrink is credited to the commits that removed the suppressions, not to the automation that lowered
+the number. It warns about any raise larger than the suppressions its commit added. Settle one with `--pardon`,
+`--confirm` or `--recount`, each taking a commit or PR number and a `--why`; the verdicts are kept in
+`mage/resources/kondo-ratchets-verdicts.edn`.
+
 ## Tool Preferences
 
 If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.

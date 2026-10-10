@@ -193,13 +193,16 @@ function points(p) {
 
 // One chart: `series` are {key, name, color, area}; `start` holds each series' value before the first point.
 function chart(id, title, sub, pts, span, series, start, zero) {
-  const values = pts.flatMap(pt => series.map(s => pt[s.key])).concat(series.map(s => start[s.key]), zero ? [0] : []);
+  // a series with no value before its first point has no start, and its line begins at that point
+  const values = pts.flatMap(pt => series.map(s => pt[s.key]))
+    .concat(series.map(s => start[s.key]).filter(v => v != null), zero ? [0] : []);
   const ys = ticks(Math.min(...values), Math.max(...values), 4);
   const lo = ys[0], hi = ys[ys.length - 1];
   const x = t => M.l + (t - span[0]) / ((span[1] - span[0]) || 1) * (W - M.l - M.r);
   const y = v => M.t + (hi - v) / ((hi - lo) || 1) * (H - M.t - M.b);
   // a budget holds its value until the next commit, so the line steps
-  const step = s => `M${x(span[0])},${y(start[s.key])}` + pts.map(pt => `H${x(pt.t)}V${y(pt[s.key])}`).join("") + `H${x(span[1])}`;
+  const step = s => (start[s.key] == null ? `M${x(pts[0].t)},${y(pts[0][s.key])}` : `M${x(span[0])},${y(start[s.key])}`) +
+    pts.map(pt => `H${x(pt.t)}V${y(pt[s.key])}`).join("") + `H${x(span[1])}`;
   const grid = ys.map(v => `<line class="${zero && v === 0 ? "zero" : "grid"}" x1="${M.l}" x2="${W - M.r}" y1="${y(v)}" y2="${y(v)}"/>` +
     `<text x="${M.l - 8}" y="${y(v) + 4}" text-anchor="end">${zero ? signed(v) : v}</text>`).join("");
   const dates = [0, 1, 2, 3].map(i => span[0] + (span[1] - span[0]) * i / 3).map((t, i) =>
@@ -235,7 +238,7 @@ function trends(p) {
       {cumGrown: 0, cumNet: 0, cumShrunk: 0}, true) +
     chart("c-level", "Total budget", "All budgets summed. A ratchet on existing debt raises it.",
       pts, span, [{key: "level", name: "Total budget", color: "--level"}],
-      {level: before ? before.level : 0}, false) +
+      {level: before ? before.level : null}, false) +
     `</div><details class="data"><summary>Data table</summary>` +
     table(["commit", "shrunk", "grown", "net so far", "total budget"], rows) + `</details>`);
 }
