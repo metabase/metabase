@@ -164,6 +164,8 @@
 
 ;;; -------------------------------------------------- Verdicts ------------------------------------------------
 
+(def ^:private a* [:prod :ignore :a])
+
 (deftest suspects-test
   (testing "flags a raise beyond the suppressions its commit added, unless the commit has a verdict"
     (is (= [{:sha "stale", :changes [{:measure [:prod :ignore :a], :kind :grow, :delta 8, :added 0}]}]
@@ -236,6 +238,29 @@
             [{:sha     "regroup"
               :changes [{:measure :e, :kind :shrink, :delta -4} {:measure :f, :kind :grow, :delta 5}]
               :causes  {:e [{:sha "regroup", :delta -4}]}}])))))
+
+(deftest slack-test
+  (let [raise   (fn [sha delta added] {:sha sha, :changes [{:measure a*, :kind :grow, :delta delta, :added added}]})
+        tighten (fn [sha delta cause]
+                  {:sha      sha
+                   :tighten? true
+                   :changes  [{:measure a*, :kind :shrink, :delta delta}]
+                   :causes   {a* [{:sha cause, :delta delta}]}})
+        kinds   (fn [records]
+                  (for [{:keys [sha changes doubted]} records]
+                    [sha (map (juxt :kind :delta :slack) changes) (boolean doubted)]))]
+    (testing "a raise that nothing used and a later commit took back is slack, and neither side counts"
+      (is (= [["stale" [[:slack 8 nil]] false]]
+             (kinds (history/settle {:settled #{}} [(tighten "tighten" -8 "stale") (raise "stale" 8 0)])))))
+    (testing "only the part that was taken back is slack; what was added is growth, and the rest is still doubted"
+      (is (= [["mixed" [[:grow 3 2]] true]]
+             (kinds (history/settle {:settled #{}} [(tighten "tighten" -2 "mixed") (raise "mixed" 5 1)])))))
+    (testing "a raise nobody has taken back yet stays growth and is doubted"
+      (is (= [["fresh" [[:grow 8 nil]] true]]
+             (kinds (history/settle {:settled #{}} [(raise "fresh" 8 0)])))))
+    (testing "a confirmed raise is left as growth, and its return as a shrink"
+      (is (= [["tighten" [[:shrink -8 nil]] false] ["kept" [[:grow 8 nil]] false]]
+             (kinds (history/settle {:settled #{"kept"}} [(tighten "tighten" -8 "kept") (raise "kept" 8 0)])))))))
 
 (deftest counted-test
   (testing "budgets of linters that are not counted drop out, with the commits that changed nothing else"
@@ -566,8 +591,8 @@
         (let [summary #(str/split-lines (with-out-str (history/run repo {:options {:all true}, :arguments []})))
               total   (fn [lines] (some #(when (str/starts-with? % "  total ") (str/split (str/trim %) #"\s+")) lines))
               warned? (fn [lines] (boolean (some #{"Raises beyond the suppressions added, with no verdict"} lines)))]
-          (testing "counts the raises as growth and asks for a verdict on them"
-            (is (= [["total" "-8" "+7" "-1"] true]
+          (testing "counts the ignore that was added as growth, and the spare budget that was taken back as nothing"
+            (is (= [["total" "-2" "+1" "-1"] false]
                    ((juxt total warned?) (summary)))))
           (testing "a verdict on a PR that changed no ratchet file is refused"
             (is (= 1

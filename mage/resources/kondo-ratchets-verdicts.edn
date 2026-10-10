@@ -6,29 +6,27 @@
   :pr      78082
   :subject "Report dynamic requires which linter cannot verify (#78082)"
   :verdict :pardon
-  :why     "The modules hook started reporting dynamic requires it cannot check. The 13 ignores mark requires that already existed."}
+  :why     "The modules hook started reporting dynamic requires it cannot check. The 13 ignores mark requires that already existed."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}
  {:sha     "dd1cb0f0ba7344ba9a8ef7b42f9ffad7112dafb2"
   :pr      77820
   :subject "Require justifications for linter ignores (#77820)"
   :verdict :recount
-  :why     "Two ignores in the Mongo driver had their key where the scanner did not read it. Moving the key first made the scanner count 4 suppressions that already existed."}
- {:sha     "30f9f25ba959d41c6612febd75d11b00cefff2cb"
-  :pr      81776
-  :subject "Refine kondo ratchet commands and prompts (#81776)"
-  :verdict :pardon
-  :why     "Raised the budget by 1 on purpose, with nothing to suppress, to test whether the new shrink workflow would take it back. It did the same day (#81805)."}
+  :why     "Two ignores in the Mongo driver had their key where the scanner did not read it. Moving the key first made the scanner count 4 suppressions that already existed."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}
  {:sha     "e4471f76d3dbf85ef14322e01570e0a3dc793866"
   :pr      83383
   :subject "Split kondo ratchet budgets into separate prod and test files (#83383)"
   :verdict :pardon
-  :why     "Splitting the ratchet file needed one new dynamic var, with its ignore, to hold the test file's path. The other unit was spare, and the automation took it back the same day (#83450)."}
- {:sha     "8d5db3195d2182a0a4f388601084f803d2074882"
-  :pr      81406
-  :subject "Implement the UNION ALL approach for running pivot queries (#81406)"
-  :verdict :pardon
-  :why     "A merge conflict in the ratchet file left the budget 8 above master's, with no new deprecated-var ignore. The automation took the 8 back the same day (#83859)."}
+  :why     "Splitting the ratchet file needed one new dynamic var, with its ignore, to hold the test file's path. The other unit was spare, and the automation took it back the same day (#83450)."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}
  {:sha     "ec3b24fadd18ad7458943e9b13b067f375b97d7a"
   :pr      79531
   :subject "Make every kondo ignore name the linters it suppresses (#79531)"
   :verdict :recount
-  :why     "Every bare ignore now names its linters, so one that covered two warnings counts under both. The `:all` budget went away, and the named budgets absorbed it."}]
+  :why     "Every bare ignore now names its linters, so one that covered two warnings counts under both. The `:all` budget went away, and the named budgets absorbed it."
+  :by      "Chris Truter"
+  :on      "2026-10-10"}]

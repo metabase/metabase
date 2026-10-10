@@ -9,6 +9,8 @@
   - grow: the budget of a linter that already existed rose, or it got its first budget in a ratchet that
     already existed.
   - introduce: a linter, or a measure of the module ratchet, got its first budget in the commit that added it.
+  - slack: the budget rose by more than the suppressions the commit added, and a later commit lowered it again.
+    Budget that nothing used counts for nobody, and neither does taking it back.
   - seed: a linter that already existed got its first budget because the commit added a whole ratchet: a new
     ratchet file, or a new kind of budget in one. Existing debt came under a budget, so it counts for nobody.
   - limit or unlimit: the budget moved out of or into `:unlimited`.
@@ -637,7 +639,7 @@
   (let [entry (fn [verdict]
                 (str "{"
                      (str/join "\n  "
-                               (for [k     [:sha :pr :subject :verdict :why]
+                               (for [k     [:sha :pr :subject :verdict :why :by :on]
                                      :when (some? (get verdict k))]
                                  (format "%-8s %s" k (pr-str (get verdict k)))))
                      "}"))]
@@ -695,14 +697,32 @@
    [left {}]
    causes))
 
+(defn- spare-budget
+  "Per commit and measure, how far a raise in `records` outran the suppressions its commit added: budget that
+  nothing used. Commits in `settled` have a verdict already and are left out."
+  [settled records]
+  (into {}
+        (for [{:keys [sha changes]} records
+              :when (not (settled sha))
+              :let  [spare (into {}
+                                 (for [{:keys [kind measure delta added]} changes
+                                       :when (and (= :grow kind)
+                                                  (some-> added (< delta))
+                                                  (not (uncounted-linters (peek measure))))]
+                                   [measure (- delta added)]))]
+              :when (seq spare)]
+          [sha spare])))
+
 (defn pardon
   "`records`, the whole history newest first, with the verdicts applied.
   A raise in `pardons`, a map from commit to measure to the size of the raise, turns from `:grow` into `:pardon`.
   A shrink loses the part that only takes a pardoned raise back, and the credit for it.
   A raise is taken back once: the oldest shrinks after it use it up.
   A commit in `recounts` only changed how suppressions are counted, so its own shrinks go too, and so does any
-  credit it has for a later shrink."
-  [{:keys [pardons recounts]} records]
+  credit it has for a later shrink.
+  `spare`, as [[spare-budget]] gives it, is taken back in the same way without a verdict. The part of a raise
+  that a later shrink took back is its `:slack`, and a raise that was all slack turns from `:grow` into `:slack`."
+  [{:keys [pardons recounts spare]} records]
   (let [recount? (or recounts #{})
         settle   (fn [split sha {:keys [kind measure delta], :as change}]
                    (case kind
@@ -710,16 +730,26 @@
                      :shrink (let [delta (- delta (get-in split [measure :returned] 0))]
                                (when-not (or (recount? sha) (zero? delta))
                                  (assoc change :delta delta :kind (if (neg? delta) :shrink :grow))))
-                     change))]
-    (second
-     (reduce (fn [[left settled] {:keys [sha causes], :as record}]
-               (let [[left split] (split-causes left recount? sha causes)]
-                 ;; consing onto a list puts the records back newest first
-                 [left (cons (cond-> (update record :changes #(keep (partial settle split sha) %))
-                               causes (assoc :causes (update-vals split :kept)))
-                             settled)]))
-             [pardons ()]
-             (reverse records)))))
+                     change))
+        [left settled]
+        (reduce (fn [[left settled] {:keys [sha causes], :as record}]
+                  (let [[left split] (split-causes left recount? sha causes)]
+                    ;; consing onto a list puts the records back newest first
+                    [left (cons (cond-> (update record :changes #(keep (partial settle split sha) %))
+                                  causes (assoc :causes (update-vals split :kept)))
+                                settled)]))
+                [(merge-with merge spare pardons) ()]
+                (reverse records))
+        loosen   (fn [sha {:keys [kind measure delta], :as change}]
+                   (let [taken (if (= :grow kind)
+                                 (- (get-in spare [sha measure] 0) (get-in left [sha measure] 0))
+                                 0)]
+                     (cond
+                       (zero? taken)   change
+                       (= taken delta) (assoc change :kind :slack)
+                       :else           (assoc change :delta (- delta taken) :slack taken))))]
+    (for [{:keys [sha], :as record} settled]
+      (update record :changes #(map (partial loosen sha) %)))))
 
 (defn counted
   "`records` without the changes to budgets of [[uncounted-linters]], and without the commits that leaves empty."
@@ -731,12 +761,15 @@
 
 (defn settle
   "`records`, the whole history newest first, as the summaries count them: with `verdicts` applied by [[pardon]],
-  without what [[counted]] leaves out, and with the raises [[suspects]] flags kept on each record as `:doubted`.
+  with spare budget that was taken back counted as slack, without what [[counted]] leaves out, and with the
+  raises [[suspects]] still flags kept on each record as `:doubted`.
   `verdicts` holds `:pardons` and `:recounts` as [[pardon]] takes them, and `:settled`, every commit with a
   verdict."
   [{:keys [settled], :as verdicts} records]
-  (let [doubted (into {} (map (juxt :sha :changes)) (suspects settled records))]
-    (for [{:keys [sha], :as record} (counted (pardon verdicts records))]
+  (let [records (pardon (assoc verdicts :spare (spare-budget settled records)) records)
+        ;; asked of what is left of each raise once its slack is taken out
+        doubted (into {} (map (juxt :sha :changes)) (suspects settled records))]
+    (for [{:keys [sha], :as record} (counted records)]
       (cond-> record (doubted sha) (assoc :doubted (doubted sha))))))
 
 ;;; -------------------------------------------------- Report --------------------------------------------------
@@ -880,10 +913,10 @@
   - `:approximate` names the measures among them whose credit is approximate: those budgeted per symbol.
   - `:best` and `:worst` are the commits behind the largest net shrink and net raise, if any: the `:commit`,
     its `:net` and its `:measures`.
-  - `:introduced`, `:seeded`, `:unlimited`, `:unaccounted` and `:suspects` each list commits with `:items`.
-    Those are the new linters, the first budgets of new ratchets, the moves into or out of `:unlimited`, the
-    shrinks of the automation that no commit explains, and the raises beyond the suppressions added that have
-    no verdict.
+  - `:introduced`, `:seeded`, `:slack`, `:unlimited`, `:unaccounted` and `:suspects` each list commits with
+    `:items`. Those are the new linters, the first budgets of new ratchets, the spare budget that was taken
+    back, the moves into or out of `:unlimited`, the shrinks of the automation that no commit explains, and
+    the raises beyond the suppressions added that have no verdict.
   - `:board` is the [[leaderboard]]."
   [records]
   (let [ranked  (by-commit (attributions records))
@@ -913,6 +946,12 @@
                              {:measure (measure-name measure)
                               :budget  (budget-name new)
                               :size    (if (number? new) new 0)}))
+     :slack       (for [record records
+                        :let   [items (for [{:keys [kind measure delta slack]} (:changes record)
+                                            :when (or slack (= :slack kind))]
+                                        {:measure (measure-name measure), :size (or slack delta)})]
+                        :when  (seq items)]
+                    {:commit (commit-ref record), :items items})
      :unlimited   (by-kind records #{:limit :unlimit}
                            (fn [{:keys [measure old new]}]
                              {:measure (measure-name measure), :old (budget-name old), :new (budget-name new)}))
@@ -1165,7 +1204,7 @@
 
 (defn summary
   "Lines for the terminal saying what `report` ([[report]]) holds, for the period called `period`."
-  [period {:keys [commits totals total approximate best worst introduced seeded unlimited board unaccounted
+  [period {:keys [commits totals total approximate best worst introduced seeded slack unlimited board unaccounted
                   suspects]}]
   (concat
    [(c/bold (format "Ratchet changes %s: %d commits" period commits))]
@@ -1180,6 +1219,9 @@
             (group-lines introduced (fn [{:keys [measure budget]}]
                                       (c/green (str measure "  starting at " budget)))))
    (section "New ratchets over existing debt" (seed-lines seeded))
+   (section "Spare budget that was taken back"
+            (group-lines slack (fn [{:keys [measure size]}]
+                                 (str (signed size) " " measure))))
    (section "Moved into or out of :unlimited"
             (group-lines unlimited (fn [{:keys [measure old new]}]
                                      (str measure "  " old " -> " new))))
@@ -1263,8 +1305,12 @@
   [repo kind target why]
   (let [record  (ratchet-commit repo (backfill! repo) target)
         changes (filter (comp (covered-kinds kind) :kind) (:changes record))
+        ;; who recorded it and when, for the reader of the page: most verdicts are on the recorder's own commits
+        by      (first (:out (shell/sh* (shell-options repo) "git" "config" "user.name")))
         entry   (cond-> (assoc (select-keys record [:sha :pr :subject]) :verdict kind)
-                  why (assoc :why why))
+                  why  (assoc :why why)
+                  by   (assoc :by by)
+                  true (assoc :on (str (LocalDate/now))))
         others  (remove #(= (:sha record) (:sha %)) (read-verdicts repo))]
     (when (empty? changes)
       (u/exit (str "Nothing to " (name kind) ": " (commit-line record) " raised no budget.") 1))
@@ -1292,11 +1338,13 @@
   "The `entries` of the verdicts file for the page: each commit, its verdict and reason, and the changes the
   verdict is about. `record` gives the record of a sha."
   [entries record]
-  (for [{:keys [sha verdict why]} entries
+  (for [{:keys [sha verdict why by on]} entries
         :let [commit (record sha)]]
     {:commit  (commit-ref commit)
      :verdict (name verdict)
      :why     why
+     :by      by
+     :on      on
      :raises  (for [{:keys [kind measure delta]} (:changes commit)
                     :when (contains? (covered-kinds verdict) kind)]
                 {:measure (measure-name measure), :delta delta})}))
