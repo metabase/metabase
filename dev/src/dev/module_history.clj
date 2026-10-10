@@ -4,10 +4,11 @@
   Every commit is measured with the code in this tree: its sources and module config come from git, and today's
   [[dev.deps-graph]] resolves and measures them, so every data point follows the same rules.
 
-  Results are cached outside the repo, under `$MB_MODULE_HISTORY_CACHE` or `~/.cache/metabase/module-history`, so
-  worktrees and runs share them. Parsed files are keyed by git blob and a hash of [[dev.module-source]]; per-commit
-  metrics are keyed by commit and a hash of every namespace that computes them. Changing that code starts a fresh
-  cache layer instead of serving stale results.
+  Results are cached outside the repo, under `$MB_MODULE_HISTORY_CACHE` or `~/.cache/metabase/module-history`,
+  so worktrees and runs share them.
+  Parsed files are keyed by git blob and a hash of [[dev.module-source]]; per-commit metrics are keyed by
+  commit and a hash of every namespace that computes them.
+  Changing that code starts a fresh cache layer instead of serving stale results.
 
     (backfill! {:since \"2025-10-01\", :monthly-since \"2023-12-01\", :out \"history.csv\"})"
   (:require
@@ -41,8 +42,8 @@
     out))
 
 (defn- open-object-reader
-  "A running `git cat-file --batch` for reading object contents with [[read-object]]. Close it with
-  [[close-object-reader]]."
+  "A running `git cat-file --batch` for reading object contents with [[read-object]].
+  Close it with [[close-object-reader]]."
   []
   (let [process (.start (ProcessBuilder. ^"[Ljava.lang.String;" (into-array String ["git" "cat-file" "--batch"])))]
     {:process process
@@ -98,15 +99,16 @@
 
 (defn- legacy-module-name
   "Today's name for the module the old linter keyed by its root namespace: `metabase.lib` is `lib`, and
-  `metabase-enterprise.sso` is `enterprise/sso`. Nil for a namespace outside both roots."
+  `metabase-enterprise.sso` is `enterprise/sso`.
+  Returns nil for a namespace outside both roots."
   [root-ns]
   (when-let [[_ enterprise module] (re-matches #"metabase(-enterprise)?\.(.+)" (str root-ns))]
     (if enterprise (symbol "enterprise" module) (symbol module))))
 
 (defn- legacy-modules
-  "Module map from the `:metabase/ns-module-checker` linter that predates `:metabase/modules`. It keyed
-  `:api-namespaces` and `:allowed-modules` by the module's root namespace (`metabase.lib`), and had no friends or
-  nesting. `:allowed-modules` becomes `:uses`."
+  "The module map from the `:metabase/ns-module-checker` linter that predates `:metabase/modules`.
+  That linter keyed `:api-namespaces` and `:allowed-modules` by a module's root namespace, such as `metabase.lib`.
+  It had no friends or nesting, and its `:allowed-modules` becomes `:uses`."
   [config-source]
   ;; Before #53583 an unlisted module's API was its root namespace; today's default is `.api`, `.core` and `.init`,
   ;; so exposure measured against this config is approximate.
@@ -133,8 +135,9 @@
   ".clj-kondo/config.edn")
 
 (defn- commit-modules
-  "The `:metabase/modules` map at `commit`. Before #53583 it is translated from the older linter config, and before
-  #42250 there is no module config, so it is [[whole-backend]]."
+  "The `:metabase/modules` map at `commit`.
+  Before #53583 it is translated from the older linter config.
+  Before #42250 there is no module config, so it is [[whole-backend]]."
   [reader commit]
   (if-let [config (read-object reader (str commit ":" modules-config-path))]
     ;; Same exclusion as [[deps-graph/kondo-config]].
@@ -205,8 +208,8 @@
       {:error (ex-message e)})))
 
 (defn- blob-requires
-  "Requires for each of `blobs`, from the cache where possible. Missing blobs are read in turn and parsed in
-  parallel."
+  "Requires for each of `blobs`, from the cache where possible.
+  Missing blobs are read in turn and parsed in parallel."
   [reader blobs]
   (let [cached  (into {} (keep (fn [blob] (some->> (read-cached (parse-file blob)) (vector blob)))) blobs)
         missing (remove cached blobs)
@@ -312,9 +315,9 @@
 ;;;; Retest share
 
 (defn- dependents
-  "For `graph`, a map of node to the nodes it requires, the nodes that reach each node through requires, itself
-  included: what a change to that node could break. Returns `{:nodes [node ...], :sets [BitSet ...]}`, where a
-  set's bits index into `:nodes`."
+  "The nodes a change to each node could break: every node that reaches it through requires, itself included.
+  The `graph` maps a node to the nodes it requires.
+  Returns `{:nodes [node ...], :sets [BitSet ...]}`, one set per node, whose bits index into `:nodes`."
   [graph]
   (let [nodes (vec (into (set (keys graph)) cat (vals graph)))
         index (zipmap nodes (range))
@@ -340,12 +343,13 @@
   (take-while nat-int? (iterate #(.nextSetBit bits (inc (long %))) (.nextSetBit bits 0))))
 
 (defn- percent
-  "`part` of `whole` as a percentage with one decimal."
+  "The share `part` is of `whole`, as a percentage with one decimal."
   [part whole]
   (if (zero? whole) 0.0 (/ (Math/round (* 1000.0 (/ part whole))) 10.0)))
 
 (defn- share-summary
-  "The mean and median of `shares`, percentages with one entry per namespace, and how many fall in each tenth."
+  "The mean and median of `shares`, percentages with one entry per namespace, and how many fall in each tenth.
+  The median of an even number of shares is the upper of the two middle values."
   [shares]
   (let [sorted (vec (sort shares))
         total  (count sorted)]
@@ -357,7 +361,8 @@
 (defn- retest-metrics
   "How much of the backend a change would retest, taking every namespace in turn as the one that changed.
   A test run selected by module reruns every namespace of every module that reaches the changed namespace's module;
-  one selected by namespace reruns only the namespaces that reach it. Shares are percentages of all namespaces.
+  one selected by namespace reruns only the namespaces that reach it.
+  Shares are percentages of all namespaces.
 
   A leaf is a module or namespace nothing else requires, so a change to it retests only itself.
 
@@ -394,38 +399,38 @@
   `:density`, `:cycle-rank` and `:strong-bridges` count, largest first, and `:retest-histogram`, the namespaces in
   each tenth of retest share; see [[retest-metrics]]."
   [deps modules]
-  (let [graph            (deps-graph/module-dependencies deps)
-        cycles           (module-graph/cycles graph)
-        stats            (deps-graph/module-boundary-stats deps modules cycles)
-        existing         (into #{} (map :namespace) deps)
-        ns-graph         (into {}
-                               (map (fn [{:keys [namespace deps]}]
-                                      [namespace (into #{} (comp (map :namespace) (filter existing)) deps)]))
-                               deps)
-        mod->nses        (update-vals (group-by :module deps) #(into #{} (map :namespace) %))
-        ns-count         #(count (get mod->nses % #{}))
-        with-nses        (set (keys mod->nses))
-        root-of          (memoize (fn [m] (last (take-while some? (iterate #(modules/parent-module modules %) m)))))
-        api-nses         (fn [m]
-                           (let [nses (get mod->nses m #{})]
-                             (if (= :any (get-in modules [m :api]))
-                               nses
-                               (into #{} (filter (set (modules/module-api-namespaces modules m))) nses))))
+  (let [graph         (deps-graph/module-dependencies deps)
+        cycles        (module-graph/cycles graph)
+        stats         (deps-graph/module-boundary-stats deps modules cycles)
+        existing      (into #{} (map :namespace) deps)
+        ns-graph      (into {}
+                            (map (fn [{:keys [namespace deps]}]
+                                   [namespace (into #{} (comp (map :namespace) (filter existing)) deps)]))
+                            deps)
+        mod->nses     (update-vals (group-by :module deps) #(into #{} (map :namespace) %))
+        ns-count      #(count (get mod->nses % #{}))
+        with-nses     (set (keys mod->nses))
+        root-of       (memoize (fn [m] (last (take-while some? (iterate #(modules/parent-module modules %) m)))))
+        api-nses      (fn [m]
+                        (let [nses (get mod->nses m #{})]
+                          (if (= :any (get-in modules [m :api]))
+                            nses
+                            (into #{} (filter (set (modules/module-api-namespaces modules m))) nses))))
         ;; A module outside every subtree may name exactly the modules visible across top-level modules.
-        exported?        #(nil? (modules/namability-error modules 'module-history/outsider %))
-        non-api          #(- (ns-count %) (count (api-nses %)))
-        cross-friends    (fn [m] (remove #(= (root-of %) (root-of m)) (get-in modules [m :friends])))
+        exported?     #(nil? (modules/namability-error modules 'module-history/outsider %))
+        non-api       #(- (ns-count %) (count (api-nses %)))
+        cross-friends (fn [m] (remove #(= (root-of %) (root-of m)) (get-in modules [m :friends])))
         [largest-m largest-n] (largest-cycle (:scc-module-sizes stats) (:scc-namespace-sizes stats))
-        static-graph     (deps-graph/module-dependencies (map (fn [row] (update row :deps #(remove :dynamic %))) deps))
-        static-n         (transduce (map (fn [component] (reduce + (map ns-count component)))) max 0
-                                    (module-graph/cyclic-components static-graph))
-        top-edges        (into #{}
-                               (for [[from tos] graph
-                                     to         tos
-                                     :when      (not= (root-of from) (root-of to))]
-                                 [(root-of from) (root-of to)]))
-        ns->mod          (into {} (map (juxt :namespace :module)) deps)
-        namespaces       (count deps)]
+        static-graph  (deps-graph/module-dependencies (map (fn [row] (update row :deps #(remove :dynamic %))) deps))
+        static-n      (transduce (map (fn [component] (reduce + (map ns-count component)))) max 0
+                                 (module-graph/cyclic-components static-graph))
+        top-edges     (into #{}
+                            (for [[from tos] graph
+                                  to         tos
+                                  :when      (not= (root-of from) (root-of to))]
+                              [(root-of from) (root-of to)]))
+        ns->mod       (into {} (map (juxt :namespace :module)) deps)
+        namespaces    (count deps)]
     (merge
      (structure-metrics deps modules stats graph ns-graph)
      (retest-metrics deps graph ns-graph namespaces)
@@ -512,9 +517,9 @@
   ["src" "enterprise/backend/src" ":(glob)modules/drivers/*/src/**" "modules/embedder/src" modules-config-path])
 
 (defn- midnight-utc
-  "The instant `date` starts in UTC, as git reads it. A bare date means that day at the current time of day, in the
-  local zone, so the same sample would differ from run to run."
+  "The instant `date` starts in UTC, in the form git reads."
   [date]
+  ;; Git reads a bare date as that day at the current local time, so a sample would differ from run to run.
   (str date "T00:00:00Z"))
 
 (defn- commits-since
@@ -524,8 +529,9 @@
     (remove str/blank? (str/split-lines (git! (into args pathspecs))))))
 
 (defn- config-commits
-  "Commits of `ref` since `date` that changed the module config. Before [[modules-config-path]] existed that is a
-  change to [[legacy-config-path]], which is followed only up to the commit that moved the config out of it."
+  "Commits of `ref` since `date` that changed the module config.
+  Before [[modules-config-path]] existed that is a change to [[legacy-config-path]], which is followed only
+  up to the commit that moved the config out of it."
   [ref date]
   (let [introduced (last (str/split-lines (git! ["log" "--first-parent" "--diff-filter=A" "--format=%H" ref
                                                  "--" modules-config-path])))]
@@ -554,18 +560,18 @@
 
   Dates are days in UTC."
   [{:keys [ref since backend-since weekly-since monthly-since extra], :or {ref "origin/master"}}]
-  (let [changed        (concat (when since (config-commits ref since))
-                               (when backend-since (commits-since ref backend-since backend-pathspecs)))
-        weeks          (when weekly-since
-                         (dates-from (LocalDate/parse weekly-since) #(.plusWeeks ^LocalDate % 1)))
-        months         (when monthly-since
-                         (dates-from (.withDayOfMonth (LocalDate/parse monthly-since) 1) #(.plusMonths ^LocalDate % 1)))
-        anchors        (last-commit-before ref (concat weeks months))
-        resolved       (map #(str/trim (git! ["rev-parse" (str % "^{commit}")]))
-                            (concat changed anchors extra [ref]))
-        order          (into {}
-                             (map-indexed (fn [i sha] [sha i]))
-                             (str/split-lines (git! ["rev-list" "--first-parent" "--reverse" ref])))]
+  (let [changed  (concat (when since (config-commits ref since))
+                         (when backend-since (commits-since ref backend-since backend-pathspecs)))
+        weeks    (when weekly-since
+                   (dates-from (LocalDate/parse weekly-since) #(.plusWeeks ^LocalDate % 1)))
+        months   (when monthly-since
+                   (dates-from (.withDayOfMonth (LocalDate/parse monthly-since) 1) #(.plusMonths ^LocalDate % 1)))
+        anchors  (last-commit-before ref (concat weeks months))
+        resolved (map #(str/trim (git! ["rev-parse" (str % "^{commit}")]))
+                      (concat changed anchors extra [ref]))
+        order    (into {}
+                       (map-indexed (fn [i sha] [sha i]))
+                       (str/split-lines (git! ["rev-list" "--first-parent" "--reverse" ref])))]
     (->> (distinct resolved)
          (sort-by #(order % Long/MAX_VALUE))
          vec)))
