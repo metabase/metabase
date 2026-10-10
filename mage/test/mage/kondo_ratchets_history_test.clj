@@ -40,9 +40,14 @@
                                             :shrunk       2
                                             :uncapped     :unlimited}}}
                     #{:new-linter}))))
-  (testing "a whole new ratchet for linters that already existed is growth"
-    (is (= [{:measure [:modules :module :uses-any], :old nil, :new 4, :kind :grow, :delta 4}]
-           (changes {} {:modules {:uses-any 4}} #{}))))
+  (testing "the first budgets of a new ratchet file or a new kind of budget are seeds, unless the linter is new"
+    (is (= [{:measure [:modules :module :uses-any], :old nil, :new 4, :kind :seed}
+            {:measure [:prod :config :existing], :old nil, :new 2, :kind :seed}
+            {:measure [:prod :config :new-linter], :old nil, :new 3, :kind :introduce}]
+           (changes {:prod {:ignore-counts {:existing 5}}}
+                    {:prod    {:ignore-counts {:existing 5}, :config-counts {:existing 2, :new-linter 3}}
+                     :modules {:uses-any 4}}
+                    #{:new-linter}))))
   (testing "a newly discouraged symbol is an introduction, and the rest of its linter's budget still moves"
     (is (= [{:measure [:prod :ignore :discouraged-var], :kind :introduce, :key :clojure.core/eval, :new 6}
             {:measure [:prod :ignore :discouraged-var], :old 3, :new 2, :kind :shrink, :delta -1}]

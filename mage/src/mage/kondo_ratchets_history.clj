@@ -6,9 +6,11 @@
   - shrink: the budget fell.
     The credit belongs to the earlier commits that removed the suppressions, not to the commit that lowered the
     number, which is usually the post-merge automation.
-  - grow: the budget of a linter that already existed rose.
-    A first budget counts, even when the commit adds the whole ratchet.
+  - grow: the budget of a linter that already existed rose, or it got its first budget in a ratchet that
+    already existed.
   - introduce: a linter got its first budget in the commit that added the linter.
+  - seed: a linter that already existed got its first budget because the commit added a whole ratchet: a new
+    ratchet file, or a new kind of budget in one. Existing debt came under a budget, so it counts for nobody.
   - limit or unlimit: the budget moved out of or into `:unlimited`.
 
   A measure is one budgeted count, `[side kind name]`: `[:prod :ignore :deprecated-var]`,
@@ -130,10 +132,12 @@
 (defn budget-changes
   "Classify what a commit did to each budget in `view` ([[budget-view]]).
   Returns maps of `:measure`, `:kind`, `:old` and `:new`, with a `:delta` for a `:shrink` or `:grow`.
+  The kinds are those the namespace docstring lists.
   A newly discouraged symbol is its own `:introduce`, with the symbol as `:key`.
   `new-linter?` and `new-symbol?` say whether the commit also added the linter, or the symbol under `linter`."
   [{:keys [before after symbols-before symbols-after]} {:keys [new-linter? new-symbol?]}]
-  (let [symbols (for [[[side linter sym :as k] n] (sort-by (comp str key) symbols-after)
+  (let [ratcheted (into #{} (map #(subvec % 0 2)) (keys before))
+        symbols (for [[[side linter sym :as k] n] (sort-by (comp str key) symbols-after)
                       :when (and (not (contains? symbols-before k))
                                  (new-symbol? linter sym))]
                   {:measure [side :ignore linter]
@@ -154,6 +158,10 @@
        (cond
          (and (nil? old) (new-linter? (peek measure)))
          (assoc change :kind :introduce)
+
+         ;; no budget of this kind on this side before: the commit added the ratchet itself
+         (and (nil? old) (not (ratcheted (subvec measure 0 2))))
+         (assoc change :kind :seed)
 
          (= :unlimited old) (assoc change :kind :limit)
          (= :unlimited new) (assoc change :kind :unlimit)
@@ -755,9 +763,10 @@
   - `:approximate` names the measures among them whose credit is approximate: those budgeted per symbol.
   - `:best` and `:worst` are the commits behind the largest net shrink and net raise, if any: the `:commit`,
     its `:net` and its `:measures`.
-  - `:introduced`, `:unlimited`, `:unaccounted` and `:suspects` each list commits with `:items`: the new
-    linters, the moves into or out of `:unlimited`, the shrinks of the automation that no commit explains, and
-    the raises beyond the suppressions added that have no verdict.
+  - `:introduced`, `:seeded`, `:unlimited`, `:unaccounted` and `:suspects` each list commits with `:items`.
+    Those are the new linters, the first budgets of new ratchets, the moves into or out of `:unlimited`, the
+    shrinks of the automation that no commit explains, and the raises beyond the suppressions added that have
+    no verdict.
   - `:board` is the [[leaderboard]]."
   [{:keys [settled], :as verdicts} records]
   (let [doubted (suspects settled records)
@@ -784,6 +793,11 @@
                            (fn [{:keys [measure key new]}]
                              {:measure (str (measure-name measure) (when key (str " " (subs (str key) 1))))
                               :budget  (budget-name new)}))
+     :seeded      (by-kind records #{:seed}
+                           (fn [{:keys [measure new]}]
+                             {:measure (measure-name measure)
+                              :budget  (budget-name new)
+                              :size    (if (number? new) new 0)}))
      :unlimited   (by-kind records #{:limit :unlimit}
                            (fn [{:keys [measure old new]}]
                              {:measure (measure-name measure), :old (budget-name old), :new (budget-name new)}))
@@ -971,6 +985,18 @@
         line (cons (commit-line commit) (map #(str "  " (describe %)) items))]
     line))
 
+(defn- seed-lines
+  "Lines for the `:seeded` commits of a [[report]].
+  Each budget gets a line, or the commit gets one line with their count and sum when there are many."
+  [groups]
+  (for [{:keys [commit items]} groups
+        line (cons (commit-line commit)
+                   (if (< 5 (count items))
+                     [(format "  %d budgets, starting at %d in all" (count items) (reduce + (map :size items)))]
+                     (for [{:keys [measure budget]} items]
+                       (str "  " measure "  starting at " budget))))]
+    line))
+
 (defn- suspect-lines [groups]
   (when (seq groups)
     (concat
@@ -1024,7 +1050,8 @@
 
 (defn summary
   "Lines for the terminal saying what `report` ([[report]]) holds, for the period called `period`."
-  [period {:keys [commits totals total approximate best worst introduced unlimited board unaccounted suspects]}]
+  [period {:keys [commits totals total approximate best worst introduced seeded unlimited board unaccounted
+                  suspects]}]
   (concat
    [(c/bold (format "Ratchet changes %s: %d commits" period commits))]
    (section "Total deltas"
@@ -1037,6 +1064,7 @@
    (section "New linters"
             (group-lines introduced (fn [{:keys [measure budget]}]
                                       (c/green (str measure "  starting at " budget)))))
+   (section "New ratchets over existing debt" (seed-lines seeded))
    (section "Moved into or out of :unlimited"
             (group-lines unlimited (fn [{:keys [measure old new]}]
                                      (str measure "  " old " -> " new))))

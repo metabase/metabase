@@ -302,6 +302,11 @@ function render(p) {
       ranking(r.board, x => x.linters > 0, x => -x.ignores, [["ignores", "ignores", good], ["linters", "linters", good]])) +
     section("New linters", "A linter, or a newly discouraged symbol, that got its first budget in the commit that added it.",
       groups(r.introduced, i => `<li><span class="num good">${esc(i.budget)}</span><span class="name good">${esc(i.measure)}</span></li>`)) +
+    section("New ratchets over existing debt", "First budgets for linters that already existed, from a commit that added a whole ratchet. They count for nobody.",
+      groups(r.seeded.map(g => g.items.length > 6
+          ? {...g, items: [{measure: `${g.items.length} budgets`, budget: g.items.reduce((a, i) => a + i.size, 0)}]}
+          : g),
+        i => `<li><span class="num zero">${esc(i.budget)}</span><span class="name">${esc(i.measure)}</span></li>`)) +
     section("Total deltas by linter",
       r.approximate.length ? `Credit for ${r.approximate.join(", ")} is approximate: those are budgeted per symbol and counted here per ignore.` : "",
       table(["", "shrunk", "grown", "net"],
