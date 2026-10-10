@@ -1,6 +1,7 @@
 (ns metabase.app-db.quartz-test
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
@@ -87,45 +88,48 @@
          (#'mdb.quartz/current-class-names [{:job-key "a.job", :class-names ["a.Oldest" "a.Old" "a.Current"]}
                                             {:job-key "b.job", :class-names ["b.Old" "b.Current"]}]))))
 
+(defn- in-this-edition?
+  "Whether this edition has the class named `class-name`."
+  [class-name]
+  (or config/ee-available?
+      (not (str/starts-with? class-name "metabase_enterprise."))))
+
 (defn- class-namespace [class-name]
   (-> class-name
       (str/replace #"\.[^.]+$" "")
       (str/replace "_" "-")))
 
 (defn- class-exists? [class-name]
-  (letfn [(loaded? []
-            (try
-              (some? (Class/forName class-name false (classloader/the-classloader)))
-              (catch ClassNotFoundException _
-                false)))]
-    ;; a job class is a `deftype`, which exists only once its namespace has loaded
-    (or (loaded?)
-        (let [ns-symb (symbol (class-namespace class-name))]
-          (and (try
-                 (require ns-symb)
-                 true
-                 (catch java.io.FileNotFoundException _
-                   false))
-               (loaded?))))))
+  ;; a job class is a `deftype`, which exists only once its namespace has loaded
+  (try
+    (require (symbol (class-namespace class-name)))
+    (catch java.io.FileNotFoundException _))
+  (try
+    (Class/forName class-name false (classloader/the-classloader))
+    true
+    (catch ClassNotFoundException _
+      false)))
 
 (defn- repeated [xs]
   (for [[x n] (frequencies xs) :when (> n 1)] x))
 
-(def ^:private loadable-job-history
-  "The entries of [[mdb.quartz/job-history]] whose current class this edition can load."
-  (cond->> mdb.quartz/job-history
-    (not config/ee-available?) (remove #(str/starts-with? (peek (:class-names %)) "metabase_enterprise."))))
+(def ^:private current-name
+  "The current class name of an entry of [[mdb.quartz/job-history]]."
+  (comp peek :class-names))
+
+(def ^:private job-history-in-this-edition
+  (filter (comp in-this-edition? current-name) mdb.quartz/job-history))
 
 (deftest job-history-test
   (testing "no class name belongs to two jobs, or twice to one"
     (is (= [] (repeated (mapcat :class-names mdb.quartz/job-history)))))
   (testing "the current class of each entry exists, and none of its old ones do"
     (is (= []
-           (for [{:keys [job-key class-names]} loadable-job-history
-                 :let                          [old-names-that-exist (filterv class-exists? (pop class-names))
-                                                current-exists?      (class-exists? (peek class-names))]
-                 :when                         (or (not current-exists?) (seq old-names-that-exist))]
-             {:job-key              job-key
+           (for [entry job-history-in-this-edition
+                 :let  [current-exists?      (class-exists? (current-name entry))
+                        old-names-that-exist (filterv class-exists? (pop (:class-names entry)))]
+                 :when (or (not current-exists?) (seq old-names-that-exist))]
+             {:job-key              (:job-key entry)
               :current-exists?      current-exists?
               :old-names-that-exist old-names-that-exist})))))
 
@@ -227,12 +231,10 @@
        " `job-classes-without-history`, and add the rename to `metabase.app-db.quartz/job-key-renames`."))
 
 (deftest every-job-class-is-listed-test
-  (let [current                  (job-class-names)
-        renamed                  (into #{} (map (comp peek :class-names)) mdb.quartz/job-history)
-        loadable-without-history (cond->> job-classes-without-history
-                                   (not config/ee-available?) (remove #(str/starts-with? % "metabase_enterprise.")))]
+  (let [current (job-class-names)
+        renamed (into #{} (map current-name) mdb.quartz/job-history)]
     (testing "every job class is listed"
-      (is (= [] (remove (into renamed job-classes-without-history) current))
+      (is (= #{} (set/difference current renamed job-classes-without-history))
           (str "For an existing job's class under a new name, with the same job key: add the new name to the end"
                " of the `:class-names` of the job's entry in `metabase.app-db.quartz/job-history`. If the job has"
                " no entry, add one with its job key and the old name first, and remove the old name from"
@@ -240,17 +242,26 @@
                "For a new job: add the class to `job-classes-without-history`.\n"
                "For a job whose key changed too: " changed-job-key-instructions)))
     (testing "every name in `job-classes-without-history` is a job class"
-      (is (= [] (remove current loadable-without-history))
+      (is (= #{} (set/difference (into #{} (filter in-this-edition?) job-classes-without-history) current))
           (str "For a job that was renamed and kept its job key: move the name into an entry in"
                " `metabase.app-db.quartz/job-history`, before the new name.\n"
                "For a job that was removed, or whose key changed too: remove the name.")))
     (testing "no job class is listed as both renamed and without history"
-      (is (= [] (filter renamed job-classes-without-history))))))
+      (is (= #{} (set/intersection renamed job-classes-without-history))))))
+
+(defn- job-keys-by-class-name
+  "Returns the names of the job keys in `scheduler`, grouped by the name of their job's class."
+  [^Scheduler scheduler]
+  (-> (group-by (fn [^JobKey job-key]
+                  (.getName (.getJobClass (.getJobDetail scheduler job-key))))
+                (.getJobKeys scheduler (GroupMatcher/anyGroup)))
+      (update-vals (fn [job-keys]
+                     (into (sorted-set) (map (fn [^JobKey job-key] (.getName job-key))) job-keys)))))
 
 (defn- scheduled-job-keys!
   "Returns the job keys that each job in `history` is scheduled under at startup, by its current class name."
   [history]
-  (let [namespaces (into #{} (map (comp class-namespace peek :class-names)) history)]
+  (let [namespaces (into #{} (map (comp class-namespace current-name)) history)]
     (run! (comp classloader/require symbol) namespaces)
     ;; the cache job needs its feature, and there is one transforms job for each active transform job
     (mt/with-premium-features #{:cache-granular-controls}
@@ -262,36 +273,36 @@
            (doseq [[task init!] (methods task.impl/init!)
                    :when        (namespaces (namespace task))]
              (init! task))
-           (let [^Scheduler scheduler (#'task.impl/scheduler)]
-             (reduce (fn [scheduled ^JobKey job-key]
-                       (update scheduled
-                               (.getName (.getJobClass (.getJobDetail scheduler job-key)))
-                               (fnil conj (sorted-set))
-                               (.getName job-key)))
-                     {}
-                     (.getJobKeys scheduler (GroupMatcher/anyGroup))))))))))
+           (job-keys-by-class-name (#'task.impl/scheduler))))))))
+
+(defn- labels?
+  "Whether `label`, the `:job-key` of a history entry, stands for the job key `job-key`."
+  [label job-key]
+  ;; a label that ends in a dot is the prefix of the keys of a job scheduled many times
+  (if (str/ends-with? label ".")
+    (str/starts-with? job-key label)
+    (= label job-key)))
+
+(defn- rename-to-complete
+  "The entry for [[mdb.quartz/job-key-renames]] if the key of the job in `entry` changed to `new-key`."
+  [{:keys [job-key] :as entry} new-key]
+  {:release   "<the release>"
+   :old-key   job-key
+   :old-class (current-name entry)
+   :new-key   new-key
+   :new-class (current-name entry)
+   :change    "<how the job changed>"})
 
 (deftest job-history-labels-match-the-scheduled-job-keys-test
   ;; This catches a job key that changed while its entry stayed
-  (let [scheduled  (scheduled-job-keys! loadable-job-history)
-        label-for? (fn [label job-key]
-                     ;; a label that ends in a dot is the prefix of the keys of a job scheduled many times
-                     (if (str/ends-with? label ".")
-                       (str/starts-with? job-key label)
-                       (= label job-key)))]
+  (let [scheduled (scheduled-job-keys! job-history-in-this-edition)]
     (is (= []
-           (for [{:keys [job-key class-names]} loadable-job-history
-                 :let                          [scheduled-as (scheduled (peek class-names) #{})]
-                 :when                         (not (and (seq scheduled-as)
-                                                         (every? #(label-for? job-key %) scheduled-as)))]
+           (for [{:keys [job-key] :as entry} job-history-in-this-edition
+                 :let                        [scheduled-as (scheduled (current-name entry) #{})]
+                 :when                       (or (empty? scheduled-as)
+                                                 (not-every? #(labels? job-key %) scheduled-as))]
              (cond-> {:job-key job-key, :scheduled-as scheduled-as}
-               (seq scheduled-as)
-               (assoc :rename-if-the-key-changed {:release   "<the release>"
-                                                  :old-key   job-key
-                                                  :old-class (peek class-names)
-                                                  :new-key   (first scheduled-as)
-                                                  :new-class (peek class-names)
-                                                  :change    "<how the job changed>"}))))
+               (seq scheduled-as) (assoc :rename-if-the-key-changed (rename-to-complete entry (first scheduled-as))))))
         (str "The `:job-key` of these entries in `metabase.app-db.quartz/job-history` is not the key their job is"
              " scheduled under. If the label is wrong, correct it.\n"
              "If the job's key changed: " changed-job-key-instructions
