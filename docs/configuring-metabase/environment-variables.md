@@ -567,6 +567,16 @@ The maximum number of recipients, summed across emails, that can be sent per sec
 
 The email address you want the replies to go to, if different from the from address.
 
+### `MB_EMAIL_SMTP_CONNECTION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `30000`
+- [Exported as](../installation-and-operation/serialization.md): `email-smtp-connection-timeout-ms`.
+- [Configuration file name](./config-file.md): `email-smtp-connection-timeout-ms`
+
+Maximum time in milliseconds to wait for a connection to the SMTP server to be established when sending
+                an email. Defaults to 30000 (30 seconds); set to 0 to wait indefinitely.
+
 ### `MB_EMAIL_SMTP_HOST`
 
 - Type: string
@@ -638,6 +648,17 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 - [Configuration file name](./config-file.md): `email-smtp-security-override`
 
 SMTP secure connection protocol for your custom server. (tls, ssl, or starttls).
+
+### `MB_EMAIL_SMTP_TIMEOUT_MS`
+
+- Type: integer
+- Default: `120000`
+- [Exported as](../installation-and-operation/serialization.md): `email-smtp-timeout-ms`.
+- [Configuration file name](./config-file.md): `email-smtp-timeout-ms`
+
+Maximum time in milliseconds to wait for a response from the SMTP server once connected, for example the
+                server greeting or the reply to a command, when sending an email. Defaults to 120000 (2 minutes); set
+                to 0 to wait indefinitely.
 
 ### `MB_EMAIL_SMTP_USERNAME`
 
