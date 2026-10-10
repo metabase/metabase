@@ -648,25 +648,32 @@
             (changes {:prod {:ignore-counts {:a 1}}} {:prod ::history/unreadable} #{})]))))
 
 (deftest unreadable-gap-and-module-measure-test
-  (testing "the commit that repairs a broken ratchet file carries what changed across it, and a module measure
-           is new only when the commit also adds what counts it"
+  (testing "the commit that repairs a broken ratchet file carries what changed across it and is marked for it,
+           a change to another ratchet file meanwhile is not, and a module measure is new only when the commit
+           also adds what counts it"
     (let [counter "dev/src/dev/kondo_ratchet.clj"
-          modules ".clj-kondo/config/modules/ratchets.edn"]
-      (is (= [[4 "Cy" [[:introduce [:modules :module :ns-prefixes] nil nil]
+          modules ".clj-kondo/config/modules/ratchets.edn"
+          tests   ".clj-kondo/ratchets-test.edn"]
+      (is (= [[5 "Cy" [[:introduce [:modules :module :ns-prefixes] nil nil]
                        [:seed [:modules :module :uses-any] nil nil]]]
-              [3 "Bob" [[:grow [:prod :ignore :a] 3 true]]]
+              [4 "Bob" [[:grow [:prod :ignore :a] 3 true]]]
+              [3 "Dee" [[:grow [:test :ignore :b] 3 nil]]]
               [2 "Ada" []]
-              [1 "Chris" [[:seed [:prod :ignore :a] nil nil]]]]
+              ;; the commit that adds the test ratchet file is read with both sides as one
+              [1 "Chris" [[:seed [:prod :ignore :a] nil nil] [:seed [:prod :ignore :b] nil nil]]]]
              (binding [*err* (java.io.StringWriter.)]
                (with-repo!
                  [["Chris" 1 "Add a ratchet (#1)"
                    {ratchets "{:ignore-counts {:a 2}}\n"
+                    tests    "{:ignore-counts {:b 1}}\n"
                     counter  "{:uses-any (count uses)}\n"}]
                   ["Ada" 2 "Break the ratchet file (#2)"
                    {ratchets "{:ignore-counts {:a 2\n"}]
-                  ["Bob" 3 "Repair it, with a raise (#3)"
+                  ["Dee" 3 "Raise a test budget while it is broken (#3)"
+                   {tests "{:ignore-counts {:b 4}}\n"}]
+                  ["Bob" 4 "Repair it, with a raise (#4)"
                    {ratchets "{:ignore-counts {:a 5}}\n"}]
-                  ["Cy" 4 "Ratchet the modules (#4)"
+                  ["Cy" 5 "Ratchet the modules (#5)"
                    {modules "{:ns-prefixes 3, :uses-any 1}\n"
                     counter "{:uses-any (count uses), :ns-prefixes (count prefixes)}\n"}]]
                  (fn [repo]

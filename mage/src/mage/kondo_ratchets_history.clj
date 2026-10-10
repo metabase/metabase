@@ -423,11 +423,14 @@
                                             :new-symbol?  (fn [_linter sym]
                                                             (added-in? repo sha linter-sources
                                                                        (symbol-names sym)))})
-                   ;; The changes of a commit that repairs a broken ratchet file span every commit since the
-                   ;; last readable version, while the suppressions counted for it are its own.
-                   bridged (some #{::unreadable} (vals (budgets-at repo (str sha "^"))))]
-               (cond->> (vec changes)
-                 bridged (mapv #(assoc % :bridged? true)))))))
+                   ;; A change to a ratchet file that was broken before this commit spans every commit since
+                   ;; its last readable version, while the suppressions counted for it are this commit's own.
+                   broken  (into #{}
+                                 (keep (fn [[side file]] (when (= ::unreadable file) side)))
+                                 (budgets-at repo (str sha "^")))]
+               (mapv (fn [{[side] :measure, :as change}]
+                       (cond-> change (broken side) (assoc :bridged? true)))
+                     changes)))))
 
 (defn tightening?
   "Did a commit only lower budgets, as the post-merge automation does?
@@ -1163,7 +1166,7 @@
                        (str "  " (colored-delta delta) (apply str (repeat (- width (count (signed delta))) " "))
                             "  " label))]
     (concat [(commit-line commit)
-             (format "%s net, across %d linter%s:" (colored-delta net) (count measures)
+             (format "%s net, across %d budget%s:" (colored-delta net) (count measures)
                      (if (= 1 (count measures)) "" "s"))]
             (for [{:keys [measure delta]} shown]
               (row delta measure))
