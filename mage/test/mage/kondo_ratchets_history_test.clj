@@ -258,6 +258,15 @@
     (testing "a raise nobody has taken back yet stays growth and is doubted"
       (is (= [["fresh" [[:grow 8 nil]] true]]
              (kinds (history/settle {:settled #{}} [(raise "fresh" 8 0)])))))
+    (testing "a commit that removed suppressions while raising the budget gives back the raise as slack, and
+             keeps the credit for what it removed"
+      (is (= [["tighten" [[:shrink -3 nil]] false] ["odd" [[:slack 5 nil]] false]]
+             (kinds (history/settle {:settled #{}} [(tighten "tighten" -8 "odd") (raise "odd" 5 -3)])))))
+    (testing "a raise of a budget kept per symbol is never slack or doubted, since its count is approximate"
+      (is (= [["tighten" [[:shrink -1 nil]] false] ["symbols" [[:grow 2 nil]] false]]
+             (kinds (history/settle {:settled #{}}
+                                    [(tighten "tighten" -1 "symbols")
+                                     (update-in (raise "symbols" 2 1) [:changes 0] assoc :per-symbol? true)])))))
     (testing "a confirmed raise is left as growth, and its return as a shrink"
       (is (= [["tighten" [[:shrink -8 nil]] false] ["kept" [[:grow 8 nil]] false]]
              (kinds (history/settle {:settled #{"kept"}} [(tighten "tighten" -8 "kept") (raise "kept" 8 0)])))))))
@@ -436,11 +445,11 @@
                 "Total deltas"
                 "Biggest improvement"
                 "Biggest regression"
-                "New linters"
+                "New linters and measures"
                 "Most shrunk"
                 "Most grown"
                 "Net, from most shrunk to most grown"
-                "Most introduced, by the ignores the new linters started with"
+                "Most introduced, by the ignores the new linters and measures started with"
                 "Shrinks no commit accounts for"]
                (headlines lines))))
       (testing "ranks authors by net change and names what no commit explains"
@@ -513,52 +522,63 @@
     (git "add" "-A")
     (git "commit" "-q" "-m" subject)))
 
-(defn- with-fixture-repo!
-  "Call `f` with a [[history/repo]] over a new repository of six commits, then delete it.
-  Chris adds a ratchet over three ignores. Ada removes an ignore, and Bob edits only the continuation line of a
-  multi-line ignore to drop a linter. The automation tightens. Cy raises one budget by 2 for 1 new ignore and
-  gives another linter a first budget of 5 for no ignores at all. The automation tightens again."
-  [f]
-  (let [root     (fs/create-temp-dir {:prefix "ratchets-history"})
-        dir      (fs/create-dirs (fs/path root "repo"))
-        ratchets ".clj-kondo/ratchets.edn"
-        source   "src/app/a.clj"
-        lines    (fn [& lines] (str (str/join "\n" lines) "\n"))]
+(defn- with-repo!
+  "Call `f` with a [[history/repo]] over a new repository holding `commits`, then delete it.
+  Each commit is `[author day subject files]`, as [[commit!]] takes them."
+  [commits f]
+  (let [root (fs/create-temp-dir {:prefix "ratchets-history"})
+        dir  (fs/create-dirs (fs/path root "repo"))]
     (try
       (p/shell {:dir (str dir), :out :string, :extra-env isolated} "git" "init" "-q" "-b" "master")
-      (commit! dir "Chris" 1 "Add ratchets (#1)"
-               {ratchets "{:ignore-counts {:deprecated-var 2, :unused-binding 1}}\n"
-                source   (lines "(ns app.a)"
-                                "#_{:clj-kondo/ignore [:deprecated-var]}"
-                                "(a)"
-                                "#_{:clj-kondo/ignore [:deprecated-var"
-                                "                      :unused-binding]}"
-                                "(b)")})
-      (commit! dir "Ada" 2 "Stop using a (#2)"
-               {source (lines "(ns app.a)"
-                              "(a)"
-                              "#_{:clj-kondo/ignore [:deprecated-var"
-                              "                      :unused-binding]}"
-                              "(b)")})
-      (commit! dir "Bob" 3 "Use the binding (#3)"
-               {source (lines "(ns app.a)"
-                              "(a)"
-                              "#_{:clj-kondo/ignore [:deprecated-var"
-                              "                      ]}"
-                              "(b)")})
-      (commit! dir "automation" 4 "Tighten ratchets (#4)"
-               {ratchets "{:ignore-counts {:deprecated-var 1}}\n"})
-      (commit! dir "Cy" 5 "Add a feature (#5)"
-               {ratchets        "{:ignore-counts {:deprecated-var 3, :type-mismatch 5}}\n"
-                "src/app/b.clj" (lines "(ns app.b)" "#_{:clj-kondo/ignore [:deprecated-var]}" "(c)")})
-      (commit! dir "automation" 6 "Tighten ratchets (#6)"
-               {ratchets "{:ignore-counts {:deprecated-var 2}}\n"})
+      (doseq [[author day subject files] commits]
+        (commit! dir author day subject files))
       (f (history/repo {:dir      (str dir)
                         :cache    (fs/path root "cache")
                         :verdicts (fs/file (str root) "verdicts.edn")
                         :env      isolated}))
       (finally
         (fs/delete-tree root)))))
+
+(defn- lines [& lines]
+  (str (str/join "\n" lines) "\n"))
+
+(def ^:private ratchets ".clj-kondo/ratchets.edn")
+
+(def ^:private story
+  "Chris adds a ratchet over three ignores. Ada removes an ignore, and Bob edits only the continuation line of a
+  multi-line ignore to drop a linter. The automation tightens. Cy raises one budget by 2 for 1 new ignore and
+  gives another linter a first budget of 5 for no ignores at all. The automation tightens again."
+  (let [source "src/app/a.clj"]
+    [["Chris" 1 "Add ratchets (#1)"
+      {ratchets "{:ignore-counts {:deprecated-var 2, :unused-binding 1}}\n"
+       source   (lines "(ns app.a)"
+                       "#_{:clj-kondo/ignore [:deprecated-var]}"
+                       "(a)"
+                       "#_{:clj-kondo/ignore [:deprecated-var"
+                       "                      :unused-binding]}"
+                       "(b)")}]
+     ["Ada" 2 "Stop using a (#2)"
+      {source (lines "(ns app.a)"
+                     "(a)"
+                     "#_{:clj-kondo/ignore [:deprecated-var"
+                     "                      :unused-binding]}"
+                     "(b)")}]
+     ["Bob" 3 "Use the binding (#3)"
+      {source (lines "(ns app.a)"
+                     "(a)"
+                     "#_{:clj-kondo/ignore [:deprecated-var"
+                     "                      ]}"
+                     "(b)")}]
+     ["automation" 4 "Tighten ratchets (#4)"
+      {ratchets "{:ignore-counts {:deprecated-var 1}}\n"}]
+     ["Cy" 5 "Add a feature (#5)"
+      {ratchets        "{:ignore-counts {:deprecated-var 3, :type-mismatch 5}}\n"
+       "src/app/b.clj" (lines "(ns app.b)" "#_{:clj-kondo/ignore [:deprecated-var]}" "(c)")}]
+     ["automation" 6 "Tighten ratchets (#6)"
+      {ratchets "{:ignore-counts {:deprecated-var 2}}\n"}]]))
+
+(defn- with-fixture-repo! [f]
+  (with-repo! story f))
 
 (def ^:private deprecated [:prod :ignore :deprecated-var])
 (def ^:private mismatch [:prod :ignore :type-mismatch])
@@ -621,3 +641,28 @@
     (is (= [[] []]
            [(changes {:prod ::history/unreadable} {:prod {:ignore-counts {:a 1}}} #{})
             (changes {:prod {:ignore-counts {:a 1}}} {:prod ::history/unreadable} #{})]))))
+
+(deftest unreadable-gap-and-module-measure-test
+  (testing "the commit that repairs a broken ratchet file carries what changed across it, and a module measure
+           is new only when the commit also adds what counts it"
+    (let [counter "dev/src/dev/kondo_ratchet.clj"
+          modules ".clj-kondo/config/modules/ratchets.edn"]
+      (is (= [[4 "Cy" [[:introduce [:modules :module :ns-prefixes] nil] [:seed [:modules :module :uses-any] nil]]]
+              [3 "Bob" [[:grow [:prod :ignore :a] 3]]]
+              [2 "Ada" []]
+              [1 "Chris" [[:seed [:prod :ignore :a] nil]]]]
+             (binding [*err* (java.io.StringWriter.)]
+               (with-repo!
+                 [["Chris" 1 "Add a ratchet (#1)"
+                   {ratchets "{:ignore-counts {:a 2}}\n"
+                    counter  "{:uses-any (count uses)}\n"}]
+                  ["Ada" 2 "Break the ratchet file (#2)"
+                   {ratchets "{:ignore-counts {:a 2\n"}]
+                  ["Bob" 3 "Repair it, with a raise (#3)"
+                   {ratchets "{:ignore-counts {:a 5}}\n"}]
+                  ["Cy" 4 "Ratchet the modules (#4)"
+                   {modules "{:ns-prefixes 3, :uses-any 1}\n"
+                    counter "{:uses-any (count uses), :ns-prefixes (count prefixes)}\n"}]]
+                 (fn [repo]
+                   (vec (for [{:keys [pr author changes]} (history/records repo)]
+                          [pr author (map (juxt :kind :measure :delta) changes)]))))))))))

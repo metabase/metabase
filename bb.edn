@@ -357,7 +357,7 @@
               ["./bin/mage kondo-ratchets-history --all" "Summarize every change since the first ratchet"]
               ["./bin/mage kondo-ratchets-history --html ratchets.html" "Write a page with every week, every month and all time"]
               ["./bin/mage kondo-ratchets-history 57e0ad66ea5" "Summarize every change after that commit"]
-              ["./bin/mage kondo-ratchets-history --pardon 81406 --why \"stale budget from a long-lived branch\"" "Count the budget raises in PR 81406 against nobody"]
+              ["./bin/mage kondo-ratchets-history --pardon 78082 --why \"the stricter hook flagged requires that already existed\"" "Count the budget raises in PR 78082 against nobody"]
               ["./bin/mage kondo-ratchets-history --confirm 8d5db3195d" "Keep counting that commit's raises as growth"]
               ["./bin/mage kondo-ratchets-history --recount 79531 --why \"the same ignores, named per linter\"" "Count none of a commit's changes: it only changed how suppressions are counted"]]
    :options [["-d" "--days DAYS" "Days to look back (default 7)" :parse-fn parse-long]
