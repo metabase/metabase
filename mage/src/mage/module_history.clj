@@ -68,43 +68,57 @@
 
 ;;;; Publishing config
 
+(defn- unknown-keys
+  "A check that the map at `path`, or each map of the vector there, holds only `known` keys."
+  [path known]
+  [path
+   (fn [value] (distinct (mapcat #(remove known (keys %)) (filter map? (if (map? value) [value] value)))))
+   (fn [unknown] (str "has unknown keys: " (str/join ", " unknown)))])
+
+(defn- string-keyed?
+  [valid-value?]
+  (fn [m] (and (map? m) (every? string? (keys m)) (every? valid-value? (vals m)))))
+
+(def ^:private config-checks
+  "What a publishing config must satisfy, as `[path valid? message]`.
+  The value at `path` passes when `valid?` returns true or an empty seq. `message` is a string, or a function of
+  what `valid?` returned."
+  [(unknown-keys [] #{:pages :metabase :shares})
+   (unknown-keys [:metabase] #{:profile :uploads :cards})
+   (unknown-keys [:pages] #{:template :file})
+   [[:pages]
+    (fn [pages] (or (nil? pages)
+                    (and (sequential? pages)
+                         (every? #(and (map? %) (string? (:template %)) (string? (:file %))) pages))))
+    "must be a vector of {:template \"path\", :file \"name\"}"]
+   [[:metabase]
+    (fn [metabase] (or (nil? metabase) (string? (:profile metabase))))
+    "needs :profile, the mb profile to use"]
+   [[:metabase :uploads]
+    (fn [uploads] (or (nil? uploads) ((string-keyed? pos-int?) uploads)))
+    "must map a file name to an upload table id"]
+   [[:metabase :cards]
+    (fn [cards] (or (nil? cards) (and (sequential? cards) (every? pos-int? cards))))
+    "must be a vector of card ids"]
+   [[:shares]
+    (fn [shares] (or (nil? shares) ((string-keyed? string?) shares)))
+    "must map a file name to an mb-shares slug"]])
+
 (defn- config-problems
-  "Everything wrong with publishing `config`, as messages. Empty when it is usable."
+  "Everything wrong with publishing `config`, as `{:path [:metabase :cards], :message \"must be ...\"}` maps.
+  The path is empty for the config itself. Empty when the config is usable."
   [config]
   (if-not (map? config)
-    ["it must hold one map"]
-    (let [{:keys [pages metabase shares]} config
-          unknown-keys  (fn [m known] (when (map? m) (remove known (keys m))))
-          unknown       (unknown-keys config #{:pages :metabase :shares})
-          unknown-page  (when (sequential? pages) (distinct (mapcat #(unknown-keys % #{:template :file}) pages)))
-          unknown-mb    (unknown-keys metabase #{:profile :uploads :cards})
-          string-keyed? (fn [m valid-value?]
-                          (and (map? m) (every? string? (keys m)) (every? valid-value? (vals m))))]
-      (cond-> []
-        (seq unknown)
-        (conj (str "unknown keys: " (str/join ", " unknown)))
+    [{:path [], :message "must hold one map"}]
+    (for [[path valid? message] config-checks
+          :let  [result (valid? (get-in config path))]
+          :when (if (seqable? result) (seq result) (not result))]
+      {:path    path
+       :message (if (fn? message) (message result) message)})))
 
-        (seq unknown-page)
-        (conj (str "unknown keys in :pages: " (str/join ", " unknown-page)))
-
-        (seq unknown-mb)
-        (conj (str "unknown keys in :metabase: " (str/join ", " unknown-mb)))
-
-        (not (and (sequential? (or pages []))
-                  (every? #(and (map? %) (string? (:template %)) (string? (:file %))) pages)))
-        (conj ":pages must be a vector of {:template \"path\", :file \"name\"}")
-
-        (and (some? metabase) (not (string? (:profile metabase))))
-        (conj ":metabase needs :profile, the mb profile to use")
-
-        (not (string-keyed? (:uploads metabase {}) pos-int?))
-        (conj ":metabase :uploads must map a file name to an upload table id")
-
-        (not (and (sequential? (:cards metabase [])) (every? pos-int? (:cards metabase))))
-        (conj ":metabase :cards must be a vector of card ids")
-
-        (not (string-keyed? (or shares {}) string?))
-        (conj ":shares must map a file name to an mb-shares slug")))))
+(defn- problem-line
+  [{:keys [path message]}]
+  (str (if (seq path) (str/join " " path) "the config") " " message))
 
 (defn- read-config
   "The publishing config in `file`. Exits when the file is missing or malformed."
@@ -117,7 +131,7 @@
                      (u/exit (c/red (str file " is not readable EDN: " (ex-message e))) 1)))
         problems (config-problems config)]
     (when (seq problems)
-      (u/exit (c/red (str file " is not a publishing config:\n  " (str/join "\n  " problems))) 1))
+      (u/exit (c/red (str file " is not a publishing config:\n  " (str/join "\n  " (map problem-line problems)))) 1))
     config))
 
 (defn- missing-tools
