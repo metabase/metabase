@@ -360,7 +360,9 @@
   - `:commits`: one map per commit with its headline counts under short keys, the largest cycle's strong bridges
     and cycle rank, and under `:lanes` the `[namespaces label]` of the cycle holding each cluster's anchor,
     `[0 nil]` when there is none
-  - `:today`: the cycles at the latest commit, largest first"
+  - `:today`: the cycles at the latest commit, largest first
+  - `:retest`: at the latest commit, the namespaces in each tenth of retest share, selecting tests by `:module`
+    and by `:namespace`"
   [anchors position rows]
   (let [rows   (mapv as-one-tangle (in-order position rows))
         names  (cluster-names anchors (last rows))
@@ -385,6 +387,9 @@
                   :dyn     (:scc-dynamic-only-namespaces row)
                   :bridges (:strong-bridges (largest row))
                   :rank    (:cycle-rank (largest row))
+                  ;; Mean share of the backend a change retests, selecting tests by module and by namespace.
+                  :rtm     (:retest-module-mean row)
+                  :rtn     (:retest-namespace-mean row)
                   :up      (:upward-requires row)
                   :upcyc   (:upward-cycle-requires row)
                   :upint   (:upward-internal-requires row)
@@ -400,6 +405,7 @@
                                  (for [[cluster anchor] named
                                        :let [cycle (cycle-holding row anchor)]]
                                    [cluster (if cycle [(:namespaces cycle) (label cycle)] [0 nil])]))})
+     :retest   (:retest-histogram (last rows))
      :today    (for [cycle (sort-by (comp - :namespaces) (:cycles (last rows)))]
                  {:cluster    (label cycle)
                   :modules    (count (:modules cycle))

@@ -110,7 +110,8 @@
 (deftest ^:parallel page-data-test
   (let [anchors '{galactic-center query-processor
                   tardis          lib}
-        counts  {:namespaces 100, :scc-largest-namespaces 60, :exposed-namespaces 40}
+        counts  {:namespaces 100, :scc-largest-namespaces 60, :exposed-namespaces 40, :retest-module-mean 70.0
+                 :retest-namespace-mean 20.0, :retest-histogram {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}}
         rows    [(merge counts {:sha "aaaaaaaaaaaa1", :committed-at "2026-01-01T00:00:00Z", :subject "No modules yet"
                                 :module-system? false})
                  (merge counts {:sha "bbbbbbbbbbbb2", :committed-at "2026-01-02T00:00:00Z", :subject "Split (#2)"
@@ -119,6 +120,7 @@
                                          {:modules '[query-processor b a], :namespaces 60, :density 0.4, :cycle-rank 3
                                           :strong-bridges 0, :edges 5}]})]]
     (is (=? {:clusters ["galactic-center" "tardis" "magellanic-cloud" "sub-etha"]
+             :retest   {:module [1 0 0 0 0 0 0 0 0 9], :namespace [9 1]}
              :commits  [{:sha   "aaaaaaaaaaa"
                          :pct     100.0
                          :exp     nil
@@ -134,6 +136,8 @@
                          :ns      100
                          :scc     60
                          :pct     60.0
+                         :rtm     70.0
+                         :rtn     20.0
                          :exp     40
                          ;; Of the cycle with the most namespaces.
                          :bridges 0
