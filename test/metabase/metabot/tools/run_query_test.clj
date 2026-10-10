@@ -485,6 +485,12 @@
       "It holds a backslash before a quote. Write a quote inside a string by doubling it."
       :mysql "SELECT 'it\\'s' FROM t"
 
+      "It calls pg_advisory_lock, which takes a lock, waits, or changes the session."
+      :postgres "SELECT pg_advisory_lock(42)"
+
+      "It is too long to check."
+      :postgres (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat 20000 "NULL")) ")")
+
       "It holds a list of 100 or more literal values. Filter with a range or a subquery instead."
       :postgres (str "SELECT * FROM t WHERE id IN (" (str/join "," (range 200)) ")"))))
 

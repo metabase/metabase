@@ -344,6 +344,26 @@
       :oracle    "SELECT seq.NEXTVAL FROM dual"
       :snowflake "SELECT seq.nextval"
       :snowflake "SELECT 1 FROM TABLE(GETNEXTVAL(seq))"))
+  (testing "a SELECT that pipes rows through a program on the cluster is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :sparksql   "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :sparksql   "SELECT TRANSFORM (a, b) USING 'rm -rf /tmp/x' AS (c) FROM t"
+      :databricks "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :hive       "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :sparksql   "SELECT * FROM (SELECT TRANSFORM (a) USING 'cat' FROM t) x"))
+  (testing "a SELECT that calls a built-in function which locks, waits or changes the session is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :postgres "SELECT pg_advisory_lock(42)"
+      :postgres "SELECT pg_try_advisory_lock(42)"
+      :postgres "SELECT pg_advisory_xact_lock_shared(42)"
+      :postgres "SELECT pg_catalog.pg_advisory_unlock_all()"
+      :postgres "SELECT set_config('search_path', 'x', false)"
+      :postgres "SELECT pg_terminate_backend(pid) FROM pg_stat_activity"
+      :postgres "SELECT 1 WHERE pg_sleep(10) IS NULL"
+      :mysql    "SELECT GET_LOCK('x', 10)"
+      :mysql    "SELECT RELEASE_ALL_LOCKS()"
+      :mysql    "SELECT SLEEP(10)"
+      :mysql    "SELECT BENCHMARK(1000000, MD5('x'))"))
   (testing "reading a sequence or hinting a plain read is read-only"
     (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
       :sqlserver "SELECT * FROM t WITH (NOLOCK)"
@@ -387,6 +407,9 @@
       :postgres  :multiple-statements nil    "SELECT 1; SELECT 2"
       :postgres  :not-a-select        nil    "DELETE FROM t"
       :postgres  :writes-or-locks     nil    "SELECT * FROM t FOR UPDATE"
+      :sparksql  :writes-or-locks     nil    "SELECT TRANSFORM (a) USING 'cat' FROM t"
+      :postgres  :session-function    "pg_advisory_lock" "SELECT pg_advisory_lock(42)"
+      :mysql     :session-function    "get_lock" "SELECT GET_LOCK('x', 10)"
       :postgres  :unparseable         nil    "SELECT ("
       :sqlserver :statement-word      "EXEC" "SELECT 1 FROM t exec('DROP TABLE x')"
       :mysql     :executable-comment  nil    "SELECT * FROM t /*! FOR UPDATE */"
@@ -395,6 +418,16 @@
       :postgres  :not-a-select        nil    "-- nothing here"
       :postgres  :large-literal-list  nil    (str "SELECT * FROM t WHERE id IN ("
                                                   (str/join "," (range 200)) ")"))))
+
+(deftest ^:parallel read-only-select?-too-long-test
+  (testing "SQL too long to check is refused whatever it holds, and is never parsed"
+    (let [nulls (fn [n] (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat n "NULL")) ")"))]
+      (is (true? (sql-tools/read-only-select? :postgres (nulls 150))))
+      (is (= {:reason :too-long, :detail nil}
+             (sql-tools/read-only-select-problem :postgres (nulls 20000))))
+      (is (= {:reason :too-long, :detail nil}
+             (sql-tools/read-only-select-problem :postgres (str "SELECT 1 FROM t WHERE x IN ("
+                                                                (str/join ", " (repeat 20000 "TRUE")) ")")))))))
 
 (deftest ^:parallel read-only-select?-large-literal-list-test
   (let [tuples (str/join ", " (repeat 105 "(1)"))]

@@ -218,6 +218,7 @@
         :multiple-statements "It holds more than one statement."
         :not-a-select        "It is not a SELECT."
         :writes-or-locks     "It writes, takes a lock, or advances a sequence."
+        :session-function    (str "It calls " detail ", which takes a lock, waits, or changes the session.")
         :statement-word      (str "It uses the word " detail " outside quotes, which starts a new statement on"
                                   " SQL Server.")
         :executable-comment  "It holds a /*! or /*M! comment, which MySQL and MariaDB run as SQL."
@@ -225,6 +226,7 @@
         :backslash-quote     "It holds a backslash before a quote. Write a quote inside a string by doubling it."
         :large-literal-list  (str "It holds a list of 100 or more literal values."
                                   " Filter with a range or a subquery instead.")
+        :too-long            "It is too long to check."
         :unparseable         "It could not be parsed as SQL."
         nil))))
 

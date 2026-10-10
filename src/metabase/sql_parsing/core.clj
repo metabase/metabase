@@ -567,16 +567,27 @@
   [dialect sql replacements]
   (protocol/replace-names (parser) dialect sql replacements))
 
+(def ^:private max-read-only-sql-chars
+  "The longest SQL the \"read-only\" check parses. Parsing time grows with length, whatever the SQL holds, and the
+   check runs on SQL a user or a model wrote."
+  (* 64 1024))
+
 (defn is-single-stmt-of-type?
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
    and returns the query reconstructed from the parsed AST. `stmt-type` is \"read\", \"write\", or \"read-only\": a
    read statement that also holds nothing that writes or locks anywhere in its tree."
   [dialect sql stmt-type]
   (let [stripped-sql (strip-large-literal-lists sql)]
-    ;; Stripping does not skip comments, so it can rewrite a second statement into a commented-out list. "read-only"
-    ;; must judge the SQL that will run, and parsing a large list unstripped risks a GraalPy OOM, so it refuses.
-    (if (and (= stmt-type "read-only") (not= sql stripped-sql))
+    (cond
+      (and (= stmt-type "read-only") (< max-read-only-sql-chars (count sql)))
+      {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "too-long"}
+
+      ;; Stripping does not skip comments, so it can rewrite a second statement into a commented-out list. "read-only"
+      ;; must judge the SQL that will run, and parsing a large list unstripped risks a GraalPy OOM, so it refuses.
+      (and (= stmt-type "read-only") (not= sql stripped-sql))
       {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "large-literal-list"}
+
+      :else
       (let [result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
                        (perf/update-keys (comp keyword u/->kebab-case-en)))]
         ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.

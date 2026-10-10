@@ -238,10 +238,14 @@
   (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
 
 (mu/defn read-only-select? :- :boolean
-  "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, that neither writes nor locks
-  anywhere in its tree: no `SELECT ... INTO`, no `FOR UPDATE` or `FOR SHARE`, no locking table hint, no data-modifying
-  CTE body, and no sequence advanced. Comments and a trailing semicolon are allowed. SQL that does not parse in
-  `driver`'s dialect is not read-only, and neither is SQL holding a literal list too large to parse whole."
+  "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
+  lock or reach past the query: no `SELECT ... INTO`, no `FOR UPDATE` or `FOR SHARE`, no locking table hint, no
+  data-modifying CTE body, no sequence advanced, no script transform, and no call to a built-in function that locks,
+  waits or changes the session.
+  Comments and a trailing semicolon are allowed.
+  SQL that does not parse in `driver`'s dialect is not read-only, and neither is SQL too long to check or holding a
+  literal list too large to parse whole.
+  A function this does not name, a user-defined one included, passes: only the database's own permissions stop it."
   [driver :- :keyword
    sql    :- :string]
   (true? (:allowed-stmt-type? (is-single-stmt-of-type? driver sql "read-only"))))
@@ -249,8 +253,9 @@
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
   The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
-  `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`, `:large-literal-list` and `:unparseable`.
-  For `:statement-word`, `:detail` is the word."
+  `:session-function`, `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`, `:large-literal-list`,
+  `:too-long` and `:unparseable`.
+  For `:statement-word`, `:detail` is the word, and for `:session-function` it is the function's name."
   [driver :- :keyword
    sql    :- :string]
   (let [{:keys [allowed-stmt-type? reason reason-detail]} (is-single-stmt-of-type? driver sql "read-only")]

@@ -1865,16 +1865,54 @@ def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
 
 # Nodes that write, lock, or run something other than a query. A SELECT can hold some of these: `SELECT ... INTO`
 # creates a table, `FOR UPDATE`/`FOR SHARE` take row locks, and Postgres lets a CTE body be a DELETE ... RETURNING.
+# Spark and Hive's `SELECT TRANSFORM (...) USING '<command>'` pipes rows through a program on the cluster.
 _NOT_READ_ONLY_NODES = (
     exp.DML, exp.DDL, exp.Into, exp.Lock, exp.Command, exp.Set, exp.Grant, exp.Revoke, exp.Drop, exp.Alter,
     exp.TruncateTable, exp.Transaction, exp.Commit, exp.Rollback, exp.Use, exp.Execute, exp.LoadData, exp.Kill,
-    exp.Pragma, exp.Cache, exp.Uncache, exp.Refresh, exp.Analyze, exp.NextValueFor,
+    exp.Pragma, exp.Cache, exp.Uncache, exp.Refresh, exp.Analyze, exp.NextValueFor, exp.QueryTransform,
 )
 
 # Advancing a sequence is a write a SELECT can make. sqlglot parses only the SQL-standard `NEXT VALUE FOR` as its
 # own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as a `.NEXTVAL` pseudo-column, and
 # Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`.
 _SEQUENCE_WRITE_FUNCTIONS = frozenset({"nextval", "setval", "getnextval"})
+
+# Built-in functions that reach past the query that calls them: they take a lock that can outlive it, change the
+# session's settings, signal or stop another session, or hold the connection waiting.
+_SESSION_EFFECT_FUNCTIONS = frozenset(
+    {
+        # Postgres advisory locks
+        "pg_advisory_lock", "pg_advisory_lock_shared", "pg_try_advisory_lock", "pg_try_advisory_lock_shared",
+        "pg_advisory_xact_lock", "pg_advisory_xact_lock_shared", "pg_try_advisory_xact_lock",
+        "pg_try_advisory_xact_lock_shared", "pg_advisory_unlock", "pg_advisory_unlock_shared",
+        "pg_advisory_unlock_all",
+        # MySQL named locks
+        "get_lock", "release_lock", "release_all_locks",
+        # session settings and signals
+        "set_config", "pg_notify", "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf",
+        # waiting
+        "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark",
+    }
+)
+
+
+def _function_name(node: exp.Expression):
+    """The lower-case name of the function `node` calls, or None when it is not a function call."""
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower()
+    if isinstance(node, exp.Func):
+        return node.sql_name().lower()
+    return None
+
+
+def _session_effect_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or None."""
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in _SESSION_EFFECT_FUNCTIONS:
+            return name
+    return None
+
 
 # SQL Server table hints that take update or exclusive locks, or hold shared ones to the end of the transaction.
 # `NOLOCK`, `INDEX(...)` and the rest only steer how a plain read runs.
@@ -1902,10 +1940,10 @@ def _writes_or_locks(node: exp.Expression) -> bool:
     return False
 
 
-# Any other function with side effects, a user-defined one included, passes this check: no list of names can be
-# complete. Grants on the database credential are what keep such a function from writing. The read-only flag on the
-# QP's connection does not on every driver: the Postgres driver applies it only to a transaction, and the QP runs a
-# read under autocommit.
+# Any other function with side effects, a user-defined one included, passes this check: `_SESSION_EFFECT_FUNCTIONS`
+# names the built-in ones known to matter, and no list of names can be complete. Grants on the database credential
+# are what keep such a function from writing. The read-only flag on the QP's connection does not on every driver:
+# the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
 def _read_only(stmt: exp.Expression) -> bool:
     return not any(_writes_or_locks(node) for node in stmt.walk())
 
@@ -1962,6 +2000,9 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
         return ("not-a-select", None)
     if not _read_only(stmts[0]):
         return ("writes-or-locks", None)
+    function = _session_effect_function(stmts[0])
+    if function is not None:
+        return ("session-function", function)
     return _hidden_sql(sql, dialect)
 
 
