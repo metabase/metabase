@@ -326,7 +326,7 @@
 
   module-history
   {:doc "Update the CSV files that track how the backend module graph changed on master, and optionally publish them. Measures only commits it has not measured before."
-   :examples [["./bin/mage module-history --dir ~/module-history" "Fetch master, measure its new commits, and write history.csv, structure.csv, cycles.csv and history.json"]
+   :examples [["./bin/mage module-history --dir ~/module-history" "Fetch master, measure its new commits, and write the CSV files and history.json"]
               ["./bin/mage module-history --dir ~/module-history --publish ~/module-history/publish.edn" "Then fill pages, replace Metabase uploads, refresh cards and update shares, as the EDN file says"]
               ["./bin/mage module-history --dir ~/module-history-ahead --ref origin/my-stack-tip" "Write the history as it would be with a branch merged: master up to where the branch left it, then the branch's commits"]
               ["./bin/mage module-history --dir ~/module-history --no-measure --publish ~/module-history/publish.edn --dry-run" "Print what publishing the files already there would run"]]

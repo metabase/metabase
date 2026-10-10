@@ -249,7 +249,7 @@
           (report/page-data page-anchors position page-rows))))
 
 (deftest ^:parallel page-data-json-test
-  (testing "history.json has exactly the keys that page templates and `mage module-history` read"
+  (testing "the page data has exactly the keys page templates read, before the tip tables are added"
     (let [page (json/decode (json/encode (report/page-data page-anchors position page-rows)))]
       (is (= {:page   #{"clusters" "commits" "retest" "today"}
               :commit #{"at"
@@ -287,8 +287,8 @@
               :commit (set (keys (first (get page "commits"))))})))))
 
 (deftest ^:parallel tip-tables-test
-  ;; x requires its child x.y, which requires x's API and one internal namespace back. Cutting those two requires
-  ;; leaves no cycle.
+  ;; x requires its child x.y, which requires x's API and one internal namespace back. Cutting the one require
+  ;; from x into x.y leaves no cycle.
   (let [dep     (fn [namespace module] {:namespace namespace, :module module})
         deps    [{:namespace 'metabase.x.core, :module 'x, :deps [(dep 'metabase.x.y.core 'x.y)]}
                  {:namespace 'metabase.x.impl, :module 'x, :deps []}
@@ -306,3 +306,23 @@
                      :edges    [["x" "x.y" 1]]
                      :severed  ["metabase.x.core -> metabase.x.y.core"]}]}
            (report/tip-tables deps '{x {}, x.y {}, z {}})))))
+
+(deftest ^:parallel tip-table-columns-test
+  (testing "the two tip tables keep the columns their uploads were created with"
+    (is (= [{:sha "abc", :module "x.y", :ancestor "x", :requires 2, :internal 1}]
+           (lines->maps (#'report/pairs-table "abc" [{:module "x.y", :ancestor "x", :requires 2, :internal 1}]))))
+    (is (= [{:sha                 "abc"
+             :base_modules        1
+             :cycle_modules       2
+             :requires            2
+             :largest_cycle_after 0
+             :share_after_pct     0.0
+             :namespaces_freed    3
+             :severed             "a.core -> b.core; a.impl -> b.core"}]
+           (lines->maps (#'report/cuts-table "abc" [{:base     1
+                                                     :of       2
+                                                     :requires 2
+                                                     :after    0
+                                                     :pct      0.0
+                                                     :freed    3
+                                                     :severed  ["a.core -> b.core" "a.impl -> b.core"]}]))))))
