@@ -306,19 +306,34 @@
                                      :where [:and
                                              [:= :o.table_name :t.table_name]
                                              [:= :o.option_name "require_partition_filter"]]}
-                                    :require_partition_filter]]
+                                    :require_partition_filter]
+                                   ;; TABLE_OPTIONS stores the description as a GoogleSQL string literal, e.g. `"it's \"x\""`.
+                                   ;; That is not always valid JSON (control characters come out as `\xHH`), but the STRING
+                                   ;; overload of JSON_VALUE decodes BigQuery's escapes, and returns NULL rather than throwing
+                                   ;; on anything it can't parse. (BigQuery rejects `SAFE.JSON_VALUE` on a STRING argument.)
+                                   [{:select [[[:json_value :o.option_value]]]
+                                     :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
+                                     :where [:and
+                                             [:= :o.table_name :t.table_name]
+                                             [:= :o.option_name "description"]]}
+                                    :description]]
                           :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))
-        table-info (fn [dataset-id {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter}]
-                     {:schema dataset-id
-                      :name table-name
-                      :database_require_filter
-                      (boolean (and
-                                ;; Materialized views can be partitioned, and whether the view require a filter or not is based
-                                ;; on the base table it selects from, without parsing the view query we can't find out the base table,
-                                ;; thus we can't know whether the view require a filter or not.
-                                ;; Maybe this is something we can do once we can parse sql
-                                (= "BASE TABLE" table-type)
-                                require-partition-filter))})]
+        table-info (fn [dataset-id {table-name :table_name
+                                    table-type :table_type
+                                    require-partition-filter :require_partition_filter
+                                    description :description}]
+                     (cond-> {:schema dataset-id
+                              :name table-name
+                              :database_require_filter
+                              (boolean (and
+                                        ;; Materialized views can be partitioned, and whether the view require a filter or not is based
+                                        ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                                        ;; thus we can't know whether the view require a filter or not.
+                                        ;; Maybe this is something we can do once we can parse sql
+                                        (= "BASE TABLE" table-type)
+                                        require-partition-filter))}
+                       (not (str/blank? description))
+                       (assoc :description description)))]
     (->> (list-datasets details :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
@@ -416,16 +431,17 @@
 (defn- column-field-path-row->nested-col
   "Map a `COLUMN_FIELD_PATHS` row to a nested-column map (later keyed by its `:nfc-path`), or `nil` for a top-level
   (non-nested) field."
-  [dataset-id {data-type :data_type field-path-str :field_path table-name :table_name}]
+  [dataset-id {data-type :data_type field-path-str :field_path table-name :table_name description :description}]
   (let [field-path                (str/split field-path-str #"\.")
         [database-type base-type] (raw-type->database+base-type data-type)]
     (when-let [nfc-path (perf/not-empty (pop field-path))]
-      {:name          (peek field-path)
-       :table-name    table-name
-       :table-schema  dataset-id
-       :database-type database-type
-       :base-type     base-type
-       :nfc-path      nfc-path})))
+      (cond-> {:name          (peek field-path)
+               :table-name    table-name
+               :table-schema  dataset-id
+               :database-type database-type
+               :base-type     base-type
+               :nfc-path      nfc-path}
+        (not (str/blank? description)) (assoc :field-comment description)))))
 
 (defn- nested-rows->table-lookup
   "Build a single table's nested-column lookup `{nfc-path [cols]}` from that table's `COLUMN_FIELD_PATHS` rows.
@@ -455,18 +471,20 @@
      (fn [{column-name :column_name
            data-type :data_type
            database-position :ordinal_position
-           partitioned? :partitioned}]
+           partitioned? :partitioned
+           description :description}]
        (let [database-position (or (some-> database-position dec) max-position)
              [database-type base-type] (raw-type->database+base-type data-type)]
          (cond-> [(maybe-add-nested-fields
                    nested-column-lookup
-                   {:name column-name
-                    :table-name table-name
-                    :table-schema dataset-id
-                    :database-type database-type
-                    :base-type base-type
-                    :database-partitioned partitioned?
-                    :database-position database-position}
+                   (cond-> {:name column-name
+                            :table-name table-name
+                            :table-schema dataset-id
+                            :database-type database-type
+                            :base-type base-type
+                            :database-partitioned partitioned?
+                            :database-position database-position}
+                     (not (str/blank? description)) (assoc :field-comment description))
                    nil
                    database-position)]
            ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
@@ -482,9 +500,10 @@
 
 (defn- describe-dataset-table
   "Build the field descriptions for a single table from its joined `COLUMNS`/`COLUMN_FIELD_PATHS` rows (see
-  [[describe-dataset-fields-reducible]]). Each top-level column appears once per nested leaf, or once with a `nil`
-  `:field_path` when it has none, so de-dup the columns by `:column_name` and build the nested-field lookup from
-  the rows that carry a `:field_path` (whose leaf type is in `:nested_data_type`)."
+  [[describe-dataset-fields-reducible]]). Each top-level column appears once per field path -- its own entry
+  (`:field_path` = `:column_name`) plus one per nested field -- or once with a `nil` `:field_path` when it has none, so
+  de-dup the columns by `:column_name`, take each column's `:description` from its own entry, and build the
+  nested-field lookup from the rows that carry a `:field_path` (whose type is in `:nested_data_type`)."
   [dataset-id table-rows]
   (let [table-name    (:table_name (first table-rows))
         nested-lookup (nested-rows->table-lookup
@@ -492,10 +511,19 @@
                        (eduction (filter :field_path)
                                  (map #(assoc % :data_type (:nested_data_type %)))
                                  table-rows))
+        ;; the row kept by the de-dup below may belong to a nested field, so look up the column's own description
+        descriptions  (into {}
+                            (keep (fn [{column-name :column_name field-path :field_path description :description}]
+                                    (when (= column-name field-path)
+                                      [column-name description])))
+                            table-rows)
         ;; de-dup by `:column_name`, not `:ordinal_position`: BigQuery reports a NULL `ordinal_position` for
         ;; pseudo-columns (e.g. `_PARTITIONTIME`), and a table can carry more than one, so keying on position would
         ;; collapse distinct columns into one.
-        columns       (into [] (m/distinct-by :column_name) table-rows)]
+        columns       (into []
+                            (comp (m/distinct-by :column_name)
+                                  (map #(assoc % :description (get descriptions (:column_name %)))))
+                            table-rows)]
     (sort-by (juxt :table-name :database-position :name)
              (describe-dataset-rows nested-lookup dataset-id table-name columns))))
 
@@ -511,9 +539,10 @@
 (defn- describe-dataset-fields-reducible
   "Reducibly describe the fields (including nested STRUCT fields) of `table-names` within `dataset-id`.
 
-  Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (nested
-  STRUCT leaves) on `(table_name, column_name)`. A non-nested column yields one row with a `nil` `:field_path`; a STRUCT
-  column yields one row per nested leaf. Ordering by `table_name` keeps each table's rows contiguous, so we consume the
+  Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (every
+  field path, which is also where descriptions live) on `(table_name, column_name)`. A column yields one row for its own
+  entry plus one per nested STRUCT field, or a single row with a `nil` `:field_path` when it has no entry (e.g.
+  pseudo-columns). Ordering by `table_name` keeps each table's rows contiguous, so we consume the
   live result with a `partition-by` transducer and reconstruct one table at a time (see [[describe-dataset-table]]) --
   never realizing more than a single table's rows. This matters for wide and/or deeply-nested datasets (e.g.
   GA4/Firebase exports, or schemas with thousands of columns per table) where realizing a whole batch's columns would
@@ -532,15 +561,15 @@
                                             [:c.ordinal_position :ordinal_position]
                                             [[:= :c.is_partitioning_column "YES"] :partitioned]
                                             [[:substr :p.data_type 1 max-data-type-length] :nested_data_type]
-                                            [:p.field_path :field_path]]
+                                            [:p.field_path :field_path]
+                                            ;; `COLUMNS` has no description column, so a top-level column's comes from
+                                            ;; its own `COLUMN_FIELD_PATHS` entry (field_path = column_name)
+                                            [:p.description :description]]
                                 :from      [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
                                 :left-join [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :p]
                                             [:and
                                              [:= :c.table_name :p.table_name]
-                                             [:= :c.column_name :p.column_name]
-                                             ;; only nested leaves -- the top-level entry (field_path = column_name) has
-                                             ;; no `.` and is described from the `COLUMNS` side
-                                             [:> [:strpos :p.field_path "."] 0]]]
+                                             [:= :c.column_name :p.column_name]]]
                                 :where     [:in :c.table_name table-names]
                                 :order-by  [:c.table_name]})
                (catch Throwable e

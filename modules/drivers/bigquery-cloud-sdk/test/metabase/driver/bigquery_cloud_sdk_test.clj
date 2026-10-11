@@ -501,6 +501,27 @@
             ;; the "YES" between the pairs is the is_partitioning_column comparison
             (is (= [1 200 "YES" 1 200] (take 5 @captured-params)))))))))
 
+(deftest ^:parallel describe-dataset-table-descriptions-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "a column's description comes from its own COLUMN_FIELD_PATHS entry, even when a row for one of its nested
+              fields comes first (#18872)"
+      (let [row             {:table_name "t" :column_name "r" :data_type "STRUCT<a STRING>" :ordinal_position 1}
+            [record scalar] (#'bigquery/describe-dataset-table
+                             "ds"
+                             [(assoc row :nested_data_type "STRING" :field_path "r.a" :description "nested description")
+                              (assoc row :nested_data_type "STRUCT<a STRING>" :field_path "r" :description "record description")
+                              {:table_name       "t"
+                               :column_name      "s"
+                               :data_type        "STRING"
+                               :ordinal_position 2
+                               :nested_data_type "STRING"
+                               :field_path       "s"
+                               :description      nil}])]
+        (is (= "record description" (:field-comment record)))
+        (is (= ["nested description"] (map :field-comment (:nested-fields record))))
+        (is (= "s" (:name scalar)))
+        (is (not (contains? scalar :field-comment)))))))
+
 (def ^:private native-dataset
   (tx/native-dataset-definition
    "native-dataset"
@@ -654,6 +675,92 @@
                   (mt/run-mbql-query nil
                     {:source-table (mt/id view-name)
                      :order-by     [[:asc (mt/id view-name :id)]]})))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Description sync (#18872)                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private escaped-description
+  "TABLE_OPTIONS stores table descriptions as GoogleSQL string literals: quotes and backslashes are escaped, control
+  characters come out as `\\xHH` (not valid JSON), and non-ASCII is kept verbatim. Exercise all of those."
+  "it's a \"quoted\" C:\\temp path,\ttab, new\nline, bell\u0007, 學生, 🚀")
+
+(def ^:private descriptions-dataset
+  "Dataset for the #18872 sync test: table-level, top-level column, RECORD column and nested subfield descriptions."
+  (tx/map->DatabaseDefinition
+   {:database-name "descriptions-dataset"
+    :options       {}
+    :table-definitions
+    [(tx/map->TableDefinition
+      {:table-name    "described_table"
+       :table-comment "Top-level table description for sync test (#18872)."
+       :rows          []
+       :field-definitions
+       [(tx/map->FieldDefinition
+         {:field-name    "described_text"
+          :base-type     :type/Text
+          :field-comment "Top-level column description for sync test (#18872)."})
+        (tx/map->FieldDefinition
+         {:field-name "undescribed_text"
+          :base-type  :type/Text})
+        (tx/map->FieldDefinition
+         {:field-name    "described_record"
+          :base-type     :type/Dictionary
+          :field-comment "Record column description for sync test (#18872)."
+          :nested-fields [(tx/map->FieldDefinition
+                           {:field-name    "described_nested"
+                            :base-type     :type/Text
+                            :field-comment "Nested column description for sync test (#18872)."})
+                          (tx/map->FieldDefinition
+                           {:field-name "undescribed_nested"
+                            :base-type  :type/Text})]})]})
+     (tx/map->TableDefinition
+      {:table-name        "escaped_table"
+       :table-comment     escaped-description
+       :rows              []
+       :field-definitions [(tx/map->FieldDefinition
+                            {:field-name    "escaped_text"
+                             :base-type     :type/Text
+                             :field-comment escaped-description})]})]}))
+
+(deftest sync-descriptions-test
+  (testing "BigQuery driver propagates table and column descriptions during sync (#18872)"
+    (mt/test-driver
+      :bigquery-cloud-sdk
+      (mt/dataset
+        descriptions-dataset
+        (testing "describe-database carries table-level descriptions"
+          (let [descriptions (into {}
+                                   (map (juxt :name :description))
+                                   (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))]
+            (is (= "Top-level table description for sync test (#18872)."
+                   (descriptions "described_table")))
+            (testing "including the escape sequences BigQuery writes into TABLE_OPTIONS"
+              (is (= escaped-description (descriptions "escaped_table"))))))
+        (testing "describe-fields carries column descriptions"
+          (let [fields  (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db)
+                                                         {:table-names  ["described_table" "escaped_table"]
+                                                          :schema-names [(get-test-data-name)]}))
+                by-name (into {} (map (juxt :name identity)) fields)]
+            (is (= "Top-level column description for sync test (#18872)."
+                   (:field-comment (by-name "described_text"))))
+            (is (= escaped-description
+                   (:field-comment (by-name "escaped_text"))))
+            (testing "columns without a BigQuery description are emitted without :field-comment"
+              (is (not (contains? (by-name "undescribed_text") :field-comment))))
+            (testing "RECORD columns and their subfields carry their own descriptions"
+              (let [record         (by-name "described_record")
+                    nested-by-name (into {} (map (juxt :name identity)) (:nested-fields record))]
+                (is (= "Record column description for sync test (#18872)."
+                       (:field-comment record)))
+                (is (= "Nested column description for sync test (#18872)."
+                       (:field-comment (nested-by-name "described_nested"))))
+                (is (not (contains? (nested-by-name "undescribed_nested") :field-comment)))))))
+        (testing "sync writes the descriptions to the app DB"
+          (is (= "Top-level table description for sync test (#18872)."
+                 (t2/select-one-fn :description :model/Table :id (mt/id :described_table))))
+          (is (= "Top-level column description for sync test (#18872)."
+                 (t2/select-one-fn :description :model/Field :id (mt/id :described_table :described_text)))))))))
 
 (deftest sync-materialized-view-test
   (mt/test-driver
