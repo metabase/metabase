@@ -48,7 +48,7 @@
                                 :unused-namespace                                          2
                                 :unused-private-var                                        5
                                 :unused-value                                              1}
- :discouraged-namespace-counts {:cheshire.core         5
+ :discouraged-namespace-counts {:cheshire.core         4
                                 :clojure.tools.logging 3
                                 :grouper.core          1
                                 :legacy-mbql.normalize 14
@@ -86,7 +86,7 @@
  :config-counts                {:constant-condition                      1
                                 :deprecated-namespace                    7
                                 :deprecated-var                          16
-                                :discouraged-namespace                   14
+                                :discouraged-namespace                   15
                                 :discouraged-var                         14
                                 :inline-def                              1
                                 :main-without-gen-class                  1
