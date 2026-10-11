@@ -452,13 +452,7 @@ function CommentTags({
 
   return (
     <Group gap="xxs" wrap="wrap">
-      <Icon
-        name="corner_up_right"
-        size={12}
-        c="text-secondary"
-        className={S.commentTagArrow}
-        aria-hidden
-      />
+      <Icon name="corner_down_right" size={12} c="text-secondary" aria-hidden />
       {highlightLabel && (
         <CommentBadge
           label={highlightLabel}

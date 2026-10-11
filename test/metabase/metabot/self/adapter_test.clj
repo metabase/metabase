@@ -15,10 +15,12 @@
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
@@ -43,9 +45,11 @@
    #'google/provider     :metabot.google/request
    #'mistral/provider    :metabot.mistral/request
    #'moonshot/provider   :metabot.moonshot/request
+   #'ollama/provider     :metabot.ollama/request
    #'openai/provider     :metabot.openai/request
    #'openrouter/provider :metabot.openrouter/request
    #'vllm/provider       :metabot.vllm/request
+   #'xai/provider        :metabot.xai/request
    #'zai/provider        :metabot.zai/request})
 
 (deftest ^:parallel span-name-test
@@ -57,7 +61,7 @@
 (def ^:private expected-fallback-messages
   "What each adapter renders for an HTTP status it has no specific message for.
 
-  English only. Each adapter declares its own `:error-fallback` rather than sharing one parameterised
+  English only. The pre-split adapters declare their own `:error-fallback` rather than sharing one parameterised
   msgid, so these strings keep the translations already shipped for them in `locales/*.po`; the msgids
   themselves are guarded by review and by the extractor (`clojure -X:build i18n.enumerate/enumerate`),
   not by this test, which only pins the rendered English."
@@ -68,9 +72,13 @@
    #'google/provider     "Google API error (HTTP 418)"
    #'mistral/provider    "Mistral API error (HTTP 418)"
    #'moonshot/provider   "Moonshot API error (HTTP 418)"
+   ;; the one adapter with no `:error-fallback` of its own: no shipped translation to keep, so it takes
+   ;; the shared msgid, which renders identically
+   #'ollama/provider     "Ollama API error (HTTP 418)"
    #'openai/provider     "OpenAI API error (HTTP 418)"
    #'openrouter/provider "OpenRouter API error (HTTP 418)"
    #'vllm/provider       "vLLM API error (HTTP 418)"
+   #'xai/provider        "xAI API error (HTTP 418)"
    #'zai/provider        "Z.AI API error (HTTP 418)"})
 
 (deftest ^:parallel error-message-test
@@ -86,12 +94,25 @@
     (is (= "Anthropic API error (HTTP 0)"
            ((:error-msg @#'claude/provider) {})))))
 
+(def ^:private legacy-error-fallbacks
+  "The adapters that declare their own `... API error (HTTP {0})` msgid as an `:error-fallback`. Most have
+  translations of it in `locales/*.po` and keep it until the shared parameterised template is translated too —
+  see [[metabase.metabot.self.adapter/provider]], which says the key exists for exactly that. xAI's has none
+  yet; it is here because it already declares one.
+
+  Enumerated rather than derived as \"everything except the new ones\": this set may only shrink, and an
+  adapter added from here on uses the shared template, so it must not be enrolled by default."
+  #{#'azure/provider #'bedrock/provider #'claude/provider #'deepseek/provider #'google/provider
+    #'mistral/provider #'moonshot/provider #'openai/provider #'openrouter/provider #'vllm/provider
+    #'xai/provider #'zai/provider})
+
 (deftest every-descriptor-brings-its-own-translated-messages-test
-  (testing "each adapter declares its own `:error-fallback` rather than inheriting the shared
-            parameterised template, which ships no translations. The rendered English is identical either
-            way, so `error-message-test` cannot tell the two apart — this can"
-    (doseq [provider-var (keys expected-spans)]
-      (is (fn? (:error-fallback @provider-var)) (str provider-var))))
+  (testing "exactly the adapters in `legacy-error-fallbacks` declare their own msgid. The
+            rendered English is identical either way, so `error-message-test` cannot tell the two apart —
+            this can, in both directions: a legacy adapter may not silently lose its msgid, and a new one
+            may not add another for translators"
+    (is (= legacy-error-fallbacks
+           (set (filter #(fn? (:error-fallback @%)) (keys expected-spans))))))
   (testing "the proxy refusal deliberately does not get the same treatment: it stays one shared msgid,
             because `:ai-proxy?` is only ever set for the managed connection, whose catalog names only
             Anthropic models — the one provider the proxy can serve — so the refusal is unreachable"
@@ -213,6 +234,28 @@
                 auth      (adapter/bearer-auth proxyable {:method :get :path "/models" :ai-proxy? true})]
             (is (= :allow-private (:network-policy-floor auth)))
             (is (nil? (mr/explain adapter/Auth auth)))))))))
+
+(deftest ^:parallel credentials-accept-mini-model-metadata-test
+  (doseq [credentials [{:api-key "test-key" :base-url "https://api.anthropic.com"}
+                       {:api-key "test-key" :model-family "openai" :deployment-name "parakeet"}
+                       {:region "us-east-1" :model-id "anthropic.claude-sonnet-4-6"}
+                       {:project-id "parakeet-project" :location "us-central1"}]]
+    (testing (str "Credential fields: " (keys credentials))
+      (is (nil? (mr/explain self.core/LLMCredentials credentials)))
+      (doseq [mini-model [nil "parakeet-mini"]]
+        (is (nil? (mr/explain self.core/LLMCredentials (assoc credentials :mini-model mini-model)))))
+      (is (some? (mr/explain self.core/LLMCredentials (assoc credentials :mini-model 42))))
+      (is (some? (mr/explain self.core/LLMCredentials
+                             (assoc credentials :mini-model "parakeet-mini" :unexpected-field "value")))))))
+
+(deftest ^:parallel reasoning-capability-accepts-mini-model-metadata-test
+  (is (true? (claude/streams-reasoning? {:connection-key "anthropic"
+                                         :type           "anthropic"
+                                         :model          "claude-sonnet-4-6"
+                                         :credentials    {:api-key    "test-key"
+                                                          :base-url   "https://api.anthropic.com"
+                                                          :mini-model "claude-haiku-4-5-20251001"}
+                                         :ai-proxy?      false}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Descriptor headers

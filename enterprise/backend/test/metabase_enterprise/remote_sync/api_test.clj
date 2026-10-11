@@ -609,7 +609,7 @@
 
 (deftest export-errors-in-read-only-mode-test
   (testing "POST /api/ee/remote-sync/export errors when in read-only sync mode"
-    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
         (let [mock-source (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -811,7 +811,7 @@
                      (repo-files))))))))))
 
 (deftest export-includes-model-actions-test
-  (testing "GHY-4722: pushing a synced model writes its actions to actions/, though the model's YAML doesn't reference them"
+  (testing "GHY-4722: pushing a synced model writes its actions into the model's collection"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-actions-enabled
         (mt/with-model-cleanup [:model/Action :model/Card]
@@ -850,8 +850,8 @@
                                                            :native   {:query "UPDATE venues SET name = 'x' WHERE id = 1"}}
                                            :parameters    []})
                     (is (remote-sync.task/successful? (push!)))
-                    (is (= #{"actions/create_venue.yaml" "actions/rename_venue.yaml"}
-                           (into #{} (filter #(str/starts-with? % "actions/")) (repo-files))))))))))))))
+                    (is (every? (repo-files) ["collections/main/synced/create_venue.yaml"
+                                              "collections/main/synced/rename_venue.yaml"]))))))))))))
 
 (deftest push-tracks-action-changes-on-pushed-model-test
   (testing "GHY-4722: creating, editing, and deleting an action on an already-pushed model each reach the repo on the next push"
@@ -878,7 +878,7 @@
                                                      :visualization_settings {}
                                                      :dataset_query          (mt/mbql-query venues)})]
                     (is (remote-sync.task/successful? (push!)))
-                    (is (nil? (repo-file "actions/create_venue.yaml")))
+                    (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
                     (let [action (mt/user-http-request :crowberto :post 200 "action"
                                                        {:name     "Create Venue"
                                                         :type     "implicit"
@@ -886,16 +886,16 @@
                                                         :model_id (:id model)})]
                       (testing "a new action"
                         (is (remote-sync.task/successful? (push!)))
-                        (is (some? (repo-file "actions/create_venue.yaml"))))
+                        (is (some? (repo-file "collections/main/synced/create_venue.yaml"))))
                       (testing "an edited action"
                         (mt/user-http-request :crowberto :put 200 (str "action/" (:id action))
                                               {:description "Adds a venue"})
                         (is (remote-sync.task/successful? (push!)))
-                        (is (str/includes? (str (repo-file "actions/create_venue.yaml")) "Adds a venue")))
+                        (is (str/includes? (str (repo-file "collections/main/synced/create_venue.yaml")) "Adds a venue")))
                       (testing "a deleted action"
                         (mt/user-http-request :crowberto :delete 204 (str "action/" (:id action)))
                         (is (remote-sync.task/successful? (push!)))
-                        (is (nil? (repo-file "actions/create_venue.yaml")))))))))))))))
+                        (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))))))))))))))
 
 (defn- do-with-pushed-model!
   "Pushes a model \"Venues Model\" in a synced collection through the API, then calls `f` with a map of:
@@ -946,8 +946,8 @@
                       :commit-remote! commit-remote!}))))))))))
 
 (defn- do-with-pushed-model-actions!
-  "Pushes a synced model with an implicit action (`actions/create_venue.yaml`) and a query action
-  (`actions/rename_venue.yaml`) through the API, then calls `f` with the map from [[do-with-pushed-model!]]."
+  "Pushes a synced model with an implicit action (`collections/main/synced/create_venue.yaml`) and a query action
+  (`collections/main/synced/rename_venue.yaml`) through the API, then calls `f` with the map from [[do-with-pushed-model!]]."
   [f]
   (do-with-pushed-model!
    (fn [{:keys [model push! repo-file] :as ctx}]
@@ -963,18 +963,18 @@
                                             :native   {:query "UPDATE venues SET name = 'x' WHERE id = 1"}}
                             :parameters    []})
      (is (remote-sync.task/successful? (push!)))
-     (is (some? (repo-file "actions/create_venue.yaml")))
-     (is (some? (repo-file "actions/rename_venue.yaml")))
+     (is (some? (repo-file "collections/main/synced/create_venue.yaml")))
+     (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))
      (f ctx))))
 
 (deftest push-after-model-becomes-question-removes-actions-test
-  (testing "GHY-4722: turning a pushed model into a question removes its actions from the repo on the next push"
+  (testing "turning a pushed model into a question removes its actions from the repo on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (mt/user-http-request :crowberto :put 200 (str "card/" (:id model)) {:type "question"})
        (is (remote-sync.task/successful? (push!)))
-       (is (nil? (repo-file "actions/create_venue.yaml")))
-       (is (nil? (repo-file "actions/rename_venue.yaml")))))))
+       (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
+       (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))))))
 
 (deftest push-after-model-query-drops-implicit-actions-test
   (testing "GHY-4722: a model query that no longer supports implicit actions removes them from the repo on the next push"
@@ -983,8 +983,8 @@
        (mt/user-http-request :crowberto :put 200 (str "card/" (:id model))
                              {:dataset_query (mt/mbql-query venues {:filter [:> $price 1]})})
        (is (remote-sync.task/successful? (push!)))
-       (is (nil? (repo-file "actions/create_venue.yaml")))
-       (is (some? (repo-file "actions/rename_venue.yaml")) "the query action stays")))))
+       (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
+       (is (some? (repo-file "collections/main/synced/rename_venue.yaml")) "the query action stays")))))
 
 (deftest push-after-model-deleted-removes-actions-test
   (testing "GHY-4722: deleting a pushed model removes its actions from the repo on the next push"
@@ -992,11 +992,11 @@
      (fn [{:keys [model push! repo-file]}]
        (mt/user-http-request :crowberto :delete 204 (str "card/" (:id model)))
        (is (remote-sync.task/successful? (push!)))
-       (is (nil? (repo-file "actions/create_venue.yaml")))
-       (is (nil? (repo-file "actions/rename_venue.yaml")))))))
+       (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
+       (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))))))
 
 (defn- insert-untracked-action!
-  "Inserts an implicit action \"Local Action\" (`actions/local_action.yaml`) on the model with `model-id` straight
+  "Inserts an implicit action \"Local Action\" (`collections/main/synced/local_action.yaml`) on the model with `model-id` straight
   into the app DB, so no event records it in the remote sync ledger. Returns its id."
   [model-id]
   (let [action-id (t2/insert-returning-pk! :model/Action {:name       "Local Action"
@@ -1045,10 +1045,10 @@
        (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
          (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
          (is (remote-sync.task/successful? (push!)))
-         (is (nil? (repo-file "actions/rename_venue.yaml")))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
          (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
          (is (remote-sync.task/successful? (push!)))
-         (is (some? (repo-file "actions/rename_venue.yaml"))))))))
+         (is (some? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
 
 (deftest push-tracks-moving-an-action-between-models-test
   (testing "GHY-4722: moving an action to a model outside the synced collections removes its file on the next push, and moving it back writes the file again"
@@ -1065,10 +1065,10 @@
                                                 :dataset_query          (mt/mbql-query venues)})]
            (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id other)})
            (is (remote-sync.task/successful? (push!)))
-           (is (nil? (repo-file "actions/rename_venue.yaml")))
+           (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
            (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id model)})
            (is (remote-sync.task/successful? (push!)))
-           (is (some? (repo-file "actions/rename_venue.yaml")))))))))
+           (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))))))))
 
 (deftest turning-sync-on-again-tracks-untracked-actions-test
   (testing "GHY-4722: turning sync on again for a collection tracks an action created while sync was off, and the next push writes it"
@@ -1079,7 +1079,7 @@
          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
          (is (= "create" (action-rso-status action-id)))
          (is (remote-sync.task/successful? (push!)))
-         (is (some? (repo-file "actions/local_action.yaml"))))))))
+         (is (some? (repo-file "collections/main/synced/local_action.yaml"))))))))
 
 (deftest archiving-a-collection-marks-its-actions-for-deletion-test
   (testing "GHY-4722: archiving the synced collection that holds a model marks its actions for deletion, and the next push removes their files"
@@ -1089,8 +1089,8 @@
          (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
          (is (= "delete" (action-rso-status action-id)))
          (is (remote-sync.task/successful? (push!)))
-         (is (nil? (repo-file "actions/rename_venue.yaml")))
-         (is (nil? (repo-file "actions/create_venue.yaml"))))))))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
+         (is (nil? (repo-file "collections/main/synced/create_venue.yaml"))))))))
 
 (deftest upgrade-backfill-requires-a-push-before-a-pull-test
   (testing "GHY-4722: after the upgrade backfill tracks an existing action, a pull is refused until a push writes the action to the repo"
@@ -1104,7 +1104,7 @@
                   (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"})))))
          (testing "a push writes the action to the repo"
            (is (remote-sync.task/successful? (push!)))
-           (is (some? (repo-file "actions/local_action.yaml"))))
+           (is (some? (repo-file "collections/main/synced/local_action.yaml"))))
          (testing "a normal pull after another instance's change keeps the action"
            (commit-remote! {:upsert {model-path (str/replace (repo-file model-path) "name: Venues Model" "name: Renamed Model")}})
            (is (remote-sync.task/successful? (pull!)))
@@ -1509,6 +1509,7 @@
   (testing "GHY-4650: a public link change on a read-only instance does not mark the synced item dirty, since it cannot be pushed"
     (test-helpers/with-clean-object
       (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-url       "https://github.com/test/repo.git"
                                          remote-sync-type      :read-only]
         (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
                        :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}
@@ -1856,7 +1857,7 @@
                                        {:remote-sync-type :read-only
                                         :collections {synced-coll-id false}}))))
         (testing "rejects collection changes when remote-sync-type is already read-only (default)"
-          (mt/with-temporary-setting-values [remote-sync-type :read-only]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
             (is (= "Cannot change synced collections when remote-sync-type is read-only."
                    (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:collections {coll-id true}})))))))))
@@ -2436,3 +2437,13 @@
                 "no new branch should be pushed to the source when the guard fires")
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+(deftest archiving-a-synced-model-with-actions-test
+  (testing "a model in a synced collection can be archived although it has actions, which are archived with it"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       {model-id :id}  {:type :model :collection_id synced-id
+                                                        :dataset_query (mt/mbql-query venues)}
+                     :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
+        (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
+        (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))

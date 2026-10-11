@@ -16,7 +16,7 @@ There are some additional steps you'll need to take to migrate from Heroku to Me
 
 ## Follow the migration guide to get the migration script
 
-You should follow along with the [migration guide](./guide.md). Once you download the migration script you'll need to get shell access to your Heroku server to execute the migration script.
+You should follow along with the [migration guide](https://www.metabase.com/docs/latest/cloud/migrate/guide). Once you download the migration script you'll need to get shell access to your Heroku server to execute the migration script.
 
 ## Install Heroku CLI for your OS
 
@@ -50,10 +50,10 @@ export MB_DB_CONNECTION_URI=YOUR_DATABASE_URL_GOES_HERE
 
 ### Run the migration script in your heroku
 
-In the same shell session, run your [migration script](./guide.md).
+In the same shell session, run your [migration script](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
 ```bash
 curl -s long-metabase-migration-script-url | bash
 ```
 
-That should be all there is to it. See the [migration guide](./guide.md) for details.
+That should be all there is to it. See the [migration guide](https://www.metabase.com/docs/latest/cloud/migrate/guide) for details.

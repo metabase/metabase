@@ -18,14 +18,17 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/exists? :model/Table :is_published true :collection_id [:in collection-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
+(mu/defn dashboard-in-collections?
+  "Whether a Dashboard exists in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/exists? :model/Dashboard :collection_id [:in collection-ids]))
+
 (mu/defn library-collections
-  "The readable Library, Library-data, and Library-metrics Collections, ordered by name."
+  "The readable Library Collections, ordered by name."
   []
   (t2/select :model/Collection
              {:where    [:and
-                         [:in :type [collection/library-collection-type
-                                     collection/library-data-collection-type
-                                     collection/library-metrics-collection-type]]
+                         [:in :type (vec collection/library-collection-types)]
                          (collection/visible-collection-filter-clause
                           :id
                           {:include-archived-items    :exclude

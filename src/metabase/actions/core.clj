@@ -7,7 +7,6 @@
    [metabase.actions.events]
    [metabase.actions.execution]
    [metabase.actions.hierarchy]
-   [metabase.actions.http-action]
    [metabase.actions.models]
    [metabase.actions.scope]
    [potemkin :as p]))
@@ -17,16 +16,15 @@
   metabase.actions.error/keep-me
   metabase.actions.execution/keep-me
   metabase.actions.hierarchy/keep-me
-  metabase.actions.http-action/keep-me
   metabase.actions.models/keep-me
   metabase.actions.scope/keep-me)
 
 (p/import-vars
  [metabase.actions.actions
   cached-value
-  check-actions-enabled!
-  check-actions-enabled-for-database!
-  check-data-editing-enabled-for-database!
+  check-actions-enabled
+  check-actions-enabled-for-database
+  check-data-editing-enabled-for-database
   cached-database
   cached-database-via-table-id
   cached-table
@@ -54,16 +52,14 @@
   execute-action!
   execute-dashcard!
   fetch-values]
- [metabase.actions.http-action
-  apply-json-query]
  [metabase.actions.models
+  check-action-databases-enabled
+  check-implicit-actions-supported
   dashcard->action
   insert!
   select-action
   select-actions
   select-actions-for-ids
-  select-actions-for-models
-  select-actions-non-http-for-models
   update!]
  [metabase.actions.events
   publish-action-success!]

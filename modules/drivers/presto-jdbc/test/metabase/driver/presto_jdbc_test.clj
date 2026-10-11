@@ -234,22 +234,43 @@
       (let [db-details (assoc (:details (mt/db)) :let-user-control-scheduling false)]
         (is (nil? (warehouses/test-database-connection :presto-jdbc db-details)))))))
 
-(deftest ^:parallel kerberos-properties-test
+(deftest kerberos-properties-test
   (testing "Kerberos related properties are set correctly"
-    (let [details {:host                         "presto-server"
-                   :port                         7778
-                   :catalog                      "my-catalog"
-                   :kerberos                     true
-                   :ssl                          true
-                   :kerberos-config-path         "/path/to/krb5.conf"
-                   :kerberos-principal           "alice@DOMAIN.COM"
-                   :kerberos-remote-service-name "HTTP"
-                   :kerberos-keytab-path         "/path/to/client.keytab"}
-          jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc details)]
-      (is (= (str "//presto-server:7778/my-catalog?KerberosPrincipal=alice@DOMAIN.COM"
-                  "&KerberosRemoteServiceName=HTTP&KerberosKeytabPath=/path/to/client.keytab"
-                  "&KerberosConfigPath=/path/to/krb5.conf")
-             (:subname jdbc-spec))))))
+    (mt/with-temp-env-var-value! [mb-readable-paths "/path/to"]
+      (let [details {:host                         "presto-server"
+                     :port                         7778
+                     :catalog                      "my-catalog"
+                     :kerberos                     true
+                     :ssl                          true
+                     :kerberos-config-path         "/path/to/krb5.conf"
+                     :kerberos-principal           "alice@DOMAIN.COM"
+                     :kerberos-remote-service-name "HTTP"
+                     :kerberos-keytab-path         "/path/to/client.keytab"}
+            jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc details)]
+        (is (= (str "//presto-server:7778/my-catalog?KerberosPrincipal=alice@DOMAIN.COM"
+                    "&KerberosRemoteServiceName=HTTP&KerberosKeytabPath=/path/to/client.keytab"
+                    "&KerberosConfigPath=/path/to/krb5.conf")
+               (:subname jdbc-spec)))))))
+
+(deftest kerberos-file-paths-must-be-readable-test
+  (testing "the Kerberos keytab, config and credential-cache paths are files on the Metabase host an admin types in, so
+            they have to be somewhere `readable-paths` allows"
+    (let [details {:host "presto-server" :port 7778 :catalog "my-catalog" :kerberos true :ssl true
+                   :kerberos-principal "alice@DOMAIN.COM"}
+          spec    #(sql-jdbc.conn/connection-details->spec :presto-jdbc (merge details %))]
+      (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+        (doseq [extra [{:kerberos-keytab-path "/etc/krb5.keytab"}
+                       {:kerberos-config-path "/etc/krb5.conf"}
+                       {:kerberos-credential-cache-path "/tmp/../etc/krb5cc"}
+                       {:kerberos-credential-cache-path "FILE:/etc/krb5cc"}]]
+          (testing (pr-str extra)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec extra)))))
+        (testing "paths inside an allowed directory, and credential caches that are not files, are accepted"
+          (doseq [extra [{:kerberos-keytab-path "/allowed-dir/client.keytab"
+                          :kerberos-config-path "/allowed-dir/krb5.conf"}
+                         {:kerberos-credential-cache-path "FILE:/allowed-dir/krb5cc"}
+                         {:kerberos-credential-cache-path "KEYRING:persistent:1000"}]]
+            (is (map? (spec extra)) (pr-str extra))))))))
 
 (defn- create-dummy-keystore
   "Creates and empty file for simulating a JKS."

@@ -7,6 +7,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]))
 
@@ -24,15 +25,14 @@
   (when (and (:client-id provider-config)
              (:client-secret provider-config)
              (:issuer-uri provider-config))
-    (let [attribute-map (:attribute-map provider-config)]
+    ;; the stored setting decodes with keyword keys, and a blank claim falls back to the default
+    (let [attribute-map (update-vals (update-keys (:attribute-map provider-config) name) u/not-blank)]
+      ;; the email picks the account, and email_verified only covers the standard claim, so it is never remapped
       (cond-> {:client-id     (:client-id provider-config)
                :client-secret (:client-secret provider-config)
                :issuer-uri    (:issuer-uri provider-config)
                :scopes        (or (:scopes provider-config) ["openid" "email" "profile"])
                :redirect-uri  (:redirect-uri request)}
-        (get attribute-map "email")
-        (assoc :attribute-email (get attribute-map "email"))
-
         (get attribute-map "first_name")
         (assoc :attribute-firstname (get attribute-map "first_name"))
 
@@ -103,9 +103,7 @@
                                       (get claims group-attribute)))]
             (when (and user-groups group-mappings (:user result))
               (let [groups-to-sync (if (sequential? user-groups) user-groups [user-groups])]
-                (if (empty? group-mappings)
-                  (sso/sync-group-memberships! (:user result) (sso-utils/group-names->ids groups-to-sync group-mappings))
-                  (sso/sync-group-memberships! (:user result)
-                                               (sso-utils/group-names->ids groups-to-sync group-mappings)
-                                               (sso-utils/all-mapped-group-ids group-mappings))))))))))
+                (sso/sync-group-memberships! (:user result)
+                                             (sso-utils/group-names->ids groups-to-sync group-mappings)
+                                             (sso-utils/all-mapped-group-ids group-mappings)))))))))
   result)

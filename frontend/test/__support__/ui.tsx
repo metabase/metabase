@@ -580,6 +580,26 @@ export const waitForLoaderToBeRemoved = async () => {
 };
 
 /**
+ * Waits for a dashboard to finish loading. While it loads, a dashboard renders
+ * skeletons rather than a loader, so `waitForLoaderToBeRemoved` alone returns
+ * before the dashboard is there.
+ */
+export const waitForDashboardToLoad = async () => {
+  await waitFor(
+    () => {
+      expect(
+        screen.queryByTestId("dashboard-grid-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-header-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    },
+    { timeout: 3000 },
+  );
+};
+
+/**
  * jsdom doesn't have offsetHeight and offsetWidth, so we need to mock it
  */
 export const mockOffsetHeightAndWidth = (value = 50) => {
@@ -684,8 +704,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
+// eslint-disable-next-line import-js/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
+// eslint-disable-next-line import-js/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";

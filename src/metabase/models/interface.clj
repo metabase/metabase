@@ -239,6 +239,11 @@
   {:in  u/qualified-name
    :out keyword})
 
+(def transform-boolean
+  "Transform for booleans; a boolean computed in SQL comes back as a number from MySQL and MariaDB."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
+
 (def transform-trim
   "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
   {:in  str/trim

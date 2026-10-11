@@ -5,7 +5,8 @@ import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
-import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
+import { LargeIconContainer } from "./LargeIconContainer";
+import { MigrationCard } from "./MigrationCard";
 import { getMigrationEventTime } from "./utils";
 
 interface MigrationErrorProps {

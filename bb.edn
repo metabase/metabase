@@ -253,6 +253,30 @@
    :requires [[mage.quick-test-runner :as qtr]]
    :task (task! (qtr/go parsed))}
 
+  openapi-diff
+  {:doc "Semantic diff of two OpenAPI specs, classified breaking-first, for the API changelog"
+   :examples [["./bin/mage openapi-diff old.json new.json" "Full diff, breaking changes first"]
+              ["./bin/mage openapi-diff old.json new.json --severity breaking" "Only what needs a changelog entry"]
+              ["./bin/mage openapi-diff --refs release-x.63.x release-x.64.x --severity breaking" "Generate both specs from source, then diff"]
+              ["./bin/mage openapi-diff --refs --committed release-x.63.x master" "Use each ref's committed spec (fast, may be stale)"]
+              ["./bin/mage openapi-diff --refs --grouped release-x.63.x master --severity breaking" "One line per distinct change, widest blast radius first"]]
+   :arg-schema [:tuple
+                [:string {:name "old" :description "Path to the older openapi.json, or a git ref with --refs"}]
+                [:string {:name "new" :description "Path to the newer openapi.json, or a git ref with --refs"}]]
+   :options [["-s" "--severity LEVEL" "Only show findings at or above LEVEL: breaking or additive"]
+             ["-r" "--refs" "Treat the arguments as git refs and generate each spec from its source"]
+             ["-c" "--committed" "With --refs, read each ref's committed spec instead of generating (fast, may be stale)"]
+             ["-g" "--grouped" "Collapse identical findings across endpoints: one line per distinct change"]]
+   :requires [[mage.openapi-diff]]
+   :task (task! (mage.openapi-diff/cli-diff parsed))}
+
+  openapi-staleness
+  {:doc "Is the committed OpenAPI spec current relative to the API source? (a stale spec under-reports)"
+   :examples [["./bin/mage openapi-staleness"]]
+   :arg-schema [:tuple]
+   :requires [[mage.openapi-diff]]
+   :task (task! (mage.openapi-diff/cli-staleness parsed))}
+
   affected-modules
   {:doc "Which backend modules have changes?"
    :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]
@@ -311,18 +335,20 @@
                   (project-tests/run!)))}
 
   kondo-ratchets
-  {:doc "Validate the kondo and module ratchet files against the source tree (Babashka; seconds, not a test run)."
+  {:doc "Validate the kondo and module ratchet files against the source tree (about half a minute, most of it a kondo run over the files with a discouraged-var or discouraged-namespace ignore)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
-   :requires [[dev.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/check))}
+   :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check {:attribute mage.kondo-ratchet/attribute-occurrences!}))}
 
   kondo-ratchets-shrink
   {:doc "Lower kondo and module budgets to match the source tree. This is the only Mage task that writes the ratchet files."
    :examples [["./bin/mage kondo-ratchets-shrink" "Lower budgets to current counts without raising over-budget entries"]
-              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]]
-   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
-   :requires [[dev.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]
+              ["./bin/mage kondo-ratchets-shrink --seed :discouraged-var/clojure.core/println" "Set one discouraged symbol's budget to its current count"]
+              ["./bin/mage kondo-ratchets-shrink --seed :discouraged-var" "Set every discouraged-var symbol's budget to its current count"]]
+   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it); :discouraged-var/SYMBOL seeds one discouraged symbol, a bare :discouraged-var/:discouraged-namespace all of them"]]
+   :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
@@ -433,7 +459,7 @@
   -ratchets-merge
   {:doc "Internal three-way merge for ratchet files. Called by bin/merge-kondo-ratchets."
    :arg-schema [:tuple
-                [:enum {:name "kind"} "kondo" "modules"]
+                [:enum {:name "kind"} "kondo" "test" "modules"]
                 [:string {:name "base" :description "Ratchets file from the merge base"}]
                 [:string {:name "ours" :description "Git stage 2: ratchets file from the branch receiving the changes"}]
                 [:string {:name "theirs" :description "Git stage 3: ratchets file from the commits being applied"}]
@@ -453,10 +479,11 @@
               (spit output-path
                     (dev.kondo-ratchet/render-module-ratchets
                      (dev.kondo-ratchet/merge-module-ratchets base ours theirs)))
-              (let [merged (dev.kondo-ratchet/merge-ratchets base ours theirs)]
+              (let [merged (dev.kondo-ratchet/merge-ratchets base ours theirs)
+                    render (if (= kind "test") dev.kondo-ratchet/render-test dev.kondo-ratchet/render)]
                 (spit output-path (if (dev.kondo-ratchet/disabled? merged)
                                     (slurp ours-path)
-                                    (dev.kondo-ratchet/render merged)))))
+                                    (render merged)))))
             (println (str "merged ratchets into " output-path))))}
 
   -kondo-ratchets-pr-body
@@ -466,21 +493,21 @@
                 [:string {:name "after" :description "Ratchets file after shrinking"}]
                 [:string {:name "modules-before" :description "Module ratchets before shrinking"}]
                 [:string {:name "modules-after" :description "Module ratchets after shrinking"}]
+                [:string {:name "test-before" :description "Test ratchets file before shrinking"}]
+                [:string {:name "test-after" :description "Test ratchets file after shrinking"}]
                 [:string {:name "workflow-url" :description "URL of the workflow run"}]]
    :requires [[dev.kondo-ratchet]]
    :task (task!
-          (let [[before-path after-path modules-before-path modules-after-path workflow-url] (:arguments parsed)
-                read-ratchets (fn [path]
-                                (binding [dev.kondo-ratchet/*ratchets-file* path]
-                                  (dev.kondo-ratchet/read-ratchets)))
-                read-modules  (fn [path]
-                                (binding [dev.kondo-ratchet/*module-ratchets-file* path]
-                                  (dev.kondo-ratchet/read-module-ratchets)))]
-            (print (dev.kondo-ratchet/shrink-pr-body (assoc (read-ratchets before-path)
-                                                            :module-counts (read-modules modules-before-path))
-                                                     (assoc (read-ratchets after-path)
-                                                            :module-counts (read-modules modules-after-path))
-                                                     workflow-url))))}
+          (let [[before after modules-before modules-after test-before test-after workflow-url]
+                (:arguments parsed)]
+            (print (dev.kondo-ratchet/shrink-pr-body-from-files
+                    {:before         before
+                     :after          after
+                     :modules-before modules-before
+                     :modules-after  modules-after
+                     :test-before    test-before
+                     :test-after     test-after}
+                    workflow-url))))}
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."

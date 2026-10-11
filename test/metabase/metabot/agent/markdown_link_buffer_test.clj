@@ -121,14 +121,10 @@
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-table-link-test
-  (testing "resolves metabase://table links to ad-hoc question URLs"
+  (testing "resolves metabase://table links to table URLs"
     (let [table-id (mt/id :venues)
           [output flushed] (process (str "[Users Table](metabase://table/" table-id ")"))]
-      (is (re-find #"\[Users Table\]\(/question#.+\)" output))
-      (is (= "" flushed))))
-  (testing "falls back to link text for unknown table"
-    (let [[output flushed] (process "[Unknown Table](metabase://table/999999999)")]
-      (is (= "Unknown Table" output))
+      (is (= (str "[Users Table](/table/" table-id ")") output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-entity-link-test
@@ -291,6 +287,24 @@
       (is (re-find #"\[Results\]\(/question#" (-> result second :text)))
       (is (= 1 (count @registry)))
       (is (= "metabase://query/q1" (first (vals @registry)))))))
+
+(deftest ^:parallel resolve-xf-flushes-held-text-where-the-text-ends-test
+  (let [resolve-parts #(into [] (mlb/resolve-xf {} {} (atom {})) %)]
+    (testing "text held for a possible link comes out before the tool call that follows it"
+      (is (=? [{:type :text :id "t1" :text "Let me check the "}
+               {:type :text :id "t1" :text "[Orders"}
+               {:type :tool-input :id "call-1"}
+               {:type :tool-output :id "call-1"}]
+              (resolve-parts [{:type :text :id "t1" :text "Let me check the [Orders"}
+                              {:type :tool-input :id "call-1" :function "search" :arguments {}}
+                              {:type :tool-output :id "call-1" :result {:output "Found ORDERS"}}]))))
+    (testing "a usage part between two chunks of a link doesn't split it"
+      (is (=? [{:type :text :text "See "}
+               {:type :usage}
+               {:type :text :text "[My Link](http://example.com)"}]
+              (resolve-parts [{:type :text :id "t1" :text "See [My "}
+                              {:type :usage :usage {:promptTokens 1}}
+                              {:type :text :id "t1" :text "Link](http://example.com)"}]))))))
 
 (deftest ^:parallel with-context-test
   (testing "updates state for subsequent link resolution"

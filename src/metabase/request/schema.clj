@@ -1,12 +1,7 @@
 (ns metabase.request.schema
   (:require
-   [metabase.server.streaming-response]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (metabase.server.streaming_response StreamingResponse)))
-
-(comment metabase.server.streaming-response/keep-me)
+   [metabase.util.malli.schema :as ms]))
 
 ;;; TODO (Cam 8/13/25) -- should this map be closed, that way we can make sure all the keys we might be using are
 ;;; enumerated here?
@@ -23,18 +18,12 @@
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
    [:data-app-scoped?     {:optional true} :boolean]
-   [:authenticated-via-oauth? {:optional true} :boolean]])
-
-(mr/def ::json-value
-  "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."
-  [:or
-   :string
-   :keyword
-   number?
-   :boolean
-   :nil
-   [:sequential [:ref ::json-value]]
-   [:map-of :string [:ref ::json-value]]])
+   [:authenticated-via-oauth? {:optional true} :boolean]
+   ;; only API-key auth resolves these two: `:api-key-id` identifies the key itself (for per-key usage analytics),
+   ;; and `:api-key-creator-id` is the real human who created the key (distinct from `:metabase-user-id`, the key's
+   ;; own synthetic service-account user) — both read off the same auth query rather than looked up again later.
+   [:api-key-id         {:optional true} pos-int?]
+   [:api-key-creator-id {:optional true} [:maybe pos-int?]]])
 
 (mr/def ::multipart-file
   "One `:multipart-params` entry for an uploaded file, as `ring.middleware.multipart-params` builds it."
@@ -77,6 +66,16 @@
    [:route-params            {:optional true} ms/RingRequestParams]
    [:cookies                 {:optional true} [:map-of :string ::cookie-attrs]]
    [:route-metadata          {:optional true} [:maybe :metabase.api.macros/route-metadata]]
+   ;; accumulated by `metabase.api.util.handlers/route-map-handler` as routing descends; consumed by
+   ;; `metabase.api.macros/request-route-prefix` to reconstruct the matched route's template.
+   [:route-prefix            {:optional true} [:maybe :string]]
+   ;; the reconstructed Clout pattern of the endpoint that matched, e.g. `/api/card/:id` — see
+   ;; `metabase.api.macros/route-template`.
+   [:route-template          {:optional true} [:maybe :string]]
+   ;; a `volatile!` middleware running above the routing tree can install so it learns which route
+   ;; template matched, even for a response built from an exception — see
+   ;; `metabase.api.macros/route-template-carrier-key`.
+   [:metabase.api.macros/route-template-carrier {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.Volatile)]]
    [:compojure/path          {:optional true} :string]
    [:compojure/route-context {:optional true} [:maybe :string]]
    [:context                 {:optional true} [:maybe :string]]
@@ -98,6 +97,10 @@
    [:is-group-manager?       {:optional true} :boolean]
    [:user-locale             {:optional true} [:maybe :string]]
    [:embedding/auth-method   {:optional true} [:maybe :string]]
+   [:metabase/authed-session-key-hash {:optional true} [:maybe :string]]
+   ;; only API-key auth resolves these two — see `::current-user-info`.
+   [:api-key-id              {:optional true} [:maybe :int]]
+   [:api-key-creator-id      {:optional true} [:maybe :int]]
    [:token-exchange?         {:optional true} :boolean]
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
    [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]
@@ -121,20 +124,3 @@
                                                 [:scp          {:optional true} [:sequential :string]]
                                                 [:unr          {:optional true} :boolean]
                                                 [:token-scopes {:optional true} [:maybe [:set [:or :string :keyword]]]]]]]])
-
-(mr/def ::response
-  "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."
-  [:or
-   ms/RingResponseBody
-   [:map {:closed true} [:id :string]]
-   [:map {:closed true} [:success :boolean] [:session_id :string]]
-   [:map {:closed true}
-    [:status  {:optional true} :int]
-    [:headers {:optional true} [:map-of :string :string]]
-    [:cookies {:optional true} [:map-of :string ::cookie-attrs]]
-    [:body    {:optional true} [:maybe [:or ms/RingResponseBody
-                                        (ms/InstanceOfClass java.io.File)
-                                        (ms/InstanceOfClass java.io.InputStream)]]]]
-   (ms/InstanceOfClass java.io.File)
-   (ms/InstanceOfClass java.io.InputStream)
-   (ms/InstanceOfClass StreamingResponse)])

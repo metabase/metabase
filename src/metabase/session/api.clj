@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
@@ -287,11 +288,11 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-deleted (session.db/delete-session-by-key-hashed! session-key-hashed)]
+        rows-ended         (session.db/end-sessions! {:key_hashed session-key-hashed} "logout" :self)]
     ;; clear the cookie even when no row matched (e.g. a session hashed under a previous secret), or the browser
     ;; would keep resending the dead cookie
     (request/clear-session-cookie
-     (if (pos? rows-deleted)
+     (if (pos? rows-ended)
        api/generic-204-no-content
        {:status 404, :body "Not found."}))))
 
@@ -412,10 +413,22 @@
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (let [auth-result (auth-identity/with-fallback auth-identity/login!
-                      [:provider/support-access-grant
-                       :provider/emailed-secret-password-reset]
-                      (select-keys request-body [:token :password]))]
+  (let [credentials  (select-keys request-body [:token :password])
+        grant-result (auth-identity/with-fallback auth-identity/login!
+                       [:provider/support-access-grant]
+                       credentials)
+        ;; Refuse before the reset's `login!` runs, so nothing mutates. A reset ends in a password
+        ;; session, which `:model/Session`'s before-insert rejects while password login is off — but by
+        ;; then the password has been changed, the token consumed and every session revoked, and
+        ;; `with-fallback` would report the failure as an invalid token. Such a user is sent to
+        ;; /auth/login to use their SSO provider.
+        _            (when-not (or (:success? grant-result) (session.settings/enable-password-login))
+                       (throw (ex-info (tru "Password login is disabled for this instance.") {:status-code 400})))
+        auth-result  (if (:success? grant-result)
+                       grant-result
+                       (auth-identity/with-fallback auth-identity/login!
+                         [:provider/emailed-secret-password-reset]
+                         credentials))]
     (cond
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
@@ -463,6 +476,28 @@
   {:scope api-scope/data-app}
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
+
+(api.macros/defendpoint :get "/illustration/:key" :- :any
+  "Fetch the uploaded image of a custom illustration setting, e.g. `login-page-illustration-custom`."
+  [{setting-name :key} :- [:map {:closed true}
+                           [:key ms/NonBlankString]]
+   {:keys [v]} :- [:map {:closed true}
+                   [:v {:optional true} :string]]]
+  (let [setting-key (keyword setting-name)
+        _           (api/check-404 (contains? appearance/custom-illustration-settings setting-key))
+        _           (api/check (setting/can-read-setting? setting-key (setting/current-user-readable-visibilities))
+                               [401 (tru "Unauthenticated")])
+        {:keys [content-type media-type], image-bytes :bytes, image-hash :hash}
+        (api/check-404 (appearance/illustration-image setting-key))
+        headers (cond-> {"Content-Type"  content-type
+                         ;; `v` is the hash in the URL the setting getter returns, so that URL can be cached forever.
+                         ;; `private` because middleware adds cookies to the response.
+                         "Cache-Control" (if (= v image-hash)
+                                           "private, max-age=31536000, immutable"
+                                           "private, no-cache")}
+                  (= media-type "image/svg+xml")
+                  (assoc "Content-Security-Policy" "default-src 'none'; style-src 'unsafe-inline'; sandbox"))]
+    {:status 200, :headers headers, :body image-bytes}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

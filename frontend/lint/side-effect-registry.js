@@ -25,10 +25,19 @@ function loadRegistry(registryPath = DEFAULT_REGISTRY_PATH) {
   };
 }
 
+const patternMatchers = new WeakMap();
 function matchingPatterns(registry, file) {
-  return registry.patterns.filter((pattern) =>
-    micromatch.isMatch(file, pattern),
-  );
+  let matchers = patternMatchers.get(registry);
+  if (!matchers) {
+    matchers = registry.patterns.map((pattern) => ({
+      pattern,
+      isMatch: micromatch.matcher(pattern),
+    }));
+    patternMatchers.set(registry, matchers);
+  }
+  return matchers
+    .filter(({ isMatch }) => isMatch(file))
+    .map(({ pattern }) => pattern);
 }
 
 // An unclassified file counts as "global", and an exact key wins over a pattern.

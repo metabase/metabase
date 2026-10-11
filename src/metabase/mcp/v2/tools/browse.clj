@@ -545,10 +545,11 @@
 
 (registry/deftool browse-data
   "Browse the data hierarchy: databases → schemas → tables → fields. Actions: list_databases — databases you can see; list_schemas — schema names in a database; list_tables — tables in a database, scoped to `schema` (omit it for databases without schemas) and optionally narrowed with `search`; list_models — models built on a database; get_fields — field metadata for up to 20 tables in one call, each table carrying its measures, segments, metrics, and related tables (FK targets with column names) for query construction. list_* actions return the {data, returned, total} envelope paged with limit/offset. get_fields returns whole tables within a response byte budget and names any tables it had to omit; a single table too large for the budget comes back as a position-ordered field slice with a continuation offset."
-  {:name        "browse_data"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        browse-args-schema}
+  {:name           "browse_data"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           browse-args-schema}
   [{:keys [action] :as args} _context]
   (validate-args-for-action! args)
   (case action
@@ -667,7 +668,6 @@
   (case ns-str
     nil          (into #{} (map type->rest-model) type)
     "snippets"   #{:snippet :collection}
-    "transforms" #{:transform :collection}
     "analytics"  #{:collection}))
 
 (defn- collection-items-content
@@ -836,8 +836,8 @@
     [:maybe [:enum {:description "items (default) lists the collection's contents; tree returns the nested subcollection structure (collections only, no items, no pagination)."}
              "items" "tree"]]]
    [:namespace {:optional true}
-    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; transforms holds transform folders and transforms; analytics is the read-only usage-analytics tree."}
-             "content" "snippets" "transforms" "analytics"]]]
+    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; analytics is the read-only usage-analytics tree."}
+             "content" "snippets" "analytics"]]]
    [:type {:optional true}
     [:maybe [:sequential [:enum {:description "items mode, content namespace only: return only these item types."}
                           "question" "model" "metric" "dashboard" "collection" "document"]]]]
@@ -865,10 +865,11 @@
 
 (registry/deftool browse-collection
   "Browse collections structurally — one uniform id over every partition: a numeric id, a 21-char entity_id, \"root\" (re-rooted per namespace), or \"trash\" (archived content, items mode only). items mode (default) lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under \"Finance\" — browse_collection(id: 45, mode: \"tree\"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool."
-  {:name        "browse_collection"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        browse-collection-args-schema}
+  {:name           "browse_collection"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           browse-collection-args-schema}
   [{:keys [mode] :as args} _context]
   (validate-browse-collection-args! args)
   (let [target (resolve-browse-target args)]

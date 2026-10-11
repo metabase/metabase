@@ -2,7 +2,11 @@ import type { ContentTranslationFunction } from "metabase/content-translation/ty
 import type { FieldValue } from "metabase-types/api";
 
 import { translateToGerman, translateToJapanese } from "./test-constants";
-import { optionMatchesFilter, removeDiacritics } from "./utils";
+import {
+  createOptionsFromValuesWithoutOptions,
+  optionMatchesFilter,
+  removeDiacritics,
+} from "./utils";
 
 describe("ListField - utils", () => {
   describe("isValidOptionItem", () => {
@@ -66,6 +70,39 @@ describe("ListField - utils", () => {
 
     it("should remove diacritics from combined characters", () => {
       expect(removeDiacritics("e\u0301")).toBe("e");
+    });
+  });
+
+  describe("createOptionsFromValuesWithoutOptions", () => {
+    it("should turn only the values without a matching option into options, in order", () => {
+      const options: FieldValue[] = [["Doohickey"], ["Gizmo"]];
+
+      expect(
+        createOptionsFromValuesWithoutOptions(
+          ["Widget", "Gizmo", "Gadget"],
+          options,
+        ),
+      ).toEqual([["Widget"], ["Gadget"]]);
+    });
+
+    it("should match values against the option key, not its display name", () => {
+      const options: FieldValue[] = [
+        [1, "Doohickey"],
+        [2, "Gadget"],
+      ];
+
+      expect(
+        createOptionsFromValuesWithoutOptions([2, "Gadget", 3], options),
+      ).toEqual([["Gadget"], [3]]);
+    });
+
+    it("should return nothing when every value has an option", () => {
+      expect(
+        createOptionsFromValuesWithoutOptions(
+          ["Gizmo"],
+          [["Gizmo"], ["Widget"]],
+        ),
+      ).toEqual([]);
     });
   });
 });

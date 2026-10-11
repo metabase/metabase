@@ -1,3 +1,4 @@
+import type { GroupId } from "./group";
 import type { EnterpriseSettings } from "./settings";
 
 import type {
@@ -419,6 +420,34 @@ export type MetabotPermissionsResponse = {
 
 export type UpdateMetabotPermissionsRequest = {
   permissions: MetabotGroupPermission[];
+};
+
+/* MCP - Group Tool Permissions */
+
+export type McpToolAccess = "yes" | "no";
+
+export type McpTool = {
+  name: string;
+  scope: string;
+  description: string;
+  default_access: "allowed" | "denied";
+};
+
+export type McpGroupPermission = {
+  group_id: GroupId;
+  mcp_enabled: boolean;
+  /** An absent tool takes its `default_access`. */
+  tool_access: Record<string, McpToolAccess>;
+};
+
+export type McpToolPermissionsResponse = {
+  advanced: boolean;
+  tools: McpTool[];
+  permissions: McpGroupPermission[];
+};
+
+export type UpdateMcpToolPermissionsRequest = {
+  permissions: McpGroupPermission[];
 };
 
 export type UserMetabotPermissions = {

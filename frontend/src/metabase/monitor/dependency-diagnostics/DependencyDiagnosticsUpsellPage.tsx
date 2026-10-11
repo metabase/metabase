@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import dependencyDiagnosticsUpsellImage from "assets/img/data-studio-dependency-diagnostics-upsell.svg";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { BaseUpsellPage } from "metabase/monitor/upsells";
 
@@ -13,7 +14,7 @@ export function DependencyDiagnosticsUpsellPage() {
       header={t`Dependency diagnostics`}
       title={t`Find and fix broken dependencies without hunting them down`}
       description={t`Detect broken dependencies across datasets and dashboards, and resolve issues without checking everything manually.`}
-      image="app/assets/img/data-studio-dependency-diagnostics-upsell.svg"
+      image={dependencyDiagnosticsUpsellImage}
       variant="image-full-height"
     />
   );

@@ -16,7 +16,7 @@ describe("MetabotChatEditor > utils", () => {
             content: [
               {
                 type: "smartLink",
-                attrs: { label: "test", model: "table", entityId: "1" },
+                attrs: { label: "test", model: "table", entityId: 1 },
               },
             ],
           },
@@ -121,7 +121,7 @@ describe("MetabotChatEditor > utils", () => {
             content: [
               {
                 type: "smartLink",
-                attrs: { label: "test", model: "table", entityId: "1" },
+                attrs: { label: "test", model: "table", entityId: 1 },
               },
             ],
           },

@@ -1,5 +1,5 @@
 import { isFulfilled } from "@reduxjs/toolkit";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -16,6 +16,7 @@ import {
   getConversationForkedFrom,
   getConversationTitle,
   getDebugMode,
+  getIncompleteTurn,
   getIsConversationProcessing,
   getLongChatNotice,
   getMessages,
@@ -140,6 +141,25 @@ export const useMetabotConversation = (conversationId: string) => {
     ],
   );
 
+  const incompleteTurn = useSelector((state) =>
+    getIncompleteTurn(state, conversationId),
+  );
+
+  const longChatNotice = useSelector((state) =>
+    getLongChatNotice(state, conversationId),
+  );
+  const isContextWindowFull = longChatNotice === "full";
+
+  const continueResponse = useMemo(() => {
+    const resumePrompt = incompleteTurn?.resumePrompt;
+    // A full window is judged against the current model, so a turn that could
+    // be resumed when it ran may not fit anymore; the composer hides for the
+    // same reason.
+    return resumePrompt && !isContextWindowFull
+      ? (options?: SubmitInputOptions) => submitInput(resumePrompt, options)
+      : undefined;
+  }, [incompleteTurn, isContextWindowFull, submitInput]);
+
   const cancelRequest = useCallback(() => {
     dispatch(cancelInflightConversationRequests(conversationId));
   }, [dispatch, conversationId]);
@@ -147,10 +167,6 @@ export const useMetabotConversation = (conversationId: string) => {
   const reloadConversation = useCallback(() => {
     dispatch(fetchConversationSnapshot(conversationId));
   }, [dispatch, conversationId]);
-
-  const longChatNotice = useSelector((state) =>
-    getLongChatNotice(state, conversationId),
-  );
 
   return {
     conversationId,
@@ -160,6 +176,7 @@ export const useMetabotConversation = (conversationId: string) => {
     setProfileOverride,
     submitInput,
     retryMessage,
+    continueResponse,
     cancelRequest,
     reloadConversation,
     metabotId: useSelector(getMetabotId),
@@ -173,7 +190,8 @@ export const useMetabotConversation = (conversationId: string) => {
       getIsConversationProcessing(state, conversationId),
     ),
     longChatNotice,
-    isContextWindowFull: longChatNotice === "full",
+    incompleteTurn,
+    isContextWindowFull,
     contextWindowPercentUsage: useSelector((state) =>
       getContextUsagePercent(state, conversationId),
     ),

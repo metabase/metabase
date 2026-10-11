@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 
-import type { Card } from "./card";
+import type { Card, CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { BaseUser, UserId } from "./user";
 
@@ -34,14 +34,18 @@ export type Document = {
 
 export type GetDocumentRequest = { id: DocumentId };
 
+export type DocumentCardToCreate = Card & { source_card_id?: CardId };
+
 export type CreateDocumentRequest = Pick<Document, "name"> & {
   document: DocumentContent;
   collection_id?: CollectionId;
-  cards?: Record<number, Card>;
+  cards?: Record<number, DocumentCardToCreate>;
 };
 
 export type UpdateDocumentRequest = Pick<Document, "id"> &
-  Partial<Omit<Document, "id">>;
+  Partial<Omit<Document, "id" | "cards">> & {
+    cards?: Record<number, DocumentCardToCreate>;
+  };
 
 export type DeleteDocumentRequest = Pick<Document, "id">;
 

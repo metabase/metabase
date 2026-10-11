@@ -30,9 +30,11 @@ describe("ProviderTypeIcon", () => {
     "zai",
     "moonshot",
     "deepseek",
+    "xai",
     "google",
     "azure",
     "bedrock",
+    "ollama",
   ] as const)("renders the vendor logo for %s", (type) => {
     renderWithProviders(<ProviderTypeIcon type={type} />);
 

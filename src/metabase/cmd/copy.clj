@@ -101,7 +101,6 @@
     :model/ParameterCard
     :model/Action
     :model/ImplicitAction
-    :model/HTTPAction
     :model/QueryAction
     :model/DashboardTab
     :model/ModelIndex
@@ -164,7 +163,8 @@
     :model/TransformJobRun
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformDagRun]
+    :model/TransformDagRun
+    :model/McpGroupPermission]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
@@ -172,6 +172,7 @@
       :model/Tenant
       :model/ConnectionImpersonation
       :model/CustomVizPlugin
+      :model/ContentDiagnosticsFinding
       :model/TransformTest
       :model/TransformTestRun])))
 
@@ -409,7 +410,6 @@
   #{:model/Setting
     :model/Session
     :model/ImplicitAction
-    :model/HTTPAction
     :model/FieldUserSettings
     :model/TableUserSettings
     :model/QueryAction

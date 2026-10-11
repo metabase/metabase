@@ -119,10 +119,13 @@ export function downloadAndAssert({
         expect(res.statusCode).to.eq(200);
         expect(res.headers["content-type"]).to.include(expectedContentType);
 
-        if (assertParameters && req.body?.parameters) {
-          expect(req.body.parameters).to.have.lengthOf(assertParameters.length);
+        if (assertParameters) {
+          const parameters = JSON.parse(
+            new URLSearchParams(req.body).get("parameters") ?? "null",
+          );
+          expect(parameters).to.have.lengthOf(assertParameters.length);
           assertParameters.forEach((expectedParam, index) => {
-            expect(req.body.parameters[index]).to.deep.include(expectedParam);
+            expect(parameters[index]).to.deep.include(expectedParam);
           });
         }
 

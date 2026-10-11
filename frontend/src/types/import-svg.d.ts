@@ -5,6 +5,13 @@ declare module "*.svg" {
   export default value;
 }
 
+declare module "*.svg?url" {
+  const value: string;
+
+  // eslint-disable-next-line import/no-default-export
+  export default value;
+}
+
 declare module "*.svg?source" {
   const value: string;
 

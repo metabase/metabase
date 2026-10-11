@@ -17,26 +17,24 @@ describe("scenarios > metrics > search", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
-    cy.intercept("GET", "/api/search?q=*").as("search");
   });
 
-  it("should be able to search for metrics in global search", () => {
+  it("should be able to search for metrics in global search and on the search page", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
+
+    cy.log("command palette");
     cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
     H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
     H.MetricPage.aboutPage().should("be.visible");
-  });
 
-  it("should be able to search for metrics on the search page", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
+    cy.log("search page");
+    cy.intercept("GET", "/api/search?*context=search-app*").as("searchPage");
     cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, true);
-    cy.wait("@search");
+    cy.wait("@searchPage");
     cy.findByTestId("search-app").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByTestId("type-search-filter").click();
@@ -45,23 +43,11 @@ describe("scenarios > metrics > search", () => {
       cy.findByText("Metric").click();
       cy.findByText("Apply").click();
     });
-    cy.wait("@search");
+    cy.wait("@searchPage");
     cy.findByTestId("search-app").within(() => {
       cy.findByText("1 result").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
-    H.MetricPage.aboutPage().should("be.visible");
-  });
-
-  it("should see metrics in recent items in global search", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-      H.visitMetric(card.id);
-    });
-    cy.visit("/");
-    H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
-    H.commandPalette()
-      .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
-      .click();
     H.MetricPage.aboutPage().should("be.visible");
   });
 });

@@ -1,7 +1,7 @@
 (ns metabase.lib.metadata.invocation-tracker
   (:require
    #?@(:clj
-       (^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+       ([clj-yaml.core]
         [metabase.util.json :as json]
         [pretty.core :as pretty]))
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))

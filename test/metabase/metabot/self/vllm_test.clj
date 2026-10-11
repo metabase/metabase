@@ -37,14 +37,56 @@
 ;;; vllm-request-body
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel request-body-applies-default-max-tokens-test
-  (testing "an explicit max_tokens is always sent — without one vLLM falls back to the whole remaining context window"
-    (is (= (llm.settings/llm-max-tokens)
-           (:max_tokens (vllm/vllm-request-body {:model "vllm-test"
-                                                 :input [{:role :user :content "hi"}]}))))))
+(deftest ^:parallel request-body-sends-no-default-max-tokens-test
+  (testing "no max_tokens is sent without a caller cap or a known window — vLLM would subtract one from the
+           admissible prompt, and nothing says how much room is left"
+    (is (not (contains? (vllm/vllm-request-body {:model "vllm-test"
+                                                 :input [{:role :user :content "hi"}]})
+                        :max_tokens)))))
+
+(defn- cap-for-window
+  "The `max_tokens` [[vllm/vllm-request-body]] sends for `opts` on a `window`-token context window, or
+  `::omitted`."
+  [opts window]
+  (get (vllm/vllm-request-body (merge {:model "vllm-test" :input [{:role :user :content "hi"}]} opts) window)
+       :max_tokens
+       ::omitted))
+
+(defn- long-input
+  "A one-message input of `n` copies of `s`."
+  [s n]
+  [{:role :user :content (apply str (repeat n s))}])
+
+(deftest ^:parallel request-body-sends-the-chat-cap-when-it-fits-the-window-test
+  (testing "with a known window, the agent loop gets the flat chat cap"
+    (is (= self.core/chat-max-output-tokens (cap-for-window {} 131072)))))
+
+(deftest ^:parallel request-body-drops-a-cap-that-does-not-fit-the-window-test
+  (testing "the chat cap alone is larger than the smallest window preflight accepts, so it is not sent"
+    (is (= ::omitted (cap-for-window {} 16384))))
+  (testing "the prompt counts: a cap that fits beside a short prompt is dropped beside a long one"
+    (is (= 32000 (cap-for-window {} 65536)))
+    (is (= ::omitted (cap-for-window {:input (long-input "x" 70000)} 65536))))
+  (testing "a caller's cap is dropped the same way rather than lowered"
+    (is (= ::omitted (cap-for-window {:input (long-input "x" 70000) :max-tokens 512} 32768))))
+  (testing "digits count one token each, as Qwen3 tokenizes them"
+    ;; Qwen3 gives each digit its own token, so 40000 digits are 40000 tokens and 32000 does not fit in
+    ;; 65536; at 2 bytes per token the estimate was about 21000 and sent a cap that vLLM rejects
+    (is (= ::omitted (cap-for-window {:input (long-input "7" 40000)} 65536))))
+  (testing "a non-ASCII prompt is counted in bytes, not characters"
+    ;; 25000 CJK characters are 75000 UTF-8 bytes, about 76000 estimated tokens, so 32000 no longer fits;
+    ;; counted as characters they would leave room for it
+    (is (= ::omitted (cap-for-window {:input (long-input "表" 25000)} 65536)))))
+
+(deftest ^:parallel request-body-reasoning-floor-on-the-smallest-window-test
+  (testing "the 16384 reasoning floor fills the whole 16384 window preflight accepts, so a raised cap is dropped
+           rather than sent into a 400 — even on a 512-token title call"
+    (is (= ::omitted (cap-for-window {:max-tokens 512 :credentials reasoning-credentials} 16384))))
+  (testing "and on a window with room for it, the floor still applies"
+    (is (= 16384 (cap-for-window {:max-tokens 512 :credentials reasoning-credentials} 32768)))))
 
 (deftest ^:parallel request-body-caller-max-tokens-wins-test
-  (testing "a caller-supplied max-tokens is not overridden by the default"
+  (testing "a caller-supplied max-tokens is sent as-is"
     (is (= 128
            (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
                                                  :input      [{:role :user :content "hi"}]
@@ -64,7 +106,13 @@
                                                    :input       [{:role :user :content "hi"}]
                                                    :tools       [(metabot.tu/get-time-tool)]
                                                    :tool_choice "required"
-                                                   :max-tokens  128})))))))
+                                                   :max-tokens  128}))))))
+  (testing "a forced tool call with no caller cap and no known window sends none — a floor raises a cap,
+           it never adds one"
+    (is (not (contains? (vllm/vllm-request-body {:model  "vllm-test"
+                                                 :input  [{:role :user :content "hi"}]
+                                                 :schema {:type "object"}})
+                        :max_tokens)))))
 
 (deftest ^:parallel request-body-floor-never-lowers-a-ceiling-test
   (testing "a caller-supplied ceiling above the floor is left alone"
@@ -84,17 +132,23 @@
                                                  :max-tokens  128}))))))
 
 (deftest ^:parallel request-body-raises-max-tokens-for-a-reasoning-model-test
-  (testing "the agent path forces nothing and supplies no ceiling, so a reasoning model would otherwise get
-           the shared 4096 default for thinking, answer, and tool call combined"
+  (testing "a reasoning model's caller cap is raised, since thinking, answer, and tool call share one budget"
     (is (= 16384
            (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
                                                  :input       [{:role :user :content "hi"}]
+                                                 :max-tokens  128
                                                  :credentials reasoning-credentials}))))
-    (testing "and a model the probe found does not reason keeps the default"
-      (is (= (llm.settings/llm-max-tokens)
+    (testing "and a model the probe found does not reason keeps the caller's cap"
+      (is (= 128
              (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
                                                    :input       [{:role :user :content "hi"}]
-                                                   :credentials credentials})))))))
+                                                   :max-tokens  128
+                                                   :credentials credentials}))))))
+  (testing "with no known window the agent path supplies no cap, so a reasoning model is sent none either"
+    (is (not (contains? (vllm/vllm-request-body {:model       "vllm-test"
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :credentials reasoning-credentials})
+                        :max_tokens)))))
 
 (deftest ^:parallel request-body-reasoning-floor-outranks-the-forced-tool-call-floor-test
   (testing "a reasoning model has to clear its thinking before the forced call, so the higher floor wins"
@@ -161,7 +215,7 @@
 
 (deftest ^:parallel request-body-supplies-a-default-temperature-test
   (testing "a caller that supplies none gets the adapter default rather than vLLM's own 1.0"
-    (is (= @#'vllm/default-temperature
+    (is (= adapter/default-temperature
            (:temperature (vllm/vllm-request-body {:model "vllm-test"
                                                   :input [{:role :user :content "hi"}]}))))))
 
@@ -403,8 +457,7 @@
                    tc)]
       (testing "index arrives in contiguous runs, not interleaved"
         (is (= [0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1] (mapv :index deltas))))
-      (testing "id arrives on each call's opening delta only — a provider repeating it would lose the
-                arguments, since neither the start branch nor the argument-delta branch would fire"
+      (testing "id arrives on each call's opening delta only, so each id opens exactly one block"
         (is (= [0 1] (keep #(when (:id %) (:index %)) deltas)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -573,6 +626,103 @@
                            :credentials credentials}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; Context-window lookup
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- fresh-credentials
+  "Credentials for a server no other test has looked up, so the context-window cache starts empty for it."
+  []
+  {:base-url (str "http://vllm-" (random-uuid) ".internal:8000/v1")})
+
+(defn- chat-with-catalog!
+  "Run `vllm-raw` `n` times against a stub whose `/models` answers with `(models-response req)`. Return the
+  `/models` requests it saw and the last chat body it was sent."
+  [credentials models-response & {:keys [n] :or {n 1}}]
+  (let [lookups   (atom [])
+        chat-body (atom nil)]
+    (with-redefs [self.core/sse-reducible (fn [_] (reify clojure.lang.IReduceInit
+                                                    (reduce [_ _rf init] init)))
+                  debug/capture-stream    (fn [r _] r)
+                  http/request            (fn [{:keys [url body] :as req}]
+                                            (if (re-find #"/models$" (str url))
+                                              (do (swap! lookups conj req)
+                                                  (models-response req))
+                                              (do (reset! chat-body (json/decode+kw body))
+                                                  {:body nil})))]
+      (dotimes [_ n]
+        (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}] :credentials credentials})))
+    {:lookups @lookups :chat-body @chat-body}))
+
+(defn- catalog
+  "A `/models` stub answering with `entries`."
+  [& entries]
+  (constantly {:status 200 :body {:data (vec entries)}}))
+
+(deftest vllm-raw-sizes-max-tokens-from-the-served-window-test
+  (testing "the window is read from the request's own model entry, not the first one listed"
+    (let [{:keys [lookups chat-body]} (chat-with-catalog! (fresh-credentials)
+                                                          (catalog {:id "other" :max_model_len 16384}
+                                                                   {:id "vllm-test" :max_model_len 131072}))]
+      (is (= 32000 (:max_tokens chat-body)))
+      (testing "with a short timeout, since the chat request waits for the lookup"
+        (is (=? [{:method :get :socket-timeout 5000 :connection-timeout 5000}] lookups)))))
+  (testing "a served window too small for the cap sends none"
+    (is (not (contains? (:chat-body (chat-with-catalog! (fresh-credentials)
+                                                        (catalog {:id "vllm-test" :max_model_len 16384})))
+                        :max_tokens)))))
+
+(deftest vllm-raw-treats-an-unreported-window-as-unknown-test
+  (testing "no cap without a window: the model is not listed, or its entry has no `max_model_len`"
+    (doseq [models-response [(catalog {:id "other" :max_model_len 131072})
+                             (catalog {:id "vllm-test"})
+                             (catalog {:id "vllm-test" :max_model_len "131072"})]]
+      (is (not (contains? (:chat-body (chat-with-catalog! (fresh-credentials) models-response)) :max_tokens)))))
+  (testing "a failed lookup is not an error: the chat request is still sent, with no cap"
+    (doseq [failure [(SocketTimeoutException. "Read timed out")
+                     (ConnectException. "Connection refused")
+                     (ex-info "clj-http: status 404" {:status 404 :body "Not Found"})]]
+      (let [{:keys [chat-body]} (chat-with-catalog! (fresh-credentials) (fn [_] (throw failure)))]
+        (is (= "vllm-test" (:model chat-body)))
+        (is (not (contains? chat-body :max_tokens)))))))
+
+(deftest vllm-raw-caches-the-served-window-test
+  (testing "one lookup serves the following requests to the same server and model"
+    (let [{:keys [lookups chat-body]} (chat-with-catalog! (fresh-credentials)
+                                                          (catalog {:id "vllm-test" :max_model_len 131072})
+                                                          :n 3)]
+      (is (= 1 (count lookups)))
+      (is (= 32000 (:max_tokens chat-body)))))
+  (testing "a failure is cached too, so a server that cannot answer does not slow every request"
+    (is (= 1 (count (:lookups (chat-with-catalog! (fresh-credentials)
+                                                  (fn [_] (throw (SocketTimeoutException. "Read timed out")))
+                                                  :n 3)))))))
+
+(defn- lookups-at!
+  "The number of `/models` lookups one `vllm-raw` call makes at clock time `t`."
+  [clock t credentials models-response]
+  (reset! clock t)
+  (count (:lookups (chat-with-catalog! credentials models-response))))
+
+(deftest vllm-raw-keeps-an-answered-lookup-longer-than-a-failed-one-test
+  (let [clock        (atom 0)
+        answered-ttl @#'vllm/answered-lookup-ttl-ms
+        failed-ttl   @#'vllm/failed-lookup-ttl-ms]
+    (mt/with-dynamic-fn-redefs [vllm/now-ms (fn [] @clock)]
+      (testing "an answer is reused until the long TTL runs out, with or without a window"
+        (doseq [response [(catalog {:id "vllm-test" :max_model_len 131072})
+                          (catalog {:id "vllm-test"})]]
+          (let [creds (fresh-credentials)]
+            (is (= [1 0 1] [(lookups-at! clock 0 creds response)
+                            (lookups-at! clock (inc failed-ttl) creds response)
+                            (lookups-at! clock answered-ttl creds response)])))))
+      (testing "a failed lookup is tried again after the short TTL"
+        (let [creds    (fresh-credentials)
+              response (fn [_] (throw (SocketTimeoutException. "Read timed out")))]
+          (is (= [1 0 1] [(lookups-at! clock 0 creds response)
+                          (lookups-at! clock (dec failed-ttl) creds response)
+                          (lookups-at! clock failed-ttl creds response)])))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -646,7 +796,7 @@
 
 (deftest list-models-fails-closed-on-a-body-that-is-not-a-catalog-test
   (testing "a 2xx whose body carries no model list throws, naming the base URL"
-    (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} "<html>404</html>"]]
+    (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} 404]]
       (testing (str "body " (pr-str body))
         (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body body})]
           (is (thrown-with-msg?
@@ -660,6 +810,28 @@
            clojure.lang.ExceptionInfo
            #"reachable but is not serving any models"
            (vllm/list-models {:credentials credentials :probe? true}))))))
+
+(deftest list-models-fails-closed-on-a-2xx-that-is-not-json-test
+  (testing "a 2xx whose body is not JSON — a proxy's HTML, or a base URL missing /v1 — is a server
+           that answered, so it reads as a bad address rather than an unreachable one. The stub throws
+           what `:as :json` throws: clj-http parses a 2xx whatever its content type."
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
+      (is (=? {:error-code  :malformed-model-catalog
+               :status-code 400}
+              (try
+                (vllm/list-models {:credentials credentials})
+                (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"vLLM returned an unexpected model list response.*http://vllm\.internal:8000/v1"
+           (vllm/list-models {:credentials credentials}))))))
+
+(deftest list-models-keeps-the-parse-error-as-the-cause-test
+  (testing "the parse error travels as the cause, so a log shows whether the body was HTML, empty or cut off"
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
+      (is (instance? com.fasterxml.jackson.core.JsonProcessingException
+                     (try (vllm/list-models {:credentials credentials})
+                          (catch clojure.lang.ExceptionInfo e (ex-cause e))))))))
 
 (deftest list-models-fails-closed-before-probing-test
   (testing "a malformed catalog throws without issuing a probe request"
@@ -1067,15 +1239,19 @@
   (testing "the first verdict returns immediately and its sibling is cancelled — an abandoned future would
            keep generating against the operator's server after the admin already has a 400"
     (let [interrupted (promise)
+          started     (CountDownLatch. 1)
           never       (CountDownLatch. 1)]
       (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
                                                  (if (re-find #"/models$" (str url))
                                                    {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
                                                    (case (:tool_choice (json/decode+kw (str body)))
-                                                     "auto"     {:status 200
-                                                                 :body   {:choices [{:message {:content    "I'll record orders."
-                                                                                               :tool_calls []}}]}}
+                                                     "auto"     (do
+                                                                  (.await started 10 TimeUnit/SECONDS)
+                                                                  {:status 200
+                                                                   :body   {:choices [{:message {:content    "I'll record orders."
+                                                                                                 :tool_calls []}}]}})
                                                      "required" (try
+                                                                  (.countDown started)
                                                                   (.await never 10 TimeUnit/SECONDS)
                                                                   (deliver interrupted false)
                                                                   {:status 200 :body {:choices [{:message tool-calling-message}]}}
