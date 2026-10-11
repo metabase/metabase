@@ -32,7 +32,7 @@
 
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
-  #{"vllm" "ollama"})
+  #{"vllm" "ollama" "litellm"})
 
 (def ^:private named-model-types
   "Provider types whose connection runs whichever model the admin names, on a server Metabase has no list for."

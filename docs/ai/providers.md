@@ -430,6 +430,19 @@ On a self-hosted Metabase, a server on your private network or on the same machi
 
 If you configure this connection with environment variables, it has no **Model ID**. Set `MB_LLM_METABOT_PROVIDER` to `openai-compatible/` followed by the model ID instead, like `openai-compatible/gpt-oss-120b`.
 
+## LiteLLM
+
+- Provider key: `litellm`
+
+Supported models:
+
+Metabase lists whichever models your LiteLLM server has available, so what you can pick depends on how you set it up.
+
+Credentials:
+
+- **API base URL** (required). Your LiteLLM proxy's address, with or without /v1. Metabase must be able to reach it: a proxy on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_LITELLM_API_BASE_URL`.
+- **API key**. A virtual key or the master key. Leave blank if your proxy doesn't require one. You can also set it with the environment variable `MB_LLM_LITELLM_API_KEY`.
+
 ## Metabase AI service
 
 - Provider key: `metabase`
