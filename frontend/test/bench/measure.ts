@@ -254,6 +254,58 @@ const OBSERVE_LARGEST_PAINT = `
   }).observe({ type: "largest-contentful-paint", buffered: true });
 `;
 
+// A fixed workload with the three kinds of work a page load does: parse and
+// compile, allocate and sort, build and lay out. How long it takes is the speed
+// this runner gives the page right now, under the same throttle as the loads.
+const CALIBRATE = `(() => {
+  const start = performance.now();
+  let source = "";
+  for (let index = 0; index < 4000; index++) {
+    source += "function f" + index + "(a, b) { return a * " + index + " + b; }\\n";
+  }
+  // Unique each time, so the compile is never served from a cache.
+  new Function(source + "return f3999(1, " + Math.random() + ");")();
+  const items = Array.from({ length: 200000 }, (_, index) => ({
+    key: (index * 2654435761) % 1000003,
+    label: "item " + index,
+  }));
+  items.sort((a, b) => a.key - b.key);
+  const root = document.createElement("div");
+  for (let index = 0; index < 3000; index++) {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = items[index].label;
+    root.appendChild(paragraph);
+  }
+  document.body.appendChild(root);
+  root.getBoundingClientRect();
+  root.remove();
+  return performance.now() - start;
+})()`;
+
+const CALIBRATION_REPEATS = 5;
+
+async function calibrate(): Promise<number[]> {
+  const target = await devtools("/json/new?about:blank", "PUT");
+  const socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve) => socket.addEventListener("open", resolve));
+  const session = new Session(socket);
+  await session.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
+
+  const readings = [];
+  // One extra at the front, discarded, so no reading pays for a cold renderer.
+  for (let repeat = 0; repeat <= CALIBRATION_REPEATS; repeat++) {
+    const { result } = await session.send("Runtime.evaluate", {
+      expression: CALIBRATE,
+      returnByValue: true,
+    });
+    readings.push(Number(result.value));
+  }
+
+  socket.close();
+  await devtools(`/json/close/${target.id}`);
+  return readings.slice(1);
+}
+
 async function launchChrome() {
   const chrome = spawn(CHROME, [
     "--headless=new",
@@ -403,12 +455,18 @@ function timings(run: Run) {
   const chrome = await launchChrome();
   const results = [];
 
+  // Before and after the loads, so the reading covers the time they ran in.
+  const calibration = await calibrate();
+
   for (let run = 0; run < runs; run++) {
     const metrics = await loadOnce();
     if (metrics) {
       results.push(metrics);
     }
   }
+
+  calibration.push(...(await calibrate()));
+  calibration.sort((a, b) => a - b);
 
   chrome.kill();
 
@@ -445,6 +503,9 @@ function timings(run: Run) {
         steady: results.length > 2 ? timings(representative(results, 2)) : null,
         everyRunMs: results.map((result) =>
           Math.round(result.domContentLoaded),
+        ),
+        calibrationMs: Number(
+          calibration[Math.floor(calibration.length / 2)].toFixed(1),
         ),
       },
       null,
