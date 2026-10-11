@@ -35,6 +35,8 @@ interface Condition {
   cssKb: number;
   totalKb: number;
   runs: number;
+  cpuModel: string;
+  calibrationMs: number;
 }
 
 interface CommitStamp {
@@ -89,6 +91,8 @@ function buildRows(
     "Css kb": condition.cssKb,
     "Total kb": condition.totalKb,
     Runs: condition.runs,
+    "CPU model": condition.cpuModel,
+    "Calibration ms": condition.calibrationMs,
   }));
 }
 

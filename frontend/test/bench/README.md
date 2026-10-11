@@ -203,3 +203,17 @@ number from anywhere else. Each row carries `Cold spread %`, `Warm spread %` and
 `Steady spread %`, the interquartile
 spread of its cold runs, which is what tells a real regression from a busy
 runner.
+
+The spread is measured inside one job, so it does not show the difference
+between runners. Runners of the same class have different CPU models, and the
+same page loads up to 1.7 times faster on one than on another. Each row
+therefore carries two more columns:
+
+- `CPU model`, from `/proc/cpuinfo`.
+- `Calibration ms`, how long a fixed workload takes in the same Chrome under the
+  same CPU throttle. It runs before and after the loads of each series.
+
+A reading divided by what its CPU model and its calibration predict varies by
+about 0.5% to 4% between runners, where the raw reading varies by 3% to 17%.
+The calibration alone does not compare across CPU models, so the correction
+needs a factor per model, fitted from the rows of the table.

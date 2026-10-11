@@ -19,6 +19,7 @@
  * signed in.
  */
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 
 /** One reading, as `timings` in `measure.ts` builds it. */
@@ -43,6 +44,7 @@ interface Series {
   secondLoad: Timings | null;
   steady: Timings | null;
   everyRunMs: number[];
+  calibrationMs: number;
 }
 
 interface Conditions {
@@ -169,6 +171,17 @@ function representativeSeries(
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+function readProc(file: string): string {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+const cpuModel =
+  readProc("/proc/cpuinfo").match(/^model name\s*:\s*(.+)$/m)?.[1] ?? "";
+
 function spreadPercent(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
   const at = (fraction: number) => sorted[Math.floor(sorted.length * fraction)];
@@ -217,6 +230,9 @@ function spreadPercent(values: number[]) {
       const steadiest = representativeSeries(warmBatch, (series) =>
         required(series.steady, "steady"),
       );
+      const calibrations = [cold, ...warmBatch]
+        .map((series) => series.calibrationMs)
+        .sort((a, b) => a - b);
 
       // Every cold reading in the row comes from `cold.median`, and every warm
       // reading from `warm.secondLoad`. Each is one load, so the readings in a
@@ -266,6 +282,8 @@ function spreadPercent(values: number[]) {
         cssKb: cold.cssKb,
         totalKb: cold.totalKb,
         runs: cold.runs,
+        cpuModel,
+        calibrationMs: calibrations[Math.floor(calibrations.length / 2)],
       });
 
       console.error(`measured ${cpu} cpu on a ${network} network`);
