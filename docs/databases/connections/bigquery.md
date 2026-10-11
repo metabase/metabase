@@ -16,6 +16,8 @@ You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account
 
 You'll first need a [service account](https://docs.cloud.google.com/iam/docs/service-account-overview) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
 
+If you'd rather not create and store a service account key, Metabase can also [connect without one](#connecting-without-a-service-account-key).
+
 To create the service account JSON file, follow Google's documentation on [setting up a service account](https://docs.cloud.google.com/iam/docs/service-accounts-create) for your BigQuery dataset. Here's the basic flow:
 
 1. **Create service account**. From your Google Cloud Platform project console, open the main sidebar menu on the left, go to the **IAM & Admin** section, and select **Service account**. The console will list existing service accounts, if any. At the top of the screen, click on **+ CREATE SERVICE ACCOUNT**.
@@ -61,6 +63,12 @@ Each BigQuery dataset will have a **Project ID**. You can find this ID via the [
 ### Service account JSON file
 
 The JSON file contains the credentials your Metabase application will need to access BigQuery datasets, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
+
+Leave this field empty to [connect without a service account key](#connecting-without-a-service-account-key).
+
+### Credential configuration file
+
+A [Workload Identity Federation](#workload-identity-federation) credential configuration file. Leave this field empty if you upload a service account JSON file.
 
 ### Datasets
 
@@ -116,6 +124,39 @@ See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+## Connecting without a service account key
+
+Service account keys are long-lived secrets. If Metabase runs somewhere that can prove its identity to Google Cloud, you can leave the **Service account JSON file** field empty and authenticate in one of two other ways.
+
+Neither of them tells Metabase which Google Cloud project to use, so fill in the **Data project ID** (the project that owns your datasets) and, if query jobs should run and be billed somewhere else, the **Billing project ID**. If you set neither, Metabase uses the server's default project (the `GOOGLE_CLOUD_PROJECT` environment variable, or the project of the GCE/GKE instance it runs on), and fails to connect if there isn't one.
+
+### Workload Identity Federation
+
+With [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation), Metabase running outside Google Cloud (for example on Azure Kubernetes Service or Amazon EKS) exchanges the identity token its own platform gives it for a short-lived Google Cloud token, with no service account key involved.
+
+1. Set up a workload identity pool and provider for your platform, following Google's [guide for your identity provider](https://cloud.google.com/iam/docs/workload-identity-federation-with-kubernetes), and grant the pool access to a service account with the [roles Metabase needs](#google-cloud-platform-creating-a-service-account-and-json-file).
+2. Generate a credential configuration file. For a Kubernetes cluster with a projected service account token, that looks like:
+
+   ```
+   gcloud iam workload-identity-pools create-cred-config \
+     projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID \
+     --service-account=SERVICE_ACCOUNT_EMAIL \
+     --credential-source-file=/var/run/secrets/tokens/gcp-token \
+     --output-file=credential-config.json
+   ```
+
+3. Upload `credential-config.json` as the **Credential configuration file** in the connection settings, and fill in the **Data project ID**.
+
+The file contains no secrets, just the pool, the service account to impersonate, and where Metabase should read its platform's identity token from. That path (or metadata service URL) has to be reachable from the Metabase server, so on Kubernetes mount the projected token volume into the Metabase pod. Credential configuration files with an executable credential source aren't supported.
+
+### Application Default Credentials
+
+With no service account JSON file and no credential configuration file, Metabase uses the [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) of the server it runs on, the same way the gcloud CLI and Google's client libraries do. That covers:
+
+- [Workload Identity on GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity), or the attached service account of a Compute Engine instance.
+- A `GOOGLE_APPLICATION_CREDENTIALS` environment variable pointing at a service account key or credential configuration file on the server.
+- For local development, `gcloud auth application-default login`.
 
 ## Connecting Metabase to Google Drive data sources
 
