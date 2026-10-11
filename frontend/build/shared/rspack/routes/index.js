@@ -19,6 +19,7 @@
 const ts = require("typescript");
 
 const { createResolver } = require("./resolver");
+const { readSlotWrites } = require("./slot-writes");
 const { createWalker } = require("./walk");
 
 const ROUTES_MODULE = "metabase/routes";
@@ -57,7 +58,8 @@ function returnedExpression(node) {
  */
 function readRoutes(root) {
   const resolver = createResolver(root);
-  const { walk } = createWalker(resolver);
+  const { writes } = readSlotWrites(root);
+  const { walk } = createWalker(resolver, writes);
 
   const file = resolver.resolve(ROUTES_MODULE, `${root}/x.ts`);
   if (!file) {

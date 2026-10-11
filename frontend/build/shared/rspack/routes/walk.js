@@ -15,8 +15,49 @@ const ts = require("typescript");
 
 module.exports = { createWalker };
 
-function createWalker(resolver) {
+function createWalker(resolver, slotWrites = new Map()) {
   const { deref, chunkOf, constantString } = resolver;
+
+  const SLOT_NAME = /^PLUGIN_[A-Z0-9_]+$/;
+
+  /** `PLUGIN_X.member`, the name a route tree uses to reach a slot. */
+  function slotKey(node) {
+    if (
+      !node ||
+      !ts.isPropertyAccessExpression(node) ||
+      !ts.isIdentifier(node.expression) ||
+      !SLOT_NAME.test(node.expression.text)
+    ) {
+      return null;
+    }
+    return `${node.expression.text}.${node.name.text}`;
+  }
+
+  /**
+   * Everything written to a slot, as somewhere to walk.
+   *
+   * A plugin picks between an upsell page and the real one, so a slot has more
+   * than one writer and both can render. Every one is followed, the same way a
+   * conditional route takes both branches.
+   */
+  function slotTargets(node) {
+    const key = slotKey(node);
+    const written =
+      (key && slotWrites.get(key)) ||
+      // `PLUGIN_X.map(...)` reads an array slot that `push` fills.
+      (key && slotWrites.get(key.split(".")[0])) ||
+      [];
+
+    return written.flatMap(({ value, file }) => {
+      if (ts.isIdentifier(value)) {
+        const declaration = deref(value.getText(), file);
+        return declaration
+          ? [{ node: declaration.node, file: declaration.file }]
+          : [];
+      }
+      return [{ node: value, file }];
+    });
+  }
 
   /** The parameters a pattern takes, in the order they appear. */
   const paramsOf = (pattern) =>
@@ -52,6 +93,27 @@ function createWalker(resolver) {
           bindings,
         )
       : null;
+
+  /** What a function gives back, so a slot holding one can be walked. */
+  function returnedBy(node) {
+    const fn = ts.isVariableDeclaration(node) ? node.initializer : node;
+    if (!fn || !(ts.isArrowFunction(fn) || ts.isFunctionDeclaration(fn) || ts.isFunctionExpression(fn))) {
+      return node;
+    }
+    if (!fn.body) {
+      return node;
+    }
+    if (!ts.isBlock(fn.body)) {
+      return fn.body;
+    }
+    let returned = null;
+    for (const statement of fn.body.statements) {
+      if (ts.isReturnStatement(statement) && statement.expression) {
+        returned = statement.expression;
+      }
+    }
+    return returned ?? node;
+  }
 
   /** Unwrap the expression a route helper or a name stands for. */
   function unwrap(node, file, notes) {
@@ -112,14 +174,65 @@ function createWalker(resolver) {
         return { node: fn.body, file: declaration.file };
       }
 
-      // A route pulled from a plugin registry: follow `PLUGIN_X.y = ...`.
+      // A route pulled from a plugin registry. `walk` follows every writer,
+      // so this only reports a slot nothing writes.
       if (ts.isPropertyAccessExpression(callee)) {
-        notes.push({ why: "plugin call", what: callee.getText(), file });
+        if (slotTargets(callee).length === 0) {
+          notes.push({ why: "plugin call", what: callee.getText(), file });
+        }
         return null;
       }
     }
 
     return { node, file };
+  }
+
+  /**
+   * Routes reached through a plugin slot. Every writer is walked, since any of
+   * them can render, the same way a conditional route takes both branches.
+   *
+   * @returns whether the node was a slot call, so the caller can stop.
+   */
+  function walkSlotCall(node, file, prefix, inherited, out, notes, depth) {
+    if (!ts.isCallExpression(node)) {
+      return false;
+    }
+
+    const targets = slotTargets(node.expression);
+    if (targets.length === 0) {
+      return false;
+    }
+
+    const before = out.length;
+    for (const target of targets) {
+      walk(
+        returnedBy(target.node),
+        target.file,
+        prefix,
+        inherited,
+        out,
+        notes,
+        depth + 1,
+      );
+    }
+
+    // Following a write that yields no route is as invisible as not following
+    // it, so it is reported either way.
+    if (out.length === before) {
+      notes.push({ why: "plugin call", what: node.expression.getText(), file });
+    }
+
+    return true;
+  }
+
+  /** What a route's `lazy` adds to the chunks it inherits. */
+  function chunksWith(inherited, lazyNode, file, notes) {
+    const found = lazyNode ? chunksFor(lazyNode, file, notes) : [];
+
+    return {
+      chunk: found[0] ?? null,
+      chunks: found.length > 0 ? [...new Set([...inherited, ...found])] : inherited,
+    };
   }
 
   /** Every route the expression declares, as {pattern, chunks}. */
@@ -134,6 +247,12 @@ function createWalker(resolver) {
     bindings = {},
   ) {
     if (!node || depth > 40) {
+      return;
+    }
+
+    // `PLUGIN_X.getRoutes()` and `PLUGIN_X.map(...)` both reach routes a plugin
+    // wrote at runtime.
+    if (walkSlotCall(node, file, prefix, inherited, out, notes, depth)) {
       return;
     }
 
@@ -294,15 +413,10 @@ function createWalker(resolver) {
 
       const segment = stringOf(attrs.path, file, bindings);
       const here = join(prefix, segment);
-      let chunks = inherited;
       const lazyAttr = attrs.lazy?.expression || attrs.lazy;
-      let chunk = null;
-      if (lazyAttr) {
-        chunk = chunkFor(lazyAttr, file, notes);
-        if (chunk) {
-          chunks = [...new Set([...inherited, chunk])];
-        }
-      }
+      // A slot holding the upsell page and the real one names both, and a URL
+      // can render either, so both are carried.
+      const { chunk, chunks } = chunksWith(inherited, lazyAttr, file, notes);
       record(out, {
         pattern: here,
         chunks,
@@ -340,14 +454,7 @@ function createWalker(resolver) {
         }
       }
       const here = join(prefix, stringOf(props.path, file, bindings));
-      let chunks = inherited;
-      let chunk = null;
-      if (props.lazy) {
-        chunk = chunkFor(props.lazy, file, notes);
-        if (chunk) {
-          chunks = [...new Set([...inherited, chunk])];
-        }
-      }
+      const { chunk, chunks } = chunksWith(inherited, props.lazy, file, notes);
       record(out, {
         pattern: here,
         chunks,
@@ -388,7 +495,7 @@ function createWalker(resolver) {
   }
 
   /** The chunk a `lazy` expression loads. */
-  function chunkFor(node, file, notes) {
+  function chunksFor(node, file, notes) {
     const direct = chunkOf(node, file);
     if (direct) {
       return direct;
@@ -399,11 +506,11 @@ function createWalker(resolver) {
       if (declaration) {
         const chunk = chunkOf(declaration.node, declaration.file);
         if (chunk) {
-          return chunk;
+          return [chunk];
         }
       }
       notes.push({ why: "lazy without a chunk", what: node.getText(), file });
-      return null;
+      return [];
     }
     // A loader built by a factory: `lazy={appearanceSettings("branding")}`.
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
@@ -411,24 +518,33 @@ function createWalker(resolver) {
       if (declaration) {
         const chunk = chunkOf(declaration.node, declaration.file);
         if (chunk) {
-          return chunk;
+          return [chunk];
         }
       }
     }
     if (ts.isPropertyAccessExpression(node)) {
+      const targets = slotTargets(node);
+      const found = targets
+        .map((target) => chunkOf(target.node, target.file))
+        .filter(Boolean);
+
+      if (found.length > 0) {
+        return found;
+      }
+
       notes.push({
         why: "lazy from a plugin slot",
         what: node.getText(),
         file,
       });
-      return null;
+      return [];
     }
     notes.push({
       why: "lazy not understood",
       what: node.getText().slice(0, 40),
       file,
     });
-    return null;
+    return [];
   }
 
   return { walk, join };
