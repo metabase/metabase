@@ -11,7 +11,8 @@ name: Bundle Load Stats Backfill
 # The window is bounded by artifact retention rather than by this workflow.
 # Uberjars expire after 30 days, and a commit whose jar has gone cannot be
 # measured without building one, so `plan` drops those instead of spending a job
-# on each.
+# on each. Dispatch with `build` on to build them instead: EE only, since that is
+# all the benchmark boots, and kept under the name the per-merge lookup uses.
 
 on:
   workflow_dispatch:
@@ -31,6 +32,11 @@ on:
         type: string
         required: false
         default: ""
+      build:
+        description: "Build an uberjar for a commit whose jar has expired, instead of skipping it."
+        type: boolean
+        required: false
+        default: false
       upload:
         description: "Append the rows to the table. Turn this off to smoke test the path without recording anything."
         type: boolean
@@ -51,6 +57,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       commits: ${{ steps.pick.outputs.commits }}
+      missing: ${{ steps.pick.outputs.missing }}
     steps:
       - name: Pick the first master commit of each day that still has a jar
         id: pick
@@ -58,6 +65,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DAYS: ${{ inputs.days }}
           COMMITS: ${{ inputs.commits }}
+          BUILD: ${{ inputs.build }}
         run: |
           set -euo pipefail
 
@@ -84,11 +92,15 @@ jobs:
           fi
 
           : > kept.txt
+          : > missing.txt
           while read -r sha; do
             found=$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/artifacts" \
               -f per_page=1 -f "name=metabase-ee-${sha}-uberjar" --jq '.total_count')
             if [ "${found}" -gt 0 ]; then
               echo "${sha}" >> kept.txt
+            elif [ "${BUILD}" = "true" ]; then
+              echo "${sha}" >> kept.txt
+              echo "${sha}" >> missing.txt
             else
               echo "skipping ${sha}, its uberjar has expired"
             fi
@@ -98,10 +110,46 @@ jobs:
           # A matrix holds at most 256 entries, which one per day cannot reach.
           commits=$(jq -R -s -c 'split("\n") | map(select(length > 0))' < kept.txt)
           echo "commits=${commits}" >> "$GITHUB_OUTPUT"
+          echo "Building $(wc -l < missing.txt) of them first"
+          missing=$(jq -R -s -c 'split("\n") | map(select(length > 0))' < missing.txt)
+          echo "missing=${missing}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [plan]
+    if: ${{ needs.plan.outputs.missing != '[]' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        commit: ${{ fromJSON(needs.plan.outputs.missing) }}
+    env:
+      MB_EDITION: ee
+      INTERACTIVE: false
+      SKIP_LICENSES: true
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.commit }}
+      # The commit's own actions, with their own defaults: the JDK moved from 21
+      # to 25 in July, and each action still names the one its commit needs.
+      - uses: ./.github/actions/prepare-frontend
+      - uses: ./.github/actions/prepare-backend
+      - name: Build
+        run: ./bin/build.sh
+      - name: Keep the uberjar
+        uses: actions/upload-artifact@v7
+        with:
+          name: metabase-ee-${{ matrix.commit }}-uberjar
+          path: ./target/uberjar/metabase.jar
+          retention-days: 30
 
   measure:
-    needs: [plan]
-    if: ${{ needs.plan.outputs.commits != '[]' }}
+    needs: [plan, build]
+    # A commit whose build failed has no jar, and its job skips itself.
+    if: ${{ !cancelled() && needs.plan.outputs.commits != '[]' }}
     strategy:
       # One slow commit must not stop the rest of the window being recorded.
       fail-fast: false
