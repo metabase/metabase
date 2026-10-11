@@ -29,7 +29,7 @@
 
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
-  #{"vllm" "ollama"})
+  #{"vllm" "ollama" "litellm"})
 
 (def ^:private max-enumerated-options
   "Above this many `:options`, a field's choices are pointed at rather than listed. Bedrock's dozens of regions are

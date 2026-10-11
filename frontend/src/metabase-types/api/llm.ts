@@ -47,6 +47,7 @@ export type LlmProviderTypeName =
   | "bedrock"
   | "vllm"
   | "ollama"
+  | "litellm"
   | "metabase";
 
 export type LlmProviderFieldType =

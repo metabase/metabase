@@ -440,6 +440,26 @@
   :visibility :settings-manager
   :export?    false)
 
+;;; -------------------------------------------------- LiteLLM --------------------------------------------------
+
+(defsetting llm-litellm-api-base-url
+  (deferred-tru "The base URL of your LiteLLM proxy, e.g. `http://localhost:4000`. A trailing `/v1` is optional.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-litellm-api-base-url)
+  :setter     (connection-field-setter :llm-litellm-api-base-url)
+  :doc        "Backed by the litellm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-litellm-api-key
+  (deferred-tru "The API key for your LiteLLM proxy, a virtual key or the master key. Only needed when the proxy requires one.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-litellm-api-key)
+  :setter     (connection-field-setter :llm-litellm-api-key)
+  :doc        "Backed by the litellm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set
 ;;; by an environment variable, which [[metabase.llm.provider/connections]] resolves on every read. Editing one in
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.litellm :as litellm]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -554,6 +555,7 @@
   (doseq [[shape {:keys [stream expected]}] tool-call-fixtures
           [adapter chunks-xf]                [["openrouter" (openrouter/openrouter->aisdk-chunks-xf)]
                                               ["vllm"       (vllm/vllm->aisdk-chunks-xf)]
+                                              ["litellm"    (litellm/litellm->aisdk-chunks-xf)]
                                               ["zai"        (zai/zai->aisdk-chunks-xf)]
                                               ["moonshot"   (moonshot/moonshot->aisdk-chunks-xf)]
                                               ["mistral"    (mistral/mistral->aisdk-chunks-xf)]]

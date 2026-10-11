@@ -10,6 +10,7 @@ import AzureMark from "./logos/azure.svg?component";
 import BedrockMark from "./logos/bedrock.svg?component";
 import DeepSeekMark from "./logos/deepseek.svg?component";
 import GoogleMark from "./logos/google.svg?component";
+import LiteLlmMark from "./logos/litellm.svg?component";
 import MistralMark from "./logos/mistral.svg?component";
 import MoonshotMark from "./logos/moonshot.svg?component";
 import OllamaMark from "./logos/ollama.svg?component";
@@ -41,6 +42,7 @@ const PROVIDER_LOGOS: Record<
   azure: AzureMark,
   vllm: null,
   ollama: OllamaMark,
+  litellm: LiteLlmMark,
   metabase: null,
 };
 

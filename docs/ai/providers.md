@@ -386,6 +386,19 @@ Credentials:
 
 Ollama can load a model with a smaller context window than the model supports. Metabot needs at least 16,384 tokens, and Metabase checks the window when you connect. See Ollama's documentation on [context length](https://docs.ollama.com/context-length).
 
+## LiteLLM
+
+- Provider key: `litellm`
+
+Supported models:
+
+Metabase lists whichever models your LiteLLM server has available, so what you can pick depends on how you set it up.
+
+Credentials:
+
+- **API base URL** (required). Your LiteLLM proxy's address, with or without /v1. Metabase must be able to reach it: a proxy on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_LITELLM_API_BASE_URL`.
+- **API key**. A virtual key or the master key. Leave blank if your proxy doesn't require one. You can also set it with the environment variable `MB_LLM_LITELLM_API_KEY`.
+
 ## Metabase AI service
 
 - Provider key: `metabase`
