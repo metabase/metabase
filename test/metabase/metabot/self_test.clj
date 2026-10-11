@@ -101,6 +101,12 @@
       (llm.tu/with-connections [(llm.tu/connection "vllm")]
         (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
                 (#'self/parse-provider-model "vllm/mlx-community/Qwen3-14B-4bit")))))
+    (testing "a LiteLLM alias can carry a provider prefix of its own, so the model segment keeps its slashes"
+      (llm.tu/with-connections [(llm.tu/connection "litellm")]
+        (is (=? {:provider "litellm" :model "gpt-6-luna" :ai-proxy? false}
+                (#'self/parse-provider-model "litellm/gpt-6-luna")))
+        (is (=? {:provider "litellm" :model "openai/gpt-6-luna" :ai-proxy? false}
+                (#'self/parse-provider-model "litellm/openai/gpt-6-luna")))))
     (testing "serves the managed connection through the wire family the model names"
       (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
               (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -2652,7 +2658,7 @@
       (is (seq models))
       (is (every? (comp string? :display-name val) models))))
   (testing "the types with no allow-list return nil rather than an empty map"
-    (doseq [provider ["azure" "google" "vllm" "metabase"]]
+    (doseq [provider ["azure" "google" "vllm" "litellm" "metabase"]]
       (is (nil? (self/known-models provider)) provider)))
   (testing "an unregistered provider throws instead of reading as one with no models"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

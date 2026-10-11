@@ -378,6 +378,22 @@
         (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit"}
                 (#'metabot.self/parse-provider-model (metabot.settings/llm-metabot-provider))))))))
 
+(deftest metabot-configured-with-a-keyless-litellm-connection-test
+  (testing "a LiteLLM proxy started without a master key is a complete configuration: the base URL is the credential"
+    (with-connections [(connection "litellm" "litellm" {:base-url "http://litellm.internal:4000"})]
+      (with-selected-model "litellm/gpt-6-luna"
+        (is (true? (metabot.settings/llm-metabot-configured?))))))
+  (testing "and a connection carrying only a key is not"
+    (with-connections [(connection "litellm" "litellm" {:api-key "sk-litellm-test"})]
+      (with-selected-model "litellm/gpt-6-luna"
+        (is (false? (metabot.settings/llm-metabot-configured?)))))))
+
+(deftest metabot-supports-reasoning-litellm-test
+  (testing "LiteLLM serves whatever model the proxy routes an alias to, so it never claims reasoning support"
+    (with-connections [(connection "litellm" "litellm" {:base-url "http://litellm.internal:4000"})]
+      (with-selected-model "litellm/gpt-6-luna"
+        (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
 ;; The validator is private; exercise it through the setting setter.
 

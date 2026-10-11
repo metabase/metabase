@@ -227,6 +227,8 @@ config:
     llm-google-oauth-access-token: null
     llm-google-project-id: null
     llm-google-service-account-key: null
+    llm-litellm-api-base-url: null
+    llm-litellm-api-key: null
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mini-model: null
     llm-mistral-api-base-url: https://api.mistral.ai/v1

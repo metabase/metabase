@@ -1543,6 +1543,26 @@ A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform
 
 Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
+### `MB_LLM_LITELLM_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-litellm-api-base-url`
+
+The base URL of your LiteLLM proxy, e.g. `http://localhost:4000`. A trailing `/v1` is optional.
+
+Backed by the litellm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_LITELLM_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-litellm-api-key`
+
+The API key for your LiteLLM proxy, a virtual key or the master key. Only needed when the proxy requires one.
+
+Backed by the litellm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_METABOT_PROVIDER`
 
 - Type: string

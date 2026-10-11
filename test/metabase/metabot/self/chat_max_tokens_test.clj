@@ -14,6 +14,7 @@
    [metabase.metabot.self.google.models :as google.models]
    [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
+   [metabase.metabot.self.litellm :as litellm]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.ollama :as ollama]
@@ -71,6 +72,7 @@
        :moonshot   (get (moonshot/moonshot-request-body opts) :max_tokens omitted)
        :mistral    (get (mistral/mistral-request-body opts) :max_tokens omitted)
        :vllm       (get (vllm/vllm-request-body opts) :max_tokens omitted)
+       :litellm    (get (litellm/litellm-request-body opts) :max_tokens omitted)
        :ollama     (get (ollama/ollama-request-body opts) :max_tokens omitted)
        ;; xAI sends the cap as max_completion_tokens
        :xai        (get (xai/xai-request-body opts) :max_completion_tokens omitted)
@@ -222,6 +224,8 @@
    ;; no default cap without a known context window, which the pure builder is not given
    ;; (see vllm/vllm-request-body)
    :vllm              {"Qwen/Qwen3-32B"              omitted}
+   ;; none either: a LiteLLM model alias can sit on an upstream whose output limit is below the default cap
+   :litellm           {"gpt-6-luna"                  omitted}
    ;; the default with no known window, unlike vLLM: Ollama shortens a prompt that does not fit rather than
    ;; refusing it. Self-hosted, and a Cloud model forwarded under its `-cloud` name
    :ollama            {"qwen3:4b"                     32000

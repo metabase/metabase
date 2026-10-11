@@ -62,10 +62,10 @@
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
       (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-               "bedrock" "vllm" "ollama" "metabase"}
+               "bedrock" "vllm" "ollama" "litellm" "metabase"}
              (set (map :type types))))
       (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-              "bedrock" "vllm" "ollama"]
+              "bedrock" "vllm" "ollama" "litellm"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"

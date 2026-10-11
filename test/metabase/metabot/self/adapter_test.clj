@@ -13,6 +13,7 @@
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.litellm :as litellm]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.ollama :as ollama]
@@ -43,6 +44,7 @@
    #'claude/provider     :metabot.anthropic/request
    #'deepseek/provider   :metabot.deepseek/request
    #'google/provider     :metabot.google/request
+   #'litellm/provider    :metabot.litellm/request
    #'mistral/provider    :metabot.mistral/request
    #'moonshot/provider   :metabot.moonshot/request
    #'ollama/provider     :metabot.ollama/request
@@ -70,6 +72,7 @@
    #'claude/provider     "Anthropic API error (HTTP 418)"
    #'deepseek/provider   "DeepSeek API error (HTTP 418)"
    #'google/provider     "Google API error (HTTP 418)"
+   #'litellm/provider    "LiteLLM API error (HTTP 418)"
    #'mistral/provider    "Mistral API error (HTTP 418)"
    #'moonshot/provider   "Moonshot API error (HTTP 418)"
    ;; the one adapter with no `:error-fallback` of its own: no shipped translation to keep, so it takes

@@ -403,6 +403,28 @@
                      ;; not required: a self-hosted server takes none, and a base URL on its own is a complete
                      ;; configuration. Ollama Cloud refuses a generation without one, which connecting finds out.
                      :help  (deferred-tru "Required for Ollama Cloud. Leave blank if your server doesn''t require one.")}]}
+   {:type          "litellm"
+    :label         (deferred-tru "LiteLLM")
+    ;; A LiteLLM proxy serves the model aliases its operator configured, so there is no model to default to: the
+    ;; one a new connection starts on comes from the catalog that connecting fetches (see
+    ;; [[metabase.metabot.self.litellm/list-models]]).
+    :default-model nil
+    :fields        [{:key         :base-url
+                     :normalize   strip-trailing-slashes
+                     :validate    llm.provider.settings/llm-url-problem
+                     :label       (deferred-tru "API base URL")
+                     :type        :text
+                     :required?   true
+                     :placeholder "http://localhost:4000"
+                     :help        (deferred-tru (str "Your LiteLLM proxy''s address, with or without /v1. "
+                                                     "Metabase must be able to reach it: a proxy on your private "
+                                                     "network or on this machine needs MB_LLM_ALLOWED_NETWORKS."))}
+                    {:key      :api-key
+                     :label    (deferred-tru "API key")
+                     :type     :password
+                     ;; not required: a proxy started without a master key takes no key, and a base URL on its own
+                     ;; is a complete configuration
+                     :help     (deferred-tru "A virtual key or the master key. Leave blank if your proxy doesn''t require one.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -747,7 +769,12 @@
                  ;; as for vLLM, the base URL is the credential: a self-hosted server takes no key, so the URL alone
                  ;; brings a usable connection into existence. A key alone, with no address to send it to, does not.
                  :settings {:base-url {:setting :llm-ollama-api-base-url :credential? true}
-                            :api-key  {:setting :llm-ollama-api-key}}}})
+                            :api-key  {:setting :llm-ollama-api-key}}}
+   "litellm"    {:type     "litellm"
+                 ;; as for vLLM, the base URL is the credential: a proxy started without a master key takes no
+                 ;; key, so the URL alone brings a usable connection into existence
+                 :settings {:base-url {:setting :llm-litellm-api-base-url :credential? true}
+                            :api-key  {:setting :llm-litellm-api-key}}}})
 
 (defn connection-env-vars
   "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
@@ -853,7 +880,8 @@
 
   A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
   rather than through the API, so its base URL is as trusted as the variable holding the secret. A type whose base
-  URL has no default — Azure, vLLM, Ollama — is left incomplete, and so unusable, rather than pointed anywhere.
+  URL has no default — Azure, vLLM, Ollama, LiteLLM — is left incomplete, and so unusable, rather than pointed
+  anywhere.
 
   Warned about once per value rather than on every read: it is the only trace an operator gets of a base URL their
   instance is configured with but is not using."

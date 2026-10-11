@@ -12,6 +12,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.litellm :as litellm]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.ollama :as ollama]
@@ -100,6 +101,8 @@
                  :list-models      #'google/list-models
                  :context-window   #'google/context-window-tokens
                  :reasoning?       #'google/streams-reasoning?}
+   "litellm"    {:stream           #'litellm/litellm
+                 :list-models      #'litellm/list-models}
    "mistral"    {:stream           #'mistral/mistral
                  :list-models      #'mistral/list-models
                  :supported-models #'mistral/supported-models

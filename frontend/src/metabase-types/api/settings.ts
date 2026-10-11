@@ -560,6 +560,8 @@ interface SettingsManagerSettings {
   "llm-ollama-api-base-url"?: string | null;
   "llm-ollama-api-key"?: string | null;
   "llm-ollama-request-timeout-ms"?: number | null;
+  "llm-litellm-api-base-url"?: string | null;
+  "llm-litellm-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
