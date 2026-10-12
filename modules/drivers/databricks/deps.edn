@@ -19,7 +19,7 @@
   ;; pinned: databricks-jdbc-thin 3.3.1 pulls commons-configuration2 2.11.0 (CVE-2026-45205)
   org.apache.commons/commons-configuration2 {:mvn/version "2.15.1"}
   ;; pin newer version than the one bundled with databricks-jdbc-thin
-  org.apache.thrift/libthrift {:mvn/version "0.24.0"
+  org.apache.thrift/libthrift {:mvn/version "0.25.0"
                                ;; pinned in and resolved from /deps.edn
                                :exclusions [org.apache.httpcomponents.client5/httpclient5
                                             org.apache.httpcomponents.core5/httpcore5

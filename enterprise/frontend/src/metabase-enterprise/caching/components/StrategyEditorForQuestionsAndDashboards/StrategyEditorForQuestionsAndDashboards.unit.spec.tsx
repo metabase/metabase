@@ -183,10 +183,14 @@ describe("StrategyEditorForQuestionsAndDashboards", () => {
 
     await userEvent.clear(searchInput);
     await userEvent.type(searchInput, "Bananas");
-    // Even-numbered items live in "Collection Bananas"
-    expect(await screen.findByText("Item 2")).toBeInTheDocument();
+    // Even-numbered items live in "Collection Bananas". Wait for both conditions
+    // together: "Item 2" alone also shows while the cleared (empty) query is
+    // briefly committed, and "Item 1" alone is also absent before it commits.
+    await waitFor(() => {
+      expect(screen.getByText("Item 2")).toBeInTheDocument();
+      expect(screen.queryByText("Item 1")).not.toBeInTheDocument();
+    });
     expect(screen.getByText("Item 4")).toBeInTheDocument();
-    expect(screen.queryByText("Item 1")).not.toBeInTheDocument();
   });
 
   it("filters by caching policy and type", async () => {

@@ -12,7 +12,7 @@ import type { CardId, WritebackAction } from "metabase-types/api";
 import { isSavedAction } from "../../utils";
 
 import { useActionContext } from "./ActionContext";
-import ActionCreatorView from "./ActionCreatorView";
+import { ActionCreatorView } from "./ActionCreatorView";
 import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
 import CreateActionForm from "./CreateActionForm";
 import type { DataReferenceSlot } from "./types";

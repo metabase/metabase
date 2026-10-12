@@ -15,6 +15,4 @@ definition:
 entity_id: DBap2523KuN4Lt-cYrUjF
 name: Order Count
 serdes/meta:
-- id: DBap2523KuN4Lt-cYrUjF
-  label: order_count
-  model: Measure
+- model: Measure

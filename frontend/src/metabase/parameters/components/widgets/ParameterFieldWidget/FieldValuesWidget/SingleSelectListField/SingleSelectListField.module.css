@@ -1,0 +1,16 @@
+.optionsList {
+  overflow: auto;
+  list-style: none;
+}
+
+/* Selected items set their color and background as props, which also override this hover. */
+.optionItem {
+  cursor: pointer;
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background_page-primary);
+
+  &:hover {
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}

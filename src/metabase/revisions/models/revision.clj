@@ -223,19 +223,22 @@
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
         last-object (revisions.db/latest-revision-object entity-name id)
-        ;; For Card entities, ensure :card_schema is excluded from comparison
-        ;; Old revisions might have :card_schema added by after-select, but this field
-        ;; shouldn't trigger new revisions as it's a technical/internal field
-        last-object-for-comparison (cond-> last-object
-                                     (= entity :model/Card) (dissoc :card_schema))]
+        ;; For Card entities, ensure :card_schema is excluded from comparison. It is a
+        ;; technical/internal marker, so on its own it should not trigger a new revision. It has to come off
+        ;; BOTH sides: `serialize-instance :model/Card` keeps it, so dropping it only from the last revision
+        ;; made every Card compare as changed and recorded a revision on every push.
+        ;; It stays in the object we store, because `revert-to-revision! :model/Card` reads it back.
+        for-comparison (fn [m]
+                         (cond-> m
+                           (= entity :model/Card) (dissoc :card_schema)))]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
     ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
     ;; E.g: Cards inside Dashboard will not be transformed
     ;; so to be safe, we'll just compare them as string
-    (when-not (= (json/encode serialized-object)
-                 (json/encode last-object-for-comparison))
+    (when-not (= (json/encode (for-comparison serialized-object))
+                 (json/encode (for-comparison last-object)))
       (revisions.db/insert-revision! {:model        entity-name
                                       :model_id     id
                                       :user_id      user-id

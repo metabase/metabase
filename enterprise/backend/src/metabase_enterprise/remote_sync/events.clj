@@ -11,7 +11,8 @@
 
    Tracked model types:
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
-   - Table and TableUserSettings, which also carries a Field's own edits (when published in a remote-synced collection)
+   - Table and TableUserSettings (when published in a remote-synced collection)
+   - FieldUserSettings and Dimension, keyed by their Field (when its Table is published in a remote-synced collection)
    - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
    - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)"
@@ -36,12 +37,24 @@
      :status            "create"
      :status_changed_at timestamp}))
 
-(defn enable-library-tracking!
-  "Mark all existing snippets, snippets-namespace collections, and glossary entries as 'create' for initial sync."
+(defn- data-action-collections
+  "The `:id` and `:name` of the data actions Collections."
   []
-  (let [timestamp (t/offset-date-time)
+  (remote-sync.db/collections-with-names-in-namespace (name collections/data-actions-ns)))
+
+(defn- library-actions
+  "The Actions without a model in the data actions root or a data actions Collection."
+  [data-action-collection-ids]
+  (remote-sync.db/actions-without-model-in (vec data-action-collection-ids)))
+
+(defn enable-library-tracking!
+  "Mark all existing snippets, data actions, their namespaces' collections, and glossary entries as 'create' for
+  initial sync."
+  []
+  (let [timestamp               (t/offset-date-time)
+        data-action-collections (data-action-collections)
         rows      (concat
-                   (for [coll (remote-sync.db/snippet-collections)]
+                   (for [coll (concat (remote-sync.db/snippet-collections) data-action-collections)]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
@@ -52,6 +65,13 @@
                       :model_id            (:id snippet)
                       :model_name          (:name snippet)
                       :model_collection_id (:collection_id snippet)
+                      :status              "create"
+                      :status_changed_at   timestamp})
+                   (for [action (library-actions (map :id data-action-collections))]
+                     {:model_type          "Action"
+                      :model_id            (:id action)
+                      :model_name          (:name action)
+                      :model_collection_id (:collection_id action)
                       :status              "create"
                       :status_changed_at   timestamp})
                    (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
@@ -67,37 +87,55 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
-(defn track-untracked-actions!
-  "Insert a 'create' ledger row for every unarchived Action with none whose model is in the Collections with
-  `collection-ids`. Returns the number of rows inserted."
-  [collection-ids]
-  (let [action-spec (spec/spec-for-model-key :model/Action)
-        timestamp   (t/offset-date-time)
-        rows        (when (seq collection-ids)
-                      (for [action (remote-sync.db/untracked-actions-in-collections (vec collection-ids))]
-                        (merge {:model_type        "Action"
-                                :model_id          (:id action)
-                                :status            "create"
-                                :status_changed_at timestamp}
-                               (spec/build-sync-object-fields action-spec action))))]
+(defn backfill-action-tracking!
+  "Insert a 'create' ledger row for every unarchived Action in a remote-synced collection that has none, returning the
+  number of rows inserted."
+  []
+  (let [action-spec    (spec/spec-for-model-key :model/Action)
+        collection-ids (remote-sync.db/remote-synced-collection-ids)
+        tracked        (remote-sync.db/tracked-model-ids "Action")
+        timestamp      (t/offset-date-time)
+        rows           (when (seq collection-ids)
+                         (for [action (remote-sync.db/instances-in-collections :model/Action collection-ids :archived)
+                               :when  (not (contains? tracked (:id action)))]
+                           (merge {:model_type        "Action"
+                                   :model_id          (:id action)
+                                   :status            "create"
+                                   :status_changed_at timestamp}
+                                  (spec/build-sync-object-fields action-spec action))))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
-(defn backfill-action-tracking!
-  "Insert a 'create' ledger row for every untracked Action of a model in a remote-synced collection, so an instance
-  upgraded with synced models still pushes their actions. Returns the number of rows inserted."
+(defn backfill-data-app-tracking!
+  "Insert a 'create' ledger row for every published DataApp that has none, returning the number of rows inserted."
   []
-  (track-untracked-actions! (remote-sync.db/remote-synced-collection-ids)))
+  (let [data-app-spec (spec/spec-for-model-key :model/DataApp)
+        tracked       (remote-sync.db/tracked-model-ids "DataApp")
+        timestamp     (t/offset-date-time)
+        rows          (for [app (remote-sync.db/instances-where :model/DataApp (:conditions data-app-spec))
+                            :when (not (contains? tracked (:id app)))]
+                        (merge {:model_type        "DataApp"
+                                :model_id          (:id app)
+                                :status            "create"
+                                :status_changed_at timestamp}
+                               (spec/build-sync-object-fields data-app-spec app)))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
 
 (defn disable-library-tracking!
-  "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
+  "Remove all snippet, data action, their namespaces' collection, and glossary tracking entries."
   []
-  (let [snippet-coll-ids (remote-sync.db/snippet-collection-ids)]
+  (let [data-action-coll-ids (into #{} (map :id) (data-action-collections))
+        coll-ids             (into (remote-sync.db/snippet-collection-ids) data-action-coll-ids)
+        action-ids           (into #{} (map :id) (library-actions data-action-coll-ids))]
     (remote-sync.db/delete-rsos-of-type! "NativeQuerySnippet")
     (remote-sync.db/delete-rsos-of-type! "Glossary")
-    (when (seq snippet-coll-ids)
-      (remote-sync.db/delete-rsos-of-models! "Collection" snippet-coll-ids))))
+    (when (seq coll-ids)
+      (remote-sync.db/delete-rsos-of-models! "Collection" coll-ids))
+    (when (seq action-ids)
+      (remote-sync.db/delete-rsos-of-models! "Action" action-ids))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -178,11 +216,14 @@
     (let [model-type (:model-type model-spec)
           existing   (remote-sync.db/lock-rso model-type model-id)]
       (cond
+        (and (not existing)
+             (contains? #{"removed" "delete"} status))
+        nil
+
         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
         ;; an entity that has since left the synced set. This narrows, but cannot fully close, that window.
         (and (not existing)
-             (not (contains? #{"removed" "delete"} status))
              (not (still-eligible? model-spec model-id)))
         nil
 
@@ -230,7 +271,7 @@
 (defn- cascade-to-children!
   "When a parent model becomes eligible/ineligible, cascade to its children.
    For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
-   For ineligible: find the children's active RSOs and mark them as removed."
+   For ineligible: query existing RSOs by model_table_id and mark as removed."
   [model-spec model-id status eligible?]
   (doseq [child-spec (spec/children-specs (:model-key model-spec))]
     (let [fk     (:parent-fk child-spec)
@@ -241,10 +282,7 @@
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
         ;; Ineligible branch: mark existing child RSOs as removed
-        (doseq [child-rso (if-let [rso-key (:parent-rso-key child-spec)]
-                            (remote-sync.db/active-child-rsos (:model-type child-spec) rso-key model-id)
-                            (remote-sync.db/active-rsos-of-children (:model-key child-spec) (:model-type child-spec)
-                                                                    fk model-id))]
+        (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
 (defn- handle-model-event-from-spec
@@ -384,7 +422,7 @@
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
 
-;;; ----------------------------------------- TableUserSettings Tracking -----------------------------------------------
+;;; ------------------------------------------- User Settings Tracking -------------------------------------------------
 
 (def ^:private table-spec (get spec/remote-sync-specs :model/Table))
 (def ^:private field-spec (get spec/remote-sync-specs :model/Field))
@@ -395,33 +433,39 @@
   (let [details (spec/hydrate-model-details table-spec table-id)]
     (assoc details :table_id (:id details) :table_name (:name details))))
 
-(defn- sync-table-user-settings!
-  "Track the Table's TableUserSettings when eligible and any of its user settings exist, else mark it removed."
-  [table-id eligible?]
-  (cond
-    (and eligible? (remote-sync.db/user-settings-exist-for-table? table-id))
-    (create-or-update-remote-sync-object-entry!
-     "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
+(defn- hydrate-field-details
+  "The RemoteSyncObject details of the Field with `field-id`."
+  [field-id]
+  (spec/hydrate-model-details field-spec field-id))
 
-    (and (not eligible?)
-         (remote-sync.db/rso-exists? "TableUserSettings" table-id))
-    (create-or-update-remote-sync-object-entry!
-     "TableUserSettings" table-id "removed" hydrate-table-user-settings-details)))
+(defn- sync-user-settings!
+  "Track `model-type` `id` as updated when `eligible?` and `exists?` holds for it, else mark it removed when tracked."
+  [model-type id eligible? exists? hydrate-details]
+  (cond
+    (and eligible? (exists? id))
+    (create-or-update-remote-sync-object-entry! model-type id "update" hydrate-details)
+
+    (remote-sync.db/rso-exists? model-type id)
+    (create-or-update-remote-sync-object-entry! model-type id "removed" hydrate-details)))
 
 (events/derive! :event/field-update ::field-update-event)
 (events/derive! ::field-update-event :metabase/event)
 
 (methodical/defmethod events/publish-event! ::field-update-event
   [_topic {:keys [object]}]
-  (when-let [table-id (:table_id object)]
-    (sync-table-user-settings! table-id (spec/check-eligibility field-spec object))))
+  (let [eligible? (spec/check-eligibility field-spec object)]
+    (sync-user-settings! "FieldUserSettings" (:id object) eligible?
+                         remote-sync.db/field-user-settings-exist? hydrate-field-details)
+    (sync-user-settings! "Dimension" (:id object) eligible?
+                         remote-sync.db/dimension-exists-for-field? hydrate-field-details)))
 
 (defn- handle-table-event!
   "The generic Table handler plus the Table's TableUserSettings; one handler, since a second primary method on the
   same events would displace the generic one."
   [topic {:keys [object] :as event}]
   (handle-model-event-from-spec table-spec topic event)
-  (sync-table-user-settings! (:id object) (spec/check-eligibility table-spec object)))
+  (sync-user-settings! "TableUserSettings" (:id object) (spec/check-eligibility table-spec object)
+                       remote-sync.db/table-user-settings-exist? hydrate-table-user-settings-details))
 
 (let [event-kws (spec/event-keywords table-spec)
       parent-kw (:parent event-kws)]

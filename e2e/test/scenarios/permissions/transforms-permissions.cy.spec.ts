@@ -29,28 +29,24 @@ describe(
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       cy.intercept("POST", "/api/transform").as("createTransform");
-      cy.intercept("POST", "/api/transform/*/run").as("runTransform");
     });
 
     describe("permission editor UI", () => {
-      it("shows Transforms column only at database level, not schema level", () => {
-        cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
-        cy.findByTestId("permission-table")
-          .find("thead")
-          .should("contain.text", "Transforms");
+      it("shows Transforms column only at database level, and allows changing and saving transforms permission", () => {
+        cy.intercept("PUT", "/api/permissions/graph").as("savePermissions");
 
         cy.visit(
           `/admin/permissions/data/database/${WRITABLE_DB_ID}/schema/Schema%20A`,
         );
         cy.findByTestId("permission-table")
           .find("thead")
-          .should("not.contain.text", "Transforms");
-      });
-
-      it("allows changing and saving transforms permission", () => {
-        cy.intercept("PUT", "/api/permissions/graph").as("savePermissions");
+          .should("contain.text", "Create queries")
+          .and("not.contain.text", "Transforms");
 
         cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
+        cy.findByTestId("permission-table")
+          .find("thead")
+          .should("contain.text", "Transforms");
 
         H.assertPermissionForItem(
           "All Users",
@@ -107,19 +103,12 @@ describe(
         H.setUserAsAnalyst(NORMAL_USER_ID);
       });
 
-      it("allows user to view transforms list page", () => {
+      it("allows user to view transforms list page and create a new transform via UI", () => {
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
 
         H.DataStudio.Transforms.list().should("be.visible");
-        cy.button("Create a transform").should("be.visible");
-      });
-
-      it("allows user to create a new transform via UI", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/transforms");
-
-        cy.button("Create a transform").click();
+        cy.button("Create a transform").should("be.visible").click();
         H.popover().findByText("Query builder").click();
 
         H.miniPicker().within(() => {
@@ -174,6 +163,7 @@ describe(
           H.DataStudio.Transforms.header()
             .findByDisplayValue("Admin Created Transform")
             .should("be.visible");
+          H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
         });
       });
     });
@@ -210,6 +200,7 @@ describe(
         cy.log(
           "Writable Postgres should not be present in mini-picker when user lacks transform permission for it",
         );
+        H.miniPicker().findByText("Our analytics").should("be.visible");
         H.miniPicker()
           .findByText(/Writable Postgres/)
           .should("not.exist");
@@ -253,31 +244,7 @@ describe(
         H.setUserAsAnalyst(NORMAL_USER_ID, false);
       });
 
-      it("denies user access to transforms list page", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/transforms");
-
-        cy.url().should("include", "/unauthorized");
-        cy.findByRole("img", { name: /key/ }).should("exist");
-      });
-
-      it("denies user access to a specific transform page", () => {
-        cy.signInAsAdmin();
-        H.createAndRunMbqlTransform({
-          sourceTable: SOURCE_TABLE,
-          targetTable: TARGET_TABLE,
-          targetSchema: TARGET_SCHEMA,
-          name: "Admin Only Transform",
-        }).then(({ transformId }) => {
-          cy.signInAsNormalUser();
-          H.visitTransform(transformId);
-
-          cy.url().should("include", "/unauthorized");
-          cy.findByRole("img", { name: /key/ }).should("exist");
-        });
-      });
-
-      it("denies user from creating transforms via API", () => {
+      it("denies user access to a transform page, and from creating and running transforms via API", () => {
         cy.signInAsNormalUser();
 
         H.getTableId({ databaseId: WRITABLE_DB_ID, name: SOURCE_TABLE }).then(
@@ -308,17 +275,19 @@ describe(
             });
           },
         );
-      });
 
-      it("denies user from running transforms via API", () => {
         cy.signInAsAdmin();
         H.createMbqlTransform({
           sourceTable: SOURCE_TABLE,
           targetTable: TARGET_TABLE,
           targetSchema: TARGET_SCHEMA,
-          name: "Transform to Run",
+          name: "Admin Only Transform",
         }).then(({ body: transform }) => {
           cy.signInAsNormalUser();
+          H.visitTransform(transform.id);
+
+          cy.url().should("include", "/unauthorized");
+          cy.findByRole("img", { name: /key/ }).should("exist");
 
           cy.request({
             method: "POST",
@@ -332,13 +301,14 @@ describe(
     });
 
     describe("permission changes affect access immediately", () => {
-      it("grants access after permission is added", () => {
+      it("grants access after permission is added, and revokes it after permission is removed", () => {
         denyTransformsPermissionToAllGroups();
         H.setUserAsAnalyst(NORMAL_USER_ID, false);
 
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
         cy.url().should("include", "/unauthorized");
+        cy.findByRole("img", { name: /key/ }).should("exist");
 
         cy.signInAsAdmin();
         grantTransformsPermissionToAllGroups();
@@ -348,15 +318,6 @@ describe(
         cy.visit("/data-studio/transforms");
         getTransformsNavLink().should("be.visible");
         H.DataStudio.Transforms.list().should("be.visible");
-      });
-
-      it("revokes access after permission is removed", () => {
-        grantTransformsPermissionToAllGroups();
-        H.setUserAsAnalyst(NORMAL_USER_ID);
-
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/transforms");
-        getTransformsNavLink().should("be.visible");
 
         cy.signInAsAdmin();
         denyTransformsPermissionToAllGroups();

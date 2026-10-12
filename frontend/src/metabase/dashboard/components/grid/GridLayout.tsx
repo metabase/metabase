@@ -1,14 +1,15 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import {
   type ItemCallback,
   Responsive as ReactGridLayout,
 } from "react-grid-layout";
 
+import { useHasPaintedSinceMount } from "metabase/common/hooks/use-has-painted-since-mount";
 import { useMantineTheme } from "metabase/ui";
-
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-
+import S from "./GridLayout.module.css";
 import { generateGridBackground } from "./utils";
 
 // We need to omit onLayoutChange and margin from the props of ReactGridLayout
@@ -81,9 +82,17 @@ export function GridLayout<T extends { id: number | null }>(
     rowHeight,
     isEditing,
     onLayoutChange,
+    className,
     ...otherProps
   } = props;
   const theme = useMantineTheme();
+
+  // Cards only animate while editing, where the motion shows where a dragged
+  // or resized card lands. Even then, wait for a paint after mount:
+  // react-grid-layout swaps top/left positioning for CSS transforms right after
+  // mounting, and animating that swap slides every card in from the top-left.
+  const hasPaintedSinceMount = useHasPaintedSinceMount();
+  const areTransitionsEnabled = isEditing && hasPaintedSinceMount;
 
   const [currentBreakpoint, setCurrentBreakpoint] = useState(
     // Unjustified type cast. FIXME
@@ -235,6 +244,9 @@ export function GridLayout<T extends { id: number | null }>(
       isDraggable={isEditing && !isMobile}
       isResizable={isEditing && !isMobile}
       {...otherProps}
+      className={cx(className, {
+        [S.withoutTransitions]: !areTransitionsEnabled,
+      })}
       autoSize={false}
       onLayoutChange={onLayoutChangeWrapped}
       onBreakpointChange={onBreakpointChange}

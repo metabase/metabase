@@ -62,7 +62,7 @@ export function MetabotChatHistory() {
           messages={chatMessages}
           size="md"
           onRetryMessage={metabot.retryMessage}
-          onContinueMessage={metabot.submitInput}
+          onContinueMessage={metabot.continueResponse}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
           conversationId={metabot.conversationId}

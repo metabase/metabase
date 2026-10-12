@@ -5,9 +5,9 @@ import { SettingHeader } from "metabase/settings-components";
 import { Box, Stack, Tabs } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
-import BrandColorSettings from "../BrandColorSettings";
-import ChartColorPreview from "../ChartColorPreview";
-import ChartColorSettings from "../ChartColorSettings";
+import { BrandColorSettings } from "../BrandColorSettings";
+import { ChartColorPreview } from "../ChartColorPreview";
+import { ChartColorSettings } from "../ChartColorSettings";
 
 export interface ColorSettingsProps {
   initialColors: ColorSettingsType | null;

@@ -184,7 +184,7 @@
   (transforms.core/check-database-feature body)
   (transforms.core/validate-incremental-column-type! body)
   (api/check (not (transforms-base.u/target-table-exists? body))
-             403
+             409
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
       transforms.u/add-source-readable))

@@ -23,16 +23,40 @@ describe("useIsParameterPanelSticky", () => {
   let mockDisconnect: jest.Mock;
   let intersectionCallback: IntersectionObserverCallback | null = null;
 
-  const invokeIntersection = (isIntersecting: boolean) => {
+  const VIEWPORT = new DOMRect(0, 0, 1000, 800);
+
+  type SentinelPosition = "visible" | "above" | "below";
+
+  const SENTINEL_TOP: Record<SentinelPosition, number> = {
+    visible: 100,
+    above: -100,
+    below: VIEWPORT.bottom + 100,
+  };
+
+  const createEntry = (
+    position: SentinelPosition,
+  ): IntersectionObserverEntry => {
+    const entry = {
+      isIntersecting: position === "visible",
+      boundingClientRect: new DOMRect(0, SENTINEL_TOP[position], 1000, 1),
+      rootBounds: VIEWPORT,
+    };
+    // The hook only reads isIntersecting, boundingClientRect and rootBounds
+    return entry as IntersectionObserverEntry;
+  };
+
+  const invokeIntersections = (positions: SentinelPosition[]) => {
     act(() => {
       intersectionCallback?.(
-        // Unjustified type cast. FIXME
-        [{ isIntersecting } as IntersectionObserverEntry],
-        // Unjustified type cast. FIXME
+        positions.map(createEntry),
+        // The hook's callback never reads the observer argument
         {} as IntersectionObserver,
       );
     });
   };
+
+  const invokeIntersection = (isIntersecting: boolean) =>
+    invokeIntersections([isIntersecting ? "visible" : "above"]);
 
   beforeAll(() => {
     originalIntersectionObserver = global.IntersectionObserver;
@@ -95,6 +119,32 @@ describe("useIsParameterPanelSticky", () => {
     invokeIntersection(true);
 
     expect(result.current.isSticky).toBe(false);
+  });
+
+  it("does not set isSticky when the sentinel is below the viewport", async () => {
+    const { result } = setup();
+
+    await waitFor(() => {
+      expect(mockObserve).toHaveBeenCalledTimes(1);
+    });
+
+    invokeIntersections(["below"]);
+
+    expect(result.current.isSticky).toBe(false);
+  });
+
+  it("uses the latest entry when several are delivered at once", async () => {
+    const { result } = setup();
+
+    await waitFor(() => {
+      expect(mockObserve).toHaveBeenCalledTimes(1);
+    });
+
+    invokeIntersections(["above", "visible"]);
+    expect(result.current.isSticky).toBe(false);
+
+    invokeIntersections(["visible", "above"]);
+    expect(result.current.isSticky).toBe(true);
   });
 
   it("sets isStickyStateChanging to true and false before and after isSticky is changed", async () => {

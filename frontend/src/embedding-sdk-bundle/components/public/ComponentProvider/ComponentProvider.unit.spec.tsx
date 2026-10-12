@@ -16,10 +16,17 @@ import { render, screen } from "__support__/ui";
 import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { isHostReactVersionSupported } from "embedding-sdk-bundle/lib/host-react-version";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
+import { useLocale } from "metabase/common/hooks/use-locale";
 
 import { ComponentProvider } from "./ComponentProvider";
 
 const mockUseInitSdkTracker = jest.mocked(useInitSdkTracker);
+
+/** Reports when `LocaleProvider` has finished loading the catalogue it asks for. */
+const LocaleProbe = () => {
+  const { isLocaleLoading } = useLocale();
+  return <div>{isLocaleLoading ? "locale loading" : "locale ready"}</div>;
+};
 
 describe("ComponentProvider — unsupported host React", () => {
   let consoleError: jest.SpyInstance;
@@ -58,8 +65,8 @@ describe("ComponentProvider — tracker wiring", () => {
     jest.clearAllMocks();
   });
 
-  it("passes locale != null as the third argument when locale is set", () => {
-    renderWithSDKProviders(<div />, {
+  it("passes locale != null as the third argument when locale is set", async () => {
+    renderWithSDKProviders(<LocaleProbe />, {
       componentProviderProps: {
         authConfig: { metabaseInstanceUrl: "https://metabase.example.com" },
         locale: "en",
@@ -71,6 +78,10 @@ describe("ComponentProvider — tracker wiring", () => {
       expect.anything(),
       true,
     );
+
+    // Asking for a locale loads a catalogue, and the provider updates when it
+    // lands. Wait for that rather than leaving it to resolve after the test.
+    expect(await screen.findByText("locale ready")).toBeInTheDocument();
   });
 
   it("passes false as the third argument when locale is not set", () => {

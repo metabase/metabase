@@ -2,12 +2,12 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import {
   CONTEXT_WINDOW_WARNING_PERCENT,
-  FIXED_METABOT_IDS,
-  METABOT_REQUEST_IDS,
+  FIXED_METABOT_ENTITY_IDS,
 } from "../constants";
 import {
   getContextWindowPercentUsage,
@@ -17,10 +17,18 @@ import {
 import type {
   MetabotAgentId,
   MetabotContextUsage,
+  MetabotIncompleteTurn,
   MetabotMessage,
   MetabotState,
 } from "./types";
-import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
+import {
+  getIncompleteTurnMessage,
+  getIncompleteTurnReason,
+  getIncompleteTurnResumePrompt,
+  hasInProgressMessage,
+  isGeneratedCardPart,
+  isTextPart,
+} from "./utils";
 
 /*
  * Top Level Selectors
@@ -37,8 +45,10 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.agents) as MetabotAgentId[],
 );
 
-export const getMetabotId = () =>
-  isEmbedding() ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
+export const getMetabotEntityId = () =>
+  isEmbedding()
+    ? FIXED_METABOT_ENTITY_IDS.EMBEDDED
+    : FIXED_METABOT_ENTITY_IDS.DEFAULT;
 
 export const getDebugMode = createSelector(
   getMetabotState,
@@ -259,14 +269,39 @@ export const getLongChatNotice = createSelector(
   },
 );
 
+const getMetabotName = (state: State) => getSetting(state, "metabot-name");
+
+// Only the latest turn can be continued; earlier incomplete turns are history.
+export const getIncompleteTurn = createSelector(
+  [getMessages, getMetabotName],
+  (messages, metabotName): MetabotIncompleteTurn | null => {
+    const lastMessage = messages.at(-1);
+    if (
+      lastMessage?.role !== "agent" ||
+      lastMessage.status.type !== "incomplete"
+    ) {
+      return null;
+    }
+    const reason = getIncompleteTurnReason(lastMessage.status);
+    return {
+      reason,
+      message: getIncompleteTurnMessage(reason, metabotName),
+      resumePrompt: getIncompleteTurnResumePrompt(reason),
+    };
+  },
+);
+
 export const getMetabotReqIdOverride = createSelector(
   getConversation,
   (convo) => convo.experimental.metabotReqIdOverride,
 );
 
-export const getMetabotRequestId = (state: State, conversationId: string) =>
+export const getMetabotRequestEntityId = (
+  state: State,
+  conversationId: string,
+) =>
   getMetabotReqIdOverride(state, conversationId) ??
-  (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined);
+  (isEmbedding() ? FIXED_METABOT_ENTITY_IDS.EMBEDDED : undefined);
 
 export const getProfileOverride = createSelector(
   getConversation,

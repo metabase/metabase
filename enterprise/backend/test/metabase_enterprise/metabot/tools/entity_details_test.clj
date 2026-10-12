@@ -17,14 +17,19 @@
 
 (deftest sandboxed-field-values-test
   (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
-    (let [field-id (mt/id :categories :name)]
+    (let [field-ids [(mt/id :categories :id) (mt/id :categories :name)]]
       (try
-        (let [result     (entity-details/get-table-details {:entity-type :table :entity-id (mt/id :categories)})
-              name-field (some #(when (= "NAME" (:name %)) %) (get-in result [:structured-output :fields]))]
+        (let [result (entity-details/get-table-details {:entity-type :table :entity-id (mt/id :categories)})
+              field  (fn [field-name]
+                       (some #(when (= field-name (:name %)) %) (get-in result [:structured-output :fields])))]
           (testing "returns sandboxed field values"
-            (is (= ["African" "American"] (:field_values name-field)))))
+            (is (= ["African" "American"] (:field_values (field "NAME")))))
+          (testing "doesn't fetch values for the primary key"
+            (is (some? (field "ID")))
+            (is (nil? (:field_values (field "ID"))))
+            (is (not (t2/exists? :model/FieldValues :field_id (mt/id :categories :id) :type :advanced)))))
         (finally
-          (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
+          (t2/delete! :model/FieldValues :field_id [:in field-ids] :type :advanced))))))
 
 (deftest sandboxed-model-fields-test
   (testing "get-table-details for a model over a column-sandboxed table only returns allowed fields"

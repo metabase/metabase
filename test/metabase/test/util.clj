@@ -179,6 +179,12 @@
        :name (u.random/random-name)
        :position 0}))
 
+   :model/DataApp
+   (fn [_] {:entity_id    (u/generate-nano-id)
+            :name         (u/lower-case-en (u.random/random-name))
+            :display_name (u.random/random-name)
+            :bundle_path  "dist/index.js"})
+
    :model/Database
    (fn [_] (default-timestamped
             {:details {}
