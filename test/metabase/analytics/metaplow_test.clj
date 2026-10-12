@@ -88,15 +88,32 @@
       (is (=? {:payload {:hostname "anonymous.metabase.com"}}
               (#'metaplow/build-payload :snowplow/dashboard {:event :dashboard-created}))))))
 
+(defn- track-with-collecting-enqueue!
+  "Calls `track-event!` with [[metabase.analytics.metaplow/enqueue!]] stubbed out, and returns
+  `[returned-value enqueued-payloads]`."
+  []
+  (let [collector (atom [])]
+    (mt/with-dynamic-fn-redefs [metaplow/enqueue! (fn [payload]
+                                                    (swap! collector conj payload)
+                                                    true)]
+      [(metaplow/track-event! :snowplow/dashboard {:event :dashboard-created}) @collector])))
+
 (deftest tracking-disabled-test
   (testing "When metaplow-tracking-enabled is false the event is not enqueued and the call returns false"
-    (mt/with-temporary-setting-values [metaplow-url nil]
-      (let [collector (atom [])]
-        (mt/with-dynamic-fn-redefs [metaplow/enqueue! (fn [payload]
-                                                        (swap! collector conj payload)
-                                                        true)]
-          (is (false? (metaplow/track-event! :snowplow/dashboard {:event :dashboard-created})))
-          (is (empty? @collector)))))))
+    (testing "- no collector URL resolves"
+      (mt/with-temporary-setting-values [anon-tracking-enabled true
+                                         metaplow-url          nil]
+        (is (= [false []] (track-with-collecting-enqueue!)))))
+    (testing "- anonymous tracking is off, even though a collector URL resolves"
+      (mt/with-temporary-setting-values [anon-tracking-enabled false
+                                         metaplow-url          "http://fake-metaplow/api/send"]
+        (is (= [false []] (track-with-collecting-enqueue!))))))
+  (testing "With anonymous tracking on and a collector URL resolved, the event is enqueued"
+    (mt/with-temporary-setting-values [anon-tracking-enabled true
+                                       metaplow-url          "http://fake-metaplow/api/send"]
+      (let [[returned payloads] (track-with-collecting-enqueue!)]
+        (is (true? returned))
+        (is (=? [{:payload {:name "dashboard.dashboard_created"}}] payloads))))))
 
 (deftest send-event!-test
   (mt/with-temporary-setting-values [metaplow-url "http://fake-metaplow/api/send"]

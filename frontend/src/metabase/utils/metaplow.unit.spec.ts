@@ -26,6 +26,7 @@ describe("metaplow", () => {
   let fetchSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    Settings.set("metaplow-tracking-enabled", true);
     Settings.set("metaplow-url", METAPLOW_URL);
     fetchSpy = jest
       .spyOn(global, "fetch")
@@ -34,6 +35,7 @@ describe("metaplow", () => {
 
   afterEach(() => {
     fetchSpy.mockRestore();
+    Settings.set("metaplow-tracking-enabled", false);
     Settings.set("metaplow-url", null);
     reset();
   });
@@ -58,6 +60,11 @@ describe("metaplow", () => {
 
     it("is null when no collector is configured", () => {
       Settings.set("metaplow-url", null);
+      expect(getCollectorHostUrl()).toBeNull();
+    });
+
+    it("is null when the instance has Metabase Track off, even with a collector configured", () => {
+      Settings.set("metaplow-tracking-enabled", false);
       expect(getCollectorHostUrl()).toBeNull();
     });
   });
