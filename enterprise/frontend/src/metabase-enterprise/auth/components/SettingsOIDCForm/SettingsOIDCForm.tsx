@@ -305,11 +305,6 @@ export function SettingsOIDCForm() {
         {({ dirty, values, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
-              <UserProvisioningSection
-                settingKey="oidc-user-provisioning-enabled?"
-                providerName="OIDC"
-              />
-              {/* provisioning is its own setting, so the banner heads the cards it locks */}
               {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
 
               <SettingsSection
@@ -380,6 +375,12 @@ export function SettingsOIDCForm() {
                   />
                 </Stack>
               </SettingsSection>
+
+              {/* its own setting, so it stays live under an env-locked provider */}
+              <UserProvisioningSection
+                settingKey="oidc-user-provisioning-enabled?"
+                providerName="OIDC"
+              />
 
               <CollapsibleSettingsSection
                 title={t`Attributes`}

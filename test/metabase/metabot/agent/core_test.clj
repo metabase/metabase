@@ -18,7 +18,9 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.features :as features]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.permissions.core :as perms]
@@ -725,6 +727,106 @@
               (is (=? {:type :text :text "The orders table has what you need."}
                       (last (filter #(= :text (:type %)) result)))))))))))
 
+(deftest next-call-ends-on-the-tool-result-test
+  (testing "even when the text before the tool call ends like the start of a link"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [call-count (atom 0)
+            next-input (atom nil)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [{:keys [input]}]
+                                                            (if (= 1 (swap! call-count inc))
+                                                              (mut/mock-llm-response
+                                                               [{:type :text :id "t1" :text "Looking up [Orders"}
+                                                                {:type      :tool-input
+                                                                 :id        "call-1"
+                                                                 :function  "search"
+                                                                 :arguments {:keyword_queries ["orders"]}}])
+                                                              (do (reset! next-input input)
+                                                                  (mut/mock-llm-response [{:type :text :text "Found it."}]))))
+                                    metabot-search/search (constantly [])]
+          (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {}})
+          (is (=? {:type :tool-output :id "call-1"} (last @next-input))))))))
+
+(deftest next-call-replays-link-split-by-reasoning-test
+  (testing "reasoning between two text parts preserves the link and the tool result ends the next input"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [call-count (atom 0)
+            next-input (atom nil)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [{:keys [input]}]
+                                                            (if (= 1 (swap! call-count inc))
+                                                              [{:type :text-start :id "t1"}
+                                                               {:type :text-delta :id "t1" :delta "Looking up [Ord"}
+                                                               {:type :text-end :id "t1"}
+                                                               {:type :reasoning-start :id "r1"}
+                                                               {:type :reasoning-delta :id "r1" :delta "Thinking"}
+                                                               {:type :reasoning-end :id "r1"}
+                                                               {:type :text-start :id "t2"}
+                                                               {:type :text-delta :id "t2" :delta "ers](metabase://model/1)"}
+                                                               {:type :text-end :id "t2"}
+                                                               {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                                                               {:type           :tool-input-delta
+                                                                :toolCallId     "call-1"
+                                                                :inputTextDelta (json/encode {:keyword_queries ["orders"]})}
+                                                               {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]
+                                                              (do (reset! next-input input)
+                                                                  (mut/mock-llm-response [{:type :text :text "Found it."}]))))
+                                    metabot-search/search (constantly [])]
+          (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {}})
+          (is (=? [{:type :text :id "t1" :text "Looking up "}
+                   {:type :reasoning :id "r1" :text "Thinking"}
+                   {:type :text :id "t2" :text "[Orders](metabase://model/1)"}
+                   {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                   {:type :tool-output :id "call-1" :function "search"}]
+                  (filterv :type @next-input)))
+          (is (=? {:type :tool-output :id "call-1"} (last @next-input))))))))
+
+(deftest later-calls-resend-what-the-turn-already-sent-test
+  (testing "edits made during a turn don't change the system prompt, tools or messages its earlier calls sent"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Ops original"}]
+      (mt/as-admin
+        (mt/with-premium-features #{:ai-controls}
+          (mt/with-temporary-setting-values [llm-providers              llm.tu/default-connections
+                                             llm-metabot-provider       "anthropic/claude-opus-5-5"
+                                             metabot-chat-system-prompt "Use British spelling."]
+            (let [requests        (atom [])
+                  semantic-search (atom true)]
+              (mt/with-dynamic-fn-redefs [features/feature-available? (fn [_] @semantic-search)
+                                          claude/claude
+                                          (fn [opts]
+                                            (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
+                                              (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                                  (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
+                                                  (reset! semantic-search false)
+                                                  (mut/mock-llm-response [{:type      :tool-input
+                                                                           :id        "call-1"
+                                                                           :function  "load_skill"
+                                                                           :arguments {:ids ["read-resource"]}}]))
+                                              (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                (into [] (agent/run-agent-loop
+                          {:messages   [{:role :user :content "Help me with this dashboard."}]
+                           :state      {}
+                           :profile-id :internal
+                           :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                        :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+                (let [[{system-1 :system tools-1 :tools messages-1 :messages}
+                       {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
+                  (is (str/includes? (pr-str system-1) "Use British spelling."))
+                  (is (str/includes? (pr-str tools-1) "semantic_queries"))
+                  (is (str/includes? (pr-str messages-1) "Ops original"))
+                  (is (= system-1 system-2))
+                  (is (= tools-1 tools-2))
+                  (is (= messages-1 (take (count messages-1) messages-2)))
+                  (is (=? [{:role "assistant" :content [{:type "tool_use" :name "load_skill"}]}
+                           {:role "user" :content [{:type "tool_result"}]}]
+                          (drop (count messages-1) messages-2))))))))))))
+
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
     ;; This exercises the cross-module wiring the ai-tracing docstrings promise: the turn/llm spans
@@ -901,36 +1003,49 @@
                 "Should have called LLM twice (1 failure + 1 success")))))))
 
 (deftest provider-failure-error-part-test
-  (let [credit-error (ex-info "Anthropic API error (HTTP 400)"
-                              {:status     400
-                               :body       {:type  "error"
-                                            :error {:type    "invalid_request_error"
-                                                    :message "Your credit balance is too low to access the Anthropic API."}}
-                               :api-error  true
-                               :provider   "anthropic"
-                               :error-code :provider-api-error})
-        error-parts  (fn [model-ref]
+  (let [api-error    (fn [status error]
+                       (ex-info (str "Anthropic API error (HTTP " status ")")
+                                {:status     status
+                                 :body       {:type "error" :error error}
+                                 :api-error  true
+                                 :provider   "anthropic"
+                                 :error-code :provider-api-error}))
+        credit-error (api-error 400 {:type    "invalid_request_error"
+                                     :message "Your credit balance is too low to access the Anthropic API."})
+        overloaded   {:type "overloaded_error" :message "Overloaded"}
+        error-parts  (fn [model-ref claude-fn]
                        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                                           llm-metabot-provider model-ref]
-                         (mt/with-dynamic-fn-redefs [claude/claude (fn [_] (throw credit-error))]
-                           (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                         (mt/with-dynamic-fn-redefs [claude/claude       claude-fn
+                                                     self/retry-delay-ms (constantly 0)]
+                           (mt/with-log-level [metabase.metabot :fatal]
                              (filterv #(= :error (:type %))
                                       (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
                                                              :state      {}
                                                              :profile-id :embedding_next
-                                                             :context    {}}))))))]
+                                                             :context    {}}))))))
+        throw-credit (fn [_] (throw credit-error))]
     (testing "on the customer's own key, the error part says what to fix instead of passing the provider's text on"
       (is (=? [{:error {:error-code "ai_provider_billing" :message #"Anthropic rejected the request .*"}}]
-              (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6"))))
+              (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6" throw-credit))))
       (is (=? [{:error {:error-code "ai_provider_billing" :message #"The AI provider rejected the request .*"}}]
               (mt/with-current-user (mt/user->id :rasta)
-                (error-parts "anthropic/claude-sonnet-4-6")))))
+                (error-parts "anthropic/claude-sonnet-4-6" throw-credit)))))
     (testing "on the managed provider, the error part keeps today's generic shape"
       (is (= [{:type  :error
                :error {:message (ex-message credit-error)
                        :type    (str (type credit-error))
                        :data    (ex-data credit-error)}}]
-             (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6")))))))
+             (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" throw-credit)))))
+    (testing "an outage says to try again later on either connection, whether the request failed or the stream did"
+      (doseq [claude-fn [(fn [_] (throw (api-error 529 overloaded)))
+                         (fn [_] (eduction (claude/claude->aisdk-chunks-xf)
+                                           [{:type "message_start" :message {:id "msg_1"}}
+                                            {:type "error" :error overloaded}]))]]
+        (is (=? [{:error {:error-code "ai_provider_unavailable" :message #"Anthropic is having problems .*"}}]
+                (mt/as-admin (error-parts "anthropic/claude-sonnet-4-6" claude-fn))))
+        (is (=? [{:error {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems .*"}}]
+                (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" claude-fn))))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 

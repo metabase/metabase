@@ -10,6 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import metabotSlackbotIcon from "assets/img/metabot-slackbot.png";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { SlackSetup } from "./SlackSetup";
@@ -151,10 +152,8 @@ describe("SlackSetup", () => {
     const downloadLink = screen.getByRole("link", {
       name: "Download App Icon",
     });
-    expect(downloadLink).toHaveAttribute(
-      "href",
-      "/app/assets/img/metabot-slackbot.png",
-    );
+    expect(downloadLink).toHaveAttribute("href", metabotSlackbotIcon);
+    expect(downloadLink).toHaveAttribute("download", "metabot-slack-icon.png");
   });
 
   it("should show link to Slack app settings", async () => {

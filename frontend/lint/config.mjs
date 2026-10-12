@@ -345,6 +345,9 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
+      "frontend/src/metabase/embedding-hub/**/*",
+      "frontend/src/metabase/embedding/settings/**/*",
+      "frontend/src/metabase/embedding/themes/**/*",
       "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",
       "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
@@ -483,7 +486,7 @@ const configs = [
       ],
       "import/no-unresolved": [
         "error",
-        { ignore: ["@metabase/embedding-sdk-react"] },
+        { ignore: ["@metabase/embedding-sdk-react", "^cljs/"] },
       ],
       "metabase/no-direct-helper-import": "error",
       "metabase/no-unsafe-element-filtering": "warn",

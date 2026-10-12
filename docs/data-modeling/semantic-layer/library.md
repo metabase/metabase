@@ -30,7 +30,7 @@ Once you [create the Library](#create-the-library):
 
 - A **Library** section appears in the navigation sidebar of the main app, listing the tables and metrics in your semantic layer.
 - The data picker in the query builder defaults to showing tables and metrics from the Library to encourage people to use your vetted content.
-- If you turn on Metabot's [Verified or curated content](../../ai/settings.md#verified-content) setting, Metabot will only use content that's verified, in an official collection, or published to the Library.
+- If you turn on Metabot's [Verified or curated content](../../ai/settings.md#verified-or-curated-content) setting, Metabot will only use content that's verified, in an official collection, or published to the Library.
 - You can [sync the Library to Git](#versioning-the-library) to version your semantic layer and glossary.
 
 ### Semantic layer
@@ -53,9 +53,9 @@ Before you can add items to the semantic layer, you'll need to create the Librar
 
 1. Click the **grid** icon in the upper right and select **Data Studio**.
 2. In the left sidebar, click **Semantic layer**.
-3. Click **Create my Library**.
+3. Click **Create my semantic layer**.
 
-Metabase will create the Library with its **Data** and **Metrics** collections. By default, everyone can view the Library, and people in the Data Analysts group can curate it. See [Library permissions](#library-permissions).
+Metabase will create the Library with its **Data**, **Metrics**, and **Dashboards** collections. By default, everyone can view the Library, and people in the Data Analysts group can curate it. See [Library permissions](#library-permissions).
 
 If you try to [publish a table](published-tables.md) from **Connected data** before you've created the Library, Metabase will ask you to create the Library first.
 
@@ -71,6 +71,7 @@ The **+ New** menu has options to:
 
 - **Published table**: [Publish a table](published-tables.md#publish-a-table-from-the-semantic-layer) to the Library.
 - **Metric**: [Create a metric](#metrics) in the Library.
+- **Dashboard**: Create a dashboard in the Library's **Dashboards** collection.
 - **Snippet**: [Create a SQL snippet](#sql-snippets).
 - **Collection**: [Create a subcollection or snippet folder](#library-organization).
 
@@ -80,10 +81,11 @@ To manage the glossary, see [Glossary](glossary.md).
 
 ![Library organization](./images/library-org.png)
 
-The semantic layer lives in a special collection called Library, which has three root sections:
+The semantic layer lives in a special collection called Library, which has four root sections:
 
 - **Data**: For [published tables](published-tables.md).
 - **Metrics**: For [official metrics](#metrics).
+- **Dashboards**: For official dashboards. This collection holds only dashboards, so questions on these dashboards are saved to the dashboard itself rather than to a collection.
 - **SQL snippets**: For all the [SQL snippets](#sql-snippets) on your instance.
 
 These root sections are predefined. You can't rename or archive them, but you can use [permissions](#library-permissions) to control who sees them.

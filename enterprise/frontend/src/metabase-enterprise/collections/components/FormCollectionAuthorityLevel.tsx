@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { FormField, type FormFieldProps } from "metabase/forms";
-import { Center, Icon, SegmentedControl } from "metabase/ui";
+import { SegmentedControl } from "metabase/ui";
 
 import { OFFICIAL_COLLECTION, REGULAR_COLLECTION } from "../constants";
 
@@ -24,7 +24,6 @@ const getOptions = () => [
     label: OFFICIAL_COLLECTION.name,
     value: OFFICIAL_COLLECTION.type,
     icon: OFFICIAL_COLLECTION.icon,
-    selectedColor: OFFICIAL_COLLECTION.color,
   },
 ];
 
@@ -58,12 +57,8 @@ export function FormCollectionAuthorityLevel({
         onChange={handleChange}
         data={getOptions().map((option) => ({
           value: String(option.value),
-          label: (
-            <Center style={{ gap: 10 }}>
-              <Icon name={option.icon} />
-              {option.label}
-            </Center>
-          ),
+          label: option.label,
+          icon: option.icon,
         }))}
       />
     </FormField>

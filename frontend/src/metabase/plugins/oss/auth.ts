@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import {
   PluginPlaceholder,
@@ -17,6 +17,11 @@ export type AuthSettingsPageTab =
 
 export type AuthSettingsPageProps = {
   tab?: AuthSettingsPageTab;
+};
+
+export type SettingsJWTFormProps = {
+  /** `null` renders the form with no heading -- the embedding hub supplies its own. */
+  title?: ReactNode;
 };
 
 const getDefaultPluginAuthProviders = () => ({

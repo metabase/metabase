@@ -14,12 +14,5 @@ position: 8
 database_position: 8
 has_field_values: auto-list
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: ORDERS
-  model: Table
-- id: QUANTITY
-  model: Field
+- model: Field
 database_indexed: false

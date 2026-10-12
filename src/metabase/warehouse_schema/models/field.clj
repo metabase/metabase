@@ -448,6 +448,9 @@
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
 
+(defmethod serdes/ingested-path "Field" [_ {:keys [table_id parent_id name]}]
+  (serdes/field->path (conj (or parent_id table_id) name)))
+
 (defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 
@@ -467,10 +470,6 @@
     (when (contains? ingested :dimensions)
       ((:import-with-context legacy-dimensions) field :dimensions (:dimensions ingested)))
     field))
-
-(defmethod serdes/deserialization-dependencies "Field" [field]
-  (let [db-path (first (serdes/path field))]
-    #{[db-path]}))
 
 (defmethod serdes/make-spec "Field" [_model-name _opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed

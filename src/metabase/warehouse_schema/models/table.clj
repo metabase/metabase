@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -530,11 +531,18 @@
 
 (mi/define-batched-hydration-method with-metrics
   :metrics
-  "Efficiently hydrate the Metrics for a collection of `tables`."
+  "Efficiently hydrate the Metrics for a collection of `tables`.
+
+  Consumers of a Table's `:metrics` want an id, a name and a link, never a metric's `:dimensions`, so the
+  `card_schema` 24 backfill is skipped. Without that the upgrade builds the whole implicitly-joined dimension set
+  for every pre-curation metric on these tables -- work proportional to (metrics x columns), then discarded --
+  which is minutes of CPU and enough garbage to exhaust the heap on a wide table with many old metrics (#83937).
+  Every other `card_schema` upgrade still runs."
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (->> (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids)
+      (->> (binding [card-schema/*skip-dimension-backfill?* true]
+             (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
            (filter mi/can-read?)))
     tables))
 
@@ -560,8 +568,8 @@
   (warehouse-schema.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
-  (cond-> [[{:model "Database" :id db_id}]]
+(defmethod serdes/deserialization-dependencies "Table" [{:keys [collection_id transform_id]}]
+  (cond-> []
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
@@ -587,6 +595,9 @@
                       {:model "Schema" :id (:schema table)})
                     {:model "Table" :id (:name table)}])))
 
+(defmethod serdes/ingested-path "Table" [_ {:keys [db_id schema name]}]
+  (serdes/table->path [db_id schema name]))
+
 (defmethod serdes/entity-id "Table" [_ {:keys [name]}]
   name)
 
@@ -597,7 +608,8 @@
                       (-> path second :id))
         table-name  (-> path last :id)
         db-id       (warehouse-schema.db/database-id-by-name db-name)]
-    (warehouse-schema.db/table-by-name db-id schema-name table-name)))
+    (when db-id
+      (warehouse-schema.db/table-by-name db-id schema-name table-name))))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema

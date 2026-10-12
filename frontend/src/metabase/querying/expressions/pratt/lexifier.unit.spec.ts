@@ -328,6 +328,12 @@ describe("lexify", () => {
         ['"\\r\\n"', "\r\n"],
         ['"say \\"Hi\\""', 'say "Hi"'],
         ["'foo\\tbar'", "foo\tbar"],
+        [`"]"`, "]"],
+        [`']'`, "]"],
+        [`"["`, "["],
+        [`'['`, "["],
+        [`"[]"`, "[]"],
+        [`"foo ] bar"`, "foo ] bar"],
       ];
 
       for (const [expression, value] of cases) {
@@ -395,6 +401,23 @@ describe("lexify", () => {
             value: ") = [answer]",
           },
           { type: END_OF_INPUT, start: 28, text: "\n" },
+        ].map(asToken),
+      );
+    });
+
+    it("tokenizes strings containing brackets next to bracket identifiers (metabase#82328)", () => {
+      const tokens = lexify('concat("[", [My Column], "]")');
+      expect(tokens).toEqual(
+        [
+          { type: CALL, start: 0, text: "concat" },
+          { type: GROUP, start: 6, text: "(" },
+          { type: STRING, start: 7, text: '"["', value: "[" },
+          { type: COMMA, start: 10, text: "," },
+          { type: FIELD, start: 12, text: "[My Column]", value: "My Column" },
+          { type: COMMA, start: 23, text: "," },
+          { type: STRING, start: 25, text: '"]"', value: "]" },
+          { type: GROUP_CLOSE, start: 28, text: ")" },
+          { type: END_OF_INPUT, start: 29, text: "\n" },
         ].map(asToken),
       );
     });

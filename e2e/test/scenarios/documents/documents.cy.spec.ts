@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   NO_SQL_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -16,9 +17,16 @@ import {
   PRODUCTS_AVERAGE_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
 } from "e2e/support/test-visualization-data";
-import type { Document } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionPermission,
+  CollectionPermissions,
+  Document,
+} from "metabase-types/api";
 
 const { H } = cy;
+
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
 describe("documents", () => {
   beforeEach(() => {
@@ -2008,8 +2016,84 @@ describe("documents", () => {
         TIMELINE_EVENT_NAME,
       ).should("not.exist");
     });
+
+    it("should save a document after editing the visualization of an embed whose timeline the user cannot read", () => {
+      H.createCollection({ name: "Private" }).then(
+        ({ body: { id: collectionId } }) => {
+          H.createTimelineWithEvents({
+            timeline: { name: TIMELINE_NAME, collection_id: collectionId },
+            events: [
+              {
+                name: TIMELINE_EVENT_NAME,
+                timestamp: "2026-06-01T00:00:00Z",
+                icon: "star",
+                timezone: "UTC",
+              },
+            ],
+          }).then(({ timeline }) => {
+            cy.updateCollectionGraph(denyCollection(collectionId));
+            H.createQuestion({
+              ...ORDERS_COUNT_BY_CREATED_AT,
+              visualization_settings: {
+                ...ORDERS_COUNT_BY_CREATED_AT.visualization_settings,
+                "timeline.selected_timeline_ids": [timeline.id],
+              },
+            }).then(({ body: { id: questionId } }) => {
+              cy.signInAsNormalUser();
+              H.createDocument({
+                name: "Private timeline document",
+                document: {
+                  type: "doc",
+                  content: [
+                    {
+                      type: "resizeNode",
+                      attrs: { height: 350, minHeight: 280, _id: "1" },
+                      content: [
+                        {
+                          type: "cardEmbed",
+                          attrs: { id: questionId, name: null, _id: "1a" },
+                        },
+                      ],
+                    },
+                    { type: "paragraph", attrs: { _id: "2" } },
+                  ],
+                },
+                collection_id: null,
+                idAlias: "privateTimelineDocumentId",
+              });
+            });
+          });
+        },
+      );
+
+      H.visitDocument("@privateTimelineDocumentId");
+
+      H.openDocumentCardMenu(TIMESERIES_CARD_3);
+      H.popover()
+        .findByRole("menuitem", { name: /Edit Visualization/ })
+        .click();
+
+      H.getDocumentSidebar().findByRole("button", { name: /Line/i }).click();
+      cy.findByRole("menu", { name: /Line/i }).findByText("Bar").click();
+      H.getDocumentSidebar().findByRole("button", { name: "Done" }).click();
+
+      cy.intercept("PUT", "/api/document/*").as("saveDocument");
+      H.documentSaveButton().click();
+      cy.wait("@saveDocument").its("response.statusCode").should("eq", 200);
+      H.documentSaveButton().should("not.exist");
+      H.assertDocumentCardVizType(TIMESERIES_CARD_3, "Bar");
+    });
   });
 });
+
+function denyCollection(id: CollectionId): CollectionPermissions {
+  const denied: Record<CollectionId, CollectionPermission> = { [id]: "none" };
+  return {
+    [ALL_USERS_GROUP]: denied,
+    [COLLECTION_GROUP]: denied,
+    [DATA_GROUP]: denied,
+  };
+}
 
 function documentTimelineSidebar() {
   return cy.findByTestId("document-timeline-sidebar");

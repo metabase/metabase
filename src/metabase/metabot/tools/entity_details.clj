@@ -298,7 +298,6 @@
                                                   (comp (filter #(and (= target-tid (:table-id %))
                                                                       (not (base-reachable-ids (:id %)))
                                                                       (not (key-ids (:id %)))))
-                                                        (map #(metabot.tools.u/add-table-reference defq %))
                                                         (map #(metabot.tools.u/->result-column defq %))
                                                         (map (fn [rc]
                                                                (cond-> rc
@@ -416,10 +415,7 @@
                                                        :field_id))
 
        (and source-table with-queryable-dimensions?)
-       (assoc :queryable-dimensions (into []
-                                          (comp (map #(metabot.tools.u/add-table-reference base-query %))
-                                                (map #(metabot.tools.u/->result-column metric-query %)))
-                                          queryable-columns))
+       (assoc :queryable-dimensions (mapv #(metabot.tools.u/->result-column metric-query %) queryable-columns))
 
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)
@@ -494,8 +490,7 @@
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        permission-filter-columns
-                       field-values-fn
-                       (map #(metabot.tools.u/add-table-reference table-query %))))
+                       field-values-fn))
            related (when with-related-tables?
                      (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id

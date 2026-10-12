@@ -28,6 +28,9 @@ export const isTextPart = (
 ): part is MetabotUserTextChatMessage | MetabotAgentTextChatMessage =>
   part.type === "text";
 
+export const isGeneratedEntityPart = (part: MetabotMessagePart): boolean =>
+  part.type === "data_part" && part.part.type === "data-generated_entity";
+
 export const isGeneratedCardPart = (
   part: MetabotMessagePart,
 ): part is MetabotGeneratedCardPart =>

@@ -1,12 +1,18 @@
 import cx from "classnames";
 import _ from "underscore";
 
+import {
+  EntityIcon,
+  type EntityIconProps,
+} from "metabase/common/components/EntityIcon";
 import type { IconProps } from "metabase/ui";
 import { Ellipsified } from "metabase/ui";
+import { maybeColor } from "metabase/ui/utils/colors";
 
 import type { BaseSelectListItemProps } from "./BaseSelectListItem";
 import { BaseSelectListItem } from "./BaseSelectListItem";
-import { ItemIcon, ItemRoot, ItemTitle } from "./SelectListItem.styled";
+import S from "./SelectListItem.module.css";
+import { ItemRoot, ItemTitle } from "./SelectListItem.styled";
 
 export interface SelectListItemProps extends Omit<
   BaseSelectListItemProps,
@@ -43,7 +49,7 @@ export function SelectListItem({
   return (
     <BaseSelectListItem
       as={ItemRoot}
-      className={cx(classNames.root, className)}
+      className={cx(S.root, classNames.root, className)}
       {...otherProps}
       name={name}
       aria-label={name}
@@ -69,5 +75,23 @@ export function SelectListItem({
         <ItemIcon className={classNames.icon} {...rightIconProps} />
       )}
     </BaseSelectListItem>
+  );
+}
+
+function ItemIcon({
+  color = "core-brand",
+  className,
+  style,
+  ...props
+}: EntityIconProps) {
+  return (
+    <EntityIcon
+      {...props}
+      className={cx(S.icon, className)}
+      style={{
+        "--select-list-item-icon-color": maybeColor(color),
+        ...style,
+      }}
+    />
   );
 }

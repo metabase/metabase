@@ -133,6 +133,14 @@ describe("AIMarkdown", () => {
     expect(screen.queryByTestId("smart-link")).not.toBeInTheDocument();
   });
 
+  it("should render protocol-relative links as external", async () => {
+    setup({ children: "See [Evil](//evil.com)" });
+
+    const link = await screen.findByRole("link", { name: "Evil" });
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
   it("shows a hover card with the entity details for a Library token", async () => {
     setup({ children: "[Orders](/table/5)" });
 

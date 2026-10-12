@@ -648,6 +648,32 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(JSON.parse(String(requestBody)).creator_id).toBe(7);
     });
   });
+
+  it("should not send the creator on 'Send now' in edit mode", async () => {
+    fetchMock.postOnce("path:/api/notification/send", 204);
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      editingNotification: createMockNotification(),
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /send now/i }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/notification/send"),
+      ).toHaveLength(1);
+    });
+
+    const [call] = fetchMock.callHistory.calls("path:/api/notification/send");
+    const requestBody = JSON.parse(String(call.options?.body));
+
+    expect(requestBody).not.toHaveProperty("creator");
+    expect(requestBody).toHaveProperty("handlers");
+  });
 });
 
 function setup({

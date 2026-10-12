@@ -145,12 +145,20 @@ export const useMetabotConversation = (conversationId: string) => {
     getIncompleteTurn(state, conversationId),
   );
 
+  const longChatNotice = useSelector((state) =>
+    getLongChatNotice(state, conversationId),
+  );
+  const isContextWindowFull = longChatNotice === "full";
+
   const continueResponse = useMemo(() => {
     const resumePrompt = incompleteTurn?.resumePrompt;
-    return resumePrompt
+    // A full window is judged against the current model, so a turn that could
+    // be resumed when it ran may not fit anymore; the composer hides for the
+    // same reason.
+    return resumePrompt && !isContextWindowFull
       ? (options?: SubmitInputOptions) => submitInput(resumePrompt, options)
       : undefined;
-  }, [incompleteTurn, submitInput]);
+  }, [incompleteTurn, isContextWindowFull, submitInput]);
 
   const cancelRequest = useCallback(() => {
     dispatch(cancelInflightConversationRequests(conversationId));
@@ -159,10 +167,6 @@ export const useMetabotConversation = (conversationId: string) => {
   const reloadConversation = useCallback(() => {
     dispatch(fetchConversationSnapshot(conversationId));
   }, [dispatch, conversationId]);
-
-  const longChatNotice = useSelector((state) =>
-    getLongChatNotice(state, conversationId),
-  );
 
   return {
     conversationId,
@@ -187,7 +191,7 @@ export const useMetabotConversation = (conversationId: string) => {
     ),
     longChatNotice,
     incompleteTurn,
-    isContextWindowFull: longChatNotice === "full",
+    isContextWindowFull,
     contextWindowPercentUsage: useSelector((state) =>
       getContextUsagePercent(state, conversationId),
     ),

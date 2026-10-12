@@ -260,7 +260,7 @@ export const TABLE_DEFINITION = {
           rows,
           cols,
           settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
-          settings["table.pivot"],
+          settings["table.pivot"] ?? false,
         );
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],

@@ -57,7 +57,7 @@ export const DatabaseConnectionInfoSection = ({
 
   return (
     <DatabaseInfoSection
-      condensed
+      condensed={!database.is_stub}
       name={t`Connection and sync`}
       description={t`Manage details about the database connection and when Metabase ingests new data.`}
       data-testid="database-connection-info-section"
@@ -76,7 +76,7 @@ export const DatabaseConnectionInfoSection = ({
         </Tooltip>
       </Flex>
 
-      <DatabaseInfoSectionDivider condensed />
+      {!database.is_stub && <DatabaseInfoSectionDivider condensed />}
 
       {isSyncAborted(database) && database.initial_sync_error && (
         <Alert
@@ -90,7 +90,7 @@ export const DatabaseConnectionInfoSection = ({
         </Alert>
       )}
 
-      {!database.is_attached_dwh && (
+      {!database.is_attached_dwh && !database.is_stub && (
         <Flex gap="sm" wrap="wrap">
           {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
           <ActionButton
