@@ -41,15 +41,14 @@
       (isa? (:effective-type column) :type/Time)     :time
       (lib.types.isa/temporal? column)               :date)))
 
-(defn add-table-reference
-  "Add table-reference to columns that have FK relationships."
+(defn- table-reference
+  "Return the name of the FK an implicitly joined `col` comes through, like \"User\" for `User ID`."
   [query col]
-  (cond-> col
-    (and (:fk-field-id col)
-         (:table-id col))
-    (assoc :table-reference (->> (lib.metadata/field query (:fk-field-id col))
-                                 (lib/display-name query)
-                                 lib/display-name-without-id))))
+  (when (and (:fk-field-id col)
+             (:table-id col))
+    (some->> (lib.metadata/field query (:fk-field-id col))
+             (lib/display-name query)
+             lib/display-name-without-id)))
 
 (defn- column-portable-fk
   "Build the portable FK path `[db-name, schema-or-null, table-name, field-name …]` for a column
@@ -102,7 +101,7 @@
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
                    (:lib/source-column-alias column))
-         :display_name (lib/display-name query (dissoc column :table-reference))
+         :display_name (lib/display-name query column)
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
                       :base_type base-type
@@ -113,7 +112,7 @@
                       :field_values (:field-values column)
                       :portable_fk portable-fk
                       :fk_target_portable_fk fk-target-fk
-                      :table_reference (:table-reference column)))))
+                      :table_reference (table-reference query column)))))
 
 (defn find-column-by-field-id
   "Find a column in `columns` by its real field ID.

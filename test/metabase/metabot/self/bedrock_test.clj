@@ -46,8 +46,9 @@
 
 (deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
-    (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5" "anthropic.claude-opus-4-8"
-                "anthropic.claude-sonnet-5" "openai.gpt-5.5" "openai.gpt-6-astra"]]
+    (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5-5" "anthropic.claude-opus-5"
+                "anthropic.claude-opus-4-8" "anthropic.claude-sonnet-5-5" "anthropic.claude-sonnet-5"
+                "openai.gpt-5.5" "openai.gpt-6-astra"]]
       (is (contains? bedrock/supported-models id) id)))
   (testing "non-whitelisted models are not supported, even for supported vendors"
     (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
@@ -321,12 +322,12 @@
   (json/decode+kw (:body (captured-raw-request! (merge {:input [{:role :user :content "hi"}]} opts)))))
 
 (deftest anthropic-model-max-tokens-test
-  (testing "the `anthropic.` prefix is stripped so the model's own ceiling resolves"
+  (testing "anthropic.* models get the default cap, and the caller's own cap wins"
     (are [opts tokens] (= tokens (:max_tokens (captured-body! opts)))
-      {:model "anthropic.claude-opus-4-8"}                  128000
+      {:model "anthropic.claude-opus-4-8"}                   32000
       {:model "anthropic.claude-opus-4-8" :max-tokens 128}     128))
-  (testing "openai.* models omit the field entirely"
-    (is (not (contains? (captured-body! {:model "openai.gpt-5.5"}) :max_output_tokens)))))
+  (testing "openai.* models get the default cap too, unlike on OpenAI direct"
+    (is (= 32000 (:max_output_tokens (captured-body! {:model "openai.gpt-5.5"}))))))
 
 (deftest reasoning-request-config-test
   (testing "anthropic models request adaptive summarized thinking, and only that"
@@ -374,27 +375,20 @@
   (doseq [model (keys @#'bedrock/supported-models)]
     (testing model
       (let [body (captured-body! {:model model})]
-        ;; `case` so a model of an unknown family fails loudly here
-        (case (#'bedrock/model-family model)
-          :anthropic
-          (testing "the gate and the thinking request agree"
-            (is (= (bedrock/reasoning-model? model) (contains? body :thinking))))
-          ;; deliberately asymmetric: the request keeps its reasoning fields
-          ;; (encrypted-content replay works) while the gate answers false,
-          ;; because the mantle never streams summaries — nothing will render.
-          ;; See [[bedrock/reasoning-model?]].
-          :openai
-          (testing "reasoning is requested but the gate answers false"
-            (is (contains? body :reasoning))
-            (is (false? (bedrock/reasoning-model? model)))))))))
+        (testing "the gate and the reasoning request agree"
+          (is (= (bedrock/reasoning-model? model)
+                 ;; `case` so a model of an unknown family fails loudly here
+                 (contains? body (case (#'bedrock/model-family model)
+                                   :anthropic :thinking
+                                   :openai    :reasoning)))))))))
 
 (deftest ^:parallel reasoning-model?-test
   (are [model expected] (= expected (bedrock/reasoning-model? model))
     "anthropic.claude-opus-4-8"  true
     "anthropic.claude-fable-5"   true
     "anthropic.claude-haiku-4-5" false
-    "openai.gpt-5.5"             false
-    "openai.gpt-5.4-2026-03-05"  false
+    "openai.gpt-5.5"             true
+    "openai.gpt-5.4-2026-03-05"  true
     "deepseek.v3.2"              false
     nil                          false))
 
@@ -421,6 +415,14 @@
             {:model         "anthropic.claude-haiku-4-5"
              :cache_control {:type "ephemeral"}
              :system        [{:type "text" :text "s" :cache_control {:type "ephemeral"}}]})))))
+
+(deftest ^:parallel mantle-openai-body-test
+  (testing "adds the default max_output_tokens where the body has none"
+    (is (= {:model "openai.gpt-5.5" :max_output_tokens 32000}
+           (bedrock/->mantle-openai-body {:model "openai.gpt-5.5"}))))
+  (testing "keeps a caller's own cap"
+    (is (= {:model "openai.gpt-5.5" :max_output_tokens 512}
+           (bedrock/->mantle-openai-body {:model "openai.gpt-5.5" :max_output_tokens 512})))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Stream translation (xf selection by model family)
@@ -485,9 +487,6 @@
             {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:input_tokens 3 :output_tokens 2}}
             {:type "message_stop"}]))))
 
-;; The mantle has never been observed to emit reasoning_summary_* events (see
-;; [[bedrock/reasoning-model?]]) — this pins the translation wiring so only the
-;; gate needs flipping if it ever starts.
 (deftest openai-model-streams-reasoning-test
   (is (=? [{:type :start :id "resp_1"}
            {:type :reasoning :text "keeping it short"}
@@ -590,6 +589,7 @@
   (are [model reasoning? context-window] (= [reasoning? context-window]
                                             [(bedrock/reasoning-model? model) (bedrock/context-window-tokens model)])
     "eu.anthropic.claude-sonnet-4-6"                  true  1000000
+    "global.anthropic.claude-sonnet-5-5"              true  1000000
     "global.anthropic.claude-haiku-4-5-20251001-v1:0" false 200000
     profile-arn                                       true  1000000
     "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abcdef123456" false nil))

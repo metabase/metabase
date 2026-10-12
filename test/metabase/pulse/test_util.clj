@@ -105,7 +105,9 @@
       (invoke [_ x1 x2 x3 x4 x5]
         (invoke-with-wrapping input output func [x1 x2 x3 x4 x5]))
       (invoke [_ x1 x2 x3 x4 x5 x6]
-        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5 x6])))))
+        (invoke-with-wrapping input output func [x1 x2 x3 x4 x5 x6]))
+      (applyTo [_ args]
+        (invoke-with-wrapping input output func (vec args))))))
 
 (defn thunk->boolean [{:keys [attachments] :as result}]
   (assoc result :attachments (for [attachment-info attachments]

@@ -91,9 +91,9 @@
   2048)
 
 (defn- floor-max-tokens
-  "Raises an existing `max_tokens` cap to [[forced-tool-call-token-floor]]; an uncapped body stays uncapped."
+  "Raises the `max_tokens` cap to [[forced-tool-call-token-floor]]."
   [body]
-  (cond-> body (:max_tokens body) (update :max_tokens max forced-tool-call-token-floor)))
+  (update body :max_tokens max forced-tool-call-token-floor))
 
 (defn- reasoning-message
   "The replayed assistant message for a coalesced in-turn :reasoning part.
@@ -125,8 +125,10 @@
     otherwise; their in-turn reasoning is replayed (see [[reasoning-message]]) and forced tool calls get a
     `max_tokens` floor (see [[forced-tool-call-token-floor]]).
   - **`prompt_cache_key`.** Moonshot caching is automatic and hits without it, but a `:prompt-cache-key` — the
-    conversation id — is forwarded when present."
-  [{:keys [model prompt-cache-key reasoning? schema tool_choice] :as opts
+    conversation id — is forwarded when present.
+
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
+  [{:keys [model prompt-cache-key reasoning? schema tool_choice max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; kimi-k3 always thinks — there is no off switch, so `reasoning_effort` ("low" | "high" | "max", server default
   ;; "max") is the only knob (https://platform.kimi.ai/docs/guide/kimi-k3-quickstart). "max" on the chat path pins
@@ -148,7 +150,7 @@
         thinking?      (and whitelisted? reasoning?
                             (if thinking-only? (not schema) (not forced?)))]
     (-> (chat-completions/request-body
-         (assoc opts :model model)
+         (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens))
          ;; Replay only where the dialect mandates it: k3's Preserved Thinking. k2.6 cannot use
          ;; `thinking.keep "all"` — that mode obliges the caller to send back EVERY historical assistant
          ;; message's reasoning_content, but reasoning parts are never persisted across turns, so we could

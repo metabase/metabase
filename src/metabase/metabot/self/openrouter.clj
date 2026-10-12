@@ -60,7 +60,8 @@
   and would need an explicit token budget.
   `:reasoning-mandatory?` marks models where `reasoning {:enabled false}` is rejected with a 400.
   `:required-tool-choice? false` marks models that don't support `:tool_choice \"required\"`; absent means they do."
-  {"anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
+  {"anthropic/claude-fable-5.1"      {:display-name "Claude Fable 5.1"        :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true :required-tool-choice? false}
+   "anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
    "anthropic/claude-opus-5"         {:display-name "Claude Opus 5"           :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.8"       {:display-name "Claude Opus 4.8"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.7"       {:display-name "Claude Opus 4.7"         :context-window 1000000 :reasoning :renderable}
@@ -74,6 +75,9 @@
    "deepseek/deepseek-v4-pro"        {:display-name "DeepSeek V4 Pro 0423"    :context-window 1048576 :reasoning :renderable}
    "deepseek/deepseek-v4-pro-0813"   {:display-name "DeepSeek V4 Pro 0813"    :context-window 1048575 :reasoning :renderable}
    "deepseek/deepseek-v4-flash-0731" {:display-name "DeepSeek V4 Flash 0731"  :context-window 1048576 :reasoning :renderable}
+   ;; Gemma 4 (`google/gemma-4-31b-it`, `google/gemma-4-26b-a4b-it`) is deliberately not listed:
+   ;; through OpenRouter both 31B and 26B failed Metabot smoke tests with results changing between backing hosts.
+   ;; See https://linear.app/metabase/issue/BOT-1932 for details
    "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144 :reasoning :renderable}
    ;; probed 2026-09-08: OpenRouter honors `reasoning {:enabled false}` for kimi-k3 even though the
    ;; native Moonshot API cannot turn k3's thinking off — a title-shaped forced tool call under the
@@ -240,10 +244,10 @@
   [body {:keys [model reasoning? schema] :or {reasoning? true}}]
   (let [forced? (or (some? schema) (= "required" (:tool_choice body)))
         ;; Safety net: the mandatory tool call must survive the un-disableable thinking spend
-        ;; (theory vs practice in [[forced-tool-call-token-floor]]); only an existing cap is
-        ;; raised, and only where a tool call is actually forced.
+        ;; (theory vs practice in [[forced-tool-call-token-floor]]); the cap is raised only
+        ;; where a tool call is actually forced.
         body    (cond-> body
-                  (and (reasoning-mandatory? model) forced? (:max_tokens body))
+                  (and (reasoning-mandatory? model) forced?)
                   (update :max_tokens max forced-tool-call-token-floor))]
     (if-not (= :renderable (reasoning-class model))
       body
@@ -270,10 +274,17 @@
 
   `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). Gating it in the shared
   builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
-  whose model names are customer-chosen free text."
-  [{:keys [model system] :as opts
+  whose model names are customer-chosen free text.
+
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
+  [{:keys [model system max-tokens] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (-> (cond-> (chat-completions/request-body (assoc opts :model model))
+  ;; `openai/*` models get the default too: the rate-limit metering that keeps
+  ;; [[metabase.metabot.self.openai/openai-request-body]] from sending one is OpenAI's and Azure's, and uncapped,
+  ;; OpenRouter substitutes a per-endpoint default (probed 2026-09-17 on deepseek/deepseek-v4-pro: 16384 on one
+  ;; endpoint, 32768 on another).
+  (-> (cond-> (chat-completions/request-body
+               (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens)))
         (and system (anthropic-model? model))
         (update-in [:messages 0 :content] claude/system->cached-content-blocks)
 

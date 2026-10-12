@@ -18,7 +18,9 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.features :as features]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.permissions.core :as perms]
@@ -724,6 +726,46 @@
                       (filterv #(or (:tool_calls %) (= "tool" (:role %))) (:messages replay-body))))
               (is (=? {:type :text :text "The orders table has what you need."}
                       (last (filter #(= :text (:type %)) result)))))))))))
+
+(deftest later-calls-resend-what-the-turn-already-sent-test
+  (testing "edits made during a turn don't change the system prompt, tools or messages its earlier calls sent"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Ops original"}]
+      (mt/as-admin
+        (mt/with-premium-features #{:ai-controls}
+          (mt/with-temporary-setting-values [llm-providers              llm.tu/default-connections
+                                             llm-metabot-provider       "anthropic/claude-opus-5-5"
+                                             metabot-chat-system-prompt "Use British spelling."]
+            (let [requests        (atom [])
+                  semantic-search (atom true)]
+              (mt/with-dynamic-fn-redefs [features/feature-available? (fn [_] @semantic-search)
+                                          claude/claude
+                                          (fn [opts]
+                                            (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
+                                              (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                                  (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
+                                                  (reset! semantic-search false)
+                                                  (mut/mock-llm-response [{:type      :tool-input
+                                                                           :id        "call-1"
+                                                                           :function  "load_skill"
+                                                                           :arguments {:ids ["read-resource"]}}]))
+                                              (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                (into [] (agent/run-agent-loop
+                          {:messages   [{:role :user :content "Help me with this dashboard."}]
+                           :state      {}
+                           :profile-id :internal
+                           :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                        :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+                (let [[{system-1 :system tools-1 :tools messages-1 :messages}
+                       {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
+                  (is (str/includes? (pr-str system-1) "Use British spelling."))
+                  (is (str/includes? (pr-str tools-1) "semantic_queries"))
+                  (is (str/includes? (pr-str messages-1) "Ops original"))
+                  (is (= system-1 system-2))
+                  (is (= tools-1 tools-2))
+                  (is (= messages-1 (take (count messages-1) messages-2)))
+                  (is (=? [{:role "assistant" :content [{:type "tool_use" :name "load_skill"}]}
+                           {:role "user" :content [{:type "tool_result"}]}]
+                          (drop (count messages-1) messages-2))))))))))))
 
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"

@@ -1,0 +1,11 @@
+.icon {
+  justify-self: end;
+  color: var(--select-list-item-icon-color);
+}
+
+.root {
+  &[aria-selected="true"] .icon,
+  &:hover .icon {
+    color: var(--mb-color-text-primary-inverse);
+  }
+}

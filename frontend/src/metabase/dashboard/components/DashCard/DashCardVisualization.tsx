@@ -16,6 +16,11 @@ import {
   getDashcardData,
 } from "metabase/dashboard/selectors";
 import {
+  getIsDashCardTimelineEventsEnabled,
+  useDashCardTimelineEvents,
+  useReportDashCardTimelineEventsEnabled,
+} from "metabase/dashboard/timeline-events";
+import {
   getVirtualCardType,
   isDashcardAccessRestricted,
 } from "metabase/dashboard/utils";
@@ -490,6 +495,24 @@ export function DashCardVisualization({
       bufferSpace: 100,
     });
 
+  const {
+    isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
+    timelineEventsVisibility,
+    selectedTimelineEventIds,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
+  } = useDashCardTimelineEvents(dashcard);
+  const isChartTimelineEventsEnabled = useSelector((state) =>
+    getIsDashCardTimelineEventsEnabled(state, dashcard.id),
+  );
+  const handleTimelineEventsEnabledChange =
+    useReportDashCardTimelineEventsEnabled(dashcard.id);
+  const withTimelineEvents =
+    isTimelineEventsEnabled && isChartTimelineEventsEnabled;
+
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
@@ -508,6 +531,7 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
+        withTimelineEvents,
       });
 
     const errorStatus =
@@ -541,6 +565,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
+            withTimelineEvents={withTimelineEvents}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -556,6 +581,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
+    withTimelineEvents,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -642,6 +668,14 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          timelineEvents={timelineEvents}
+          timelineEventsVisibility={timelineEventsVisibility}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          onOpenTimelines={onOpenTimelines}
+          onSelectTimelineEvents={onSelectTimelineEvents}
+          onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onTimelineEventsShown={onTimelineEventsShown}
+          onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings

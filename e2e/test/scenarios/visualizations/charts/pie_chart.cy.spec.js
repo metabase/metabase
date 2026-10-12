@@ -667,6 +667,104 @@ describe("scenarios > visualizations > pie chart", () => {
       },
     });
   });
+
+  it("should format pie chart settings (metabase#21504)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    H.openVizSettingsSidebar();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("January 2028").should("be.visible");
+    });
+  });
+
+  it("pie chart should have a placeholder", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    cy.log("Shows an empty state that can open the summarize sidebar");
+    cy.findByAltText("pie chart example illustration").should("be.visible");
+    cy.findByLabelText("Open summarize sidebar").click();
+
+    cy.findByLabelText("Rating").click();
+    H.echartsContainer().findByText("200").should("be.visible");
+    H.echartsContainer().findByText("Total").should("be.visible");
+  });
+
+  it("pie chart should work when instance colors have overrides", () => {
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("application-colors", { "accent0-light": "#98b4ce" });
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    H.echartsContainer().findByText("200").should("be.visible");
+
+    H.openVizSettingsSidebar();
+
+    H.leftSidebar().findByText("Gizmo");
+  });
+
+  it("should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)", () => {
+    const query = `select '${"a".repeat(1000)}' as category, 45 as count
+union all select 'Short name', 25 as count
+union all select 'Medium length category', 30 as count`;
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.chartPathWithFillColor("#88BF4D").trigger("mousemove");
+
+    cy.get("[data-testid='echarts-tooltip']")
+      .should("be.visible")
+      .then(($tooltip) => {
+        const width = $tooltip.width();
+        expect(width).to.be.lte(550);
+      });
+  });
 });
 
 function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {

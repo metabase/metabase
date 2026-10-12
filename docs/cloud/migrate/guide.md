@@ -16,7 +16,7 @@ redirect_from:
 
 # Migrate to Metabase Cloud
 
-> If you're running Metabase 49 or lower, see [this guide](./guide-pre-50.md)
+> If you're running Metabase 49 or lower, see [this guide](https://www.metabase.com/docs/latest/cloud/migrate/guide-pre-50)
 
 The migration from a self-hosted Metabase to Metabase Cloud will keep all of your questions, dashboards, people, settings---everything in your existing Metabase.
 

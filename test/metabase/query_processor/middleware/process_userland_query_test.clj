@@ -104,6 +104,7 @@
                :card_id         nil
                :action_id       nil
                :is_sandboxed    false
+               :sandbox_details nil
                :is_impersonated false
                :is_db_routed    false
                :parameters      nil

@@ -206,8 +206,6 @@ visualization_settings:
   column_settings: null
 card_schema: 24
 serdes/meta:
-- id: gt4OaWYAuDWRHn5Irnd4h
-  label: source_card_reference
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

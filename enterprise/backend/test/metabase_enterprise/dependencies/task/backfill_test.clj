@@ -485,7 +485,7 @@
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
             (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))
@@ -565,7 +565,7 @@
                       :terminal false :next_retry_at [:not= nil])
           "test setup: the card must be in retry backoff")
       (let [actionable? (fn [licence]
-                          (with-redefs [premium-features/canonically-has-feature? (constantly licence)]
+                          (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
                             (#'dependencies.backfill/has-pending-retries?)))]
         (testing "licensed: the pending retry keeps the job scheduled"
           (is (true? (actionable? true))))
@@ -600,9 +600,9 @@
            task/init! recovers on boot, but survivable Errors -- StackOverflowError from deeply nested SQL, an
            AssertionError, a LinkageError -- leave a live process with a dead job."
     (let [scheduled (atom [])]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
-                    dependencies.backfill/backfill-dependencies!
-                    (fn [& _] (throw (Error. "simulated fatal error")))]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
+                                  dependencies.backfill/backfill-dependencies!
+                                  (fn [& _] (throw (Error. "simulated fatal error")))]
         (testing "the Error still propagates"
           (is (thrown-with-msg? Error #"simulated fatal error"
                                 (#'dependencies.backfill/run-and-reschedule! nil))))

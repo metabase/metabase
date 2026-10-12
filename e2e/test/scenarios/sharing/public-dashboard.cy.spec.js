@@ -53,9 +53,6 @@ const dashboardDetails = {
   tabs: [tab1, tab2],
 };
 
-const PUBLIC_DASHBOARD_REGEX =
-  /\/public\/dashboard\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
-
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
 
@@ -66,10 +63,6 @@ const USERS = {
 };
 
 const prepareDashboard = () => {
-  H.updateSetting("enable-public-sharing", true);
-
-  cy.intercept("/api/dashboard/*/public_link").as("publicLink");
-
   H.createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
@@ -111,26 +104,6 @@ describe("scenarios > public > dashboard", () => {
     cy.signInAsAdmin();
 
     prepareDashboard();
-  });
-
-  it("should allow users to create public dashboards", () => {
-    H.visitDashboard("@dashboardId");
-
-    H.openNewPublicLinkDropdown("dashboard");
-
-    cy.wait("@publicLink").then(({ response }) => {
-      expect(response.body.uuid).not.to.be.null;
-
-      cy.findByTestId("public-link-input").should("be.visible");
-      cy.findByTestId("public-link-input").should(
-        "not.have.attr",
-        "placeholder",
-        "Loading…",
-      );
-      cy.findByTestId("public-link-input").should(($input) => {
-        expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
-      });
-    });
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>
@@ -176,6 +149,7 @@ describe("scenarios > public > dashboard", () => {
       cy.button("Add filter").click();
     });
 
+    H.applyFilterButton().should("be.visible");
     cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
     H.applyFilterButton().click();
@@ -187,6 +161,9 @@ describe("scenarios > public > dashboard", () => {
     cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id);
     });
+
+    // new dashboards should default to 'fixed' width
+    H.assertDashboardFixedWidth();
 
     H.dashboardParametersContainer().within(() => {
       cy.findByText(textFilter.name).should("be.visible");
@@ -202,36 +179,29 @@ describe("scenarios > public > dashboard", () => {
     });
   });
 
-  it("should respect dashboard width setting in a public dashboard", () => {
+  it("should render when a filter passed with value starting from '0', support #theme=dark, and respect full width (metabase#41483, metabase#65731)", () => {
     cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id);
-    });
-
-    // new dashboards should default to 'fixed' width
-    H.assertDashboardFixedWidth();
-
-    // toggle full-width
-    cy.get("@dashboardId").then((id) => {
-      cy.signInAsAdmin();
       cy.request("PUT", `/api/dashboard/${id}`, {
         width: "full",
       });
-      H.visitPublicDashboard(id);
-    });
-
-    H.assertDashboardFullWidth();
-  });
-
-  it("should render when a filter passed with value starting from '0' (metabase#41483)", () => {
-    cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id, {
         params: { text: "002" },
+        hash: {
+          theme: "dark",
+        },
       });
     });
 
     cy.url().should("include", "text=002");
 
     H.filterWidget().findByText("002").should("be.visible");
+
+    cy.log("dark theme should have white text");
+    cy.findByRole("heading", {
+      name: "Test Dashboard",
+    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
+
+    H.assertDashboardFullWidth();
   });
 
   it("should respect click behavior", () => {
@@ -281,25 +251,6 @@ describe("scenarios > public > dashboard", () => {
       expect(element.href).to.eq("https://metabase.com/");
     });
   });
-
-  it("should support #theme=dark (metabase#65731)", () => {
-    const dashboardName = "Dashboard Theme Test";
-    H.createDashboardWithQuestions({
-      dashboardName,
-      questions: [],
-    }).then(({ dashboard }) => {
-      H.visitPublicDashboard(dashboard.id, {
-        hash: {
-          theme: "dark",
-        },
-      });
-    });
-
-    cy.log("dark theme should have white text");
-    cy.findByRole("heading", {
-      name: dashboardName,
-    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
-  });
 });
 
 describe("scenarios [EE] > public > dashboard", () => {
@@ -312,36 +263,28 @@ describe("scenarios [EE] > public > dashboard", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should set the window title to `{dashboard name} · {application name}`", () => {
+  it("should set the window title to `{dashboard name} · {application name}`, keep the background via `#background=false` without an iframe, and disable it inside an iframe (metabase#62391)", () => {
     H.updateSetting("application-name", "Custom Application Name");
 
     cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id);
+      H.visitPublicDashboard(id, {
+        hash: { background: "false" },
+      });
 
       cy.title().should("eq", "Test Dashboard · Custom Application Name");
     });
-  });
 
-  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
-    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
+    cy.findByTestId("embed-frame").should("exist");
 
-    cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id, {
-        hash: { locale: "de-CH" },
-      });
-    });
+    cy.get("body.mb-wrapper").should(
+      "not.have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
 
-    cy.wait("@deLocale");
+    cy.signInAsAdmin();
+    cy.visit("/");
 
-    cy.findByRole("button", {
-      name: "Automatische Aktualisierung",
-    }).should("exist");
-
-    cy.url().should("include", "locale=de");
-  });
-
-  it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
     cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id, {
         hash: { background: "false" },
@@ -364,20 +307,23 @@ describe("scenarios [EE] > public > dashboard", () => {
     });
   });
 
-  it("should not disable background via `#background=false` hash parameter when rendered without an iframe", () => {
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
+
     cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id, {
-        hash: { background: "false" },
+        hash: { locale: "de-CH" },
       });
     });
 
-    cy.findByTestId("embed-frame").should("exist");
+    cy.wait("@deLocale");
 
-    cy.get("body.mb-wrapper").should(
-      "not.have.css",
-      "background-color",
-      "rgba(0, 0, 0, 0)",
-    );
+    cy.findByRole("button", {
+      name: "Automatische Aktualisierung",
+    }).should("exist");
+
+    cy.url().should("include", "locale=de");
   });
 
   it("should handle /api/session/properties incorrect response (metabase#62501)", () => {

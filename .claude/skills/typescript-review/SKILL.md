@@ -13,7 +13,9 @@ allowed-tools: Read, Grep, Bash, Glob, Skill
 
 **Primary standard: the [`typescript-write`](../typescript-write/SKILL.md) skill.** Load it first — it defines the authoring rules this review enforces, alongside `frontend/CLAUDE.md` and `docs/developers-guide/frontend.md`.
 
-Adherence to `typescript-write` is the **highest-priority** review dimension: rank any violation of its provisions above all other findings. Treat its **no-`any` hard rule** (no explicit *or* implicit `any` in new code) as **blocking**. Use TypeScript LSP tools to inspect inferred types when available; otherwise rely on type-checking and linting.
+Adherence to `typescript-write` is the **highest-priority** review dimension: rank any violation of its provisions above all other findings. Treat its **no-`any` hard rule** (no explicit *or* implicit `any` in new, moved, or otherwise edited code) as **blocking**. Use TypeScript LSP tools to inspect inferred types when available; otherwise rely on type-checking and linting.
+
+Read the full diff and new files, including tests and helpers. For tests, check that the setup, actions, and assertions exercise the behavior being claimed. Cite the applicable rule and file/line for violations. Report checks that didn't run or didn't cover the change as unverified, not as passed. Passing automated checks don't establish guideline compliance.
 
 Review in this priority order:
 
@@ -28,7 +30,7 @@ These rarely surface in team reviews, so this skill should raise them. They are 
 
 - **Accessibility.** Interactive elements need keyboard support, focus management, and accessible names. Flag missing `aria-label`/`aria-labelledby`, non-semantic click targets, modals without focus trap, icon-only buttons without labels, and form inputs without a linked label.
 - **Performance.** Flag areas that scale poorly and aren't memoized; inline object/array literals passed to memoized children; effects that fire on every batch of a progressive load; and new dependencies added to hot paths.
-- **Security.** Evaluate potential security issues in new code.
+- **Security.** Evaluate potential security issues in new, moved, or otherwise edited code.
 - **Bundle size.** Flag new large dependencies, default imports from icon or util libs, and heavy modules imported at route-load time.
 - **Analytics.** User-facing flows should emit tracking events. If a PR adds a new flow (button, modal, navigation) without a tracking event, ask whether one is expected.
 - **Public API surface** (embedding SDK). Consumers should be able to use public signatures and name types they need to import. Export those types deliberately and document public behaviour, including `@deprecated` for deprecated APIs; a referenced structural type does not automatically need its own named export.

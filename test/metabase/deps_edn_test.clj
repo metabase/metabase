@@ -51,10 +51,6 @@
             check-children)]
     (f path node)))
 
-(defn- check-deps-edn []
-  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. "deps.edn"))]
-    (check-node [] (r.parser/parse-all r))))
-
 (deftest ^:parallel keep-deps-edn-sorted-test
   (testing "deps should be sorted"
-    (check-deps-edn)))
+    (check-node [] (r.parser/parse-file-all "deps.edn"))))

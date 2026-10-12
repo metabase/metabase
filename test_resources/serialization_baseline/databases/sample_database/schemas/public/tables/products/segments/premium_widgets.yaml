@@ -26,6 +26,4 @@ description: Widget products priced above $50 — refines the Widget Products se
 entity_id: 2hxhoN3HrQJIaWc5umpBn
 name: Premium Widgets
 serdes/meta:
-- id: 2hxhoN3HrQJIaWc5umpBn
-  label: premium_widgets
-  model: Segment
+- model: Segment
