@@ -14,9 +14,10 @@ function useDataApps({ skip }: { skip: boolean }) {
  * Initialize data-apps plugin features, gated on the `data-apps` token feature.
  */
 export function initializePlugin() {
+  PLUGIN_DATA_APPS.getRoutes = getRoutes;
+
   if (hasPremiumFeature("data-apps")) {
     PLUGIN_DATA_APPS.isEnabled = true;
-    PLUGIN_DATA_APPS.getRoutes = getRoutes;
     PLUGIN_DATA_APPS.getDataStudioRoutes = getDataStudioDataAppRoutes;
     PLUGIN_DATA_APPS.MainNavbarSection = DataAppsNavbarSection;
     PLUGIN_DATA_APPS.useDataApps = useDataApps;
