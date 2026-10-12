@@ -194,7 +194,7 @@
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
-   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
+   "/analytics-proxy"      (+public-exceptions metabase.analytics.api.proxy/routes)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
