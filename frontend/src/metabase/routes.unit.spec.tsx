@@ -345,7 +345,7 @@ const CONFIG_READS_DURING_BUILD: string[] = ["store.getState()"];
  * counts, not routes, so on growth diff the two pattern sets locally.
  */
 const CONDITIONAL_MOUNTS_BUDGET = {
-  onlyWithFeatures: 135,
+  onlyWithFeatures: 89,
   onlyWithoutFeatures: 0,
 };
 
@@ -436,6 +436,13 @@ describe("the route tree is the same on every instance", () => {
     const onlyWithoutFeatures = [...withoutFeatures].filter(
       (route) => !withFeatures.has(route),
     );
+
+    if (process.env.DUMP_CONDITIONAL_MOUNTS) {
+      fs.writeFileSync(
+        process.env.DUMP_CONDITIONAL_MOUNTS,
+        JSON.stringify({ onlyWithFeatures, onlyWithoutFeatures }, null, 2),
+      );
+    }
 
     expect(onlyWithFeatures.length).toBeLessThanOrEqual(
       CONDITIONAL_MOUNTS_BUDGET.onlyWithFeatures,
