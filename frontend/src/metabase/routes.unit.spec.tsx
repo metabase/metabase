@@ -345,7 +345,7 @@ const CONFIG_READS_DURING_BUILD: string[] = ["store.getState()"];
  * counts, not routes, so on growth diff the two pattern sets locally.
  */
 const CONDITIONAL_MOUNTS_BUDGET = {
-  onlyWithFeatures: 77,
+  onlyWithFeatures: 44,
   onlyWithoutFeatures: 0,
 };
 
