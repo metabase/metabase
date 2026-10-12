@@ -346,9 +346,31 @@
                      {:enable_load_extension true}
                      {:enable_load_extension "true"}
                      {:db ":memory:?enable_load_extension=true"}
-                     {:db "file::memory:?ENABLE_LOAD_EXTENSION=true"}]]
+                     {:db "file::memory:?ENABLE_LOAD_EXTENSION=true"}
+                     ;; a namespaced or differently-cased key names the same connection property once it reaches the
+                     ;; client, and the JSON decoder keeps such keys
+                     {:foo/enable_load_extension "true"}
+                     {:ENABLE_LOAD_EXTENSION "true"}
+                     {:foo/Enable_Load_Extension true}]]
       (testing (pr-str details)
         (is (= "not authorized" (load-extension-refusal details)))))))
+
+(deftest protected-connection-properties-cannot-be-overridden-test
+  (testing "properties the driver sets for safety survive a namespaced or differently-cased detail key"
+    (doseq [[k v] [[:foo/limit_attached "10"]
+                   [:LIMIT_ATTACHED "10"]
+                   [:foo/enable_load_extension "true"]]]
+      (let [spec (sql-jdbc.conn/connection-details->spec :sqlite {:db ":memory:" k v})]
+        (testing (pr-str k)
+          (is (= 0 (:limit_attached spec)))
+          (is (= "false" (:enable_load_extension spec)))
+          (is (= [] (->> (keys spec)
+                         (filter #(re-find #"(?i)limit_attached|enable_load_extension" (name %)))
+                         (remove #{:limit_attached :enable_load_extension})))))))
+    (testing "a read-only database cannot be made writable the same way"
+      (let [spec (sql-jdbc.conn/connection-details->spec :sqlite {:db ":memory:" :read-only? true :foo/open_mode "6"})]
+        (is (not-any? #(= "foo" (namespace %)) (keys spec)))
+        (is (= (:open_mode spec) (:open_mode (sql-jdbc.conn/connection-details->spec :sqlite {:db ":memory:" :read-only? true}))))))))
 
 (deftest resource-urls-are-subject-to-the-network-policy-test
   ;; `:resource:<url>` has the client fetch the database file from that URL
@@ -359,14 +381,27 @@
                        {:db ":resource:jar:http://localhost/x.jar!/x.db"}
                        ;; the SSH tunnel details mean nothing to a file-backed database, so they cannot swap the
                        ;; database's own hosts for the tunnel's
-                       {:db ":resource:http://localhost/x.db" :tunnel-enabled true :tunnel-host "8.8.8.8"}]]
+                       {:db ":resource:http://localhost/x.db" :tunnel-enabled true :tunnel-host "8.8.8.8"}
+                       ;; `java.net.URL` ignores leading whitespace and a `url:` prefix, so the host it contacts is
+                       ;; not the one a looser reading of the string would name
+                       {:db ":resource: http://8.8.8.8;@127.0.0.1:8099/x.db"}
+                       {:db ":resource:url:http://8.8.8.8;@127.0.0.1:8099/x.db"}
+                       {:db ":RESOURCE:  url:http://127.0.0.1:8099/x.db"}
+                       {:db ":resource:jar:url:http://127.0.0.1:8099/x.jar!/x.db"}
+                       ;; a `file:` URL naming another machine is fetched from it
+                       {:db ":resource:file://10.0.0.5/x.db"}
+                       ;; the file check opens a plain URL in `:db` too, with or without tunnel details
+                       {:db "http://127.0.0.1:8099/plain"}
+                       {:db " http://127.0.0.1:8099/plain"}
+                       {:db "http://127.0.0.1:8099/plain" :tunnel-enabled true :tunnel-host "8.8.8.8"}]]
         (testing (pr-str details)
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"private or internal network address"
                                 (driver.u/validate-connection-hosts! :sqlite details))))))
     (testing "a local database file, or a resource that is not fetched over the network, names no host"
       (doseq [details [{:db "/tmp/x.db"}
                        {:db ":memory:"}
-                       {:db ":resource:file:/tmp/x.db"}]]
+                       {:db ":resource:file:/tmp/x.db"}
+                       {:db "file:/tmp/x.db?mode=ro"}]]
         (testing (pr-str details)
           (is (nil? (driver.u/validate-connection-hosts! :sqlite details))))))))
 
