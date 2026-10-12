@@ -1470,6 +1470,12 @@
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 
+(defn- outcome-on-branch
+  "Names `branch`, the branch the task ran on, in an `outcome` that names one, since the setting the outcome was built from switches to it only after the task."
+  [outcome branch]
+  (cond-> outcome
+    (and branch (contains? outcome :branch)) (assoc :branch branch)))
+
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
@@ -1506,7 +1512,7 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id (:outcome result)))
+                             (remote-sync.task/complete-sync-task! task-id (outcome-on-branch (:outcome result) branch)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:outcome result)))
