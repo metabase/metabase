@@ -160,7 +160,8 @@
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
-   [:probed-model    {:optional true} [:maybe :string]]])
+   [:probed-model    {:optional true} [:maybe :string]]
+   [:mini-model      {:optional true} [:maybe :string]]])
 
 (def ^:private AzureCredentials
   "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
@@ -168,7 +169,8 @@
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-family    {:optional true} [:maybe :string]]
-   [:deployment-name {:optional true} [:maybe :string]]])
+   [:deployment-name {:optional true} [:maybe :string]]
+   [:mini-model      {:optional true} [:maybe :string]]])
 
 (def ^:private BedrockCredentials
   [:map {:closed true}
@@ -176,7 +178,8 @@
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
    [:region            {:optional true} [:maybe :string]]
-   [:model-id          {:optional true} [:maybe :string]]])
+   [:model-id          {:optional true} [:maybe :string]]
+   [:mini-model        {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
   [:map {:closed true}
@@ -188,7 +191,8 @@
    [:base-url            {:optional true} [:maybe :string]]
    [:endpoint-id         {:optional true} [:maybe :string]]
    ;; recorded by the connect-time probe, not entered by the admin
-   [:probed-model        {:optional true} [:maybe :string]]])
+   [:probed-model        {:optional true} [:maybe :string]]
+   [:mini-model          {:optional true} [:maybe :string]]])
 
 (def LLMCredentials
   "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
@@ -273,6 +277,26 @@
    [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
+
+(def chat-max-output-tokens
+  "The output-token cap for Metabot chat, sent when the caller passes no `:max-tokens` — only the agent loop does.
+
+  Sized for Metabot's chat rather than for any model: production chat output has a p99.9 of about 7,300 tokens, so
+  32000 truncates only a runaway generation, and it is at or below every catalog model's documented maximum, the
+  lowest being Claude Opus 4.1's 32,000
+  (https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-1.html).
+
+  A constant rather than a setting: the output distribution is the same on every instance, telemetry records no
+  finish reason so a lowered value would truncate tool calls invisibly, and some surfaces deliberately send no cap
+  (see the OpenAI builder, and Google Model Garden endpoints, which reach the vLLM builder with no context window)
+  or send it only when it fits the context window (see the vLLM builder), so one global knob would mislead.
+
+  Where a provider counts the cap against the context window, the cap also takes room from the prompt. Mistral
+  (https://docs.mistral.ai/api/endpoint/chat) and Moonshot (https://platform.kimi.ai/docs/api/chat) reject a
+  request whose prompt plus cap exceeds the window, and both send this cap on every request: on a 262,144-token
+  window a prompt over 230,144 tokens fails while the context meter shows about 88%. The agent loop resends the
+  full history and does not compact it, so a long enough conversation reaches this limit."
+  32000)
 
 (defn mkid
   "Generate a random id"
@@ -397,7 +421,8 @@
     ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
     ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
     ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
-    ;; limits, agent-loop exceptions) already carry an `:error` map; pass those through unchanged.
+    ;; limits, agent-loop exceptions) and Claude's error chunks, which keep the provider's own error
+    ;; object, already carry an `:error` map; pass those through unchanged.
     :error                 (if (:error chunk)
                              chunk
                              {:type :error :error {:message (:errorText chunk)}})

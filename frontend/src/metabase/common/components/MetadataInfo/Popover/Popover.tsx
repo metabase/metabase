@@ -1,9 +1,10 @@
+import cx from "classnames";
 import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 import Animation from "metabase/css/core/animation.module.css";
 import type { HoverCardProps } from "metabase/ui";
-import { HoverCard, useDelayGroup } from "metabase/ui";
+import { Box, HoverCard, useDelayGroup } from "metabase/ui";
 
 // Initially, the user will have to hover for this long to open the popover
 const POPOVER_SLOW_OPEN_DELAY = 250;
@@ -20,7 +21,7 @@ const POPOVER_FAST_OPEN_DELAY = 150;
 // we don't close immediately but delay by a short amount to avoid flicker.
 const POPOVER_CLOSE_DELAY = POPOVER_FAST_OPEN_DELAY + 30;
 
-import { Dropdown, WidthBound } from "./Popover.styled";
+import S from "./Popover.module.css";
 
 const DEFAULT_MIDDLEWARES: HoverCardProps["middlewares"] = {
   size: true,
@@ -75,14 +76,16 @@ export function Popover({
       middlewares={middlewares}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
-      <Dropdown
+      <HoverCard.Dropdown
         onClick={stopPropagation}
         onMouseDown={stopPropagation}
         onMouseUp={stopPropagation}
-        className={group.shouldDelay ? Animation.fadeIn : undefined}
+        className={cx(S.dropdown, { [Animation.fadeIn]: group.shouldDelay })}
       >
-        <WidthBound width={width}>{isOpen && content}</WidthBound>
-      </Dropdown>
+        <Box fz="md" miw={width ?? 220} maw={width ?? 300}>
+          {isOpen && content}
+        </Box>
+      </HoverCard.Dropdown>
     </HoverCard>
   );
 }

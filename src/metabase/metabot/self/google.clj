@@ -653,6 +653,7 @@
 
 (mu/defn google-raw
   "Makes a streaming request to the Gemini Enterprise Agent Platform.
+  Returns `[family stream]`, where `stream` is a reducible over raw events.
   Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`; Model
   Garden endpoints through their `chat/completions` route.
   `:ai-proxy?` is not supported and throws when it is true."
@@ -661,41 +662,39 @@
   (let [family (model->family model)
         opts   (assoc opts :model model)
         host   (volatile! nil)]
-    (adapter/stream! (cond-> provider
-                       (= :chat-completions family) (assoc :auth (endpoint-auth model host)))
-                     opts
-                     {;; a thunk, not a string: the project and the location are URL segments, so the path cannot be
-                      ;; built until the credentials resolve, and that resolution is the only one in the fleet that
-                      ;; can fail. [[adapter/stream!]] calls it inside the span and behind the proxy refusal, so a
-                      ;; bad project ID lands on the trace and a proxied request still hears about the proxy first.
-                      :path             #(let [credentials (resolve-credentials credentials)]
-                                           (if (= :chat-completions family)
-                                             (chat-completions-path credentials model)
-                                             (str (model-resource-path credentials model)
-                                                  (case family
-                                                    :anthropic raw-predict-method
-                                                    :google    generate-content-method))))
-                      :body             (case family
-                                          :anthropic        (raw-predict/request-body (model-id model) opts)
-                                          ;; `opts` carries the defaulted model: the thinking directive keys off it
-                                          :google           (stream-generate-content/request-body opts)
-                                          ;; the endpoint serves one model, and Model Garden's OpenAI client samples
-                                          ;; send an empty `model`
-                                          :chat-completions (assoc (vllm/vllm-request-body opts) :model ""))
-                      :span-attrs       {:family (name family)}
-                      ;; both read only `:location`, which resolution does not touch, so the raw map serves and
-                      ;; neither can mask a resolution failure with one of its own
-                      :error-msg        #((google-res->msg credentials @host) %)
-                      :on-request-error #(rethrow-google-api-error! credentials @host %)})))
+    [family
+     (adapter/stream! (cond-> provider
+                        (= :chat-completions family) (assoc :auth (endpoint-auth model host)))
+                      opts
+                      {;; a thunk, not a string: the project and the location are URL segments, so the path cannot be
+                       ;; built until the credentials resolve, and that resolution is the only one in the fleet that
+                       ;; can fail. [[adapter/stream!]] calls it inside the span and behind the proxy refusal, so a
+                       ;; bad project ID lands on the trace and a proxied request still hears about the proxy first.
+                       :path             #(let [credentials (resolve-credentials credentials)]
+                                            (if (= :chat-completions family)
+                                              (chat-completions-path credentials model)
+                                              (str (model-resource-path credentials model)
+                                                   (case family
+                                                     :anthropic raw-predict-method
+                                                     :google    generate-content-method))))
+                       :body             (case family
+                                           :anthropic        (raw-predict/request-body (model-id model) opts)
+                                           ;; `opts` carries the defaulted model: the thinking directive keys off it
+                                           :google           (stream-generate-content/request-body opts)
+                                           ;; the endpoint serves one model, and Model Garden's OpenAI client samples
+                                           ;; send an empty `model`
+                                           :chat-completions (assoc (vllm/vllm-request-body opts) :model ""))
+                       :span-attrs       {:family (name family)}
+                       ;; both read only `:location`, which resolution does not touch, so the raw map serves and
+                       ;; neither can mask a resolution failure with one of its own
+                       :error-msg        #((google-res->msg credentials @host) %)
+                       :on-request-error #(rethrow-google-api-error! credentials @host %)})]))
 
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
   [& args]
-  (let [{:keys [model] :or {model default-model}} (first args)
-        raw (apply google-raw args)]
-    ;; Keep this dispatch in sync with `google-raw`, which independently uses
-    ;; `model->family` to select the request protocol.
-    (eduction (case (model->family model)
+  (let [[family raw] (apply google-raw args)]
+    (eduction (case family
                 :anthropic        (raw-predict/->aisdk-chunks-xf)
                 :google           (stream-generate-content/->aisdk-chunks-xf)
                 :chat-completions (vllm/vllm->aisdk-chunks-xf))

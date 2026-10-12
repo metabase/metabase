@@ -46,6 +46,8 @@ export type DisplayGroupSpec = {
   namespace?: string;
   /** Model types that belong to this group */
   models?: Set<RemoteSyncEntityModel>;
+  /** Other entities that belong to this group */
+  matches?: (entity: RemoteSyncEntity) => boolean;
   /** Synthetic root for groups whose entities have no real collection */
   virtualRoot?: VirtualRoot;
   /** Icon to display for this group's collections */
@@ -85,6 +87,14 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     icon: "snippet",
     pathPrefixGroupId: "library",
     priority: 90,
+  },
+  {
+    id: "data-actions",
+    namespace: "data-actions",
+    matches: (entity) => entity.model === "action" && entity.card_id === null,
+    icon: "bolt",
+    pathPrefixGroupId: "library",
+    priority: 85,
   },
   {
     id: "glossary",
@@ -163,7 +173,7 @@ const getSpecForEntity = (
   namespaceCollectionMap: NamespaceCollectionMap,
 ): DisplayGroupSpec => {
   for (const spec of displayGroupSpecs) {
-    if (spec.models?.has(entity.model)) {
+    if (spec.models?.has(entity.model) || spec.matches?.(entity)) {
       return spec;
     }
     if (entity.model === "collection" && spec.namespace) {
@@ -181,6 +191,14 @@ const getSpecForEntity = (
   }
   return displayGroupSpecs[displayGroupSpecs.length - 1];
 };
+
+/**
+ * The id of the display group an entity belongs to.
+ */
+export const getDisplayGroupId = (
+  entity: RemoteSyncEntity,
+  namespaceCollectionMap: NamespaceCollectionMap,
+): string => getSpecForEntity(entity, namespaceCollectionMap).id;
 
 /**
  * Result of getGroupKeyInfo containing both the group key and the matched spec.
@@ -287,7 +305,12 @@ const getPathPrefixSegments = (
     libraryCollectionId != null &&
     collectionId !== libraryCollectionId &&
     collectionId != null &&
-    isCollectionInNamespace(collectionId, "snippets", namespaceCollectionMap)
+    spec.namespace != null &&
+    isCollectionInNamespace(
+      collectionId,
+      spec.namespace,
+      namespaceCollectionMap,
+    )
   ) {
     const libraryCollection = collectionMap.get(libraryCollectionId);
     if (libraryCollection) {

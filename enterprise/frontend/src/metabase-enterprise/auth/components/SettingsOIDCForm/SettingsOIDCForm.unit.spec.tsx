@@ -229,16 +229,16 @@ describe("SettingsOIDCForm", () => {
         /Using MB_OIDC_PROVIDERS/,
       );
       const banner = screen.getByTestId("setting-env-var-message");
-      const bannerAfterProvisioning = screen
-        .getByRole("switch", { name: "User provisioning" })
-        .compareDocumentPosition(banner);
       const serverSettingsAfterBanner = banner.compareDocumentPosition(
         screen.getByRole("heading", { name: "Server settings" }),
       );
-      expect(bannerAfterProvisioning & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      const provisioningAfterBanner = banner.compareDocumentPosition(
+        screen.getByRole("switch", { name: "User provisioning" }),
       );
       expect(serverSettingsAfterBanner & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(provisioningAfterBanner & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
       expect(queryMappingRow("admins")).toBeInTheDocument();
@@ -295,8 +295,8 @@ describe("SettingsOIDCForm", () => {
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
-        "User provisioning",
         "Server settings",
+        "User provisioning",
         "Attributes",
         "Group mapping",
       ]);

@@ -30,7 +30,7 @@
                              collection/library-dashboards-collection-type}
     :error-message         "Can only add dashboards to the 'Dashboards' collection"}})
 
-(defenterprise check-allowed-content
+(defenterprise check-library-content
   "Check if the collection's content matches the allowed content.
   Throws an exception if it does not"
   :feature :library

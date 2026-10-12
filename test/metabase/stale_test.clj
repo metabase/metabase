@@ -28,13 +28,18 @@
   ;; assoc the card with the current time minus 7 months
   (assoc card :last_used_at (datetime-months-ago 7)))
 
+(defn stale-document [document]
+  ;; assoc the document with the current time minus 7 months
+  (assoc document :last_viewed_at (datetime-months-ago 7)))
+
 (defmacro with-stale-items [inputs & body]
   (let [processed-inputs
         (map (fn [[model binding args]]
                (let [column (case model
                               :model/Card :last_used_at
                               :model/Dashboard :last_viewed_at
-                              (throw (ex-info "`with-stale` only works for cards or dashboards." {})))]
+                              :model/Document :last_viewed_at
+                              (throw (ex-info "`with-stale` only works for cards, dashboards, or documents." {})))]
                  [model binding `(assoc ~args ~column (datetime-months-ago 7))]))
              (partition-all 3 inputs))]
     `(mt/with-temp ~(vec (apply concat processed-inputs))

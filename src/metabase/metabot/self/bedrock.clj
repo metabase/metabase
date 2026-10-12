@@ -418,6 +418,16 @@
   [body]
   (dissoc body :cache_control))
 
+(defn ->mantle-openai-body
+  "Adapt a canonical OpenAI Responses request body for the mantle endpoint.
+
+  A body without `max_output_tokens` gets [[core/chat-max-output-tokens]]."
+  [body]
+  ;; Unlike OpenAI direct, an unset cap costs quota here: mantle's quota check counts "the value of `max_tokens` (or
+  ;; the model-specific maximum if `max_tokens` is not set)"
+  ;; (https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-mantle.html).
+  (update body :max_output_tokens #(or % core/chat-max-output-tokens)))
+
 (mu/defn bedrock-raw
   "Perform a streaming request to Bedrock: the mantle endpoint for a mantle catalog ID, `bedrock-runtime` for a
   Claude model only it serves (see [[runtime-model?]]).
@@ -439,7 +449,7 @@
                                     (claude/claude-request-body (assoc opts :model (runtime-base-model model))))
                       :read-stream runtime-events}
           :openai    {:path    "/openai/v1/responses"
-                      :req     (openai/openai-request-body opts)})]
+                      :req     (->mantle-openai-body (openai/openai-request-body opts))})]
     (adapter/stream! (if (= :runtime family) runtime-provider provider) opts
                      {:path        path
                       :body        req

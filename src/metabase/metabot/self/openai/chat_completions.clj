@@ -51,10 +51,11 @@
                                     (= "assistant" (:role (first group))))
                              (let [tool-calls (into [] (mapcat :tool_calls) group)
                                    ;; :reasoning_content exists on a member only when the replay
-                                   ;; hook of [[parts->cc-messages]] minted it — today only
-                                   ;; Moonshot, whose dialect replays reasoning as a top-level
+                                   ;; hook of [[parts->cc-messages]] minted it — today Moonshot
+                                   ;; and Ollama, whose dialects replay reasoning as a top-level
                                    ;; sibling of :content (see
-                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]).
+                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]; Ollama
+                                   ;; renames the field on the way out).
                                    ;; Joined in part order: the wire has a single field per
                                    ;; message, so order is the only fidelity available.
                                    reasoning  (apply str (keep :reasoning_content group))
@@ -100,9 +101,10 @@
                   ;; channel passes :reasoning-part->message, a fn from a coalesced
                   ;; :reasoning part to a replayed assistant message (or nil); today
                   ;; Mistral (think chunks — see
-                  ;; [[metabase.metabot.self.mistral/think-message]]) and Moonshot
+                  ;; [[metabase.metabot.self.mistral/think-message]]), Moonshot
                   ;; (top-level reasoning_content — see
-                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) do. Z.AI and
+                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) and Ollama
+                  ;; (the same, renamed to reasoning on the way out) do. Z.AI and
                   ;; vLLM define no such channel yet; when they grow one, each gets its
                   ;; own hook fn here rather than more shared code.
                   :reasoning   (when reasoning-part->message
@@ -127,6 +129,10 @@
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))
         merge-consecutive-assistant-messages)))
+
+(def structured-output-tool-name
+  "The tool a `:schema` request is expressed as."
+  "structured_output")
 
 ;;; Tool definition format
 
@@ -401,7 +407,7 @@
          all-tools (or (when schema
                          ;; Structured output: force a tool call with the given JSON schema
                          [{:type     "function"
-                           :function {:name        "structured_output"
+                           :function {:name        structured-output-tool-name
                                       :description "Output structured data"
                                       :parameters  schema}}])
                        (seq (mapv tool->cc-tool tools)))]
@@ -419,13 +425,8 @@
 
 ;;; Model catalog
 
-(defn models-catalog
-  "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.
-
-  `(get-in res [:body :data])` yields nil for any body shape we don't recognize — a base URL pointing at
-  something that isn't a model endpoint, an HTML error page, a provider that renamed the key. Returning nil
-  leaves the caller's whitelist intersection empty, so the admin Connect flow succeeds against a provider we
-  never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
+(defn malformed-catalog-ex
+  "The failure for a `GET /models` that answered with something other than a catalog.
 
   `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
   adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and
@@ -434,6 +435,27 @@
   the admin still sees the sentence, but it bumps the unhandled-error counter and collapses to \"Something
   went wrong\" under `MB_HIDE_STACKTRACES=true`, losing the diagnostic for the operators who enabled that.
 
+  `detail` is a sentence appended to the message, for a provider that has something more specific to say, and
+  `cause` the error that made the body unreadable, kept so a log shows whether it was HTML, empty or cut off."
+  ([provider-name] (malformed-catalog-ex provider-name nil))
+  ([provider-name detail] (malformed-catalog-ex provider-name detail nil))
+  ([provider-name detail cause]
+   (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
+              detail (str ". " detail))
+            {:api-error   true
+             :status-code 400
+             :error-code  :malformed-model-catalog}
+            cause)))
+
+(defn models-catalog
+  "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.
+
+  `(get-in res [:body :data])` yields nil for any body shape we don't recognize — a base URL pointing at
+  something that isn't a model endpoint, an HTML error page, a provider that renamed the key. Returning nil
+  leaves the caller's whitelist intersection empty, so the admin Connect flow succeeds against a provider we
+  never actually reached and leaves an empty model picker with no diagnostic. Throw
+  [[malformed-catalog-ex]] instead.
+
   A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
 
   `:detail` is a sentence appended to the message, for a provider that has something more specific to say."
@@ -441,9 +463,5 @@
   ([provider-name res {:keys [detail]}]
    (let [data (get-in res [:body :data])]
      (when-not (sequential? data)
-       (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
-                         detail (str ". " detail))
-                       {:api-error   true
-                        :status-code 400
-                        :error-code  :malformed-model-catalog})))
+       (throw (malformed-catalog-ex provider-name detail)))
      data)))

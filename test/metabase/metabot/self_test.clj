@@ -1970,6 +1970,8 @@
                     tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                 (is (=? [{:user-id (str rasta-id)
                           :data    {"model_id"              "openrouter/test-model"
+                                    "provider"               "openrouter"
+                                    "model_name"             "test-model"
                                     "total_tokens"           970
                                     "prompt_tokens"          950
                                     "completion_tokens"      20
@@ -2020,6 +2022,8 @@
                     token-events (filter #(contains? (:data %) "total_tokens") events)]
                 (is (=? [{:user-id (str rasta-id)
                           :data    {"model_id"            "openrouter/test-model"
+                                    "provider"             "openrouter"
+                                    "model_name"           "test-model"
                                     "total_tokens"         60
                                     "prompt_tokens"        50
                                     "completion_tokens"    10
@@ -2028,12 +2032,14 @@
                                     "source"               "metabot_agent"
                                     "tag"                  "test-tag"
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
-                        token-events))))))))))
+                        token-events))
+                (testing "cache counts are 0 when the provider reports none"
+                  (is (=? [{:data {"cache_creation_tokens" 0 "cache_read_tokens" 0}}]
+                          token-events)))))))))))
 
-;;; ===================== Usage Log Tests =====================
-
-(deftest call-llm-usage-log-test
-  (testing "call-llm and call-llm-structured log the provider type and the model as the provider names it"
+(deftest call-llm-provider-and-model-test
+  (testing (str "call-llm and call-llm-structured log the provider type and the model as the provider names it, "
+                "in ai_usage_log and on the token_usage event")
     (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")
                               (llm.tu/connection "metabase")]
       (let [model-ref "openrouter-1/anthropic/claude-sonnet-4.6"
@@ -2042,22 +2048,31 @@
                         {:type :tool-input :id "call-1" :function "json" :arguments {:answer "42"}}
                         {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
             logged    (atom [])]
-        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
-                                    self.claude/claude    (constantly response)
-                                    usage/log-ai-usage!   #(swap! logged conj %)]
-          (run! identity (self/call-llm model-ref nil [] {} {:tag "metabot_agent"}))
-          (self/call-llm-structured model-ref [{:role "user" :content "test"}]
-                                    {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
-                                    {:tag "metabot_agent"})
-          (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
-        (is (=? (concat (repeat 2 {:model      model-ref
-                                   :provider   "openrouter"
-                                   :model-name "anthropic/claude-sonnet-4.6"})
-                        [{:model      "metabase/anthropic/claude-haiku-4-5"
-                          :provider   "anthropic"
-                          :model-name "claude-haiku-4-5"
-                          :ai-proxied true}])
-                @logged))))))
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
+                                      self.claude/claude    (constantly response)
+                                      usage/log-ai-usage!   #(swap! logged conj %)]
+            (run! identity (self/call-llm model-ref nil [] {} snowplow-tracking-opts))
+            (self/call-llm-structured model-ref [{:role "user" :content "test"}]
+                                      {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
+                                      snowplow-tracking-opts)
+            (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} snowplow-tracking-opts)))
+          (is (=? (concat (repeat 2 {:model      model-ref
+                                     :provider   "openrouter"
+                                     :model-name "anthropic/claude-sonnet-4.6"})
+                          [{:model      "metabase/anthropic/claude-haiku-4-5"
+                            :provider   "anthropic"
+                            :model-name "claude-haiku-4-5"
+                            :ai-proxied true}])
+                  @logged))
+          (is (=? (concat (repeat 2 {:data {"model_id"   model-ref
+                                            "provider"   "openrouter"
+                                            "model_name" "anthropic/claude-sonnet-4.6"}})
+                          [{:data {"model_id"   "metabase/anthropic/claude-haiku-4-5"
+                                   "provider"   "metabase"
+                                   "model_name" "claude-haiku-4-5"}}])
+                  (filter #(contains? (:data %) "total_tokens")
+                          (snowplow-test/pop-event-data-and-user-id!)))))))))
 
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
 ;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and
@@ -2586,46 +2601,50 @@
    :error {:type    "invalid_request_error"
            :message "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}})
 
-(deftest byok-provider-error-test
+(deftest provider-error-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider "anthropic/claude-sonnet-4-6"]
-    (testing "classifies the failures that the customer can fix on their side"
+    (testing "classifies the failures that the customer can fix on their side, and the provider's outages"
       (are [code provider status body]
-           (= code (:error-code (mt/as-admin (self/byok-provider-error (provider-api-error! provider status body)))))
-        "ai_provider_billing"    "anthropic"  400 anthropic-credit-balance-body
-        "ai_provider_billing"    "anthropic"  400 {:error {:type    "invalid_request_error"
-                                                           :message "You have reached your specified API usage limits."}}
-        "ai_provider_billing"    "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
-        "ai_provider_billing"    "anthropic"  429 {:error {:type    "rate_limit_error"
-                                                           :message "You have reached your API usage limits."
-                                                           :details {:error_code "enforced_spend_limit_reached"}}}
-        "ai_provider_billing"    "openai"     429 {:error {:type    "insufficient_quota"
-                                                           :code    "insufficient_quota"
-                                                           :message "You exceeded your current quota."}}
-        "ai_provider_billing"    "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
-        "ai_provider_rate_limit" "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
-        "ai_provider_rate_limit" "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
-        "ai_provider_auth"       "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
-        "ai_provider_auth"       "anthropic"  403 {:error {:type    "permission_error"
-                                                           :message "Your API key does not have permission to use the specified resource."}}
-        nil                      "openai"     403 {:error {:type    "request_forbidden"
-                                                           :code    "unsupported_country_region_territory"
-                                                           :message "Country, region, or territory not supported"}}
-        nil                      "anthropic"  400 {:error {:type    "invalid_request_error"
-                                                           :message "max_tokens: Input should be greater than 0"}}
-        nil                      "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}))
+           (= code (:error-code (mt/as-admin (self/provider-error (provider-api-error! provider status body)))))
+        "ai_provider_billing"     "anthropic"  400 anthropic-credit-balance-body
+        "ai_provider_billing"     "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                            :message "You have reached your specified API usage limits."}}
+        "ai_provider_billing"     "anthropic"  402 {:error {:type "billing_error" :message "Check your payment details."}}
+        "ai_provider_billing"     "anthropic"  429 {:error {:type    "rate_limit_error"
+                                                            :message "You have reached your API usage limits."
+                                                            :details {:error_code "enforced_spend_limit_reached"}}}
+        "ai_provider_billing"     "openai"     429 {:error {:type    "insufficient_quota"
+                                                            :code    "insufficient_quota"
+                                                            :message "You exceeded your current quota."}}
+        "ai_provider_billing"     "openrouter" 402 {:error {:code 402 :message "Insufficient credits"}}
+        "ai_provider_rate_limit"  "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
+        "ai_provider_rate_limit"  "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
+        "ai_provider_auth"        "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
+        "ai_provider_auth"        "anthropic"  403 {:error {:type    "permission_error"
+                                                            :message "Your API key does not have permission to use the specified resource."}}
+        "ai_provider_unavailable" "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}
+        "ai_provider_unavailable" "anthropic"  500 {:error {:type "api_error" :message "Internal server error"}}
+        "ai_provider_unavailable" "openai"     503 {:error {:message "The server is overloaded or not ready yet."}}
+        nil                       "openai"     403 {:error {:type    "request_forbidden"
+                                                            :code    "unsupported_country_region_territory"
+                                                            :message "Country, region, or territory not supported"}}
+        nil                       "anthropic"  400 {:error {:type    "invalid_request_error"
+                                                            :message "max_tokens: Input should be greater than 0"}}))
     (testing "admins are told which provider failed, everyone else is not"
-      (doseq [status [402 429 401]]
+      (doseq [status [402 429 401 529]]
         (let [e (provider-api-error! "anthropic" status {})]
-          (is (str/includes? (:message (mt/as-admin (self/byok-provider-error e)))
+          (is (str/includes? (:message (mt/as-admin (self/provider-error e)))
                              "Anthropic"))
           (is (not (str/includes? (:message (mt/with-current-user (mt/user->id :rasta)
-                                              (self/byok-provider-error e)))
+                                              (self/provider-error e)))
                                   "Anthropic"))))))
-    (testing "the managed provider keeps the generic error, since its failures are Metabase's to fix"
+    (testing "on the managed provider only an outage is explained, and without naming the provider"
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
         (is (nil? (mt/as-admin
-                    (self/byok-provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))))))
+                    (self/provider-error (provider-api-error! "anthropic" 400 anthropic-credit-balance-body)))))
+        (is (=? {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems.*"}
+                (mt/as-admin (self/provider-error (provider-api-error! "anthropic" 529 {})))))))))
 
 (deftest known-models-normalization-test
   (testing "adapters that key model id to a map are passed through"

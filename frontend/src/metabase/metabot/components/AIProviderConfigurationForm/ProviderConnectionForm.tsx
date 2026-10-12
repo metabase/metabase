@@ -34,6 +34,11 @@ import { ProviderTypePicker } from "./ProviderTypePicker";
 import { findProviderTypeForApiKey } from "./api-key";
 import { getHiddenFieldKeys, isVisibleField } from "./visible-fields";
 
+const OLLAMA_TYPE = "ollama";
+const BASE_URL_FIELD = "base-url";
+// Ollama Cloud is reached like any other Ollama server, at its own address.
+const OLLAMA_CLOUD_BASE_URL = "https://ollama.com/v1";
+
 export function ProviderConnectionForm({
   providerTypes,
   connection,
@@ -247,6 +252,24 @@ export function ProviderConnectionForm({
                 disabledFields={connection?.env_fields}
                 autoFocusFirstField
               />
+              {selected.type === OLLAMA_TYPE &&
+                !connection?.env_fields.includes(BASE_URL_FIELD) && (
+                  <Group>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      onClick={() =>
+                        setConfig((current) => ({
+                          ...current,
+                          [BASE_URL_FIELD]: OLLAMA_CLOUD_BASE_URL,
+                        }))
+                      }
+                      disabled={isSaving}
+                    >
+                      {t`Use Ollama Cloud`}
+                    </Button>
+                  </Group>
+                )}
               {selected.models.length > 0 && !hasConfiguredModel && (
                 <Select
                   label={t`Model`}

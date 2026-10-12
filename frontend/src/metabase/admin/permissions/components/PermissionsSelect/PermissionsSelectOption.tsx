@@ -1,17 +1,13 @@
 import { useState } from "react";
 
-import { Icon, Tooltip } from "metabase/ui";
+import { Box, Center, Flex, Icon, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { PermissionOption } from "../../types";
 
-import {
-  IconContainer,
-  PermissionsSelectLabel,
-  PermissionsSelectOptionRoot,
-} from "./PermissionsSelectOption.styled";
-
 interface PermissionsSelectOptionProps extends Omit<PermissionOption, "value"> {
   className?: string;
+  c?: ColorName;
   hint?: string | null;
 }
 
@@ -20,22 +16,35 @@ export function PermissionsSelectOption({
   icon,
   iconColor,
   className,
+  c,
   hint,
 }: PermissionsSelectOptionProps) {
   const [shouldShowTooltip, setShouldShowTooltip] = useState(false);
 
   return (
-    <PermissionsSelectOptionRoot
+    <Flex
       className={className}
+      align="center"
+      w="100%"
+      c={c}
       onMouseEnter={() => setShouldShowTooltip(true)}
       onMouseLeave={() => setShouldShowTooltip(false)}
     >
       <Tooltip label={hint} disabled={!hint} opened={shouldShowTooltip}>
-        <IconContainer color={iconColor}>
+        <Center
+          flex="0 0 auto"
+          w="1.25rem"
+          h="1.25rem"
+          bdrs="0.1875rem"
+          c="text-primary-inverse"
+          bg={iconColor}
+        >
           <Icon name={icon} />
-        </IconContainer>
+        </Center>
       </Tooltip>
-      <PermissionsSelectLabel>{label}</PermissionsSelectLabel>
-    </PermissionsSelectOptionRoot>
+      <Box fz="md" fw={700} px="sm">
+        {label}
+      </Box>
+    </Flex>
   );
 }

@@ -13,6 +13,8 @@
   min-height: 0;
   /* Keeps the editor's internal scroller inside the rounded border */
   overflow: hidden;
+  padding: 1rem;
+  background-color: var(--mb-color-background_surface-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
 }
