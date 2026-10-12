@@ -22,7 +22,6 @@ import S from "./CollectionCaption.module.css";
 
 interface CollectionCaptionProps {
   collection: Collection;
-  /** Shows the name and description without letting them be edited. */
   readOnly?: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }

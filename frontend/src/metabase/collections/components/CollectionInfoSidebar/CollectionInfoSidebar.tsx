@@ -21,7 +21,6 @@ export const CollectionInfoSidebar = ({
 }: {
   onClose: () => void;
   collection: Collection;
-  /** Shows the description without letting it be edited. */
   readOnly?: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }) => {

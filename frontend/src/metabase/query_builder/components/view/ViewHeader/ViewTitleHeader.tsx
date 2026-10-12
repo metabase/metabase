@@ -74,6 +74,8 @@ interface ViewTitleHeaderProps {
 
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
 
+  readOnly?: boolean;
+
   className?: string;
   style?: React.CSSProperties;
 }
@@ -106,6 +108,7 @@ export function ViewTitleHeader({
   setQueryBuilderMode,
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
+  readOnly = false,
   className,
   style,
 }: ViewTitleHeaderProps): React.JSX.Element {
@@ -181,6 +184,8 @@ export function ViewTitleHeader({
         </Flex>
         <ViewTitleHeaderRightSide
           question={question}
+          originalQuestion={originalQuestion}
+          readOnly={readOnly}
           result={result}
           queryBuilderMode={queryBuilderMode}
           isBookmarked={isBookmarked}

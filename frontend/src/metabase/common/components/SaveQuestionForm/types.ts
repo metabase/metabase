@@ -24,7 +24,6 @@ export type SaveQuestionProps<C = CollectionId> = {
   multiStep?: boolean;
   initialCollectionId?: CollectionId | null;
   initialDashboardTabId?: number | null | undefined;
-  /** When `false`, changes to `originalQuestion` can only replace it, not be saved as a new question. */
   canSaveAsNew?: boolean;
 
   /**

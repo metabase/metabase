@@ -1083,7 +1083,7 @@
   [card original changes]
   (let [from (:collection_id original)]
     (when (and (some #(contains? changes %) [:collection_id :dashboard_id])
-               ;; a load moves a card out before the card that reads it, and the validator has checked the files it loads
+               ;; a pull is how the app's repo takes a card out
                (not mi/*deserializing?*)
                (some? from)
                (not= from (:collection_id (apply-dashboard-question-updates card changes)))

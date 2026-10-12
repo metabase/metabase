@@ -3,7 +3,6 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { isDataAppNamespace } from "metabase/common/collections/utils";
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
@@ -34,6 +33,8 @@ import { QuestionSharingMenu } from "./QuestionSharingMenu/QuestionSharingMenu";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
+  originalQuestion?: Question;
+  readOnly?: boolean;
   result?: Dataset;
   queryBuilderMode: QueryBuilderMode;
   isBookmarked: boolean;
@@ -74,6 +75,8 @@ interface ViewTitleHeaderRightSideProps {
 
 export function ViewTitleHeaderRightSide({
   question,
+  originalQuestion,
+  readOnly = false,
   result,
   queryBuilderMode,
   isBookmarked,
@@ -102,9 +105,9 @@ export function ViewTitleHeaderRightSide({
   isObjectDetail,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
-  // a data app owns the cards in its collection: they aren't shared, bookmarked, moved, or copied from here
-  const readOnly = isDataAppNamespace(question.collection()?.namespace);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const canReplaceOriginal =
+    originalQuestion?.type() === "question" && originalQuestion.canWrite();
 
   const hasExploreResultsLink =
     canExploreResults(question) &&
@@ -119,8 +122,7 @@ export function ViewTitleHeaderRightSide({
     !question.isArchived() &&
     isActionListVisible &&
     canWriteToCollections &&
-    // changes to a data app's card can only replace it
-    (!readOnly || question.canWrite());
+    (!readOnly || canReplaceOriginal);
 
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;

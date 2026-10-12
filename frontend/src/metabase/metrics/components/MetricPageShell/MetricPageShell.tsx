@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { isDataAppNamespace } from "metabase/common/collections/utils";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
@@ -78,6 +79,7 @@ export function MetricPageShell({
         actions={actions}
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
+        readOnly={isDataAppNamespace(card.collection?.namespace)}
         breadcrumbs={
           renderBreadcrumbs ? (
             renderBreadcrumbs(card)
