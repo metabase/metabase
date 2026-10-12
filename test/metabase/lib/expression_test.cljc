@@ -947,13 +947,11 @@
 (deftest ^:parallel unique-expression-name-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :people))]
     (testing "a completely unrelated name"
-      (is (= "Channels" (lib.expression/unique-expression-name query 0 nil "Channels"))))
+      (is (= "Channels" (lib.expression/unique-expression-name query 0 "Channels"))))
     (testing "a custom column that conflicts with a source column name"
-      (is (= "Email (1)" (lib.expression/unique-expression-name query 0 nil "Email"))))
+      (is (= "Email (1)" (lib.expression/unique-expression-name query 0 "Email"))))
     (testing "when a disambiguated custom column already exists"
       (let [query2 (lib/expression query "Email (1)"
                                    (lib/concat (meta/field-metadata :people :email) 3))]
-        (testing "and you reference the existing one"
-          (is (= "Email (1)" (lib.expression/unique-expression-name query2 0 0 "Email"))))
         (testing "and you add a new one"
-          (is (= "Email (2)" (lib.expression/unique-expression-name query2 0 nil "Email"))))))))
+          (is (= "Email (2)" (lib.expression/unique-expression-name query2 0 "Email"))))))))

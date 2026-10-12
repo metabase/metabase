@@ -1,5 +1,5 @@
 import { unique_expression_name } from "cljs/metabase.lib.js";
-import type { ExpressionClause } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 
 /**
  * Ensures expression's name uniqueness
