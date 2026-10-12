@@ -808,7 +808,9 @@
                (map :display-name (lib/returned-columns query))))))))
 
 (deftest ^:parallel expressions-with-aggregations-and-breakouts-returned-columns-test
-  (testing "expressions in :fields should be returned AFTER breakouts and aggregations"
+  (testing "expressions in :fields should be ignored when the stage has breakouts and aggregations"
+    ;; the QP drops `:fields` from stages with breakouts or aggregations, see
+    ;; [[metabase.query-processor.middleware.drop-fields-in-summaries]]
     (let [query (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query orders
@@ -822,10 +824,37 @@
               "User → Source"             ; from breakouts
               "Product → Category"        ; from breakouts
               "Count"                     ; from aggregations
-              "Sum of Quantity"           ; from aggregations
-              "test-expr"]                ; from expressions/fields ???
+              "Sum of Quantity"]          ; from aggregations
              (binding [lib.metadata.calculation/*display-name-style* :long]
                (mapv :display-name (lib/returned-columns query))))))))
+
+(deftest ^:parallel explicit-fields-with-aggregations-and-breakouts-returned-columns-test
+  (testing "explicit :fields in a stage with aggregations/breakouts should not leak into returned columns"
+    ;; The QP drops `:fields` from stages with aggregations/breakouts, so lib must not report them as returned columns,
+    ;; otherwise a dashboard filter on the next stage can target e.g. a custom column that the stage never selects.
+    (let [query (-> (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query orders
+                       {:joins       [{:source-table $$products
+                                       :alias        "Products"
+                                       :fields       :all
+                                       :condition    [:= $product-id &Products.products.id]}]
+                        :expressions {"Item Status" [:case [[[:= &Products.products.category "Widget"] "Active"]]
+                                                     {:default "Inactive"}]}
+                        :fields      [$id $user-id $product-id $subtotal $total $discount $created-at $quantity
+                                      [:expression "Item Status"]]
+                        :aggregation [[:aggregation-options [:max [:expression "Item Status"]] {:name "Status"}]]
+                        :breakout    [$user-id !day.created-at]}))
+                    lib/append-stage)]
+      (testing "stage 0 returned columns"
+        (is (= ["USER_ID" "CREATED_AT" "Status"]
+               (mapv :name (lib/returned-columns query 0)))))
+      (testing "stage 1 filterable columns from the previous stage"
+        (is (= ["USER_ID" "CREATED_AT" "Status"]
+               (into []
+                     (comp (filter #(= :source/previous-stage (:lib/source %)))
+                           (map :name))
+                     (lib/filterable-columns query 1))))))))
 
 (deftest ^:parallel return-correct-deduplicated-names-test
   (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"

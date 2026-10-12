@@ -292,7 +292,8 @@
           join-cols)))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
-;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
+;;; aggregations/breakouts, then return only those -- any `:fields` are ignored, since the QP drops them (see
+;;; [[metabase.query-processor.middleware.drop-fields-in-summaries]]). Otherwise if there are fields columns return
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
 (mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- ::lib.metadata.calculation/returned-columns
   [query                                  :- ::lib.schema/query
@@ -305,11 +306,13 @@
       (or
        (existing-stage-metadata query stage-number)
        (let [summary-cols (summary-columns query stage-number options)
-             field-cols   (fields-columns query stage-number options)
+             field-cols   (when-not summary-cols
+                            (fields-columns query stage-number options))
              ;; ... then calculate metadata for this stage
              cols         (cond
+                            ;; `:fields` are ignored when there are breakouts or aggregations, just like the QP does
                             summary-cols
-                            (concat summary-cols field-cols)
+                            summary-cols
 
                             field-cols
                             (reduce

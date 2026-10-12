@@ -628,7 +628,8 @@
                   (as-> <> (lib/aggregate <> (lib/sum (lib/expression-ref <> "a"))))
                   (as-> <> (lib/with-fields <> [(lib/expression-ref <> "a")]))
                   (lib/append-stage)
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))
+                  ;; `:fields` are ignored in a stage with aggregations, so stage 0 only returns `sum`
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/replace-clause 0 expr-a (meta/field-metadata :venues :price))))))
     (testing "replace with literal expression"
       (is (=? {:stages [{:expressions [[:value {:lib/expression-name "a" :effective-type :type/Integer} 999]
