@@ -19,6 +19,15 @@ describe("Admin Settings Routing - settings managers", () => {
     expect(await screen.findByTestId("unauthorized-page")).toBeInTheDocument();
   });
 
+  it("shows not found to settings managers for unknown settings pages", async () => {
+    await setup({ isAdmin: false, initialRoute: "/not-a-real-page" });
+
+    expect(
+      await screen.findByText(/the page you asked for couldn't be found/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("unauthorized-page")).not.toBeInTheDocument();
+  });
+
   it("redirects the settings index to General for settings managers", async () => {
     await setup({ isAdmin: false, initialRoute: "" });
 

@@ -99,7 +99,7 @@ export function SettingsNavItem({
                 } as any)
               : child,
           )
-        : childrenProp}
+        : null}
     </AdminNavItem>
   );
 }

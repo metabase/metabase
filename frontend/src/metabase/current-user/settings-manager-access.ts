@@ -1,3 +1,5 @@
+import { SETTINGS_INDEX_SLUG } from "metabase/urls";
+
 /**
  * Pages under /admin/settings that settings managers may open, by slug. Matching is
  * exact, so a page nested under an allowed one is admin-only until listed here.
@@ -23,8 +25,7 @@ export function isSettingsManagerPath(slug: string | undefined): boolean {
     return false;
   }
   const normalized = slug.replace(/^\/+|\/+$/g, "");
-  // an empty slug redirects to `general`
-  const redirected = normalized === "" ? "general" : normalized;
+  const redirected = normalized === "" ? SETTINGS_INDEX_SLUG : normalized;
   return SETTINGS_MANAGER_PATHS.has(redirected);
 }
 

@@ -188,7 +188,7 @@ export const getSettingsRoutes = (store: Store<State>) => {
   return (
     <Route lazy={settingsLayout}>
       <Route element={<SettingsPageGuard />}>
-        <Route index element={redirect("general")} />
+        <Route index element={redirect(Urls.SETTINGS_INDEX_SLUG)} />
         <Route path="general" lazy={generalSettings} />
         <Route path="updates" lazy={updatesSettings} />
         <Route path="email" lazy={emailSettings} />
@@ -264,8 +264,8 @@ export const getSettingsRoutes = (store: Store<State>) => {
           lazy={appearanceSettings("conceal-metabase")}
         />
         <Route path="cloud" lazy={cloudSettings} />
-        <Route path="*" element={<NotFound />} />
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Route>
   );
 };
