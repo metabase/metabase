@@ -410,24 +410,22 @@ export const getRoutes = (
           </Route>
         </Route>
 
-        {PLUGIN_SECURITY_CENTER.isEnabled && (
-          <Route element={<IsAdmin />}>
+        <Route element={<IsAdmin />}>
+          <Route
+            path="security-center"
+            lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
+          >
+            <Route index element={redirect("advisories")} />
             <Route
-              path="security-center"
-              lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
-            >
-              <Route index element={redirect("advisories")} />
-              <Route
-                path="advisories"
-                lazy={PLUGIN_SECURITY_CENTER.securityCenterAdvisoriesPage}
-              />
-              <Route
-                path="health-checks"
-                lazy={PLUGIN_SECURITY_CENTER.securityCenterHealthChecksPage}
-              />
-            </Route>
+              path="advisories"
+              lazy={PLUGIN_SECURITY_CENTER.securityCenterAdvisoriesPage}
+            />
+            <Route
+              path="health-checks"
+              lazy={PLUGIN_SECURITY_CENTER.securityCenterHealthChecksPage}
+            />
           </Route>
-        )}
+        </Route>
 
         <Route element={createElement(createAdminRouteGuard("help"))}>
           <Route path="help" lazy={help}>
