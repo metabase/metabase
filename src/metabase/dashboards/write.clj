@@ -484,21 +484,21 @@
         {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
                                            dashboards-only? reference-metrics)]
     {:copied     (u/prog1 (into {} (for [[id to-copy] copy]
-                                    [id (queries/with-copy-source-card to-copy
-                                          (queries/create-card!
-                                           (cond-> to-copy
-                                             true                    (assoc :collection_id dest-coll-id)
-                                             same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                             (or (:dashboard_id to-copy)
-                                                 dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
-                                                                         (dissoc :collection_position)))
-                                           @api/*current-user*
-                                           ;; creating cards from a transaction. wait until tx complete to signal event
-                                           true
-                                           ;; do not autoplace these cards. we will create the dashboard cards ourselves.
-                                           false))]))
-                  ;; the copies run the same queries as the originals, which were checked above
-                  (card-run-perms/mark-runnable! (map :id (vals <>))))
+                                     [id (queries/with-copy-source-card to-copy
+                                           (queries/create-card!
+                                            (cond-> to-copy
+                                              true                    (assoc :collection_id dest-coll-id)
+                                              same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                              (or (:dashboard_id to-copy)
+                                                  dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
+                                                                          (dissoc :collection_position)))
+                                            @api/*current-user*
+                                            ;; creating cards from a transaction. wait until tx complete to signal event
+                                            true
+                                            ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                            false))]))
+                   ;; the copies run the same queries as the originals, which were checked above
+                   (card-run-perms/mark-runnable! (map :id (vals <>))))
      :discarded  discard
      :referenced reference}))
 
