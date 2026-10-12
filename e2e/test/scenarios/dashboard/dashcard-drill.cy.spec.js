@@ -1132,153 +1132,146 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findByText(/Created At/).should("not.exist");
       });
     });
-  });
-});
 
-describe("issue 29076", () => {
-  beforeEach(() => {
-    H.restore();
+    it("should use the card name instead of series names when navigating to the query builder from the dashcard title (metabase#42165)", () => {
+      const peopleSourceFieldRef = [
+        "field",
+        PEOPLE.SOURCE,
+        { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+      ];
+      const ordersCreatedAtFieldRef = [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ];
 
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-          "create-queries": "no",
+      H.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [
+            createMockParameter({
+              id: "param-1",
+              name: "Date",
+              slug: "date",
+              type: "date/all-options",
+            }),
+          ],
         },
-      },
-      [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder",
-        },
-      },
-    });
-    cy.sandboxTable({
-      table_id: ORDERS_ID,
-      attribute_remappings: {
-        attr_uid: ["dimension", ["field", ORDERS.ID, null]],
-      },
-    });
-    cy.signInAsSandboxedUser();
-  });
-
-  it("should be able to drilldown to a saved question in a dashboard with sandboxing (metabase#29076)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.wait("@cardQuery");
-    // test that user is sandboxed - normal users has over 2000 rows
-    H.getDashboardCard()
-      .findByTestId("table-body")
-      .findAllByRole("row")
-      .should("have.length", 1);
-    H.assertDatasetReqIsSandboxed({
-      requestAlias: "@cardQuery",
-      columnId: ORDERS.ID,
-      columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
-    });
-
-    cy.intercept("POST", "/api/card/*/query").as("questionQuery");
-    H.getDashboardCard().findByRole("link", { name: "Orders" }).click();
-    cy.wait("@questionQuery");
-
-    cy.location("pathname").should(
-      "eq",
-      `/question/${ORDERS_QUESTION_ID}-orders`,
-    );
-    H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
-    H.assertDatasetReqIsSandboxed({
-      requestAlias: "@questionQuery",
-      columnId: ORDERS.ID,
-      columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
-    });
-  });
-});
-
-describe("issue 42165", () => {
-  const peopleSourceFieldRef = [
-    "field",
-    PEOPLE.SOURCE,
-    { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-  ];
-  const ordersCreatedAtFieldRef = [
-    "field",
-    ORDERS.CREATED_AT,
-    { "base-type": "type/DateTime", "temporal-unit": "month" },
-  ];
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.createDashboardWithQuestions({
-      dashboardDetails: {
-        parameters: [
-          createMockParameter({
-            id: "param-1",
-            name: "Date",
-            slug: "date",
-            type: "date/all-options",
-          }),
-        ],
-      },
-      questions: [
-        {
-          name: "fooBarQuestion",
-          display: "bar",
-          query: {
-            aggregation: [["count"]],
-            breakout: [peopleSourceFieldRef, ordersCreatedAtFieldRef],
-            "source-table": ORDERS_ID,
+        questions: [
+          {
+            name: "fooBarQuestion",
+            display: "bar",
+            query: {
+              aggregation: [["count"]],
+              breakout: [peopleSourceFieldRef, ordersCreatedAtFieldRef],
+              "source-table": ORDERS_ID,
+            },
           },
-        },
-      ],
-    }).then(({ dashboard: _dashboard }) => {
-      cy.request("GET", `/api/dashboard/${_dashboard.id}`).then(
-        ({ body: dashboard }) => {
-          const [dashcard] = dashboard.dashcards;
-          const [parameter] = dashboard.parameters;
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  {
-                    card_id: dashcard.card_id,
-                    parameter_id: parameter.id,
-                    target: ["dimension", ordersCreatedAtFieldRef],
-                  },
-                ],
-              },
-            ],
-          }).then(() => {
-            cy.wrap(_dashboard.id).as("dashboardId");
-          });
-        },
-      );
-    });
-  });
-
-  it("should use card name instead of series names when navigating to QB from dashcard title", () => {
-    cy.get("@dashboardId").then((dashboardId) => {
-      H.visitDashboard(dashboardId, { params: { date: "2027-01" } });
-      H.filterWidget().should("contain", "2027");
-
-      H.getDashboardCard(0).within(() => {
-        cy.findAllByTestId("legend-item").should("have.length", 5);
-        cy.findAllByTestId("legend-item")
-          .first()
-          .should("contain.text", "Affiliate");
-        cy.findByText("fooBarQuestion").click();
+        ],
+      }).then(({ dashboard: _dashboard }) => {
+        cy.request("GET", `/api/dashboard/${_dashboard.id}`).then(
+          ({ body: dashboard }) => {
+            const [dashcard] = dashboard.dashcards;
+            const [parameter] = dashboard.parameters;
+            cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+              dashcards: [
+                {
+                  ...dashcard,
+                  parameter_mappings: [
+                    {
+                      card_id: dashcard.card_id,
+                      parameter_id: parameter.id,
+                      target: ["dimension", ordersCreatedAtFieldRef],
+                    },
+                  ],
+                },
+              ],
+            }).then(() => {
+              cy.wrap(_dashboard.id).as("dashboardId");
+            });
+          },
+        );
       });
 
-      cy.wait("@dataset");
-      cy.title().should("eq", "fooBarQuestion · Metabase");
+      cy.get("@dashboardId").then((dashboardId) => {
+        H.visitDashboard(dashboardId, { params: { date: "2027-01" } });
+        H.filterWidget().should("contain", "2027");
+
+        H.getDashboardCard(0).within(() => {
+          cy.findAllByTestId("legend-item").should("have.length", 5);
+          cy.findAllByTestId("legend-item")
+            .first()
+            .should("contain.text", "Affiliate");
+          cy.findByText("fooBarQuestion").click();
+        });
+
+        cy.wait("@dataset");
+        cy.title().should("eq", "fooBarQuestion · Metabase");
+      });
+    });
+  });
+
+  describe("with sandboxing", () => {
+    beforeEach(() => {
+      H.restore();
+
+      cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
+
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "blocked",
+            "create-queries": "no",
+          },
+        },
+        [COLLECTION_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": "query-builder",
+          },
+        },
+      });
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field", ORDERS.ID, null]],
+        },
+      });
+      cy.signInAsSandboxedUser();
+    });
+
+    it("should be able to drilldown to a saved question in a dashboard with sandboxing (metabase#29076)", () => {
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.wait("@cardQuery");
+      // test that user is sandboxed - normal users has over 2000 rows
+      H.getDashboardCard()
+        .findByTestId("table-body")
+        .findAllByRole("row")
+        .should("have.length", 1);
+      H.assertDatasetReqIsSandboxed({
+        requestAlias: "@cardQuery",
+        columnId: ORDERS.ID,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
+      });
+
+      cy.intercept("POST", "/api/card/*/query").as("questionQuery");
+      H.getDashboardCard().findByRole("link", { name: "Orders" }).click();
+      cy.wait("@questionQuery");
+
+      cy.location("pathname").should(
+        "eq",
+        `/question/${ORDERS_QUESTION_ID}-orders`,
+      );
+      H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
+      H.assertDatasetReqIsSandboxed({
+        requestAlias: "@questionQuery",
+        columnId: ORDERS.ID,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
+      });
     });
   });
 });
