@@ -17,9 +17,23 @@ jobs:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+      # The cljs build depends only on these paths. A change that touches none of
+      # them, which is most frontend changes, can take the build from the cache
+      # and skip the JVM setup that only the build needs.
+      - name: Key for the cljs build
+        id: cljs-key
+        run: echo "key=cljs-dev-${RUNNER_OS}-$(git ls-tree HEAD src resources test deps.edn shadow-cljs.edn package.json bun.lock | sha256sum | cut -c1-40)" >> "$GITHUB_OUTPUT"
+      - name: Restore the cljs build
+        id: cljs-cache
+        uses: actions/cache@v5
+        with:
+          path: target/cljs_dev
+          key: ${{ steps.cljs-key.outputs.key }}
       - name: Prepare back-end environment
+        if: steps.cljs-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/prepare-backend
       - name: Build cljs
+        if: steps.cljs-cache.outputs.cache-hit != 'true'
         run: bun run build-pure:cljs
       - name: Measure jest and the harness
         run: frontend/test/harness/ci-measure.sh
