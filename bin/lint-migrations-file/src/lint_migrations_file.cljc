@@ -113,9 +113,10 @@
           wrong-file-ids
           (->> ids
                (filter (fn [id]
-                         (let [id-version (parse-long (re-find #"\d+" id))]
+                         ;; a version-less id has no digits, so no version, and belongs in no versioned file
+                         (let [id-version (some-> (re-find #"\d+" id) parse-long)]
                            (if (= fv 1)
-                             (> id-version 55)
+                             (some-> id-version (> 55))
                              (not= fv id-version))))))]
       (when (seq wrong-file-ids)
         (throw (validation-error "Change set IDs are in the wrong file"
@@ -199,6 +200,14 @@
   E.g., `v60.my-migration-name` or `v60.1`"
   #"^v\d{2,}\..+$")
 
+(defn valid-version-less-id?
+  "Whether `id` is a valid version-less changeset ID: lowercase letters/digits/underscores, at least one letter, and no
+  leading `v<digit>`."
+  [id]
+  (boolean (and (re-matches #"[a-z0-9_]+" id)
+                (re-find #"[a-z]" id)
+                (not (re-find #"^v\d" id)))))
+
 (defn- require-change-set-ids-match-file-format
   "Enforces that changeset IDs use the correct format for the file type:
   - Directory-based files (v60+): IDs must be prefixed with v{version}. (e.g., v60.anything)
@@ -217,12 +226,8 @@
           ;; the ISO date/timestamp the versioned ids were built from (`v50.2024-03-18T16:00:00`): checked first so
           ;; the habit gets its own message rather than a generic character-set complaint
           iso-date-id? (fn [id] (re-find #"\d{4}-\d{2}-\d{2}" id))
-          valid-id?    (fn [id]
-                         (and (re-matches #"[a-z0-9_]+" id)
-                              (re-find #"[a-z]" id)
-                              (not (re-find #"^v\d" id))))
           dated-ids    (filter iso-date-id? ids)
-          bad-ids      (remove valid-id? ids)]
+          bad-ids      (remove valid-version-less-id? ids)]
       (when (seq dated-ids)
         (throw (validation-error
                 (format (str "Migration file contains changeset IDs that look like dates or timestamps; a version-less "
@@ -321,11 +326,12 @@
     (when-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
       (Integer/parseInt file-version))))
 
-(def ^:private first-versionless-major
-  "The first Metabase major whose changesets are version-less. From this major on every changeset lives in a year-based
-  directory (e.g. `2026/20261001_something.yaml`) with a version-less ID, so that the version a changeset ships with is
-  decided by the branch it is merged into rather than being baked into the changelog. 65 already shipped versioned
-  changesets before the cutover, so it is exempt."
+(def first-versionless-major
+  "The first Metabase major whose changesets are version-less, and the first that ships the version-less runtime
+  support. From this major on every changeset lives in a year-based directory (e.g. `2026/20261001_something.yaml`)
+  with a version-less ID, so that the version a changeset ships with is decided by the branch it is merged into rather
+  than being baked into the changelog. Earlier majors are versioned only: a backport to one of them is a versioned copy
+  in its `0NN/` directory."
   66)
 
 (defn- require-no-versioned-changesets-from-first-versionless-major

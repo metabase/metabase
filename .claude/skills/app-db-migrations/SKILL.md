@@ -11,10 +11,11 @@ pushing.
 
 ## Where a new changeset goes
 
-New changesets are **version-less** and live in a year directory:
+Starting with v66, new changesets are **version-less** and live in a year directory. Create one with
+`./bin/mage new-migration <snake_case_name>`, which writes:
 
 ```
-resources/migrations/2026/20260917_short_snake_case_name.yaml
+resources/migrations/2026/20261012_short_snake_case_name.yaml   # changeset id: short_snake_case_name
 ```
 
 - The directory is the current year; the file name is `<yyyymmdd>_<snake_case_name>.yaml` (lower-case letters,
@@ -23,13 +24,31 @@ resources/migrations/2026/20260917_short_snake_case_name.yaml
 - The changeset **id carries no version**: lower-case letters, digits and underscores, with at least one letter, e.g.
   `glossary_entity_id`, `metabot_message_data_version_1`. Not an ISO date or timestamp like the old ids carried
   (`2026-09-18T12:00:00`), not `v66.…`, not all digits, no `v<digit>` prefix. Ids must be unique across the
-  repository, so make them specific.
+  repository, so make them specific. `new-migration` uses the name as the first changeset's id and refuses one that
+  is already taken.
 - The Metabase version a changeset ships in is decided by the branch it is merged into, not by anything in the file.
-  A backport is the same file with the same id and author on the release branch; Liquibase then recognises it as
-  already run when the customer upgrades.
+  A backport to v66 or later is the same file with the same id and author on the release branch; Liquibase then
+  recognises it as already run when the customer upgrades.
 
-Do **not** add changesets to the versioned files (`migrations/0NN/…` with `vNN.` ids, or `0NN_update_migrations.yaml`).
-Those layouts stopped at v65 and the lint refuses `vNN.` ids for 66 and later.
+Do **not** add new work to the versioned files (`migrations/0NN/…` with `vNN.` ids, or `0NN_update_migrations.yaml`).
+They cover v65 and earlier, which shipped without version-less support, and the lint refuses `vNN.` ids for 66 and
+later.
+
+### Backporting to v65 or earlier
+
+v65 and earlier binaries don't support version-less changesets, so a backport to them is a **versioned copy**:
+`./bin/mage new-migration 65 <snake_case_name>` writes `resources/migrations/065/<yyyymmdd>_<name>.yaml` with a
+`v65.<random>` id. Add the copy on master and on the release branch, and guard both copies so that a database runs
+only one of them:
+
+- the `065/` copy gets `preConditions: [onFail: MARK_RAN, not: changeSetExecuted: <the version-less id>]`, for
+  databases that already ran the version-less changeset (a 66+ release that shipped before the backport);
+- the version-less changeset gets the mirror precondition on the `v65.` id. `065/` sorts before `2026/`, so a fresh
+  install and every database that ran the v65 backport run the copy first, and the original must then be skipped.
+
+`changeSetExecuted` needs `id`, `author` and `changeLogFile` (e.g. `migrations/2026/20261012_name.yaml`).
+`resources/migrations/064/20260911_glossary_entity_id.yaml` shows the precondition shape (from an earlier
+versioned-to-versioned backport).
 
 ## Writing the changeset
 
@@ -65,15 +84,25 @@ Rules the lint enforces (and reviewers expect):
   nothing to undo).
 - Preconditions that check a constraint or index must be scoped to a table (`indexExists` / `primaryKeyExists` /
   `uniqueConstraintExists` need `tableName`, `foreignKeyConstraintExists` needs `foreignKeyTableName`), or Liquibase
-  snapshots the whole schema to answer them. NOTE: reconditions are rarely to never actually needed -- rely on liquibase changeset tracking
+  snapshots the whole schema to answer them. Preconditions are rarely needed at all: rely on Liquibase's changeset
+  tracking.
 - No `deleteCascade` on an `addColumn` constraint (add the foreign key with `addForeignKeyConstraint` instead).
 - Migrations must work on H2, PostgreSQL and MySQL/MariaDB; anything database-specific gets a `dbms:` filter.
 - **Shipped changesets are immutable.** Fix a mistake with a new changeset; never edit or delete one that a release
   contains. `runOnChange: true` changesets (views) are the one exception and may be edited in place.
 
+## Retiring a shipped changeset
+
+Never just delete a shipped changeset: instances keep its row in `DATABASECHANGELOG` forever, Liquibase then logs it
+as "not rolled back", and any replacement that recreates the same object fails with a duplicate-object error. To
+retire one when you must, add a new changeset that runs `DELETE FROM DATABASECHANGELOG WHERE id IN (...)` for the
+retired ids (`resources/migrations/059_update_migrations.yaml::v59.2026-01-09T11:30:00` retires
+`v58.2026-01-09T12:00:00`).
+
 ## Data migrations (Clojure)
 
-Anything that is not plain DDL goes in `src/metabase/app_db/custom_migrations.clj` with
+Prefer SQL changesets. Anything that SQL can't express goes in `src/metabase/app_db/custom_migrations.clj` (larger
+ones get their own namespace under `custom_migrations/`) with
 `define-reversible-migration` (or `define-migration` when there is nothing to reverse), referenced from a changeset:
 
 ```yaml
@@ -84,7 +113,11 @@ Anything that is not plain DDL goes in `src/metabase/app_db/custom_migrations.cl
 ```
 
 Custom migrations are append-only, must be idempotent and resumable, and must batch their work: never hold a write
-lock on a large table for the whole run.
+lock on a large table for the whole run. They run inside a transaction and must use table names, never `:model/*` or
+other application code: that code changes after the migration ships and breaks it (some older migrations use
+`:model/*`; don't copy them). Decrypt encrypted columns such as `metabase_database.details` and `setting.value`
+before reading them. The `metabase.app-db.*` module, custom migrations included, is exempt from the `<module>.db`
+rule.
 
 ## Testing a migration
 
@@ -100,7 +133,8 @@ seed data, runs your changeset(s) when you call `migrate!`, and you assert on th
     (is ...)))
 ```
 
-See the macro's docstring for asserting on the rollback too. Run them on H2 in a fresh JVM:
+See the macro's docstring for asserting on the rollback too. Run them on H2 and Postgres, and add MySQL when the
+change touches DDL or JSON columns. On H2, in a fresh JVM:
 
 ```sh
 MB_DB_TYPE=h2 ./bin/test-agent :only '[metabase.app-db.schema-migrations-test/glossary-entity-id-test]'
@@ -109,7 +143,8 @@ MB_DB_TYPE=h2 ./bin/test-agent :only '[metabase.app-db.schema-migrations-test/gl
 ## Running and rolling back in development
 
 Every `migrate up` run is recorded as its own Liquibase deployment. Use the dev tooling (in the REPL,
-`(dev.migrate/migrate!)` and `(dev.migrate/rollback-last-deployment!)`; or the CLI below — it needs the `:dev` alias):
+`(dev.migrate/migrate!)`, `(dev.migrate/rollback! :last-deployment)` and `(dev.migrate/rollback! :deployment <id>)`;
+or the CLI below — it needs the `:dev` alias):
 
 ```sh
 clojure -M:dev:migrate up                        # apply unrun changesets

@@ -269,7 +269,7 @@
                                   (validate-file (io/file "migrations/066/20261001_something.yaml")
                                                  (mock-change-set :id "v66.2026-10-01T12:00:00")
                                                  (mock-change-set :id "v66.2026-10-01T12:00:01")))))
-  (testing "v65 and earlier versioned changesets are still allowed (65 shipped versioned changesets before the cutover)"
+  (testing "v65 and earlier versioned changesets are still allowed (they predate the cutover, and backports to them stay versioned)"
     (is (= :ok
            (validate-file (io/file "migrations/065/20260911_glossary_entity_id.yaml")
                           (mock-change-set :id "v65.2026-09-11T12:00:00"))))
@@ -283,22 +283,22 @@
     (is (= :ok
            (validate-file (io/file "migrations/2026/20261001_something.yaml")
                           (mock-change-set :id "something_versionless")))))
-  (testing "a v65 release mixes versioned 065/ changesets with version-less 2026/ ones, and both validate"
+  (testing "a backport to v65 is a versioned copy in 065/, guarded against the version-less original"
     (is (= :ok
-           (validate-file (io/file "migrations/065/20260911_glossary_entity_id.yaml")
-                          (mock-change-set :id "v65.2026-09-11T12:00:00")
-                          (mock-change-set :id "v65.2026-09-11T12:00:01"))))
-    (is (= :ok
-           (validate-file (io/file "migrations/2026/20260917_shipped_in_65.yaml")
-                          (mock-change-set :id "shipped_in_65")
-                          (mock-change-set :id "also_shipped_in_65"))))
+           (validate-file (io/file "migrations/065/20261012_glossary_entity_id.yaml")
+                          (mock-change-set :id "v65.2026-10-12T12:00:00"
+                                           :preConditions [{:onFail "MARK_RAN"}
+                                                           {:not [{:changeSetExecuted
+                                                                   {:id            "glossary_entity_id"
+                                                                    :author        "tplude"
+                                                                    :changeLogFile "migrations/2026/20261012_glossary_entity_id.yaml"}}]}]))))
     (testing "but a version-less id may not sneak into the versioned 065/ file, nor a v65 id into 2026/"
       (is (thrown? clojure.lang.ExceptionInfo
-                   (validate-file (io/file "migrations/065/20260911_glossary_entity_id.yaml")
-                                  (mock-change-set :id "shipped_in_65"))))
+                   (validate-file (io/file "migrations/065/20261012_glossary_entity_id.yaml")
+                                  (mock-change-set :id "glossary_entity_id"))))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"look like dates or timestamps"
-                            (validate-file (io/file "migrations/2026/20260917_shipped_in_65.yaml")
-                                           (mock-change-set :id "v65.2026-09-11T12:00:00")))))))
+                            (validate-file (io/file "migrations/2026/20261012_glossary_entity_id.yaml")
+                                           (mock-change-set :id "v65.2026-10-12T12:00:00")))))))
 
 (deftest ^:parallel year-dir-version-less-ids-test
   (testing "year-based directories allow version-less changeset IDs"
