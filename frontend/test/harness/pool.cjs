@@ -45,6 +45,35 @@ const readDurations = () => {
   return {};
 };
 
+// Experiment: the order of the queue, to find out why slowest-first with times
+// measured on a CI runner is slower there than the order of the list.
+const ORDER = process.env.NT_ORDER ?? "slowest";
+const orderQueue = (queue, durations, workers) => {
+  const time = (file) => durations[file] ?? Infinity;
+  if (ORDER === "list") return;
+  if (ORDER === "slowest") { queue.sort((a, b) => time(b) - time(a)); return; }
+  if (ORDER === "warm") {
+    // Slowest first, after three files of middle weight for each worker, so
+    // the heaviest files do not run in a process that has compiled nothing yet.
+    queue.sort((a, b) => time(b) - time(a));
+    const middle = Math.floor(queue.length / 2);
+    const warmUp = queue.splice(middle, Math.min(workers * 3, queue.length - middle));
+    queue.unshift(...warmUp);
+    return;
+  }
+  if (ORDER === "light-last") {
+    // The order of the list, with the lightest third moved to the end: what
+    // makes a run end late is a heavy file that starts late.
+    const byTime = [...queue].sort((a, b) => time(a) - time(b));
+    const light = new Set(byTime.slice(0, Math.floor(queue.length / 3)));
+    const kept = queue.filter((file) => !light.has(file));
+    const last = queue.filter((file) => light.has(file)).sort((a, b) => time(b) - time(a));
+    queue.splice(0, queue.length, ...kept, ...last);
+    return;
+  }
+  throw new Error(`unknown NT_ORDER ${ORDER}`);
+};
+
 // keepAlive holds idle workers for the next run() instead of ending them, which
 // is what makes a rerun in watch mode start warm.
 const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFileStart = () => {}, onFileDone = () => {} } = {}) => {
@@ -203,7 +232,7 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
           queues[project.name].push(file);
           pending += 1;
         }
-        for (const queue of Object.values(queues)) queue.sort((a, b) => (durations[b] ?? Infinity) - (durations[a] ?? Infinity));
+        for (const queue of Object.values(queues)) orderQueue(queue, durations, workers);
         fill();
       });
     },
