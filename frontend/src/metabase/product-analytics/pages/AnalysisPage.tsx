@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { useParams, useSearchParams } from "metabase/router";
-import { Box, Group, Stack, Title } from "metabase/ui";
+import { Group, Stack, Title } from "metabase/ui";
 import { isConcreteTableId } from "metabase-types/api";
 import type { ConcreteTableId } from "metabase-types/api";
 
@@ -56,9 +56,19 @@ const AnalysisWorkspace = ({ kind, tableId }: AnalysisWorkspaceProps) => {
   const tableName = table.data?.display_name ?? t`this table`;
 
   return (
-    <Box p="xl">
-      <Stack gap="lg">
-        <Title order={2}>{t`${config.name} analysis on ${tableName}`}</Title>
+    <Stack flex={1} mih="100%" gap={0} bg="background-secondary">
+      <Stack
+        gap="md"
+        pl="xxl"
+        pr="lg"
+        pt="lg"
+        pb="md"
+        bg="background-primary"
+        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+      >
+        <Title order={3} fw="normal">
+          {t`${config.name} analysis on ${tableName}`}
+        </Title>
         <AnalysisToolbar
           config={config}
           state={state}
@@ -70,24 +80,22 @@ const AnalysisWorkspace = ({ kind, tableId }: AnalysisWorkspaceProps) => {
           }
           onSpecChange={(spec) => dispatch({ type: "set-spec", spec })}
         />
-        <Group align="flex-start" gap="lg" wrap="nowrap">
-          <SettingsPanel panel={state.panel} />
-          <AnalysisResult
-            config={config}
-            spec={state.spec}
-            dataset={dataset}
-            datasetQuery={datasetQuery}
-            isLoading={isLoading}
-            error={
-              error ??
-              (tableId === undefined
-                ? t`Choose a table to analyze.`
-                : undefined)
-            }
-            warnings={warnings}
-          />
-        </Group>
       </Stack>
-    </Box>
+      <Group align="flex-start" gap="lg" wrap="nowrap" py="lg" pl="xxl" pr="lg">
+        <SettingsPanel panel={state.panel} />
+        <AnalysisResult
+          config={config}
+          spec={state.spec}
+          dataset={dataset}
+          datasetQuery={datasetQuery}
+          isLoading={isLoading}
+          error={
+            error ??
+            (tableId === undefined ? t`Choose a table to analyze.` : undefined)
+          }
+          warnings={warnings}
+        />
+      </Group>
+    </Stack>
   );
 };

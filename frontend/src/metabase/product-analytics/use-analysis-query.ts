@@ -43,7 +43,10 @@ export const useAnalysisQuery = ({
   const tableMetadata = useGetTableQueryMetadataQuery(
     tableId !== undefined ? { id: tableId } : skipToken,
   );
-  const databaseId = tableMetadata.data?.db_id;
+  // currentData, not data: RTK keeps `data` from the previous args, which
+  // would pair a stale table, base SQL or result with the new request.
+  const table = tableMetadata.currentData;
+  const databaseId = table?.db_id;
   const metadataProvider = useMetadataProvider(databaseId ?? null);
 
   // Lib.toJsQuery mints a new lib/uuid on every clause. Rebuilding the request
@@ -53,7 +56,7 @@ export const useAnalysisQuery = ({
     if (
       databaseId === undefined ||
       tableId === undefined ||
-      !tableMetadata.data
+      table === undefined
     ) {
       return undefined;
     }
@@ -68,15 +71,17 @@ export const useAnalysisQuery = ({
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  }, [databaseId, tableId, tableMetadata.data, metadataProvider, dateFilter]);
+  }, [databaseId, tableId, table, metadataProvider, dateFilter]);
 
   const native = useGetNativeDatasetQuery(compiledBase?.request ?? skipToken);
   const compiledDatabaseId = compiledBase?.databaseId;
   const baseError = compiledBase?.error;
 
+  const baseSql = native.currentData?.query;
+
   const built =
-    native.data?.query && compiledDatabaseId !== undefined
-      ? buildSql(spec, native.data.query)
+    baseSql && compiledDatabaseId !== undefined
+      ? buildSql(spec, baseSql)
       : undefined;
 
   const datasetQuery: DatasetQuery | undefined =
@@ -94,8 +99,8 @@ export const useAnalysisQuery = ({
     ? getErrorMessage(native.error)
     : adhoc.error
       ? getErrorMessage(adhoc.error)
-      : adhoc.data?.error
-        ? getErrorMessage(adhoc.data.error)
+      : adhoc.currentData?.error
+        ? getErrorMessage(adhoc.currentData.error)
         : tableMetadata.error
           ? getErrorMessage(tableMetadata.error)
           : undefined;
@@ -104,11 +109,11 @@ export const useAnalysisQuery = ({
 
   const isLoading =
     tableId !== undefined &&
-    (tableMetadata.isLoading || native.isFetching || adhoc.isFetching);
+    (tableMetadata.isFetching || native.isFetching || adhoc.isFetching);
 
   return {
-    sql: built?.sql ?? native.data?.query ?? null,
-    dataset: adhoc.data,
+    sql: built?.sql ?? baseSql ?? null,
+    dataset: adhoc.currentData,
     datasetQuery,
     warnings: built?.warnings ?? [],
     isLoading,

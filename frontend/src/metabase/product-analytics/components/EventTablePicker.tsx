@@ -12,11 +12,13 @@ import type { ConcreteTableId, TableId } from "metabase-types/api";
 
 type EventTablePickerProps = {
   tableId: ConcreteTableId | undefined;
+  isLoading: boolean;
   onChange: (tableId: ConcreteTableId) => void;
 };
 
 export const EventTablePicker = ({
   tableId,
+  isLoading,
   onChange,
 }: EventTablePickerProps) => {
   const [isOpened, setIsOpened] = useState(false);
@@ -49,6 +51,9 @@ export const EventTablePicker = ({
         value={pickerValue}
         opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
+        // MiniPicker's own Menu onChange only closes, so a click on the target
+        // would immediately undo the open. Let the target toggle it instead.
+        menuProps={{ onChange: setIsOpened }}
         models={["table"]}
         onBrowseAll={() => setIsBrowsing(true)}
         onChange={(item) => {
@@ -59,8 +64,10 @@ export const EventTablePicker = ({
       >
         <Button
           variant="default"
-          leftSection={<Icon name="table2" />}
-          onClick={() => setIsOpened(true)}
+          size="lg"
+          fw="bold"
+          loading={isLoading || table.isLoading}
+          leftSection={<Icon name="database" />}
         >
           {label}
         </Button>

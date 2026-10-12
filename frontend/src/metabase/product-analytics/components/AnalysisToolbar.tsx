@@ -21,6 +21,7 @@ import type { AnalysisConfig } from "../analyses/config";
 import type { Grain, Granularity } from "../spec/types";
 import type { AnalysisPanel, AnalysisState } from "../use-analysis-state";
 
+import S from "./AnalysisToolbar.module.css";
 import { SqlModal } from "./SqlModal";
 
 const grainLabel = (grain: Grain): string => {
@@ -75,6 +76,9 @@ export const AnalysisToolbar = ({
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <Group gap="sm">
           <SegmentedControl<AnalysisPanel>
+            classNames={{
+              label: S.segmentedControlLabel,
+            }}
             value={state.panel}
             onChange={onPanelChange}
             data={[
@@ -87,33 +91,35 @@ export const AnalysisToolbar = ({
               },
             ]}
           />
-          <Menu>
-            <Menu.Target>
-              <Button variant="default" leftSection={<Icon name="group" />}>
-                {grainLabel(state.spec.grain)}
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => onGrainChange("person")}>
-                {t`People`}
-              </Menu.Item>
-              <Menu.Item onClick={() => onGrainChange("session")}>
-                {t`Sessions`}
-              </Menu.Item>
-              <Menu.Item onClick={() => onGrainChange("event")}>
-                {t`Events`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-          <Button
-            variant="default"
-            leftSection={<Icon name="filter" />}
-            onClick={() =>
-              sendToast({ message: t`Coming soon`, timeout: 3000 })
-            }
-          >
-            {t`Filter`}
-          </Button>
+          <Button.Group>
+            <Menu>
+              <Menu.Target>
+                <Button variant="default" leftSection={<Icon name="group" />}>
+                  {grainLabel(state.spec.grain)}
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={() => onGrainChange("person")}>
+                  {t`People`}
+                </Menu.Item>
+                <Menu.Item onClick={() => onGrainChange("session")}>
+                  {t`Sessions`}
+                </Menu.Item>
+                <Menu.Item onClick={() => onGrainChange("event")}>
+                  {t`Events`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <Button
+              variant="default"
+              leftSection={<Icon name="filter" />}
+              onClick={() =>
+                sendToast({ message: t`Coming soon`, timeout: 3000 })
+              }
+            >
+              {t`Filter`}
+            </Button>
+          </Button.Group>
         </Group>
 
         <Group gap="sm">
@@ -168,15 +174,15 @@ export const AnalysisToolbar = ({
           )}
 
           <ActionIcon
-            variant="default"
+            variant="subtle"
             size="lg"
-            aria-label={t`SQL`}
+            aria-label={t`View the SQL`}
             onClick={openSql}
           >
             <Icon name="sql" />
           </ActionIcon>
           <Button
-            variant="default"
+            variant="subtle"
             onClick={() =>
               sendToast({ message: t`Coming soon`, timeout: 3000 })
             }

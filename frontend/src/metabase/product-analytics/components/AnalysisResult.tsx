@@ -63,7 +63,7 @@ export const AnalysisResult = ({
         {!isLoading && !error && rawSeries === null && (
           <Text c="text-secondary">{t`Results will appear here.`}</Text>
         )}
-        {!isLoading && rawSeries !== null && (
+        {!isLoading && !error && rawSeries !== null && (
           <Box h={420}>
             <Visualization
               rawSeries={rawSeries}

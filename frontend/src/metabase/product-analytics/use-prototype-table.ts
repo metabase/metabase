@@ -1,4 +1,5 @@
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { isConcreteTableId } from "metabase-types/api";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
@@ -25,8 +26,10 @@ export const usePrototypeTable = (): PrototypeTableResult => {
   );
   const tableId = table && isConcreteTableId(table.id) ? table.id : undefined;
 
-  const error =
-    databases.isSuccess && !database
+  const requestError = databases.error ?? tables.error;
+  const error = requestError
+    ? getErrorMessage(requestError)
+    : databases.isSuccess && !database
       ? `No database named “${PROTOTYPE_DATABASE_NAME}”. Add the ClickHouse connection first.`
       : databases.isSuccess &&
           database &&

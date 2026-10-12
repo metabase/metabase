@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import type {
   CardDisplayType,
-  IconName,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -26,7 +25,6 @@ export type AnalysisConfig = {
   kind: AnalysisKind;
   name: string;
   question: string;
-  icon: IconName;
   setupLabel: string;
   granularity?: {
     units: Granularity[];
@@ -76,7 +74,6 @@ export const ANALYSIS_CONFIG: Record<AnalysisKind, AnalysisConfig> = {
     get question() {
       return t`Where do people fall out?`;
     },
-    icon: "funnel",
     get setupLabel() {
       return t`Steps`;
     },
@@ -96,7 +93,6 @@ export const ANALYSIS_CONFIG: Record<AnalysisKind, AnalysisConfig> = {
     get question() {
       return t`What steps did people take?`;
     },
-    icon: "sankey",
     get setupLabel() {
       return t`Path`;
     },
@@ -115,7 +111,6 @@ export const ANALYSIS_CONFIG: Record<AnalysisKind, AnalysisConfig> = {
     get question() {
       return t`How many days did a person show up?`;
     },
-    icon: "bar",
     get setupLabel() {
       return t`Activity`;
     },
@@ -133,7 +128,6 @@ export const ANALYSIS_CONFIG: Record<AnalysisKind, AnalysisConfig> = {
     get question() {
       return t`Is the base growing or leaking?`;
     },
-    icon: "lineandbar",
     get setupLabel() {
       return t`Activity`;
     },
@@ -157,7 +151,6 @@ export const ANALYSIS_CONFIG: Record<AnalysisKind, AnalysisConfig> = {
     get question() {
       return t`Do people keep coming back?`;
     },
-    icon: "grid",
     get setupLabel() {
       return t`Cohorts`;
     },

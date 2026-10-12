@@ -1,14 +1,9 @@
-import {
-  Box,
-  Icon,
-  Paper,
-  Stack,
-  Text,
-  Title,
-  UnstyledButton,
-} from "metabase/ui";
+import { Box, Text, UnstyledButton } from "metabase/ui";
 
 import type { AnalysisConfig } from "../analyses/config";
+
+import { AnalysisIllustration } from "./AnalysisIllustration";
+import S from "./AnalysisTypeCard.module.css";
 
 type AnalysisTypeCardProps = {
   config: AnalysisConfig;
@@ -20,26 +15,16 @@ export const AnalysisTypeCard = ({
   config,
   disabled,
   onSelect,
-}: AnalysisTypeCardProps) => {
-  return (
-    <UnstyledButton
-      disabled={disabled}
-      onClick={onSelect}
-      w="100%"
-      h="100%"
-      style={{ cursor: disabled ? "not-allowed" : "pointer" }}
-    >
-      <Paper withBorder p="lg" h="100%" opacity={disabled ? 0.5 : 1}>
-        <Stack gap="sm" align="flex-start">
-          <Icon name={config.icon} size={22} c="text-secondary" />
-          <Box>
-            <Title order={4}>{config.name}</Title>
-            <Text c="text-secondary" size="sm">
-              {config.question}
-            </Text>
-          </Box>
-        </Stack>
-      </Paper>
-    </UnstyledButton>
-  );
-};
+}: AnalysisTypeCardProps) => (
+  <UnstyledButton className={S.card} disabled={disabled} onClick={onSelect}>
+    <Box>
+      <Text fz="lg" fw="bold" lh="1.5rem">
+        {config.name}
+      </Text>
+      <Text c="text-secondary">{config.question}</Text>
+    </Box>
+    <Box mt="auto">
+      <AnalysisIllustration kind={config.kind} />
+    </Box>
+  </UnstyledButton>
+);
