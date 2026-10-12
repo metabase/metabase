@@ -1164,7 +1164,10 @@ jobs:
   be-tests-starburst-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.starburst-should-run == 'true' }}
-    runs-on: ubuntu-22.04-8-cores
+    # trino is a memory hog and frequently runs out of memory on 16GB runners.
+    # note that running out of memory manifests as random job cancellations
+    # that give no indication of memory being the root cause of the problem.
+    runs-on: ubuntu-latest-8-cores
     timeout-minutes: 40
     env:
       CI: 'true'
