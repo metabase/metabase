@@ -4,8 +4,9 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type * as Router from "metabase/router";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import { getAiAuditingRoutes, getAiAuditingUpsellRoutes } from "./routes";
+import { getAiAuditingRoutes } from "./routes";
 
 jest.mock("./metabot-analytics/components/ConversationStatsPage", () => ({
   ConversationStatsPage: () => <div>Usage stats page</div>,
@@ -73,9 +74,7 @@ function setup({
   mcpEnabled = true,
 }: SetupOpts) {
   return renderWithProviders(
-    <Route path="/monitor/ai-auditing">
-      {upsell ? getAiAuditingUpsellRoutes() : getAiAuditingRoutes()}
-    </Route>,
+    <Route path="/monitor/ai-auditing">{getAiAuditingRoutes()}</Route>,
     {
       initialRoute: route,
       withRouter: true,
@@ -84,6 +83,12 @@ function setup({
           "ai-features-enabled?": aiFeaturesEnabled,
           "llm-metabot-configured?": isConfigured,
           "mcp-enabled?": mcpEnabled,
+          // One tree serves both worlds; the features decide what each leaf
+          // renders, read through MetabaseSettings when a route resolves.
+          "token-features": createMockTokenFeatures({
+            audit_app: true,
+            ai_controls: !upsell,
+          }),
         }),
       }),
     },
