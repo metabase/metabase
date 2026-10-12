@@ -30,6 +30,7 @@ import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedComponent } from "metabase-enterprise/settings/feature-gated-route";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
@@ -122,6 +123,31 @@ const tenantUsersPersonalCollectionList = () =>
   }));
 
 export function initializePlugin() {
+  const GatedTenantCollectionPermissionsPage = featureGatedComponent(
+    "tenants",
+    TenantCollectionPermissionsPage,
+  );
+  const GatedTenantSpecificCollectionPermissionsPage = featureGatedComponent(
+    "tenants",
+    TenantSpecificCollectionPermissionsPage,
+  );
+  PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes = () => (
+    <>
+      <Route
+        path="tenant-collections"
+        element={<GatedTenantCollectionPermissionsPage />}
+      >
+        <Route path=":collectionId" />
+      </Route>
+      <Route
+        path="tenant-specific-collections"
+        element={<GatedTenantSpecificCollectionPermissionsPage />}
+      >
+        <Route path=":collectionId" />
+      </Route>
+    </>
+  );
+
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
 
@@ -144,23 +170,6 @@ export function initializePlugin() {
       name: t`Tenant collections`,
       value: "tenant-specific-collections",
     });
-
-    PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes = () => (
-      <>
-        <Route
-          path="tenant-collections"
-          element={<TenantCollectionPermissionsPage />}
-        >
-          <Route path=":collectionId" />
-        </Route>
-        <Route
-          path="tenant-specific-collections"
-          element={<TenantSpecificCollectionPermissionsPage />}
-        >
-          <Route path=":collectionId" />
-        </Route>
-      </>
-    );
 
     PLUGIN_TENANTS.EditUserStrategyModal = EditUserStrategyModal;
     PLUGIN_TENANTS.CreateTenantsOnboardingStep = CreateTenantsOnboardingStep;
