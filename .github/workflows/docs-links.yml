@@ -49,3 +49,29 @@ jobs:
       - name: Check docs links in the source code
         if: ${{ !cancelled() }}
         run: docs/util/check-links.sh src
+
+  gate:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: in_product_docs_links
+
+  # A docs-only PR that renames a page doesn't run the frontend lint job, which checks the same links.
+  in-product-links:
+    name: Check in-product docs links
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          apply-patches: "false"
+      - name: Check in-product docs links
+        run: bun bin/verify-doc-links/verify-doc-links.ts
