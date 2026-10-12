@@ -15,6 +15,7 @@
    [metabase.config.core :as config]
    [metabase.request.current :as request.current]
    [metabase.request.user-agent :as request.user-agent]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -225,7 +226,7 @@
 (defn- truncate-header
   "The embedding columns are varchar(254); truncate rather than fail the row insert on an oversized header."
   [s]
-  (some-> s (subs 0 (min (count s) 254))))
+  (some-> s (u/truncate 254)))
 
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
