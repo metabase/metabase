@@ -11,7 +11,6 @@
   shape lives in [[metabase.query-processor.pivot.middleware]]."
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
@@ -50,40 +49,16 @@
 
 (set! *warn-on-reflection* true)
 
-(def group-bitmask
-  "Re-export of [[metabase.query-processor.pivot.common/group-bitmask]]."
-  pivot.common/group-bitmask)
-
-(defn- powerset
-  "Generate a powerset while maintaining the original ordering as much as possible"
-  [xs]
-  (for [combo (reverse (range (long (Math/pow 2 (count xs)))))]
-    (for [item  (range 0 (count xs))
-          :when (not (zero? (bit-and (bit-shift-left 1 item) combo)))]
-      (nth xs item))))
-
-(mr/def ::pivot-rows     [:sequential ::pivot.common/index])
-(mr/def ::pivot-cols     [:sequential ::pivot.common/index])
-(mr/def ::pivot-measures [:sequential ::pivot.common/index])
-
 (mr/def ::column-sort-order [:map-of [:maybe ::pivot.common/index] [:maybe :keyword]])
 
 (mr/def ::pivot-opts [:maybe
                       [:map {:closed true}
-                       [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
-                       [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
-                       [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
+                       [:pivot-rows         {:optional true} [:maybe ::pivot.common/pivot-rows]]
+                       [:pivot-cols         {:optional true} [:maybe ::pivot.common/pivot-cols]]
+                       [:pivot-measures     {:optional true} [:maybe ::pivot.common/pivot-measures]]
                        [:show-row-totals    {:optional true} [:maybe :boolean]]
                        [:show-column-totals {:optional true} [:maybe :boolean]]
                        [:column-sort-order  {:optional true} [:maybe ::column-sort-order]]]])
-
-(mr/def ::pivot.common/breakout-combinations
-  [:and
-   [:sequential ::pivot.common/breakout-combination]
-   [:fn
-    {:error/message "Distinct combinations"}
-    #(or (empty? %)
-         (apply distinct? %))]])
 
 (defn- validate-pivot-indices!
   "Throw an `:invalid-query` error if any index in `pivot-rows` or `pivot-cols` falls outside
@@ -111,59 +86,6 @@
                        {:type qp.error-type/qp, :query ~query}
                        e#)))))
 
-(mu/defn breakout-combinations :- ::pivot.common/breakout-combinations
-  "Return a sequence of all breakout combinations (by index) we should generate queries for.
-
-    (breakout-combinations 3 [1 2] nil) ;; -> [[0 1 2] [] [1 2] [2] [1]]"
-  [num-breakouts      :- ::pivot.common/num-breakouts
-   pivot-rows         :- [:maybe ::pivot-rows]
-   pivot-cols         :- [:maybe ::pivot-cols]
-   show-row-totals    :- [:maybe :boolean]
-   show-column-totals :- [:maybe :boolean]]
-  (let [row-totals (if (nil? show-row-totals)    true show-row-totals)
-        col-totals (if (nil? show-column-totals) true show-column-totals)]
-    (validate-pivot-indices! num-breakouts pivot-rows pivot-cols)
-    (sort-by
-     (partial pivot.common/group-bitmask num-breakouts)
-     (m/distinct-by
-      (partial pivot.common/group-bitmask num-breakouts)
-      (map
-       (comp vec sort)
-       ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
-       ;; we'll just generate everything
-       (if (empty? (concat pivot-rows pivot-cols))
-         (powerset (range 0 num-breakouts))
-         (concat
-          ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
-          ;; primary data: return all breakouts
-          ;; => [0 1 2 3] => 0000 => Group #15
-          [(range num-breakouts)]
-          ;; subtotal rows
-          ;; _.range(1, pivotRows.length).map(i => [...pivotRow.slice(0, i), ...pivotCols])
-          ;;  => [0 _ _ 3] [0 1 _ 3] => 0110 0100 => Group #6, #4
-          (when col-totals
-            (for [i (range 1 (count pivot-rows))]
-              (concat (take i pivot-rows) pivot-cols)))
-          ;; "row totals" on the right
-          ;; pivotRows
-          ;; => [0 1 2 _] => 1000 => Group #8
-          (when row-totals
-            [pivot-rows])
-          ;; subtotal rows within "row totals"
-          ;; _.range(1, pivotRows.length).map(i => pivotRow.slice(0, i))
-          ;; => [0 _ _ _] [0 1 _ _] => 1110 1100 => Group #14, #12
-          (when (and row-totals col-totals)
-            (for [i (range 1 (count pivot-rows))]
-              (take i pivot-rows)))
-          ;; "grand totals" row
-          ;; pivotCols
-          ;; => [_ _ _ 3] => 0111 => Group #7
-          (when col-totals
-            [pivot-cols])
-          ;; bottom right corner [_ _ _ _] => 1111 => Group #15
-          (when (and row-totals col-totals)
-            [[]]))))))))
-
 (mu/defn- keep-breakouts-at-indexes :- ::lib.schema/query
   "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
   [query                    :- ::lib.schema/query
@@ -181,21 +103,21 @@
   [query :- ::lib.schema/query
    {:keys [pivot-rows pivot-cols show-row-totals show-column-totals] :as _pivot-options} :- ::pivot-opts]
   (wrapping-pivot-generation-errors query
-                                    (let [all-breakouts (lib/breakouts query)
-                                          all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts)
-                                                                                                               pivot-rows
-                                                                                                               pivot-cols
-                                                                                                               show-row-totals
-                                                                                                               show-column-totals)
-                                                                                 (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
-                                                          (-> query
-                                                              (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)
-                                                              qp.nest-for-pivot/remove-non-aggregation-order-bys
-                                                              (keep-breakouts-at-indexes breakout-indexes)))]
-                                      (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
-                                            (->
-                                             (assoc-in (first all-queries) [:info :pivot/original-query] query)
-                                             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))))
+    (let [all-breakouts (lib/breakouts query)
+          all-queries   (for [breakout-indexes (u/prog1 (pivot.common/breakout-combinations (count all-breakouts)
+                                                                                            pivot-rows
+                                                                                            pivot-cols
+                                                                                            show-row-totals
+                                                                                            show-column-totals)
+                                                 (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
+                          (-> query
+                              (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)
+                              qp.nest-for-pivot/remove-non-aggregation-order-bys
+                              (keep-breakouts-at-indexes breakout-indexes)))]
+      (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
+            (->
+             (assoc-in (first all-queries) [:info :pivot/original-query] query)
+             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))))
 
 (defn- maybe-userland
   "Wrap `query` as a userland query when it carries a non-empty `:info` map."
@@ -609,7 +531,7 @@
    (pivot-options query (get-in query [:info :visualization-settings]))
    (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals]))))
 
-(mu/defn- run-pivot-query-multi
+(mu/defn- run-multi-query-pivot
   "Generate one subquery per breakout combination implied by `query`'s pivot intent (viz-settings or legacy keys),
   run each, and merge the results through `rff` into a single output."
   [query :- ::lib.schema/query
@@ -728,7 +650,7 @@
          (not (lib.pivot/has-pivot? query)))
     (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
 
-(defn- run-sql-pivot-query
+(defn- run-single-query-pivot
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
   [query rff]
@@ -736,12 +658,12 @@
                          (get-in query [:info :visualization-settings]))
         pivot-opts   (pivot-opts-from-query query)
         prepared     (wrapping-pivot-generation-errors query
-                                                       (-> query
-                                                           apply-legacy-pivot-keys
-                                                           (apply-pivot-viz-settings viz-settings)
-                                                           maybe-add-default-pivot-clause
-                                                           (assoc-in [:middleware :pivot-options] pivot-opts)
-                                                           maybe-userland))]
+                       (-> query
+                           apply-legacy-pivot-keys
+                           (apply-pivot-viz-settings viz-settings)
+                           maybe-add-default-pivot-clause
+                           (assoc-in [:middleware :pivot-options] pivot-opts)
+                           maybe-userland))]
     (qp/process-query prepared rff)))
 
 (defn- running-in-clojure-test?
@@ -842,70 +764,69 @@
   parity checker sees any divergence across the pivot flows it ran (a subset of `:native-pivot-query`,
   `:union-all`, `:multi-query`). Each outcome is a `{:outcome ...}` on success or `{:throwable ...}` on
   failure. `:divergent-pairs` preserves the order of [[pivot-flow-comparison-pairs]]. Defaults to
-  [[default-on-parity-mismatch!]]; override via
-  [[metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs]] in tests."
+  [[default-on-parity-mismatch!]]."
   default-on-parity-mismatch!)
 
-(defn- query-has-window-fn-aggregation?
-  "True iff any aggregation in the last stage of the preprocessed `query` is a window-function aggregation."
-  [query]
-  (some? (some lib.schema.aggregation/window-aggregation-expression?
-               (lib/aggregations query))))
+(defn- pivot-parity-flows
+  "Ordered flow list, given the (preprocessed) `query` and its `database`.
+
+  * every driver includes `:multi-query` — the reference flow, one query per breakout combination.
+  * every SQL driver additionally includes `:union-all` — the SQL family's unconditional single-query
+    fallback shape.
+  * every driver that declares `:native-pivot-tables` additionally includes `:native-pivot-query`,
+    which each family's compiler renders as its native single-scan shape (`GROUPING SETS` on SQL,
+    `$facet` on Mongo). Dropped when the query has a window-function aggregation and the driver
+    does NOT declare `:native-pivot-tables/window-functions`.
+
+  `:multi-query` comes first (the reference). The remaining flows are listed in order of
+  decreasing efficiency. Non-`:multi-query` labels double as `:qp.pivot/forced-shape` stage values that
+  the driver's compiler recognises."
+  [query database]
+  (let [driver       (:engine database)
+        sql?         (isa? driver/hierarchy driver :sql)
+        native?      (driver.u/supports? driver :native-pivot-tables database)
+        native-safe? (and native?
+                          (or (not (some lib.schema.aggregation/window-aggregation-expression?
+                                         (lib/aggregations query)))
+                              (driver.u/supports? driver :native-pivot-tables/window-functions database)))]
+    (cond-> [:multi-query]
+      native-safe? (conj :native-pivot-query)
+      sql?         (conj :union-all))))
 
 (defn- run-pivot-flow
-  "Run one pivot `flow` (`:multi-query`, `:native-pivot-query`, or `:union-all`) against `query`. The primary
-  flow uses the caller's `rff` and lets `qp.pipeline/*result*` pass through; the others use the default rff
-  and result handler purely to collect an outcome for comparison. Returns `{:outcome ...}` on success or
-  `{:throwable ...}` on failure — annotated with `:elapsed-ms` and `:flow` so the parity checker (and CI
-  log inspection) can see per-flow timings without extra plumbing."
+  "Run one pivot `flow` against `query`. `primary-flow` uses the caller's `rff` and lets
+  `qp.pipeline/*result*` pass through; the others use the default rff and result handler purely to
+  collect an outcome for comparison. Returns `{:outcome ...}` on success or `{:throwable ...}` on
+  failure — annotated with `:elapsed-ms` and `:flow`."
   [flow query rff primary-flow]
   (let [primary?     (= flow primary-flow)
-        runner       (if (= flow :multi-query) run-pivot-query-multi run-sql-pivot-query)
-        force-shape  (case flow
-                       :multi-query   nil
-                       :native-pivot-query :native-pivot-query
-                       :union-all     :union-all)
+        multi?       (= flow :multi-query)
+        runner       (if multi? run-multi-query-pivot run-single-query-pivot)
+        force-shape  (when-not multi? flow)
         scoped-query (cond-> query
                        force-shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape force-shape))
         do-run       (fn [rff]
-                       (let [t0     (System/nanoTime)
+                       (let [timer  (u/start-timer)
                              result (try {:outcome (runner scoped-query rff)}
                                          (catch Throwable t {:throwable t}))]
-                         (assoc result :flow flow, :elapsed-ms (long (/ (- (System/nanoTime) t0) 1e6)))))]
+                         (assoc result :flow flow, :elapsed-ms (u/since-ms timer))))]
     (if primary?
       (do-run rff)
       (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
         (do-run qp.reducible/default-rff)))))
 
-(defn- driver-supports-grouping-sets?
-  "True iff `query`'s driver supports the `:native-pivot-tables` feature — i.e. forcing the
-  `:native-pivot-query` compilation shape would produce valid SQL."
-  [query]
-  (let [db (query-database query)]
-    (driver.u/supports? (driver.u/database->driver db) :native-pivot-tables db)))
-
 (defn- run-with-parity-check
-  "Run every applicable pivot flow — `:multi-query` always, `:union-all` on every SQL driver, and
-  `:native-pivot-query` when the driver supports `:native-pivot-tables` and the query has no window-function
-  aggregation — and report any pairwise divergence via [[on-parity-mismatch]]. The primary flow (per
-  `sql-primary?` + GS applicability) uses the caller's `rff`; other flows use the default rff for
-  comparison only. Returns the primary flow's success value or rethrows its exception.
+  "Run every flow in `flows` against `query` and report any pairwise divergence via
+  [[on-parity-mismatch]]. `primary-flow` uses the caller's `rff`; the others use the default rff for
+  comparison only. Returns `primary-flow`'s success value or rethrows its exception.
 
   Logs a per-flow timing summary at WARN so CI logs surface which flow was slow and by how much when a
   mismatch or timeout occurs on some environment (e.g. Presto CI). Format: `pivot-parity {:driver ..
   :primary .. :outcomes {<flow> {:elapsed-ms .. :ok? .. :cause [..]}}}`. `:cause` is the ex-message chain
   (root cause first) — populated only for failing flows so a Presto `Socket closed` after the JDBC
   polling budget shows up plainly instead of the QP's wrapping `Error preparing statement` text."
-  [query rff sql-primary?]
-  (let [skip-gs?        (or (query-has-window-fn-aggregation? query)
-                            (not (driver-supports-grouping-sets? query)))
-        primary-flow    (cond
-                          (not sql-primary?) :multi-query
-                          skip-gs?           :union-all
-                          :else              :native-pivot-query)
-        flows           (cond-> [:multi-query :union-all]
-                          (not skip-gs?) (conj :native-pivot-query))
-        outcomes        (into {} (map (fn [flow] [flow (run-pivot-flow flow query rff primary-flow)])) flows)
+  [query rff flows primary-flow]
+  (let [outcomes        (into {} (map (fn [flow] [flow (run-pivot-flow flow query rff primary-flow)])) flows)
         divergent-pairs (divergent-pivot-pairs outcomes)
         cause-chain     (fn [^Throwable t]
                           (loop [t t, acc []]
@@ -932,28 +853,31 @@
                               qp.middleware.normalize/normalize-preprocessing-middleware
                               lib/prepare-after-deserialization)
         db                (query-database query)
-        sql-driver?       (isa? driver/hierarchy (:engine db) :sql)
-        use-single-query? (and sql-driver? (qp.settings/use-native-pivot-tables))
-        primary           (if use-single-query? run-sql-pivot-query run-pivot-query-multi)]
+        flows             (pivot-parity-flows query db)
+        single-flow       (first (remove #{:multi-query} flows))
+        use-single-query? (and single-flow (qp.settings/use-native-pivot-tables))
+        primary-flow      (if use-single-query? single-flow :multi-query)
+        primary           (if use-single-query? run-single-query-pivot run-multi-query-pivot)]
     (binding [qp.pipeline/*pivot?* true]
-      (if (and sql-driver? (pivot-parity-enabled?))
-        (run-with-parity-check query rff use-single-query?)
+      (if (and single-flow (pivot-parity-enabled?))
+        (run-with-parity-check query rff flows primary-flow)
         (primary query rff)))))
 
 (mu/defn run-pivot-query
   "Run the pivot `query` through `rff`.
 
   Dispatches between two implementations:
-  * **SQL** — a single query (GROUPING SETS or UNION ALL, per the SQL pivot compiler's dispatch), chosen when
-    [[qp.settings/use-native-pivot-tables]] is on and the driver derives from `:sql`.
-  * **Multi-query** — one query per breakout combination, results concatenated. Used otherwise.
+  * **Single-query** — the driver's own `:pivot` compiler renders one query that covers every breakout
+    combination. Chosen when [[qp.settings/use-native-pivot-tables]] is on and the driver has a
+    single-query shape available (see [[pivot-parity-flows]] for the family rules).
+  * **Multi-query** — one query per breakout combination, results concatenated. Chosen otherwise.
 
-  When [[*check-pivot-parity?*]] is on and the SQL path is applicable, both run (primary via the caller's
-  rff, secondary via the default rff for comparison) and disagreement is reported via
-  [[on-parity-mismatch]]. Parity checking is on by default in clojure.test tests.
+  When [[*check-pivot-parity?*]] is on and the driver has more than the `:multi-query` flow, every flow
+  runs (primary via the caller's rff, others via the default rff for comparison) and disagreement is
+  reported via [[on-parity-mismatch]]. Parity checking is on by default in clojure.test tests.
 
-  A query with `:info` is run as a userland query, so any error is
-  caught and returned as a formatted error response rather than thrown.
+  A query with `:info` is run as a userland query, so any error is caught and returned as a formatted
+  error response rather than thrown.
 
   Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query :- ::qp.schema/any-query]
