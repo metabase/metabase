@@ -37,8 +37,8 @@
 ;; TODO (Chris 2026-10-01) -- share one quoting function with metabase.mcp.v2.message/clean, which escapes the same
 ;; code points but can't be required from metabot.
 
-(def ^:private escaped-categories
-  "Unicode general categories [[quoted]] escapes: invisible, line-breaking, and unassigned code points."
+(def ^:private invisible-categories
+  "Unicode general categories of the invisible, line-breaking, and unassigned code points."
   (into #{} (map long) [Character/CONTROL
                         Character/FORMAT
                         Character/LINE_SEPARATOR
@@ -52,27 +52,32 @@
   #{0x00AB 0x00BB 0x02BA 0x02DD 0x02EE 0x05F4 0x201C 0x201D 0x201E 0x201F 0x2032 0x2033 0x2034 0x2035 0x2036 0x2037
     0x2057 0x275D 0x275E 0x2760 0x2E42 0x3003 0x301D 0x301E 0x301F 0xFF02 0x1F676 0x1F677 0x1F678})
 
-(defn- escaped-code-point?
+(defn- invisible-code-point?
   [code-point]
-  (or (contains? escaped-categories (long (Character/getType (int code-point))))
-      (contains? double-quote-look-alikes (long code-point))))
+  (contains? invisible-categories (long (Character/getType (int code-point)))))
+
+(defn- escape-code-points
+  "`s` with `\\uXXXX` in place of each code point `escape?` accepts."
+  [^String s escape?]
+  (let [sb (StringBuilder.)]
+    (loop [i 0]
+      (when (< i (.length s))
+        (let [code-point (.codePointAt s (int i))
+              width      (Character/charCount code-point)]
+          (if (escape? code-point)
+            (dotimes [j width]
+              (.append sb (format "\\u%04x" (int (.charAt s (int (+ i j)))))))
+            (.appendCodePoint sb code-point))
+          (recur (+ i width)))))
+    (str sb)))
 
 (defn- quoted
   "`s` as one double-quoted line: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and
    double-quote-like code points."
   [s]
-  (let [^String printed (binding [*print-readably* true] (pr-str (str s)))
-        sb              (StringBuilder.)]
-    (loop [i 0]
-      (when (< i (.length printed))
-        (let [code-point (.codePointAt printed (int i))
-              width      (Character/charCount code-point)]
-          (if (escaped-code-point? code-point)
-            (dotimes [j width]
-              (.append sb (format "\\u%04x" (int (.charAt printed (int (+ i j)))))))
-            (.appendCodePoint sb code-point))
-          (recur (+ i width)))))
-    (str sb)))
+  (escape-code-points (binding [*print-readably* true] (pr-str (str s)))
+                      #(or (invisible-code-point? %)
+                           (contains? double-quote-look-alikes (long %)))))
 
 (defn- query-failed-output
   [query-error]
@@ -199,7 +204,9 @@
         (str/replace #"(?U)\s+" " ")
         llm-shape/escape-xml-content
         (str/replace "\\" "\\\\")
-        (str/replace "|" "\\|"))))
+        (str/replace "|" "\\|")
+        ;; After the backslashes are doubled, so an escape written here differs from the same text in the data.
+        (escape-code-points invisible-code-point?))))
 
 (defn- table-line
   [cells]
