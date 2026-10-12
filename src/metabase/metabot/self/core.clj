@@ -625,6 +625,13 @@
        (json/encode (schema.v2/check-ui-message-chunk "SSE event" payload))
        "\n"))
 
+(def context-full-error-code
+  "The error code of a turn the provider rejected because the conversation does not fit the context window.
+
+  One name for the value the `error` column stores, the `finish` event streams as `messageMetadata.errorCode`,
+  and the client reads back as `error.type`."
+  "ai_provider_context_full")
+
 (defn format-error-line
   "An `:error` part's AI SDK `error` SSE event line."
   [{:keys [error]}]

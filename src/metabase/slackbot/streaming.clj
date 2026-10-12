@@ -251,7 +251,7 @@
       (:message error)
 
       ;; Not the web copy in `:message`: in Slack, the user continues in a new thread, not a new chat.
-      (= code "ai_provider_context_full")
+      (= code self.core/context-full-error-code)
       (tru "This conversation has reached its maximum length and can''t continue. Please start a new thread.")
 
       (provider-config-error-codes code)

@@ -407,7 +407,7 @@
   [e]
   (let [data (ex-data e)]
     (when (and (:api-error data) (context-overflow? data))
-      {:error-code "ai_provider_context_full"
+      {:error-code core/context-full-error-code
        :message    (tru "This conversation has reached its maximum length and can''t continue. Please start a new chat.")})))
 
 (defn provider-error

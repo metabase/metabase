@@ -209,7 +209,7 @@
    ["errored"
     [:map
      [:type  [:= "errored"]]
-     ;; the decoded `error` column, or its raw text when it isn't JSON
+     ;; the decoded `error` column, or its raw text when it isn't JSON; a stored error-code is also its type
      [:error [:or
               :string
               [:map

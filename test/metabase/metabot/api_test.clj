@@ -263,7 +263,13 @@
                         (u/seek #(= "error" (:type %)) events)))
                 (is (=? {:finishReason    "error"
                          :messageMetadata {:errorCode "ai_provider_context_full"}}
-                        (u/seek #(= "finish" (:type %)) events)))))))))))
+                        (u/seek #(= "finish" (:type %)) events)))
+                (testing "the conversation endpoint keeps the turn, so a reload still reads as full"
+                  (is (=? [{:role "user"}
+                           {:role   "agent"
+                            :status {:type "errored" :error {:type "ai_provider_context_full" :message string?}}}]
+                          (:messages (mt/user-http-request :rasta :get 200
+                                                           (str "metabot/conversations/" conversation-id))))))))))))))
 
 (def ^:private openrouter-error-chunks
   "Raw OpenRouter chunks for a generation the upstream model abandoned: OpenRouter reports that as
