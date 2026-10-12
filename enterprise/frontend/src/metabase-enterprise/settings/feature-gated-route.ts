@@ -1,3 +1,7 @@
+import type { ComponentType } from "react";
+import { createElement } from "react";
+
+import { NotFound } from "metabase/common/components/ErrorPages";
 import type { PluginRoute } from "metabase/plugins/types";
 import type { TokenFeature } from "metabase-types/api";
 
@@ -35,4 +39,21 @@ export function isFeatureGatedRoute(
   loader: () => Promise<unknown>,
 ): loader is FeatureGatedRoute {
   return "gatedOn" in loader;
+}
+
+/**
+ * A component that follows a premium feature, for route leaves that hold their
+ * component eagerly, such as modal routes. Without the feature the route still
+ * mounts and renders what an unknown URL gets.
+ */
+export function featureGatedComponent<Props extends object>(
+  feature: TokenFeature,
+  Enabled: ComponentType<Props>,
+  Disabled: ComponentType = NotFound,
+): ComponentType<Props> {
+  return function FeatureGated(props: Props) {
+    return hasPremiumFeature(feature)
+      ? createElement(Enabled, props)
+      : createElement(Disabled);
+  };
 }
