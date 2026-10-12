@@ -155,10 +155,12 @@
 
 (def ^:private ApiKeyCredentials
   "The `{:api-key ... :base-url ...}` connection shape shared by most providers. `:model-reasoning` and
-  `:probed-model` are not admin-entered: a connect-time probe records them on the connection (vLLM)."
+  `:probed-model` are not admin-entered: a connect-time probe records them on the connection (vLLM). An
+  OpenAI-compatible connection names its model in `:model-id`."
   [:map {:closed true}
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
+   [:model-id        {:optional true} [:maybe :string]]
    [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
    [:probed-model    {:optional true} [:maybe :string]]
    [:mini-model      {:optional true} [:maybe :string]]])
@@ -421,7 +423,8 @@
     ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
     ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
     ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
-    ;; limits, agent-loop exceptions) already carry an `:error` map; pass those through unchanged.
+    ;; limits, agent-loop exceptions) and Claude's error chunks, which keep the provider's own error
+    ;; object, already carry an `:error` map; pass those through unchanged.
     :error                 (if (:error chunk)
                              chunk
                              {:type :error :error {:message (:errorText chunk)}})

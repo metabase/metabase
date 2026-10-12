@@ -49,7 +49,7 @@
                                 :entity-retrieval.core/search-unfiltered    1
                                 :entity-retrieval.mirror/search-unfiltered  1
                                 :lib.equality/find-column-indexes-for-refs  2
-                                :test/with-temp                             28}
+                                :test/with-temp                             30}
  :comment-exempt               #{:deprecated-namespace
                                  :discouraged-namespace
                                  :discouraged-var

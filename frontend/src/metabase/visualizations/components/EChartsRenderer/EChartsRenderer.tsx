@@ -4,13 +4,14 @@ import { init } from "echarts/core";
 import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
+import { Center } from "metabase/ui";
 import {
   type EChartsEventHandler,
   type ZREventHandler,
   registerEChartsModules,
 } from "metabase/viz-core";
 
-import { EChartsRendererRoot } from "./EChartsRenderer.styled";
+import S from "./EChartsRenderer.module.css";
 
 registerEChartsModules();
 
@@ -121,7 +122,8 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
     }, [zrEventHandlers]);
 
     return (
-      <EChartsRendererRoot
+      <Center
+        className={S.chart}
         data-testid="chart-container"
         ref={mergeRefs<HTMLDivElement>(chartElemRef, ref)}
       />
