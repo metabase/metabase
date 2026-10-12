@@ -88,13 +88,6 @@
 (defn- set-jdbc-backend-properties! []
   (metabase.app-db.quartz/set-jdbc-backend-properties! (mdb/db-type)))
 
-(defn- no-class-message
-  "The log message for deleting the job under `job-key`, whose class can't be found."
-  [job-key class-not-found-message]
-  (let [{:keys [new-key release change]} (metabase.app-db.quartz/job-key-rename job-key)]
-    (cond-> (format "Deleting job %s due to class not found (%s)" job-key class-not-found-message)
-      new-key (str (format ". Its key was renamed to %s in %s. %s" new-key release change)))))
-
 (defn- delete-jobs-with-no-class!
   "Delete any jobs that have been scheduled but whose class is no longer available."
   []
@@ -104,7 +97,9 @@
         (qs/get-job scheduler job-key)
         (catch JobPersistenceException e
           (when (instance? ClassNotFoundException (.getCause e))
-            (log/warn (no-class-message (.getName ^JobKey job-key) (ex-message (.getCause e))))
+            (log/warnf "Deleting job %s due to class not found (%s)"
+                       (.getName ^JobKey job-key)
+                       (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
 (defn- reset-errored-triggers!
@@ -258,7 +253,7 @@
   [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
     ;; Replacing a job writes its current class name, which old nodes in a rolling upgrade can't load.
-    ;; An unchanged job therefore keeps its stored name: see [[metabase.app-db.quartz/job-history]].
+    ;; An unchanged job therefore keeps its stored name: see [[metabase.app-db.quartz/renamed-job-classes]].
     (when-not (stored-as-is? scheduler job)
       (qs/add-job scheduler job true))))
 
@@ -536,7 +531,7 @@
     Quartz stores this name in the app DB, and finds the job's class by it.
     Keep it the same when the namespace or `type-name` changes, or stored jobs lose their class.
     A new job takes the name its namespace would give it, which the error for a missing `:saved-class` prints.
-    To change a stored name on purpose, see `metabase.app-db.quartz/job-history`.
+    To change a stored name on purpose, see `metabase.app-db.quartz/renamed-job-classes`.
   - `:concurrent?` (default `true`): `false` stops Quartz running two executions of the job at once, as
     `org.quartz.DisallowConcurrentExecution` does.
   - `:persist-data?` (default `false`): `true` saves the job's data map again after each execution, as

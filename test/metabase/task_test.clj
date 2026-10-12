@@ -146,14 +146,6 @@
     u/upper-case-en
     true keyword))
 
-(deftest no-class-message-test
-  (is (= {:renamed-key (str "Deleting job metabase-enterprise.transforms.timeout due to class not found"
-                            " (a.Class). Its key was renamed to metabase.transforms.timeout in x.59.1."
-                            " Moved out of enterprise, with no change to the job.")
-          :other-key   "Deleting job some.job due to class not found (a.Class)"}
-         {:renamed-key (#'task.impl/no-class-message "metabase-enterprise.transforms.timeout" "a.Class")
-          :other-key   (#'task.impl/no-class-message "some.job" "a.Class")})))
-
 (deftest start-scheduler-will-cleanup-jobs-without-class-test
   ;; we can't use the temp scheduler in this test because the temp scheduler use an in-memory jobstore
   ;; and we need update the job class in the database to trigger the cleanup
@@ -265,7 +257,7 @@
       nil)))
 
 (deftest startup-cleanup-keeps-a-moved-job-that-kept-its-saved-class-test
-  ;; The stored name is the `:saved-class`, which has no entry in `job-history`, so no alias is involved.
+  ;; The stored name is the `:saved-class`, which is not an old name of any job, so no renamed class is involved.
   (with-jdbc-scheduler!
     (try
       ;; the row is this test's own, and its trigger starts next week, so the scheduler never fires it
@@ -282,7 +274,7 @@
                 :loaded-class-name   "metabase.task_test_before_the_move.MovedJob"
                 :defined-here?       true
                 :name-from-namespace nil
-                :job-history-entries []
+                :renamed-class?      false
                 :triggers            #{{:cron-expression     "0 0 * * * ? *"
                                         :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
                 :runs                1}
@@ -290,8 +282,7 @@
                 :loaded-class-name   (.getName job-class)
                 :defined-here?       (identical? job-class MovedJob)
                 :name-from-namespace (loadable-class-name "metabase.task_test.MovedJob")
-                :job-history-entries (filterv #(some #{(.getName job-class)} (:class-names %))
-                                              mdb.quartz/job-history)
+                :renamed-class?      (contains? mdb.quartz/renamed-job-classes (.getName job-class))
                 :triggers            (triggers)
                 :runs                (- @moved-job-runs runs-before)})))
       (finally

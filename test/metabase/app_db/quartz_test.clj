@@ -10,9 +10,6 @@
    [metabase.app-db.quartz :as mdb.quartz]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
-   [metabase.task.impl :as task.impl]
-   [metabase.test :as mt]
-   [metabase.test.util :as tu]
    [rewrite-clj.zip :as z]
    [toucan2.connection :as t2.conn])
   (:import
@@ -78,18 +75,9 @@
                 (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
                 (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
 
-(deftest current-class-names-test
-  (is (= {"a.Oldest"  "a.Current"
-          "a.Old"     "a.Current"
-          "a.Current" "a.Current"
-          "b.Old"     "b.Current"
-          "b.Current" "b.Current"}
-         (#'mdb.quartz/current-class-names [{:job-key "a.job", :class-names ["a.Oldest" "a.Old" "a.Current"]}
-                                            {:job-key "b.job", :class-names ["b.Old" "b.Current"]}]))))
-
 (deftest load-class-names-the-stored-class-when-its-current-class-is-missing-test
   ;; plain `with-redefs`, because the lookup is a map and not a function
-  (with-redefs [mdb.quartz/stored-class-name->current {"a.Old" "a.Missing"}]
+  (with-redefs [mdb.quartz/renamed-job-classes {"a.Old" "a.Missing"}]
     (is (thrown-with-msg? ClassNotFoundException #"a\.Old" (#'mdb.quartz/load-class "a.Old")))))
 
 (defn- job-source-files
@@ -162,87 +150,68 @@
     (catch ClassNotFoundException _
       false)))
 
-(defn- repeated [xs]
-  (for [[x n] (frequencies xs) :when (> n 1)] x))
-
-(def ^:private current-name
-  "The current class name of an entry of [[mdb.quartz/job-history]]."
-  (comp peek :class-names))
-
-(defn- label
-  "The `:job-key` or `:job-key-prefix` of an entry of [[mdb.quartz/job-history]], as a map."
-  [entry]
-  (select-keys entry [:job-key :job-key-prefix]))
-
-(defn- labels?
-  "Whether the label of the history entry `entry` stands for the job key `job-key`."
-  [{exact :job-key, prefix :job-key-prefix} job-key]
-  (if prefix
-    (str/starts-with? job-key prefix)
-    (= exact job-key)))
-
-(def ^:private job-history-in-this-edition
-  (filter (comp in-this-edition? current-name) mdb.quartz/job-history))
-
-(deftest job-history-lists-each-class-name-once-test
-  (is (= [] (repeated (mapcat :class-names mdb.quartz/job-history)))))
-
-(deftest job-history-current-classes-exist-and-old-ones-do-not-test
+(deftest renamed-job-classes-exist-and-their-old-names-do-not-test
   (is (= []
-         (for [entry job-history-in-this-edition
-               :let  [current-exists?      (class-exists? (current-name entry))
-                      old-names-that-exist (filterv class-exists? (pop (:class-names entry)))]
-               :when (or (not current-exists?) (seq old-names-that-exist))]
-           (assoc (label entry)
-                  :current-exists?      current-exists?
-                  :old-names-that-exist old-names-that-exist)))))
+         (for [[old-name current-name] mdb.quartz/renamed-job-classes
+               :when (in-this-edition? current-name)
+               :let  [old-exists?     (class-exists? old-name)
+                      current-exists? (class-exists? current-name)]
+               :when (or old-exists? (not current-exists?))]
+           {:old-name        old-name
+            :old-exists?     old-exists?
+            :current-name    current-name
+            :current-exists? current-exists?}))
+      (str "Each entry in `metabase.app-db.quartz/renamed-job-classes` maps a class name that no longer exists"
+           " to the `:saved-class` of the job that had it.")))
 
-(deftest job-history-has-no-entry-for-a-renamed-job-key-test
-  (let [old-keys    (map :old-key mdb.quartz/job-key-renames)
-        old-classes (into #{} (map :old-class) mdb.quartz/job-key-renames)]
-    (is (= []
-           (filter (fn [entry]
-                     (or (some #(labels? entry %) old-keys)
-                         (some old-classes (:class-names entry))))
-                   mdb.quartz/job-history))
-        (str "Remove these entries from `metabase.app-db.quartz/job-history`. Each is for a job key that"
-             " `metabase.app-db.quartz/job-key-renames` lists as renamed, or holds the class that key had."
-             " With the entry, a row stored under the old key still loads, and keeps running beside the job"
-             " scheduled under the new key."))))
-
-(deftest no-renamed-job-key-keeps-a-class-that-loads-test
-  (is (= []
-         (filter (comp class-exists? :old-class) mdb.quartz/job-key-renames))
-      (str "The class these job keys had still loads, so a row stored under the old key keeps running beside the"
-           " job scheduled under the new key. Rename the job's class too, so that the row is deleted at startup.")))
-
-(def ^:private job-classes-without-history
-  "Job classes with no entry in [[mdb.quartz/job-history]], as none was renamed under its current job key."
-  ;; This list and the history hold every job's class name a second time, apart from its `:saved-class`.
-  ;; That is what catches a bulk rename that rewrites a `:saved-class`, which nothing else would notice.
-  #{"metabase.audit_app.task.partitions.ManagePartitions"
+(def ^:private listed-job-classes
+  "The class name of every job, apart from its `:saved-class`."
+  ;; This is what catches a bulk rename that rewrites a `:saved-class`, which nothing else would notice.
+  #{"metabase.analytics.task.send_anonymous_stats.SendAnonymousUsageStats"
+    "metabase.audit_app.task.partitions.ManagePartitions"
+    "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"
+    "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCache"
+    "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"
     "metabase.explorations.task.collect_orphaned_results.CollectOrphanedExplorationResults"
     "metabase.health_inspector.core.SaveReport"
+    "metabase.indexed_entities.task.index_values.ModelIndexRefresh"
     "metabase.mcp.task.mcp_query_handle_gc.McpQueryHandleGc"
     "metabase.metabot.task.conversation_title_backfill.ConversationTitleBackfill"
     "metabase.metabot.task.metabot_conversation_trimmer.MetabotConversationTrimmer"
     "metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator"
     "metabase.metabot.task.suggested_prompts_refresh.SuggestedPromptsRefresh"
+    "metabase.model_persistence.task.persist_refresh.PersistencePrune"
+    "metabase.model_persistence.task.persist_refresh.PersistenceRefresh"
     "metabase.mq.queue.quartz.ExclusiveQueueMessageJob"
     "metabase.mq.queue.quartz.QueueMessageJob"
     "metabase.mq.queue.quartz.QueueSlotNudgeJob"
     "metabase.mq.task.outbox.FlushMessageOutbox"
     "metabase.mq.task.queue_reaper.QueueReaper"
     "metabase.notification.task.send.InitNotificationTriggers"
+    "metabase.notification.task.send.SendNotification"
     "metabase.oauth_server.task.cleanup_expired_tokens.CleanupExpiredOAuthTokens"
     "metabase.premium_features.task.send_metering.SendMeteringEvents"
+    "metabase.product_feedback.task.creator_sentiment_emails.CreatorSentimentEmail"
+    "metabase.product_feedback.task.follow_up_emails.FollowUpEmail"
+    "metabase.pulse.task.email_remove_legacy_pulse.EmailRemoveLegacyPulse"
+    "metabase.pulse.task.send_pulses.InitSendPulseTriggers"
+    "metabase.pulse.task.send_pulses.SendPulse"
     "metabase.run_tracking.task.RunTrackingReaper"
+    "metabase.search.task.search_index.SearchIndexInit"
+    "metabase.search.task.search_index.SearchIndexReindex"
+    "metabase.session.task.session_cleanup.SessionCleanup"
+    "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"
+    "metabase.sync.task.sync_databases.UpdateFieldValues"
+    "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"
     "metabase.transforms.canceling.CancelOldTransformRuns"
     "metabase.transforms.notification.SendTransformFailureDigest"
+    "metabase.transforms.schedule.RunTransforms"
     "metabase.transforms.timeout.TimeoutTransforms"
     "metabase.usage_metadata.task.process.UsageMetadataProcess"
+    "metabase.version.task.upgrade_checks.CheckForNewVersions"
     "metabase_enterprise.agent_api.task.agent_api_usage_trimmer.AgentApiUsageTrimmer"
     "metabase_enterprise.api_keys.task.api_key_usage_trimmer.ApiKeyUsageTrimmer"
+    "metabase_enterprise.cache.task.refresh_cache_configs.Cache"
     "metabase_enterprise.content_diagnostics.task.finding_trimmer.ContentDiagnosticsFindingTrimmer"
     "metabase_enterprise.content_diagnostics.task.scan.ContentDiagnosticsScan"
     "metabase_enterprise.data_complexity_score.task.complexity_score.DataComplexityScoring"
@@ -309,84 +278,18 @@
              " that keeps the class name the same when the job moves. A plain `deftype` or `defrecord`"
              " is named after its namespace."))))
 
-(def ^:private changed-job-key-instructions
-  "The end of a failure message's sentence that says what to do when a job's key changed."
-  (str "remove its entry from `metabase.app-db.quartz/job-history`, add its class to"
-       " `job-classes-without-history`, and add the rename to `metabase.app-db.quartz/job-key-renames`."))
-
-(def ^:private put-the-saved-class-back
-  "The start of a failure message, for the usual cause of a job class that is new or gone."
-  (str "If you only moved or renamed a namespace or a type, or a bulk rename reached a `:saved-class`:"
-       " put the job's `:saved-class` back. A stored job is found by that name, so it stays the same"
-       " through a move.\n"))
-
 (deftest every-job-class-is-listed-test
-  (let [current        (job-class-names)
-        renamed         (into #{} (map current-name) mdb.quartz/job-history)
-        listed-here     (into #{} (filter in-this-edition?) job-classes-without-history)]
-    (testing "every job class is listed"
-      (is (= #{} (set/difference current renamed job-classes-without-history))
-          (str put-the-saved-class-back
-               "To change a stored class name on purpose, with the same job key: add the new name to the end"
-               " of the `:class-names` of the job's entry in `metabase.app-db.quartz/job-history`. If the job"
-               " has no entry, add one with its job key and the old name first, and remove the old name from"
-               " `job-classes-without-history`.\n"
-               "For a new job: add its `:saved-class` to `job-classes-without-history`.\n"
-               "For a job whose key changed too: " changed-job-key-instructions)))
-    (testing "every name in `job-classes-without-history` is a job class"
-      (is (= #{} (set/difference listed-here current))
-          (str put-the-saved-class-back
-               "For a class name that was changed on purpose, with the same job key: move the old name into"
-               " an entry in `metabase.app-db.quartz/job-history`, before the new name.\n"
-               "For a job that was removed, or whose key changed too: remove the name.")))
-    (testing "no job class is listed as both renamed and without history"
-      (is (= #{} (set/intersection renamed job-classes-without-history))))))
-
-(defn- scheduled-job-keys!
-  "Returns the job keys that each job in `history` is scheduled under at startup, by its current class name."
-  [history]
-  (let [namespaces (into #{} (map (comp class-namespace current-name)) history)]
-    (run! (comp classloader/require symbol) namespaces)
-    ;; Initializers can write to the app DB, as the sync job's does when it randomizes default sync schedules.
-    ;; They run against an empty app DB that is thrown away, so nothing they write reaches the real one.
-    (mt/with-empty-h2-app-db!
-      ;; the cache job needs its feature, and there is one transforms job for each active transform job
-      (mt/with-premium-features #{:cache-granular-controls}
-        (mt/with-temp [:model/TransformJob _ {:schedule "0 0 * * * ? *"}]
-          (tu/do-with-unstarted-temp-scheduler!
-           (fn []
-             ;; Only these jobs' initializers run, because others start threads that outlive the scheduler.
-             ;; They are called directly so that one that throws fails the test.
-             (doseq [[task init!] (methods task.impl/init!)
-                     :when        (namespaces (namespace task))]
-               (init! task))
-             (-> (group-by #(.getName ^Class (:class %)) (tu/scheduler-current-tasks))
-                 (update-vals #(into (sorted-set) (map :key) %))))))))))
-
-(defn- rename-to-complete
-  "The entry for [[mdb.quartz/job-key-renames]] if the key of the job in `entry` changed to `new-key`."
-  [entry new-key]
-  {:release   "<the first release with the new key, such as x.59.3>"
-   :old-key   (:job-key entry "<the old key>")
-   :old-class (current-name entry)
-   :new-key   new-key
-   :new-class (current-name entry)
-   :change    "<how the job changed>"})
-
-(deftest job-history-labels-match-the-scheduled-job-keys-test
-  ;; This catches a job key that changed while its entry stayed
-  (let [scheduled (scheduled-job-keys! job-history-in-this-edition)]
-    (is (= []
-           (for [entry job-history-in-this-edition
-                 :let  [scheduled-as (scheduled (current-name entry) #{})]
-                 :when (or (empty? scheduled-as)
-                           (not-every? #(labels? entry %) scheduled-as))]
-             (cond-> (assoc (label entry) :scheduled-as scheduled-as)
-               (seq scheduled-as)
-               (assoc :rename-if-the-key-changed (rename-to-complete entry (first scheduled-as))))))
-        (str "The `:job-key` or `:job-key-prefix` of these entries in `metabase.app-db.quartz/job-history` does"
-             " not match the key their job is scheduled under. If the label is wrong, correct it.\n"
-             "If the job's key changed: " changed-job-key-instructions
-             " Complete `:rename-if-the-key-changed` to get the rename.\n"
-             "If `:scheduled-as` is empty, the job's `task/init!` did not schedule it in this test: set up what it"
-             " needs in `scheduled-job-keys!`."))))
+  (let [current (job-class-names)
+        listed  (into #{} (filter in-this-edition?) listed-job-classes)]
+    (is (= {:not-listed      #{}
+            :listed-but-gone #{}}
+           {:not-listed      (set/difference current listed)
+            :listed-but-gone (set/difference listed current)})
+        (str "If you only moved or renamed a namespace or a type, or a bulk rename reached a `:saved-class`:"
+             " put the job's `:saved-class` back. A stored job is found by that name, so it stays the same"
+             " through a move.\n"
+             "For a new job: add its `:saved-class` to `listed-job-classes`.\n"
+             "For a job that was removed: remove its name.\n"
+             "To change a stored class name on purpose: change it in `listed-job-classes`, and add the old"
+             " name to `metabase.app-db.quartz/renamed-job-classes`, or stored jobs and their triggers are"
+             " deleted at the next startup."))))
