@@ -128,16 +128,24 @@ function shapeLoopback(): void {
  * then lacks, and how often it happens moves with the timing between loads.
  * Closing the connections makes every load pay for its own.
  */
-function closeBackendConnections(): void {
+async function closeBackendConnections(): Promise<void> {
   const sockets = `'( dport = :${backendPort} or sport = :${backendPort} )'`;
-  asRoot(`ss -K -t ${sockets}`);
+  let open = "";
+
+  // More than once, because a request the last page had in flight can still
+  // open a connection after the first pass.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    asRoot(`ss -K -t ${sockets}`);
+    open = shellOutput(`ss -H -t state established ${sockets}`).trim();
+    if (!open) {
+      return;
+    }
+    await sleep(50);
+  }
 
   // A kernel without socket destroy leaves them open and reports nothing.
-  const open = shellOutput(`ss -H -t state established ${sockets}`).trim();
-  if (open) {
-    console.error(`connections to the backend stayed open:\n${open}`);
-    process.exit(1);
-  }
+  console.error(`connections to the backend stayed open:\n${open}`);
+  process.exit(1);
 }
 
 function unshapeLoopback(): void {
@@ -356,7 +364,7 @@ async function launchChrome() {
 
 async function loadOnce() {
   if (shapeNetwork) {
-    closeBackendConnections();
+    await closeBackendConnections();
   }
 
   const target = await devtools("/json/new?about:blank", "PUT");
@@ -438,6 +446,18 @@ async function loadOnce() {
 
   socket.close();
   await devtools(`/json/close/${target.id}`);
+  // The close is only a request. Wait for the page to be gone, so it cannot
+  // open a connection while the next load is closing them.
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const targets = await devtools("/json/list");
+    if (
+      !Array.isArray(targets) ||
+      targets.every((open) => open.id !== target.id)
+    ) {
+      break;
+    }
+    await sleep(50);
+  }
   return metrics;
 }
 
