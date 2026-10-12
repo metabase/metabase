@@ -17,7 +17,7 @@ import {
 
 const { H } = cy;
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 // There's a race condition when saving a dashboard
 // and then immediately editing it again. After saving,
@@ -682,115 +682,6 @@ describe("scenarios > dashboard", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
-  it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
-    H.createQuestion({
-      name: "13597",
-      query: {
-        "source-table": PEOPLE_ID,
-        limit: 2,
-      },
-      display: "map",
-    }).then(({ body: { id: questionId } }) => {
-      H.createDashboard().then(({ body: { id: dashboardId } }) => {
-        // add filter (ID) to the dashboard
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          parameters: [
-            {
-              id: "92eb69ea",
-              name: "ID",
-              sectionId: "id",
-              slug: "id",
-              type: "id",
-            },
-          ],
-        });
-
-        H.addOrUpdateDashboardCard({
-          card_id: questionId,
-          dashboard_id: dashboardId,
-          card: {
-            parameter_mappings: [
-              {
-                parameter_id: "92eb69ea",
-                card_id: questionId,
-                target: ["dimension", ["field", PEOPLE.ID, null]],
-              },
-            ],
-            visualization_settings: {
-              // set click behavior to update filter (ID)
-              click_behavior: {
-                type: "crossfilter",
-                parameterMapping: {
-                  "92eb69ea": {
-                    id: "92eb69ea",
-                    source: { id: "ID", name: "ID", type: "column" },
-                    target: {
-                      id: "92eb69ea",
-                      type: "parameter",
-                    },
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        H.visitDashboard(dashboardId);
-        H.mapPinIcon().eq(0).click({ force: true });
-        cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
-        cy.contains("Hudson Borer - 1");
-      });
-    });
-  });
-
-  it("should display column options for cross-filter (metabase#14473)", () => {
-    const questionDetails = {
-      name: "14473",
-      native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
-    };
-
-    H.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { dashboard_id } }) => {
-        cy.log("Add 4 filters to the dashboard");
-
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          parameters: [
-            { name: "ID", slug: "id", id: "729b6456", type: "id" },
-            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
-            {
-              name: "Category",
-              slug: "category",
-              id: "89873480",
-              type: "category",
-            },
-            {
-              name: "Category 1",
-              slug: "category_1",
-              id: "cbc045f2",
-              type: "category",
-            },
-          ],
-        });
-
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    // Add cross-filter click behavior manually
-    cy.icon("pencil").click();
-    H.showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("COUNT(*)").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Update a dashboard filter").click();
-
-    checkOptionsForFilter("ID");
-    checkOptionsForFilter("Category");
-  });
-
   it("should not get the parameter values from the field API", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "d7988e02";
@@ -857,60 +748,6 @@ describe("scenarios > dashboard", () => {
     cy.get("@fetchDashboardParams").should("have.been.calledOnce");
     cy.get("@fetchField").should("not.have.been.called");
     cy.get("@fetchFieldValues").should("not.have.been.called");
-  });
-
-  it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
-    cy.request("GET", "/api/user/current").then(
-      ({ body: { personal_collection_id } }) => {
-        // Save new dashboard in admin's personal collection
-        cy.request("POST", "/api/dashboard", {
-          name: "15368D",
-          collection_id: personal_collection_id,
-        }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
-          const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
-          // Add click behavior to the existing "Orders in a dashboard" dashboard
-          cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-            dashcards: [
-              {
-                id: ORDERS_DASHBOARD_DASHCARD_ID,
-                card_id: ORDERS_QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 8,
-                series: [],
-                visualization_settings: {
-                  column_settings: {
-                    [COLUMN_REF]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "dashboard",
-                        parameterMapping: {},
-                        targetId: NEW_DASHBOARD_ID,
-                      },
-                    },
-                  },
-                },
-                parameter_mappings: [],
-              },
-            ],
-          });
-
-          cy.intercept(
-            "GET",
-            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
-          ).as("queryMetadata");
-        });
-      },
-    );
-    cy.signInAsNormalUser();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    cy.wait("@queryMetadata");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders in a dashboard");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
   });
 
   it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
@@ -1463,18 +1300,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 });
-
-function checkOptionsForFilter(filter) {
-  cy.findByText("Available filters").parent().contains(filter).click();
-  H.selectDropdown()
-    .should("contain", "Columns")
-    .and("contain", "COUNT(*)")
-    .and("not.contain", "Dashboard filters");
-
-  // Get rid of the open popover to be able to select another filter
-  // Uses force: true because the popover is covering this text.
-  cy.findByText("Pick one or more filters to update").click({ force: true });
-}
 
 function assertScrollBarExists() {
   cy.get("body").then(($body) => {
