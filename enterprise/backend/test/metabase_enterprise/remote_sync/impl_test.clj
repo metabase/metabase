@@ -14,6 +14,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
@@ -235,6 +236,20 @@
           (is (some? (:ended_at task)))
           (is (= {:kind "pulled" :count 3 :branch "main"} (:outcome task)))
           (is (= :successful (:status (t2/hydrate task :status)))))))))
+
+(deftest handle-task-result!-names-the-task-branch-in-outcome-test
+  (testing "an import that switches branches records the branch it imported, not the one the setting held while it ran"
+    (mt/with-temporary-setting-values [remote-sync-branch "main"]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                               {:sync_task_type "import"
+                                                :initiated_by (mt/user->id :rasta)})]
+          (impl/handle-task-result! {:status :success
+                                     :outcome {:kind "pulled" :count 3 :branch "main"}}
+                                    task-id
+                                    "feature")
+          (is (= {:kind "pulled" :count 3 :branch "feature"}
+                 (:outcome (t2/select-one :model/RemoteSyncTask :id task-id)))))))))
 
 (deftest handle-task-result!-stores-conflict-categories-test
   (testing "handle-task-result! records a conflict result's category set on the task as a vector"
@@ -2307,7 +2322,8 @@ serdes/meta:
             (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
           (testing "a settings file v64 wrote, carrying its Fields' settings under `fields`, keeps them"
             (let [files    (table-files)
-                  content  (fn [suffix] (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files))))
+                  content  (fn [suffix]
+                             (serdes/restore-path (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files)))))
                   legacy   (assoc (content "test_table___tableusersettings.yaml")
                                   :fields [(content "f1___fieldusersettings.yaml")])
                   [path _] (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
@@ -2453,3 +2469,13 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
+
+(deftest keep-library-dashboards-test
+  (testing "An import with the Library keeps its Dashboards collection, even from a repo that predates it"
+    (is (= #{collection/library-entity-id collection/library-dashboards-entity-id "other-collection-xxxxx"}
+           (get-in (#'impl/keep-library-dashboards
+                    {:by-entity-id {"Collection" #{collection/library-entity-id "other-collection-xxxxx"}}})
+                   [:by-entity-id "Collection"]))))
+  (testing "An import without the Library leaves it to be removed with the Library"
+    (is (= {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}}
+           (#'impl/keep-library-dashboards {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}})))))

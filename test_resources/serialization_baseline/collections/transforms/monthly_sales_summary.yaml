@@ -27,6 +27,4 @@ target:
   schema: TRANSFORMS
   type: table
 serdes/meta:
-- id: w7EfUbsxLA7kXBHVXgeaZ
-  label: monthly_sales_summary
-  model: Transform
+- model: Transform

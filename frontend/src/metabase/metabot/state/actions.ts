@@ -558,9 +558,9 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
-                // TODO: always push, but let the surface render and/or navigate on its own
+                pushDataPart({ type: "data_part", part });
+
                 if (isFullPageMetabot) {
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -570,7 +570,6 @@ export const sendAgentRequest = createAsyncThunk<
                   if (part.data.type === "card") {
                     dispatch(setNavigateToPath(path));
                   }
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -725,6 +724,7 @@ export const sendAgentRequest = createAsyncThunk<
                 "ai_provider_billing",
                 "ai_provider_rate_limit",
                 "ai_provider_auth",
+                "ai_provider_unavailable",
               ),
               message: P.string,
             },

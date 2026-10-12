@@ -59,6 +59,14 @@ export function aggregations(
   return ML.aggregations(query, stageIndex);
 }
 
+export function aggregationColumn(
+  query: Query,
+  stageIndex: number,
+  aggregation: AggregationClause,
+): ColumnMetadata {
+  return ML.aggregation_column(query, stageIndex, aggregation);
+}
+
 export function aggregationClause(
   operator: AggregationOperator,
   column?: ColumnMetadata,

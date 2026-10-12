@@ -6,7 +6,7 @@
     background-color: var(--mb-color-bg-dashboard);
   }
 
-  &.isEditingOrSharing {
+  &.isHeightConstrained {
     flex-basis: 0;
   }
 }

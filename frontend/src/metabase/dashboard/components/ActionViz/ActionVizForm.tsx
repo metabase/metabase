@@ -177,7 +177,7 @@ function ActionVizForm({
         >
           <ActionCreator
             action={action}
-            modelId={action.model_id}
+            modelId={action.model_id ?? undefined}
             databaseId={action.database_id}
             actionId={action.id}
             onSubmit={onActionEdit}

@@ -640,6 +640,7 @@ function getTableEditIcon(tableName: RegExp) {
   return cy
     .findByTestId("browse-schemas")
     .contains(tableName)
+    .closest('[data-testid="browse-card"]')
     .realHover()
     .findByTestId("edit-table-icon");
 }

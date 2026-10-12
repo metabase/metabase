@@ -1,28 +1,27 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListActionsQuery, useSearchQuery } from "metabase/api";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { ActionCreator } from "metabase/querying/action-creator";
 import {
   ActionIcon,
+  Box,
   Button,
+  Flex,
   Icon,
   Modal,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
 } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
-import {
-  ActionItem,
-  ActionsList,
-  EmptyModelStateContainer,
-  EmptyState,
-  ModelCollapseSection,
-} from "./ActionPicker.styled";
+import S from "./ActionPicker.module.css";
 import { sortAndGroupActions } from "./utils";
 
 type ActionPickerModel = Pick<Card, "id" | "name" | "database_id">;
@@ -59,6 +58,7 @@ export function ActionPicker({
       ))}
       {!sortedModels.length && (
         <EmptyState
+          className={S.emptyState}
           message={t`No models found`}
           action={t`Create new model`}
           link={"/model/new"}
@@ -111,17 +111,29 @@ function ModelActionPicker({
 
   return (
     <>
-      <ModelCollapseSection
+      <CollapseSection
+        className={S.modelCollapseSection}
         header={<h4>{model.name}</h4>}
         initialState={hasCurrentAction ? "expanded" : "collapsed"}
       >
         {actions.length ? (
-          <ActionsList>
+          <Box component="ul" px="lg" py="sm">
             {actions.map((action) => (
-              <ActionItem
+              <Flex
                 key={action.id}
+                component="li"
+                className={cx(CS.cursorPointer, S.itemBackground, {
+                  [S.selected]: currentAction?.id === action.id,
+                })}
+                justify="space-between"
+                align="center"
+                px="md"
+                py="xs"
+                mb={1}
+                bdrs="xxs"
+                c="core-brand"
+                fw="bold"
                 role="button"
-                isSelected={currentAction?.id === action.id}
                 aria-selected={currentAction?.id === action.id}
                 onClick={() => onClick(action)}
                 data-testid={`action-item-${action.name}`}
@@ -138,17 +150,17 @@ function ModelActionPicker({
                 >
                   <Icon name="pencil" />
                 </ActionIcon>
-              </ActionItem>
+              </Flex>
             ))}
             {newActionButton}
-          </ActionsList>
+          </Box>
         ) : (
-          <EmptyModelStateContainer>
+          <Box p="lg" c="text-secondary" ta="center">
             <div>{t`There are no actions for this model`}</div>
             {newActionButton}
-          </EmptyModelStateContainer>
+          </Box>
         )}
-      </ModelCollapseSection>
+      </CollapseSection>
       <Modal
         {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
         opened={isActionCreatorOpen}
