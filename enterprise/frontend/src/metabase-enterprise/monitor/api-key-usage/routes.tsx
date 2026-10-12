@@ -10,25 +10,28 @@ import * as Urls from "metabase/urls";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 /**
- * The API key usage pages sit behind one barrel, so a single `import()` reaches all three and
- * they land in one chunk by construction — no risk of the webpackChunkName comments drifting
- * apart and silently splitting the bundle.
+ * The API key usage pages sit behind one barrel under one chunk name, so they
+ * land in one chunk. Each loader names it, rather than sharing a helper that
+ * does, so the preload manifest can read it off the route.
  */
-const pages = () =>
-  import(/* webpackChunkName: "api-key-usage" */ "./components");
-
 const apiKeyUsageSectionLayout = () =>
-  pages().then(({ ApiKeyUsageSectionLayout }) => ({
-    Component: ApiKeyUsageSectionLayout,
-  }));
+  import(/* webpackChunkName: "api-key-usage" */ "./components").then(
+    ({ ApiKeyUsageSectionLayout }) => ({
+      Component: ApiKeyUsageSectionLayout,
+    }),
+  );
 
 const apiKeyUsagePage = () =>
-  pages().then(({ ApiKeyUsagePage }) => ({ Component: ApiKeyUsagePage }));
+  import(/* webpackChunkName: "api-key-usage" */ "./components").then(
+    ({ ApiKeyUsagePage }) => ({ Component: ApiKeyUsagePage }),
+  );
 
 const apiKeyUsageEventsPage = () =>
-  pages().then(({ ApiKeyUsageEventsPage }) => ({
-    Component: ApiKeyUsageEventsPage,
-  }));
+  import(/* webpackChunkName: "api-key-usage" */ "./components").then(
+    ({ ApiKeyUsageEventsPage }) => ({
+      Component: ApiKeyUsageEventsPage,
+    }),
+  );
 
 /**
  * Hovering the Monitor sidebar link starts the fetch, so the chunk is usually in hand by the
