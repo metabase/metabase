@@ -57,8 +57,8 @@ export const LookAndFeelSettings = ({
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only appear to admins
-  const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
-    anchor: "customizing-the-appearance-of-static-embeds",
+  const { url: docsUrl } = useDocsUrl("embedding/guest-embedding", {
+    anchor: "customizing-appearance-of-guest-embeds",
     utm: {
       utm_source: "product",
       utm_medium: "docs",
