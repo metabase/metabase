@@ -15,6 +15,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.serialization :as serdes]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -24,65 +25,82 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest unsupported-db-forms-test
+  ;; Only a plain file path or a local `file:` URI without query parameters names a database. Everything else SQLite
+  ;; or sqlite-jdbc accepts -- in-memory names, `:resource:` downloads, other URL schemes, URI parameters -- is
+  ;; refused.
+  (mt/with-premium-features #{}
+    (doseq [db [nil
+                ""
+                "   "
+                ":memory:"
+                " :memory:"
+                "file::memory:"
+                "file::memory:?cache=shared"
+                "file:/etc/x.db?mode=ro"
+                "file:/etc/x.db?mode=memory"
+                "file:/etc/x.db?vfs=memdb"
+                "file:x.db?mode=ro"
+                "file:/etc/x.db?"
+                ;; even where SQLite would read it as part of the dropped `#` fragment: any `?` is refused
+                "file:/etc/x.db#frag?mode=memory"
+                ":resource:file:/etc/x.db"
+                ":resource:http://example.com/x.db"
+                ":resource: file:/etc/x.db"
+                ":resource:url:file:/etc/x.db"
+                ":resource:jar:file:/etc/x.jar!/x.db"
+                ":RESOURCE:file:/etc/x.db"
+                "jar:file:/etc/x.jar!/x.db"
+                "http://example.com/x.db"
+                "https://example.com/x.db"
+                " https://example.com/x.db"
+                "ftp://example.com/x.db"
+                ;; SQLite's `file:` prefix is case-sensitive, so this would be a relative path named `FILE:`
+                "FILE:/etc/x.db"
+                ;; SQLite refuses any authority but an empty one or `localhost`
+                "file://example.com/etc/x.db"]]
+      (testing (pr-str db)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
+                              (driver/validate-db-details! :sqlite {:db db})))))
+    (testing "a Windows drive letter is a path, not a URL scheme"
+      (is (nil? (driver/validate-db-details! :sqlite {:db "C:\\data\\x.db"}))))))
+
 (deftest db-file-must-be-in-readable-paths-test
   ;; the database file is a path on the Metabase host that an admin types in, so it has to be somewhere
-  ;; `readable-paths` allows -- in every form SQLite accepts for naming a file
+  ;; `readable-paths` allows -- in either form that names a file
   (mt/with-premium-features #{}
     (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
       (testing "a file outside the allowed directories is refused"
         (doseq [db ["/etc/x.db"
                     "/allowed-dir/../etc/x.db"
-                    "file:/etc/x.db?mode=ro"
+                    "file:/etc/x.db"
                     "file:///etc/x.db"
                     "file://localhost/etc/x.db"
-                    ":resource:file:/etc/x.db"
-                    ":resource:jar:file:/etc/x.jar!/x.db"
-                    ;; SQLite drops a URI's `#` fragment, `..` segments and `?mode=memory` in it included
+                    ;; SQLite drops a URI's `#` fragment, `..` segments in it included
                     "file:/etc/x.db#/../../allowed-dir/x.db"
-                    "file:/etc/x.db#frag?mode=memory"
                     ;; outside a `file:` URI, `?` is part of the file name
                     "/etc/x.db?mode=memory"
-                    ;; the prefixes are case-sensitive, so these are paths relative to the working directory
-                    "FILE:/../allowed-dir/x.db"
-                    ":RESOURCE:file:/../allowed-dir/x.db"
-                    ;; `java.net.URL` ignores whitespace and a `url:` prefix, so the resource is still the file
-                    ":resource: file:/etc/x.db"
-                    ":resource:url:file:/etc/x.db"
-                    ":resource:jar: file:/etc/x.jar!/x.db"
-                    ":resource:jar:url:file:/etc/x.jar!/x.db"
-                    ;; SQLite matches `mode` case-sensitively after percent-decoding it, and a URI only counts as
-                    ;; in-memory when every `mode` it carries is exactly `memory`
-                    "file:/etc/x.db?mode=memory&mode=ro"
-                    "file:/etc/x.db?mode=ro&mode=memory"
-                    "file:/etc/x.db?mode=ro&mode=memory&mode=rw"
-                    "file:/etc/x.db?mode=MEMORY"
-                    "file:/etc/x.db?MODE=memory"
-                    "file:/etc/x.db?mode=ro&mode=%6Demory&mode=rwc"
+                    ;; a relative `file:` URI names a file relative to the working directory
+                    "file:x.db"
                     ;; SQLite decodes each well-formed escape on its own, whatever else the path holds
                     "file:/allowed-dir/%zz/%2E%2E/%2E%2E/etc/x.db"
                     ;; and a decoded NUL ends the path
                     "file:/etc/x.db%00/../../allowed-dir/x.db"
                     ;; surrounding whitespace is part of a path, which then names a file relative to the working
                     ;; directory
-                    " /allowed-dir/x.db"]]
+                    " /allowed-dir/x.db"
+                    " file:/etc/x.db"]]
           (testing db
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
                                   (driver/validate-db-details! :sqlite {:db db}))))))
-      (testing "a file inside one, and databases that are not a local file, are allowed"
+      (testing "a file inside one is allowed"
         (doseq [db ["/allowed-dir/x.db"
-                    "file:/allowed-dir/x.db?mode=ro"
+                    "file:/allowed-dir/x.db"
                     "file:/allowed-dir/x.db#frag"
-                    ":memory:"
-                    "file::memory:?cache=shared"
-                    "file:shared?mode=memory"
-                    ":resource:http://example.com/x.db"
-                    ":resource: http://example.com/x.db"
+                    "file://localhost/allowed-dir/x.db"
                     "file:/allowed-dir/100%25.db"
                     "file:/allowed-dir/50%.db"
-                    "/allowed-dir/x.db "
-                    "file:/etc/x.db?mode=%6Demory"
-                    "file:/etc/x.db?mode=memory&mode=memory"
-                    "file:/etc/x.db?cache=shared&mode=memory&vfs=unix"]]
+                    "/allowed-dir/x.db "]]
           (testing db
             (is (nil? (driver/validate-db-details! :sqlite {:db db}))))))
       (testing "the flag Metabase's own flows bind does not exempt an arbitrary file, such as a stored row's `:db`"
@@ -91,16 +109,22 @@
                                 (driver/validate-db-details! :sqlite {:db "/etc/x.db"}))))))))
 
 (deftest can-connect-reads-only-the-checked-file-test
-  (testing "the connection check reads the header of the local file the path checks validated, and nothing else"
+  (testing "the connection check reads the header of the local file the path checks validated"
     (mt/with-premium-features #{}
       (let [path (.getPath ^java.io.File (doto (java.io.File/createTempFile "can-connect" ".sqlite")
                                            (.deleteOnExit)))]
         (jdbc/execute! {:classname "org.sqlite.JDBC" :subprotocol "sqlite" :subname path} ["CREATE TABLE t (x INTEGER)"])
         (is (true? (driver/can-connect? :sqlite {:db path})))
-        (is (true? (driver/can-connect? :sqlite {:db (str "file:" path "?mode=ro")})))
-        (testing "a database that opens no local file has no file to check"
-          (is (false? (driver/can-connect? :sqlite {:db (str "file:" path "?mode=memory")})))
-          (is (false? (driver/can-connect? :sqlite {:db ":memory:"}))))))))
+        (is (true? (driver/can-connect? :sqlite {:db (str "file:" path)})))
+        (testing "a file that is not a SQLite database fails the check"
+          (let [other (.getPath ^java.io.File (doto (java.io.File/createTempFile "can-connect" ".txt")
+                                                (.deleteOnExit)))]
+            (spit other "not a database")
+            (is (false? (driver/can-connect? :sqlite {:db other})))))
+        (testing "an unsupported form is refused before anything is read"
+          (doseq [db [":memory:" (str "file:" path "?mode=memory")]]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
+                                  (driver/can-connect? :sqlite {:db db})))))))))
 
 (defn- do-with-registered-sample-path!
   "Call `f` with the path of a temp file registered as the bundled Sample Database, and restore the registry
@@ -133,7 +157,7 @@
                                      (driver/validate-db-details! :sqlite {:db "/etc/hosts"})))))))))))
 
 (deftest hosted-sqlite-path-guard-test
-  (testing "On a hosted instance, the SQLite driver only opens the registered Sample Database file (SEC-1175). A
+  (testing "On a hosted instance, the SQLite driver only opens the registered Sample Database file. A
             Database row carrying an attacker-chosen `:db` -- e.g. from a serialization import, which never tests the
             connection -- must not be openable by sync, which binds *allow-testing-sqlite-connections* for every DB."
     (do-with-registered-sample-path!
@@ -159,23 +183,89 @@
     (mt/with-temp-env-var-value! [mb-writable-paths "/allowed-dir"]
       (testing "a writable connection to a file outside the writable paths is refused"
         (doseq [details [{:db "/etc/x.db"}
-                         {:db "file:/etc/x.db?mode=ro&mode=rw"}
-                         {:db ":resource:file:/etc/x.db" :read-only? false}]]
+                         {:db "file:/etc/x.db"}
+                         {:db "file:/etc/x.db" :read-only? false}]]
           (testing (pr-str details)
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Writing to path is disallowed"
                                   (driver/validate-db-details! :sqlite details))))))
-      (testing "a read-only connection, a file inside the writable paths, and in-memory databases are allowed"
+      (testing "a read-only connection and a file inside the writable paths are allowed"
         (doseq [details [{:db "/etc/x.db" :read-only? true}
-                         {:db "file:/etc/x.db?mode=ro"}
-                         {:db "/allowed-dir/x.db"}
-                         {:db ":memory:"}
-                         {:db "file:/etc/x.db?mode=memory"}]]
+                         {:db "file:/etc/x.db" :read-only? true}
+                         {:db "/allowed-dir/x.db"}]]
           (testing (pr-str details)
             (is (nil? (driver/validate-db-details! :sqlite details))))))
       (testing "the readable paths still apply to a read-only connection"
         (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
                                 (driver/validate-db-details! :sqlite {:db "/etc/x.db" :read-only? true}))))))))
+
+(defn- temp-sqlite-file!
+  "The path of a new SQLite database file holding an empty table `t`, deleted on exit."
+  []
+  (let [path (.getPath ^java.io.File (doto (java.io.File/createTempFile "sqlite-test" ".sqlite")
+                                       (.deleteOnExit)))]
+    (jdbc/execute! {:classname "org.sqlite.JDBC" :subprotocol "sqlite" :subname path} ["CREATE TABLE t (x INTEGER)"])
+    path))
+
+(defn- native-rows [database sql]
+  (mt/rows (qp/process-query {:database (u/the-id database), :type :native, :native {:query sql}})))
+
+(deftest stored-database-rows-are-checked-when-connecting-test
+  ;; A Database row can reach the app DB without a connection test, e.g. from a serialization import or from before
+  ;; the path settings were set, so opening a connection for one applies the same checks.
+  (let [path (temp-sqlite-file!)]
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database database {:engine :sqlite :details {:db path}}
+                     :model/Database in-memory {:engine :sqlite :details {:db ":memory:"}}]
+        (testing "a query opens a file the path settings allow"
+          (is (= [] (native-rows database "SELECT x FROM t"))))
+        (testing "a query is refused when the readable paths exclude the file"
+          (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (native-rows database "SELECT x FROM t")))))
+        (testing "a query on a writable connection is refused when the writable paths exclude the file"
+          (mt/with-temp-env-var-value! [mb-writable-paths "/allowed-dir"]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Writing to path is disallowed"
+                                  (native-rows database "SELECT x FROM t")))))
+        (testing "a query on an unsupported form is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
+                                (native-rows in-memory "SELECT 1"))))))
+    (testing "on a hosted instance, a query on any database but the Sample Database is refused"
+      (mt/with-premium-features #{:hosting}
+        (mt/with-temp [:model/Database database {:engine :sqlite :details {:db path}}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available as a data warehouse on Metabase Cloud"
+                                (native-rows database "SELECT x FROM t"))))))))
+
+(deftest serialization-imported-database-is-checked-when-connecting-test
+  (testing "a SQLite database written by a serialization import cannot be queried outside the readable paths"
+    (let [path (temp-sqlite-file!)]
+      (mt/with-premium-features #{}
+        (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+          (let [database (serdes/load-one! {:serdes/meta [{:model "Database" :id "Imported SQLite"}]
+                                            :name        "Imported SQLite"
+                                            :engine      "sqlite"
+                                            :details     {:db path}
+                                            :created_at  "2026-01-01T00:00:00Z"
+                                            :updated_at  "2026-01-01T00:00:00Z"}
+                                           nil)]
+            (try
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                    (native-rows database "SELECT x FROM t")))
+              (finally
+                (t2/delete! :model/Database :id (u/the-id database))))))))))
+
+(deftest sample-database-queries-test
+  (testing "queries on the registered Sample Database open it wherever it sits, as Metabase extracts that file itself"
+    (do-with-registered-sample-path!
+     (fn [sample-path]
+       (jdbc/execute! {:classname "org.sqlite.JDBC" :subprotocol "sqlite" :subname sample-path}
+                      ["CREATE TABLE IF NOT EXISTS t (x INTEGER)"])
+       (mt/with-temp-env-var-value! [mb-readable-paths "NONE" mb-writable-paths "NONE"]
+         (doseq [features [#{} #{:hosting}]]
+           (mt/with-premium-features features
+             (mt/with-temp [:model/Database database {:engine :sqlite :details {:db sample-path :read-only? true}}]
+               (testing (pr-str features)
+                 (is (= [] (native-rows database "SELECT x FROM t"))))))))))))
 
 (deftest default-schema-test
   (mt/test-driver :sqlite
@@ -482,49 +572,57 @@
                #"SQL error or missing database \(no such table: fdw_test\.products\)"
                (qp/process-query (mt/native-query {:query "SELECT count(*) FROM fdw_test.products;"})))))))))
 
-(defn- load-extension-refusal
-  "The error SQLite gives when asked to load an extension that does not exist over a connection built from `details`:
-  `not authorized` while extension loading is disabled, `no such file` once it tries to open the file."
+(defn- load-extension-refusal!
+  "The error SQLite gives when asked to load an extension that does not exist over a connection built from `details`
+  to a temp database file: `not authorized` while extension loading is disabled, `no such file` once it tries to open
+  the file."
   [details]
-  (let [spec (sql-jdbc.conn/connection-details->spec :sqlite (merge {:db ":memory:"} details))]
+  (let [spec (sql-jdbc.conn/connection-details->spec :sqlite (merge {:db (temp-sqlite-file!)} details))]
     (try
       (jdbc/query spec ["SELECT load_extension('/nonexistent/metabase-test-extension')"])
       ::loaded
       (catch Exception e
         (re-find #"not authorized|no such file" (ex-message e))))))
 
-(deftest ^:parallel extension-loading-is-always-disabled-test
-  (testing "loading an extension runs native code in the Metabase process, so it is disabled whatever the details say"
-    ;; detail keys reach the client as connection properties, and it also reads settings from the database path
-    (doseq [details [{}
-                     {:enable_load_extension true}
-                     {:enable_load_extension "true"}
-                     {:db ":memory:?enable_load_extension=true"}
-                     {:db "file::memory:?ENABLE_LOAD_EXTENSION=true"}
-                     ;; a namespaced or differently-cased key names the same connection property once it reaches the
-                     ;; client, and the JSON decoder keeps such keys
-                     {:foo/enable_load_extension "true"}
-                     {:ENABLE_LOAD_EXTENSION "true"}
-                     {:foo/Enable_Load_Extension true}]]
-      (testing (pr-str details)
-        (is (= "not authorized" (load-extension-refusal details)))))))
+(deftest extension-loading-is-always-disabled-test
+  (mt/with-premium-features #{}
+    (testing "loading an extension runs native code in the Metabase process, so it is disabled whatever the details say"
+      ;; detail keys reach the client as connection properties
+      (doseq [details [{}
+                       {:enable_load_extension true}
+                       {:enable_load_extension "true"}
+                       ;; a namespaced or differently-cased key names the same connection property once it reaches the
+                       ;; client, and the JSON decoder keeps such keys
+                       {:foo/enable_load_extension "true"}
+                       {:ENABLE_LOAD_EXTENSION "true"}
+                       {:foo/Enable_Load_Extension true}]]
+        (testing (pr-str details)
+          (is (= "not authorized" (load-extension-refusal! details)))))
+      (testing "the client also reads settings from a database path's query, so such a path is refused outright"
+        (doseq [db [(str "file:" (temp-sqlite-file!) "?enable_load_extension=true")
+                    "file::memory:?ENABLE_LOAD_EXTENSION=true"
+                    ":memory:?enable_load_extension=true"]]
+          (testing db
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite database must be a file path or a file: URI"
+                                  (sql-jdbc.conn/connection-details->spec :sqlite {:db db})))))))))
 
 (deftest protected-connection-properties-cannot-be-overridden-test
-  (testing "properties the driver sets for safety survive a namespaced or differently-cased detail key"
-    (doseq [[k v] [[:foo/limit_attached "10"]
-                   [:LIMIT_ATTACHED "10"]
-                   [:foo/enable_load_extension "true"]]]
-      (let [spec (sql-jdbc.conn/connection-details->spec :sqlite {:db ":memory:" k v})]
-        (testing (pr-str k)
-          (is (= 0 (:limit_attached spec)))
-          (is (= "false" (:enable_load_extension spec)))
-          (is (= [] (->> (keys spec)
-                         (filter #(re-find #"(?i)limit_attached|enable_load_extension" (name %)))
-                         (remove #{:limit_attached :enable_load_extension})))))))
-    (testing "a read-only database cannot be made writable the same way"
-      (let [spec (sql-jdbc.conn/connection-details->spec :sqlite {:db ":memory:" :read-only? true :foo/open_mode "6"})]
-        (is (not-any? #(= "foo" (namespace %)) (keys spec)))
-        (is (= (:open_mode spec) (:open_mode (sql-jdbc.conn/connection-details->spec :sqlite {:db ":memory:" :read-only? true}))))))))
+  (mt/with-premium-features #{}
+    (testing "properties the driver sets for safety survive a namespaced or differently-cased detail key"
+      (doseq [[k v] [[:foo/limit_attached "10"]
+                     [:LIMIT_ATTACHED "10"]
+                     [:foo/enable_load_extension "true"]]]
+        (let [spec (sql-jdbc.conn/connection-details->spec :sqlite {:db "/tmp/x.db" k v})]
+          (testing (pr-str k)
+            (is (= 0 (:limit_attached spec)))
+            (is (= "false" (:enable_load_extension spec)))
+            (is (= [] (->> (keys spec)
+                           (filter #(re-find #"(?i)limit_attached|enable_load_extension" (name %)))
+                           (remove #{:limit_attached :enable_load_extension})))))))
+      (testing "a read-only database cannot be made writable the same way"
+        (let [spec (sql-jdbc.conn/connection-details->spec :sqlite {:db "/tmp/x.db" :read-only? true :foo/open_mode "6"})]
+          (is (not-any? #(= "foo" (namespace %)) (keys spec)))
+          (is (= (:open_mode spec) (:open_mode (sql-jdbc.conn/connection-details->spec :sqlite {:db "/tmp/x.db" :read-only? true})))))))))
 
 (deftest resource-urls-are-subject-to-the-network-policy-test
   ;; `:resource:<url>` has the client fetch the database file from that URL
