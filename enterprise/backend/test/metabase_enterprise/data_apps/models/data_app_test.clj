@@ -6,6 +6,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.models.data-app]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -39,9 +40,57 @@
 
 (deftest insert-creates-the-resources-the-app-owns-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [{:keys [resource_collection_id permission_group_id]} (t2/select-one :model/DataApp (insert-app!))]
-      (is (t2/exists? :model/Collection :id resource_collection_id))
-      (is (t2/exists? :model/PermissionsGroup :id permission_group_id :is_data_app_group true)))))
+    (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp (insert-app!))]
+      (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
+              (t2/select-one :model/Collection :id resource_collection_id))
+          "the collection is the app's own, in the data-apps namespace")
+      (is (not (t2/exists? :model/DataAppGroupAssignment :data_app_id id))))))
+
+(deftest insert-publishes-the-creation-of-the-collection-test
+  (testing "the collection is created the way any collection is, so what listens to collection events (remote sync,
+            the activity log) sees it"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [created (atom [])]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                                            (when (= :event/collection-create topic)
+                                                              (swap! created conj (:id object))))]
+          (let [id (insert-app!)]
+            (is (= [(t2/select-one-fn :resource_collection_id :model/DataApp id)] @created))))))))
+
+(deftest insert-keeps-the-collection-it-is-given-test
+  (testing "an import names the collection its manifest references, so the insert links that one rather than creating"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Data App: m" :namespace :data-apps}]
+        (let [before (t2/count :model/Collection)
+              app    (t2/select-one :model/DataApp (insert-app! :resource_collection_id collection-id))]
+          (is (= collection-id (:resource_collection_id app)))
+          (is (= before (t2/count :model/Collection)) "no second collection is created"))))))
+
+(deftest the-resource-collection-cannot-change-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (mt/with-temp [:model/Collection {other-id :id} {:name "Other" :namespace :data-apps}]
+      (let [id            (insert-app!)
+            collection-id (t2/select-one-fn :resource_collection_id :model/DataApp id)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
+                              (t2/update! :model/DataApp id {:resource_collection_id other-id})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
+                              (t2/update! :model/DataApp id {:resource_collection_id nil})))
+        (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp id)))
+        (testing "an update that names the same collection is not a change"
+          (t2/update! :model/DataApp id {:resource_collection_id collection-id :display_name "Renamed"})
+          (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp id))))
+        (testing "an app whose collection was deleted out from under it may be given one again"
+          (t2/delete! :model/Collection :id collection-id)
+          (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp id)) "the reference was cleared")
+          (t2/update! :model/DataApp id {:resource_collection_id other-id})
+          (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp id))))))))
+
+(deftest delete-removes-the-resource-collection-the-app-owns-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [id (insert-app!)
+          {:keys [resource_collection_id]} (t2/select-one :model/DataApp id)]
+      (t2/delete! :model/DataApp id)
+      (is (not (t2/exists? :model/Collection :id resource_collection_id))))))
 
 (deftest writes-are-normalized-and-validated-against-the-schema-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -98,8 +147,8 @@
       (is (mi/can-read? :model/DataApp 1))
       (is (mi/can-write? :model/DataApp 1))
       (is (mi/can-create? :model/DataApp {}))))
-  (testing "any signed-in user can read (view), but write/create stay superuser-only"
+  (testing "an unassigned user cannot read, write, or create"
     (binding [api/*is-superuser?* false]
-      (is (mi/can-read? :model/DataApp 1))
+      (is (not (mi/can-read? :model/DataApp 1)))
       (is (not (mi/can-write? :model/DataApp 1)))
       (is (not (mi/can-create? :model/DataApp {}))))))

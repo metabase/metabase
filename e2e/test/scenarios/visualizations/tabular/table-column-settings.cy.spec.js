@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -558,6 +559,40 @@ describe("scenarios > visualizations > table column settings", () => {
 
       H.assertRowHeight(0, 36);
     });
+
+    describe("issue 22206", () => {
+      beforeEach(() => {
+        H.openOrdersTable();
+
+        cy.findByTestId("loading-indicator").should("not.exist");
+      });
+
+      it("should not duplicate column in settings when removing and adding it back (metabase#22206)", () => {
+        H.openVizSettingsSidebar();
+
+        // remove column
+        cy.findByTestId("sidebar-content")
+          .findByTestId("draggable-item-Subtotal")
+          .icon("eye_outline")
+          .click({ force: true });
+
+        // rerun query
+        cy.findAllByTestId("run-button").first().click();
+        cy.wait("@dataset");
+        cy.findByTestId("loading-indicator").should("not.exist");
+
+        // add column back again
+        cy.findByTestId("sidebar-content")
+          .findByTestId("draggable-item-Subtotal")
+          .icon("eye_crossed_out")
+          .click({ force: true });
+
+        // fails because there are 2 columns, when there should be one
+        cy.findByTestId("sidebar-content").findByText("Subtotal");
+
+        // if you add it back again it crashes the question
+      });
+    });
   });
 
   describe("multi-stage questions", () => {
@@ -883,6 +918,285 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(taxColumn);
       _removeColumn(taxColumn);
       _addColumn(taxColumn);
+    });
+
+    const oldSourceQuestionDetails = {
+      native: {
+        query: "SELECT 1 AS C1, 2 AS C2, 3 AS C3",
+      },
+    };
+
+    const newSourceQuestionDetails = {
+      native: {
+        query: "SELECT 1 AS C1, 3 AS C3",
+      },
+    };
+
+    const getNestedQuestionDetails = (sourceQuestionId) => ({
+      query: {
+        "source-table": `card__${sourceQuestionId}`,
+      },
+      display: "table",
+      visualization_settings: {
+        "table.columns": [
+          { name: "C3", enabled: true },
+          { name: "C1", enabled: true },
+          { name: "C2", enabled: true },
+        ],
+      },
+    });
+
+    it("should not reset the column order after one of the columns is removed from data source (metabase#7884)", () => {
+      H.createNativeQuestion(oldSourceQuestionDetails).then(
+        ({ body: sourceQuestion }) =>
+          H.createQuestion(getNestedQuestionDetails(sourceQuestion.id)).then(
+            ({ body: nestedQuestion }) => {
+              cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
+                ...sourceQuestion,
+                dataset_query: {
+                  type: "native",
+                  database: SAMPLE_DB_ID,
+                  native: newSourceQuestionDetails.native,
+                },
+              });
+              H.visitQuestion(nestedQuestion.id);
+            },
+          ),
+      );
+
+      cy.log("verify column order in the table");
+      cy.findAllByTestId("header-cell").eq(0).should("contain.text", "C3");
+      cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
+
+      cy.log("verify column order in viz settings");
+      H.openVizSettingsSidebar();
+      H.getDraggableElements().eq(0).should("contain.text", "C3");
+      H.getDraggableElements().eq(1).should("contain.text", "C1");
+    });
+  });
+
+  describe("issue 28304", () => {
+    const questionDetails = {
+      name: "28304",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "table",
+      visualization_settings: {
+        "table.columns": [
+          {
+            fieldRef: ["field", ORDERS.ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.USER_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.PRODUCT_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.SUBTOTAL, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.TAX, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.DISCOUNT, null],
+            enabled: true,
+          },
+        ],
+        column_settings: {
+          '["name","count"]': { show_mini_bar: true },
+        },
+      },
+    };
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+
+      H.visitQuestionAdhoc(questionDetails);
+    });
+
+    it("table should should generate default columns when table.columns entries do not match data.cols (metabase#28304)", () => {
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Count by Created At: Month").should("be.visible");
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().should("not.contain", "[Unknown]");
+      H.leftSidebar().should("contain", "Created At");
+      H.leftSidebar().should("contain", "Count");
+      cy.findAllByTestId("mini-bar-container").should(
+        "have.length.greaterThan",
+        0,
+      );
+      H.getDraggableElements().should("have.length", 2);
+    });
+  });
+
+  describe("issue 28311", () => {
+    const questionDetails = {
+      name: "28311",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "table",
+      visualization_settings: {
+        "table.columns": [
+          {
+            fieldRef: ["field", ORDERS.ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.USER_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.PRODUCT_ID, null],
+            enabled: true,
+          },
+          {
+            fieldRef: ["field", ORDERS.SUBTOTAL, null],
+            enabled: false,
+          },
+          {
+            fieldRef: ["field", ORDERS.TAX, null],
+            enabled: false,
+          },
+          {
+            fieldRef: ["field", ORDERS.DISCOUNT, null],
+            enabled: false,
+          },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+
+      H.visitQuestionAdhoc(questionDetails);
+    });
+
+    it("should move a column to a new position on the first drag (metabase#28311)", () => {
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Product ID").should("be.visible");
+
+      H.openVizSettingsSidebar();
+      H.getDraggableElements().contains("Product ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: -100,
+        useMouseEvents: true,
+      });
+      H.getDraggableElements().eq(0).should("contain", "Product ID");
+    });
+  });
+
+  describe("issue 42049", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
+    it("should not mess up columns order (metabase#42049)", () => {
+      cy.intercept("POST", "/api/card/*/query", (req) => {
+        req.on("response", (res) => {
+          const createdAt = res.body.data.cols[1];
+
+          createdAt.field_ref[1] = "created_at"; // simulate named field ref
+
+          res.send();
+        });
+      }).as("cardQuery");
+
+      // A dirty question runs through /api/dataset, so give it the same named field ref.
+      cy.intercept("POST", "/api/dataset", (req) => {
+        req.on("response", (res) => {
+          const createdAt = res.body.data.cols[1];
+
+          createdAt.field_ref[1] = "created_at"; // simulate named field ref
+
+          res.send();
+        });
+      }).as("dataset");
+
+      H.createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            fields: [
+              ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+            ],
+          },
+          visualization_settings: {
+            "table.columns": [
+              {
+                name: "ID",
+                fieldRef: ["field", ORDERS.ID, null],
+                enabled: true,
+              },
+              {
+                name: "CREATED_AT",
+                fieldRef: [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  {
+                    "temporal-unit": "default",
+                  },
+                ],
+                enabled: true,
+              },
+              {
+                name: "QUANTITY",
+                fieldRef: ["field", ORDERS.QUANTITY, null],
+                enabled: true,
+              },
+            ],
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      cy.log("verify initial columns order");
+
+      cy.findAllByTestId("header-cell").as("headerCells");
+      cy.get("@headerCells").eq(0).should("have.text", "ID");
+      cy.get("@headerCells").eq(1).should("have.text", "Created At");
+      cy.get("@headerCells").eq(2).should("have.text", "Quantity");
+
+      cy.findByTestId("question-filter-header").click();
+
+      H.popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.button("Previous month").click();
+      });
+
+      cy.wait("@dataset");
+      H.queryBuilderFiltersPanel()
+        .findByTestId("filter-pill")
+        .should("contain", "Created At");
+
+      cy.log("verify columns order after applying the filter");
+
+      cy.findAllByTestId("header-cell").as("headerCells");
+      cy.get("@headerCells").eq(0).should("have.text", "ID");
+      cy.get("@headerCells").eq(1).should("have.text", "Created At");
+      cy.get("@headerCells").eq(2).should("have.text", "Quantity");
     });
   });
 

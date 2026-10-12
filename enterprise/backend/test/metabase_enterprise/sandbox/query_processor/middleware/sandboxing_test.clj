@@ -1363,6 +1363,58 @@
                                             (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
 
+(deftest persistence-disabled-for-native-card-template-tag-when-sandboxed-test
+  (testing "A native query referencing a persisted Model via a {{#N}} template tag must not use the persisted cache for a sandboxed user"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        ;; with-gtaps! creates a new copy of the database. So make sure to do that before anything else.
+        (met/with-gtaps! {:gtaps {:products
+                                  {:remappings {:category
+                                                ["dimension"
+                                                 [:field (mt/id :products :category)
+                                                  nil]]}}}}
+          (mt/with-persistence-enabled! [persist-models!]
+            ;; with temp ok here since `persist-models!` doesn't use Metadata Providers
+            #_{:clj-kondo/ignore [:discouraged-var]}
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :dataset_query (mt/mbql-query
+                                                               products
+                                                               {:fields [$id $price]})}]
+              ;; persist model (as admin, so sandboxing is not applied to the persisted query)
+              (mt/with-test-user :crowberto
+                (persist-models!))
+              (let [persisted-info (t2/select-one :model/PersistedInfo
+                                                  :database_id (mt/id)
+                                                  :card_id (:id model))]
+                (is (= "persisted" (:state persisted-info))
+                    "Model failed to persist")
+                ;; a sandboxed user has no native-query permissions, but only needs to be able to *read* a saved
+                ;; native Card that references the persisted Model to hit this code path.
+                #_{:clj-kondo/ignore [:discouraged-var]}
+                (mt/with-temp [:model/Card card {:dataset_query
+                                                 (lib/native-query (mt/metadata-provider)
+                                                                   (format "SELECT count(*) FROM {{#%d}} AS m"
+                                                                           (:id model)))}]
+                  (let [run-card         #(mt/user-http-request % :post 202 (format "card/%d/query" (:id card)))
+                        regular-result   (run-card :crowberto)
+                        sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
+                                           (run-card :rasta))]
+                    (testing "Unsandboxed"
+                      (testing "Sees full result set"
+                        (is (= 200 (-> regular-result mt/rows ffirst))))
+                      (testing "Uses the cache table"
+                        (is (str/includes? (-> regular-result :data :native_form :query)
+                                           (:table_name persisted-info))
+                            "Did not use the persisted model cache")))
+                    (testing "Sandboxed"
+                      (testing "sees partial result"
+                        (is (= 51 (-> sandboxed-result mt/rows ffirst))
+                            "Sandboxed user got whole results instead of filtered"))
+                      (testing "Does not use the cache table"
+                        (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
+                                                (:table_name persisted-info)))
+                            "Erroneously used the persisted model cache")))))))))))))
+
 (deftest model-metadata-overrides-preserved-for-sandboxed-users-test
   (testing (str "Column metadata overrides on a Model (custom display_name, semantic_type set in the Edit Metadata "
                 "screen) should apply to queries sourced from that Model regardless of whether the user has a "
@@ -1407,6 +1459,37 @@
           (qp/process-query (qp/userland-query query))
           (is (=? {:is_sandboxed true}
                   (qe))))))))
+
+(deftest sandbox-details-success-test
+  (testing "The sandboxes applied to a query are recorded in query_execution.sandbox_details (#71604)"
+    (met/with-gtaps! (mt/$ids orders
+                       {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id]}}}
+                        :attributes {"user_id" 1}})
+      (let [query (mt/mbql-query orders {:aggregation [[:count]]})]
+        (testing "the sandbox structure is always recorded, but attribute values are omitted by default"
+          (process-userland-query-test/with-query-execution! [qe query]
+            (let [result (qp/process-query (qp/userland-query query))]
+              (testing "the details are stripped back out of the query results returned to the client"
+                (is (not (contains? (:data result) :sandbox_details)))))
+            (let [saved-qe (qe)]
+              (is (=? {:is_sandboxed    true
+                       :sandbox_details [{:table_id   (mt/id :orders)
+                                          :sandbox_id pos-int?
+                                          :group_id   pos-int?
+                                          :card_id    nil
+                                          :attributes {"user_id" {:field_id (mt/id :orders :user_id)}}}]}
+                      saved-qe))
+              (is (not (contains? (get-in saved-qe [:sandbox_details 0 :attributes "user_id"]) :value))))))
+        (testing "the user's attribute values are included when analytics-pii-retention-enabled is set"
+          (mt/with-additional-premium-features #{:audit-app}
+            (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+              (process-userland-query-test/with-query-execution! [qe query]
+                (qp/process-query (qp/userland-query query))
+                ;; login attribute values are stored (and therefore recorded) as strings
+                (is (=? {:sandbox_details [{:table_id   (mt/id :orders)
+                                            :attributes {"user_id" {:field_id (mt/id :orders :user_id)
+                                                                    :value    "1"}}}]}
+                        (qe)))))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query fails when sandboxed table is joined to a table that the current user doesn't have access to"

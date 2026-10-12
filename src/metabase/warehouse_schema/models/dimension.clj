@@ -34,9 +34,6 @@
       (when-let [field (serdes/load-find-local (pop path))]
         (warehouse-schema.db/dimension-for-field (:id field)))))
 
-(defmethod serdes/deserialization-dependencies "Dimension" [dimension]
-  [[(first (serdes/path dimension))]])
-
 (defmethod serdes/load-update! "Dimension" [model-name ingested local]
   ((get-method serdes/load-update! :default) model-name (merge {:human_readable_field_id nil} ingested) local))
 
@@ -46,12 +43,16 @@
    :transform {:created_at              (serdes/date)
                :human_readable_field_id (serdes/fk :model/Field)
                :field_id                {::serdes/fk true
-                                         :export     (constantly ::serdes/skip)
+                                         :export     #(serdes/*export-field-fk* %)
                                          :import-with-context
                                          (fn [current _ field-id]
-                                           (or field-id
-                                               (serdes/*import-field-fk*
-                                                (serdes/field-path->field-ref (pop (serdes/path current))))))}}})
+                                           (if (int? field-id)
+                                             field-id
+                                             (serdes/*import-field-fk*
+                                              (serdes/field-path->field-ref (pop (serdes/path current))))))}}})
+
+(defmethod serdes/ingested-path "Dimension" [_ {:keys [field_id entity_id]}]
+  (conj (serdes/field->path field_id) {:model "Dimension" :id entity_id}))
 
 (def ^:private dimension-slug "___dimension")
 

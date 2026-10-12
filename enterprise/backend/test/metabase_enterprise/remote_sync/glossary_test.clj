@@ -165,7 +165,7 @@
       (let [[conflict :as conflicts] (spec/check-feature-conflicts #{"Glossary"} #{})]
         (is (= 1 (count conflicts)))
         (is (=? {:type :snippets-conflict :category "Snippets"} conflict))
-        (is (str/includes? (:message conflict) "Library content (snippets, glossary)"))))
+        (is (str/includes? (:message conflict) "Library content (snippets, data actions, glossary)"))))
     (testing "import! surfaces the conflict"
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (let [task-id     (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"

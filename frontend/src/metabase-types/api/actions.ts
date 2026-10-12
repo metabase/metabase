@@ -1,21 +1,25 @@
 import type { CardId } from "./card";
+import type { CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
-import type { NativeDatasetQuery } from "./query";
+import type { NativeDatasetQuery, OpaqueDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
 export type ListActionsRequest = {
   "model-id"?: CardId;
+  type?: WritebackActionType;
+  archived?: boolean;
 };
 
 export interface CreateActionRequest {
+  collection_id?: CollectionId | null;
   database_id?: DatabaseId;
-  dataset_query?: NativeDatasetQuery;
+  dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
   description?: string | null;
   kind?: "row/create" | "row/update" | "row/delete";
-  model_id: CardId;
+  model_id?: CardId | null;
   name: string;
   parameter_mappings?: Record<ParameterId, ParameterTarget>;
   parameters?: WritebackParameter[];
@@ -26,8 +30,9 @@ export interface CreateActionRequest {
 export interface UpdateActionRequest {
   id: WritebackActionId;
   archived?: boolean;
+  collection_id?: CollectionId | null;
   database_id?: DatabaseId;
-  dataset_query?: NativeDatasetQuery;
+  dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
   description?: string | null;
   kind?: "row/create" | "row/update" | "row/delete";
   model_id?: CardId;
@@ -47,7 +52,8 @@ export type WritebackActionId = number;
 
 export interface WritebackActionBase {
   id: WritebackActionId;
-  model_id: CardId;
+  model_id: CardId | null;
+  collection_id: CollectionId | null;
   name: string;
   description: string | null;
   parameters?: WritebackParameter[];
@@ -60,6 +66,7 @@ export interface WritebackActionBase {
   public_uuid: string | null;
   database_id?: DatabaseId;
   database_enabled_actions?: boolean;
+  can_write?: boolean;
   entity_id: BaseEntityId;
 }
 

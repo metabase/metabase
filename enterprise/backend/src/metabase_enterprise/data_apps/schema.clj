@@ -2,6 +2,7 @@
   "Malli schemas for the data-apps module."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -12,7 +13,7 @@
 
 (def ^:private reserved-slugs
   "Slugs that collide with literal `/api/apps/*` sub-routes, so an app with one would be unreachable."
-  #{"repo-status" "sandbox-host"})
+  #{"generate" "repo-status" "sandbox-host"})
 
 (defn- decoders
   "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."
@@ -113,9 +114,7 @@
    [:description     {:optional true} ::description]
    [:version         {:optional true} ::version]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:permission_group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-   [:draft                  {:optional true} [:maybe :boolean]]])
+   [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (mr/def ::data-app.insert
   "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, display name, and bundle path required."
@@ -125,3 +124,41 @@
     [:name         ::slug]
     [:display_name ::display-name]
     [:bundle_path  ::bundle-path]]])
+
+(mr/def ::query
+  "A data app `defineQuery` definition, with the name, entity ID and collection of the saved question that holds it."
+  [:map {:closed true}
+   [:name          ms/NonBlankString]
+   [:query         ::query-definition/query-definition]
+   [:entity_id     ms/NanoIdString]
+   [:collection_id ms/NanoIdString]])
+
+(mr/def ::action
+  "An action without a model a data app runs, with the entity ID and collection of its copy."
+  [:map {:closed true}
+   [:action_id     ms/PositiveInt]
+   [:entity_id     ms/NanoIdString]
+   [:collection_id ms/NanoIdString]])
+
+(mr/def ::file
+  "A serialization file in the folder of the app's collection, or the error that stops it."
+  [:or
+   [:map {:closed true}
+    [:file :string]
+    [:yaml :string]]
+   [:map {:closed true}
+    [:error :string]]])
+
+(mr/def ::app-request
+  "What a new data app's files are generated from."
+  [:map {:closed true}
+   [:name ::display-name]
+   [:slug {:optional true} [:maybe ::slug]]
+   [:description {:optional true} ::description]])
+
+(mr/def ::app-files
+  "A new data app's files, each at its path from the repository root."
+  [:map {:closed true}
+   [:files [:sequential [:map {:closed true}
+                         [:path :string]
+                         [:yaml :string]]]]])
