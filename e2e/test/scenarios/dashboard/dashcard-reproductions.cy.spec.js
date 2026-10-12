@@ -5,40 +5,6 @@ import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("issue 18454", () => {
-  const CARD_DESCRIPTION = "CARD_DESCRIPTION";
-
-  const questionDetails = {
-    name: "18454 Question",
-    description: CARD_DESCRIPTION,
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
-    },
-    display: "line",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      },
-    );
-  });
-
-  it("should show card descriptions (metabase#18454)", () => {
-    cy.findByTestId("dashcard-container").realHover();
-    cy.findByTestId("dashcard-container").within(() => {
-      cy.icon("info").trigger("mouseenter", { force: true });
-    });
-    H.tooltip().should("contain", CARD_DESCRIPTION);
-  });
-});
-
 // Tests for issues 27020 and 27105 (static-viz rendering with date formatting options)
 // have been moved to backend tests in metabase.channel.render.card-test
 

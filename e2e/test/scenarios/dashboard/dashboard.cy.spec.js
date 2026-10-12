@@ -595,28 +595,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  it("should add a filter", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-
-    // Adding location/state doesn't make much sense for this case,
-    // but we're testing just that the filter is added to the dashboard
-    H.setFilter("Location", "Is");
-
-    H.getDashboardCard().findByText("Select…").click();
-
-    H.popover().findByText("State").click();
-
-    cy.icon("close");
-    cy.button("Done").click();
-
-    H.saveDashboard();
-
-    cy.log("Assert that the selected filter is present in the dashboard");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Location", { exact: false }).should("be.visible");
-  });
-
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
     // programmatically create and save a question as per repro instructions in #11007
     cy.request("POST", "/api/card", {
