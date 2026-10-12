@@ -125,7 +125,7 @@ describe("admin routes", () => {
   });
 
   it("resolves every page in the settings tree", async () => {
-    const loaders = lazyLoaders(getSettingsRoutes(createStore(), Guard));
+    const loaders = lazyLoaders(getSettingsRoutes(createStore()));
 
     expect(loaders.length).toBeGreaterThan(20);
 

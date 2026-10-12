@@ -163,7 +163,8 @@
     :model/TransformJobRun
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformDagRun]
+    :model/TransformDagRun
+    :model/McpGroupPermission]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
