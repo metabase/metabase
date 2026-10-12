@@ -193,6 +193,14 @@ const getSpecForEntity = (
 };
 
 /**
+ * The id of the display group an entity belongs to.
+ */
+export const getDisplayGroupId = (
+  entity: RemoteSyncEntity,
+  namespaceCollectionMap: NamespaceCollectionMap,
+): string => getSpecForEntity(entity, namespaceCollectionMap).id;
+
+/**
  * Result of getGroupKeyInfo containing both the group key and the matched spec.
  */
 type GroupKeyInfo = {

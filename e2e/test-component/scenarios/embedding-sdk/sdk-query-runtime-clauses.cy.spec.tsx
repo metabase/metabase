@@ -9,8 +9,9 @@ import {
   useMetabaseQuery,
 } from "@metabase/embedding-sdk-react/data-app";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion } from "e2e/support/helpers";
+import { createCard, createTestQuery } from "e2e/support/helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   mountSdk,
@@ -19,7 +20,7 @@ import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
-import type { StructuredQuery } from "metabase-types/api";
+import type { TestStageWithSourceSpec } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -128,17 +129,25 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
     signInAsAdminAndEnableEmbeddingSdk();
   });
 
+  const createTestCard = (
+    stage: TestStageWithSourceSpec,
+    details: { name: string; type?: "metric" },
+  ) =>
+    createTestQuery({ database: SAMPLE_DB_ID, stages: [stage] }).then(
+      (datasetQuery) => createCard({ ...details, dataset_query: datasetQuery }),
+    );
+
   const expectRuntimeClauses = ({
-    cardQuery,
+    staticQuery,
     useQueryStates,
     check,
   }: {
-    cardQuery: StructuredQuery;
+    staticQuery: TestStageWithSourceSpec;
     useQueryStates: UseQueryStates;
     check: RowCheck;
   }) => {
-    createQuestion({ name: "Runtime clauses source", query: cardQuery }).then(
-      ({ body: card }) => {
+    createTestCard(staticQuery, { name: "Runtime clauses source" }).then(
+      (card) => {
         cy.signOut();
         mockAuthProviderAndJwtSignIn();
 
@@ -178,14 +187,7 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
     };
 
     expectRuntimeClauses({
-      cardQuery: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ["field", ORDERS.USER_ID, null],
-        ],
-      },
+      staticQuery,
       useQueryStates: (cardId) => ({
         fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
         fromCard: useMetabaseQuery(
@@ -206,11 +208,13 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
     // Generated joined fields are metric dimensions, and the skill requires
     // their metric in the same query. The metric is what loads the metadata of
     // the tables its foreign keys point to.
-    createQuestion({
-      name: "Orders count",
-      type: "metric",
-      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-    }).then(({ body: metric }) => {
+    createTestCard(
+      {
+        source: tableSource,
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+      { name: "Orders count", type: "metric" },
+    ).then((metric) => {
       const ordersCount = {
         type: "metric" as const,
         id: metric.id,
@@ -221,19 +225,17 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
       const staticQuery = defineQuery({
         source: tableSource,
         aggregations: [ordersCount],
-        breakouts: [breakout(productsIdField), breakout(peopleIdField)],
+        breakouts: [
+          breakout(productsIdField, { name: "product_id" }),
+          breakout(peopleIdField, { name: "people_id" }),
+        ],
       });
-      const dynamicQuery = { filters: [filter(peopleIdField, "<", 10)] };
+      const dynamicQuery = {
+        filters: [filter({ ...peopleIdField, name: "people_id" }, "<", 10)],
+      };
 
       expectRuntimeClauses({
-        cardQuery: {
-          "source-table": ORDERS_ID,
-          aggregation: [["metric", metric.id]],
-          breakout: [
-            ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
-            ["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }],
-          ],
-        },
+        staticQuery,
         useQueryStates: (cardId) => ({
           fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
           fromCard: useMetabaseQuery(
@@ -263,22 +265,6 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
       aggregations: [totalSum, subtotalSum],
       breakouts: [breakout(productIdField)],
     });
-    const cardQuery: StructuredQuery = {
-      "source-table": ORDERS_ID,
-      aggregation: [
-        [
-          "aggregation-options",
-          ["sum", ["field", ORDERS.TOTAL, null]],
-          { name: "total", "display-name": "Sum of Total" },
-        ],
-        [
-          "aggregation-options",
-          ["sum", ["field", ORDERS.SUBTOTAL, null]],
-          { name: "subtotal", "display-name": "Sum of Subtotal" },
-        ],
-      ],
-      breakout: [["field", ORDERS.PRODUCT_ID, null]],
-    };
 
     [
       { aggregation: totalSum, name: "total", index: 1 },
@@ -288,7 +274,7 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
         const dynamicQuery = { orderBys: [orderBy(aggregation, "desc")] };
 
         expectRuntimeClauses({
-          cardQuery,
+          staticQuery,
           useQueryStates: (cardId) => ({
             fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
             fromCard: useMetabaseQuery(

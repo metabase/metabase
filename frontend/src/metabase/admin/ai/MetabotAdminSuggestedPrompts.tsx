@@ -13,7 +13,7 @@ import {
   useGetSuggestedMetabotPromptsQuery,
   useRegenerateSuggestedMetabotPromptsMutation,
 } from "metabase/metabot";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { SettingHeader } from "metabase/settings-components";
 import {
   ActionIcon,
@@ -35,7 +35,7 @@ export const MetabotPromptSuggestionPane = ({
   metabot,
   pageSize = PAGE_SIZE,
 }: {
-  metabot: Pick<MetabotInfo, "id" | "collection_id">;
+  metabot: Pick<MetabotInfo, "id" | "entity_id" | "collection_id">;
   pageSize?: number;
 }) => {
   const [sendToast] = useToast();
@@ -158,7 +158,7 @@ export const MetabotPromptSuggestionPane = ({
                 // Unjustified type cast. FIXME
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
-                metabotId={metabot.id}
+                metabotEntityId={metabot.entity_id}
               />
             )
           }
@@ -210,11 +210,11 @@ const SkeletonSuggestedPromptRow = () => (
 const SuggestedPromptRow = ({
   row,
   onDelete,
-  metabotId,
+  metabotEntityId,
 }: {
   row: SuggestedMetabotPrompt;
   onDelete: () => Promise<void>;
-  metabotId: number;
+  metabotEntityId: MetabotInfo["entity_id"];
 }) => {
   const clipboard = useClipboard();
 
@@ -230,7 +230,7 @@ const SuggestedPromptRow = ({
       </td>
       <Box component="td" h="3.5rem">
         <Flex align="center" gap="sm">
-          {metabotId === FIXED_METABOT_IDS.DEFAULT ? (
+          {metabotEntityId === FIXED_METABOT_ENTITY_IDS.DEFAULT ? (
             <Tooltip label={t`Run prompt`}>
               <ActionIcon
                 component={ForwardRefLink}

@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
@@ -114,15 +113,12 @@
           (testing "search with metabot verified-or-curated content flag"
             (let [metabot {:entity_id "test-bot"
                            :use_verified_content true}]
-              (mt/with-dynamic-fn-redefs [metabot.db/metabot-by-entity-id (fn [entity-id]
-                                                                            (is (= "test-bot" entity-id) "Should look up the Metabot")
-                                                                            metabot)
-                                          search-core/ranked-results (fn [context]
+              (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                        ;; use_verified_content now drives the curated filter, not :verified
                                                                        (is (true? (:curated? context)))
                                                                        [dashboard])]
                 (let [results (search/search {:term-queries ["test"]
-                                              :metabot-id "test-bot"
+                                              :metabot metabot
                                               :entity-types ["dashboard"]})]
                   (is (= 1 (count results)))
                   (is (= 2 (:id (first results)))))))))))))

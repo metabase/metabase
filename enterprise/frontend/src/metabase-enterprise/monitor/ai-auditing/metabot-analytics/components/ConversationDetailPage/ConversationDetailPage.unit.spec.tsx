@@ -335,7 +335,6 @@ describe("ConversationDetailPage", () => {
   it("resolves feedback left on a regenerated-away attempt", async () => {
     const feedback: ConversationFeedback = {
       id: 1,
-      metabot_id: 1,
       message_id: "10",
       user_id: 1,
       external_id: "a1",
