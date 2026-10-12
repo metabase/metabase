@@ -518,7 +518,7 @@ const makeDescribe = (mode) => {
   return describe;
 };
 const it = makeTest("run");
-it.skip = makeTest("skip"); it.only = makeTest("run"); it.todo = (name) => makeTest("todo")(name);
+it.skip = makeTest("skip"); it.only = makeTest("only"); it.todo = (name) => makeTest("todo")(name);
 // jest runs a failing test and passes it only when its body throws.
 it.failing = (name, fn, timeout) => it(name, async () => {
   let threw = false;
@@ -526,7 +526,42 @@ it.failing = (name, fn, timeout) => it(name, async () => {
   if (!threw) throw new Error("Failing test passed even though it was supposed to fail. Remove `.failing` to remove error.");
 }, timeout);
 const describe = makeDescribe("run");
-describe.skip = makeDescribe("skip"); describe.only = makeDescribe("run");
+describe.skip = makeDescribe("skip"); describe.only = makeDescribe("only");
+// Decides which tests of a file run, as jest does. A test takes the mode of its
+// describe block unless it has one of its own. If any test in the file ends up
+// as "only", the others are skipped. A name pattern skips the tests whose full
+// name does not match. A describe block left with no test to run is skipped as
+// a whole, so its hooks do not run either.
+const TEST_NAME_PATTERN = process.env.NT_TEST_NAME_PATTERN ? new RegExp(process.env.NT_TEST_NAME_PATTERN, "i") : null;
+const selectTests = (fileSuite) => {
+  const tests = [];
+  const inherit = (suite, inherited) => {
+    // Nothing inside a skipped block runs, whatever its own mode is.
+    const mode = inherited === "skip" || (suite.mode ?? "run") === "run" ? inherited : suite.mode;
+    for (const child of suite.children) {
+      if (child.type === "suite") { inherit(child.suite, mode); continue; }
+      if (child.mode !== "todo" && (child.mode === "run" || mode === "skip")) child.mode = mode;
+      tests.push(child);
+    }
+  };
+  inherit(fileSuite, "run");
+  const focused = tests.some((test) => test.mode === "only");
+  for (const test of tests) {
+    if (test.mode === "todo" || test.mode === "skip") continue;
+    const named = !TEST_NAME_PATTERN || TEST_NAME_PATTERN.test([...test.path, test.name].join(" "));
+    test.mode = named && (!focused || test.mode === "only") ? "run" : "skip";
+  }
+  const settle = (suite) => {
+    let runs = false;
+    for (const child of suite.children) {
+      if (child.type === "suite") runs = settle(child.suite) || runs;
+      else runs = child.mode === "run" || runs;
+    }
+    suite.mode = runs ? "run" : "skip";
+    return runs;
+  };
+  settle(fileSuite);
+};
 // A package can register hooks when it is first imported. React Testing
 // Library does, to tell React that this is a test environment. jest loads
 // packages again for every file, so those hooks apply to every file. Here a
@@ -830,11 +865,13 @@ globalThis.__testHarness.runFile = async (t, file) => {
   const fileSuite = newSuite(file);
   suiteStack.push(fileSuite);
   try { require(file); } finally { suiteStack.pop(); }
+  selectTests(fileSuite);
   try {
     for (const fn of [...packageHooks.beforeAll, ...rootSuite.beforeAll]) await fn();
     actEnvironmentForFile = globalThis.IS_REACT_ACT_ENVIRONMENT;
     try {
-      await runSuite(fileSuite, t, { fileLevel: true, beforeEach: [...packageHooks.beforeEach, ...rootSuite.beforeEach], afterEach: [...packageHooks.afterEach, ...rootSuite.afterEach] });
+      if (fileSuite.mode === "skip") countSkipped(fileSuite);
+      else await runSuite(fileSuite, t, { fileLevel: true, beforeEach: [...packageHooks.beforeEach, ...rootSuite.beforeEach], afterEach: [...packageHooks.afterEach, ...rootSuite.afterEach] });
     } finally {
       for (const fn of [...rootSuite.afterAll, ...packageHooks.afterAll]) { try { await fn(); } catch {} }
     }
