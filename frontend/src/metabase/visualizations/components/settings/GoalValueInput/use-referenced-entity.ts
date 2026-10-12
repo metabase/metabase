@@ -4,7 +4,11 @@ import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
 import * as Urls from "metabase/urls";
 import type { GoalForeignEntityRef } from "metabase-types/api";
 
-import type { ColumnOption, ReferencedEntityInfo } from "./types";
+import type {
+  ColumnOption,
+  ReferencedEntityInfo,
+  ReferencedEntityKind,
+} from "./types";
 import { getNumericColumnOptions } from "./utils";
 
 export function useReferencedEntity(
@@ -23,6 +27,8 @@ export function useReferencedEntity(
     entity != null &&
     !hasError &&
     (entity.type === "card" ? card == null : measure == null);
+  const kind: ReferencedEntityKind | undefined =
+    entity?.type === "card" ? card?.type : entity?.type;
   const name = entity?.type === "card" ? card?.name : measure?.name;
   const url =
     entity?.type === "card"
@@ -41,5 +47,5 @@ export function useReferencedEntity(
     return [];
   }, [entity?.type, card, measure]);
 
-  return { name, url, columns, isLoading, hasError };
+  return { kind, name, url, columns, isLoading, hasError };
 }
