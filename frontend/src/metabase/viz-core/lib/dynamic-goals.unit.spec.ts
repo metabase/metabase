@@ -151,6 +151,23 @@ describe("resolveGoalValue", () => {
     });
   });
 
+  it("errors with too-many-rows when the referenced query returned more than one row", () => {
+    const data = createMockDatasetData({
+      cols,
+      rows,
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        id: 7,
+        error:
+          "Referenced card 7 returned more rows than the requested maximum of 1.",
+        error_type: "too-many-rows",
+      }),
+    });
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 7, column: "total" }).error,
+    ).toMatchObject({ reason: "too-many-rows" });
+  });
+
   it("is resolving when the referenced entity is absent from the response", () => {
     const data = createMockDatasetData({
       cols,
