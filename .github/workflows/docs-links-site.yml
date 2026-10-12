@@ -5,6 +5,8 @@ on:
     # Sundays at 05:00 UTC
     - cron: "0 5 * * 0"
   workflow_dispatch:
+  pull_request:
+    branches: [check-docs-links-in-frontend-src]
 
 jobs:
   live-links:
@@ -62,15 +64,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TITLE: Broken links report
-          ASSIGNEE: tmashara
+          TITLE: GRO-1061 test link report
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}
         run: |
           max_rows=300
           {
-            echo "cc @metabase/growth-eng @metabase/tech-writers"
-            echo
             if [ -s "$LINKS_REPORT" ]; then
               failures=$(sort -u "$LINKS_REPORT")
               count=$(grep -c '' <<<"$failures")
@@ -98,10 +97,10 @@ jobs:
           issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
                     --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
           if [ -z "$issue" ]; then
-            gh issue create --title "$TITLE" --body-file broken-links-issue.md --assignee "$ASSIGNEE"
+            gh issue create --title "$TITLE" --body-file broken-links-issue.md
           else
             gh issue edit "$issue" --body-file broken-links-issue.md
-            gh issue comment "$issue" --body "Updated with the results of the $(date -u +%Y-%m-%d) run ([run]($RUN_URL)). cc @metabase/growth-eng @metabase/tech-writers"
+            gh issue comment "$issue" --body "Updated with the results of the $(date -u +%Y-%m-%d) run ([run]($RUN_URL))."
           fi
 
       - name: Close the broken links issue
@@ -109,7 +108,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TITLE: Broken links report
+          TITLE: GRO-1061 test link report
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
