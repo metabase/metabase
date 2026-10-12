@@ -329,7 +329,7 @@ function setup({
 
   return renderWithProviders(
     <Route path={Urls.monitorApiKeyUsage()}>
-      {PLUGIN_MONITOR.getApiKeyUsageRoutes()}
+      {PLUGIN_MONITOR.getApiKeyUsageRoutes?.()}
     </Route>,
     { initialRoute, withRouter: true, storeInitialState: state },
   );
