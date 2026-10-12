@@ -15,6 +15,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -26,6 +28,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1914,6 +1917,13 @@
     (let [uris (vec (repeat 10 "metabase://databases"))]
       (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
                             {:uris uris})))
+  (testing "this endpoint publishes the tool's own argument schema, so its limits cannot drift from
+           the ones the agent loop enforces. The hand-written copy this replaced had already lost
+           the 5-URI cap."
+    ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
+    ;; so the outer form differs by a `:description` the endpoint never publishes.
+    (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)
+           (nth (mr/schema :metabase.agent-api.api/read-resource-request) 2))))
   (testing "Reports a per-URI error rather than failing the whole call"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
                                      {:uris ["metabase://nonsense/path"]})]

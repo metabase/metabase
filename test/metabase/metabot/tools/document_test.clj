@@ -4,8 +4,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.table-utils :as table-utils]
+   [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct-tools]
-   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.document :as document-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -120,16 +120,13 @@
         (is (re-find #"could not be processed by Metabase" (:output result)))
         (is (re-find #"missing_table" (:output result)))))))
 
-(defn- construct-model-chart [args]
-  (tools.core/handle document-tools/document-construct-model-chart-tool args {}))
-
 (deftest document-construct-model-chart-tool-test
   (testing "builds chart draft payload from a query on a model"
     (let [mp (mt/metadata-provider)]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card model {:type          :model
                                           :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
-          (let [result (construct-model-chart
+          (let [result (document-tools/document-construct-model-chart-tool
                         {:name "Test Name"
                          :description "Test Desc"
                          :query {:lib/type "mbql/query"
@@ -153,16 +150,17 @@
 
 (deftest document-construct-model-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"
-    (with-redefs [construct-tools/construct-notebook-query-tool
-                  (reify tools.core/Tool
-                    (declaration [_] {})
-                    (handle [_ _ _]
-                      {:output            ""
-                       :structured-output {:query-id "3"
-                                           :query    {:database 1
-                                                      :type     "query"}}}))]
+    ;; Stubbed one layer below the tool: `construct_notebook_query` is a record now, and the
+    ;; pipeline call and the chart creation are the two things inside it worth standing in for.
+    (mt/with-dynamic-fn-redefs [construct-tools/execute-representations-query
+                                (fn [_ & _]
+                                  {:structured-output {:query-id "3"
+                                                       :query {:database 1
+                                                               :type "query"}}})
+                                create-chart-tools/create-chart
+                                (fn [args] {:chart-id "c-1" :chart-type (:chart-type args)})]
       (doseq [chart-type ["treemap" "boxplot"]]
-        (let [result (construct-model-chart
+        (let [result (document-tools/document-construct-model-chart-tool
                       {:name "Test Name"
                        :description "Test Desc"
                        :query {:lib/type "mbql/query" :stages []}
@@ -180,7 +178,7 @@
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test Database"}})
                                 warehouses/get-database (fn [_] (throw (ex-info "boom" {})))
                                 create-sql-query-tools/create-sql-query (fn [_] (throw (ex-info "boom" {})))
-                                construct-tools/execute-representations-query (fn [& _] (throw (ex-info "boom" {})))]
+                                construct-tools/execute-representations-query (fn [_ & _] (throw (ex-info "boom" {})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                             (document-tools/document-schema-collect-tool {})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
@@ -193,7 +191,7 @@
                               :sql          "SELECT 1"
                               :viz_settings {:chart_type "bar"}})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                            (construct-model-chart
+                            (document-tools/document-construct-model-chart-tool
                              {:name         "Test Name"
                               :description  "Test Desc"
                               :query        {:lib/type "mbql/query" :stages []}

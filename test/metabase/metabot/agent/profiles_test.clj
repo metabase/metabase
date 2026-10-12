@@ -10,6 +10,7 @@
    [metabase.test :as mt]))
 
 (deftest get-profile-test
+  ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
   (letfn [(tool-names [profile]
             (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
     (testing "retrieves embedding_next profile with default provider"

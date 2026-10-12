@@ -102,7 +102,6 @@
    [:output            :string]
    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
    [:data-parts        {:optional true} [:sequential DataPart]]
-   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
    [:error             {:optional true} [:map {:closed true}
                                          [:class        [:enum :validation :recoverable :unrecoverable]]
                                          [:code         :keyword]
@@ -610,7 +609,7 @@
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output
-  string. The full result map (`:resources`, `:data-parts`, …) stays off the
+  string. The full result map (`:structured-output`, `:data-parts`, …) stays off the
   wire — anything the client renders arrives as its own `:data` part."
   [result]
   (cond

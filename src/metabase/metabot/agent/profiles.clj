@@ -93,6 +93,9 @@
                [:terminal-tools {:optional true} [:set :string]]
                [:system-prompt-context {:optional true} [:fn ifn?]]]]
   (let [tool-vars     (:tools profile)
+        ;; The declaration, not the var's metadata: a converted tool is a record held by a var and
+        ;; carries no `:tool-name` meta, so reading meta made every converted tool in a profile
+        ;; report `nil` and the second one look like a duplicate of the first.
         tool-name-seq (map #(:name (tools.legacy/declaration-of %)) tool-vars)
         tool-names    (set tool-name-seq)]
     (doseq [tool-var tool-vars]

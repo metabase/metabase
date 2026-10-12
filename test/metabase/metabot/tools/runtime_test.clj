@@ -86,7 +86,6 @@
           (assoc :description "Reads several cards.")
           (assoc :args [:map {:closed true} [:ids [:sequential {:min 1} :int]]])))
     (batched-args [_ {:keys [ids]}] (mapv (fn [id] {:id id}) ids))
-    (around-batch [_ _item-args _ctx run] (run))
     (compose [_ entries _ctx] (tools/concatenated entries))))
 
 (def ^:private entries
@@ -256,16 +255,29 @@
            (str/split-lines
             (:output (invoke (ctx {:tool-names #{"read_many"}}) "read_many" {:ids [2 3]})))))))
 
-(deftest ^:parallel everything-failed-is-still-a-success-test
-  (testing "OPEN QUESTION — nothing was delivered, yet the call succeeds and its whole output is
-           failure text. Arguably it should fail, but as which error? There is no code for \"your
-           five items were five different kinds of missing\", and collapsing them loses the
-           attribution the agent needs to retry."
-    (let [outcome (invoke "read_many" {:ids [3]})]
-      (is (nil? (:error outcome)))
+(deftest ^:parallel a-call-where-every-item-failed-is-a-failed-call-test
+  (testing "nothing was delivered, so the call failed. The question this used to record was which
+           error it could be — there is no code for \"your five items were five different kinds of
+           missing\", and collapsing them would lose the attribution the agent needs to retry. The
+           answer is that the text does not have to change: `all-items-failed` carries the composed
+           per-item text as its message, so the model reads exactly what a call that lost all but
+           one item would have shown it, and the `:error` is what changes."
+    (let [outcome (invoke "read_many" {:ids [3 5]})]
+      (is (= {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed}
+             (:error outcome)))
       (is (= ["Card 3 was not found. It may not exist, or you may not have access to it."
+              "Call `search` to find the entity you want and use an id from the results."
+              "Card 5 was not found. It may not exist, or you may not have access to it."
               "Call `search` to find the entity you want and use an id from the results."]
-             (str/split-lines (:output outcome)))))))
+             (str/split-lines (:output outcome))))))
+  (testing "one item surviving is still a successful call, with the failure in position"
+    (is (nil? (:error (invoke "read_many" {:ids [2 3]})))))
+  (testing "and the per-item steps are still filtered by profile, which is why the runtime does not
+           apply its \"a message may not name a tool\" rule to this one error: the message was
+           assembled from text this profile had already been filtered for."
+    (is (= ["Card 3 was not found. It may not exist, or you may not have access to it."]
+           (str/split-lines
+            (:output (invoke (ctx {:tool-names #{"read_many"}}) "read_many" {:ids [3]})))))))
 
 (deftest ^:parallel a-renderable-output-is-rendered-at-the-boundary-test
   (testing "a tool may return a non-string renderable; this consumer wants a string and renders it"
@@ -280,24 +292,35 @@
       (is (= {:output "line one\nline two"} outcome))
       (is (string? (:output outcome))))))
 
+(defn- capped-tool
+  "A batched-shaped tool whose item cap lives in its `:args`, with `opts` on the `:sequential`
+  entry."
+  [opts]
+  (tool {:name "capped" :description "Takes at most 5."
+         :args [:map {:closed true}
+                [:uris [:sequential (merge {:min 1 :max 5} opts) :string]]]}
+        (fn [_ _] {:output "ok"})))
+
+(defn- over-the-cap
+  [tool]
+  (binding [scope/*current-user-scope* #{"*"}]
+    (tools.runtime/invoke (tools/entries [tool])
+                          (ctx {:tool-names #{"capped"}})
+                          "capped" {:uris ["a" "b" "c" "d" "e" "f"]})))
+
 (deftest ^:parallel an-item-limit-is-a-schema-fact-test
-  (testing "RECORDED, NOT BLESSED. The cap belongs in the schema, but the generated message is
-           worse than the hand-written one it replaces. `read_resource` says today:
-
-             Too many URIs provided (6). Please limit to 5 URIs maximum. Be more selective and
-             focus on the most relevant items for the current task or fetch them in batches.
-
-           The limit now lives in a schema the tool composed itself, so an `:error/message` on that
-           entry is easy to add. That is the likely answer."
-    (let [tool    (tool {:name "capped" :description "Takes at most 5."
-                         :args [:map {:closed true}
-                                [:uris [:sequential {:min 1 :max 5} :string]]]}
-                        (fn [_ _] {:output "ok"}))
-          outcome (binding [scope/*current-user-scope* #{"*"}]
-                    (tools.runtime/invoke (tools/entries [tool])
-                                          (ctx {:tool-names #{"capped"}})
-                                          "capped" {:uris ["a" "b" "c" "d" "e" "f"]}))]
+  (testing "an item cap belongs in `:args`, so the runtime rejects the call before the tool runs
+           and the model is told how to repair it"
+    (let [outcome (over-the-cap (capped-tool nil))]
       (is (= "Invalid tool arguments: `uris` should have at most 5 elements; received an array."
+             (:output outcome)))
+      (is (= {:class :validation :code :invalid-arguments} (:error outcome)))))
+  (testing "the generated sentence is accurate but says nothing about what to do instead, so a tool
+           with teaching to do writes its own with `:error/message`. This is what resolved the open
+           question the branch recorded here: `read_resource` had a hand-written count check whose
+           text was better than the generated one, and this is where that text now lives."
+    (let [outcome (over-the-cap (capped-tool {:error/message "must be an array of 1 to 5 URIs"}))]
+      (is (= "Invalid tool arguments: `uris` must be an array of 1 to 5 URIs; received an array."
              (:output outcome)))
       (is (= {:class :validation :code :invalid-arguments} (:error outcome))))))
 
@@ -315,24 +338,10 @@
              (tools.runtime/render {:class :validation :code :invalid-arguments :message message}
                                    all-tool-names)))))))
 
-(deftest ^:parallel render-rejects-a-message-that-names-a-tool-test
-  (testing "the runtime can drop a step but not a message, so a message must not name a tool"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"Only recovery steps name tools"
-         (tools.runtime/render {:class    :recoverable
-                                :code     ::x
-                                :message  "Call `search` instead."
-                                :recovery []}
-                               all-tool-names)))))
-
-(deftest ^:parallel render-rejects-a-step-that-hides-its-tool-test
-  (is (thrown-with-msg?
-       clojure.lang.ExceptionInfo #"without declaring it in :uses"
-       (tools.runtime/render {:class    :recoverable
-                              :code     ::x
-                              :message  "Nope."
-                              :recovery [{:uses #{} :text "Call `search`."}]}
-                             all-tool-names))))
+;; Whether a declaration's text names a tool it has not declared is a property of the declaration,
+;; not of a render, so `render` no longer checks it — see
+;; `metabase.metabot.tools.error-test/a-declarations-text-is-profile-neutral-test`, which checks the
+;; whole catalog against every tool name in the product rather than one call against one profile.
 
 (deftest ^:parallel render-caps-the-output-test
   (let [long-message (apply str (repeat 5000 "x"))

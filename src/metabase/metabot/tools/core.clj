@@ -33,6 +33,7 @@
   follow one tool's behaviour without knowing which other shapes exist."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
@@ -133,8 +134,7 @@
   [:map {:closed true}
    [:output            ::renderable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]
-   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
+   [:data-parts        {:optional true} [:sequential DataPart]]])
 
 (mr/def ::entry
   "One item's contribution, as [[compose]] sees it.
@@ -149,8 +149,7 @@
    [:failed?           :boolean]
    [:error             {:optional true} ::tools.error/recoverable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]
-   [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]])
+   [:data-parts        {:optional true} [:sequential DataPart]]])
 
 ;;; ------------------------------------------------ Protocols -----------------------------------------------------
 
@@ -199,16 +198,6 @@
 
     The inverse of what [[batched-declaration]] did to `:args`. The tool owns both, so the framework
     never has to guess how the plural shape maps onto the singular one.")
-  (around-batch [this item-args ctx run]
-    "Run the whole batched call, wrapped in whatever it needs. `(run)` performs it and returns the
-    composed result.
-
-    This is where batching in the database sense belongs. `metabase.metabot.metadata-perms/with-cache`
-    is a wrapper, so `(with-cache (run))` is the whole implementation; an eager prefetch reads
-    `item-args` first and then calls `(run)`. A failure here fails the whole call, which is the right
-    answer: five \"not found\"s thrown by a dead connection teach the agent the wrong thing.
-
-    The default is `(run)`. Clojure gives a protocol no way to supply one, so write it out.")
   (compose [this entries ctx]
     "The [[::result]] for the whole call, from one [[::entry]] per item in item order.
 
@@ -221,23 +210,23 @@
 
 (defn concatenated
   "The ordinary composition: the entries' `:output`s joined in order, their `:structured-output`s
-  collected into a vector, their `:data-parts` and `:resources` concatenated.
+  collected into a vector, their `:data-parts` concatenated.
 
   Failures land in position, because a failed entry's `:output` is its rendered failure text and this
   joins what it is given."
   [entries]
   (cond-> {:output (str/join "\n" (map :output entries))}
     (some :structured-output entries) (assoc :structured-output (mapv :structured-output entries))
-    (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))
-    (some :resources entries)         (assoc :resources (vec (mapcat :resources entries)))))
+    (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))))
 
-(defn entry
+(defn- entry
   "One item's [[::entry]]: the result of calling `tool`'s [[handle]] with `item-args`, or its declared
   failure rendered.
 
-  The default per-item step for [[run-batched]]. A consumer whose error vocabulary differs supplies
-  its own — rendering a recoverable error to text is neutral, but what a consumer does with an
-  unrecoverable one is not."
+  The per-item step, and the only one. A consumer that wants something else does it to the entries
+  afterwards through [[with-batched-entries]], which is strictly more than replacing this was: the
+  one thing it cannot change is that an undeclared exception from `handle` fails the whole call, and
+  that uniformity is the point rather than a limitation."
   [tool item-args ctx]
   (try
     (let [result (handle tool item-args ctx)]
@@ -254,28 +243,73 @@
            :failed? true}
           (throw e))))))
 
+(defrecoverable all-items-failed!
+  "Every item in a batched call failed, so the call has nothing to report but its failures."
+  {:payload [:map {:closed true}
+             [:count  :int]
+             ;; What `compose` produced, rendered. Carried rather than rebuilt so the model reads
+             ;; exactly what a call that lost all but one item would have shown it.
+             [:output :string]]}
+  [{:keys [output]}]
+  ;; The composed text is the whole message. Each item's own recovery steps are already inside it —
+  ;; `entry` rendered them through `recoverable-text` for this profile — so there is nothing to add
+  ;; here, and a step of our own would be advice about a call rather than about any of its items.
+  {:message  output
+   :recovery []})
+
+(defn with-batched-entries
+  "`f` applied to the entries of `tool`'s batched call — one [[::entry]] per item, in item order.
+  Returns whatever `f` returns, with the permission cache held across both the item loading and `f`
+  (see [[call]]).
+
+  THE ONLY CALLER IS `metabase.agent-api.api`'s `POST /v1/read-resource`, and this function exists
+  for it alone. That endpoint publishes a different contract from the agent loop's: one HTTP status
+  for the whole call and an `:error` on each item that could not be read, so a single-URI request
+  that missed is still a 200 carrying one failed item. [[run-batched]] cannot serve that — it answers
+  with one [[::result]] and throws when nothing was delivered — and before this existed the endpoint
+  got its per-item data by having `read_resource`'s own `compose` build it, which left a tool
+  constructing one of its consumers' response shapes.
+
+  So if that endpoint goes away, delete this with it. Nothing else should reach for it: a consumer
+  that wants one result per call wants [[run-batched]], which is this with `compose` and the
+  nothing-was-delivered check on top."
+  [tool args ctx f]
+  (metabot.perms/with-cache
+    (let [item-args (batched-args tool args)]
+      (f (mapv (fn [one] (entry tool one ctx)) item-args)))))
+
 (defn run-batched
   "Perform `tool`'s batched call and return one [[::result]].
 
-  What a consumer calls in place of [[handle]] when a tool satisfies [[BatchedTool]]. `entry-fn`
-  takes one item's args and returns an [[::entry]]; it defaults to [[entry]], and a consumer with its
-  own error vocabulary passes its own.
+  What a consumer calls in place of [[handle]] when a tool satisfies [[BatchedTool]].
 
-  A declared recoverable error from one item becomes that item's contribution. Anything else is
-  rethrown, so an undeclared exception fails the whole call and discards the items that did load.
-  That is deliberate: a bug is not a partial result."
-  ([tool args ctx]
-   (run-batched tool args ctx #(entry tool % ctx)))
-  ([tool args ctx entry-fn]
-   (let [item-args (batched-args tool args)]
-     (around-batch tool item-args ctx
-                   #(compose tool (mapv entry-fn item-args) ctx)))))
+  A declared recoverable error from one item becomes that item's contribution — unless every item
+  failed, which is a failed call and throws [[all-items-failed!]]. A call that produced nothing must
+  not report success: the agent loop decides whether a call worked by the absence of an `:error`, so
+  five failures dressed as a result are counted as a success by the provider adapters, by
+  `successful-tool-output?` and by telemetry alike. The model reads the same per-item text either
+  way, so this changes who is told the call failed, not what it is told. A consumer whose contract
+  says otherwise composes the entries itself through [[with-batched-entries]].
+
+  Anything other than a declared recoverable error is rethrown, so an undeclared exception fails the
+  whole call and discards the items that did load. That is deliberate: a bug is not a partial
+  result."
+  [tool args ctx]
+  (with-batched-entries tool args ctx
+    (fn [entries]
+      (let [result (compose tool entries ctx)]
+        (if (and (seq entries) (every? :failed? entries))
+          ;; The composed output, rendered, rather than a sentence of our own: the model reads
+          ;; exactly what a call that lost all but one item would have shown it.
+          (all-items-failed! {:count  (count entries)
+                              :output (render-text (:output result))})
+          result)))))
 
 (defn batched?
   "Whether `tool` can be called for several items at once.
 
-  A consumer does not normally ask: [[call]] does. This is here for a consumer that needs to know
-  for its own reasons — an MCP annotation, say."
+  Read by [[call]], to decide which of the two protocols to go through, and by [[validate-tool!]],
+  to decide whether there is a second declaration to check."
   [tool]
   (satisfies? BatchedTool tool))
 
@@ -286,16 +320,25 @@
   branch and does not need to know which kind it has. [[handle]] is the protocol method for one
   item's work; this is the function that performs a call.
 
-  `entry-fn` is the seam for a consumer whose error vocabulary differs from [[entry]]'s. It is only
-  reached for a batched tool, because a single-item call has no per-item step."
-  ([tool args ctx]
-   (if (batched? tool)
-     (run-batched tool args ctx)
-     (handle tool args ctx)))
-  ([tool args ctx entry-fn]
-   (if (batched? tool)
-     (run-batched tool args ctx entry-fn)
-     (handle tool args ctx))))
+  A consumer whose contract differs from `run-batched`'s — one that answers per item rather than per
+  call — uses [[with-batched-entries]] instead of this.
+
+  Every call runs inside `metabase.metabot.metadata-perms/with-cache`, so the table rows and
+  per-table permission decisions a tool looks up are fetched once per call rather than once per
+  lookup. It is here rather than in each tool because no tool is worse off for it: a tool that never
+  reaches `metadata-perms` pays one dynamic binding and one empty atom, and `with-cache` nests, so
+  the six places inside tool code that already wrap their own work now reuse this one instead of
+  each opening a cache per item. That is what a batched tool gets out of it — five URIs through
+  `read_resource` used to re-fetch the same table and the same permission once per URI.
+
+  Nothing cached here is anything a tool mutates: table and field rows, and per-table `can-query?`,
+  view-data, sandbox and routing decisions, all keyed by the current user. A tool that creates a
+  card or an alert changes none of them."
+  [tool args ctx]
+  (metabot.perms/with-cache
+    (if (batched? tool)
+      (run-batched tool args ctx)
+      (handle tool args ctx))))
 
 ;;; ------------------------------------------------ Registration --------------------------------------------------
 

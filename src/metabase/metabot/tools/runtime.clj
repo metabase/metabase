@@ -187,27 +187,6 @@
                            ". Tool errors may only carry authored text; log the exception instead.")
                       {:where where})))))
 
-(defn- assert-tool-naming!
-  "Check that only recovery steps name tools, and only the ones they declare in `:uses`.
-
-  A `:message` that names a tool is a message written for one profile: the runtime cannot drop a
-  message the way it drops a step, so it would reach profiles where that tool does not exist. Dev
-  and test only."
-  [{:keys [message recovery]} tool-names]
-  (doseq [tool-name tool-names
-          :when     (tools.error/names-a-tool? message tool-name)]
-    (throw (ex-info (str "A recoverable error's :message names the tool `" tool-name
-                         "`. Only recovery steps name tools, so that a profile without the tool "
-                         "loses the advice instead of the whole message.")
-                    {:tool-name tool-name})))
-  (doseq [{:keys [uses text]} recovery
-          tool-name           tool-names
-          :when               (and (tools.error/names-a-tool? text tool-name)
-                                   (not (contains? uses tool-name)))]
-    (throw (ex-info (str "A recovery step names the tool `" tool-name "` without declaring it in "
-                         ":uses, so it would survive into a profile that has no such tool.")
-                    {:uses uses :tool-name tool-name}))))
-
 (def ^:private max-output-length
   "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
   so that a pathological payload cannot spend the turn's context on one failure."
@@ -233,9 +212,12 @@
                                                             tool-names)
                  (unrecoverable-output code))]
     (when (or config/is-dev? config/is-test?)
-      (assert-authored! output (str class " " code))
-      (when (= class :recoverable)
-        (assert-tool-naming! {:message message :recovery recovery} tool-names)))
+      ;; Only the authored-text check runs here. Whether a declaration's message names a tool is a
+      ;; property of the declaration, not of this call, so it is checked once over the whole catalog
+      ;; in `metabase.metabot.tools.error-test` rather than on every render — which also means this
+      ;; path needs no exemption for `tools.core/all-items-failed`, whose message is not authored at
+      ;; all but assembled from text each item already had filtered for this profile.
+      (assert-authored! output (str class " " code)))
     {:output (cond-> output
                (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}

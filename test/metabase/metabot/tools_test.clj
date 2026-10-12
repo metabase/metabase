@@ -1,16 +1,16 @@
 (ns metabase.metabot.tools-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.metabot.tools.core :as tools.core]
-   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
    [metabase.notification.models :as models.notification]
@@ -126,12 +126,18 @@
     (is (empty? tools))))
 
 (deftest ^:parallel get-tools-for-profile-metadata-test
-  (let [tools (tools-for-profile :embedding_next)]
-    (doseq [[tool-name tool-var] tools]
-      (is (var? tool-var))
-      (is (string? tool-name))
-      (is (= tool-name (:name (tools.legacy/declaration-of tool-var))))
-      (is (some? (:args (tools.legacy/declaration-of tool-var)))))))
+  (testing "a profile's registry is keyed by the name each tool declares, whether that tool is a
+           record or still an `mu/defn` var. The declaration is the source of truth either way —
+           reading `:tool-name` off the var only worked while every tool was the second kind."
+    (let [tools (tools-for-profile :embedding_next)]
+      (is (seq tools))
+      (doseq [[tool-name tool-var] tools]
+        (is (var? tool-var))
+        (is (string? tool-name))
+        (let [{declared-name :name :keys [description args]} (tools.legacy/declaration-of tool-var)]
+          (is (= tool-name declared-name))
+          (is (string? description))
+          (is (some? args)))))))
 
 (deftest search-tool-test
   (testing "search-tool var has valid metadata"
@@ -164,13 +170,12 @@
                                        :source-table ["Sample" "PUBLIC" "ORDERS"]
                                        :aggregation  [["count" {}]]}]}
               result (binding [shared/*profile-id* :nlq]
-                       (tools.core/handle agent-tools/construct-notebook-query-tool
-                                          {:reasoning     "check seats"
-                                           :query         query-input
-                                           :title         "Seat check"
-                                           :description   "Total order count."
-                                           :visualization {:chart_type "table"}}
-                                          {}))]
+                       (test-util/call-tool agent-tools/construct-notebook-query-tool
+                                            {:reasoning     "check seats"
+                                             :query         query-input
+                                             :title         "Seat check"
+                                             :description   "Total order count."
+                                             :visualization {:chart_type "table"}}))]
           (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
@@ -179,31 +184,53 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
-(defn- construct-tool-with-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`."
+(defn- construct-tool-failure-for-thrown
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the
+  failure the model would see."
   [e]
-  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [& _] (throw e))]
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ & _] (throw e))]
     (binding [shared/*profile-id* :nlq]
-      (tools.core/handle agent-tools/construct-notebook-query-tool
-                         {:query       {:lib/type "mbql/query" :stages []}
-                          :title       "Seat check"
-                          :description "Total order count."}
-                         {}))))
+      (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                              {:query       {:lib/type "mbql/query" :stages []}
+                               :title       "Seat check"
+                               :description "Total order count."}
+                              #{"read_resource" "search"}))))
 
 (deftest construct-notebook-query-tool-permission-error-test
-  (testing (str "a 403 from the pipeline becomes the declared not-found error: `api/read-check` throws "
-                "a bare one with no `:agent-error?`, and saying the entity exists but is forbidden would "
-                "leak it")
-    (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (construct-tool-with-thrown
-                          (ex-info "You don't have permissions to do that." {:status-code 403}))))]
-      (is (=? {:class :recoverable
-               :code  :metabase.metabot.tools.recoverable.common/not-found}
-              (tools.error/classify e)))))
-  (testing "an unexpected error propagates to the agent loop"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"something went sideways"
-                          (construct-tool-with-thrown
-                           (ex-info "something went sideways" {}))))))
+  (testing (str "a 403 from inside the pipeline becomes the shared not-found error. Before, "
+                "`api/read-check`'s own sentence went to the model as the tool's output, which "
+                "named no entity and offered no next step — and told the model that something it "
+                "could not see exists.")
+    (let [{:keys [class code text]}
+          (construct-tool-failure-for-thrown
+           (ex-info "You don't have permissions to do that." {:status-code 403}))]
+      (is (= :recoverable class))
+      (is (= :metabase.metabot.tools.recoverable.common/not-found code))
+      (is (str/includes? text "was not found"))
+      (is (not (str/includes? text "permission")))))
+  (testing (str "a declared pipeline code keeps the pipeline's sentence and gains its "
+                "declaration's recovery step")
+    (let [{:keys [class code text]}
+          (construct-tool-failure-for-thrown
+           (ex-info "No table found matching portable FK [\"Sample\" nil \"ORDRS\"]."
+                    {:agent-error? true :status-code 400 :error :unknown-table}))]
+      (is (= :recoverable class))
+      (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
+      (is (str/includes? text "No table found matching portable FK"))
+      (is (str/includes? text "metabase://database/<numeric id>/tables"))))
+  (testing (str "an exception nobody authored a model-facing sentence for ends the turn, whether "
+                "or not the pipeline stamped `:agent-error?` onto it. `as-agent-input-error` "
+                "stamps the flag on failures from lib, toucan2 and JDBC as well, so the flag alone "
+                "never meant the message was written for anyone — only a declared `:error` code "
+                "does.")
+    (doseq [[what e] {"stamped by the pipeline, no :error code"
+                      (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})
+
+                      "an ordinary bug"
+                      (ex-info "something went sideways" {})}]
+      (testing what
+        (is (= {:class :unrecoverable :code :internal}
+               (construct-tool-failure-for-thrown e)))))))
 
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"
