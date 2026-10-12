@@ -523,6 +523,8 @@ describe("scenarios > dashboard", () => {
 
       H.getDashboardCard(0).contains("top");
       H.getDashboardCard(1).contains("bottom");
+
+      cy.viewport(480, 800);
       cy.findByLabelText("Edit dashboard").should("not.be.visible");
 
       cy.viewport(660, 800);
@@ -603,7 +605,7 @@ describe("scenarios > dashboard", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
-            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
         },
@@ -647,8 +649,11 @@ describe("scenarios > dashboard", () => {
     // and connect it to the card
     H.selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
     H.saveDashboard();
-    H.filterWidget().should("have.length", 3);
+    cy.wait("@updateDashboard")
+      .its("request.body.dashcards.0.parameter_mappings")
+      .should("have.length", 3);
   });
 
   it("should not get the parameter values from the field API", () => {
