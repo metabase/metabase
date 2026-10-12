@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.config.core :as config]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]
@@ -46,3 +48,34 @@
              clojure.lang.ExceptionInfo
              #"Setting analytics-pii-retention-enabled is not enabled because feature :audit-app is not available"
              (analytics.settings/analytics-pii-retention-enabled! true)))))))
+
+(deftest metaplow-url-default-test
+  (testing "In production run mode the collector URL defaults to the Metabase Track collector"
+    (with-redefs [config/is-prod? true]
+      (is (= "https://product-analytics-ingestion.metabase.com/api/send"
+             (#'analytics.settings/default-metaplow-url)))))
+  (testing "In dev, test and e2e run modes there is no default, so those runs send nothing"
+    (with-redefs [config/is-prod? false]
+      (is (nil? (#'analytics.settings/default-metaplow-url))))))
+
+(deftest metaplow-url-is-unset-outside-production-test
+  (testing "The registered default is absent in this run mode, so the setting resolves as unset"
+    (is (nil? (setting/default-value :metaplow-url)))
+    ;; a blank env var value is treated as absent, so this is also what a run with `MB_METAPLOW_URL=` resolves to
+    (mt/with-temp-env-var-value! [mb-metaplow-url ""]
+      (is (nil? (analytics.settings/metaplow-url)))
+      (is (false? (analytics.settings/metaplow-tracking-enabled))))))
+
+(deftest metaplow-tracking-enabled-test
+  (testing "Metabase Track is on when anonymous tracking is on and a collector URL resolves"
+    (mt/with-temporary-setting-values [anon-tracking-enabled true
+                                       metaplow-url          "https://collector.example.com/api/send"]
+      (is (true? (analytics.settings/metaplow-tracking-enabled))))))
+
+(deftest anon-tracking-opt-out-suppresses-both-destinations-test
+  (testing "Turning anonymous tracking off suppresses Metabase Track as well as Snowplow"
+    (mt/with-temporary-setting-values [anon-tracking-enabled false
+                                       metaplow-url          "https://collector.example.com/api/send"
+                                       snowplow-available    true]
+      (is (false? (analytics.settings/metaplow-tracking-enabled)))
+      (is (false? (analytics.settings/snowplow-enabled))))))

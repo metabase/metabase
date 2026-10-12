@@ -48,16 +48,24 @@
 (defsetting metaplow-tracking-enabled
   (deferred-tru
    (str "Boolean indicating whether analytics events are being sent to Metaplow. "
-        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set."))
+        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set or defaulted."))
   :type       :boolean
   :getter     (fn [] (boolean (and (anon-tracking-enabled)
                                    (setting/get-value-of-type :string :metaplow-url))))
   :visibility :public
   :doc        false)
 
+(defn- default-metaplow-url
+  "The Metabase Track collector in production run mode, and nil in every other run mode — dev, test and e2e runs must
+  not send real telemetry."
+  []
+  (when config/is-prod?
+    "https://product-analytics-ingestion.metabase.com/api/send"))
+
 (defsetting metaplow-url
   (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
   :encryption :when-encryption-key-set
+  :default    (default-metaplow-url)
   :visibility :public
   :audit      :never
   :doc        false)
