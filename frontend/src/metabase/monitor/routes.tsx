@@ -221,11 +221,7 @@ export function getMonitorRoutes() {
         </Route>
 
         <Route element={<CanAccessAiAuditing />}>
-          {PLUGIN_AUDIT.isAiAuditingEnabled && (
-            <Route path="ai-auditing">
-              {PLUGIN_AUDIT.getAiAuditingRoutes()}
-            </Route>
-          )}
+          <Route path="ai-auditing">{PLUGIN_AUDIT.getAiAuditingRoutes()}</Route>
         </Route>
 
         <Route path="*" element={<NotFound />} />
