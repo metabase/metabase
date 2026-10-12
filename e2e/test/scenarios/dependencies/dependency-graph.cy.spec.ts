@@ -276,6 +276,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_DISPLAY_NAME,
         groupTitle: "1 question",
         dependentItemTitle: TABLE_BASED_QUESTION_NAME,
+        dependentItemLocation: ROOT_COLLECTION_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_DISPLAY_NAME,
@@ -544,19 +545,6 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: EMPTY_SNIPPET_NAME,
         groupTitle: "1 snippet",
         dependentItemTitle: SNIPPET_BASED_SNIPPET_NAME,
-      });
-    });
-
-    it("should display dependencies for a question in the root collection", () => {
-      getScoreboardTableId().then((tableId) => {
-        createTableBasedQuestion({ tableId });
-        visitGraphForEntity(tableId, "table");
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 question",
-        dependentItemTitle: TABLE_BASED_QUESTION_NAME,
-        dependentItemLocation: ROOT_COLLECTION_NAME,
       });
     });
 

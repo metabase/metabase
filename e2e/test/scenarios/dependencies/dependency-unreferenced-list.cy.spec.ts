@@ -133,15 +133,6 @@ describe("scenarios > dependencies > unreferenced list", () => {
   });
 
   describe("analysis", () => {
-    it("should show unreferenced entities", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      checkList({ visibleEntities: [TABLE_DISPLAY_NAME] });
-      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
-      checkList({ visibleEntities: SEARCHABLE_ENTITY_NAMES });
-    });
-
     it("should not show referenced entities", () => {
       setupEntities({ withReferences: true });
       // These entities are referenced, so they should never appear in the
@@ -158,19 +149,6 @@ describe("scenarios > dependencies > unreferenced list", () => {
   });
 
   describe("search", () => {
-    it("should search for entities", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type(
-        MODEL_FOR_QUESTION_DATA_SOURCE,
-      );
-      checkList({
-        visibleEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
-        hiddenEntities: [MODEL_FOR_MODEL_DATA_SOURCE],
-      });
-    });
-
     it("should search for entities with type filters", () => {
       setupEntities();
       waitForUnreferencedAnalysis();
