@@ -421,7 +421,7 @@ jobs:
         run: |
           TAG="${{ needs.read-sdk-release-metadata.outputs.dist_tag }}"
           echo "Resolved npm tag: $TAG"
-          npm publish --tag "$TAG"
+          npm publish --tag 64-stable
 
   tag-latest:
     name: Tag npm release as latest
