@@ -67,6 +67,7 @@ frontend_specs: &frontend_specs
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
+  - "metaplow/**/*.unit.*"
   - "jest.config.js"
   - "jest.base.conf.js"
   - "jest.esm-packages.js"
@@ -270,6 +271,11 @@ snowplow: &snowplow
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
 
+# The recording sink the e2e suite asserts Metabase Track events against, the counterpart to
+# `snowplow/` above.
+metaplow: &metaplow
+  - "metaplow/**"
+
 # e2e harness/support code (commands, support file, runner). Not in the
 # instrumented bundle, so it maps to no covered module — a change here forces a
 # full e2e run (see create-test-plan / e2eInfraTouched).
@@ -279,6 +285,7 @@ e2e_infra: &e2e_infra
   - *frontend_configs
   - *shared_e2e
   - *snowplow
+  - *metaplow
   - "e2e/**/!(*.cy.spec.@(js|jsx|ts|tsx))"
   - "frontend/build/**"
   - "patches/**"
