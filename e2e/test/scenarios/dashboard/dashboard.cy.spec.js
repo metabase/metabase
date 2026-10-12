@@ -11,6 +11,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
+  createMockParameter,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -1516,3 +1517,93 @@ function validateIFrame(src, index = 0) {
     .and("have.attr", "sandbox", IFRAME_SANDBOX)
     .and("not.have.attr", "onload");
 }
+
+describe("issue 43219", () => {
+  const questionDetails = {
+    display: "line",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+    },
+  };
+
+  const textFilter = createMockParameter({
+    name: "Text",
+    slug: "string",
+    id: "5aefc726",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  const cardsCount = 10;
+
+  const getQuestionAlias = (index) => `question-${index}`;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.cypressWaitAll(
+      Array.from({ length: cardsCount }, (_value, index) => {
+        const name = `Series ${index + 1}`;
+        return H.createQuestion({ ...questionDetails, name }).then(
+          ({ body: question }) => {
+            cy.wrap(question).as(getQuestionAlias(index));
+          },
+        );
+      }),
+    );
+
+    cy.then(function () {
+      H.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [textFilter],
+        },
+        questions: [
+          {
+            ...questionDetails,
+            name: "Base series",
+          },
+        ],
+        cards: [
+          {
+            size_x: 4,
+            size_y: 3,
+            series: Array.from(
+              { length: cardsCount },
+              (_value, index) => this[getQuestionAlias(index)],
+            ),
+          },
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
+    });
+  });
+
+  it("is possible to map parameters to dashcards with lots of series (metabase#43219)", () => {
+    H.editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Text")
+      .click();
+
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Series 10").should("exist").and("not.be.visible");
+
+      cy.findByTestId("visualization-root").scrollTo("bottom");
+      cy.findByTestId("parameter-mapper-container").scrollTo("right");
+
+      cy.findByText("Series 10").should("be.visible");
+    });
+  });
+});

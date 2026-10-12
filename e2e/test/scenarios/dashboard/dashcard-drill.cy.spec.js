@@ -1296,3 +1296,100 @@ function checkFilterLabelAndValue(label, value) {
 function checkScalarResult(result) {
   cy.findByTestId("scalar-value").invoke("text").should("eq", result);
 }
+
+describe("issue 67432", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should copy sorted table data in correct sorted order (metabase#67432)", () => {
+    H.grantClipboardPermissions();
+
+    const ROWS_LIMIT = 5;
+    const questionDetails = {
+      name: "67432 Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.TITLE, null],
+          ["field", PRODUCTS.CATEGORY, null],
+        ],
+        limit: ROWS_LIMIT,
+      },
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 10,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    // Wait for table to load
+    H.tableInteractiveBody().should("be.visible");
+
+    // Sort by Category column (descending first click)
+    H.tableHeaderClick("Category");
+
+    // Wait for sort to apply - the sort icon should appear
+    H.tableHeaderColumn("Category")
+      .closest("[data-testid=header-cell]")
+      .icon("chevrondown")
+      .should("exist");
+
+    // Products 1-5 sorted by Category descending; equal categories keep their row order
+    const EXPECTED_ROWS = [
+      ["Rustic Paper Wallet", "Gizmo"],
+      ["Enormous Marble Wallet", "Gadget"],
+      ["Small Marble Shoes", "Doohickey"],
+      ["Synergistic Granite Chair", "Doohickey"],
+      ["Enormous Aluminum Shirt", "Doohickey"],
+    ];
+
+    H.tableInteractiveBody()
+      .find('[data-column-id="CATEGORY"]')
+      .should(($cells) => {
+        expect($cells.toArray().map((cell) => cell.textContent)).to.deep.equal(
+          EXPECTED_ROWS.map(([, category]) => category),
+        );
+      });
+
+    // Select multiple cells across rows by dragging
+    const getNonPKCells = () =>
+      H.tableInteractiveBody().find(
+        '[data-selectable-cell]:not([data-column-id="ID"])',
+      );
+
+    // Select Title and Category cells in every row
+    getNonPKCells()
+      .eq(0)
+      .trigger("mousedown", { which: 1 })
+      .then(() => {
+        const lastCellIndex = ROWS_LIMIT * 2 - 1;
+        getNonPKCells()
+          .should("have.length", ROWS_LIMIT * 2)
+          .eq(lastCellIndex)
+          .trigger("mouseover", { buttons: 1 });
+        getNonPKCells()
+          .should("have.length", ROWS_LIMIT * 2)
+          .eq(lastCellIndex)
+          .trigger("mouseup");
+      });
+
+    // Copy to clipboard
+    cy.realPress(["Meta", "c"]);
+
+    // The clipboard holds tab-separated rows in the sorted order
+    H.readClipboard().should(
+      "equal",
+      [["Title", "Category"], ...EXPECTED_ROWS]
+        .map((cells) => cells.join("\t"))
+        .join("\n"),
+    );
+  });
+});

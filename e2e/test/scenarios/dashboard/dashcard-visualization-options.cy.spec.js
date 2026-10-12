@@ -1,6 +1,9 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { createMockParameter } from "metabase-types/api/mocks";
+
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard cards > visualization options", () => {
   beforeEach(() => {
@@ -142,5 +145,103 @@ describe("scenarios > dashboard cards > visualization options", () => {
     H.popover()
       .should("contain", "Edit question")
       .and("contain", "Download results");
+  });
+});
+
+describe("issue 63416", () => {
+  const questionDetails = {
+    name: "63416 Question",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2027-01-01"],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const textFilter = createMockParameter({
+      name: "Text",
+      slug: "string",
+      id: "5aefc726",
+      type: "string/=",
+      sectionId: "string",
+    });
+
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [textFilter],
+      },
+      questions: [questionDetails],
+    }).then(({ dashboard, questions }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: questions[0].id,
+            parameter_mappings: [
+              {
+                parameter_id: textFilter.id,
+                card_id: questions[0].id,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    PRODUCTS.CATEGORY,
+                    {
+                      "base-type": "type/Text",
+                      "source-field": ORDERS.PRODUCT_ID,
+                    },
+                  ],
+                  { "stage-number": 0 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      cy.wrap(dashboard.id).as("dashboardId");
+
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", function () {
+    H.editDashboard();
+
+    H.showDashcardVisualizerModalSettings(0, {
+      isVisualizerCard: false,
+    });
+
+    cy.log("Make this a visualizer card");
+    H.saveDashcardVisualizerModal();
+
+    H.showDashboardCardActions(0);
+    H.getDashboardCard(0).findByLabelText("Edit visualization").should("exist");
+
+    H.saveDashboard();
+
+    H.toggleFilterWidgetValues(["Doohickey"]);
+
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      downloadMethod: "POST",
+      downloadUrl: `/api/dashboard/${this.dashboardId}/dashcard/*/card/*/query/csv`,
+      assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
+    });
   });
 });
