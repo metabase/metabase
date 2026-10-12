@@ -166,6 +166,35 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (is (contains? (tools-registered-for-request! ["feature:query_execution"]) "run_query"))))))
 
+(deftest run-query-not-offered-where-others-can-read-the-conversation-test
+  (let [rasta   (mt/user->id :rasta)
+        offered (fn [conversation-id]
+                  (let [captured (atom nil)]
+                    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                                       llm-metabot-provider test-provider]
+                      (mt/with-dynamic-fn-redefs [self/call-llm
+                                                  (fn [_model system _parts tools _tracking-opts _llm-opts]
+                                                    (reset! captured
+                                                            {:tool?   (contains? tools "run_query")
+                                                             :prompt? (str/includes? (pr-str system)
+                                                                                     "You can see results only")})
+                                                    (mut/mock-llm-response [{:type :text :text "Hello"}]))]
+                        (into [] (agent/run-agent-loop
+                                  {:messages        [{:role :user :content "How many orders?"}]
+                                   :state           {}
+                                   :profile-id      :internal
+                                   :conversation-id conversation-id
+                                   :context         {:capabilities []}}))))
+                    @captured))]
+    (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id rasta}
+                   :model/MetabotConversation {thread :id} {:user_id rasta, :slack_thread_ts "1.2"}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (testing "the user's own conversation offers run_query and says results can be read"
+            (is (= {:tool? true, :prompt? true} (offered own))))
+          (testing "a conversation other people can read offers neither"
+            (is (= {:tool? false, :prompt? false} (offered thread)))))))))
+
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
     (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
