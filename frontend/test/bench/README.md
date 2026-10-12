@@ -193,6 +193,11 @@ a `bundle-load-rows-<sha>` artifact with one CSV file per locale. The columns ar
 the columns of the table, so the files of a run can be joined and imported by
 hand.
 
+The workflow that calls it for a list of old commits is not on master. It is
+`test.bundle-load-stats-backfill.yml` on the `bundle-load-backfill-parallel`
+branch, and it can be dispatched from there. It builds an uberjar for a commit
+whose jar has expired, since CI keeps one for 30 days.
+
 `Scripts`, `Script kb`, `Css kb` and `Total kb` count what the page fetched
 before DOMContentLoaded. A chunk that a route loads after that event is not in
 them, which keeps the counts the same for a build that records no performance
