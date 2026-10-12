@@ -200,12 +200,15 @@
   emitted as the `start` event's `messageMetadata.userMessageId`.
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug?
+  [{:keys [metabot profile-id message context history conversation-id state debug?
            eval-session-id assistant-msg-id external-id user-external-id title-job]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
+  (let [enriched-context (metabot.context/create-context context {:metabot    metabot
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
-    (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
+    ;; a reasoning model can spend longer than MB_JETTY_ASYNC_RESPONSE_TIMEOUT on one turn
+    (sr/streaming-response {:content-type     "text/event-stream"
+                            :async-timeout-ms (metabot.settings/metabot-chat-turn-async-timeout-ms)}
+                           [^OutputStream os canceled-chan]
       (let [parts-atom  (atom [])
             memory-atom (atom nil)
             canceled?   (volatile! false)
@@ -215,12 +218,12 @@
             ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
             ;; from a clean success.
             thrown     (volatile! nil)
+            ;; Read once, so the stream reports the same window the row's verdict is judged against.
+            window     (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
-                              (cond-> {:message-id external-id
-                                       :context-window-tokens
-                                       (metabot.self/context-window-tokens
-                                        (metabot.settings/llm-metabot-provider))}
+                              (cond-> {:message-id            external-id
+                                       :context-window-tokens window}
                                 user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
                              (inject-title-events-xf title-job conversation-id))]
         (try
@@ -229,7 +232,7 @@
                      (agent/run-agent-loop
                       (cond-> {:messages        messages
                                :state           state
-                               :metabot-id      metabot-id
+                               :metabot         metabot
                                :conversation-id conversation-id
                                :profile-id      (keyword profile-id)
                                :context         enriched-context
@@ -280,10 +283,11 @@
                                      :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
                 (metabot.persistence/finalize-assistant-turn!
                  assistant-msg-id combined-parts
-                 :profile-id profile-id
-                 :finished?  (not aborted?)
-                 :error      error-data
-                 :turn-state (some-> @memory-atom memory/turn-state)))
+                 :profile-id            profile-id
+                 :finished?             (not aborted?)
+                 :error                 error-data
+                 :turn-state            (some-> @memory-atom memory/turn-state)
+                 :context-window-tokens window))
               (catch Exception e
                 (log/error "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
@@ -301,10 +305,10 @@
   [{:keys [metabot_id profile_id message context conversation_id debug eval_session_id parent_message_id retry_message_id
            user_message_id assistant_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
-        metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
-        _          (metabot.config/check-metabot-enabled! metabot-id)
+        metabot    (metabot.config/resolve-metabot metabot_id)
+        _          (metabot.config/check-metabot-enabled! metabot)
         _          (metabot.usage/check-metabase-managed-free-limit!)
-        profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
+        profile-id (metabot.config/resolve-dynamic-profile-id profile_id (:entity_id metabot))
         ;; reject before `start-turn!` persists anything or the title job calls the LLM
         _          (when-not (profiles/profile-registered? (keyword profile-id))
                      (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
@@ -347,7 +351,7 @@
                      first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
-       {:metabot-id       metabot-id
+       {:metabot          metabot
         :profile-id       profile-id
         :message          message
         :context          context
@@ -425,7 +429,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:metabot_id        ms/PositiveInt]
+            [:metabot_id        {:optional true} [:or ms/PositiveInt :string]]
             [:message_id        ms/NonBlankString]
             [:positive          :boolean]
             [:issue_type        {:optional true} [:maybe :string]]
@@ -441,7 +445,7 @@
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:metabot_id   ms/PositiveInt]
+            [:metabot_id   {:optional true} [:or ms/PositiveInt :string]]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]
             [:source_type  [:enum "table" "card" "model"]]

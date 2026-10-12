@@ -283,3 +283,50 @@
        (fn [_entry]
          (#'init/remote-sync-init)
          (is (zero? (glossary-rso-count))))))))
+
+;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
+
+(defn- do-with-untracked-data-apps!
+  "Runs `f` with `{:published :tracked}` data app ids under `remote-sync-type` `sync-type`, where only
+  `:tracked` has a DataApp ledger row."
+  [sync-type f]
+  (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                     :remote-sync-type sync-type
+                                     :remote-sync-branch "main"]
+    (mt/with-model-cleanup [:model/RemoteSyncObject :model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [insert-app! (fn [slug]
+                          (t2/insert-returning-pk! :model/DataApp {:name         slug
+                                                                   :display_name slug
+                                                                   :bundle_path  "index.js"
+                                                                   :bundle       (.getBytes "BUNDLE" "UTF-8")}))
+            published   (insert-app! "published")
+            tracked     (insert-app! "tracked")]
+        (t2/delete! :model/RemoteSyncObject :model_type "DataApp")
+        (t2/insert! :model/RemoteSyncObject {:model_type "DataApp" :model_id tracked :model_name "tracked"
+                                             :status "synced" :status_changed_at (t/offset-date-time)})
+        (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
+                                    remote-sync.object/dirty? (constantly false)]
+          (f {:published published :tracked tracked}))))))
+
+(defn- data-app-rso-statuses []
+  (t2/select-fn->fn :model_id :status :model/RemoteSyncObject :model_type "DataApp"))
+
+(deftest remote-sync-init-backfills-data-app-tracking-test
+  (testing "read-write init tracks every untracked published data app as 'create', once, so the next push writes it"
+    (do-with-untracked-data-apps!
+     :read-write
+     (fn [{:keys [published tracked]}]
+       (#'init/remote-sync-init)
+       (is (= {published "create" tracked "synced"} (data-app-rso-statuses)))
+       (is (=? {:model_name "published"}
+               (t2/select-one :model/RemoteSyncObject :model_type "DataApp" :model_id published)))
+       (testing "a second run inserts nothing"
+         (is (= 0 (rs-events/backfill-data-app-tracking!))))))))
+
+(deftest remote-sync-init-data-app-backfill-skips-read-only-test
+  (testing "a read-only instance is not backfilled"
+    (do-with-untracked-data-apps!
+     :read-only
+     (fn [{:keys [tracked]}]
+       (#'init/remote-sync-init)
+       (is (= {tracked "synced"} (data-app-rso-statuses)))))))

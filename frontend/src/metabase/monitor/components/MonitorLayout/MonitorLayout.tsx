@@ -9,8 +9,11 @@ import {
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
-  canAccessMonitorDiagnostics,
+  canAccessApiKeyUsage,
+  canAccessContentDiagnostics,
+  canAccessDependencyDiagnostics,
   canAccessMonitoringTools,
+  canAccessSessionManagement,
 } from "metabase/common/monitor/selectors";
 import { useUserKeyValue } from "metabase/current-user";
 import {
@@ -25,12 +28,18 @@ import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
 
-function getActiveSection(pathname: string): MonitorSection | null {
+type ActiveSection = MonitorSection | null;
+
+function getActiveSection(pathname: string): ActiveSection {
   return match(pathname)
-    .returnType<MonitorSection | null>()
+    .returnType<ActiveSection>()
     .with(
       P.string.startsWith(Urls.dependencyDiagnostics()),
       () => "diagnostics",
+    )
+    .with(
+      P.string.startsWith(Urls.contentDiagnostics()),
+      () => "content-diagnostics",
     )
     .with(
       P.string.startsWith(Urls.monitorErroringQuestions()),
@@ -43,6 +52,11 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .with(
       P.string.startsWith(Urls.monitorModelPersistenceLog()),
       () => "model-caching",
+    )
+    .with(P.string.startsWith(Urls.monitorApiKeyUsage()), () => "api-key-usage")
+    .with(
+      P.string.startsWith(Urls.monitorSessions()),
+      () => "session-management",
     )
     .with(
       P.string.startsWith(Urls.monitorAiAuditingMcp()),
@@ -76,17 +90,31 @@ export function MonitorLayout() {
 
   const { pathname } = useLocation();
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasContentDiagnosticsFeature = useHasTokenFeature(
+    "content_diagnostics",
+  );
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const hasAiControlsFeature = useHasTokenFeature("ai_controls");
-  const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
+  const hasSessionManagementFeature = useHasTokenFeature("session-management");
+  const canAccessDependencyDiagnosticsPage = useSelector(
+    canAccessDependencyDiagnostics,
+  );
+  const canAccessContentDiagnosticsPage = useSelector(
+    canAccessContentDiagnostics,
+  );
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
+  const canAccessSessions = useSelector(canAccessSessionManagement);
   const canAccessAiAuditingTab = useSelector(canAccessAiAuditing);
+  const canAccessApiKeyUsageTab = useSelector(canAccessApiKeyUsage);
 
   const activeSection = getActiveSection(pathname);
 
   const hasContentManagement =
-    canAccessDiagnostics || canAccessTools || canAccessAlerts;
+    canAccessDependencyDiagnosticsPage ||
+    canAccessContentDiagnosticsPage ||
+    canAccessTools ||
+    canAccessAlerts;
   const hasLogsAndActivity = canAccessTools;
 
   const upperNav = (
@@ -97,7 +125,7 @@ export function MonitorLayout() {
           showLabel={isNavbarOpened}
           mb="lg"
         >
-          {canAccessDiagnostics && (
+          {canAccessDependencyDiagnosticsPage && (
             <AreaTab
               label={t`Dependency diagnostics`}
               icon="search_check"
@@ -106,6 +134,17 @@ export function MonitorLayout() {
               showLabel={isNavbarOpened}
               isGated={!hasDependenciesFeature}
               onClick={() => trackMonitorSectionClicked("diagnostics")}
+            />
+          )}
+          {canAccessContentDiagnosticsPage && (
+            <AreaTab
+              label={t`Content diagnostics`}
+              icon="document"
+              to={Urls.contentDiagnostics()}
+              isSelected={activeSection === "content-diagnostics"}
+              showLabel={isNavbarOpened}
+              isGated={!hasContentDiagnosticsFeature}
+              onClick={() => trackMonitorSectionClicked("content-diagnostics")}
             />
           )}
           {canAccessTools && (
@@ -169,6 +208,28 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}
           />
+          {canAccessSessions && (
+            <AreaTab
+              label={t`Session management`}
+              icon="key"
+              to={Urls.monitorSessions()}
+              isSelected={activeSection === "session-management"}
+              showLabel={isNavbarOpened}
+              isGated={!hasSessionManagementFeature}
+              onClick={() => trackMonitorSectionClicked("session-management")}
+            />
+          )}
+          {canAccessApiKeyUsageTab && (
+            <AreaTab
+              label={t`API key usage`}
+              icon="key"
+              to={Urls.monitorApiKeyUsage()}
+              isSelected={activeSection === "api-key-usage"}
+              showLabel={isNavbarOpened}
+              isGated={!hasAuditAppFeature}
+              onClick={() => trackMonitorSectionClicked("api-key-usage")}
+            />
+          )}
         </AreaTabGroup>
       )}
       {canAccessAiAuditingTab && hasAuditAppFeature && (

@@ -300,6 +300,10 @@
    [:redirect-uri {:optional true} [:maybe :string]]
    [:redirect-url {:optional true} [:maybe :string]]
    [:saml-data {:optional true} [:maybe ms/SAMLAttributes]]
+   [:scheme {:optional true} [:maybe :keyword]]
+   [:server-name {:optional true} [:maybe :string]]
+   [:server-port {:optional true} [:maybe :int]]
+   [:session/provider {:optional true} [:maybe :keyword]]
    [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
    [:state {:optional true} [:maybe :string]]
    [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
@@ -329,8 +333,8 @@
                                                            :message disabled-account-message)))
 
 (mu/defn- create-session!
-  "Create a new session for a user with the given provider.
-   Updates the last_used_at timestamp on the corresponding AuthIdentity."
+  "Create a new session for a user, attributed to the AuthIdentity of `(:session/provider request)` when a `login!`
+  method set one, otherwise to that of `provider`. Updates the last_used_at timestamp on that AuthIdentity."
   [request :- [:merge
                ::request.schema/request
                (into [:map {:closed true}
@@ -343,7 +347,7 @@
            :message disabled-account-message)
     (let [{:keys [user device-info saml-data]} request
           session (auth-session/create-session-with-auth-tracking!
-                   user device-info provider nil
+                   user device-info (or (:session/provider request) provider) nil
                    ;; SAML logins carry the IdP's own identifiers; single logout needs them to
                    ;; name the session and subject to end. Other providers have none and store NULL.
                    {:saml-session-index  (:session-index saml-data)
@@ -376,12 +380,16 @@
   [_provider login-result]
   login-result)
 
+;; Keys the login pipeline produces itself, stripped off the incoming request before anything runs. A caller must not
+;; be able to hand itself a user-id, a session, or — via :session/provider — the AuthIdentity its session is
+;; attributed to.
+;;
 ;; TODO: (bshepherdson, 2026-09-04) Only a sharp-eyed code reviewer caught that `:mfa/enroll?` had been introduced
 ;; but not added to this blocklist. The consumers of [[authenticate-owned-keys]] should be switched to an allowlist
 ;; using `select-keys`, rather than `dissoc`ing all the bad fields.
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
-   :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor
+   :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor :session/provider
    :jwt-data :claims
    :tenant-slug :tenant-attributes :user-provisioning-enabled?])
 

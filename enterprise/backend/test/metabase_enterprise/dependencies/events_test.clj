@@ -255,7 +255,7 @@
            (assert-stale :card card-id)))))))
 
 (deftest metric-dimensions-update-marks-stale-and-includes-mapped-table-test
-  (testing ":event/metric-dimensions-update marks the metric card stale and recomputes deps, including mapped-dimension tables"
+  (testing "a metric dimension write marks the metric card stale and recomputes deps, including mapped-dimension tables"
     (run-with-dependencies-setup!
      (fn [mp]
        (let [base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
@@ -265,12 +265,18 @@
            ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
-           (t2/update! :model/Card card-id
-                       {:dimension_mappings [{:type         :table
-                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                              :table-id     (mt/id :categories)
-                                              :target       [:field {} (mt/id :categories :name)]}]})
-           (events/publish-event! :event/metric-dimensions-update {:object {:id card-id}})
+           ;; The dimension endpoints announce their writes as card updates; see
+           ;; [[metabase.metrics.api/notify-dimensions-changed!]].
+           (let [before (t2/select-one :model/Card :id card-id)]
+             (t2/update! :model/Card card-id
+                         {:dimension_mappings [{:type         :table
+                                                :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                :table-id     (mt/id :categories)
+                                                :target       [:field {} (mt/id :categories :name)]}]})
+             (events/publish-event! :event/card-update
+                                    {:object          (t2/select-one :model/Card :id card-id)
+                                     :previous-object before
+                                     :user-id         api/*current-user-id*}))
            (assert-stale :card card-id)
            (deps.test/synchronously-run-backfill!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id

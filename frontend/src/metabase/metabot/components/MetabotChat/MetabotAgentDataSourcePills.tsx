@@ -13,12 +13,10 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { getMetabotId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
   getDatabaseLocationLabel,
 } from "metabase/metabot/utils/source-location";
-import { useSelector } from "metabase/redux";
 import { EntitySmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/EntitySmartLink";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
 import {
@@ -192,7 +190,6 @@ const SourceFeedbackButtons = ({
   const iconSize = size === "sm" ? 12 : 16;
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const [sendToast] = useToast();
-  const metabotId = useSelector(getMetabotId);
   const [submitMetabotSourceFeedback, { isLoading }] =
     useSubmitMetabotSourceFeedbackMutation();
 
@@ -206,7 +203,6 @@ const SourceFeedbackButtons = ({
 
     try {
       await submitMetabotSourceFeedback({
-        metabot_id: metabotId,
         message_id: messageId,
         positive,
         ...source,

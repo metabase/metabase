@@ -845,7 +845,27 @@
                     (testing "Query from admin hits the model cache"
                       (is (str/includes? (-> admin-result :data :native_form :query)
                                          (:table_name persisted-info))
-                          "Did not use the persisted model cache")))
+                          "Did not use the persisted model cache"))
+                    (testing "Native query referencing the model via a {{#N}} template tag"
+                      ;; an impersonated user only needs to be able to *read* a saved native Card that references the
+                      ;; persisted Model to hit this code path
+                      (mt/with-temp [:model/Card card {:dataset_query
+                                                       (lib/native-query (mt/metadata-provider)
+                                                                         (format "SELECT count(*) FROM {{#%d}} AS m"
+                                                                                 (:id model)))}]
+                        (let [run-card            #(mt/user-http-request % :post 202 (format "card/%d/query" (:id card)))
+                              impersonated-result (run-card :rasta)
+                              ;; Make sure we run admin query second to reset the DB role on the connection!
+                              admin-result        (run-card :crowberto)]
+                          (testing "Impersonated user (rasta) does not hit the model cache"
+                            (is (= 200 (-> impersonated-result mt/rows ffirst)))
+                            (is (not (str/includes? (-> impersonated-result :data :native_form :query)
+                                                    (:table_name persisted-info)))
+                                "Erroneously used the persisted model cache"))
+                          (testing "Query from admin hits the model cache"
+                            (is (str/includes? (-> admin-result :data :native_form :query)
+                                               (:table_name persisted-info))
+                                "Did not use the persisted model cache"))))))
                   (finally
                     (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]

@@ -43,7 +43,7 @@
     (upload-test/with-uploads-enabled!
       (mt/dataset dataset
         (mt/with-temp [:model/Collection collection     {}
-                       :model/Database   {db-id :id}    {:engine driver/*driver* :details (:details (mt/db))}
+                       :model/Database   {db-id :id}    {:engine driver/*driver* :details (:details (mt/db)) :dbms_version (:dbms_version (mt/db))}
                        :model/Table      {table-id :id} {:db_id     db-id
                                                          :is_upload true}
                        :model/Card       {card-id :id

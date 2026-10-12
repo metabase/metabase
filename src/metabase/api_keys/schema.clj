@@ -106,6 +106,7 @@
    [:updated_by_id        pos-int?]
    [:scope                {:optional true} [:maybe [:ref ::scope]]]
    [:single_collection_id {:optional true} [:maybe pos-int?]]
+   [:last_used_at         {:optional true} [:maybe [:ref ::timestamp]]]
    ;; added by the model's after-select hook
    [:masked_key           {:optional true} :string]])
 

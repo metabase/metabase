@@ -26,7 +26,7 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 
-  it("lists managed index requests with pending and removing statuses and sorts by column", () => {
+  it("lists managed index requests with pending and removing statuses, sorts by column, and shows the index lifecycle after a transform run", () => {
     H.createMbqlTransform({
       sourceTable: SOURCE_TABLE,
       targetTable: "indexes_list_table",
@@ -85,9 +85,10 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
       .should("have.length", 2)
       .eq(0)
       .should("contain", "idx_animal_score");
-  });
 
-  it("shows a pending index becoming succeeded after a transform run and lists unmanaged warehouse indexes", () => {
+    cy.log(
+      "a pending index becomes succeeded after a transform run, and unmanaged warehouse indexes are listed",
+    );
     const targetTable = "indexes_lifecycle_table";
 
     cy.log("run the transform once so the target table exists");
@@ -149,7 +150,9 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
 
     cy.log("run the transform from the run tab");
     H.DataStudio.Transforms.runTab().click();
+    cy.intercept("POST", "/api/transform/*/run").as("runTransform");
     H.DataStudio.Transforms.runButton().click();
+    cy.wait("@runTransform");
     H.DataStudio.Transforms.runButton().should("have.text", "Ran successfully");
 
     cy.log("simulate a DBA-created index directly in the warehouse");

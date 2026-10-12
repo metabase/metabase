@@ -45,7 +45,10 @@
  [metabase-enterprise.serialization.v2.storage.files
   file-writer]
  [metabase-enterprise.serialization.v2.storage.util
+  entity-file-path
+  entity-yaml
   resolve-storage-path
   resource-files
   slugify-name
-  without-resources])
+  without-resources
+  yaml-file-path])

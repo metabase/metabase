@@ -157,14 +157,24 @@
     [:json_query :parameters]
     :status]))
 
-(defmethod transform-qp-result :failed
-  [{error-type :error_type, :as results}]
-  ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
-  ;; instead of returning anything about the query just return a generic error message
+(defn error-response
+  "Reduce a query `error` -- the QP's formatted error response, or the `Throwable->map` of an exception that escaped
+  it -- to what public and embedded endpoints are allowed to return: the status and error type, and a generic message
+  in place of the original unless the error type is EXPLICITLY allowed to be shown in embeds. Nothing about the query
+  itself gets through.
+
+  [[metabase.api-routes.routes]] applies this to every error written by a streaming response under the public and
+  embedding routes."
+  [{error-type :error_type, :as error}]
   (merge
-   (select-keys results [:status :error :error_type])
+   {:status :failed}
+   (select-keys error [:status :error :error_type])
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
+
+(defmethod transform-qp-result :failed
+  [results]
+  (error-response results))
 
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
@@ -293,6 +303,42 @@
                                                        (m/remove-keys hidden-parameter-ids fields)))
         (select-keys action-public-keys))))
 
+(defn- public-dashcard-timeline-ids
+  [{:keys [card] :as dashcard}]
+  (when (and (pos-int? (:id card))
+             (false? (:archived card))
+             (not (queries/dashcard-hides-card-events? dashcard)))
+    (not-empty (queries/card-exposed-timeline-ids card))))
+
+(defn- public-timeline-events
+  [timeline-ids]
+  ;; A public dashboard authorizes its saved event selection without granting collection access.
+  (when (seq timeline-ids)
+    (when-let [active-ids (not-empty (public-sharing-rest.db/active-timeline-ids timeline-ids))]
+      (public-sharing-rest.db/active-timeline-events active-ids))))
+
+(defn- public-dashcard-timeline-events
+  [{{settings :visualization_settings} :card, :as dashcard} events]
+  (let [timeline-ids (public-dashcard-timeline-ids dashcard)
+        excluded-ids (:timeline.excluded_timeline_event_ids settings)
+        excluded-ids (if (sequential? excluded-ids) (set excluded-ids) #{})]
+    (filterv #(and (contains? timeline-ids (:timeline_id %))
+                   (not (contains? excluded-ids (:id %))))
+             events)))
+
+(defn- public-dashcards
+  [dashcards]
+  (let [events (public-timeline-events (into #{} (mapcat public-dashcard-timeline-ids) dashcards))]
+    (for [dashcard dashcards]
+      (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
+                                 :size_y :parameter_mappings :visualization_settings :action :inline_parameters])
+          (assoc :timeline_events (public-dashcard-timeline-events dashcard events))
+          (update :card remove-card-non-public-columns)
+          (update :series (fn [series]
+                            (for [series series]
+                              (remove-card-non-public-columns series))))
+          (m/update-existing :action public-action)))))
+
 (mu/defn public-dashboard :- ::dashboards.schema/dashboard
   "Return the public Dashboard with the given `dashboard-id`, removing all columns that should not be visible to
   the general public. Throws a 404 if the Dashboard doesn't exist. With `:enable-embedding? true`, additionally
@@ -306,15 +352,7 @@
         keep-param-fields-for-parameters
         params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
-        (update :dashcards (fn [dashcards]
-                             (for [dashcard dashcards]
-                               (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
-                                                          :size_y :parameter_mappings :visualization_settings :action :inline_parameters])
-                                   (update :card remove-card-non-public-columns)
-                                   (update :series (fn [series]
-                                                     (for [series series]
-                                                       (remove-card-non-public-columns series))))
-                                   (m/update-existing :action public-action))))))))
+        (update :dashcards public-dashcards))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard (public-sharing/public-uuid->id :model/Dashboard uuid)))
 

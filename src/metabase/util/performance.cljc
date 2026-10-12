@@ -2,7 +2,7 @@
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
   (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for
-                            first second update-vals get-in #?(:cljs clj->js)])
+                            first second update-vals get-in str #?(:cljs clj->js)])
   #?(:clj (:require
            [net.cgrand.macrovich :as macros])
      :cljs (:require
@@ -613,6 +613,36 @@
        form))
    m))
 
+(defn str
+  "More efficient implementation of `clojure.core/str` because it has more non-variadic arities. Optimization is
+  Clojure-only, on other platforms it reverts back to `clojure.core/str`."
+  (^String [] "")
+  (^String [^Object a]
+   #?(:clj (if (nil? a) "" (.toString a))
+      :default (clojure.core/str a)))
+  (^String [^Object a, ^Object b]
+   #?(:clj (if (nil? a)
+             (str b)
+             (if (nil? b)
+               (.toString a)
+               (.concat (.toString a) (.toString b))))
+      :default (clojure.core/str a b)))
+  (^String [a b c]
+   #?(:clj (let [sb (StringBuilder.)]
+             (.append sb (str a))
+             (.append sb (str b))
+             (.append sb (str c))
+             (.toString sb))
+      :default (clojure.core/str a b c)))
+  (^String [a b c & more]
+   #?(:clj (let [sb (StringBuilder.)]
+             (.append sb (str a))
+             (.append sb (str b))
+             (.append sb (str c))
+             (run! #(.append sb (str %)) more)
+             (.toString sb))
+      :default (apply clojure.core/str a b c more))))
+
 ;;;; Faster clj->js implementation
 
 #?(:cljs
@@ -689,3 +719,14 @@
   [m key value]
   #?(:clj (do (.put ^HashMap m key value) m)
      :cljs (do (.set m key value) m)))
+
+;;;; Cross-platform array-processing functions
+
+(defn mapa
+  "Like [[mapv]], but returns an array. Requires `coll` to be countable and have O(1) access."
+  [f coll]
+  (let [n (count coll)
+        res (object-array n)]
+    (dotimes [i n]
+      (aset res i (f (nth coll i))))
+    res))

@@ -4,7 +4,6 @@ import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { defer } from "metabase/utils/promise";
 
 const { H } = cy;
 const { DetailView } = H;
@@ -21,18 +20,8 @@ describe("detail view", () => {
 
   describe("table", () => {
     it("displays object details, breadcrumbs, relationships, email links, and 404 error state", () => {
-      const { promise: queryPromise, resolve: releaseQuery } = defer<void>();
-      cy.intercept(
-        { method: "POST", url: "/api/dataset", times: 1 },
-        () => queryPromise,
-      ).as("missingTableRow");
-
       DetailView.visitTable(PRODUCTS_ID, 9999);
-
-      cy.findByTestId("loading-indicator")
-        .should("be.visible")
-        .then(() => releaseQuery());
-      cy.wait("@missingTableRow");
+      cy.findByTestId("loading-indicator").should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
 
