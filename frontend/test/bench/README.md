@@ -107,6 +107,11 @@ Three details decide whether a reading means anything:
 non-zero when either is missing. An unshaped run still reports plausible times,
 so a silent failure would be read as a result.
 
+Every load opens its own connection. Chrome would otherwise reuse the one the
+load before it left open and skip the handshake, which on the slow network is
+150 ms the reading then lacks. `measure.ts` closes the connections to the
+backend before each load, and exits non-zero when any stays open.
+
 ## Running it against a real Metabase
 
 This is what CI does, and it is the accurate option. The document is 136 kb, most
