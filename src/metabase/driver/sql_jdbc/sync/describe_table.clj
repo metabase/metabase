@@ -747,14 +747,23 @@
        (into #{})))
 
 (defn- table-fields-for-json-unfolding
-  "Columns of `table` to consider for JSON unfolding. Prefers [[driver/describe-fields]] when the driver supports it,
-  because it can list only the columns the connection user is allowed to read (e.g. Postgres reads
+  "Columns of `table` to consider for JSON unfolding. For drivers with `:describe-fields`, runs [[describe-fields-sql]],
+  which can list only the columns the connection user is allowed to read (e.g. Postgres reads
   `information_schema.columns`, which hides columns without a column-level grant), whereas JDBC `getColumns` lists them
   all. Sampling an unreadable column fails the whole query (#83790)."
-  [driver conn database table]
+  [driver ^Connection conn database table]
   (if (driver/database-supports? driver :describe-fields database)
-    (m/mapply driver/describe-fields driver database (cond-> {:table-names [(:name table)]}
-                                                       (:schema table) (assoc :schema-names [(:schema table)])))
+    ;; on `conn` rather than through `driver/describe-fields`, which checks out more pooled connections and runs
+    ;; pre-processing JSON detection doesn't need (e.g. Postgres's enum lookup)
+    (let [sql-args (m/mapply describe-fields-sql driver (cond-> {:table-names [(:name table)]
+                                                                 :details     (driver.conn/effective-details database)}
+                                                          (:schema table) (assoc :schema-names [(:schema table)])))]
+      (into []
+            (comp
+             ;; `:table-names` can match more than this table, e.g. MySQL compares names without case
+             (filter #(= (:name table) (:table-name %)))
+             (describe-fields-xf driver database))
+            (jdbc/reducible-query {:connection conn} sql-args {:identifiers identity})))
     (describe-table-fields driver conn table nil)))
 
 (defn- table->unfold-json-fields
