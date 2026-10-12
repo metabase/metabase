@@ -71,7 +71,7 @@ const dependenciesUpsellPage = () =>
     Component: DependenciesUpsellPage,
   }));
 
-const libraryUpsellPage = () =>
+export const libraryUpsellPage = () =>
   import(
     /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/LibraryUpsellPage"
   ).then(({ LibraryUpsellPage }) => ({
@@ -84,6 +84,14 @@ const schemaViewerUpsellPage = () =>
   ).then(({ SchemaViewerUpsellPage }) => ({
     Component: SchemaViewerUpsellPage,
   }));
+
+const getDataStudioLibraryUpsellRoutes = (_IsAdmin: unknown) => (
+  <Route path="library" lazy={libraryUpsellPage} />
+);
+
+const getDataStudioDashboardUpsellRoutes = () => (
+  <Route path="dashboards" lazy={libraryUpsellPage} />
+);
 
 export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (
@@ -113,16 +121,14 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           {getDataStudioSnippetRoutes()}
           {getDataStudioActionRoutes()}
           {getDataStudioSettingsRoutes()}
-          {PLUGIN_LIBRARY.isEnabled ? (
-            PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
-          ) : (
-            <Route path="library" lazy={libraryUpsellPage} />
-          )}
-          {PLUGIN_LIBRARY.isEnabled ? (
-            PLUGIN_LIBRARY.getDataStudioDashboardRoutes()
-          ) : (
-            <Route path="dashboards" lazy={libraryUpsellPage} />
-          )}
+          {(
+            PLUGIN_LIBRARY.getDataStudioLibraryRoutes ??
+            getDataStudioLibraryUpsellRoutes
+          )(IsAdmin)}
+          {(
+            PLUGIN_LIBRARY.getDataStudioDashboardRoutes ??
+            getDataStudioDashboardUpsellRoutes
+          )()}
           {PLUGIN_DEPENDENCIES.isEnabled ? (
             <Route path="dependencies" lazy={dependenciesSectionLayout}>
               {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}

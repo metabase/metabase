@@ -1,7 +1,14 @@
-import { PLUGIN_AUDIT, PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { libraryUpsellPage } from "metabase/data-studio/routes";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { DashboardsSectionLayout } from "./pages/DashboardsSectionLayout";
+
+const dashboardsSectionLayout: PluginRoute = () =>
+  Promise.resolve({ Component: DashboardsSectionLayout });
 
 /**
  * The Data Studio dashboard pages, in one chunk. The section layout stays
@@ -50,21 +57,28 @@ const dashboardSubscriptionsPage = () =>
 
 export function getDataStudioDashboardRoutes() {
   return (
-    <Route path="dashboards" element={<DashboardsSectionLayout />}>
+    <Route
+      path="dashboards"
+      lazy={featureGatedRoute(
+        "library",
+        dashboardsSectionLayout,
+        libraryUpsellPage,
+      )}
+    >
       <Route index lazy={dashboardsPage} />
       <Route path=":dashboardId" lazy={dashboardOverviewPage} />
       <Route path=":dashboardId/contents" lazy={dashboardContentsPage} />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path=":dashboardId/dependencies"
-          lazy={dashboardDependenciesPage}
-        >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
-        </Route>
-      )}
-      {PLUGIN_AUDIT.isEnabled && (
-        <Route path=":dashboardId/usage" lazy={dashboardUsageStatsPage} />
-      )}
+      <Route path=":dashboardId/dependencies" lazy={dashboardDependenciesPage}>
+        <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+      </Route>
+      <Route
+        path=":dashboardId/usage"
+        lazy={featureGatedRoute(
+          "audit_app",
+          dashboardUsageStatsPage,
+          notFoundRoute,
+        )}
+      />
       <Route
         path=":dashboardId/subscriptions/:subscriptionId?"
         lazy={dashboardSubscriptionsPage}
