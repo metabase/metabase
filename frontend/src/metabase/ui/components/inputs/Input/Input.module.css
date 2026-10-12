@@ -1,5 +1,5 @@
 .root {
-  &:has(input:disabled) .label {
+  &:has(input:disabled, textarea:disabled) .label {
     color: var(--mb-color-text-disabled);
   }
 }
