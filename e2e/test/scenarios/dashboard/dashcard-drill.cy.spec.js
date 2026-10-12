@@ -521,6 +521,10 @@ describe("scenarios > dashboard > title drill", () => {
       cy.get("@questionId").then((questionId) => {
         cy.log("as a user with access to underlying data");
         H.visitDashboard("@dashboardId");
+        // The title link is replaced when the chart renders, so hover only after the render.
+        H.getDashboardCard()
+          .findByTestId("chart-container")
+          .should("be.visible");
 
         H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
         cy.get("@title").realHover();
@@ -544,6 +548,9 @@ describe("scenarios > dashboard > title drill", () => {
         cy.get("body").realHover({ position: "topLeft" });
         cy.signIn("nodata");
         H.visitDashboard("@dashboardId");
+        H.getDashboardCard()
+          .findByTestId("chart-container")
+          .should("be.visible");
 
         H.getDashboardCard()
           .findByRole("link", { name: "Q1" })
