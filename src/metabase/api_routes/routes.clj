@@ -7,6 +7,7 @@
    [metabase.agent-api.query-guards :as agent-api.query-guards]
    [metabase.ai-tracing.api]
    [metabase.analytics.api]
+   [metabase.analytics.api.metaplow-proxy]
    [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -86,6 +87,7 @@
          metabase.agent-api.api/keep-me
          metabase.ai-tracing.api/keep-me
          metabase.analytics.api/keep-me
+         metabase.analytics.api.metaplow-proxy/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
@@ -248,6 +250,7 @@
    "/measure"              (+auth 'metabase.measures.api)
    "/metabase-mcp"         (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/metabot"              metabase.metabot.api/routes
+   "/metaplow-proxy"       (+public-exceptions metabase.analytics.api.metaplow-proxy/routes)
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)

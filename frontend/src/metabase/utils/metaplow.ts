@@ -17,15 +17,21 @@ const getSanitizedUrl = (url: string) => {
 };
 
 interface MetaplowConfig {
+  // The tracker library composes its endpoint as `${hostUrl}/send`. Null when Metabase Track is off.
+  hostUrl: string | null;
   getUserId: () => number | undefined;
 }
 
-export function initMetaplow(config: MetaplowConfig): void {
+// `metaplow-url` is the collector's full `/send` endpoint, and the tracker library appends `/send` itself.
+export function getCollectorHostUrl(): string | null {
   const metaplowUrl = Settings.get("metaplow-url");
-  if (!metaplowUrl) {
+  return metaplowUrl ? metaplowUrl.replace(/\/send$/, "") : null;
+}
+
+export function initMetaplow({ hostUrl, getUserId }: MetaplowConfig): void {
+  if (!hostUrl) {
     return;
   }
-  const hostUrl = metaplowUrl.replace(/\/send$/, "");
 
   init({
     website: METAPLOW_WEBSITE_ID,
@@ -59,7 +65,7 @@ export function initMetaplow(config: MetaplowConfig): void {
         data: {
           // Unjustified type cast. FIXME
           ...(payload.data as Record<string, unknown> | undefined),
-          user_id: config.getUserId(),
+          user_id: getUserId(),
         },
       };
     },

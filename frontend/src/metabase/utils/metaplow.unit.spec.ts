@@ -3,6 +3,7 @@ import { reset } from "@metabase/track";
 import Settings from "metabase/utils/settings";
 
 import {
+  getCollectorHostUrl,
   initMetaplow,
   trackMetaplowEvent,
   trackMetaplowPageView,
@@ -11,9 +12,13 @@ import {
 const METAPLOW_URL = "https://metaplow.example.com/api/send";
 const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 const ANON_ORIGIN = "http://anonymous.metabase.com";
+const RELAY_HOST_URL = "https://app.example.com/api/metaplow-proxy";
 
-const setup = async ({ userId }: { userId?: number } = {}) => {
-  initMetaplow({ getUserId: () => userId });
+const setup = async ({
+  userId,
+  hostUrl = getCollectorHostUrl(),
+}: { userId?: number; hostUrl?: string | null } = {}) => {
+  initMetaplow({ hostUrl, getUserId: () => userId });
   await Promise.resolve();
 };
 
@@ -46,16 +51,44 @@ describe("metaplow", () => {
     return JSON.parse(init?.body as string);
   };
 
+  describe("getCollectorHostUrl", () => {
+    it("strips the /send suffix the tracker library adds back on", () => {
+      expect(getCollectorHostUrl()).toBe("https://metaplow.example.com/api");
+    });
+
+    it("is null when no collector is configured", () => {
+      Settings.set("metaplow-url", null);
+      expect(getCollectorHostUrl()).toBeNull();
+    });
+  });
+
   describe("initMetaplow", () => {
     describe("getUserId", () => {
       it("injects the user_id into the event data", async () => {
-        initMetaplow({ getUserId: () => 123 });
+        await setup({ userId: 123 });
 
         await trackMetaplowEvent("button_clicked");
 
         const { payload } = getSentPayload();
         expect(payload.data.user_id).toBe(123);
       });
+    });
+
+    it("posts to the host URL it is given rather than to the configured collector", async () => {
+      await setup({ hostUrl: RELAY_HOST_URL });
+
+      await trackMetaplowEvent("button_clicked");
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0][0]).toBe(`${RELAY_HOST_URL}/send`);
+    });
+
+    it("does not initialize without a host URL", async () => {
+      await setup({ hostUrl: null });
+
+      await trackMetaplowEvent("button_clicked");
+
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
   });
 

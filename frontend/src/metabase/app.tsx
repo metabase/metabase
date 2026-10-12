@@ -46,7 +46,7 @@ import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
 import { captureConsoleErrors } from "metabase/utils/errors";
-import { initMetaplow } from "metabase/utils/metaplow";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import MetabaseSettings from "metabase/utils/settings";
@@ -114,6 +114,8 @@ async function _init(
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
+    // The main app is served by the instance itself, so it posts to the collector directly.
+    hostUrl: getCollectorHostUrl(),
     getUserId: () => getUserId(store.getState()),
   });
 
