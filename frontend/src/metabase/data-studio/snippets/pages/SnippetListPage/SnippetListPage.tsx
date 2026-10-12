@@ -2,6 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { canUserCreateNativeQueries } from "metabase/current-user";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
@@ -33,6 +37,8 @@ const SNIPPET_COLLECTION_PICKER_OPTIONS = {
 
 export function SnippetListPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionModal, setCollectionModal] =
+    useState<CollectionRowModalState>();
   const { tree, isLoading, error } = useBuildSnippetTree();
   useErrorHandling(error);
 
@@ -45,6 +51,12 @@ export function SnippetListPage() {
     () => tree.slice(0, 1).map((node) => node.id),
     [tree],
   );
+  const renderRowMenu = useCallback(
+    (item: TreeItem) => (
+      <SnippetRowMenu item={item} onOpenModal={setCollectionModal} />
+    ),
+    [],
+  );
 
   return (
     <LibraryTreePage
@@ -56,20 +68,32 @@ export function SnippetListPage() {
       emptyMessage={t`No snippets yet`}
       defaultExpandedIds={defaultExpandedIds}
       createMenu={<SnippetsCreateMenu />}
-      renderRowMenu={renderSnippetRowMenu}
+      renderRowMenu={renderRowMenu}
       onSearchQueryChange={setSearchQuery}
-    />
+    >
+      <CollectionRowModal
+        modal={collectionModal}
+        onClose={() => setCollectionModal(undefined)}
+      />
+    </LibraryTreePage>
   );
 }
 
-function renderSnippetRowMenu({ data }: TreeItem) {
+type SnippetRowMenuProps = {
+  item: TreeItem;
+  onOpenModal: (modal: CollectionRowModalState) => void;
+};
+
+function SnippetRowMenu({ item: { data }, onOpenModal }: SnippetRowMenuProps) {
   if (!isCollectionData(data)) {
     return null;
   }
   if (data.id === "root") {
-    return <RootSnippetsCollectionMenu collectionId={data.id} />;
+    return (
+      <RootSnippetsCollectionMenu collection={data} onOpenModal={onOpenModal} />
+    );
   }
-  return <CollectionRowMenu collection={data} />;
+  return <CollectionRowMenu collection={data} onOpenModal={onOpenModal} />;
 }
 
 function SnippetsCreateMenu() {

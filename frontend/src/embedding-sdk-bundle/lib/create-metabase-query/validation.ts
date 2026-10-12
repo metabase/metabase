@@ -5,12 +5,15 @@ import {
   type TableQueryInput,
   isMeasureReference,
   isMetricReference,
+  isNamedBreakout,
   isSegmentReference,
+  unwrapNamedAggregation,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type {
   MetricSchema,
   QuestionSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import * as Lib from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
 // `satisfies` ties the list to the input type, so a renamed or mistyped clause
@@ -130,7 +133,8 @@ function validateResultColumnClauses(
   });
 
   input.aggregations?.forEach((aggregation) => {
-    if (isMeasureReference(aggregation) || isMetricReference(aggregation)) {
+    const unwrapped = unwrapNamedAggregation(aggregation);
+    if (isMeasureReference(unwrapped) || isMetricReference(unwrapped)) {
       throw new Error(
         `${label} aggregations cannot use Measures or Metrics, which belong to a table source.`,
       );
@@ -147,7 +151,10 @@ function validateResultColumnClauses(
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateDimension(breakout, `${label} breakouts`);
+    validateDimension(
+      isNamedBreakout(breakout) ? breakout.column : breakout,
+      `${label} breakouts`,
+    );
   });
 
   validateOrderBys(
@@ -210,7 +217,7 @@ function validateTableScopedInputs(input: TableQueryInput) {
     );
   });
 
-  input.aggregations?.forEach((aggregation) => {
+  input.aggregations?.map(unwrapNamedAggregation).forEach((aggregation) => {
     if (isMetricReference(aggregation)) {
       validateMetricAggregation(aggregation, tableId);
       return;
@@ -233,7 +240,11 @@ function validateTableScopedInputs(input: TableQueryInput) {
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateGeneratedTableReference(breakout, tableId, "Table query breakouts");
+    validateGeneratedTableReference(
+      isNamedBreakout(breakout) ? breakout.column : breakout,
+      tableId,
+      "Table query breakouts",
+    );
   });
 
   validateOrderBys(input, "Table query orderBys", (orderBy) =>
@@ -387,12 +398,18 @@ function isBreakoutReference(
     return false;
   }
 
-  return (breakouts ?? []).some(
-    (breakout) =>
-      (matchByName
-        ? namesMatch(breakout, value)
-        : fieldsMatch(breakout, value)) && bucketOptionsMatch(breakout, value),
-  );
+  return (breakouts ?? []).some((breakout) => {
+    if (isNamedBreakout(breakout) && breakout.name === value.name) {
+      return true;
+    }
+
+    const column = isNamedBreakout(breakout) ? breakout.column : breakout;
+
+    return (
+      (matchByName ? namesMatch(column, value) : fieldsMatch(column, value)) &&
+      bucketOptionsMatch(column, value)
+    );
+  });
 }
 
 function getTableId(value: unknown): number | undefined {
@@ -499,4 +516,70 @@ function binningOptionsMatch(left: unknown, right: unknown) {
     left.numBins === right.numBins &&
     left.binWidth === right.binWidth
   );
+}
+
+type StageColumnName = {
+  name: string;
+  displayName: string;
+};
+
+function stageColumnNames(
+  query: Lib.Query,
+  stageIndex: number,
+): StageColumnName[] {
+  const breakouts = Lib.breakouts(query, stageIndex).reduce<StageColumnName[]>(
+    (columns, breakout) => {
+      const column = Lib.breakoutColumn(query, stageIndex, breakout);
+
+      if (column) {
+        const { name, displayName } = Lib.displayInfo(
+          query,
+          stageIndex,
+          column,
+        );
+        columns.push({ name, displayName });
+      }
+
+      return columns;
+    },
+    [],
+  );
+  const aggregations = Lib.aggregations(query, stageIndex).map(
+    (aggregation) => ({
+      name: Lib.displayInfo(
+        query,
+        stageIndex,
+        Lib.aggregationColumn(query, stageIndex, aggregation),
+      ).name,
+      displayName: Lib.displayInfo(query, stageIndex, aggregation).displayName,
+    }),
+  );
+
+  return [...breakouts, ...aggregations];
+}
+
+function stageConflicts(query: Lib.Query, stageIndex: number): string[] {
+  const byName = new Map<string, StageColumnName[]>();
+  stageColumnNames(query, stageIndex).forEach((column) => {
+    byName.set(column.name, [...(byName.get(column.name) ?? []), column]);
+  });
+
+  return [...byName]
+    .filter(([, columns]) => columns.length > 1)
+    .map(
+      ([name, columns]) =>
+        `${columns.map((column) => column.displayName).join(", ")} share the column name "${name}"`,
+    );
+}
+
+export function validateUniqueColumnNames(query: Lib.Query) {
+  const conflicts = Lib.stageIndexes(query).flatMap((stageIndex) =>
+    stageConflicts(query, stageIndex),
+  );
+
+  if (conflicts.length > 0) {
+    throw new Error(
+      `Breakouts and aggregations need unique column names: ${conflicts.join("; ")}. Name them apart with the \`name\` option of \`breakout\` or of an aggregation helper, or with \`aggregations.measure\` or \`aggregations.metric\` for a measure or metric.`,
+    );
+  }
 }
