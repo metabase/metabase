@@ -9,6 +9,10 @@ title: API changelog
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
   `409 Conflict` instead of `403 Forbidden`. The message, "A table with that name already exists.", is unchanged.
   `403` remains the answer when the user lacks permission.
+- **HTTP actions have been removed** from the actions API (`/api/action`). [#83435](https://github.com/metabase/metabase/pull/83435)
+    - When you upgrade, Metabase deletes any existing HTTP actions, and the dashboard action buttons that use them. Downgrading doesn't bring them back.
+    - The action `type` can now only be `implicit` or `query`. A `POST /api/action` or `PUT /api/action/{id}` request for an `http` action now fails.
+    - `GET /api/action`, `GET /api/action/public`, `GET /api/action/{action-id}`, and `POST /api/action` no longer return the `disabled`, `error_handle`, `response_handle`, or `template` fields. The last three only applied to HTTP actions.
 
 ## Metabase 0.64.0
 
