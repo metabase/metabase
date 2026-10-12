@@ -1,7 +1,7 @@
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import type { GetDependencyGraphRequest } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
@@ -26,7 +26,7 @@ type DependenciesPlugin = {
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
-  DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPage: NotFound,
   DependencyGraphPageContext: createContext({}),
   useGetDependenciesCount: () => ({
     dependenciesCount: 0,
