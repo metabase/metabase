@@ -65,6 +65,7 @@ The **Administrators** column always has every box checked: admins always get ev
 - **Blocked tools are hidden.** Metabase leaves blocked tools out of the tool list it gives a client. If a client calls a blocked tool anyway, Metabase refuses, and tells the person to ask an admin to enable the tool under **Admin > AI > Usage controls > MCP tools access**.
 - **People with no tools can't connect.** If none of a person's groups allows any tool, their client can't connect to the MCP server.
 - **Blocking `execute_sql` also blocks saving SQL questions.** People who can't use the `execute_sql` tool can't save SQL questions with the `question_write` tool either.
+- **Tool access stays if you change plans.** If you change to a plan without AI controls, Metabase keeps applying the MCP tool access you set.
 
 ### Set MCP tool access for each group
 
@@ -76,7 +77,7 @@ To give different groups different tools, switch to group-level permissions:
 2. Click **Switch to group-level permissions**.
 3. Click **Switch** to confirm.
 
-In group-level mode, **All Users** and **All tenant users** groups lose MCP tool access. That way, groups only get the tools you allow them. Admin and Data Analyst groups always get access to every MCP tool.
+In group-level mode, **All Users** and **All tenant users** groups lose MCP tool access. That way, groups only get the tools you allow them. Admins always get every tool. When you switch, Metabase gives the [Data Analysts](../people-and-groups/managing.md#data-analysts) group every tool, but you can change its tools like any other group's.
 
 To switch back, click the gear icon, then **Remove group-level access**, then **Remove access from all groups**. Switching back to one set of tools for everyone deletes the tool access you set for each group, and gives **All Users** (and **All tenant users**) every tool.
 
