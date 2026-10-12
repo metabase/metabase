@@ -9,9 +9,13 @@
 (defn sandboxed-impersonated-or-routed-user?
   "Is the current user's view of warehouse data narrowed by a lens -- sandboxing, connection impersonation, or database
   routing? Content captured under the unrestricted lens (e.g. indexed entity values) must not be shown to such a user.
-  The three flags are computed once, when the search context is built, see [[metabase.search.impl/search-context]]."
+  The three flags are computed once, when the search context is built, see [[metabase.search.impl/search-context]].
+  Fails closed: a flag the caller left unset (nil) counts as restricted rather than unrestricted, so we don't depend
+  on the `SearchContext` schema being enforced."
   [{:keys [is-impersonated-user? is-sandboxed-user? is-routed-user?] :as _search-ctx}]
-  (or is-impersonated-user? is-sandboxed-user? is-routed-user?))
+  (not (and (false? is-impersonated-user?)
+            (false? is-sandboxed-user?)
+            (false? is-routed-user?))))
 
 (mu/defn permitted-collections-clause
   "Build the WHERE clause corresponding to which collections the given user has access to."

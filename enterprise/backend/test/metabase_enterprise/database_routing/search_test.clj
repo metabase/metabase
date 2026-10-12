@@ -33,9 +33,17 @@
       (met/with-user-attributes! :rasta {}
         (mt/with-test-user :rasta
           (is (true? (perms/routed-user?))))))
-    (testing "superusers always resolve to the router itself"
+    (testing "a superuser with no attribute defaults to the router itself: not routed"
       (mt/with-test-user :crowberto
         (is (false? (perms/routed-user?)))))
+    (testing "a superuser whose attribute names a destination database is routed, same as at query time"
+      (met/with-user-attributes! :crowberto {"db_name" "sr-dest"}
+        (mt/with-test-user :crowberto
+          (is (true? (perms/routed-user?))))))
+    (testing "a superuser with the sentinel attribute is not routed"
+      (met/with-user-attributes! :crowberto {"db_name" "__METABASE_ROUTER__"}
+        (mt/with-test-user :crowberto
+          (is (false? (perms/routed-user?))))))
     (testing "throws without a current user, like its sandbox / impersonation siblings"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No current user found"
                             (perms/routed-user?))))))

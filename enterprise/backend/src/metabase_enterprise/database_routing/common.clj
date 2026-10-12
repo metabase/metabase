@@ -64,22 +64,27 @@
 
 (defenterprise routed-user?
   "Whether the current user's queries against ANY router database resolve to a destination database rather than the
-  router itself. Superusers never are. A non-admin missing the routing attribute would be refused at query time, so
-  they count as routed here (fail closed). Uses `:feature :none` so a routed user is recognized even when the
-  `:database-routing` feature is momentarily unavailable. Throws if no current user is bound."
+  router itself, mirroring [[router-db-or-id->destination-db-id*]]. A user whose attribute is the
+  `__METABASE_ROUTER__` sentinel is not routed. A superuser missing the attribute defaults to the router, so is not
+  routed, but a superuser whose attribute names a destination database is routed like anyone else. A non-admin missing
+  the attribute would be refused at query time, so counts as routed here (fail closed). Uses `:feature :none` so a
+  routed user is recognized even when the `:database-routing` feature is momentarily unavailable. Throws if no current
+  user is bound."
   :feature :none
   []
   (boolean
-   (when-not api/*is-superuser?*
-     (if api/*current-user-id*
-       (let [attributes (api/current-user-attributes)]
-         (some (fn [attribute-name]
-                 (not= "__METABASE_ROUTER__" (get attributes attribute-name)))
-               (database-routing.db/router-user-attributes)))
-       ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid
-       ;; returning `false` for users who should actually be routed.
-       (throw (ex-info (str (tru "No current user found"))
-                       {:status-code 403}))))))
+   (if api/*current-user-id*
+     (let [attributes (api/current-user-attributes)]
+       (some (fn [attribute-name]
+               (let [value (get attributes attribute-name)]
+                 (if (nil? value)
+                   (not api/*is-superuser?*)
+                   (not= "__METABASE_ROUTER__" value))))
+             (database-routing.db/router-user-attributes)))
+     ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid
+     ;; returning `false` for users who should actually be routed.
+     (throw (ex-info (str (tru "No current user found"))
+                     {:status-code 403})))))
 
 (defenterprise routing-token-for-db
   "Database-routing fingerprint for the current user on router `db-id` (the resolved destination
