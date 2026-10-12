@@ -1,11 +1,8 @@
 import { PLUGIN_MONITOR } from "metabase/plugins";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { getSessionManagementRoutes } from "./routes";
+import { sessionManagementCatchAllPage, sessionManagementPage } from "./routes";
 
 export function initializePlugin() {
-  if (hasPremiumFeature("session-management")) {
-    PLUGIN_MONITOR.isSessionManagementEnabled = true;
-    PLUGIN_MONITOR.getSessionManagementRoutes = getSessionManagementRoutes;
-  }
+  PLUGIN_MONITOR.sessionsPage = sessionManagementPage;
+  PLUGIN_MONITOR.sessionsCatchAllPage = sessionManagementCatchAllPage;
 }

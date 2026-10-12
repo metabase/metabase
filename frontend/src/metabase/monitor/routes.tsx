@@ -21,6 +21,7 @@ import {
   PLUGIN_MONITOR,
   PLUGIN_MONITOR_TOOLS,
 } from "metabase/plugins";
+import type { PluginRoute } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Navigate, Route, redirect } from "metabase/router";
@@ -109,12 +110,20 @@ const modelPersistenceLogPage = () =>
     Component: ModelPersistenceLogPage,
   }));
 
-const sessionManagementUpsellPage = () =>
+export const sessionManagementUpsellPage = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/session-management/SessionManagementUpsellPage"
   ).then(({ SessionManagementUpsellPage }) => ({
     Component: SessionManagementUpsellPage,
   }));
+
+// The plugin decides what these render; without it the upsell shows, which is
+// what an OSS build should do. The routes themselves mount either way.
+const sessionsPage: PluginRoute = () =>
+  (PLUGIN_MONITOR.sessionsPage ?? sessionManagementUpsellPage)();
+
+const sessionsCatchAllPage: PluginRoute = () =>
+  (PLUGIN_MONITOR.sessionsCatchAllPage ?? sessionManagementUpsellPage)();
 
 // The log levels modal renders a code editor, which nothing else on the logs
 // page needs. Its parent route is already lazy, but a modal declared with
@@ -206,16 +215,11 @@ export function getMonitorRoutes() {
         </Route>
 
         <Route element={<CanAccessSessionManagement />}>
-          {PLUGIN_MONITOR.isSessionManagementEnabled ? (
-            <Route path="sessions">
-              {PLUGIN_MONITOR.getSessionManagementRoutes()}
-            </Route>
-          ) : (
-            <Route path="sessions">
-              <Route index lazy={sessionManagementUpsellPage} />
-              <Route path="*" lazy={sessionManagementUpsellPage} />
-            </Route>
-          )}
+          <Route path="sessions">
+            <Route index lazy={sessionsPage} />
+            <Route path=":sessionId" lazy={sessionsPage} />
+            <Route path="*" lazy={sessionsCatchAllPage} />
+          </Route>
         </Route>
 
         <Route element={<CanAccessAiAuditing />}>
