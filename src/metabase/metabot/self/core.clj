@@ -155,10 +155,12 @@
 
 (def ^:private ApiKeyCredentials
   "The `{:api-key ... :base-url ...}` connection shape shared by most providers. `:model-reasoning` and
-  `:probed-model` are not admin-entered: a connect-time probe records them on the connection (vLLM)."
+  `:probed-model` are not admin-entered: a connect-time probe records them on the connection (vLLM). An
+  OpenAI-compatible connection names its model in `:model-id`."
   [:map {:closed true}
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
+   [:model-id        {:optional true} [:maybe :string]]
    [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
    [:probed-model    {:optional true} [:maybe :string]]
    [:mini-model      {:optional true} [:maybe :string]]])
