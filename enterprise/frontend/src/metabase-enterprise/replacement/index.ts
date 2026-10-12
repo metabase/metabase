@@ -12,10 +12,11 @@ import {
 } from "./routes";
 
 export function initializePlugin() {
+  PLUGIN_REPLACEMENT.getTransformToolsRoutes = getTransformToolsRoutes;
+
   if (hasPremiumFeature("dependencies")) {
     PLUGIN_REPLACEMENT.isEnabled = true;
     PLUGIN_REPLACEMENT.canReplaceSources = getUserIsAdmin;
-    PLUGIN_REPLACEMENT.getTransformToolsRoutes = getTransformToolsRoutes;
     PLUGIN_REPLACEMENT.SourceReplacementButton = SourceReplacementButton;
     PLUGIN_REPLACEMENT.SourceReplacementModal = SourceReplacementModal;
     PLUGIN_REPLACEMENT.SourceReplacementStatus = SourceReplacementStatus;
