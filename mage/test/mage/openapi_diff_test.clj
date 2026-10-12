@@ -173,7 +173,7 @@
                 (spec {"/api/x" {"post" (op :body (nested {"oneOf" [{"type" "object"} {"type" "boolean"}]}))}})
                 (spec {"/api/x" {"post" (op :body (nested {"type" "boolean"}))}}))]
       (is (some #(re-find #"body\.d\.reporter" %) text))))
-  (testing "$refs are resolved, so a component-schema change surfaces as an endpoint change"
+  (testing "a component-schema change surfaces as an endpoint change"
     (let [ref {"$ref" "#/components/schemas/S"}
           old-spec (spec {"/api/x" {"post" (op :body (obj {"a" ref}))}} {"schemas" {"S" {"type" "string"}}})
           new-spec (spec {"/api/x" {"post" (op :body (obj {"a" ref}))}} {"schemas" {"S" {"type" "integer"}}})]
@@ -191,7 +191,7 @@
   (testing "a deeply nested change is still compared, not collapsed"
     ;; Deep nesting is ordinary and must be compared field by field. A hop or depth limit would
     ;; replace deep nodes with the same placeholder on both sides, which compares equal and reports
-    ;; nothing; `resolve-refs` terminates via `seen` instead, so no limit is needed.
+    ;; nothing; refs compare by name instead, so no limit is needed.
     (let [nest (fn [leaf] (obj {"a" (obj {"b" (obj {"c" (obj {"d" (obj {"e" (obj {"f" leaf})})})})})}))
           old-spec (spec {"/api/x" {"post" (op :body (nest {"enum" ["a" "b" "c"]}))}})
           new-spec (spec {"/api/x" {"post" (op :body (nest {"enum" ["a"]}))}})]
@@ -626,7 +626,48 @@
       (is (breaking? (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a" "b"]})})
                      (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a"]})}))))))
 
-(deftest summary-keeps-leaf-types-test
-  (testing "a nested array of strings prints as array<string>, not array<...>"
-    (is (= "array<string> | null"
-           (#'openapi-diff/brief {"oneOf" [{"type" "array" "items" {"type" "string"}} {"type" "null"}]} 200 1)))))
+(deftest renamed-components-are-compared-by-shape-test
+  (testing "moving components to a new namespace, nested refs included, is not a change"
+    (let [s (fn [prefix] (spec {"/api/x" {"post" (op :body {"$ref" (str "#/components/schemas/" prefix ".outer")}
+                                                     :response {"oneOf" [{"$ref" (str "#/components/schemas/" prefix ".outer")}
+                                                                         {"type" "null"}]})}}
+                               {"schemas" {(str prefix ".outer") (obj {"in" {"$ref" (str "#/components/schemas/" prefix ".inner")}})
+                                           (str prefix ".inner") {"type" "string"}}}))]
+      (is (empty? (:changed (openapi-diff/diff (s "ee") (s "oss")))))))
+  (testing "a change inside a renamed component is still found"
+    (let [s (fn [prefix t] (spec {"/api/x" {"post" (op :body {"$ref" (str "#/components/schemas/" prefix ".outer")})}}
+                                 {"schemas" {(str prefix ".outer") (obj {"in" {"$ref" (str "#/components/schemas/" prefix ".inner")}})
+                                             (str prefix ".inner") {"type" t}}}))]
+      (is (breaking? (s "ee" "string") (s "oss" "integer"))))))
+
+(deftest shared-component-change-is-one-finding-test
+  (testing "a component used by two endpoints yields the same finding on both, so it groups as one entry"
+    (let [s (fn [vs] (spec {"/api/x" {"get" (op :response {"$ref" "#/components/schemas/E"})}
+                            "/api/y" {"get" (op :response (obj {"e" {"$ref" "#/components/schemas/E"}}))}}
+                           {"schemas" {"E" {"type" "string" "enum" vs}}}))
+          d (openapi-diff/diff (s ["a"]) (s ["a" "b"]))]
+      (is (= 2 (count (:changed d))))
+      (is (= 1 (count (distinct (map :findings (:changed d)))))))))
+
+(deftest component-change-the-field-walk-misses-is-reported-test
+  (testing "a response component closing with additionalProperties: false still surfaces"
+    (let [s (fn [extra] (spec {"/api/x" {"get" (op :response {"$ref" "#/components/schemas/G"})}}
+                              {"schemas" {"G" (merge (obj {"a" {"type" "string"}}) extra)}}))]
+      (is (seq (:changed (openapi-diff/diff (s {}) (s {"additionalProperties" false}))))))))
+
+(deftest operation-fallback-runs-beside-component-findings-test
+  (testing "a walk-silent body change is still ranked when a reached component changed only its docs"
+    (let [s (fn [extra desc] (spec {"/api/x" {"post" (op :body (merge (obj {"a" {"$ref" "#/components/schemas/D"}}) extra))}}
+                                   {"schemas" {"D" {"type" "string" "description" desc}}}))]
+      (is (breaking? (s {} "Old.") (s {"required" ["zz"]} "New."))))))
+
+(deftest ref-becoming-nullable-is-compared-as-a-new-variant-test
+  (testing "[:maybe ::ref] in a request accepts more: additive"
+    (let [a {"$ref" "#/components/schemas/A"}
+          s (fn [body] (spec {"/api/x" {"post" (op :body body)}}
+                             {"schemas" {"A" (obj {"x" {"type" "string"}})}}))]
+      (is (not (breaking? (s a) (s {"oneOf" [a {"type" "null"}]}))))
+      (testing "and in a response it may now be null: breaking"
+        (let [s (fn [resp] (spec {"/api/x" {"get" (op :response resp)}}
+                                 {"schemas" {"A" (obj {"x" {"type" "string"}})}}))]
+          (is (breaking? (s a) (s {"oneOf" [a {"type" "null"}]}))))))))
