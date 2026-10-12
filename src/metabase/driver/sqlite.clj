@@ -24,7 +24,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]])
+   [metabase.util.performance :refer [every? mapv some]])
   (:import
    (java.net MalformedURLException URL URLDecoder)
    (java.sql Connection ResultSet Types)
@@ -84,13 +84,23 @@
         (or (str/includes? line "SQLite format 3")
             (str/includes? line "This file contains an SQLite"))))))
 
-(defn- percent-decode
-  "`s` with `%XX` escapes decoded, as SQLite does for a `file:` URI. A `+` is a plain character, and a malformed escape
-  leaves `s` as it was."
+(defn- url-path-decode
+  "The path sqlite-jdbc reads for a `file:` resource URL whose raw path is `s`: decoded as a whole, as a `URI` would,
+  or left as it is when any escape is malformed. A `+` is a plain character."
   [^String s]
   (try
     (URLDecoder/decode (str/replace s "+" "%2B") "UTF-8")
     (catch IllegalArgumentException _ s)))
+
+(defn- sqlite-uri-decode
+  "`s` with each well-formed `%XX` escape decoded, as SQLite does for a `file:` URI. A malformed escape stays as it is
+  without affecting the others."
+  [^String s]
+  (str/replace s #"(?:%[0-9A-Fa-f]{2})+"
+               (fn [^String run]
+                 (String. (byte-array (map #(unchecked-byte (Integer/parseInt (subs run (inc %) (+ % 3)) 16))
+                                           (range 0 (count run) 3)))
+                          "UTF-8"))))
 
 (defn- local-host?
   "Whether the authority of a `file:` URL names this machine, i.e. the file is local rather than fetched from a host."
@@ -99,25 +109,30 @@
 
 (defn- file-uri-parts
   "The decoded path and the raw query of a `file:` URI as SQLite reads it: `file:/a`, `file:///a` and
-  `file://localhost/a` are `/a`, `file:a` is `a`, and the URI ends at `#`."
+  `file://localhost/a` are `/a`, `file:a` is `a`, the URI ends at `#`, and a decoded NUL ends the path."
   [uri]
   (let [[path query] (str/split (str/replace uri #"#.*$" "") #"\?" 2)
         path         (str/replace path #"^file:" "")
         path         (if (str/starts-with? path "//")
                        (if-let [after-authority (str/index-of path "/" 2)] (subs path after-authority) "")
                        path)]
-    [(percent-decode path) query]))
+    [(first (str/split (sqlite-uri-decode path) #"\u0000" 2)) query]))
 
-(defn- uri-mode
-  "The `mode` a `file:` URI query requests. SQLite applies every `mode` parameter in turn, so the last one wins, and it
-  compares the name and value case-sensitively after decoding them."
+(defn- uri-modes
+  "The decoded values of every `mode` parameter in a `file:` URI query, or nil when any parameter decodes to something
+  holding a NUL, which SQLite would read differently."
   [query]
-  (->> (str/split (or query "") #"&")
-       (keep (fn [param]
-               (let [[k v] (str/split param #"=" 2)]
-                 (when (= "mode" (percent-decode k))
-                   (percent-decode (or v ""))))))
-       last))
+  (let [params (for [param (str/split (or query "") #"&")]
+                 (mapv sqlite-uri-decode (str/split param #"=" 2)))]
+    (when-not (some (fn [kv] (some #(str/includes? % "\u0000") kv)) params)
+      (keep (fn [[k v]] (when (= "mode" k) (or v ""))) params))))
+
+(defn- uri-mode?
+  "Whether a `file:` URI query requests `mode`. Only when every `mode` parameter is exactly `mode`, so the answer does
+  not depend on which of several SQLite honors."
+  [query mode]
+  (let [modes (uri-modes query)]
+    (boolean (and (seq modes) (every? #{mode} modes)))))
 
 (defn- url-local-file
   "The local path `java.net.URL` reads for `url`, or nil when it reads none. A `jar:` URL reads the jar it names."
@@ -126,7 +141,7 @@
     "jar"  (some-> (try (URL. (first (str/split (.getPath url) #"!/" 2))) (catch MalformedURLException _ nil))
                    url-local-file)
     "file" (when (local-host? (.getHost url))
-             (percent-decode (.getPath url)))
+             (url-path-decode (.getPath url)))
     nil))
 
 (defn- db-local-file
@@ -135,48 +150,57 @@
 
   Parsed the way SQLite and sqlite-jdbc parse it: the `:resource:` and `file:` prefixes are case-sensitive, a `file:`
   URI ends at `#` and has its parameters after `?`, and in a plain path both are part of the file name. A resource is
-  read as a `java.net.URL` is, which ignores whitespace and a `url:` prefix."
+  read as a `java.net.URL` is, which ignores whitespace and a `url:` prefix. `db` is taken exactly as given: whitespace
+  around a path is part of it."
   [db]
   (when (string? db)
-    (let [db (str/trim db)]
-      (if-let [resource (second (re-find #"^:resource:(.*)$" db))]
-        (some-> (try (URL. resource) (catch MalformedURLException _ nil))
-                url-local-file)
-        (if (str/starts-with? db "file:")
-          (let [[path query] (file-uri-parts db)]
-            ;; `mode=memory` as the final mode, or the `:memory:` name, opens no file
-            (when-not (or (= path ":memory:")
-                          (= "memory" (uri-mode query)))
-              path))
-          (when-not (or (str/blank? db) (= db ":memory:"))
-            db))))))
+    (if-let [resource (second (re-find #"^:resource:(.*)$" db))]
+      (some-> (try (URL. resource) (catch MalformedURLException _ nil))
+              url-local-file)
+      (if (str/starts-with? db "file:")
+        (let [[path query] (file-uri-parts db)]
+          ;; the `:memory:` name, or `mode=memory`, opens no file
+          (when-not (or (= path ":memory:")
+                        (uri-mode? query "memory"))
+            path))
+        (when-not (or (str/blank? db) (= db ":memory:"))
+          db)))))
+
+(defn- db-local-files
+  "Every file [[db-local-file]] could name for `db`, read both as given and trimmed, so a check does not depend on
+  whether whitespace around it reaches SQLite."
+  [db]
+  (into #{} (keep db-local-file) (distinct [db (some-> db str/trim)])))
 
 (defn- db-read-only?
   "Whether the connection `details` describe cannot write the file: it is flagged `:read-only?`, or `:db` is a `file:`
-  URI whose final `mode` is `ro`."
+  URI whose every `mode` is `ro`."
   [{:keys [db read-only?]}]
   (boolean
    (or read-only?
-       (when (string? db)
-         (let [db (str/trim db)]
-           (and (str/starts-with? db "file:")
-                (= "ro" (uri-mode (second (file-uri-parts db))))))))))
+       (and (string? db)
+            (str/starts-with? db "file:")
+            (uri-mode? (second (file-uri-parts db)) "ro")))))
 
 (defmethod driver/validate-db-details! :sqlite
   [_driver {:keys [db] :as details}]
-  ;; On hosted Metabase, SQLite is only valid for the bundled Sample Database. The internal flows that need to test
-  ;; connections to that DB (sync, schema refresh, fingerprinting, etc.) wrap their calls in
-  ;; `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`. Mirrors the H2 pattern.
-  (when (and (driver-api/is-hosted?)
-             (not driver.settings/*allow-testing-sqlite-connections*))
-    (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
-                    {:status-code 400})))
-  ;; the database file is a path on the Metabase host that an admin typed in, so it has to be one `readable-paths`
-  ;; allows -- and one `writable-paths` allows too, unless the connection cannot write it. Metabase's own flows (the
-  ;; bundled Sample Database, which lives in the plugins directory) bind `*allow-testing-sqlite-connections*` and are
-  ;; exempt.
-  (when-not driver.settings/*allow-testing-sqlite-connections*
-    (when-let [path (db-local-file db)]
+  ;; The bundled Sample Database is the one file Metabase itself opens, so it is exempt from the checks below: it lives
+  ;; in the plugins directory, which neither `readable-paths` nor a hosted instance's allowlist need cover. Two things
+  ;; must both hold for the exemption:
+  ;;   - the caller is an internal flow that needs it (sync, schema refresh, fingerprinting, etc.), which wraps its
+  ;;     calls in `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`, so that a user-facing
+  ;;     endpoint such as `POST /api/database` cannot create a connection to it, and
+  ;;   - `:db` is the exact path the sample-data module registered. Sync binds the flag for every database, so the flag
+  ;;     alone would let it open whatever `:db` a stored row carries, such as one written by a serialization import.
+  (when-not (and driver.settings/*allow-testing-sqlite-connections*
+                 (driver.settings/sqlite-path-allowed? db))
+    ;; On hosted Metabase, SQLite is only valid for the bundled Sample Database.
+    (when (driver-api/is-hosted?)
+      (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
+                      {:status-code 400})))
+    ;; The database file is a path on the Metabase host that an admin typed in, so it has to be one `readable-paths`
+    ;; allows -- and one `writable-paths` allows too, unless the connection cannot write it.
+    (doseq [path (db-local-files db)]
       (system/ensure-readable-path! path)
       (when-not (db-read-only? details)
         (system/ensure-writable-path! path))))
@@ -185,8 +209,12 @@
 (defmethod driver/can-connect? :sqlite
   [driver details]
   (driver/validate-db-details! driver details)
-  (if (confirm-file-is-sqlite (:db details))
-    (sql-jdbc.conn/can-connect? driver details)
+  ;; read the header of the file the checks above validated, as a file: handing `:db` to `io/input-stream` would read
+  ;; it as a URL if it parses as one, which names a file even when SQLite would open none (e.g. `?mode=memory`)
+  (if-let [path (db-local-file (:db details))]
+    (if (confirm-file-is-sqlite (io/file path))
+      (sql-jdbc.conn/can-connect? driver details)
+      false)
     false))
 
 (defmethod driver/db-start-of-week :sqlite

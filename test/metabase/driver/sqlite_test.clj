@@ -49,13 +49,21 @@
                     ":resource:url:file:/etc/x.db"
                     ":resource:jar: file:/etc/x.jar!/x.db"
                     ":resource:jar:url:file:/etc/x.jar!/x.db"
-                    ;; SQLite takes the last `mode`, matches it case-sensitively and percent-decodes it, so only a
-                    ;; final, exact `mode=memory` keeps the file from being opened
+                    ;; SQLite matches `mode` case-sensitively after percent-decoding it, and a URI only counts as
+                    ;; in-memory when every `mode` it carries is exactly `memory`
                     "file:/etc/x.db?mode=memory&mode=ro"
+                    "file:/etc/x.db?mode=ro&mode=memory"
                     "file:/etc/x.db?mode=ro&mode=memory&mode=rw"
                     "file:/etc/x.db?mode=MEMORY"
                     "file:/etc/x.db?MODE=memory"
-                    "file:/etc/x.db?mode=ro&mode=%6Demory&mode=rwc"]]
+                    "file:/etc/x.db?mode=ro&mode=%6Demory&mode=rwc"
+                    ;; SQLite decodes each well-formed escape on its own, whatever else the path holds
+                    "file:/allowed-dir/%zz/%2E%2E/%2E%2E/etc/x.db"
+                    ;; and a decoded NUL ends the path
+                    "file:/etc/x.db%00/../../allowed-dir/x.db"
+                    ;; surrounding whitespace is part of a path, which then names a file relative to the working
+                    ;; directory
+                    " /allowed-dir/x.db"]]
           (testing db
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
                                   (driver/validate-db-details! :sqlite {:db db}))))))
@@ -68,14 +76,81 @@
                     "file:shared?mode=memory"
                     ":resource:http://example.com/x.db"
                     ":resource: http://example.com/x.db"
-                    "file:/etc/x.db?mode=ro&mode=memory"
+                    "file:/allowed-dir/100%25.db"
+                    "file:/allowed-dir/50%.db"
+                    "/allowed-dir/x.db "
                     "file:/etc/x.db?mode=%6Demory"
+                    "file:/etc/x.db?mode=memory&mode=memory"
                     "file:/etc/x.db?cache=shared&mode=memory&vfs=unix"]]
           (testing db
             (is (nil? (driver/validate-db-details! :sqlite {:db db}))))))
-      (testing "Metabase's own flows, such as the bundled Sample Database, are not subject to it"
+      (testing "the flag Metabase's own flows bind does not exempt an arbitrary file, such as a stored row's `:db`"
         (binding [driver.settings/*allow-testing-sqlite-connections* true]
-          (is (nil? (driver/validate-db-details! :sqlite {:db "/etc/x.db"}))))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (driver/validate-db-details! :sqlite {:db "/etc/x.db"}))))))))
+
+(deftest can-connect-reads-only-the-checked-file-test
+  (testing "the connection check reads the header of the local file the path checks validated, and nothing else"
+    (mt/with-premium-features #{}
+      (let [path (.getPath ^java.io.File (doto (java.io.File/createTempFile "can-connect" ".sqlite")
+                                           (.deleteOnExit)))]
+        (jdbc/execute! {:classname "org.sqlite.JDBC" :subprotocol "sqlite" :subname path} ["CREATE TABLE t (x INTEGER)"])
+        (is (true? (driver/can-connect? :sqlite {:db path})))
+        (is (true? (driver/can-connect? :sqlite {:db (str "file:" path "?mode=ro")})))
+        (testing "a database that opens no local file has no file to check"
+          (is (false? (driver/can-connect? :sqlite {:db (str "file:" path "?mode=memory")})))
+          (is (false? (driver/can-connect? :sqlite {:db ":memory:"}))))))))
+
+(defn- do-with-registered-sample-path!
+  "Call `f` with the path of a temp file registered as the bundled Sample Database, and restore the registry
+  afterwards."
+  [f]
+  (let [path     (.getPath ^java.io.File (doto (java.io.File/createTempFile "sample-database" ".sqlite")
+                                           (.deleteOnExit)))
+        registry @#'driver.settings/allowed-sqlite-paths
+        original @registry]
+    (try
+      (driver.settings/register-allowed-sqlite-path! path)
+      (f path)
+      (finally
+        (reset! registry original)))))
+
+(deftest sample-database-exemption-test
+  (testing "the bundled Sample Database may sit outside the allowed paths, but only for the flows that bind the flag"
+    (do-with-registered-sample-path!
+     (fn [sample-path]
+       (mt/with-premium-features #{}
+         (mt/with-temp-env-var-value! [mb-readable-paths "NONE" mb-writable-paths "NONE"]
+           (binding [driver.settings/*allow-testing-sqlite-connections* true]
+             (is (nil? (driver/validate-db-details! :sqlite {:db sample-path}))))
+           (testing "a user-facing endpoint does not bind it, so the path is checked like any other"
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                   (driver/validate-db-details! :sqlite {:db sample-path}))))
+           (testing "and the flag alone exempts nothing else"
+             (binding [driver.settings/*allow-testing-sqlite-connections* true]
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                     (driver/validate-db-details! :sqlite {:db "/etc/hosts"})))))))))))
+
+(deftest hosted-sqlite-path-guard-test
+  (testing "On a hosted instance, the SQLite driver only opens the registered Sample Database file (SEC-1175). A
+            Database row carrying an attacker-chosen `:db` -- e.g. from a serialization import, which never tests the
+            connection -- must not be openable by sync, which binds *allow-testing-sqlite-connections* for every DB."
+    (do-with-registered-sample-path!
+     (fn [sample-path]
+       (mt/with-premium-features #{:hosting}
+         (testing "a non-sample path is refused"
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
+                                 (driver/validate-db-details! :sqlite {:db "/etc/hosts"}))))
+         (testing "the sync binding does not let can-connect? open a non-sample file"
+           (binding [driver.settings/*allow-testing-sqlite-connections* true]
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
+                                   (driver/can-connect? :sqlite {:db "/etc/hosts"})))))
+         (testing "the Sample Database is only reachable by the internal flows that bind the flag"
+           (binding [driver.settings/*allow-testing-sqlite-connections* true]
+             (is (nil? (driver/validate-db-details! :sqlite {:db sample-path}))))
+           (testing "so a user-facing endpoint, which does not bind it, cannot create a connection to it"
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
+                                   (driver/validate-db-details! :sqlite {:db sample-path :read-only? false}))))))))))
 
 (deftest db-file-must-be-in-writable-paths-test
   ;; a connection that is not read-only can write the file (and its journal), so `writable-paths` applies as well
