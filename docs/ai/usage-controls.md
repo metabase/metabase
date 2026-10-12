@@ -63,7 +63,7 @@ The **Administrators** column always has every box checked: admins always get ev
 - **Groups add up.** A person can use a tool if any of their groups allows it.
 - **Changes apply on the next request.** Metabase checks tool access on every request, so you don't need to restart Metabase, and people don't need to reconnect their clients.
 - **Blocked tools are hidden.** Metabase leaves blocked tools out of the tool list it gives a client. If a client calls a blocked tool anyway, Metabase refuses, and tells the person to ask an admin to enable the tool under **Admin > AI > Usage controls > MCP tools access**.
-- **People with no tools can't connect.** If none of a person's groups allows any tool, their client can't connect to the MCP server.
+- **People with no tools can't connect.** People need to be in at least one group with access to tools to the MCP server.
 - **Blocking `execute_sql` also blocks saving SQL questions.** People who can't use the `execute_sql` tool can't save SQL questions with the `question_write` tool either.
 - **Tool access stays if you change plans.** If you change to a plan without AI controls, Metabase keeps applying the MCP tool access you set.
 
