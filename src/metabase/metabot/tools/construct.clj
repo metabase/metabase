@@ -18,6 +18,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -121,6 +122,10 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
+   [:show_chart {:optional true
+                 :description (str "Pass false for a query you build only to read its values with run_query: "
+                                   "the user is then shown no chart. Defaults to true.")}
+    [:maybe :boolean]]
    [:title :string]
    [:description :string]])
 
@@ -851,7 +856,7 @@
   one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
   any notable filter); it is used as the saved question's description. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization show_chart title description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -859,8 +864,32 @@
           query-result            (execute-representations-query
                                    query
                                    {:recovery-hint recovery-hints/recovery-hint})
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
+          structured              (or (:structured-output query-result) (:structured_output query-result))
+          ;; A query built only to be read needs run_query, so without it the chart is the one way the user sees
+          ;; anything and is always shown.
+          show-chart?             (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+      (cond
+        (not (and structured (:query-id structured) (:query structured)))
+        ;; query-result may already have :output (error) or only :structured-output
+        (if structured
+          (let [query-xml        (llm-shape/query->xml (structured->query-data structured))
+                instruction-text (instructions/query-created-instructions-for (:query-id structured) false)]
+            (assoc query-result
+                   :output (str "<result>\n" query-xml "\n</result>\n"
+                                "<instructions>\n" instruction-text "\n</instructions>")))
+          query-result)
+
+        (not show-chart?)
+        (let [instruction-text (te/lines
+                                "Your query has been created. The user has not been shown it."
+                                ""
+                                "Run it with `run_query` to read its values.")]
+          {:output            (str "<result>\n" (llm-shape/query->xml (structured->query-data structured)) "\n</result>\n"
+                                   "<instructions>\n" instruction-text "\n</instructions>")
+           :structured-output (assoc structured :result-type :query)
+           :instructions      instruction-text})
+
+        :else
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
@@ -890,14 +919,6 @@
                                  :title       title
                                  :description description})]
            :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s) false)]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
+           :instructions      instruction-text})))
     (catch Exception e
       (tools.u/handle-agent-or-api-error e))))
