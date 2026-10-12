@@ -1,181 +1,273 @@
-import { waitFor } from "@testing-library/react";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { getStore, mainReducers } from "__support__/entities-store";
+import { createMockSettingsState } from "__support__/state";
+import { reinitialize } from "metabase/plugins";
+import type { RouteObject } from "metabase/router";
+import { getRoutes } from "metabase/routes";
+import MetabaseSettings from "metabase/utils/settings";
+import type { TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import {
-  setupCurrentUserEndpoint,
-  setupDashboardQuestionCandidatesEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
-import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
-import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
-import { Route } from "metabase/router";
-import { createMockUser } from "metabase-types/api/mocks";
+/**
+ * The route tree must not depend on configuration: every route mounts on every
+ * instance, and what a route renders is decided when it is navigated to. The
+ * preload manifest, the router and the tests can then all treat one tree as
+ * the truth.
+ *
+ * Two ratchets hold the invariant. Both lists may only shrink; when they are
+ * empty, violations become hard failures.
+ */
 
-import { LegacyBrowseRedirect, getRoutes } from "./routes";
+/** Configuration reads while the tree is being built. Shrink to []. */
+const CONFIG_READS_DURING_BUILD: string[] = ["store.getState()"];
 
-function setupLegacyBrowseRedirect(initialRoute: string) {
-  setupCurrentUserEndpoint(createMockUser());
+/** Routes that exist only under some token features. Shrink to {[], []}. */
+const ROUTES_MOUNTED_CONDITIONALLY = {
+  onlyWithFeatures: [
+    "/admin/databases/:databaseId/destination-databases",
+    "/admin/databases/:databaseId/destination-databases/:destinationDatabaseId",
+    "/admin/databases/:databaseId/destination-databases/:destinationDatabaseId/remove",
+    "/admin/databases/:databaseId/destination-databases/create",
+    "/admin/databases/:databaseId/write-data",
+    "/admin/metabot/system-prompts/natural-language-queries",
+    "/admin/metabot/system-prompts/sql-generation",
+    "/admin/metabot/usage-controls/ai-usage-limits",
+    "/admin/metabot/usage-controls/mcp-tools-access",
+    "/admin/people/:userId/unsubscribe",
+    "/admin/people/tenants/:tenantId",
+    "/admin/people/tenants/:tenantId/deactivate",
+    "/admin/people/tenants/:tenantId/edit",
+    "/admin/people/tenants/:tenantId/reactivate",
+    "/admin/people/tenants/groups/:groupId",
+    "/admin/people/tenants/new",
+    "/admin/people/tenants/people/:userId",
+    "/admin/people/tenants/people/:userId/deactivate",
+    "/admin/people/tenants/people/:userId/edit",
+    "/admin/people/tenants/people/:userId/reactivate",
+    "/admin/people/tenants/people/:userId/reset",
+    "/admin/people/tenants/people/:userId/success",
+    "/admin/people/tenants/people/:userId/unsubscribe",
+    "/admin/people/tenants/people/new",
+    "/admin/people/tenants/user-strategy",
+    "/admin/people/user-strategy",
+    "/admin/permissions/application",
+    "/admin/permissions/data/database/:databaseId/impersonated/group/:groupId",
+    "/admin/permissions/data/database/:databaseId/schema/:schemaName/impersonated/group/:groupId",
+    "/admin/permissions/data/database/:databaseId/schema/:schemaName/segmented/group/:groupId",
+    "/admin/permissions/data/database/:databaseId/schema/:schemaName/table/:tableId/impersonated/group/:groupId",
+    "/admin/permissions/data/database/:databaseId/schema/:schemaName/table/:tableId/segmented/group/:groupId",
+    "/admin/permissions/data/database/:databaseId/segmented/group/:groupId",
+    "/admin/permissions/data/database/:databaseId/table/:tableId/impersonated/group/:groupId",
+    "/admin/permissions/data/database/:databaseId/table/:tableId/segmented/group/:groupId",
+    "/admin/permissions/data/database/impersonated/group/:groupId",
+    "/admin/permissions/data/database/segmented/group/:groupId",
+    "/admin/permissions/data/group/:groupId/:tableId/segmented",
+    "/admin/permissions/data/group/:groupId/database/:databaseId/:tableId/segmented",
+    "/admin/permissions/data/group/:groupId/database/:databaseId/impersonated/database/:impersonatedDatabaseId",
+    "/admin/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName/:tableId/segmented",
+    "/admin/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName/impersonated/database/:impersonatedDatabaseId",
+    "/admin/permissions/data/group/:groupId/impersonated/database/:impersonatedDatabaseId",
+    "/admin/permissions/data/group/:tableId/segmented",
+    "/admin/permissions/data/group/impersonated/database/:impersonatedDatabaseId",
+    "/admin/permissions/tenant-collections",
+    "/admin/permissions/tenant-collections/:collectionId",
+    "/admin/permissions/tenant-specific-collections",
+    "/admin/permissions/tenant-specific-collections/:collectionId",
+    "/admin/security-center",
+    "/apps/:name",
+    "/apps/:name/*",
+    "/browse/databases/:dbId/tables/:tableId/edit/:objectId?",
+    "/collection/:slug/cleanup",
+    "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies",
+    "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies",
+    "/data-studio/library/metrics",
+    "/data-studio/library/metrics/:cardId",
+    "/data-studio/library/metrics/:cardId/dependencies",
+    "/data-studio/library/metrics/:cardId/dimensions",
+    "/data-studio/library/metrics/:cardId/history",
+    "/data-studio/library/metrics/:cardId/overview",
+    "/data-studio/library/metrics/:cardId/query",
+    "/data-studio/library/metrics/new",
+    "/data-studio/library/tables",
+    "/data-studio/library/tables/:tableId",
+    "/data-studio/library/tables/:tableId/dependencies",
+    "/data-studio/library/tables/:tableId/fields",
+    "/data-studio/library/tables/:tableId/fields/:fieldId",
+    "/data-studio/library/tables/:tableId/measures",
+    "/data-studio/library/tables/:tableId/measures/:measureId",
+    "/data-studio/library/tables/:tableId/measures/:measureId/dependencies",
+    "/data-studio/library/tables/:tableId/measures/:measureId/revisions",
+    "/data-studio/library/tables/:tableId/measures/new",
+    "/data-studio/library/tables/:tableId/segments",
+    "/data-studio/library/tables/:tableId/segments/:segmentId",
+    "/data-studio/library/tables/:tableId/segments/:segmentId/dependencies",
+    "/data-studio/library/tables/:tableId/segments/:segmentId/revisions",
+    "/data-studio/library/tables/:tableId/segments/new",
+    "/data-studio/snippets/:snippetId/dependencies",
+    "/data-studio/transforms/:transformId/dependencies",
+    "/data-studio/transforms/tools",
+    "/data-studio/transforms/tools/migrate-models",
+    "/embedding/permissions/application",
+    "/embedding/permissions/data/database/:databaseId/impersonated/group/:groupId",
+    "/embedding/permissions/data/database/:databaseId/schema/:schemaName/impersonated/group/:groupId",
+    "/embedding/permissions/data/database/:databaseId/schema/:schemaName/segmented/group/:groupId",
+    "/embedding/permissions/data/database/:databaseId/schema/:schemaName/table/:tableId/impersonated/group/:groupId",
+    "/embedding/permissions/data/database/:databaseId/schema/:schemaName/table/:tableId/segmented/group/:groupId",
+    "/embedding/permissions/data/database/:databaseId/segmented/group/:groupId",
+    "/embedding/permissions/data/database/:databaseId/table/:tableId/impersonated/group/:groupId",
+    "/embedding/permissions/data/database/:databaseId/table/:tableId/segmented/group/:groupId",
+    "/embedding/permissions/data/database/impersonated/group/:groupId",
+    "/embedding/permissions/data/database/segmented/group/:groupId",
+    "/embedding/permissions/data/group/:groupId/:tableId/segmented",
+    "/embedding/permissions/data/group/:groupId/database/:databaseId/:tableId/segmented",
+    "/embedding/permissions/data/group/:groupId/database/:databaseId/impersonated/database/:impersonatedDatabaseId",
+    "/embedding/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName/:tableId/segmented",
+    "/embedding/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName/impersonated/database/:impersonatedDatabaseId",
+    "/embedding/permissions/data/group/:groupId/impersonated/database/:impersonatedDatabaseId",
+    "/embedding/permissions/data/group/:tableId/segmented",
+    "/embedding/permissions/data/group/impersonated/database/:impersonatedDatabaseId",
+    "/embedding/permissions/tenant-collections",
+    "/embedding/permissions/tenant-collections/:collectionId",
+    "/embedding/permissions/tenant-specific-collections",
+    "/embedding/permissions/tenant-specific-collections/:collectionId",
+    "/embedding/tenancy/:tenantId",
+    "/embedding/tenancy/:tenantId/deactivate",
+    "/embedding/tenancy/:tenantId/edit",
+    "/embedding/tenancy/:tenantId/reactivate",
+    "/embedding/tenancy/groups",
+    "/embedding/tenancy/groups/:groupId",
+    "/embedding/tenancy/new",
+    "/embedding/tenancy/people",
+    "/embedding/tenancy/people/:userId",
+    "/embedding/tenancy/people/:userId/deactivate",
+    "/embedding/tenancy/people/:userId/edit",
+    "/embedding/tenancy/people/:userId/reactivate",
+    "/embedding/tenancy/people/:userId/reset",
+    "/embedding/tenancy/people/:userId/success",
+    "/embedding/tenancy/people/:userId/unsubscribe",
+    "/embedding/tenancy/people/new",
+    "/embedding/tenancy/user-strategy",
+    "/metric/:cardId/dependencies",
+    "/monitor/ai-auditing",
+    "/monitor/ai-auditing/cli",
+    "/monitor/ai-auditing/cli/calls",
+    "/monitor/ai-auditing/cli/usage",
+    "/monitor/ai-auditing/conversations",
+    "/monitor/ai-auditing/conversations/:convoId",
+    "/monitor/ai-auditing/mcp",
+    "/monitor/ai-auditing/mcp/events",
+    "/monitor/ai-auditing/mcp/usage",
+    "/monitor/ai-auditing/usage",
+    "/monitor/ai-auditing/usage/:metric",
+    "/monitor/api-key-usage/events",
+    "/monitor/api-key-usage/usage",
+    "/monitor/content-diagnostics/crowded",
+    "/monitor/content-diagnostics/duplicated",
+    "/monitor/content-diagnostics/empty",
+    "/monitor/content-diagnostics/slow",
+    "/monitor/content-diagnostics/sparse",
+    "/monitor/content-diagnostics/stale",
+    "/monitor/dependency-diagnostics/broken",
+    "/monitor/dependency-diagnostics/unreferenced",
+    "/monitor/sessions/:sessionId",
+  ],
+  onlyWithoutFeatures: [
+    "/monitor/api-key-usage/*",
+    "/monitor/content-diagnostics/*",
+    "/monitor/dependency-diagnostics/*",
+    "/monitor/sessions/*",
+  ],
+};
 
-  const { router } = renderWithProviders(
-    <Route path="browse">
-      <Route path="databases/:slug" element={<div>browse databases</div>} />
-      <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
-    </Route>,
-    { withRouter: true, initialRoute },
-  );
+const featuresWith = (enabled: boolean): TokenFeatures => {
+  const pairs = Object.keys(createMockTokenFeatures()).map((feature) => [
+    feature,
+    enabled,
+  ]);
 
-  return router;
-}
+  // `fromEntries` widens the keys back to `string`, and every key here comes
+  // from the shape of the mock itself.
+  return Object.fromEntries(pairs) as TokenFeatures;
+};
 
-describe("LegacyBrowseRedirect", () => {
-  it("redirects a v48-era /browse/<dbId>-<slug> url onto /browse/databases", async () => {
-    const router = setupLegacyBrowseRedirect("/browse/5-orders");
-
-    await waitFor(() =>
-      expect(router?.location.pathname).toBe("/browse/databases/5-orders"),
-    );
-    expect(screen.getByText("browse databases")).toBeInTheDocument();
+const storeFor = (tokenFeatures: TokenFeatures) => {
+  const store = getStore(mainReducers, {
+    settings: createMockSettingsState({ "token-features": tokenFeatures }),
   });
 
-  it("does not redirect a segment without the legacy hyphenated shape", async () => {
-    const router = setupLegacyBrowseRedirect("/browse/orders");
+  // The test store satisfies `getRoutes` at runtime but not on paper.
+  return store as unknown as Parameters<typeof getRoutes>[0];
+};
 
-    expect(router?.location.pathname).toBe("/browse/orders");
-  });
-});
+const treeFor = (tokenFeatures: TokenFeatures) => {
+  // Plugins write their slots once, at init, reading MetabaseSettings, so the
+  // features have to be in place before they re-register.
+  MetabaseSettings.set("token-features", tokenFeatures);
+  reinitialize();
+  setupEnterprisePlugins();
 
-jest.mock("metabase/AppComponent", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    __esModule: true,
-    App: () => <Outlet />,
-  };
-});
+  return getRoutes(storeFor(tokenFeatures));
+};
 
-jest.mock("metabase/common/components/NotFoundFallbackPage", () => ({
-  NotFoundFallbackPage: () => null,
-}));
+const patternsOf = (
+  routes: RouteObject[],
+  prefix = "",
+  found = new Set<string>(),
+) => {
+  for (const route of routes) {
+    const path = route.path ?? "";
+    const here = path.startsWith("/")
+      ? path
+      : `${prefix}/${path}`.replace(/\/{2,}/g, "/").replace(/\/$/, "") || "/";
+    found.add(here);
+    patternsOf(route.children ?? [], here === "/" ? "" : here, found);
+  }
+  return found;
+};
 
-let mockRenderMonitorOutlet = false;
-
-jest.mock("metabase/monitor/components/MonitorLayout", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    MonitorLayout: () => (mockRenderMonitorOutlet ? <Outlet /> : null),
-  };
-});
-
-jest.mock("metabase/collections/components/CollectionLanding", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return { __esModule: true, default: () => <Outlet /> };
-});
-
-function setupAppRoutes({
-  initialRoute,
-  user = createMockUser({ is_superuser: true }),
-}: {
-  initialRoute: string;
-  user?: ReturnType<typeof createMockUser>;
-}) {
-  const { router } = renderRoutes(getRoutes, {
-    initialRoute,
-    storeInitialState: { currentUser: user },
-  });
-  return { router };
-}
-
-describe("application routes", () => {
-  afterEach(() => {
-    mockRenderMonitorOutlet = false;
+describe("the route tree is the same on every instance", () => {
+  it("reads no configuration while it is built", () => {
+    const tokenFeatures = featuresWith(false);
+    MetabaseSettings.set("token-features", tokenFeatures);
     reinitialize();
+    setupEnterprisePlugins();
+
+    const store = storeFor(tokenFeatures);
+    const reads: string[] = [];
+
+    const settingsSpy = jest
+      .spyOn(MetabaseSettings, "get")
+      .mockImplementation((key) => {
+        reads.push(`MetabaseSettings.get("${String(key)}")`);
+        return undefined;
+      });
+    const stateSpy = jest.spyOn(store, "getState");
+
+    try {
+      getRoutes(store);
+    } finally {
+      settingsSpy.mockRestore();
+    }
+    if (stateSpy.mock.calls.length > 0) {
+      reads.push("store.getState()");
+    }
+    stateSpy.mockRestore();
+
+    expect([...new Set(reads)].sort()).toEqual(CONFIG_READS_DURING_BUILD);
   });
 
-  describe("legacy Admin Tools redirects", () => {
-    it.each([
-      ["/admin/tools/tasks", "/monitor/tasks"],
-      ["/admin/tools/tasks/list", "/monitor/tasks/list"],
-      ["/admin/tools/tasks/list/42", "/monitor/tasks/list/42"],
-      ["/admin/tools/tasks/runs", "/monitor/tasks/runs"],
-      ["/admin/tools/tasks/runs/7", "/monitor/tasks/runs/7"],
-      ["/admin/tools/jobs", "/monitor/jobs"],
-      ["/admin/tools/jobs/sync", "/monitor/jobs/sync"],
-      ["/admin/tools/logs", "/monitor/logs"],
-      ["/admin/tools/logs/levels", "/monitor/logs/levels"],
-      ["/admin/tools/errors", "/monitor/errors"],
-      ["/admin/tools/model-caching", "/monitor/model-persistence-log"],
-      ["/admin/tools/model-caching/9", "/monitor/model-persistence-log/9"],
-      ["/admin/tools/notifications", "/monitor/notifications"],
-      ["/admin/tools/notifications/13", "/monitor/notifications/13"],
-    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
-      const { router } = setupAppRoutes({ initialRoute });
+  it("mounts the same routes with and without token features", () => {
+    const withoutFeatures = patternsOf(treeFor(featuresWith(false)));
+    const withFeatures = patternsOf(treeFor(featuresWith(true)));
 
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe(expectedPathname);
-      });
-    });
-
-    it("redirects the legacy Admin Tools index to the Monitor index", async () => {
-      const { router } = setupAppRoutes({ initialRoute: "/admin/tools" });
-
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe("/monitor");
-      });
-    });
-  });
-
-  describe("legacy AI Auditing redirects", () => {
-    it.each([
-      ["/admin/metabot/usage-auditing", "/monitor/ai-auditing/usage"],
-      [
-        "/admin/metabot/usage-auditing/conversations",
-        "/monitor/ai-auditing/conversations",
-      ],
-      [
-        "/admin/metabot/usage-auditing/conversations/42",
-        "/monitor/ai-auditing/conversations/42",
-      ],
-      ["/admin/metabot/usage-auditing/mcp", "/monitor/ai-auditing/mcp"],
-      ["/admin/metabot/usage-auditing/cli", "/monitor/ai-auditing/cli"],
-    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
-      const { router } = setupAppRoutes({ initialRoute });
-
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe(expectedPathname);
-      });
-    });
-
-    it("applies the AI Auditing guard after redirecting", async () => {
-      mockRenderMonitorOutlet = true;
-      PLUGIN_AUDIT.isAiAuditingEnabled = true;
-      PLUGIN_AUDIT.getAiAuditingRoutes = () => (
-        <Route path="usage" element={<div>AI Auditing</div>} />
-      );
-
-      const { router } = setupAppRoutes({
-        initialRoute: "/admin/metabot/usage-auditing",
-        user: createMockUser({ is_data_analyst: true }),
-      });
-
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe("/unauthorized");
-      });
-    });
-  });
-});
-
-describe("collection modal routes", () => {
-  it("renders the move-questions-into-dashboards modal with a single dialog", async () => {
-    setupUserKeyValueEndpoints({
-      namespace: "user_acknowledgement",
-      key: "dashboard_question_migration_info_modal",
-      value: false,
-    });
-    setupDashboardQuestionCandidatesEndpoint([]);
-
-    setupAppRoutes({ initialRoute: "/collection/1/move-questions-dashboard" });
-
-    expect(
-      await screen.findByText("Move questions into their dashboards?"),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    const received = {
+      onlyWithFeatures: [...withFeatures]
+        .filter((route) => !withoutFeatures.has(route))
+        .sort(),
+      onlyWithoutFeatures: [...withoutFeatures]
+        .filter((route) => !withFeatures.has(route))
+        .sort(),
+    };
+    expect(received).toEqual(ROUTES_MOUNTED_CONDITIONALLY);
   });
 });
