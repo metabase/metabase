@@ -2,13 +2,17 @@ import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  type ModalComponentProps,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Badge, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedComponent } from "metabase-enterprise/settings/feature-gated-route";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 import { getDateFilterValue } from "./CleanupCollectionModal/utils";
@@ -18,6 +22,14 @@ import { canCleanUp } from "./utils";
  * Initialize clean_up plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  PLUGIN_COLLECTIONS.cleanUpRoute = modalRoute(
+    "cleanup",
+    featureGatedComponent<ModalComponentProps>(
+      "collection_cleanup",
+      CleanupCollectionModal,
+    ),
+  );
+
   if (hasPremiumFeature("collection_cleanup")) {
     PLUGIN_COLLECTIONS.canCleanUp = canCleanUp;
 
@@ -78,10 +90,5 @@ export function initializePlugin() {
         ],
       };
     };
-
-    PLUGIN_COLLECTIONS.cleanUpRoute = modalRoute(
-      "cleanup",
-      CleanupCollectionModal,
-    );
   }
 }
