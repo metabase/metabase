@@ -155,14 +155,9 @@ export function getDataStudioTransformRoutes() {
       <Route path=":transformId/settings" lazy={transformSettingsPage} />
       <Route path=":transformId/indexes" lazy={transformIndexesPage} />
       {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path=":transformId/dependencies"
-          lazy={transformDependenciesPage}
-        >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
-        </Route>
-      )}
+      <Route path=":transformId/dependencies" lazy={transformDependenciesPage}>
+        <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+      </Route>
       {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}
       {PLUGIN_REPLACEMENT.getTransformToolsRoutes()}
     </Route>
