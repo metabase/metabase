@@ -108,7 +108,10 @@ function resolveForeignColumnRef(
         type,
         id,
         column,
-        reason: "query-failed",
+        reason:
+          result.error_type === "too-many-rows"
+            ? "too-many-rows"
+            : "query-failed",
         message: result.error,
       },
     };

@@ -110,9 +110,10 @@
         (if (> (count (:rows data)) max-rows)
           (do
             (log/warnf "Referenced %s %s returned more than the requested %s row(s)" entity-type id max-rows)
-            {:status "failed"
-             :error  (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
-                          entity-type id max-rows)})
+            {:status     "failed"
+             :error_type "too-many-rows"
+             :error      (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
+                              entity-type id max-rows)})
           {:status "completed"
            :data   (-> data
                        (perf/select-keys [:cols :rows])
