@@ -1,14 +1,15 @@
 import type { ComponentType, ReactNode } from "react";
 
 import { definePluginSlot } from "../slot";
+import type { PluginRoute } from "../types";
 
 type MonitorPlugin = {
   isContentDiagnosticsEnabled: boolean;
   getContentDiagnosticsRoutes: () => ReactNode;
   isDependencyDiagnosticsEnabled: boolean;
   getDependencyDiagnosticsRoutes: () => ReactNode;
-  isSessionManagementEnabled: boolean;
-  getSessionManagementRoutes: () => ReactNode;
+  sessionsPage?: PluginRoute;
+  sessionsCatchAllPage?: PluginRoute;
   isApiKeyUsageEnabled: boolean;
   getApiKeyUsageRoutes: () => ReactNode;
 };
@@ -18,8 +19,6 @@ const getDefaultPluginMonitor = (): MonitorPlugin => ({
   getContentDiagnosticsRoutes: () => null,
   isDependencyDiagnosticsEnabled: false,
   getDependencyDiagnosticsRoutes: () => null,
-  isSessionManagementEnabled: false,
-  getSessionManagementRoutes: () => null,
   isApiKeyUsageEnabled: false,
   getApiKeyUsageRoutes: () => null,
 });
