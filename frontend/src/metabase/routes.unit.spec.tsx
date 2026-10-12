@@ -330,24 +330,11 @@ describe("collection modal routes", () => {
  * preload manifest, the router and the tests can then all treat one tree as
  * the truth.
  *
- * Two ratchets hold the invariant. Both lists may only shrink; when they are
- * empty, violations become hard failures.
+ * To make a route's page depend on a feature, gate it at render time instead of
+ * mounting it conditionally: `featureGatedRoute` for a lazy route,
+ * `featureGatedComponent` for an eager element, or a guard component that
+ * renders an `Outlet` or `NotFound` for a runtime setting.
  */
-
-/** Configuration reads while the tree is being built. Shrink to []. */
-const CONFIG_READS_DURING_BUILD: string[] = ["store.getState()"];
-
-/**
- * How many routes mount conditionally today. Two integers rather than a route
- * inventory: the routes are not the debt, the conditional mounting sites are,
- * so a list here would churn on every rename inside a gated subtree. The
- * numbers may only go down; lower them as sites migrate. A failure names
- * counts, not routes, so on growth diff the two pattern sets locally.
- */
-const CONDITIONAL_MOUNTS_BUDGET = {
-  onlyWithFeatures: 44,
-  onlyWithoutFeatures: 0,
-};
 
 const featuresWith = (enabled: boolean): TokenFeatures => {
   const pairs = Object.keys(createMockTokenFeatures()).map((feature) => [
@@ -423,7 +410,7 @@ describe("the route tree is the same on every instance", () => {
     }
     stateSpy.mockRestore();
 
-    expect([...new Set(reads)].sort()).toEqual(CONFIG_READS_DURING_BUILD);
+    expect([...new Set(reads)].sort()).toEqual([]);
   });
 
   it("mounts the same routes with and without token features", () => {
@@ -437,18 +424,7 @@ describe("the route tree is the same on every instance", () => {
       (route) => !withFeatures.has(route),
     );
 
-    if (process.env.DUMP_CONDITIONAL_MOUNTS) {
-      fs.writeFileSync(
-        process.env.DUMP_CONDITIONAL_MOUNTS,
-        JSON.stringify({ onlyWithFeatures, onlyWithoutFeatures }, null, 2),
-      );
-    }
-
-    expect(onlyWithFeatures.length).toBeLessThanOrEqual(
-      CONDITIONAL_MOUNTS_BUDGET.onlyWithFeatures,
-    );
-    expect(onlyWithoutFeatures.length).toBeLessThanOrEqual(
-      CONDITIONAL_MOUNTS_BUDGET.onlyWithoutFeatures,
-    );
+    expect(onlyWithFeatures).toEqual([]);
+    expect(onlyWithoutFeatures).toEqual([]);
   });
 });

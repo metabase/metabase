@@ -1,14 +1,11 @@
-import type { Store } from "@reduxjs/toolkit";
-
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_MULTI_FACTOR_AUTH,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { Outlet, Route, redirect } from "metabase/router";
-import { getSetting } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import { SettingsPageGuard } from "./settings/SettingsPageGuard";
@@ -179,12 +176,13 @@ const cloudSettings = () =>
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CloudSettingsPage"
   ).then(({ CloudSettingsPage }) => ({ Component: CloudSettingsPage }));
 
-export const getSettingsRoutes = (store: Store<State>) => {
-  const devModeEnabled = getSetting(
-    store.getState(),
-    "custom-viz-plugin-dev-mode-enabled",
-  );
+/** Renders its children only while the custom viz dev mode setting is on. */
+function RequireCustomVizDevMode() {
+  const devModeEnabled = useSetting("custom-viz-plugin-dev-mode-enabled");
+  return devModeEnabled ? <Outlet /> : <NotFound />;
+}
 
+export const getSettingsRoutes = () => {
   return (
     <Route lazy={settingsLayout}>
       <Route element={<SettingsPageGuard />}>
@@ -238,9 +236,9 @@ export const getSettingsRoutes = (store: Store<State>) => {
           <Route index lazy={customVisualizationsManage} />
           <Route path="new" lazy={customVisualizationsForm} />
           <Route path="edit/:id" lazy={customVisualizationsForm} />
-          {devModeEnabled && (
+          <Route element={<RequireCustomVizDevMode />}>
             <Route path="development" lazy={customVisualizationsDevelopment} />
-          )}
+          </Route>
         </Route>
         <Route path={Urls.DATA_APP_URL_SEGMENT}>
           <Route index lazy={dataAppsManage} />

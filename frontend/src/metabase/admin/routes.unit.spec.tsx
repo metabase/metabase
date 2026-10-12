@@ -1,7 +1,5 @@
 import { type ReactNode, isValidElement } from "react";
 
-import { getStore, mainReducers } from "__support__/entities-store";
-import { createMockSettingsState } from "__support__/state";
 import { type RouteObject, toRouteObjects } from "metabase/router";
 
 import { getRoutes } from "./routes";
@@ -67,19 +65,9 @@ function isRetiredEmbeddingPath(path: string) {
 
 const Guard = () => null;
 
-// A real store: `getRoutes` reads a setting off it to decide whether the custom
-// visualisation development route exists at all.
-function createStore() {
-  return getStore(mainReducers, {
-    settings: createMockSettingsState({
-      "custom-viz-plugin-dev-mode-enabled": true,
-    }),
-  });
-}
-
 describe("admin routes", () => {
   it("resolves every page in the admin tree", async () => {
-    const loaders = lazyLoaders(getRoutes(createStore(), Guard, Guard));
+    const loaders = lazyLoaders(getRoutes(Guard, Guard));
 
     expect(loaders.length).toBeGreaterThan(30);
 
@@ -89,7 +77,7 @@ describe("admin routes", () => {
   });
 
   it("redirects every retired embedding path to its hub equivalent", () => {
-    const targets = navigationTargets(getRoutes(createStore(), Guard, Guard));
+    const targets = navigationTargets(getRoutes(Guard, Guard));
 
     expect(targets).toMatchObject({
       "/admin/embedding": "/embedding/security",
@@ -115,7 +103,7 @@ describe("admin routes", () => {
   });
 
   it("sends every retired embedding path straight to the hub, never to another redirect", () => {
-    const targets = navigationTargets(getRoutes(createStore(), Guard, Guard));
+    const targets = navigationTargets(getRoutes(Guard, Guard));
 
     const chained = Object.entries(targets).filter(
       ([path, to]) => isRetiredEmbeddingPath(path) && targets[to] !== undefined,
@@ -125,7 +113,7 @@ describe("admin routes", () => {
   });
 
   it("resolves every page in the settings tree", async () => {
-    const loaders = lazyLoaders(getSettingsRoutes(createStore()));
+    const loaders = lazyLoaders(getSettingsRoutes());
 
     expect(loaders.length).toBeGreaterThan(20);
 
