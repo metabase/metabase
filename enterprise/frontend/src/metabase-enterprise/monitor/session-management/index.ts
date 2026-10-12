@@ -1,8 +1,7 @@
 import { PLUGIN_MONITOR } from "metabase/plugins";
 
-import { sessionManagementCatchAllPage, sessionManagementPage } from "./routes";
+import { getSessionsRoutes } from "./routes";
 
 export function initializePlugin() {
-  PLUGIN_MONITOR.sessionsPage = sessionManagementPage;
-  PLUGIN_MONITOR.sessionsCatchAllPage = sessionManagementCatchAllPage;
+  PLUGIN_MONITOR.getSessionsRoutes = getSessionsRoutes;
 }

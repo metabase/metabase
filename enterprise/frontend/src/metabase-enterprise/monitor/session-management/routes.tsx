@@ -1,6 +1,6 @@
-import { NotFound } from "metabase/common/components/ErrorPages";
 import { sessionManagementUpsellPage } from "metabase/monitor/routes";
-import type { PluginRoute } from "metabase/plugins/types";
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
+import { Route } from "metabase/router";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 const sessionsPage = () =>
@@ -10,21 +10,25 @@ const sessionsPage = () =>
     Component: SessionsPage,
   }));
 
-const notFoundPage: PluginRoute = async () => ({ Component: NotFound });
-
-export const sessionManagementPage = featureGatedRoute(
+const sessionPage = featureGatedRoute(
   "session-management",
   sessionsPage,
   sessionManagementUpsellPage,
 );
 
-/**
- * With the feature, an unknown URL under /monitor/sessions is a 404 the same
- * way it is under any other monitor section. Without it, every sessions URL
- * is the upsell.
- */
-export const sessionManagementCatchAllPage = featureGatedRoute(
-  "session-management",
-  notFoundPage,
-  sessionManagementUpsellPage,
-);
+export function getSessionsRoutes() {
+  return (
+    <>
+      <Route index lazy={sessionPage} />
+      <Route path=":sessionId" lazy={sessionPage} />
+      <Route
+        path="*"
+        lazy={featureGatedRoute(
+          "session-management",
+          notFoundRoute,
+          sessionManagementUpsellPage,
+        )}
+      />
+    </>
+  );
+}
