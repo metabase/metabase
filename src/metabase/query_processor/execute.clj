@@ -1,5 +1,6 @@
 (ns metabase.query-processor.execute
   (:require
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
@@ -26,6 +27,29 @@
                      (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled) query)))))]
       (qp query rff*))))
 
+(defn- dissoc-native-form [result]
+  (cond-> result
+    (map? result) (m/dissoc-in [:data :native_form])))
+
+(mu/defn- remove-native-form-without-native-perms :- ::qp.schema/qp
+  "Remove `:native_form` from the results unless the current user has ad-hoc native query perms for the query's
+  database. Without them, the compiled query could leak things the user can't otherwise see, e.g. a sandbox's
+  injected filter, a sandbox Card's SQL, or the login attribute values bound into it.
+
+  This runs outside the cache middleware, so cached results (which include the `:native_form` of whoever ran the query
+  originally) are stripped as well."
+  [qp :- ::qp.schema/qp]
+  (fn [query rff]
+    (if (qp.perms/current-user-has-adhoc-native-query-perms? query)
+      (qp query rff)
+      (letfn [(rff* [metadata]
+                (let [rf (rff (dissoc metadata :native_form))]
+                  (fn
+                    ([] (rf))
+                    ([result] (dissoc-native-form (rf (dissoc-native-form result))))
+                    ([acc row] (rf acc row)))))]
+        (qp query rff*)))))
+
 (def ^:private middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
@@ -45,6 +69,7 @@
    #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata
    #'cache/maybe-return-cached-results
+   #'remove-native-form-without-native-perms
    #'qp.perms/check-query-permissions
    #'qp.middleware.enterprise/check-download-permissions-middleware])
 
