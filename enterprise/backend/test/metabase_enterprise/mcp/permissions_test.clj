@@ -5,6 +5,7 @@
    [metabase-enterprise.mcp.db :as mcp.db]
    [metabase-enterprise.mcp.permissions]
    [metabase-enterprise.mcp.test-util :as mcp.tu]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util]
@@ -168,3 +169,25 @@
                   (let [result (save! "EE Allowed Native Q")]
                     (is (not (:isError result)) (-> result :content first :text))
                     (is (= 1 (t2/count :model/Card :name "EE Allowed Native Q")))))))))))))
+
+(deftest rows-denying-every-tool-of-a-scope-turn-it-off-test
+  (testing "a scope whose every tool the user's groups deny is reported as turned off, read from the rows, so the
+            consent page can say so"
+    (mt/with-premium-features #{:ai-controls}
+      (mcp.tu/with-group-level-mode
+        (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                       :model/PermissionsGroupMembership _              {:group_id group-id
+                                                                         :user_id  (mt/user->id :rasta)}
+                       :model/McpGroupPermission         _              {:group_id    group-id
+                                                                         :mcp_enabled true
+                                                                         :tool_access {"execute_sql" "no"}}]
+          (let [scopes ["agent:content:read" "agent:sql:run" "agent:resource:read"]]
+            (mt/with-current-user (mt/user->id :rasta)
+              (testing "execute_sql denied: its scope is off; a scope with allowed tools, or with no tools, is not"
+                (is (= #{"agent:sql:run"} (mcp/scopes-turned-off-for-current-user scopes))))
+              (testing "allowed once the row says so"
+                (t2/update! :model/McpGroupPermission {:group_id group-id} {:tool_access {"execute_sql" "yes"}})
+                (is (= #{} (mcp/scopes-turned-off-for-current-user scopes)))))
+            (testing "a superuser's policy is unrestricted, so nothing is off for them"
+              (mt/with-current-user (mt/user->id :crowberto)
+                (is (= #{} (mcp/scopes-turned-off-for-current-user scopes)))))))))))

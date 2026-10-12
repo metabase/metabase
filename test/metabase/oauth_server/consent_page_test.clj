@@ -200,6 +200,18 @@
   (testing "no always-granted note when nothing is locked"
     (is (not (re-find #"Always granted" (render-with-scopes! (rest checkbox-scopes)))))))
 
+(deftest consent-page-turned-off-scope-test
+  (testing "a scope an admin turned off says so in its own row, but stays ticked and enabled, so granting it lets its
+            tools work as soon as the admin turns them back on"
+    (let [html     (render-with-scopes! (assoc-in checkbox-scopes [1 :turned-off?] true))
+          [_ sql]  (checkbox-tags html)]
+      (is (tag-has-attribute? sql "checked"))
+      (is (not (tag-has-attribute? sql "disabled")))
+      (is (re-find #"(?s)value=\"agent:sql:run\"(?:(?!</li>).)*Turned off by an admin" html)
+          "the note sits in the turned-off scope's row")))
+  (testing "no turned-off note when nothing is turned off"
+    (is (not (re-find #"Turned off by an admin" (render-with-scopes! checkbox-scopes))))))
+
 (deftest consent-page-full-access-warning-placement-test
   (testing "GHY-4555: the full-access warning sits in the full-access scope's own row, next to its checkbox"
     (let [html (render-with-scopes! checkbox-scopes)]

@@ -2520,3 +2520,21 @@
             (let [response (authorize not-mcp)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
+
+(deftest consent-page-notes-raw-sql-turned-off-test
+  (testing "with raw SQL turned off on the instance, the consent page says so on the `agent:sql:run` row and nowhere
+            else, while still offering it, so the grant works the moment an admin turns raw SQL back on"
+    (doseq [[sql-enabled? expected-notes] [[false 1] [true 0]]]
+      (testing (str "mcp-execute-sql-enabled " sql-enabled?)
+        (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                           oauth-server-dynamic-registration-enabled true
+                                           mcp-execute-sql-enabled                   sql-enabled?]
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (let [client (register-mcp-client! {})
+                  page   (get-mcp-consent-page! (:client_id client) all-v2-scopes)
+                  body   (:body page)]
+              (is (= 200 (:status page)))
+              (is (contains? (set (offered-scopes page)) "agent:sql:run"))
+              (is (= expected-notes (count (re-seq #"Turned off by an admin" body))))
+              (when-not sql-enabled?
+                (is (re-find #"(?s)value=\"agent:sql:run\"(?:(?!</li>).)*Turned off by an admin" body))))))))))
