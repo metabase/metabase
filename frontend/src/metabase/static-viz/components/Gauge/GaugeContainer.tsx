@@ -7,7 +7,7 @@ import {
   getSegmentsRange,
   getValue,
 } from "metabase/visualizations/visualizations/Gauge/utils";
-import { type GoalData, resolveGoalSegments } from "metabase/viz-core";
+import type { GoalData } from "metabase/viz-core";
 import { truncateText } from "metabase/viz-core";
 
 import Gauge from "./Gauge";
@@ -31,6 +31,7 @@ import {
   gaugeSorter,
   populateDefaultColumnSettings,
   removeDuplicateElements,
+  resolveGaugeSegments,
 } from "./utils";
 
 export interface GaugeContainerProps {
@@ -52,7 +53,7 @@ export default function GaugeContainer({
     settings.column_settings &&
     populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
   const goalSegments = settings["gauge.segments"];
-  const segments = resolveGoalSegments(data, goalSegments, getColor)
+  const segments = resolveGaugeSegments(data, goalSegments, getColor)
     .map(fixSwappedMinMax)
     .sort(gaugeSorter);
   const range = getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;

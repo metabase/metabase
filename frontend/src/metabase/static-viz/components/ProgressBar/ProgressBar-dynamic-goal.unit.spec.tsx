@@ -68,13 +68,15 @@ describe("static progress chart with a dynamic goal", () => {
     expect(root).toHaveTextContent("Goal 250");
   });
 
-  it.each([
-    ["has not answered", undefined],
-    ["reports as failed", createMockFailedReferencedEntitiesResults()],
-  ])(
-    "measures progress against a goal of 0 for a reference the dataset %s",
-    (_name, referencedEntities) => {
-      expect(setup({ referencedEntities })).toHaveTextContent("Goal 0");
-    },
-  );
+  it("measures progress against a goal of 0 for a reference the dataset has not answered", () => {
+    expect(setup()).toHaveTextContent("Goal 0");
+  });
+
+  it("measures progress against a goal of 0 for a reference the dataset reports as failed", () => {
+    const root = setup({
+      referencedEntities: createMockFailedReferencedEntitiesResults(),
+    });
+
+    expect(root).toHaveTextContent("Goal 0");
+  });
 });

@@ -12,7 +12,7 @@ type GoalWarningIconProps = {
 };
 
 export function GoalWarningIcon({ errors }: GoalWarningIconProps) {
-  const messages = _.uniq(errors.map(getGoalErrorMessage));
+  const messages = _.uniq(errors.map((error) => getGoalErrorMessage(error)));
 
   return (
     <Tooltip

@@ -409,7 +409,7 @@
       "42%"
       ""
       nil))
-  (testing "a bound that can't resolve counts as unset, like in the app"
+  (testing "a bound that can't resolve counts as unset, leaving the range open-ended on that side"
     (are [segments] (str/includes? (scalar-style (scalar-results segments)) segment-color)
       [{:min 0 :max "nope" :color segment-color}]
       [{:min 0 :max {:id 1 :type "card" :column "count"} :color segment-color}])

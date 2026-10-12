@@ -421,26 +421,35 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
   });
 
-  it.each([
-    ["the cell is null", [[null]]],
-    ["the question returned no rows", []],
-  ])(
-    "renders the value with a warning in the query builder when a self-column range's %s",
-    async (_name, rows) => {
-      setup(
-        createScalarSeries({ rows }),
-        [{ min: "count", max: null, color: "green", label: "above goal" }],
-        { isQueryBuilder: true },
-      );
+  it("renders the value with a warning in the query builder when a self-column range's cell is null", async () => {
+    setup(
+      createScalarSeries({ rows: [[null]] }),
+      [{ min: "count", max: null, color: "green", label: "above goal" }],
+      { isQueryBuilder: true },
+    );
 
-      expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
+    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
 
-      await userEvent.hover(screen.getByLabelText("Goal warning"));
-      expect(
-        await screen.findByText("This value isn't a number"),
-      ).toBeInTheDocument();
-    },
-  );
+    await userEvent.hover(screen.getByLabelText("Goal warning"));
+    expect(
+      await screen.findByText("This value isn't a number"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the value with a warning in the query builder when a self-column range's question returned no rows", async () => {
+    setup(
+      createScalarSeries({ rows: [] }),
+      [{ min: "count", max: null, color: "green", label: "above goal" }],
+      { isQueryBuilder: true },
+    );
+
+    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
+
+    await userEvent.hover(screen.getByLabelText("Goal warning"));
+    expect(
+      await screen.findByText("This value isn't a number"),
+    ).toBeInTheDocument();
+  });
 
   it("colors the value as if a bound that failed to load were unset, with a warning in the query builder", async () => {
     setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS, {

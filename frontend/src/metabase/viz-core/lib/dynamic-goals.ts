@@ -5,6 +5,7 @@ import { color } from "metabase/ui/colors";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
   CardId,
+  CardType,
   GoalForeignColumnRef,
   GoalForeignEntityRef,
   GoalSegment,
@@ -108,7 +109,10 @@ function resolveForeignColumnRef(
         type,
         id,
         column,
-        reason: "query-failed",
+        reason:
+          result.error_type === "too-many-rows"
+            ? "too-many-rows"
+            : "query-failed",
         message: result.error,
       },
     };
@@ -182,11 +186,32 @@ export function isDynamicGoalSetting(
   return getDynamicGoalSettingKeys(display).includes(key);
 }
 
-export const getGoalErrorMessage = ({ reason, message }: GoalRefError) =>
+type GoalSourceKind = CardType | "measure";
+
+export const getGoalErrorMessage = (
+  { reason, message }: GoalRefError,
+  sourceKind?: GoalSourceKind,
+) =>
   match(reason)
     .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("too-many-rows", () => getTooManyRowsMessage(sourceKind))
     .with("column-not-found", () => t`This column no longer exists`)
     .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+
+const getTooManyRowsMessage = (sourceKind: GoalSourceKind | undefined) =>
+  match(sourceKind)
+    .with(
+      "question",
+      () => t`The question's result must be a single value or row.`,
+    )
+    .with("model", () => t`The model's result must be a single value or row.`)
+    .with("metric", () => t`The metric's result must be a single value or row.`)
+    .with(
+      "measure",
+      () => t`The measure's result must be a single value or row.`,
+    )
+    .with(undefined, () => t`The result must be a single value or row.`)
     .exhaustive();
 
 function isGoalSettingActive(
