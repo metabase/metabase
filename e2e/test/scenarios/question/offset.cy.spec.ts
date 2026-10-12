@@ -11,12 +11,6 @@ import type {
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const ORDERS_ID_FIELD_REF: FieldReference = [
-  "field",
-  ORDERS.ID,
-  { "base-type": "type/BigInteger" },
-];
-
 const ORDERS_TOTAL_FIELD_REF: FieldReference = [
   "field",
   ORDERS.TOTAL,
@@ -47,42 +41,17 @@ describe("scenarios > question > offset", () => {
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
-  describe("custom columns", () => {
-    it("does not suggest or allow using offset()", () => {
-      const expression = "Offset([Total], -1)";
+  describe("aggregations", () => {
+    it("suggests and allows using offset(), but not in filters or custom columns", () => {
+      const filterExpression = "Offset([Total], -1) > 0";
+      const customColumnExpression = "Offset([Total], -1)";
+      const expression = "Offset(Sum([Total]), -1)";
       const prefixLength = 3;
-      const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
-        limit: 5,
-        "order-by": [["asc", ORDERS_TOTAL_FIELD_REF]],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
-      H.openNotebook();
-      cy.button("Custom column").click();
-      H.enterCustomColumnDetails({ formula: prefix });
-
-      cy.log("does not suggest offset() in custom columns");
-      H.CustomExpressionEditor.completions().should("not.exist");
-
-      H.enterCustomColumnDetails({ formula: expression });
-      cy.realPress("Tab");
-
-      H.expressionEditorWidget().within(() => {
-        cy.button("Done").should("be.disabled");
-        cy.findByText("OFFSET is not supported in custom columns").should(
-          "exist",
-        );
-      });
-    });
-  });
-
-  describe("filters", () => {
-    it("does not suggest or allow using offset()", () => {
-      const expression = "Offset([Total], -1) > 0";
-      const prefixLength = 3;
+      const filterPrefix = filterExpression.substring(0, prefixLength);
+      const customColumnPrefix = customColumnExpression.substring(
+        0,
+        prefixLength,
+      );
       const prefix = expression.substring(0, prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
@@ -91,14 +60,17 @@ describe("scenarios > question > offset", () => {
 
       H.createQuestion({ query }, { visitQuestion: true });
       H.openNotebook();
+
       cy.button("Filter").click();
       H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({ formula: prefix });
+      H.enterCustomColumnDetails({ formula: filterPrefix, blur: false });
 
       cy.log("does not suggest offset() in filter expressions");
-      H.CustomExpressionEditor.completions().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .should("exist")
+        .and("not.contain", "Offset");
 
-      H.enterCustomColumnDetails({ formula: expression });
+      H.enterCustomColumnDetails({ formula: filterExpression });
       cy.realPress("Tab");
 
       H.expressionEditorWidget().within(() => {
@@ -107,21 +79,36 @@ describe("scenarios > question > offset", () => {
           "exist",
         );
       });
-    });
-  });
 
-  describe("aggregations", () => {
-    it("suggests and allows using offset()", () => {
-      const expression = "Offset(Sum([Total]), -1)";
-      const prefixLength = 3;
-      const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        limit: 5,
-      };
+      H.expressionEditorWidget().button("Cancel").click();
+      H.popover().findByText("Custom Expression").should("be.visible");
+      cy.realPress("Escape");
+      H.popover({ skipVisibilityCheck: true }).should("not.exist");
 
-      H.createQuestion({ query }, { visitQuestion: true });
-      H.openNotebook();
+      cy.button("Custom column").click();
+      H.enterCustomColumnDetails({
+        formula: customColumnPrefix,
+        blur: false,
+      });
+
+      cy.log("does not suggest offset() in custom columns");
+      H.CustomExpressionEditor.completions()
+        .should("exist")
+        .and("not.contain", "Offset");
+
+      H.enterCustomColumnDetails({ formula: customColumnExpression });
+      cy.realPress("Tab");
+
+      H.expressionEditorWidget().within(() => {
+        cy.button("Done").should("be.disabled");
+        cy.findByText("OFFSET is not supported in custom columns").should(
+          "exist",
+        );
+      });
+
+      H.expressionEditorWidget().button("Cancel").click();
+      H.expressionEditorWidget().should("not.exist");
+
       cy.button("Summarize").click();
       H.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
@@ -158,11 +145,11 @@ describe("scenarios > question > offset", () => {
 
       H.createQuestion({ query }, { visitQuestion: true });
 
-      verifyNoQuestionError();
       verifyTableContent([
         ["April 2025", ""],
         ["May 2025", "52.76"],
       ]);
+      verifyNoQuestionError();
 
       H.openNotebook();
       H.getNotebookStep("summarize").icon("play").should("be.visible");
@@ -184,19 +171,19 @@ describe("scenarios > question > offset", () => {
       addBreakout(breakoutName);
 
       H.visualize();
-      verifyNoQuestionError();
       verifyLineChart({
         xAxis: breakoutName + ": Month",
         yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
       });
+      verifyNoQuestionError();
 
       saveQuestion().then(({ response }) => {
         H.visitQuestion(response?.body.id);
-        verifyNoQuestionError();
         verifyLineChart({
           xAxis: breakoutName + ": Month",
           yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
+        verifyNoQuestionError();
       });
     });
 
@@ -244,11 +231,11 @@ describe("scenarios > question > offset", () => {
 
       H.visualize();
 
-      verifyNoQuestionError();
       verifyTableContent([
         ["April 2028", "Gadget", "15,713", "31,426.01"],
         ["September 2028", "Gadget", "15,017.31", "30,034.62"],
       ]);
+      verifyNoQuestionError();
     });
   });
 
@@ -308,6 +295,10 @@ describe("scenarios > question > offset", () => {
 
     H.echartsContainer().within(() => {
       cy.contains("January 2027").should("be.visible");
+    });
+    verifyLineChart({
+      xAxis: "Created At: Month",
+      legendItems: [metricName, "Count of orders (previous month)"],
     });
   });
 });
@@ -385,8 +376,6 @@ function verifyTableContent(dataRows: string[][]) {
   });
 
   for (const { index, text } of pairs) {
-    cy.log("index", index);
-    cy.log("text", text);
     verifyTableCellContent(index, text);
   }
 }

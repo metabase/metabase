@@ -207,9 +207,14 @@
   {:name "update-with-join"
    :sql "UPDATE users SET last_purchase = t.max_date FROM (SELECT user_id, MAX(created_at) as max_date FROM transactions GROUP BY user_id) t WHERE users.id = t.user_id"
    :dialect "postgres"
-   :expected []}
+   :expected [["transactions" "created_at"] ["transactions" "user_id"]]}
 
   {:name "delete-with-subquery"
    :sql "DELETE FROM users WHERE id IN (SELECT user_id FROM transactions WHERE total < 10)"
    :dialect "postgres"
-   :expected [["transactions" "total"] ["transactions" "user_id"]]}]}
+   :expected [["transactions" "total"] ["transactions" "user_id"]]}
+
+  {:name "clickhouse-backtick-quoted-function-name"
+   :sql "SELECT `parseDateTimeBestEffort`(ts) FROM events"
+   :dialect "clickhouse"
+   :expected [["events" "ts"]]}]}

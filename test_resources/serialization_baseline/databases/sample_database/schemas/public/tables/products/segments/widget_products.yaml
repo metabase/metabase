@@ -22,6 +22,4 @@ definition:
 entity_id: aB3kLmN9pQrStUvWxYz1a
 name: Widget Products
 serdes/meta:
-- id: aB3kLmN9pQrStUvWxYz1a
-  label: widget_products
-  model: Segment
+- model: Segment

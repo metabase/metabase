@@ -206,6 +206,7 @@
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *loading-data*
   "HACK! Whether we're loading data (e.g. in [[metabase.test.data.athena]]). We can't use `timestamp with time zone`
   literals when loading data because Athena doesn't let you use a `timestamp with time zone` value for a `timestamp`

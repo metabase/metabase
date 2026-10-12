@@ -4,6 +4,7 @@
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.models.interface :as mi]
+   [metabase.session.core :as session]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -47,9 +48,9 @@
 
 (defn revoke-support-user-access!
   "Tear down the support user's access as of `ended-at`: drop superuser, expire every AuthIdentity so the
-  time-limited password can't be used again, and delete their sessions. Called both when a grant is explicitly
-  revoked and when one simply runs out."
-  [support-user-id ended-at]
+  time-limited password can't be used again, and end their sessions, recorded as ended by `ended-by` (the revoking
+  user, or nil when the grant simply ran out). Called both when a grant is explicitly revoked and when one runs out."
+  [support-user-id ended-at ended-by]
   (let [auth-identity-ids (support-access-grants.db/auth-identity-ids-of-user support-user-id)]
     (try
       (support-access-grants.db/update-user! support-user-id {:is_superuser false})
@@ -59,11 +60,11 @@
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
       (support-access-grants.db/expire-auth-identities! auth-identity-ids ended-at))
-    (support-access-grants.db/delete-sessions-of-user! support-user-id)))
+    (session/end-sessions! {:user_id support-user-id} "support-grant-revoked" ended-by)))
 
 (t2/define-after-update :model/SupportAccessGrantLog
-  [{revoked-at :revoked_at :as grant}]
+  [{revoked-at :revoked_at, revoked-by :revoked_by_user_id, :as grant}]
   (u/prog1 grant
     (when revoked-at
       (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
-        (revoke-support-user-access! (:id support-user) revoked-at)))))
+        (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))))

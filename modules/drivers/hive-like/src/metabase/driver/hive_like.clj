@@ -263,6 +263,7 @@
   [_driver _coercion-strategy expr]
   [:to_timestamp expr (h2x/literal "yyyyMMddHHmmss")])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *inline-param-style*
   "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
   best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe

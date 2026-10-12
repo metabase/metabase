@@ -70,6 +70,9 @@ export function useModelsAndOption(
     settings["graph.y_axis.title_text"] = tc(
       settings["graph.y_axis.title_text"],
     );
+    settings["graph.y_axis.right.title_text"] = tc(
+      settings["graph.y_axis.right.title_text"],
+    );
 
     getModel = getCartesianChartModel;
     if (card.display === "waterfall") {

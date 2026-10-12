@@ -574,11 +574,26 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
  * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
  */
 export const waitForLoaderToBeRemoved = async () => {
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+  });
+};
+
+/**
+ * Waits for a dashboard to finish loading. While it loads, a dashboard renders
+ * skeletons rather than a loader, so `waitForLoaderToBeRemoved` alone returns
+ * before the dashboard is there.
+ */
+export const waitForDashboardToLoad = async () => {
   await waitFor(
     () => {
+      expect(
+        screen.queryByTestId("dashboard-grid-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-header-skeleton"),
+      ).not.toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-      // default timeout is 1s, but sometimes it's not enough and leads to flakiness,
-      // 3s should be enough
     },
     { timeout: 3000 },
   );
@@ -689,8 +704,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
+// eslint-disable-next-line import-js/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
+// eslint-disable-next-line import-js/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";

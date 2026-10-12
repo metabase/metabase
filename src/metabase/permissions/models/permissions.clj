@@ -188,11 +188,13 @@
 
 ;;; -------------------------------------------------- Dynamic Vars --------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *allow-root-entries*
   "Should we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
    when creating the default entry for `Admin`."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *allow-admin-permissions-changes*
   "Should we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."

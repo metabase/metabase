@@ -1,7 +1,7 @@
 (ns metabase.mcp.v2.tools.definitions
   "The v2 MCP `segment_write` and `measure_write` tools: authoring for the two table-attached
    MBQL macros. Both call the same domain create/update fns the REST endpoints use
-   ([[metabase.segments.api]]/[[metabase.measures.api]]), so permission enforcement — superuser
+   ([[metabase.segments.rest.api]]/[[metabase.measures.api]]), so permission enforcement — superuser
    OR data-analyst-with-unrestricted-view-data on the table, plus the table's remote-sync
    editability — is inherited, never reimplemented. The tools' own work is id resolution behind
    read checks, definition-shape handling (the bare clause form `get_content` returns, full
@@ -34,8 +34,8 @@
 #_{:clj-kondo/ignore [:metabase/modules]}
 (defn- api-fn [ns-name fn-name] (requiring-resolve (symbol ns-name fn-name)))
 
-(defn- create-segment! [body] ((api-fn "metabase.segments.api" "create-segment!") body))
-(defn- update-segment! [id body] ((api-fn "metabase.segments.api" "write-check-and-update-segment!") id body))
+(defn- create-segment! [body] ((api-fn "metabase.segments.rest.api" "create-segment!") body))
+(defn- update-segment! [id body] ((api-fn "metabase.segments.rest.api" "write-check-and-update-segment!") id body))
 (defn- create-measure! [body] ((api-fn "metabase.measures.api" "create-measure!") body))
 (defn- update-measure! [id body] ((api-fn "metabase.measures.api" "write-check-and-update-measure!") id body))
 
@@ -334,12 +334,13 @@
   single-stage query. For a full query table_id must name the definition's own source table; a mismatch is
   a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the
   table, and the table must not live in a read-only remote-synced collection."
-  {:name        "segment_write"
-   :scope       metabot.scope/agent-content-write
+  {:name           "segment_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the segment, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        segment-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           segment-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write segment-write-entry args)]
     (case (first dispatched)
@@ -402,12 +403,13 @@
   full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only:
   writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live
   in a read-only remote-synced collection."
-  {:name        "measure_write"
-   :scope       metabot.scope/agent-content-write
+  {:name           "measure_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the measure, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        measure-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           measure-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write measure-write-entry args)]
     (case (first dispatched)

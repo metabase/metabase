@@ -2,7 +2,7 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:refer-clojure :exclude [get-in])
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+   [clj-yaml.core]
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
@@ -339,9 +339,13 @@
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.queries.models.card]].
-                :card/card_schema  ; Needed for after-select logic to work.
+                ;; :card_schema and every column the Card schema upgrade reads must be selected together,
+                ;; or `upgrade-card-schema-to-latest` cannot run. See [[metabase.queries.models.card]].
+                :card/card_schema
                 :card/database_id
                 :card/dataset_query
+                :card/dimensions
+                :card/dimension_mappings
                 :card/id
                 :card/entity_id
                 :card/name
@@ -574,6 +578,7 @@
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *metadata-provider-cache*
   "Bind this to a `(atom (clojure.core.cache/basic-cache-factory {}))` or similar cache-atom, and
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`

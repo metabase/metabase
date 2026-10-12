@@ -149,9 +149,9 @@
   (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
 
 (mu/defn card-collection-ids
-  "The Collection id and schema of the non-internal Cards."
+  "The Collection id of the non-internal Cards."
   []
-  (t2/select [:model/Card :collection_id :card_schema] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
+  (t2/select [:model/Card :collection_id] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
 
 (mu/defn database-stats-columns
   "The sync, engine, and DBMS version of the non-internal Databases."
@@ -301,11 +301,6 @@
   "The number of QueryExecutions started at or after `since`."
   [since :- ms/TemporalInstant]
   (t2/count :model/QueryExecution :started_at [:>= since]))
-
-(mu/defn new-scim-user-count-since
-  "The number of active SCIM-provisioned Users who joined at or after `since`."
-  [since :- ms/TemporalInstant]
-  (t2/count :model/User :sso_source :scim :is_active true :date_joined [:>= since]))
 
 (mu/defn database-engines-among
   "The set of engines of the Databases whose engine is one of `engine-names`."

@@ -52,25 +52,6 @@ describe("scenarios > data apps > admin management", () => {
     });
   });
 
-  it("keeps a data app's permission group out of the admin Groups list", () => {
-    // Provisioning a data app draft creates its permission group as a side effect.
-    cy.request("POST", "/api/apps/orders-app/draft").then(({ body }) => {
-      const dataAppGroupId = body.permission_group_id;
-
-      // The groups API does not return data-app groups.
-      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-        const ids = groups.map((group: { id: number }) => group.id);
-        expect(ids).not.to.include(dataAppGroupId);
-      });
-
-      cy.visit("/admin/people/groups");
-      cy.findByTestId("admin-panel").within(() => {
-        cy.findByText("All Users").should("be.visible");
-        cy.findByText("Data App: orders-app").should("not.exist");
-      });
-    });
-  });
-
   it("dismisses the promo banner and keeps it hidden across a reload", () => {
     cy.intercept("GET", "/api/apps/repo-status", { configured: true });
     cy.intercept("GET", "/api/apps", []);
@@ -101,10 +82,11 @@ describe("scenarios > data apps > admin management", () => {
   describe("outdated apps", () => {
     // Only a bump of the supported version makes a real app outdated, so the flag
     // the API computes is patched onto a real app's responses instead.
-    const OUTDATED_APP = "orders-app";
+    const OUTDATED_APP = "good";
 
     function markAppOutdated() {
-      cy.request<DataApp>("POST", `/api/apps/${OUTDATED_APP}/draft`)
+      H.pullExampleDataApps();
+      cy.request<DataApp>("GET", `/api/apps/${OUTDATED_APP}`)
         .its("body.display_name")
         .as("outdatedAppName");
 
@@ -127,7 +109,7 @@ describe("scenarios > data apps > admin management", () => {
       );
     }
 
-    it("badges an outdated app, refuses to open it, and still lets an admin manage its users", () => {
+    it("badges an outdated app and refuses to open it", () => {
       markAppOutdated();
 
       cy.visit("/admin/settings/apps");
@@ -139,21 +121,8 @@ describe("scenarios > data apps > admin management", () => {
             cy.findByText("Outdated").should("be.visible");
             cy.findByText(displayName).should("be.visible");
             cy.findByRole("link", { name: displayName }).should("not.exist");
-            cy.findByRole("button", {
-              name: `Actions for ${displayName}`,
-            }).click();
           });
       });
-
-      H.popover().findByText("Manage user access").click();
-
-      cy.location("pathname").should(
-        "eq",
-        `/admin/settings/apps/${OUTDATED_APP}/users`,
-      );
-      H.main()
-        .findByRole("heading", { name: "Manage access to this app" })
-        .should("be.visible");
 
       H.openDataApp(OUTDATED_APP);
       H.main().findByText("This data app is outdated").should("be.visible");
@@ -162,57 +131,28 @@ describe("scenarios > data apps > admin management", () => {
   });
 });
 
-// TODO(v65): data apps launch in v65 — replace the "no token" suite below with
-// these upsell tests once the nav item + page are un-gated.
-// describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
-//   beforeEach(() => {
-//     H.restore();
-//     cy.signInAsAdmin();
-//     // No token: on the OSS build the `data-apps` feature is unavailable, so the
-//     // settings page shows the upsell instead of the management UI.
-//   });
-//
-//   it("shows the data-apps upsell instead of the management UI", () => {
-//     cy.visit("/admin/settings/apps");
-//
-//     H.main().within(() => {
-//       cy.findByText("Build custom data apps").should("be.visible");
-//       cy.findByText("Try for free").should("be.visible");
-//     });
-//   });
-//
-//   it("marks the Data apps settings nav item with an upsell gem", () => {
-//     cy.visit("/admin/settings/apps");
-//
-//     cy.findByRole("link", { name: /Data apps/ }).within(() => {
-//       cy.findByTestId("upsell-gem").should("exist");
-//     });
-//   });
-// });
-
-describe("scenarios > data apps > no token (OSS)", { tags: "@OSS" }, () => {
+describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    // No token: data apps launch in v65, so without the `data-apps` feature the
-    // admin UI must not mention them at all — no nav item, no upsell, no page.
+    // No token: on the OSS build the `data-apps` feature is unavailable, so the
+    // settings page shows the upsell instead of the management UI.
   });
 
-  it("hides the Data apps settings nav item", () => {
-    cy.visit("/admin/settings/general");
-
-    cy.findByRole("heading", { name: "General" }).should("be.visible");
-    cy.findByRole("link", { name: /Data apps/ }).should("not.exist");
-  });
-
-  it("404s the data apps settings page instead of showing an upsell", () => {
+  it("shows the data-apps upsell instead of the management UI", () => {
     cy.visit("/admin/settings/apps");
 
     H.main().within(() => {
-      cy.findByText("The page you asked for couldn't be found.").should(
-        "be.visible",
-      );
-      cy.findByText("Build custom data apps").should("not.exist");
+      cy.findByText("Build custom data apps").should("be.visible");
+      cy.findByText("Try for free").should("be.visible");
+    });
+  });
+
+  it("marks the Data apps settings nav item with an upsell gem", () => {
+    cy.visit("/admin/settings/apps");
+
+    cy.findByRole("link", { name: /Data apps/ }).within(() => {
+      cy.findByTestId("upsell-gem").should("be.visible");
     });
   });
 });

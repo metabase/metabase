@@ -308,6 +308,7 @@ const createBoxPlotYAxisModel = (
   columnByDataKey: Record<string, DatasetColumn>,
   seriesExtents: SeriesExtents,
   yAxisScaleTransforms: ReturnType<typeof getAxisTransforms>,
+  isSplitRightAxis = false,
 ): YAxisModel | null => {
   if (dataKeys.length === 0) {
     return null;
@@ -319,6 +320,7 @@ const createBoxPlotYAxisModel = (
     dataset,
     settings,
     columnByDataKey,
+    { isSplitRightAxis },
   );
 
   if (yAxisModel) {
@@ -382,6 +384,7 @@ const getBoxPlotYAxesModels = (
       columnByDataKey,
       seriesExtents,
       yAxisScaleTransforms,
+      leftAxisSeriesKeys.size > 0,
     ),
     leftAxisSeriesKeys,
     rightAxisSeriesKeys,

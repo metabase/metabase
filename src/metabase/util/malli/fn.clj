@@ -144,6 +144,7 @@
                        (for [arity (:arities arities-value)]
                          (arity-schema (:values arity) return-schema options)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not.
 

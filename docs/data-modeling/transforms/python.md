@@ -37,7 +37,7 @@ To execute Python transforms, you'll need a _Python runner_ - a dedicated enviro
 
 Once you've [set up the Python runner](#set-up-a-python-runner):
 
-1. Go to **Data studio > Transforms**.
+1. Go to **Data Studio > Data transformation**.
 2. Click on **+ New** and select **Python script**.
 
 3. Select a database that has the data you want to transform. See [Databases that support transforms](transforms-overview.md#databases-that-support-transforms).
@@ -95,7 +95,7 @@ If you have functions or classes you'd like to reuse across multiple transforms,
 
 To add things to the common Python library:
 
-1. Go to **Data studio > Transforms**.
+1. Go to **Data Studio > Data transformation**.
 2. Scroll to the very bottom of the transforms list and click on **Python library**.
 
 3. Add a Python function or class.
@@ -120,10 +120,11 @@ To update a table incrementally, your data has to have a certain structure. See 
 
 To make a Python transform incremental:
 
-1. Go to the transform's page in **Data studio > Transforms**.
+1. Go to the transform's page in **Data Studio > Data transformation**.
 2. Switch to **Settings** tab.
 3. In **Field to check for new values**, select the field in one of the source tables that Metabase should scan to determine which records are new or changed. Only some fields are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
-4. (Optional) To update matching rows instead of appending new ones, [add a merge key](./transforms-overview.md#add-merge-keys-to-upsert-rows).
+4. (Optional) To catch late-arriving rows, [set a lookback window](./transforms-overview.md#catch-late-arriving-rows-with-a-lookback-window).
+5. (Optional) To update matching rows instead of appending new ones, [add a merge key](./transforms-overview.md#add-merge-keys-to-upsert-rows).
 
 ## Current limitations of Python transforms
 

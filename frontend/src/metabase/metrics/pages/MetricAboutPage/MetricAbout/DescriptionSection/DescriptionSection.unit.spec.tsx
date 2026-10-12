@@ -97,7 +97,10 @@ function setup({
       is_data_analyst: role === "analyst",
     }),
     settings: mockSettings({
-      "token-features": createMockTokenFeatures({ dependencies: true }),
+      "token-features": createMockTokenFeatures({
+        advanced_permissions: true,
+        dependencies: true,
+      }),
     }),
   });
   // Enable the dependencies plugin via real EE init (reads the mocked settings).

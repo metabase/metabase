@@ -249,6 +249,7 @@
         (throw (ex-info "vector-strategy matrix assumes the stock hnsw.ef_search default"
                         {:hnsw.ef_search ef-search}))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *index*
   "The semantic index the helpers below operate on; [[graph-approximation-test]] rebinds it."
   semantic.tu/mock-index)

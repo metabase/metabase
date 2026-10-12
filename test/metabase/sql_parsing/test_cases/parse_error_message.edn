@@ -2,7 +2,7 @@
  [{:name       "a keyword the parser was still waiting for"
    :dialect    "postgres"
    :sql        "SELECT !!!"
-   :internals  "<class 'sqlglot.expressions.Not'>"
+   :internals  "<class 'sqlglot.expressions.core.Not'>"
    :diagnostic "ParseError: Required keyword: 'this' missing. Line 1, Col: 10.\n  SELECT !!!\n           ^"}
 
   {:name       "a token where a table name belonged"
@@ -14,7 +14,7 @@
   {:name       "the end of the query where a table name belonged"
    :dialect    "postgres"
    :sql        "SELECT * FROM a JOIN"
-   :internals  "but got None"
+   :internals  "<Token token_type: TokenType.SENTINEL"
    :diagnostic "ParseError: Expected table name but got the end of the query. Line 1, Col: 20.\n  SELECT * FROM a JOIN\n                  ^^^^"}
 
   {:name       "a query that is not SQL at all"

@@ -2957,34 +2957,6 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest backfill-mfa-confirmed-at-test
-  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
-    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
-      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
-        (let [confirmed-at "2026-07-01T12:00:00Z"
-              insert-identity!
-              (fn [user-id credentials-str]
-                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
-                                                         :provider    "totp"
-                                                         :credentials credentials-str
-                                                         :created_at  :%now
-                                                         :updated_at  :%now}))
-              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
-              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
-              pending         (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s3"})))]
-          (migrate!)
-          (testing "encrypted confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
-          (testing "legacy plaintext confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
-          (testing "pending (unconfirmed) enrollment stays null"
-            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
-
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
@@ -3015,13 +2987,42 @@
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
 
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v63.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v63.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
+
 (deftest retire-mcp-v1-oauth-scopes-test
   (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
                 "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
                 "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
                 "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
-                "re-authorization validates, then revokes the legacy-shaped tokens so the client actually "
-                "re-authenticates instead of refreshing.")
+                "re-authorization validates. GHY-4491: the second changeset is a no-op. tools/list now lists every "
+                "tool and a call short of scope gets a 403 insufficient_scope step-up, so a legacy client "
+                "re-authorizes on its own; revoking its tokens would only force it through the refresh-failure path.")
     (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
       (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
             legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
@@ -3081,9 +3082,92 @@
               (is (every? scopes legacy-scopes)))))
         (testing "a statically registered client is left alone — it did not snapshot via DCR"
           (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
-        (testing "legacy-scoped tokens are revoked — both tables, or the client refreshes instead of re-authing"
-          (is (revoked? :oauth_access_token legacy-access))
-          (is (revoked? :oauth_refresh_token legacy-refresh)))
+        (testing "GHY-4491: legacy-scoped tokens are NOT revoked; the client self-heals through the 403 step-up"
+          (is (not (revoked? :oauth_access_token legacy-access)))
+          (is (not (revoked? :oauth_refresh_token legacy-refresh))))
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
+
+(deftest move-data-app-resource-collections-to-their-namespace-test
+  (testing "v65.2026-10-06T00:00:01: every data app's resource collection is in the data-apps namespace"
+    (impl/test-migrations ["v65.2026-10-06T00:00:01"] [migrate!]
+      (let [insert-app! (fn [slug collection-id]
+                          (t2/insert-returning-pk! :data_app {:name                   slug
+                                                              :display_name           slug
+                                                              :bundle_path            "dist/index.js"
+                                                              :entity_id              (str slug "Entity0000000000")
+                                                              :resource_collection_id collection-id
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            old-coll    (t2/insert-returning-pk! :collection {:name       "Data App: sales"
+                                                              :slug       "data_app__sales"
+                                                              :location   "/"
+                                                              :entity_id  "salesCollection000001"
+                                                              :created_at :%now})
+            with-coll   (insert-app! "sales" old-coll)
+            without     (insert-app! "ops" nil)]
+        (migrate!)
+        (testing "a collection from before the namespace existed is moved into it"
+          (is (= "data-apps" (t2/select-one-fn :namespace :collection :id old-coll)))
+          (is (= old-coll (t2/select-one-fn :resource_collection_id :data_app :id with-coll))))
+        (testing "an app without a collection gets one, at the root of the namespace"
+          (let [collection-id (t2/select-one-fn :resource_collection_id :data_app :id without)]
+            (is (some? collection-id))
+            (is (=? {:name "Data App: ops" :slug "data_app__ops" :location "/" :namespace "data-apps"}
+                    (t2/select-one :collection :id collection-id)))
+            (is (= 21 (count (t2/select-one-fn :entity_id :collection :id collection-id))))))))))
+
+(deftest delete-data-app-drafts-test
+  (testing "v65.2026-10-07T00:00:00: draft rows go with their assignments and empty collections"
+    (impl/test-migrations ["v65.2026-10-07T00:00:00"] [migrate!]
+      (let [insert-collection! (fn [name]
+                                 (t2/insert-returning-pk! :collection {:name       name
+                                                                       :slug       name
+                                                                       :location   "/"
+                                                                       :namespace  "data-apps"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now}))
+            insert-app!        (fn [slug draft? collection-id]
+                                 (t2/insert-returning-pk! :data_app {:name                   slug
+                                                                     :display_name           slug
+                                                                     :bundle_path            "dist/index.js"
+                                                                     :entity_id              (u/generate-nano-id)
+                                                                     :draft                  draft?
+                                                                     :resource_collection_id collection-id
+                                                                     :created_at             :%now
+                                                                     :updated_at             :%now}))
+            empty-coll   (insert-collection! "empty")
+            used-coll    (insert-collection! "used")
+            kept-coll    (insert-collection! "kept")
+            shared-group (t2/insert-returning-pk! :permissions_group {:name      "App viewers"
+                                                                      :entity_id (u/generate-nano-id)})
+            empty-draft  (insert-app! "empty-draft" true empty-coll)
+            used-draft   (insert-app! "used-draft" true used-coll)
+            real-app     (insert-app! "real" false kept-coll)]
+        (doseq [app-id [empty-draft used-draft real-app]]
+          (t2/insert! :data_app_group_assignment {:data_app_id app-id :permission_group_id shared-group}))
+        (t2/insert! :permissions {:object (str "/collection/" empty-coll "/read/") :group_id 1 :collection_id empty-coll})
+        ;; something was put in the used draft's collection: a child collection here, cards and actions count the same
+        (t2/insert! :collection {:name       "Inside"
+                                 :slug       "inside"
+                                 :location   (str "/" used-coll "/")
+                                 :namespace  "data-apps"
+                                 :entity_id  (u/generate-nano-id)
+                                 :created_at :%now})
+        (migrate!)
+        (testing "every draft row is gone, with its assignments"
+          (is (not (t2/exists? :data_app :id empty-draft)))
+          (is (not (t2/exists? :data_app :id used-draft)))
+          (is (not (t2/exists? :data_app_group_assignment :data_app_id [:in [empty-draft used-draft]]))))
+        (testing "the empty collection went with its draft, grants included"
+          (is (not (t2/exists? :collection :id empty-coll)))
+          (is (not (t2/exists? :permissions :collection_id empty-coll))))
+        (testing "a collection holding content stays"
+          (is (t2/exists? :collection :id used-coll)))
+        (testing "an app that is not a draft is untouched"
+          (is (t2/exists? :data_app :id real-app))
+          (is (t2/exists? :collection :id kept-coll))
+          (is (t2/exists? :data_app_group_assignment :data_app_id real-app :permission_group_id shared-group)))
+        (testing "the shared permission group survives draft deletion"
+          (is (t2/exists? :permissions_group :id shared-group)))))))

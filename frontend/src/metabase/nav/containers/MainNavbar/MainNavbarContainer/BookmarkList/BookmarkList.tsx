@@ -64,7 +64,14 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 
 function getBookmarkModel(bookmark: Bookmark) {
   // we should really fix this on the backend
-  return bookmark.card_type === "model" ? "dataset" : bookmark.type;
+  switch (bookmark.card_type) {
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+    default:
+      return bookmark.type;
+  }
 }
 
 const BookmarkItem = ({

@@ -7,12 +7,14 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *pivot?*
   "True while [[metabase.query-processor.pivot]] is re-running its generated sub-queries through the query processor.
   These sub-queries carry internal `:qp.pivot/*` keys and already-derived annotations, so preprocessing must not strip
   internal keys from them."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^clojure.core.async.impl.channels.ManyToManyChannel *canceled-chan*
   "If this channel is bound, you can send it a message to cancel the query. You can check if it has received a message
   to see if the query has been canceled.
@@ -41,12 +43,14 @@
     (throw result)
     result))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *result*
   "Called exactly once with the final result, which is the result of either [[*reduce*]] (if query completed
   successfully), or an Exception (if it did not)."
   [result]
   (default-result-handler result))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *execute*
   "Called by [[*run*]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
   callback with the signature:
@@ -64,6 +68,7 @@
     (let [context {:canceled-chan *canceled-chan*}]
       (driver/execute-reducible-query driver query context respond))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *reduce*
   "Called by [[*run*]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
   calls [[*result*]] with the reduced results."
@@ -111,6 +116,7 @@
   (or (instance? InterruptedException e)
       (some-> (ex-cause e) interrupted-exception?)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *run*
   "Function for running the query. Calls [[*execute*]], then [[*reduce*]] on the results."
   [query rff]

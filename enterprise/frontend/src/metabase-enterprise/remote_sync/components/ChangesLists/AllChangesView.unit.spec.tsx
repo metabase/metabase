@@ -838,6 +838,31 @@ describe("AllChangesView", () => {
       expect(screen.getByText("common.py")).toBeInTheDocument();
     });
 
+    it("should group transform tests under Transforms with the test tube icon and no link", async () => {
+      const transformTestEntity = createMockRemoteSyncEntity({
+        id: 500,
+        name: "Orders are deduplicated",
+        model: "transformtest",
+        collection_id: undefined,
+        sync_status: "update",
+      });
+
+      setup({
+        entities: [transformTestEntity],
+        isTransformsSyncEnabled: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Transforms" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Root")).not.toBeInTheDocument();
+      expect(screen.getByText("Orders are deduplicated")).toBeInTheDocument();
+      expect(screen.getByLabelText("test_tube icon")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /Orders are deduplicated/ }),
+      ).not.toBeInTheDocument();
+    });
+
     it("should group transforms-namespace collections under Transforms root", async () => {
       const transformsCollection = createMockCollection({
         id: 100,
@@ -990,6 +1015,57 @@ describe("AllChangesView", () => {
 
       expect(await screen.findByText("ARR")).toBeInTheDocument();
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("actions", () => {
+    // The dirty entry for an action has no parent model id, so there is no
+    // action URL to build. The item must show without a dead /404 link (GHY-4722).
+    it("should display a model action in its model's collection with the bolt icon and no link", async () => {
+      const actionEntity = createMockRemoteSyncEntity({
+        id: 600,
+        name: "Create order",
+        model: "action",
+        collection_id: 1,
+        sync_status: "create",
+      });
+
+      setup({ entities: [actionEntity] });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Create order")).toBeInTheDocument();
+      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /Create order/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("data apps", () => {
+    it("should group data apps under a Data apps root linked to the admin page", async () => {
+      const dataAppEntity = createMockRemoteSyncEntity({
+        id: 700,
+        name: "boba-staff-review",
+        model: "dataapp",
+        collection_id: undefined,
+        sync_status: "update",
+      });
+      const rootEntity = createMockRemoteSyncEntity({
+        id: 701,
+        name: "Root Question",
+        collection_id: undefined,
+      });
+
+      setup({ entities: [dataAppEntity, rootEntity] });
+
+      expect(
+        await screen.findByRole("link", { name: "Data apps" }),
+      ).toHaveAttribute("href", "/admin/settings/apps");
+      expect(screen.getByText("Root")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /boba-staff-review/ }),
+      ).toHaveAttribute("href", "/apps/boba-staff-review");
+      expect(screen.getAllByLabelText("app icon")).toHaveLength(2);
     });
   });
 });

@@ -18,6 +18,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
@@ -30,7 +31,6 @@ import type { NotificationId, UserId } from "metabase-types/api";
 
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
-import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
 import { NotificationsFilters } from "../NotificationsFilters";
 import { NotificationsTable } from "../NotificationsTable";
 import { NotificationsTabs } from "../NotificationsTabs";

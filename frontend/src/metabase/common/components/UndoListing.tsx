@@ -34,6 +34,7 @@ import {
   Progress,
   Stack,
 } from "metabase/ui";
+import { isFocusVisible } from "metabase/utils/dom";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
 import S from "./UndoListing.module.css";
@@ -109,19 +110,21 @@ function UndoToast({
   };
 
   const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (event.target.matches(":focus-visible")) {
+    if (isFocusVisible(event.target)) {
       updateInteraction({ isFocused: true });
     }
   };
 
   const dark = undo.dark ?? true;
   const noBorder = undo.showProgress;
+  const pausedProgressColor = dark
+    ? "tooltip-text-secondary"
+    : "background_page-tertiary-inverse";
 
   return (
     <Card
       ref={undo.ref}
       data-testid="toast-undo"
-      color={undo.toastColor}
       role="status"
       className={S.toast}
       data-paused={undo.pausedAt != null || undefined}
@@ -129,8 +132,8 @@ function UndoToast({
       onMouseLeave={() => updateInteraction({ isHovered: false })}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
-      c={dark ? "text-secondary-inverse" : "text-primary"}
+      bg={dark ? "tooltip-background" : "background_page-primary"}
+      c={dark ? "tooltip-text" : "text-primary"}
       withBorder={!noBorder}
       radius="sm"
       p="lg"
@@ -145,9 +148,7 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={
-            undo.pausedAt ? "background_page-tertiary-inverse" : "core-brand"
-          }
+          color={undo.pausedAt ? pausedProgressColor : "core-brand"}
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
@@ -167,7 +168,7 @@ function UndoToast({
             <Icon
               className={S.messageIcon}
               name={undo.icon}
-              c={undo.iconColor ?? "text-secondary-inverse"}
+              c={undo.iconColor ?? "tooltip-text"}
               mr="sm"
               flex="0 0 auto"
             />
@@ -180,11 +181,11 @@ function UndoToast({
             </Ellipsified>
           )}
         </Flex>
-        <Flex className={S.controls} align="center" flex="0 0 auto">
+        <Flex className={S.controls} align="center" gap="sm" flex="0 0 auto">
           {undo.actions && undo.actions.length > 0 && (
             <Button
               className={S.actionButton}
-              variant="default"
+              variant={dark ? "on-dark-primary" : "default"}
               size="sm"
               onClick={onUndo}
             >
@@ -194,7 +195,7 @@ function UndoToast({
           {undo.extraAction && (
             <Button
               className={S.actionButton}
-              variant="default"
+              variant={dark ? "on-dark-secondary" : "default"}
               size="sm"
               onClick={() => {
                 undo.extraAction?.action();
@@ -209,10 +210,10 @@ function UndoToast({
           {undo.canDismiss && (
             <Icon
               className={S.dismissIcon}
-              color={undo.dismissIconColor || "text-secondary-inverse"}
+              color={undo.dismissIconColor || "tooltip-text"}
               name="close"
               onClick={onDismiss}
-              ml="lg"
+              ml="sm"
             />
           )}
         </Flex>

@@ -5,11 +5,15 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -132,7 +136,7 @@
   (testing "GHY-4137: filtering tables by a real collection_id requires the Library feature; on an
             instance without it the combination is a teaching error, but \"root\" stays inert"
     (mt/with-premium-features #{}
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the Library feature"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the semantic layer feature"
                             (validate-filters! {:type ["table"] :collection_id "someEntityId01234567_"}))
           "no Library feature + real collection id: error")
       (is (some? (validate-filters! {:type ["table"] :collection_id "root"}))
@@ -154,22 +158,10 @@
           (is (= coll-id (resolve-collection-filter coll-id))))))))
 
 ;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
-(deftest transform-collection-id-is-teaching-error-test
-  (testing "GHY-4137: the search index doesn't record a transform's collection, so type:[transform]
-            with a collection_id can only ever return an empty page — a teaching error instead of a
-            silent empty result the agent would read as \"no transforms here\""
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"collection_id cannot filter transforms"
-                          (validate-filters! {:type ["transform"] :collection_id "someEntityId01234567_"})))
-    (testing "transform without a collection_id is fine"
-      (is (some? (validate-filters! {:type ["transform"]}))))
-    (testing "\"root\" collection_id stays inert for transforms"
-      (is (some? (validate-filters! {:type ["transform"] :collection_id "root"}))))))
-
-;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
 (deftest archived-non-archivable-type-is-teaching-error-test
-  (testing "GHY-4137: table, database, and transform have no archived state, so archived: true with
-            any of them guarantees an empty page — the engine silently drops the type. Teach instead."
-    (doseq [t ["table" "database" "transform"]]
+  (testing "GHY-4137: table and database have no archived state, so archived: true with either of
+            them guarantees an empty page — the engine silently drops the type. Teach instead."
+    (doseq [t ["table" "database"]]
       (testing t
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no archived state"
                               (validate-filters! {:type [t] :archived true})))))
@@ -194,7 +186,7 @@
         (is (= ["action" "dashboard" "document" "measure" "metric" "model" "question"] types))
         (is (= 1 (count disclosures)))
         (is (re-find #"\"created_by\" narrowed the search to" (first disclosures)))
-        (is (re-find #"\"collection\", \"database\", \"segment\", \"table\", \"transform\" don't index a creator"
+        (is (re-find #"\"collection\", \"database\", \"segment\", \"table\" don't index a creator"
                      (first disclosures)))))
     (testing "collection_id with no type: narrows to collection-dwelling types and discloses it, does not throw"
       ;; Features pinned: without :library the table exclusion is disclosed too, so the count
@@ -204,14 +196,13 @@
           (is (not (contains? (set types) "database")))
           (is (not (contains? (set types) "measure")))
           (is (not (contains? (set types) "segment")))
-          (is (= 2 (count disclosures))
-              "the collectionless types, plus transform (no collection in the index)")
+          (is (= 1 (count disclosures))
+              "the collectionless types")
           (is (every? #(re-find #"\"collection_id\" narrowed the search to" %) disclosures)))))
     (testing "archived: true with no type: narrows to archivable types and discloses it, does not throw"
       (let [{:keys [types disclosures]} (validate-filters! {:archived true})]
         (is (not (contains? (set types) "table")))
         (is (not (contains? (set types) "database")))
-        (is (not (contains? (set types) "transform")))
         (is (= 1 (count disclosures)))
         (is (re-find #"\"archived: true\" narrowed the search to" (first disclosures)))))
     (testing "created_by with a type set that is entirely creator-supporting is unaffected — no narrowing"
@@ -242,21 +233,15 @@
       (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
         (is (not (contains? (set types) "table"))
             "table is narrowed out, not left in for the engine to drop quietly")
-        (is (some #(re-find #"Library feature" %) disclosures)
+        (is (some #(re-find #"semantic layer feature" %) disclosures)
             "and the caller is told why")
-        (is (not (contains? (set types) "transform"))
-            "transform has no collection in the index, so the engine drops it from a
-             collection-scoped search too — same silent narrowing, same disclosure")
-        (is (some #(re-find #"\"transform\" isn't recorded with a collection" %) disclosures))
         (is (contains? (set types) "question")
             "sanity: collection-dwelling types are untouched, so this isn't an empty-set pass")))
     (testing "with the Library feature, tables stay in scope and nothing is disclosed about them"
       (mt/with-premium-features #{:library}
         (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
           (is (contains? (set types) "table"))
-          (is (not (some #(re-find #"Library feature" %) disclosures)))
-          (is (not (contains? (set types) "transform"))
-              "the Library feature says nothing about transforms — they stay narrowed"))))
+          (is (not (some #(re-find #"semantic layer feature" %) disclosures))))))
     (testing "\"root\" is inert — it scopes nothing, so it must not trip the table narrowing"
       (mt/with-premium-features #{}
         (is (= {:types nil :disclosures []}
@@ -276,11 +261,11 @@
         (doseq [d disclosures]
           (is (= final-types (second (re-find #"narrowed the search to (.+?) —" d))) d)))
       (testing "each disclosure still explains why its own filter excluded what it did"
-        (is (some #(re-find (re-pattern (str "\"collection\", \"database\", \"segment\", \"table\", \"transform\" "
+        (is (some #(re-find (re-pattern (str "\"collection\", \"database\", \"segment\", \"table\" "
                                              "don't index a creator"))
                             %)
                   disclosures))
-        (is (some #(re-find #"\"database\", \"table\", \"transform\" have no archived state" %)
+        (is (some #(re-find #"\"database\", \"table\" have no archived state" %)
                   disclosures))))))
 
 (defn- thrown-message
@@ -308,8 +293,8 @@
            (thrown-message #(validate-filters! {:recent true :type ["measure"]})))))
   (testing "GHY-4544: a disclosure quotes its filter label and type lists, and states its reason as prose"
     (is (= [(str "\"created_by\" narrowed the search to \"action\", \"dashboard\", \"document\", \"measure\", "
-                 "\"metric\", \"model\", \"question\" — \"collection\", \"database\", \"segment\", \"table\", "
-                 "\"transform\" don't index a creator.")]
+                 "\"metric\", \"model\", \"question\" — \"collection\", \"database\", \"segment\", \"table\" "
+                 "don't index a creator.")]
            (:disclosures (validate-filters! {:created_by "me"}))))))
 
 ;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
@@ -419,9 +404,6 @@
     (testing "a snippet listing routes to the snippets namespace"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace: \"snippets\""
                             (validate-modes! {:type ["snippet"]} false true))))
-    (testing "a transform listing routes to the transforms namespace"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace: \"transforms\""
-                            (validate-modes! {:type ["transform"]} false true))))
     (testing "a created_by listing routes to browse_collection with created_by"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"created_by"
                             (validate-modes! {:created_by "me"} false true))))
@@ -461,13 +443,55 @@
                                                     {:token-scopes #{"agent:content:read"}})))))
 
 (deftest engine-results-reports-total-test
-  (testing "GHY-4137: engine-results reports the engine's total for every search, including a
-            superuser transform search — transforms are no longer dropped by a post-filter, so
-            the total is accurate and is not suppressed"
+  (testing "GHY-4137: engine-results passes the engine's total through unchanged"
     (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_ctx] (with-meta [{:id 1 :type "question"}] {:total 30}))]
-      (mt/with-test-user :crowberto
-        (is (= 30 (:total (engine-results {} ["question" "transform"] nil 20 0))))
-        (is (= 30 (:total (engine-results {} ["question" "dashboard"] nil 20 0))))))))
+      (is (= 30 (:total (engine-results {} ["question" "dashboard"] nil 20 0)))))))
+
+(deftest search-has-no-transform-type-test
+  (testing "GHY-4746: MCP v2 has no transforms. search refuses the type, and a search that omits type never asks
+            the engine for transforms — not even for an admin, who can search them in the app"
+    (testing "type: [\"transform\"] fails the argument schema"
+      (let [{:keys [error]} (mt/with-current-user (mt/user->id :crowberto)
+                              (registry/call-tool #{"agent:content:read"} "test-session" "search"
+                                                  {:term_queries ["x"] :type ["transform"]}))]
+        (is (= -32602 (:code error)))
+        (is (str/starts-with? (message/render (:message error)) "Invalid arguments: \"type\""))))
+    (testing "an omitted type reaches the engine without transform"
+      (let [captured-entity-types (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [{:keys [entity-types]}]
+                                                            (reset! captured-entity-types entity-types)
+                                                            (with-meta [] {:total 0}))]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (tools.search/search-tool {:term_queries ["x"]} {:token-scopes #{"agent:content:read"}})
+            (is (contains? (set @captured-entity-types) "question")
+                "sanity: the engine was asked for the content types")
+            (is (not (contains? (set @captured-entity-types) "transform")))))))
+    (testing "an empty type list returns an empty page without calling the engine, which reads it as every type"
+      (let [engine-called? (atom false)]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_ctx]
+                                                            (reset! engine-called? true)
+                                                            (with-meta [{:id 1 :type "transform"}] {:total 1}))]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (= {:rows [] :total 0}
+                   (engine-results {:term_queries ["x"]} [] nil 20 0)))
+            (is (false? @engine-called?))))))))
+
+(deftest transform-output-table-is-searchable-test
+  (testing "GHY-4746: MCP v2 has no transforms, but a transform's output is an ordinary table, so search with
+            type: [\"table\"] finds a table whose data_source is metabase-transform"
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-appdb-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Table {table-id :id} {:db_id       (mt/id)
+                                                    :name        "McpTransformOutputTable"
+                                                    :active      true
+                                                    :data_source :metabase-transform}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [content (tools.search/search-tool {:term_queries ["McpTransformOutputTable"] :type ["table"]}
+                                                    {:token-scopes #{"agent:content:read"}})
+                  rows    (-> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data)]
+              (is (not (:isError content)))
+              (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
+                  (str "the table is in the results: " (pr-str rows))))))))))
 
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must
@@ -640,7 +664,6 @@
               (is (not (:isError content)) "the call must not 400")
               (is (not (contains? (set @captured-entity-types) "table")))
               (is (not (contains? (set @captured-entity-types) "database")))
-              (is (not (contains? (set @captured-entity-types) "transform")))
               (is (re-find #"\"archived: true\" narrowed the search to" text)))))))
     (testing "naming an incompatible type explicitly is still a teaching error, and names the offending type"
       (mt/with-current-user (mt/user->id :crowberto)

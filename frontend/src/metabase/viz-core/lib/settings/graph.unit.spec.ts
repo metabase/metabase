@@ -267,9 +267,103 @@ describe("GRAPH_AXIS_SETTINGS", () => {
       },
     );
   });
-});
 
-describe("GRAPH_TREND_SETTINGS", () => {
+  describe("the y-axis label fields", () => {
+    const isLeftLabelHidden = checkNotNull(
+      GRAPH_AXIS_SETTINGS["graph.y_axis.title_text"]?.getHidden,
+    );
+    const isRightLabelHidden = checkNotNull(
+      GRAPH_AXIS_SETTINGS["graph.y_axis.right.title_text"]?.getHidden,
+    );
+
+    const MONTH_COLUMN = "month";
+    const REVENUE_COLUMN = "revenue";
+    const ORDERS_COLUMN = "orders";
+
+    // Revenue and orders live on ranges three orders of magnitude apart, which
+    // is what makes the automatic split kick in.
+    const createTwoMetricSeries = () => [
+      createMockSingleSeries(
+        createMockCard({ display: "line" }),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                name: MONTH_COLUMN,
+                display_name: "Month",
+                base_type: "type/Text",
+              }),
+              createMockColumn({
+                name: REVENUE_COLUMN,
+                display_name: "Revenue",
+                base_type: "type/Number",
+              }),
+              createMockColumn({
+                name: ORDERS_COLUMN,
+                display_name: "Orders",
+                base_type: "type/Number",
+              }),
+            ],
+            rows: [
+              ["Jan", 1, 900],
+              ["Feb", 2, 1000],
+            ],
+          }),
+        }),
+      ),
+    ];
+
+    const splitSettings = {
+      "graph.dimensions": [MONTH_COLUMN],
+      "graph.metrics": [REVENUE_COLUMN, ORDERS_COLUMN],
+      "graph.y_axis.auto_split": true,
+    };
+
+    it.each([
+      {
+        name: "a single-metric chart",
+        settings: { ...splitSettings, "graph.metrics": [REVENUE_COLUMN] },
+      },
+      {
+        // The only axis is on the right, and the shared field labels it.
+        name: "a chart with every series pinned right",
+        settings: {
+          ...splitSettings,
+          "graph.y_axis.auto_split": false,
+          series: () => ({ axis: "right" as const }),
+        },
+      },
+      {
+        // Split panels draw one shared label from the left axis model.
+        name: "split panels",
+        settings: { ...splitSettings, "graph.split_panels": true },
+      },
+    ])("should offer only the shared label for $name", ({ settings }) => {
+      const series = createTwoMetricSeries();
+
+      expect(isLeftLabelHidden(series, settings)).toBe(false);
+      expect(isRightLabelHidden(series, settings)).toBe(true);
+    });
+
+    it("should offer both labels when the chart splits its y-axis", () => {
+      const series = createTwoMetricSeries();
+
+      expect(isLeftLabelHidden(series, splitSettings)).toBe(false);
+      expect(isRightLabelHidden(series, splitSettings)).toBe(false);
+    });
+
+    it("should hide both when y-axis labels are turned off", () => {
+      const settings = {
+        ...splitSettings,
+        "graph.y_axis.labels_enabled": false,
+      };
+      const series = createTwoMetricSeries();
+
+      expect(isLeftLabelHidden(series, settings)).toBe(true);
+      expect(isRightLabelHidden(series, settings)).toBe(true);
+    });
+  });
+
   describe("graph.show_trendline", () => {
     const getHidden = checkNotNull(
       GRAPH_TREND_SETTINGS["graph.show_trendline"]?.getHidden,

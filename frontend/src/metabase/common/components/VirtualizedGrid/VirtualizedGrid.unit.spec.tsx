@@ -1,4 +1,9 @@
-import { mockGetBoundingClientRect, render, screen } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  render,
+  screen,
+  within,
+} from "__support__/ui";
 
 import { VirtualizedGrid } from "./VirtualizedGrid";
 
@@ -27,15 +32,24 @@ describe("VirtualizedGrid", () => {
 
     // Need to use container to test actual DOM structure/chunking behavior
     // eslint-disable-next-line testing-library/no-container
-    const rows = container.querySelectorAll('[style*="translateY"]');
+    const rows = container.querySelectorAll<HTMLDivElement>(
+      'div[style*="translateY"]',
+    );
 
     // With 10 items and 4 columns per row, we should have 3 rows
     expect(rows.length).toBe(3);
 
-    // Each item should be wrapped in a Grid.Col (has class starting with m_)
-    // eslint-disable-next-line testing-library/no-container
-    const gridCols = container.querySelectorAll('[class*="m_"]');
-    expect(gridCols.length).toBe(16);
+    expect(
+      Array.from(rows, (row) =>
+        within(row)
+          .getAllByText(/^Item \d+$/)
+          .map((item) => item.textContent),
+      ),
+    ).toEqual([
+      ["Item 0", "Item 1", "Item 2", "Item 3"],
+      ["Item 4", "Item 5", "Item 6", "Item 7"],
+      ["Item 8", "Item 9"],
+    ]);
   });
 
   it("should not render children outside the bounding client rect", () => {

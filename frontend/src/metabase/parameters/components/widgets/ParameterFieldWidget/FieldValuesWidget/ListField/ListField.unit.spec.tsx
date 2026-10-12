@@ -13,7 +13,6 @@ type SetupOpts = {
   options?: Option[];
   optionRenderer?: (option: Option) => JSX.Element;
   placeholder?: string;
-  checkedColor?: string;
   isDashboardFilter?: boolean;
 };
 
@@ -22,7 +21,6 @@ function setup({
   options = [],
   optionRenderer = ([value]) => <>{value}</>,
   placeholder = "Search the list",
-  checkedColor,
   isDashboardFilter,
 }: SetupOpts) {
   const onChange = jest.fn();
@@ -33,7 +31,6 @@ function setup({
       options={options}
       optionRenderer={optionRenderer}
       placeholder={placeholder}
-      checkedColor={checkedColor}
       isDashboardFilter={isDashboardFilter}
       onChange={onChange}
     />,

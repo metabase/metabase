@@ -104,3 +104,7 @@
 .CollapsibleAccordion .CollapsibleControl:disabled::after {
   cursor: default;
 }
+
+.TitleLabel {
+  cursor: pointer;
+}

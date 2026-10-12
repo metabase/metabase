@@ -140,6 +140,7 @@ export const Onboarding = () => {
                   component={ExternalLink}
                   href={helpLink.href}
                   variant="filled"
+                  flex="none"
                 >{t`Get Help`}</Button>
               </Box>
             )}

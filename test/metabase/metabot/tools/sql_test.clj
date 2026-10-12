@@ -8,6 +8,8 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
+   [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
@@ -286,3 +288,18 @@
                                 :checklist "- [x] checked"
                                 :new_query "SELECT 2"
                                 :title     "Results"})))))))))))
+
+(deftest edit-and-replace-sql-query-unexpected-error-test
+  (testing "edit_sql_query and replace_sql_query rethrow non-agent errors so they stay tracked as failures"
+    (mt/with-dynamic-fn-redefs [edit-sql-query-tools/edit-sql-query       (fn [_] (throw (ex-info "boom" {})))
+                                replace-sql-query-tools/replace-sql-query (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/edit-sql-query-tool {:query_id  "q-1"
+                                                            :checklist "- [x] checked"
+                                                            :edits     [{:old_string "1" :new_string "2"}]
+                                                            :title     "Results"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/replace-sql-query-tool {:query_id  "q-1"
+                                                               :checklist "- [x] checked"
+                                                               :new_query "SELECT 2"
+                                                               :title     "Results"}))))))

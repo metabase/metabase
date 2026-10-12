@@ -3,7 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Icon, Text, TextInput, rem } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
 import type * as Lib from "metabase-lib";
 
 import { formatSeparator, label } from "../util";
@@ -77,8 +76,6 @@ export const ColumnAndSeparatorRow = ({
   );
 };
 
-const { fontFamilyMonospace } = getThemeOverrides();
-
 function SeparatorInput({
   showSeparator,
   value,
@@ -121,8 +118,7 @@ function SeparatorInput({
         onBlur={handleBlur}
         styles={{
           input: {
-            // Unjustified type cast. FIXME
-            fontFamily: fontFamilyMonospace as string,
+            fontFamily: "var(--mb-default-monospace-font-family)",
           },
         }}
       />

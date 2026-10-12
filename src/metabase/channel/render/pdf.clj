@@ -75,6 +75,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-boxes*
   "When true, fill the *allocated* bounding box (the full space available, not the content's actual extent) behind
   each chart (red) and each card title / heading card (light blue), so one can see how much of its cell the content
@@ -142,6 +143,7 @@
 ;; page draws we collect link rectangles into `*link-rects*` and add the annotations afterward.
 ;; --------------------------------------------------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *link-rects*
   "While a page renders, an atom holding a vector of `{:x0 :y0 :x1 :y1 :href}` rectangles for the clickable link
   annotations to add to the page once drawing is done."

@@ -64,7 +64,7 @@ const HEADING_ICON: Record<
   { name: IconProps["name"]; color: IconProps["c"] }
 > = {
   root: { name: "insight", color: "brand" },
-  "sub-exploration": { name: "git_branch", color: "brand" },
+  "sub-exploration": { name: "corner_down_right", color: "brand" },
   "metric-group": { name: "metric", color: "text-secondary" },
 };
 
@@ -138,8 +138,7 @@ function ExplorationTreeHeading({
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
-        [S.treeRowThreadSeparated]:
-          depth === 0 && item.data?.headingKind === "sub-exploration",
+        [S.treeRowThreadSeparated]: depth === 0,
       })}
       tabIndex={0}
       onKeyDown={(e) => {

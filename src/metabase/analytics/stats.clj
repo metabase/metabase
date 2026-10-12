@@ -132,9 +132,13 @@
    :has_sample_data                      (analytics.db/sample-database-exists?)
    :enable_embedding                     (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
-   :enable_embedding_simple              (setting/get :enable-embedding-simple)
+   ;; Modular embedding and guest embeds are one setting since 0.65.0. The two field names are kept so existing
+   ;; reports keep resolving; they now both report that one flag.
+   :enable_embedding_simple              (setting/get :enable-embedding-modular)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
-   :enable_embedding_static              (setting/get :enable-embedding-static)
+   :enable_embedding_sidecar             (setting/get :enable-embedding-sidecar)
+   :enable_embedding_static              (setting/get :enable-embedding-modular)
+   :enable_embedding_modular             (setting/get :enable-embedding-modular)
    :embedding_app_origin_set             (boolean
                                           (setting/get :embedding-app-origin))
    ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
@@ -590,8 +594,7 @@
       :new_users_last_24h              (analytics.db/new-active-user-count-since one-day-ago)
       :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
       :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
-      :entity_id_translations_last_24h total-translation-count
-      :scim_users_last_24h             (analytics.db/new-scim-user-count-since one-day-ago)}
+      :entity_id_translations_last_24h total-translation-count}
      (transform-metrics))))
 
 (def ^:private string-keyed-int-histogram
@@ -635,7 +638,9 @@
    [:enable_embedding_sdk :boolean]
    [:enable_embedding_simple :boolean]
    [:enable_embedding_interactive :boolean]
+   [:enable_embedding_sidecar :boolean]
    [:enable_embedding_static :boolean]
+   [:enable_embedding_modular :boolean]
    [:embedding_app_origin_set :boolean]
    [:embedding_app_origin_sdk_set :boolean]
    [:embedding_app_origin_interactive_set [:maybe :string]]
@@ -867,7 +872,7 @@
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (setting/get :enable-embedding-static)
+                (setting/get :enable-embedding-modular)
                 (or
                  (analytics.db/embedded-dashboard-exists?)
                  (analytics.db/embedded-card-exists?)))}
@@ -948,6 +953,9 @@
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
+   {:name      :sidecar-embedding
+    :available true
+    :enabled   (setting/get :enable-embedding-sidecar)}
    {:name      :tenants
     :enabled   (setting/get :use-tenants)
     :available (premium-features/enable-tenants?)}

@@ -185,7 +185,7 @@
                                     [:k          {:optional true} :int]]]
    [:rationale    {:optional true} [:maybe :string]]])
 
-(mr/def ::exploration-thread.query-plan-transcript.planner-transcript
+(mr/def ::exploration-thread.query-plan-transcript.planner-notes
   "The planner-implementation-specific `:transcript` a query planner emits (see
   `metabase.explorations.query-plan.planner/plan!`); shape is per-implementation, only `:mechanical` exists today."
   [:or
@@ -204,7 +204,7 @@
    [:rationale    {:optional true} [:maybe :string]]
    [:plan         {:optional true} [:maybe [:sequential ::exploration-thread.query-plan-transcript.plan-item]]]
    [:final-errors {:optional true} [:maybe [:sequential :string]]]
-   [:planner      {:optional true} [:maybe ::exploration-thread.query-plan-transcript.planner-transcript]]])
+   [:planner-notes {:optional true} [:maybe ::exploration-thread.query-plan-transcript.planner-notes]]])
 
 (mr/def ::exploration-thread.query-plan-transcript
   "The `:query_plan_transcript` column of a ExplorationThread, decoded."

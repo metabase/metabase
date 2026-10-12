@@ -296,7 +296,7 @@
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
   `:total` metadata."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id profile-id search-native-query weights
+           entity-types limit metabot profile-id search-native-query weights
            created-by archived collection-id offset filters-only?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
@@ -304,7 +304,7 @@
               :database-id          database-id
               :entity-types         entity-types
               :limit                limit
-              :metabot-id           metabot-id
+              :metabot-id           (:entity_id metabot)
               :profile-id           profile-id
               :search-native-query  search-native-query
               :weights              weights
@@ -317,11 +317,8 @@
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        metabot         (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
-        use-verified?   (if metabot-id
-                          (:use_verified_content metabot)
-                          false)
-        embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
+        use-verified?   (:use_verified_content metabot)
+        embedded-metabot? (= (:entity_id metabot) metabot.config/embedded-metabot-id)
         ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
         ;; collection. That is a containment boundary, not a default, so a caller-supplied
         ;; collection-id — which the v2 search tool fills from a request filter — can never
@@ -592,24 +589,20 @@
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
     {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
                   ". Allowed types: " (str/join ", " allowed-types) ".")}
-    (try
-      (let [results (search (merge {:semantic-queries semantic_queries
-                                    :term-queries    keyword_queries
-                                    :entity-types    (or (seq entity_types) (vec allowed-types))
-                                    :metabot-id      shared/*metabot-id*
-                                    :limit           (min max-search-limit
-                                                          (or limit default-search-limit))}
-                                   search-opts))]
-        {:output (format-search-output results)
-         :structured-output {:result-type :search
-                             :data results
-                             :total_count (count results)}
-         :data-parts [(streaming/search-results-part
-                       {:total_count (count results)
-                        :results (mapv search-result->item results)})]})
-      (catch Exception e
-        (log/error (str "Error in " label ": " (ex-message e)))
-        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+    (let [results (search (merge {:semantic-queries semantic_queries
+                                  :term-queries    keyword_queries
+                                  :entity-types    (or (seq entity_types) (vec allowed-types))
+                                  :metabot         shared/*metabot*
+                                  :limit           (min max-search-limit
+                                                        (or limit default-search-limit))}
+                                 search-opts))]
+      {:output (format-search-output results)
+       :structured-output {:result-type :search
+                           :data results
+                           :total_count (count results)}
+       :data-parts [(streaming/search-results-part
+                     {:total_count (count results)
+                      :results (mapv search-result->item results)})]})))
 
 (def ^:private semantic-queries-schema
   [:sequential {:error/message "must be an array of strings"}

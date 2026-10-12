@@ -115,11 +115,15 @@ describe("SearchUserPicker", () => {
     expect(selectBox.getByText("Alice")).toBeInTheDocument();
     expect(selectBox.getByText("Bob")).toBeInTheDocument();
 
-    await userEvent.click(selectBox.getByText("Alice"));
+    await userEvent.click(
+      selectBox.getByRole("button", { name: "Remove Alice" }),
+    );
     expect(screen.getByTestId("selected-user-button")).toHaveTextContent("Bob");
     expect(searchUserList.getByText("Alice")).toBeInTheDocument();
 
-    await userEvent.click(selectBox.getByText("Bob"));
+    await userEvent.click(
+      selectBox.getByRole("button", { name: "Remove Bob" }),
+    );
 
     // expect the two users are only in the search list now
     expect(
@@ -157,9 +161,13 @@ describe("SearchUserPicker", () => {
     const { mockOnChange } = await setup({
       initialSelectedUsers: TEST_USERS.map((user) => user.id),
     });
-    const searchUserList = within(screen.getByTestId("search-user-select-box"));
-    await userEvent.click(searchUserList.getByText("Alice"));
-    await userEvent.click(searchUserList.getByText("Bob"));
+    const selectBox = within(screen.getByTestId("search-user-select-box"));
+    await userEvent.click(
+      selectBox.getByRole("button", { name: "Remove Alice" }),
+    );
+    await userEvent.click(
+      selectBox.getByRole("button", { name: "Remove Bob" }),
+    );
 
     await userEvent.click(screen.getByText("Apply"));
     expect(mockOnChange).toHaveBeenCalledWith([]);

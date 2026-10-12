@@ -131,6 +131,7 @@
                                              e)))))))
                    column->value)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Connection *connection*
   "Data warehouse JDBC Connection to use for doing CRUD Actions. Bind this to reuse the same Connection/transaction
   throughout a single bulk Action."

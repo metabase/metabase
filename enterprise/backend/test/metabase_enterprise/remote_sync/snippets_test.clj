@@ -48,7 +48,7 @@
 (deftest snippet-event-creates-sync-object-when-library-synced-test
   (testing "Creating a snippet creates a RemoteSyncObject entry when Library is remote-synced"
     (collections.tu/with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           (events/publish-event! :event/snippet-create {:object snippet :user-id (mt/user->id :rasta)})
           (is (t2/exists? :model/RemoteSyncObject
@@ -70,7 +70,7 @@
 (deftest snippet-event-updates-sync-object-test
   (testing "Updating a snippet updates the RemoteSyncObject entry when Library is synced"
     (collections.tu/with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           ;; Delete auto-created entry from snippet creation event and set up test state
           (t2/delete! :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))
@@ -89,7 +89,7 @@
 (deftest archived-snippet-marked-for-deletion-test
   (testing "Archiving a snippet marks it for deletion when Library is synced"
     (collections.tu/with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           ;; Delete auto-created entry from snippet creation event and set up test state
           (t2/delete! :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))

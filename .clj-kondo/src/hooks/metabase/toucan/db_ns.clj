@@ -203,6 +203,16 @@
   (boolean (some #(and (hooks/keyword-node? %) (contains? clause-keys (hooks/sexpr %)))
                  (take-nth 2 (:children node)))))
 
+(defn- model-node?
+  "Whether `node` names a literal model: `:model/X`, or `[:model/X & columns]`."
+  [node]
+  (letfn [(model-keyword? [n]
+            (and (hooks/keyword-node? n)
+                 (= "model" (namespace (hooks/sexpr n)))))]
+    (or (model-keyword? node)
+        (and (hooks/vector-node? node)
+             (some-> node :children first model-keyword?)))))
+
 (def ^:private changes-map-fns
   "Conditions-map fns whose arglist also ends in a changes map, so a lone trailing map is changes."
   '#{update! update-or-insert!})
@@ -220,10 +230,7 @@
   "The values of a conditions map passed to one of [[conditions-map-fns]]."
   [f args]
   (when (contains? conditions-map-fns (some-> f name symbol))
-    (let [after-model (->> args
-                           (drop-while #(not (and (hooks/keyword-node? %)
-                                                  (= "model" (namespace (hooks/sexpr %))))))
-                           rest)]
+    (let [after-model (rest (drop-while (complement model-node?) args))]
       ;; Only the map immediately after the model is conditions. A later map is the changes map,
       ;; whose values are written rather than filtered on, and a written value is never marked: a
       ;; column's `:in` transform runs on the marker itself and stores it as data.
@@ -252,16 +259,13 @@
 
   `(t2/select :model/X :locale locale)`. Several of these fns take an argument before the model --
   `(t2/select-one-fn :value :model/X :key k)` -- so the pairs do not start at a fixed offset; they
-  start after the `:model/...` keyword. A call that does not name a literal model is not checked.
+  start after the model. A call that does not name a literal model is not checked.
 
   A trailing query map is not a pair, and its values are reached by [[value-nodes]] instead. A
   value that is itself an operator form -- `:id [:in ids]` -- has its own values walked, so the
   collection inside is checked rather than the form."
   [args]
-  (let [after-model (->> args
-                         (drop-while #(not (and (hooks/keyword-node? %)
-                                                (= "model" (namespace (hooks/sexpr %))))))
-                         rest)]
+  (let [after-model (rest (drop-while (complement model-node?) args))]
     (->> after-model
          ;; `partition-all` rather than `partition` so a trailing odd argument (a query map, which
          ;; is not a pair) is still seen and skipped by the keyword-node? test below.

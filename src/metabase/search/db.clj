@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.search.appdb.index-schema :as index-schema]
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
@@ -393,6 +394,17 @@
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
 (mu/defn card-result-metadata
-  "A map of Card id to result metadata for the Cards with `card-ids`."
+  "A map of Card id to result metadata for the Cards with `card-ids`.
+
+  SELECTs `report_card` directly instead of `:model/Card`, so the `:card_schema` read-time upgrade stays out of it.
+  Naming a schema-governed column on the model arms the whole upgrade chain, and the upgrade to 24 recomputes a
+  legacy metric's entire dimension set from its query — several app-db round trips per row, to produce columns
+  search never looks at. What search wants is the stored result metadata, so all that is needed from the model is
+  its `:out` transform, applied here. (The upgrade to 22 also strips `:ident` keys left by an abandoned experiment;
+  a stale one reaching a search payload is harmless.)"
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))
+  (let [result-metadata-out (:out mi/transform-result-metadata)]
+    (into {}
+          (map (juxt :id (comp result-metadata-out :result_metadata)))
+          (when (seq card-ids)
+            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))

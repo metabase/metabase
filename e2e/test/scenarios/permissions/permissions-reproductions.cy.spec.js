@@ -2,6 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ID,
   NODATA_USER_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -13,7 +14,7 @@ const { nocollection } = USERS;
 
 const PG_DB_ID = 2;
 
-describe("postgres > user > query", { tags: "@external" }, () => {
+describe("issue 14873", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
@@ -40,8 +41,6 @@ describe("postgres > user > query", { tags: "@external" }, () => {
         },
       },
     });
-
-    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
   it("should handle the use of `regexExtract` in a sandboxed table (metabase#14873)", () => {
@@ -106,6 +105,10 @@ describe("issue 19603", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First collection").click();
+    cy.url().should(
+      "include",
+      `/admin/permissions/collections/${FIRST_COLLECTION_ID}`,
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second collection").should("not.exist");
   });
@@ -113,6 +116,7 @@ describe("issue 19603", () => {
 
 describe("issue 20436", () => {
   const url = `/admin/permissions/data/group/${ALL_USERS_GROUP}`;
+  const CREATE_QUERIES_PERMISSION_INDEX = 1;
 
   function changePermissions(from, to) {
     cy.findAllByText(from).first().click();
@@ -166,8 +170,11 @@ describe("issue 20436", () => {
     cy.wait("@updatePermissions");
 
     cy.visit(url);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Query builder only");
+    H.assertPermissionForItem(
+      "Sample Database",
+      CREATE_QUERIES_PERMISSION_INDEX,
+      "Query builder only",
+    );
   });
 });
 
@@ -176,10 +183,12 @@ describe("UI elements that make no sense for users without data permissions (met
     H.restore();
   });
 
-  it("should not offer to save question to users with no data permissions", () => {
+  it("should let users without data permissions view but not save questions, and hide visualization settings when data is blocked", () => {
     cy.signIn("nodata");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.contains("February 11, 2028, 9:40 PM"); // check that the data loads
 
     cy.findByTestId("viz-settings-button");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -210,9 +219,8 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.newButton().click();
     H.popover().should("contain", "Dashboard").and("not.contain", "Question");
-  });
 
-  it("should not show visualization or question settings to users with block data permissions", () => {
+    cy.log("blocked data permissions");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     cy.updatePermissionsGraph({
@@ -228,9 +236,9 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTextEnsureVisible(
-      "Sorry, you don't have permission to run this query.",
-    );
+    H.queryBuilderMain()
+      .findByText("Sorry, you don't have permission to run this query.")
+      .should("be.visible");
 
     H.queryBuilderFooter()
       .findByTestId("viz-settings-button")
@@ -243,6 +251,11 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.newButton().click();
     H.popover().should("contain", "Dashboard").and("not.contain", "Question");
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.getDashboardCard()
+      .findByText("Sorry, you don't have permission to see this card.")
+      .should("be.visible");
   });
 });
 
@@ -327,7 +340,7 @@ describe("issue 22695 ", () => {
   });
 });
 
-describe("issue 22726", () => {
+describe("issues 22726 and 22727", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card").as("createCard");
@@ -343,36 +356,7 @@ describe("issue 22726", () => {
     cy.signIn("nocollection");
   });
 
-  it("should offer to duplicate a question in a view-only collection (metabase#22726)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    H.openQuestionActions();
-    H.popover().findByText("Duplicate").click();
-    cy.findByTextEnsureVisible(
-      `${H.getFullName(nocollection)}'s Personal Collection`,
-    );
-
-    cy.button("Duplicate").click();
-    cy.wait("@createCard");
-  });
-});
-
-describe("issue 22727", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    // Let's give all users a read only access to "Our analytics"
-    cy.updateCollectionGraph({
-      [ALL_USERS_GROUP]: { root: "read" },
-    });
-
-    cy.signIn("nocollection");
-  });
-
-  it("should not offer to save question in view only collection (metabase#22727, metabase#20717)", () => {
+  it("should not offer to save a question in a view-only collection, but should offer to duplicate it (metabase#22727, metabase#20717, metabase#22726)", () => {
     // It is important to start from a saved question and to alter it.
     // We already have a reproduction that makes sure "Our analytics" is not offered when starting from an ad-hoc question (table).
     H.visitQuestion(ORDERS_QUESTION_ID);
@@ -385,15 +369,27 @@ describe("issue 22727", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByTestId("save-question-modal").then((modal) => {
-      // This part reproduces https://github.com/metabase/metabase/issues/20717
-      cy.findByText(/^Replace original qeustion/).should("not.exist");
-
+    cy.findByTestId("save-question-modal").within(() => {
       // This part is an actual repro for https://github.com/metabase/metabase/issues/22727
       cy.findByLabelText(/Where do you want to save this/)
-        .invoke("text")
-        .should("not.eq", "Our analytics");
+        .should("contain.text", "Personal Collection")
+        .and("not.contain.text", "Our analytics");
+
+      // This part reproduces https://github.com/metabase/metabase/issues/20717
+      cy.findByText(/^Replace original question/).should("not.exist");
     });
+
+    cy.log("metabase#22726");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openQuestionActions();
+    H.popover().findByText("Duplicate").click();
+    cy.findByTextEnsureVisible(
+      `${H.getFullName(nocollection)}'s Personal Collection`,
+    );
+
+    cy.button("Duplicate").click();
+    cy.wait("@createCard").its("response.statusCode").should("eq", 200);
   });
 });
 
@@ -432,9 +428,10 @@ describe("issue 23981", () => {
     ).click();
 
     H.entityPickerModal().within(() => {
+      cy.findByText("Collections").should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
       cy.log('ensure that "Collections" is not selectable');
-      cy.findByText("Collections").should("be.visible").click();
+      cy.findByText("Collections").click();
       cy.button("Select this collection").should("be.disabled");
     });
   });
@@ -475,6 +472,21 @@ describe("issue 24966", () => {
   };
 
   const dashboardDetails = { parameters: [dashboardFilter] };
+
+  const allCategories = ["Doohickey", "Gadget", "Gizmo", "Widget"];
+
+  function verifyCategoryList(visibleCategories) {
+    H.popover().within(() => {
+      visibleCategories.forEach((value) => {
+        cy.findByText(value).should("be.visible");
+      });
+      allCategories
+        .filter((value) => !visibleCategories.includes(value))
+        .forEach((value) => {
+          cy.findByText(value).should("not.exist");
+        });
+    });
+  }
 
   beforeEach(() => {
     H.restore();
@@ -539,6 +551,7 @@ describe("issue 24966", () => {
     cy.signIn("nodata");
     H.visitDashboard("@dashboardId");
     H.filterWidget().click();
+    verifyCategoryList(["Gizmo"]);
     cy.findByLabelText("Gizmo").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Gizmo");
@@ -546,6 +559,7 @@ describe("issue 24966", () => {
     cy.signInAsSandboxedUser();
     H.visitDashboard("@dashboardId");
     H.filterWidget().click();
+    verifyCategoryList(["Widget"]);
     cy.findByLabelText("Widget").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");

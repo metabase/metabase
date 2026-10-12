@@ -141,6 +141,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Transducing Query Results                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-callback*
   "Callback to execute when a new page is retrieved, used for testing"
   (constantly nil))
@@ -343,32 +344,9 @@
     "BIGNUMERIC" :type/Decimal
     :type/*))
 
-(defmulti ^:private type->database-type
-  "Internal type->database-type multimethod for BigQuery that dispatches on type."
-  {:arglists '([type])}
-  identity)
-
-;; we can't recover the parameterized types
-(defmethod type->database-type :type/Array [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/Dictionary [_] [[:raw "JSON"]])
-
-(defmethod type->database-type :type/Boolean [_] [[:raw "BOOL"]])
-(defmethod type->database-type :type/Float [_] [[:raw "FLOAT64"]])
-(defmethod type->database-type :type/Integer [_] [[:raw "INT"]])
-(defmethod type->database-type :type/Number [_] [[:raw "INT"]])
-(defmethod type->database-type :type/Text [_] [[:raw "STRING"]])
-(defmethod type->database-type :type/TextLike [_] [[:raw "STRING"]])
-(defmethod type->database-type :type/Date [_] [[:raw "DATE"]])
-(defmethod type->database-type :type/DateTime [_] [[:raw "DATETIME"]])
-(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "TIMESTAMP"]])
-(defmethod type->database-type :type/Time [_] [[:raw "TIME"]])
-(defmethod type->database-type :type/JSON [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/SerializedJSON [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/Decimal [_] [[:raw "BIGDECIMAL"]])
-
 (defmethod driver/type->database-type :bigquery-cloud-sdk
   [_driver base-type]
-  (type->database-type base-type))
+  [[:raw (bigquery.common/base-type->bigquery-type base-type)]])
 
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
@@ -653,6 +631,7 @@
 ;;; wildly inaccurate -- a TEXT column may hold 5 bytes or 5 MB), we *measure* it: fetch a small probe page, then
 ;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-byte-budget*
   "Target measured bytes per result page for `tabledata.list` sampling. The next page size is
   `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave
@@ -660,6 +639,7 @@
  stays small. Regular query execution uses the larger [[*query-page-byte-budget*]]."
   (* 4 1024 1024))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-page-byte-budget*
   "Target measured bytes per result page for regular query execution. Deliberately larger than [[*page-byte-budget*]]
   because the QP streams rows and holds only one parsed page at a time, and the number of `getQueryResults` round trips
@@ -819,6 +799,7 @@
 ;;; 1. The initial query done by `execute-bigquery` where the `.query` call can be shortcircuited by `cancel-chan`.
 ;;; 2. The "lazy" iteration of `TableResult` done by the QP. Any exceptions, or `cancel-chan` checking will be done in the context of the pipeline, solely around the code in `reducible-bigquery-results`.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *page-size*
   "Maximum number of rows to return per page in a query. Leave unset (falls back to [[initial-page-rows]] for the first
   page, then adaptive sizing) by default, but override for testing."
@@ -1059,6 +1040,7 @@
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *process-native*
   [respond     :- fn?
    database    :- :metabase.warehouses.schema/database-or-metadata

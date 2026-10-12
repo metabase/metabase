@@ -4,23 +4,19 @@ import { without } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
-import {
-  SearchUserItemContainer,
-  SearchUserPickerContainer,
-  SearchUserPickerContent,
-  SearchUserSelectBox,
-  SelectedUserButton,
-  UserPickerInput,
-} from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import { UserListElement } from "metabase/search/components/UserListElement";
-import { Center, Icon, Text } from "metabase/ui";
+import { Center, Pill, PillsInput, Stack, Text } from "metabase/ui";
 import type { UserId, UserListResult } from "metabase-types/api";
+
+import S from "./SearchUserPicker.module.css";
 
 export const SearchUserPicker = ({
   value,
+  width,
   onChange,
 }: {
   value: UserId[];
+  width?: string;
   onChange: (value: UserId[]) => void;
 }) => {
   const { isLoading, data } = useListUserRecipientsQuery();
@@ -40,10 +36,8 @@ export const SearchUserPicker = ({
     );
   });
 
-  const removeUser = (user?: UserListResult) => {
-    if (user) {
-      setSelectedUserIds(without(selectedUserIds, user.id));
-    }
+  const removeUser = (user: UserListResult) => {
+    setSelectedUserIds(without(selectedUserIds, user.id));
   };
 
   const addUser = (user: UserListResult) => {
@@ -57,6 +51,11 @@ export const SearchUserPicker = ({
       addUser(user);
     }
   };
+
+  const selectedUsers = selectedUserIds.flatMap((userId) => {
+    const user = users.find((user) => user.id === userId);
+    return user ? [user] : [];
+  });
 
   const generateUserListElements = (userList: UserListResult[]) => {
     return userList.map((user) => (
@@ -74,47 +73,37 @@ export const SearchUserPicker = ({
       isLoading={isLoading}
       onApply={() => onChange(selectedUserIds)}
     >
-      <SearchUserPickerContainer p="sm" gap="xxs">
-        <SearchUserSelectBox gap={0}>
-          <SearchUserItemContainer
-            data-testid="search-user-select-box"
-            p="xxs"
-            mah="30vh"
-          >
-            {selectedUserIds.map((userId) => {
-              const user = users.find((user) => user.id === userId);
-              return (
-                <SelectedUserButton
-                  data-testid="selected-user-button"
-                  key={userId}
-                  c="core-brand"
-                  px="md"
-                  maw="100%"
-                  rightSection={<Icon name="close" />}
-                  onClick={() => removeUser(user)}
-                >
-                  <Text ta="left" w="100%" truncate c="inherit">
-                    {user?.common_name}
-                  </Text>
-                </SelectedUserButton>
-              );
-            })}
-            <UserPickerInput
-              variant="subtle"
-              pl="sm"
-              size="md"
+      <Stack className={S.container} w={width} p="sm" gap="xxs">
+        <PillsInput
+          data-testid="search-user-select-box"
+          classNames={{ input: S.selectBox }}
+        >
+          <Pill.Group>
+            {selectedUsers.map((user) => (
+              <Pill
+                key={user.id}
+                data-testid="selected-user-button"
+                withRemoveButton
+                removeButtonProps={{
+                  "aria-label": t`Remove ${user.common_name}`,
+                  "aria-hidden": false,
+                }}
+                onRemove={() => removeUser(user)}
+              >
+                {user.common_name}
+              </Pill>
+            ))}
+            <PillsInput.Field
               placeholder={t`Search for someone…`}
               value={userFilter}
-              tabIndex={0}
               onChange={(event) => setUserFilter(event.currentTarget.value)}
-              mt="-0.25rem"
-              miw="18ch"
             />
-          </SearchUserItemContainer>
-        </SearchUserSelectBox>
-        <SearchUserPickerContent
+          </Pill.Group>
+        </PillsInput>
+        <Stack
+          className={S.content}
           data-testid="search-user-list"
-          h="100%"
+          flex="1"
           gap="xxs"
           p="xxs"
         >
@@ -125,8 +114,8 @@ export const SearchUserPicker = ({
               <Text size="md" fw={700}>{t`No results`}</Text>
             </Center>
           )}
-        </SearchUserPickerContent>
-      </SearchUserPickerContainer>
+        </Stack>
+      </Stack>
     </SearchFilterPopoverWrapper>
   );
 };

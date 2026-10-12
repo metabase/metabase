@@ -142,6 +142,14 @@ describe("settings framework", () => {
       expect(getSection.mock.calls).toEqual([[mockObject, {}, {}]]);
     });
 
+    it("should resolve title via `getTitle`", () => {
+      const getTitle = jest.fn().mockReturnValue("Bar");
+      const defs = { foo: { title: "Foo", widget: "input", getTitle } };
+      const widgets = getSettingsWidgets(defs, {}, {}, mockObject, () => {});
+      expect(widgets[0].title).toEqual("Bar");
+      expect(getTitle.mock.calls).toEqual([[mockObject, {}, {}]]);
+    });
+
     it("should compute props when `getProps` is provided", () => {
       const getProps = jest.fn().mockReturnValue({ hello: "world" });
       const defs = { foo: { widget: "input", getProps } };

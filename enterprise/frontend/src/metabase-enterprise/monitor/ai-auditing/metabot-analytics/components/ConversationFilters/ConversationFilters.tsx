@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -74,9 +75,11 @@ function ConversationDateFilter({
       !retentionCutoff ||
       !getShortcutStartDate(item.value)?.isBefore(retentionCutoff);
 
+    // Mantine keys each group by its name, so the names must be unique. The
+    // dropdown hides them, which is why they are not translated.
     return [
       {
-        group: "",
+        group: "days",
         items: [
           { label: t`Today`, value: "thisday" },
           { label: t`Yesterday`, value: "past1days" },
@@ -85,7 +88,7 @@ function ConversationDateFilter({
         ].filter(withinRetention),
       },
       {
-        group: "",
+        group: "months",
         items: [
           { label: t`Previous month`, value: "past1months" },
           { label: t`Previous 3 months`, value: "past3months" },
@@ -93,7 +96,7 @@ function ConversationDateFilter({
         ].filter(withinRetention),
       },
       {
-        group: "",
+        group: "custom range",
         items: [
           { label: t`Fixed date range…`, value: SPECIFIC_TYPE_VALUE },
           { label: t`Relative date range…`, value: RELATIVE_TYPE_VALUE },
@@ -176,6 +179,7 @@ function ConversationDateFilter({
           allowDeselect={false}
           leftSection={<Icon name="calendar" />}
           title={displayLabel}
+          styles={{ groupLabel: { display: "none" } }}
           data-testid="conversation-filters-date-select"
         />
       </Popover.Target>
@@ -211,6 +215,11 @@ type ConversationFiltersProps = {
   groupOptions: { value: string; label: string }[];
   tenantOptions: { value: string; label: string }[];
   hasTenants: boolean;
+  /** Hides the user select for pages where filtering by user isn't a meaningful concept. */
+  hasUsers?: boolean;
+  /** Rendered right after the Group select, before User/Date — for a caller-specific filter that
+   * belongs grouped with Group rather than after the rest of this shared bar. */
+  extraFilter?: ReactNode;
 };
 
 export function ConversationFilters({
@@ -227,6 +236,8 @@ export function ConversationFilters({
   groupOptions,
   tenantOptions,
   hasTenants,
+  hasUsers = true,
+  extraFilter,
 }: ConversationFiltersProps) {
   return (
     <Flex gap="sm" wrap="wrap" align="center">
@@ -253,15 +264,18 @@ export function ConversationFilters({
         bdrs="xs"
         data-testid="conversation-filters-group-select"
       />
-      <Select
-        data={[{ value: "", label: t`All users` }, ...userOptions]}
-        value={user ?? ""}
-        onChange={(val) => onUserChange(val === "" ? null : val)}
-        searchable
-        w={FILTER_WIDTH}
-        bdrs="xs"
-        data-testid="conversation-filters-user-select"
-      />
+      {extraFilter}
+      {hasUsers && (
+        <Select
+          data={[{ value: "", label: t`All users` }, ...userOptions]}
+          value={user ?? ""}
+          onChange={(val) => onUserChange(val === "" ? null : val)}
+          searchable
+          w={FILTER_WIDTH}
+          bdrs="xs"
+          data-testid="conversation-filters-user-select"
+        />
+      )}
       <ConversationDateFilter value={date} onChange={onDateChange} />
     </Flex>
   );

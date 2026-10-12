@@ -6,13 +6,8 @@ job_tags:
 - entity_id: lXIFa2SUrXLgaLZJx33oU
   position: 0
   tag_id: qPGCJu7t97kn-X07_fgSj
-  serdes/meta:
-  - id: lXIFa2SUrXLgaLZJx33oU
-    model: TransformJobTransformTag
 name: Weekly job
 schedule: 0 0 0 ? * 1 *
 ui_display_type: cron/builder
 serdes/meta:
-- id: lXIFa2SUrXLgaLZJx33oU
-  label: weekly_job
-  model: TransformJob
+- model: TransformJob

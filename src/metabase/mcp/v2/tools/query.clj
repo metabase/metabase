@@ -37,10 +37,10 @@
    [metabase.mcp.v2.query :as v2.query]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]))
 
@@ -109,56 +109,27 @@
 
 ;;; ------------------------------------------------- Execution ----------------------------------------------------
 
-(def ^:private query-passthrough-keys
-  "The only keys of an incoming query that MCP forwards to the QP. Everything else — `:middleware`,
-   `:info`, `:constraints`, and any unknown key — is MCP's to set, because the query map is
-   caller-controlled and an agent that could name its own `:info` would forge `query_execution`
-   attribution. A fresh `:query` is also rejected upstream by the closed
-   `:metabase.lib.schema/query`, but that covers only the fresh path: a handle's stored query is
-   checked shallowly and the `/drills` callback stores one verbatim, so an unknown key does reach
-   here. This whitelist, not the schema, is what the guarantee rests on. The QP strips some of
-   these itself; that is defense in depth, not this boundary's contract."
-  [:lib/type :database :stages :parameters])
-
 (defn- query-failure-message
-  "The teaching message for a QP `result` that didn't complete, carrying its error text quoted."
-  [result]
-  (if-let [error (:error result)]
+  "The teaching message for a query that didn't complete, carrying the QP's `error` text quoted."
+  [error]
+  (if error
     (message/msg ["Query failed: %s"] error)
     (message/msg ["Query failed: unknown error"])))
 
-(defn- execute!
-  "Run a serialized MBQL query through the QP with the standard agent userland preparation,
-   capping this call's rows at `row-limit` (within the backend's 2000/10000 userland
-   ceilings). Returns the QP result; surfaces a failed run as a teaching error."
-  [serialized-query row-limit]
-  (let [result (qp/process-query
-                (-> (select-keys serialized-query query-passthrough-keys)
-                    (assoc :middleware {:js-int-to-string? true})
-                    qp/userland-query-with-default-constraints
-                    (assoc :constraints {:max-results           row-limit
-                                         :max-results-bare-rows row-limit}
-                           :info        {:executed-by api/*current-user-id*
-                                         :context     :agent})))]
-    (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (query-failure-message result)))
-    result))
-
 (defn- execute-page!
-  "Run `serialized-query` for one page of at most `row-limit` rows. Fetches one row past the
-   limit so truncation is *observed* rather than inferred from a full page: a result that fills
-   the page exactly is complete, and is reported that way. Returns
-   `{:cols :rows :returned :truncated?}` with the probe row already dropped, so `rows` is the
-   page and `(last rows)` is a real page boundary."
+  "Run [[query-execution/execute-page!]] as an `:agent` query, turning a failed run into a teaching error."
   [serialized-query row-limit]
-  (let [result     (execute! serialized-query (inc row-limit))
-        all-rows   (vec (get-in result [:data :rows]))
-        truncated? (> (count all-rows) row-limit)
-        rows       (cond-> all-rows truncated? (subvec 0 row-limit))]
-    {:cols       (get-in result [:data :cols])
-     :rows       rows
-     :returned   (count rows)
-     :truncated? truncated?}))
+  ;; Only the key whitelist in [[query-execution/execute-page!]] keeps unknown keys away from the QP.
+  ;; A fresh `:query` is also rejected upstream by the closed `:metabase.lib.schema/query`, but that covers only the
+  ;; fresh path: a handle's stored query is checked shallowly and the `/drills` callback stores one verbatim, so an
+  ;; unknown key does reach here.
+  (try
+    (query-execution/execute-page! serialized-query row-limit :agent)
+    (catch clojure.lang.ExceptionInfo e
+      (let [{:keys [error query-error]} (ex-data e)]
+        (if (= :query-failed error)
+          (common/throw-teaching-error (query-failure-message query-error))
+          (throw e))))))
 
 (defn- last-stage
   [serialized-query]
@@ -194,15 +165,6 @@
     (assoc-in serialized-query [:stages (dec (count (:stages serialized-query))) :limit] remaining)))
 
 ;;; ------------------------------------------------- Response -----------------------------------------------------
-
-(defn- response-cols
-  [cols]
-  (mapv (fn [{:keys [name base_type effective_type display_name]}]
-          (cond-> {:name         name
-                   :base_type    (u/qualified-name base_type)
-                   :display_name display_name}
-            effective_type (assoc :effective_type (u/qualified-name effective_type))))
-        cols))
 
 (defn- steering-line
   [returned next-cursor]
@@ -259,7 +221,7 @@
                              :truncated    truncated?}
                       next-cursor (assoc :next_cursor next-cursor))
         payload     (assoc counts
-                           :cols (response-cols cols)
+                           :cols (query-execution/response-cols cols)
                            :rows rows)]
     (common/success-content
      (if truncated?
@@ -287,10 +249,11 @@
   "The default way to answer a question from data: validate and execute a structured (MBQL) query, returning rows plus a query_handle. Use it first for any count, sum, group-by, filter, sort, or join, even \"how many X\"; execute_sql is only for window functions, CTEs, set operations, engine-specific functions, an explicit request for SQL, or a rejection you cannot fix. Only this route validates ids, pages with a cursor, and mints handles that save as cards taking dashboard filters as-is. Native SQL is rejected at any depth. Pass exactly one of: query (a fresh query, dialect below), query_handle (re-run a stored query), or cursor (next page). The query_handle holds the whole query, not the page, so save or visualize from any page. On next_cursor, call again with cursor until truncated is false. row_limit is only the page size: the first N rows is a stage limit: N with an order-by, never pages counted by hand.
 
 Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_tables / get_fields or search) — never guessed, base64, or schema-qualified. Only the FIRST stage has source-table or source-card (an id); later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, <field id>], or [\"field\", {}, \"<column name>\"] against a previous stage. Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example, row count by month (placeholder ids; drop breakout for a plain count): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": <TABLE_ID>, \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, <FIELD_ID>]]}]}. get_content's definition include returns this same shape. Call learn(\"query-dialect\") before joins, expressions, multi-stage queries, or limits; learn(\"query-dialect\", \"operators\") lists every operator."
-  {:name        "execute_query"
-   :scope       metabot.scope/agent-query-run
-   :annotations {:readOnlyHint true}
-   :args        execute-query-args-schema}
+  {:name           "execute_query"
+   :default-access :allowed
+   :scope          metabot.scope/agent-query-run
+   :annotations    {:readOnlyHint true}
+   :args           execute-query-args-schema}
   [{:keys [validate_only row_limit] :as args} {:keys [session-id]}]
   (let [input (query-input args)
         {resolved :query prompt :prompt} (resolve-input input args session-id)
@@ -459,7 +422,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
                             :truncated    truncated?}
                      hint (assoc :hint hint))
         payload    (assoc counts
-                          :cols (response-cols cols)
+                          :cols (query-execution/response-cols cols)
                           :rows rows)]
     (common/success-content
      (if truncated?
@@ -487,13 +450,14 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
 
 (registry/deftool execute-sql
   "Escape hatch for execute_query, the default for every question MBQL can express (see its description): execute a raw SQL string against a database, returning rows plus a query_handle. Use only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Raw SQL is checked only by the warehouse (no metadata validation, no teaching errors naming what is wrong), and a card saved from it cannot be filtered on a dashboard until rewritten with template tags. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
-  {:name        "execute_sql"
-   :scope       metabot.scope/agent-sql-run
+  {:name           "execute_sql"
+   :default-access :allowed
+   :scope          metabot.scope/agent-sql-run
    ;; Unlike execute_query, arbitrary SQL can write. These match MCP's defaults for an unannotated
    ;; tool, stated explicitly so the tool is covered by the mutating-tool invariants in
    ;; `metabase.mcp.v2.registry-test`, which enumerate on `:readOnlyHint`.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        execute-sql-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           execute-sql-args-schema}
   [{:keys [database_id sql template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
   (check-execute-sql-gates! database_id)
   (let [mp    (lib-be/application-database-metadata-provider database_id)
@@ -611,7 +575,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
                                  (fn [query info]
                                    (qp (update query :info merge info) nil)))))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (query-failure-message result)))
+      (common/throw-teaching-error (query-failure-message (:error result))))
     result))
 
 (defn- saved-question-steering-line
@@ -633,7 +597,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
          [:int {:min 1 :description "Numeric card id."}]
          [:string {:min 1 :description "A 21-character entity_id."}]]]
    [:parameters {:optional true}
-    [:maybe [:sequential
+    [:maybe [:sequential {:description (str "Parameter values to apply, each {id, value} where id is the "
+                                            "parameter's id or slug. The card's stored target and type "
+                                            "always apply. Discover a card's parameters with get_content.")}
              [:map
               [:id {:optional true}
                [:maybe [:string {:min 1 :description "The parameter's id (or slug) from the card's parameter list."}]]]
@@ -646,10 +612,11 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
 
 (registry/deftool run-saved-question
   "Run a saved question (card) by numeric id or entity_id, returning rows inline. Pass each parameter as {id, value} where id is the parameter's id or slug — the stored target and type always apply and client-supplied ones are ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({{variable}} and field-filter tags) and declared filter-widget parameters can be set; value types are checked per parameter. Discover them with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: on truncation, narrow through the card's parameters or raise row_limit (max 2000)."
-  {:name        "run_saved_question"
-   :scope       metabot.scope/agent-query-run
-   :annotations {:readOnlyHint true}
-   :args        run-saved-question-args-schema}
+  {:name           "run_saved_question"
+   :default-access :allowed
+   :scope          metabot.scope/agent-query-run
+   :annotations    {:readOnlyHint true}
+   :args           run-saved-question-args-schema}
   [{:keys [id parameters row_limit]} _context]
   (let [row-limit   (or row_limit default-row-limit)
         card        (v2.resolve/resolve-and-read :model/Card id)
@@ -669,7 +636,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
         returned    (count rows)
         counts      {:returned returned :truncated truncated?}
         payload     (assoc counts
-                           :cols (response-cols cols)
+                           :cols (query-execution/response-cols cols)
                            :rows rows)]
     (common/success-content
      (if truncated?

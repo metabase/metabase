@@ -1,5 +1,4 @@
 import type {
-  CreateTimelineEventRequest,
   CreateTimelineRequest,
   Timeline,
   TimelineEvent,
@@ -8,28 +7,30 @@ import type {
 import { cypressWaitAll } from "../e2e-misc-helpers";
 
 import { createTimeline } from "./createTimeline";
-import { createTimelineEvent } from "./createTimelineEvent";
+import {
+  type TimelineEventDetails,
+  createTimelineEvent,
+} from "./createTimelineEvent";
 
 export const createTimelineWithEvents = ({
   timeline,
   events,
 }: {
   timeline: CreateTimelineRequest;
-  events: Omit<CreateTimelineEventRequest, "timeline_id">[];
-}): {
+  events: Omit<TimelineEventDetails, "timeline_id">[];
+}): Cypress.Chainable<{
   timeline: Timeline;
   events: TimelineEvent[];
-} => {
-  // @ts-expect-error - Cypress typings don't account for what happens in then() here
+}> => {
   return createTimeline(timeline).then(({ body: timeline }) => {
     return cypressWaitAll(
       events.map((query) =>
         createTimelineEvent({ ...query, timeline_id: timeline.id }),
       ),
-    ).then((events) => {
+    ).then((responses) => {
       return {
         timeline,
-        events,
+        events: responses.map(({ body }) => body),
       };
     });
   });

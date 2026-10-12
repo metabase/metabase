@@ -4,6 +4,7 @@ import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
 
 export type RemoteSyncEntityModel =
+  | "action"
   | "card"
   | "dataset"
   | "metric"
@@ -18,8 +19,10 @@ export type RemoteSyncEntityModel =
   | "transform"
   | "transformtag"
   | "transformjob"
+  | "transformtest"
   | "pythonlibrary"
-  | "glossary";
+  | "glossary"
+  | "dataapp";
 
 export type RemoteSyncEntityStatus =
   | "create"
@@ -40,6 +43,8 @@ export type RemoteSyncEntity = {
   table_id?: number;
   /** Parent table name for field and segment models */
   table_name?: string;
+  /** The model card of an existing action, null for an action without a model */
+  card_id?: number | null;
 };
 
 export type RemoteSyncChangesResponse = {
@@ -215,7 +220,10 @@ export type RemoteSyncOutcome =
   | { kind: "pull-skipped" }
   | { kind: "pushed"; count: number; branch: string }
   | { kind: "push-skipped" }
-  | { kind: "merged"; pulled: number; pushed: number; branch: string };
+  | { kind: "merged"; pulled: number; pushed: number; branch: string }
+  // Conflict outcomes: why a task stopped when the cause is not a collision.
+  | { kind: "remote-changed" }
+  | { kind: "history-rewritten" };
 
 export type RemoteSyncTaskUser = {
   id: UserId;

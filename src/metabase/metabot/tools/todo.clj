@@ -7,6 +7,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -128,9 +129,7 @@
                   :memory-atom shared/*memory-atom*})
      format-todo-write-output)
     (catch Exception e
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to update todo list: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
 
 (mu/defn ^{:tool-name "todo_read"
            :scope     scope/agent-todo-read}
@@ -138,9 +137,6 @@
   "Read the current todo list from memory.
   Returns the list of todos that have been created during this conversation."
   [_args :- [:map {:closed true}]]
-  (try
-    (add-output
-     (todo-read {:memory-atom shared/*memory-atom*})
-     format-todo-read-output)
-    (catch Exception e
-      {:output (str "Failed to read todo list: " (or (ex-message e) "Unknown error"))})))
+  (add-output
+   (todo-read {:memory-atom shared/*memory-atom*})
+   format-todo-read-output))

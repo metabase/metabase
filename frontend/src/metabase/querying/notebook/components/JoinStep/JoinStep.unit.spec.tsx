@@ -37,13 +37,14 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
-import { createMockNotebookStep } from "../../test-utils";
+import { createMockNotebookStep, getColumnNames } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 import { NotebookProvider } from "../Notebook/context";
 
@@ -98,10 +99,9 @@ function getJoinedQuery() {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "PRODUCT_ID",
                 },
-                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                right: { type: "column", name: "ID" },
               },
             ],
           },
@@ -151,21 +151,18 @@ function getJoinedQueryWithMultipleConditions() {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "PRODUCT_ID",
                 },
-                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                right: { type: "column", name: "ID" },
               },
               {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "CREATED_AT",
                 },
                 right: {
                   type: "column",
-                  sourceName: "PRODUCTS",
                   name: "CREATED_AT",
                 },
               },
@@ -874,15 +871,30 @@ describe("Notebook Editor > Join Step", () => {
         "join-columns-picker",
       );
       await userEvent.click(within(joinColumnsPicker).getByText("Select all"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
 
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
     });
 
     it("should be able to select no columns when adding a new join", async () => {
@@ -963,6 +975,61 @@ describe("Notebook Editor > Join Step", () => {
 
       const { fields } = getRecentJoin();
       expect(fields).toBe("none");
+    });
+
+    it("should only change the matching columns for an existing join when searching", async () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "table", id: PEOPLE_ID },
+                strategy: "left-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: {
+                      type: "column",
+                      name: "USER_ID",
+                    },
+                    right: { type: "column", name: "ID" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      const [join] = Lib.joins(query, 0);
+      const peopleColumnNames = getColumnNames(
+        query,
+        0,
+        Lib.joinableColumns(query, 0, join),
+      );
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      const picker = await screen.findByTestId("join-columns-picker");
+      await userEvent.type(
+        within(picker).getByLabelText("Search columns"),
+        "tude",
+      );
+      await userEvent.click(
+        within(picker).getByLabelText("Select all of these"),
+      );
+
+      const { query: nextQuery, fields } = getRecentJoin();
+      if (fields === "all" || fields === "none") {
+        throw new Error(`Expected an explicit column list, got "${fields}"`);
+      }
+      expect(getColumnNames(nextQuery, 0, fields)).toEqual(
+        peopleColumnNames.filter(
+          (name) => name !== "LATITUDE" && name !== "LONGITUDE",
+        ),
+      );
     });
   });
 
@@ -1370,7 +1437,6 @@ describe("Notebook Editor > Join Step", () => {
             },
             {
               type: "column",
-              sourceName: "PRODUCTS",
               name: "ID",
             },
           ),
@@ -1386,7 +1452,7 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+            { type: "column", name: "PRODUCT_ID" },
             { type: "literal", value: "abc" },
           ),
         }),
@@ -1405,11 +1471,11 @@ describe("Notebook Editor > Join Step", () => {
               type: "operator",
               operator: "+",
               args: [
-                { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+                { type: "column", name: "PRODUCT_ID" },
                 { type: "literal", value: 1 },
               ],
             },
-            { type: "column", sourceName: "PRODUCTS", name: "ID" },
+            { type: "column", name: "ID" },
           ),
         }),
       });
@@ -1425,14 +1491,13 @@ describe("Notebook Editor > Join Step", () => {
           query: getJoinedQueryWithCustomExpressions(
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "PRODUCT_ID",
             },
             {
               type: "operator",
               operator: "+",
               args: [
-                { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                { type: "column", name: "ID" },
                 { type: "literal", value: 1 },
               ],
             },

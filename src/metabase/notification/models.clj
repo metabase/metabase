@@ -804,13 +804,14 @@
    (hydrated-notification-schema handler-schema {:with-id? true}))
   ([handler-schema {:keys [with-id? update-input?] :as opts}]
    (let [entries (into (notification-entries opts)
-                       (cond->> [;; the hydrated User, echoed back by clients on update; `:creator_id`, declared by
-                                 [:creator       {:optional true} [:maybe ::EchoedUser]]
-                                 [:subscriptions {:optional true} [:sequential [:ref (if with-id?
+                       (cond->> [[:subscriptions {:optional true} [:sequential [:ref (if with-id?
                                                                                        ::NotificationSubscription
                                                                                        ::CreateNotificationSubscriptionParams)]]]
                                  [:handlers      {:optional true} [:sequential handler-schema]]]
-                         with-id? (into [[:payload_id              {:optional true} [:maybe int?]]
+                         with-id? (into [;; the hydrated User a saved notification is read with. Create and send
+                                         ;; requests don't declare it, so the API drops a client-sent copy.
+                                         [:creator                 {:optional true} [:maybe ::EchoedUser]]
+                                         [:payload_id              {:optional true} [:maybe int?]]
                                          [:triggering_subscription {:optional true} [:maybe ::NotificationSubscription]]])))
          entries (cond-> entries
                    update-input? (update-input-entries notification-update-spec))]

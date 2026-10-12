@@ -2,7 +2,11 @@
 import { useState } from "react";
 import { useMount } from "react-use";
 
-import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import {
+  SIDESHEET_HORIZONTAL_PADDING,
+  Sidesheet,
+  SidesheetCard,
+} from "metabase/common/components/Sidesheet";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet/SidesheetCardSection";
 import SideSheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { Flex, Icon, Stack, Switch, Tabs } from "metabase/ui";
@@ -22,7 +26,7 @@ export const TestTabbedSidesheet = () => {
       removeBodyPadding
     >
       <Tabs defaultValue="two" className={SideSheetStyles.FlexScrollContainer}>
-        <Tabs.List mx="xl">
+        <Tabs.List mx={SIDESHEET_HORIZONTAL_PADDING}>
           <Tabs.Tab value="one">One</Tabs.Tab>
           <Tabs.Tab value="two">Two</Tabs.Tab>
           <Tabs.Tab value="three">Three</Tabs.Tab>

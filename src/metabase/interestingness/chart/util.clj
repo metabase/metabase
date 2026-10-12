@@ -8,9 +8,9 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn nan->nil :- [:maybe number?]
-  "Convert NaN to nil, pass through other values."
+  "Convert JSON-unrepresentable NaN and the infinities to nil. Pass every other value through."
   [x :- number?]
-  (when-not (Double/isNaN (double x))
+  (when (Double/isFinite (double x))
     x))
 
 (mu/defn compute-summary :- ::stats.types/series-summary
@@ -22,7 +22,7 @@
      :max max-val
      :mean (dfn/mean values)
      :median (dfn/median values)
-     :std-dev (dfn/standard-deviation values)
+     :std-dev (nan->nil (dfn/standard-deviation values))
      :range (- max-val min-val)}))
 
 (mu/defn correlation-direction :- ::stats.types/correlation-direction
@@ -41,7 +41,7 @@
       (>= abs-coef 0.7) :strong
       (>= abs-coef 0.4) :moderate
       (>= abs-coef 0.2) :weak
-      :else :none)))
+      :else             :none)))
 
 (defn- align-series-on-x
   "Align two series on common x-values using listwise deletion.
@@ -106,24 +106,26 @@
     (* 100.0 (/ (- to-val from-val) (Math/abs (double from-val))))))
 
 (defn compute-series-with-labels
-  "Apply `compute-fn` to each series' x_values and y_values, attaching :x-name and :y-name
-  from column metadata. `compute-fn` is called on x_values and y_values for each series.
-  Returns a map of series-name -> stats-with-labels."
+  "Apply `compute-fn` to each series' x_values and y_values, attaching `:name` plus `:x-name` and
+  `:y-name` from column metadata. `compute-fn` is called on x_values and y_values for each series.
+
+  Returns a *vector* of series-stats maps, each carrying its own `:name`."
   [series-data compute-fn]
-  (into {}
-        (for [[series-name {:keys [x_values y_values x y]}] series-data]
-          [series-name (-> (compute-fn x_values y_values)
-                           (assoc :x-name (some-> x :name))
-                           (assoc :y-name (some-> y :name)))])))
+  (mapv (fn [[series-name {:keys [x_values y_values x y]}]]
+          (-> (compute-fn x_values y_values)
+              (assoc :name series-name)
+              (assoc :x-name (some-> x :name))
+              (assoc :y-name (some-> y :name))))
+        series-data))
 
 (mu/defn make-chart-result :- ::stats.types/chart-stats
   "Build the standard chart stats result map."
   [chart-type    :- [:enum :time-series :categorical :scatter :histogram :unknown]
    series-data   :- [:map-of :string ::stats.types/series-config]
-   series-stats  :- [:map-of :string [:or ::stats.types/time-series-series-stats
-                                      ::stats.types/categorical-series-stats
-                                      ::stats.types/scatter-series-stats
-                                      ::stats.types/histogram-series-stats]]
+   series-stats  :- [:sequential [:or ::stats.types/time-series-series-stats
+                                  ::stats.types/categorical-series-stats
+                                  ::stats.types/scatter-series-stats
+                                  ::stats.types/histogram-series-stats]]
    correlations  :- [:maybe [:sequential ::stats.types/correlation]]]
   (cond-> {:chart-type   chart-type
            :series-count (count series-data)

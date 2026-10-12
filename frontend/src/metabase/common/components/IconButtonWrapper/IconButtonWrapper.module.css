@@ -1,0 +1,11 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.circle {
+  border-radius: 50%;
+}

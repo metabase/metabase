@@ -299,6 +299,7 @@ export function MainNavbarView({
                   <PaddedSidebarLink
                     icon="group"
                     url={OTHER_USERS_COLLECTIONS_URL}
+                    isSelected={collectionItem?.id === "users"}
                   >
                     {t`Other users' personal collections`}
                   </PaddedSidebarLink>

@@ -34,17 +34,21 @@ export const CollectionListView = ({
   containerClassName,
 }: CollectionListViewProps) => {
   const renderItem = (item: CollectionListItem) => (
-    <Link to={item.link}>
-      <Card shadow="none" withBorder className={styles.card}>
-        <Group gap="xxs">
-          <Icon name={item.icon} className={CS.mr1} size={18} />
+    <Card
+      component={Link}
+      to={item.link}
+      shadow="none"
+      withBorder
+      className={styles.card}
+    >
+      <Group gap="xxs">
+        <Icon name={item.icon} className={CS.mr1} size={18} />
 
-          <Title order={6} component="h3">
-            {item.name}
-          </Title>
-        </Group>
-      </Card>
-    </Link>
+        <Title order={6} component="h3">
+          {item.name}
+        </Title>
+      </Group>
+    </Card>
   );
 
   return (

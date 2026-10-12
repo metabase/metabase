@@ -291,8 +291,11 @@
      ;; also capture entries related to ssh tunneling for later use
      (select-internal-keys-for-spec details-with-auth)
      (select-internal-keys-for-spec spec)
-     ;; remember when the password expires
-     (select-keys details-with-auth [:password-expiry-timestamp]))))
+     ;; remember when the password/token expires — either baked into the details by an auth-provider,
+     ;; or into the spec by a driver that derives it from the credential itself (e.g. Snowflake WIF's
+     ;; JWT exp claim).
+     (select-keys details-with-auth [:password-expiry-timestamp])
+     (select-keys spec              [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   ;; INFO (not DEBUG) so pool destruction is visible in CI test-log artifacts: destroying a pool closes its

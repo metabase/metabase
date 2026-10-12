@@ -42,8 +42,24 @@
 
 (defn- format-exception [e]
   (cond-> (Throwable->map e)
-    (server.settings/hide-stacktraces) (dissoc :via :trace)))
+    ;; `:data` is the ex-data, which for QP exceptions routinely carries the whole query; drop it along with the
+    ;; stacktrace and cause chain, as the (non-streaming) exception middleware does.
+    (server.settings/hide-stacktraces) (dissoc :via :trace :data)))
 
+;; Implemented by the output stream handed to a streaming response body, so that [[write-error!]] -- called from the
+;; body with nothing but that stream -- can find the response's `:error-response-fn`. A function applied to any error
+;; body (a formatted error map, or the `Throwable->map` of an exception) right before it is written to the client;
+;; whatever it returns is what gets written. See [[with-error-response-fn]].
+(definterface ErrorResponseFnProvider
+  (errorResponseFn []))
+
+(defn- error-response-fn
+  "The `:error-response-fn` carried by `os`, if it is the output stream handed to a streaming response body."
+  [os]
+  (when (instance? ErrorResponseFnProvider os)
+    (.errorResponseFn ^ErrorResponseFnProvider os)))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *response*
   "The `HttpServletResponse` for the current streaming response.
    Bound automatically inside `streaming-response` bodies in the Jetty async path.
@@ -51,6 +67,7 @@
    [[set-content-type!]] to interact with it."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *request*
   "The Jetty `Request` for the current streaming response.
    Bound automatically inside `streaming-response` bodies in the Jetty async path.
@@ -58,6 +75,7 @@
    occurs after the response has already been committed."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *completed?*
   "An `AtomicBoolean` that is set to `true` when the async context has been completed,
    either by the worker thread or by Jetty's timeout/error callbacks. When `true`, the
@@ -118,16 +136,18 @@
     (log/errorf "Async context already completed, cannot write error to client: %s"
                 (if (map? obj) (or (:message obj) (:error obj) (:status obj)) obj))))
 
-(defn- sanitize-error-obj [obj export-format]
-  (-> (if (not= :api export-format)
-        (walk/prewalk (fn [x]
-                        (if (map? x)
-                          (apply dissoc x [:json_query :preprocessed])
-                          x))
-                      obj)
-        obj)
-      (dissoc :export-format)
-      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via))))
+(defn- sanitize-error-obj [obj export-format response-fn]
+  (let [obj (cond-> obj
+              response-fn response-fn)]
+    (-> (if (not= :api export-format)
+          (walk/prewalk (fn [x]
+                          (if (map? x)
+                            (apply dissoc x [:json_query :preprocessed])
+                            x))
+                        obj)
+          obj)
+        (dissoc :export-format)
+        (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))))
 
 (defn- abort-connection!
   "Abort the underlying Jetty connection for an *already-committed* streaming response, so it
@@ -158,7 +178,7 @@
   (with-open [os os]
     (log/trace "write-error!")
     (try
-      (let [obj (sanitize-error-obj obj export-format)]
+      (let [obj (sanitize-error-obj obj export-format (error-response-fn os))]
         (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
           (json/encode-to obj writer {})))
       (catch EofException _)
@@ -231,10 +251,11 @@
             (.cancel fut true)))))))
 
 (defn- do-f-async
-  "Runs `f` asynchronously on `executor` (the shared streaming response `thread-pool` when nil), returning
-  immediately. When `f` finishes, completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean`
+  "Runs `f` asynchronously on the `:executor` in `options` (the shared streaming response `thread-pool` when nil),
+  returning immediately. When `f` finishes, completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean`
   used to coordinate with Jetty's timeout/error callbacks so that only one path calls `.complete`."
-  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed? executor]
+  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed?
+   {:keys [executor], :as _options}]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
                (binding [*response*   response
@@ -277,9 +298,11 @@
 
 (defn- delay-output-stream
   "An OutputStream proxy that fetches the actual output stream by dereffing a delay (or other dereffable) before first
-  use."
-  [dlay]
-  (proxy [OutputStream] []
+  use. It also carries the response's `error-response-fn` (possibly nil) for [[write-error!]]."
+  [dlay error-response-fn]
+  (proxy [OutputStream ErrorResponseFnProvider] []
+    (errorResponseFn []
+      error-response-fn)
     (close []
       (.close ^OutputStream @dlay))
     (flush []
@@ -376,7 +399,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers executor], :as _options} finished-chan]
+   f {:keys [content-type status headers async-timeout-ms], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
     (.addListener async-context
@@ -392,6 +415,8 @@
                     (onComplete [_ _event])
                     (onStartAsync [_ _event])))
     (try
+      (when async-timeout-ms
+        (.setTimeout async-context async-timeout-ms))
       (.setStatus response (or status 202))
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map))
@@ -413,9 +438,9 @@
                       gzip? (assoc "Content-Encoding" "gzip"))]
         (#'servlet/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
-              delay-os            (delay-output-stream output-stream-delay)]
+              delay-os            (delay-output-stream output-stream-delay (:error-response-fn options))]
           (start-async-cancel-loop! request finished-chan canceled-chan)
-          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed? executor)))
+          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed? options)))
       (catch Throwable e
         (log/errorf "Unexpected exception in do-f-async: %s" (ex-message e))
         (try
@@ -497,12 +522,40 @@
      which is a small fixed pool: responses that block for the life of a client connection (rather than for the life
      of a query) must supply their own executor so they cannot exhaust it. The supplied executor's futures must
      support real interruption (`Future.cancel(true)`) — the hung-request escalation interrupts the worker, and a
-     ForkJoinPool-backed executor silently ignores it."
+     ForkJoinPool-backed executor silently ignores it.
+  *  `:async-timeout-ms` -- how long the response may run before Jetty completes it, cutting the stream short.
+     Defaults to `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`; `0` means no limit.
+  *  `:error-response-fn` -- optional function applied to any error body right before [[write-error!]] writes it to the
+     client. Usually added after the fact with [[with-error-response-fn]]."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
   `(-streaming-response (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))
+
+(defn with-error-response-fn
+  "Make a streaming `response` pass any error its body writes -- a formatted error map, or the `Throwable->map` of an
+  exception -- through `error-response-fn` first, writing whatever that returns instead.
+
+  For route middleware sanitizing errors for public and embedded endpoints: their `try`/`catch` around the handler
+  cannot see these errors, because a streaming response body runs after the handler has returned.
+
+  `response` may be a [[StreamingResponse]] or a Ring response map whose `:body` is one; anything else is returned
+  unchanged."
+  [response error-response-fn]
+  (cond
+    (instance? StreamingResponse response)
+    (let [^StreamingResponse response response]
+      (->StreamingResponse (.f response)
+                           (assoc (.options response) :error-response-fn error-response-fn)
+                           (.donechan response)))
+
+    (and (map? response)
+         (instance? StreamingResponse (:body response)))
+    (update response :body with-error-response-fn error-response-fn)
+
+    :else
+    response))
 
 ;;;; Malli schema for StreamingResponse
 

@@ -81,15 +81,18 @@
         (into (remove (comp own-keys first)) common-clause-option-entries)
         (into entries))))
 
-(defn- normalize-mbql-clause [x]
+(defn- normalize-mbql-clause [x options]
   (when-let [schema (infer-mbql-clause-schema x)]
-    (lib.normalize/normalize schema x)))
+    (lib.normalize/normalize schema x options)))
 
+;;; The nested normalize doesn't inherit the outer coercer's options, so the `:decode/normalize` pass keeps raw
+;;; integers as literals and the `:decode/legacy-int-field-ids` pass, which runs after it, coerces them.
 (mr/def ::AnyMBQLClause
   "Schema for ANY valid MBQL clause"
   [:fn
-   {:error/message "Valid MBQL clause"
-    :decode/normalize normalize-mbql-clause}
+   {:error/message               "Valid MBQL clause"
+    :decode/normalize            #(normalize-mbql-clause % {:legacy-int-field-ids? false})
+    :decode/legacy-int-field-ids #(normalize-mbql-clause % nil)}
    helpers/normalized-mbql-clause?])
 
 (mr/def ::options-style
@@ -450,7 +453,10 @@
 (defn- normalize-raw-positive-int-to-field-ref
   "Treats raw positive integers as Field IDs for backwards compatibility with MBQL 2, e.g.
 
-    [:= 10 20] => [:= [:field 10 nil] 20]"
+    [:= 10 20] => [:= [:field 10 nil] 20]
+
+  Runs as a `:decode/legacy-int-field-ids` decoder, which [[metabase.lib.normalize/normalize]] applies unless called
+  with `{:legacy-int-field-ids? false}`."
   [x]
   (if (pos-int? x)
     [:field x nil]
@@ -458,7 +464,7 @@
 
 (mr/def ::FieldOrExpressionRef
   [:schema
-   {:decode/normalize #'normalize-raw-positive-int-to-field-ref}
+   {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}
    (one-of expression field)])
 
 ;; aggregate field reference refers to an aggregation, e.g.
@@ -977,7 +983,7 @@
 (mr/def ::EqualityFilterFieldArg
   "Schema for the first arg to `=`, `!=`, and friends."
   [:schema
-   {:decode/normalize #'normalize-raw-positive-int-to-field-ref}
+   {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}
    [:ref ::EqualityComparable]])
 
 (defclause =
@@ -1006,7 +1012,7 @@
                              :quarter-of-year [:get-quarter field])
               extract-unit (if (= unit :day-of-week) :day-of-week-iso unit)]
           (into [:!= extract-expr]
-                (map #(u.time/extract % extract-unit))
+                (map #(u.time/extract {:start-of-week :monday} % extract-unit))
                 args))
         &match))))
 
@@ -1034,7 +1040,7 @@
 
 (mr/def ::OrderedFilterFieldArg
   [:schema
-   {:decode/normalize #'normalize-raw-positive-int-to-field-ref}
+   {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}
    [:ref ::OrderComparable]])
 
 (defclause <,  field [:ref ::OrderedFilterFieldArg], value-or-field [:ref ::OrderComparable])
@@ -1316,10 +1322,7 @@
   [:and
    [:ref ::FieldOrExpressionDef]
    [:any
-    {:decode/normalize (fn [x]
-                         (if (pos-int? x)
-                           [:field x nil]
-                           x))}]])
+    {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}]])
 
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
 
@@ -1784,6 +1787,7 @@
    [:qp/stage-is-from-source-card  {:optional true} [:ref ::lib.schema.id/card]]
    [:qp/stage-had-source-card      {:optional true} [:ref ::lib.schema.id/card]]
    [:qp/skip-persisted-cache       {:optional true} :boolean]
+   [:qp.pivot/forced-shape         {:optional true} [:enum :native-pivot-query :union-all]]
    [:persisted-info/native         {:optional true} ::lib.schema.common/non-blank-string]
    [:source-query/model?           {:optional true} :boolean]
    [:source-query/native-model?    {:optional true} [:maybe :boolean]]
@@ -2417,6 +2421,9 @@
     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
      {:optional true}
      :metabase.lib.schema/sandboxing.original-metadata]
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
+     {:optional true}
+     :metabase.lib.schema/sandboxing.details]
     ;;
     ;; ACTIONS
     ;;

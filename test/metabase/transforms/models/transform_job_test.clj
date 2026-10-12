@@ -2,6 +2,7 @@
   "Tests for the transform job model."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-job :as transform-job]
    [metabase.util.i18n :as i18n]
@@ -77,3 +78,24 @@
                (str (:description (t2/select-one :model/TransformJob (:id job))))))
         (is (= (str (:name translations))
                (str (:name (t2/select-one :model/TransformJob (:id job))))))))))
+
+(deftest data-analyst-job-access-follows-the-advanced-permissions-feature-test
+  (testing "a data analyst reads, writes and creates transform jobs only while advanced-permissions is available"
+    (mt/with-data-analyst-role! (mt/user->id :rasta)
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/when-ee-evailable
+         (mt/with-premium-features #{:advanced-permissions}
+           (is (mi/can-read? :model/TransformJob 1))
+           (is (mi/can-write? (t2/instance :model/TransformJob {})))
+           (is (mi/can-create? :model/TransformJob {}))))
+        (testing "and none once the feature is gone"
+          (mt/with-premium-features #{}
+            (is (not (mi/can-read? :model/TransformJob 1)))
+            (is (not (mi/can-write? (t2/instance :model/TransformJob {}))))
+            (is (not (mi/can-create? :model/TransformJob {})))))))
+    (testing "a superuser is unaffected"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-premium-features #{}
+          (is (mi/can-read? :model/TransformJob 1))
+          (is (mi/can-write? (t2/instance :model/TransformJob {})))
+          (is (mi/can-create? :model/TransformJob {})))))))
