@@ -25,7 +25,7 @@ export const EmbedHomepage = () => {
 
   const learnMoreStaticEmbedding = useSelector((state) =>
     // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is only visible to admins
-    getDocsUrl(state, { page: "embedding/static-embedding" }),
+    getDocsUrl(state, { page: "embedding/guest-embedding" }),
   );
 
   const embedJsDocsUrl = useSelector((state) =>
