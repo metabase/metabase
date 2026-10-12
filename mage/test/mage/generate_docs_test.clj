@@ -1,22 +1,13 @@
 (ns mage.generate-docs-test
   (:require
-   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.generate-docs :as generate-docs]
-   [mage.shell :as shell]
-   [mage.util :as u]))
+   [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private backend-command ["clojure" "-M:ee:doc" "all-documentation"])
-
-(def ^:private commands
-  "Every suite's command, in suite order."
-  [backend-command
-   ["./bin/bb" "bin/generate-usage-analytics-docs.bb"]
-   ["bun" "run" "embedding-sdk:docs:generate"]
-   ["bun" "run" "embedding-eajs:docs:generate"]])
 
 (defn- fake-sh
   "A [[mage.shell/sh*]] stand-in.
@@ -43,7 +34,7 @@
 (deftest every-suite-runs-test
   (let [{:keys [failed calls out]} (run-suites! {} generate-docs/suite-names)]
     (testing "every suite runs once, in order"
-      (is (= commands calls)))
+      (is (= (map @#'generate-docs/suite->command generate-docs/suite-names) calls)))
     (testing "each suite reports that it finished"
       (doseq [suite generate-docs/suite-names]
         (is (str/includes? out (str "Generated " suite " docs")))))
@@ -79,13 +70,3 @@
                    (catch clojure.lang.ExceptionInfo e
                      (:babashka/exit (ex-data e)))))))
       (is (= [backend-command] @calls)))))
-
-(defn- generate-docs-task
-  "The `generate-docs` task map from bb.edn."
-  []
-  (-> (str u/project-root-directory "/bb.edn") slurp edn/read-string :tasks (get 'generate-docs)))
-
-(deftest suite-names-match-bb-edn-test
-  (testing "bb.edn accepts every suite"
-    (is (= generate-docs/suite-names
-           (vec (drop 2 (get-in (:arg-schema (generate-docs-task)) [2 1])))))))

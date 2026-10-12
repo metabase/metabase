@@ -50,14 +50,7 @@ To regenerate one group of pages, pass its suite name. For example:
 ./bin/mage generate-docs backend
 ```
 
-| Suite             | What it regenerates                                                                            |
-| ----------------- | ---------------------------------------------------------------------------------------------- |
-| `backend`         | Environment variables, the config template, the API, AI providers, MCP tools, and CLI commands |
-| `usage-analytics` | The usage analytics reference                                                                  |
-| `embedding-sdk`   | The embedding SDK API reference. It builds the SDK package first, so it's the slowest.         |
-| `embedding-eajs`  | The modular embedding (EAJS) reference                                                         |
-
-The `backend` suite runs all of its generators in one JVM, so it's faster than running each `clojure -M:ee:doc` command separately. If any suite fails, the last line of output lists it.
+To list the suites, run `./bin/mage generate-docs -h`. If any suite fails, the last line of output lists it.
 
 ## Updating API docs
 
