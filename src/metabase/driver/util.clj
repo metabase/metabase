@@ -295,18 +295,20 @@
   since the spec also carries paths Metabase sets itself (an uploaded secret written to a temp file), which are
   checked where Metabase reads them."
   [driver details]
-  (let [declared (into {}
-                       (map (fn [[param access]] [(u/lower-case-en param) access]))
-                       (driver/file-path-parameters driver))]
-    (when (seq declared)
-      (doseq [[k v]  (supplied-connection-parameters driver details)
-              :let   [access (declared (u/lower-case-en (str/trim k)))]
-              :when  access
-              path   (path-readings v)]
-        (when (#{:read :read-write} access)
-          (system/ensure-readable-path! path))
-        (when (#{:write :read-write} access)
-          (system/ensure-writable-path! path))))))
+  ;; with nothing to refuse, skip the driver too: asking it loads it, which a Database save should not need
+  (when-not (and (system/every-path-readable?) (system/every-path-writable?))
+    (let [declared (into {}
+                         (map (fn [[param access]] [(u/lower-case-en param) access]))
+                         (driver/file-path-parameters driver))]
+      (when (seq declared)
+        (doseq [[k v]  (supplied-connection-parameters driver details)
+                :let   [access (declared (u/lower-case-en (str/trim k)))]
+                :when  access
+                path   (path-readings v)]
+          (when (#{:read :read-write} access)
+            (system/ensure-readable-path! path))
+          (when (#{:write :read-write} access)
+            (system/ensure-writable-path! path)))))))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT

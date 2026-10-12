@@ -1029,6 +1029,23 @@
       (testing "a driver that declares no parameters is not checked"
         (is (nil? (refusal ::no-tunnel-driver {:sslrootcert "/etc/ca.pem"})))))))
 
+(driver/register! ::must-not-be-consulted-driver, :abstract? true)
+
+(defmethod driver/file-path-parameters ::must-not-be-consulted-driver
+  [_driver]
+  (throw (ex-info "consulted the driver" {})))
+
+(deftest validate-connection-file-paths!-skips-the-driver-when-every-path-is-allowed-test
+  (testing "when every path is readable and writable nothing can be refused, so the driver is not consulted"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/"
+                                  mb-writable-paths "/"]
+      (is (nil? (driver.u/validate-connection-file-paths! ::must-not-be-consulted-driver {:sslrootcert "/etc/ca.pem"})))))
+  (testing "one restricted allowlist is enough for the check to run"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"
+                                  mb-writable-paths "/"]
+      (is (= :read (path-refusal #(driver.u/validate-connection-file-paths! ::url-paths-driver
+                                                                            {:sslrootcert "/etc/ca.pem"})))))))
+
 (deftest file-paths-are-checked-before-a-connection-test-test
   (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"

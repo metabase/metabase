@@ -14,14 +14,19 @@
   ;; absolute first: normalizing a relative path cannot collapse a leading `..`
   (-> (.getPath fs path (u/varargs String)) .toAbsolutePath .normalize))
 
+(defn- allows-every-path?
+  "Whether `allowlist` has a `/` entry, which allows any path; on Windows it would otherwise mean only the root of the
+  current drive."
+  [allowlist]
+  (boolean (some #{"/"} allowlist)))
+
 (defn- allowed-path?
   "Whether `path` is one of the `allowlist` directories or under one. Compares normalized paths, so `..` cannot
-  escape an allowed directory, and whole path segments, so `/abc` does not allow `/abcd`. A `/` entry allows any
-  path; on Windows it would otherwise mean only the root of the current drive."
+  escape an allowed directory, and whole path segments, so `/abc` does not allow `/abcd`."
   ([allowlist path]
    (allowed-path? (FileSystems/getDefault) allowlist path))
   ([^FileSystem fs allowlist path]
-   (or (boolean (some #{"/"} allowlist))
+   (or (allows-every-path? allowlist)
        (let [path (->normalized-path fs path)]
          (boolean (some #(.startsWith path (->normalized-path fs %)) allowlist))))))
 
@@ -34,6 +39,16 @@
   "Whether Metabase may write the local file at `path`."
   [path]
   (allowed-path? (system.settings/writable-paths) path))
+
+(defn every-path-readable?
+  "Whether Metabase may read any local file, so [[readable-path?]] holds whatever the path."
+  []
+  (allows-every-path? (system.settings/readable-paths)))
+
+(defn every-path-writable?
+  "Whether Metabase may write any local file, so [[writable-path?]] holds whatever the path."
+  []
+  (allows-every-path? (system.settings/writable-paths)))
 
 (defn ensure-readable-path!
   "Returns `path` if Metabase may read it, otherwise throws a 400."

@@ -44,6 +44,17 @@
         (tu/do-with-temp-env-var-value! env-var "/"
                                         #(is (true? (allowed? "/etc/passwd"))))))))
 
+(deftest every-path-allowed-test
+  (doseq [[access every-path-allowed? env-var] [[:read  system/every-path-readable? :mb-readable-paths]
+                                                [:write system/every-path-writable? :mb-writable-paths]]]
+    (testing access
+      (testing "`/` allows every path, alone or alongside other entries"
+        (tu/do-with-temp-env-var-value! env-var "/" #(is (true? (every-path-allowed?))))
+        (tu/do-with-temp-env-var-value! env-var "/tmp,/" #(is (true? (every-path-allowed?)))))
+      (testing "any other allowlist restricts some path"
+        (tu/do-with-temp-env-var-value! env-var "/allowed/dir" #(is (false? (every-path-allowed?))))
+        (tu/do-with-temp-env-var-value! env-var "NONE" #(is (false? (every-path-allowed?))))))))
+
 (deftest read-and-write-allowlists-are-independent-test
   (mt/with-temp-env-var-value! [mb-readable-paths "/read"
                                 mb-writable-paths "/write"]
