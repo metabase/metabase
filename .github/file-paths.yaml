@@ -127,8 +127,12 @@ ci_scripts:
   - ".github/file-paths.yaml"
   - ".github/scripts/**"
   - ".github/actions/**"
-  - ".github/workflows/e2e-{test,tests,matrix-builder}.yml"
-  - ".github/workflows/loki.yml"
+  # e2e-containers.unit.spec.ts asserts that every workflow starting one analytics collector
+  # container starts the other, and that three files agree on the sink's port. A new workflow is
+  # exactly the drift it exists to catch, so this follows all of them, not a list.
+  - ".github/workflows/*.{yml,yaml}"
+  - "metaplow/**"
+  - "deps.edn"
   - ".storybook/story-files.cjs"
   - "e2e/runner/read-spec-paths.js"
   - "e2e/support/cypress.config.js"
