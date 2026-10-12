@@ -121,6 +121,25 @@ function shapeLoopback(): void {
   }
 }
 
+/**
+ * A first visit opens a connection, and so does a return visit. A load here
+ * follows the one before it by seconds, and Chrome would reuse the connection
+ * that one left open. That skips the handshake, a whole round trip the reading
+ * then lacks, and how often it happens moves with the timing between loads.
+ * Closing the connections makes every load pay for its own.
+ */
+function closeBackendConnections(): void {
+  const sockets = `'( dport = :${backendPort} or sport = :${backendPort} )'`;
+  asRoot(`ss -K -t ${sockets}`);
+
+  // A kernel without socket destroy leaves them open and reports nothing.
+  const open = shellOutput(`ss -H -t state established ${sockets}`).trim();
+  if (open) {
+    console.error(`connections to the backend stayed open:\n${open}`);
+    process.exit(1);
+  }
+}
+
 function unshapeLoopback(): void {
   asRoot("tc qdisc del dev lo root");
   asRoot(`ip link set dev lo mtu ${LOOPBACK_MTU_DEFAULT}`);
@@ -336,6 +355,10 @@ async function launchChrome() {
 }
 
 async function loadOnce() {
+  if (shapeNetwork) {
+    closeBackendConnections();
+  }
+
   const target = await devtools("/json/new?about:blank", "PUT");
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve) => socket.addEventListener("open", resolve));
