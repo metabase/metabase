@@ -86,13 +86,12 @@ export function headingIds(markdown: string): Set<string> {
       ids.add(explicit[1]);
       continue;
     }
-    const base =
-      heading[1]
-        .replace(/\[([^\]]*)]\([^)]*\)/g, "$1")
-        .replace(/[`*]|\b_|_\b/g, "")
-        .toLowerCase()
-        .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
-        .replace(/ /g, "-");
+    const base = heading[1]
+      .replace(/\[([^\]]*)]\([^)]*\)/g, "$1")
+      .replace(/[`*]|\b_|_\b/g, "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
+      .replace(/ /g, "-");
     let id = base;
     for (let n = 1; ids.has(id); n++) {
       id = `${base}-${n}`;
@@ -113,13 +112,16 @@ export function checkLink({ page, anchor }: DocsLink, docsDir = "docs") {
   return undefined;
 }
 
+// Specs and stories call the helpers with made-up pages.
+const isChecked = (file: string) => !/\.(unit\.spec|stories)\./.test(file);
+
 const main = () => {
   const staged = process.argv.slice(2);
-  const files = staged.length
-    ? staged
-    : globSync("{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}", {
-        ignore: ["**/*.unit.spec.*", "**/*.stories.*"],
-      });
+  const files = (
+    staged.length
+      ? staged
+      : globSync("{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}")
+  ).filter(isChecked);
 
   let checked = 0;
   let broken = 0;
