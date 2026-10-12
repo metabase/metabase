@@ -1,4 +1,6 @@
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 /**
  * This page registers no prefetch, unlike the other pages that were split.
@@ -21,7 +23,11 @@ export function getRoutes() {
   return (
     <Route
       path="databases/:dbId/tables/:tableId/edit/:objectId?"
-      lazy={editTableDataPage}
+      lazy={featureGatedRoute(
+        "table_data_editing",
+        editTableDataPage,
+        notFoundRoute,
+      )}
     />
   );
 }
