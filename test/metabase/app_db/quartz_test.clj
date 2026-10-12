@@ -75,11 +75,6 @@
                 (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
                 (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
 
-(deftest load-class-names-the-stored-class-when-its-current-class-is-missing-test
-  ;; plain `with-redefs`, because the lookup is a map and not a function
-  (with-redefs [mdb.quartz/renamed-job-classes {"a.Old" "a.Missing"}]
-    (is (thrown-with-msg? ClassNotFoundException #"a\.Old" (#'mdb.quartz/load-class "a.Old")))))
-
 (defn- job-source-files
   "Source files of this edition that mention Quartz, which include every file that defines a job class."
   []
@@ -119,18 +114,6 @@
             :type-name   (-> zloc z/down z/right z/sexpr)
             :saved-class (:saved-class options)}))))
 
-(defn- class-namespace
-  "The name of the namespace that defines the class named `class-name`."
-  [class-name]
-  (or (some (fn [{:keys [saved-class], ns-symb :namespace}]
-              (when (= saved-class class-name)
-                (str ns-symb)))
-            @job-definitions)
-      ;; a class with no `:saved-class`, such as a job's old name, is named after its namespace
-      (-> class-name
-          (str/replace #"\.[^.]+$" "")
-          (str/replace "_" "-"))))
-
 (defn- in-this-edition?
   "Whether this edition has the class named `class-name`."
   [class-name]
@@ -138,31 +121,6 @@
       ;; a job that moved out of enterprise can keep an enterprise class name
       (some #(= class-name (:saved-class %)) @job-definitions)
       (not (str/starts-with? class-name "metabase_enterprise."))))
-
-(defn- class-exists? [class-name]
-  ;; a job class is a `deftype`, which exists only once its namespace has loaded
-  (try
-    (require (symbol (class-namespace class-name)))
-    (catch java.io.FileNotFoundException _))
-  (try
-    (Class/forName class-name false (classloader/the-classloader))
-    true
-    (catch ClassNotFoundException _
-      false)))
-
-(deftest renamed-job-classes-exist-and-their-old-names-do-not-test
-  (is (= []
-         (for [[old-name current-name] mdb.quartz/renamed-job-classes
-               :when (in-this-edition? current-name)
-               :let  [old-exists?     (class-exists? old-name)
-                      current-exists? (class-exists? current-name)]
-               :when (or old-exists? (not current-exists?))]
-           {:old-name        old-name
-            :old-exists?     old-exists?
-            :current-name    current-name
-            :current-exists? current-exists?}))
-      (str "Each entry in `metabase.app-db.quartz/renamed-job-classes` maps a class name that no longer exists"
-           " to the `:saved-class` of the job that had it.")))
 
 (def ^:private listed-job-classes
   "The class name of every job, apart from its `:saved-class`."
@@ -290,6 +248,5 @@
              " through a move.\n"
              "For a new job: add its `:saved-class` to `listed-job-classes`.\n"
              "For a job that was removed: remove its name.\n"
-             "To change a stored class name on purpose: change it in `listed-job-classes`, and add the old"
-             " name to `metabase.app-db.quartz/renamed-job-classes`, or stored jobs and their triggers are"
-             " deleted at the next startup."))))
+             "To change a stored class name on purpose: change it in `listed-job-classes` too. Jobs stored"
+             " under the old name are deleted at the next startup, with their triggers."))))

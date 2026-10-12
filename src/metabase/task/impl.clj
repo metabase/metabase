@@ -227,35 +227,11 @@
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
-(defn- job-definition
-  "The parts of `job` that Quartz stores and reads back."
-  [^JobDetail job]
-  ;; Quartz also stores whether the class disallows concurrent execution and persists its job data.
-  ;; It reads neither column back, and takes both from the loaded class's annotations, so they are left out.
-  {:class              (.getJobClass job)
-   :data               (into {} (.getJobDataMap job))
-   :description        (.getDescription job)
-   :durable?           (.isDurable job)
-   :requests-recovery? (.requestsRecovery job)})
-
-(defn- stored-as-is?
-  "Whether `scheduler` already stores `job` exactly as it is."
-  [^Scheduler scheduler ^JobDetail job]
-  ;; a stored job whose class can't be loaded counts as not stored, so that it gets replaced
-  (when-let [stored (try
-                      (.getJobDetail scheduler (.getKey job))
-                      (catch JobPersistenceException _
-                        nil))]
-    (= (job-definition stored) (job-definition job))))
-
 (mu/defn add-job!
-  "Add a job separately from a trigger. Replaces a stored job only when its definition has changed."
+  "Add a job separately from a trigger, replace if the job is already there"
   [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
-    ;; Replacing a job writes its current class name, which old nodes in a rolling upgrade can't load.
-    ;; An unchanged job therefore keeps its stored name: see [[metabase.app-db.quartz/renamed-job-classes]].
-    (when-not (stored-as-is? scheduler job)
-      (qs/add-job scheduler job true))))
+    (qs/add-job scheduler job true)))
 
 (mu/defn add-trigger!
   "Add a trigger. Assumes the trigger is already associated to a job (i.e. `trigger/for-job`)"
@@ -531,7 +507,7 @@
     Quartz stores this name in the app DB, and finds the job's class by it.
     Keep it the same when the namespace or `type-name` changes, or stored jobs lose their class.
     A new job takes the name its namespace would give it, which the error for a missing `:saved-class` prints.
-    To change a stored name on purpose, see `metabase.app-db.quartz/renamed-job-classes`.
+    A stored job whose class name no longer exists is deleted at startup, with its triggers.
   - `:concurrent?` (default `true`): `false` stops Quartz running two executions of the job at once, as
     `org.quartz.DisallowConcurrentExecution` does.
   - `:persist-data?` (default `false`): `true` saves the job's data map again after each execution, as

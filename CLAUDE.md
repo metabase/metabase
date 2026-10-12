@@ -106,8 +106,7 @@ class name in the app DB, and `task/defjob` gives the class exactly that name, s
 that is stored.
 A new job needs one too: compile without it, and the error prints the entry to paste.
 
-To change a stored class name on purpose, add the old name to `metabase.app-db.quartz/renamed-job-classes`,
-or stored jobs and their triggers are deleted at the next startup.
+Changing a `:saved-class` deletes the jobs stored under the old name, and their triggers, at the next startup.
 The tests in `metabase.app-db.quartz-test` fail with instructions when a job's class name changes, or a job
 is added.
 

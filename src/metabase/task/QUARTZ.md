@@ -27,7 +27,7 @@ Define a job with `task/defjob`. It takes a type name, an optional docstring, an
 
 Every job needs a `:saved-class`. It's the exact name of the job's class, which Quartz stores in the app DB and uses to find the job's code. For a new job, leave it out and compile: the error prints the entry to paste, with the name the job's namespace gives it.
 
-Once a job has shipped, keep its `:saved-class` the same, even when you move its namespace or rename its type. During a rolling upgrade, old and new nodes share the Quartz tables, and a node that can't load a stored class name deletes the job and its triggers at startup. To change a stored name on purpose, add the old name to `metabase.app-db.quartz/renamed-job-classes`.
+Once a job has shipped, keep its `:saved-class` the same, even when you move its namespace or rename its type. During a rolling upgrade, old and new nodes share the Quartz tables, and a node that can't load a stored class name deletes the job and its triggers at startup.
 
 For a job that implements more than `org.quartz.Job`, such as an `InterruptableJob`, use `task/defjob-type`.
 

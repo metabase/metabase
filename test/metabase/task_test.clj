@@ -6,7 +6,6 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.app-db.quartz :as mdb.quartz]
    [metabase.classloader.core :as classloader]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
@@ -185,19 +184,10 @@
          (when-not running?#
            (task/stop-scheduler!))))))
 
-(def ^:private old-upgrade-checks-class-name "metabase.task.upgrade_checks.CheckForNewVersions")
-
-(def ^:private upgrade-checks-class-name "metabase.version.task.upgrade_checks.CheckForNewVersions")
-
 (defn- stored-job-class-name []
   (t2/select-one-fn (capitalize-if-mysql :job_class_name)
                     (capitalize-if-mysql :qrtz_job_details)
                     (capitalize-if-mysql :job_name) "metabase.task-test.job"))
-
-(defn- set-stored-job-class-name! [class-name]
-  (t2/update! (capitalize-if-mysql :qrtz_job_details)
-              (capitalize-if-mysql :job_name) "metabase.task-test.job"
-              {(capitalize-if-mysql :job_class_name) class-name}))
 
 (defn- trigger-that-starts-next-week
   "An hourly trigger like [[trigger-1]] that can't fire while a test runs."
@@ -209,31 +199,6 @@
     (cron/schedule
      (cron/cron-schedule "0 0 * * * ? *")
      (cron/with-misfire-handling-instruction-do-nothing)))))
-
-(deftest startup-cleanup-keeps-a-job-stored-under-an-old-class-name-test
-  ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it.
-  ;; Upgraded nodes load the current class under it.
-  (require 'metabase.version.task.upgrade-checks)
-  (with-jdbc-scheduler!
-    (try
-      ;; Once the old name is stored, this row loads as the real version-check job, which must not run here.
-      ;; A scheduler that this test started is in standby and fires nothing.
-      ;; One that was already running could fire an hourly trigger, so the trigger starts next week.
-      (task/schedule-task! (job) (trigger-that-starts-next-week))
-      (set-stored-job-class-name! old-upgrade-checks-class-name)
-      (#'task.impl/delete-jobs-with-no-class!)
-      ;; the trigger survives too, which matters for per-database sync schedules, as no `init!` recreates them
-      (is (= {:stored-class-name old-upgrade-checks-class-name
-              :loaded-class-name upgrade-checks-class-name
-              :triggers          #{{:cron-expression     "0 0 * * * ? *"
-                                    :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}}
-             {:stored-class-name (stored-job-class-name)
-              :loaded-class-name (-> ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))
-                                     .getJobClass
-                                     .getName)
-              :triggers          (triggers)}))
-      (finally
-        (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))))))
 
 (defonce ^:private moved-job-runs (atom 0))
 
@@ -257,7 +222,7 @@
       nil)))
 
 (deftest startup-cleanup-keeps-a-moved-job-that-kept-its-saved-class-test
-  ;; The stored name is the `:saved-class`, which is not an old name of any job, so no renamed class is involved.
+  ;; The row is stored under the `:saved-class`, which is not the name the namespace would give the class.
   (with-jdbc-scheduler!
     (try
       ;; the row is this test's own, and its trigger starts next week, so the scheduler never fires it
@@ -274,7 +239,6 @@
                 :loaded-class-name   "metabase.task_test_before_the_move.MovedJob"
                 :defined-here?       true
                 :name-from-namespace nil
-                :renamed-class?      false
                 :triggers            #{{:cron-expression     "0 0 * * * ? *"
                                         :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
                 :runs                1}
@@ -282,52 +246,10 @@
                 :loaded-class-name   (.getName job-class)
                 :defined-here?       (identical? job-class MovedJob)
                 :name-from-namespace (loadable-class-name "metabase.task_test.MovedJob")
-                :renamed-class?      (contains? mdb.quartz/renamed-job-classes (.getName job-class))
                 :triggers            (triggers)
                 :runs                (- @moved-job-runs runs-before)})))
       (finally
         (task/delete-task! (.getKey (moved-job)) (.getKey (trigger-1)))))))
-
-(defn- upgrade-checks-job ^JobDetail [{:keys [data description requests-recovery?]}]
-  (jobs/build
-   (jobs/of-type (Class/forName upgrade-checks-class-name))
-   (jobs/with-identity (jobs/key "metabase.task-test.job"))
-   (jobs/with-description (or description "a job"))
-   (jobs/using-job-data (or data {}))
-   ;; the `jobs/build` macro threads the builder in as the first argument
-   (cond-> requests-recovery? jobs/request-recovery)
-   (jobs/store-durably)))
-
-(defn- class-name-after-add-job!
-  "Returns the class name stored after [[task/add-job!]] adds a job built with `job-options`.
-  The default job is stored under `stored-class-name` first."
-  [[stored-class-name job-options]]
-  (task/add-job! (upgrade-checks-job {}))
-  (set-stored-job-class-name! stored-class-name)
-  (task/add-job! (upgrade-checks-job job-options))
-  (stored-job-class-name))
-
-(deftest add-job!-replaces-a-stored-job-only-when-it-changed-test
-  ;; Replacing a stored job writes its current class name, which old nodes in a rolling upgrade can't load
-  (require 'metabase.version.task.upgrade-checks)
-  (with-jdbc-scheduler!
-    (let [old-name old-upgrade-checks-class-name]
-      (try
-        (is (= {:unchanged               old-name
-                :new-description         upgrade-checks-class-name
-                :new-data                upgrade-checks-class-name
-                :new-recovery-request    upgrade-checks-class-name
-                :unloadable-stored-class upgrade-checks-class-name}
-               (update-vals {:unchanged               [old-name {}]
-                             :new-description         [old-name {:description "a new description"}]
-                             :new-data                [old-name {:data {"a" "b"}}]
-                             :new-recovery-request    [old-name {:requests-recovery? true}]
-                             :unloadable-stored-class ["metabase.task_test.NotAClass" {}]}
-                            class-name-after-add-job!)))
-        (finally
-          (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job")))))))
-
-;;; ------------------------------------------------ defjob -------------------------------------------------
 
 (task/defjob AnnotatedJob
   "A job with both Quartz annotations."
