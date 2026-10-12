@@ -531,6 +531,15 @@
         (is (thrown-with-msg? Exception #"Potentially dangerous keys"
                               (driver/validate-db-details! :databricks details)))))))
 
+(deftest ^:parallel staging-allowed-local-paths-is-rejected-test
+  (testing "the legacy spelling of `VolumeOperationAllowedLocalPaths` enables the same local file reads and writes"
+    (doseq [opts ["StagingAllowedLocalPaths=/"
+                  "stagingallowedlocalpaths=/tmp"
+                  "UseNativeQuery=1;StagingAllowedLocalPaths=/etc"]]
+      (testing opts
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/validate-db-details! :databricks {:additional-options opts})))))))
+
 (deftest can-connect-using-m2m-test
   (mt/test-driver
     :databricks
