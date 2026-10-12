@@ -188,6 +188,11 @@ a `bundle-load-rows-<sha>` artifact with one CSV file per locale. The columns ar
 the columns of the table, so the files of a run can be joined and imported by
 hand.
 
+`Scripts`, `Script kb`, `Css kb` and `Total kb` count what the page fetched
+before DOMContentLoaded. A chunk that a route loads after that event is not in
+them, which keeps the counts the same for a build that records no performance
+marks.
+
 The conditions are a fast and a slow network crossed with a fast and a slow CPU.
 Neither CPU condition runs unthrottled: a throttle of 1 leaves the reading at the
 mercy of whichever CPU the runner drew, which is the largest source of spread in
