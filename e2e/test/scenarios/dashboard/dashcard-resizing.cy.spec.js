@@ -478,8 +478,6 @@ describe("issue 29304", () => {
   // It will fail Cypress tests.
   const WAIT_TIME = 300;
 
-  const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-
   const SCALAR_QUESTION = {
     name: "Scalar question",
     query: {

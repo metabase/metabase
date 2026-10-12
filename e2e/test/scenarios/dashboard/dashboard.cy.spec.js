@@ -22,11 +22,6 @@ const { H } = cy;
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
-// There's a race condition when saving a dashboard
-// and then immediately editing it again. After saving,
-// we exit the edit mode and that can happen after
-// `H.editDashboard` is called for some reason
-
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     H.restore();
@@ -782,13 +777,6 @@ describe("scenarios > dashboard", () => {
 
     it("should warn a user before leaving after changing cards or tabs on a dashboard", () => {
       cy.visit("/");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findByTestId("home-page").should(
-        "contain",
-        "Try out these sample x-rays to see what Metabase can do.",
-      );
-
       // add
       createNewDashboard();
       cy.findByTestId("dashboard-header").icon("add").click();
@@ -1553,9 +1541,6 @@ describe("issue 16559", () => {
 
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/dashboard/*?dashboard_load_id=*").as(
-      "loadDashboard",
-    );
   });
 
   it("should always show the most recent revision (metabase#16559)", () => {

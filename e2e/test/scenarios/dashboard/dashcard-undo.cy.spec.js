@@ -134,7 +134,7 @@ describe("issue 12926", () => {
       req.on("response", (res) => {
         res.setDelay(5000);
       });
-    }).as("dashcardQuerySlowed");
+    });
   }
 
   function restoreDashcardQuery() {

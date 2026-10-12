@@ -543,7 +543,7 @@ describe("issue 31766", () => {
       H.updateDashboardCards({ dashboard_id, cards: [textCard, questionCard] });
 
       H.visitDashboard(dashboard_id);
-      H.editDashboard(dashboard_id);
+      H.editDashboard();
     });
 
     // update text card

@@ -12,8 +12,6 @@ describe("scenarios > dashboard cards > visualization options", () => {
   });
 
   it("should show the ellipsis even with an empty card title on visualizations with noHeader (metabase#46897)", () => {
-    const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-
     const QUESTION_LINE = {
       name: "The lineest of all lines",
       display: "line",
