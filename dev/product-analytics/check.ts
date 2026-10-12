@@ -6,8 +6,9 @@
  */
 
 import { buildSql } from "../../frontend/src/metabase/product-analytics/build-sql";
-import { defaultSpec } from "../../frontend/src/metabase/product-analytics/defaults";
 import type { AnalysisKind } from "../../frontend/src/metabase/product-analytics/spec/types";
+
+import { FLAG, defaultSpec } from "./specs";
 
 const CH = process.env.CLICKHOUSE_URL ?? "http://127.0.0.1:18123";
 
@@ -104,7 +105,17 @@ const check = (name: string, ok: boolean, detail: string) => {
 };
 
 const run = async (kind: AnalysisKind, truth: GroundTruth) => {
-  const built = buildSql(defaultSpec(kind), eventsBaseSql(truth));
+  const built = buildSql(defaultSpec(kind), eventsBaseSql(truth), {
+    columns: {
+      timestamp: "created_at",
+      person: "person_id",
+      session: "session_id",
+      event_id: "event_id",
+      event_name: "event_name",
+      url_path: "url_path",
+    },
+    flags: Object.values(FLAG),
+  });
   const rows = await chJson(built.sql);
   console.log(`\n${kind} (${rows.length} rows)`);
 

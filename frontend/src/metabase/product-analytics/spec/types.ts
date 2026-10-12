@@ -6,14 +6,12 @@
  * range and attribute filters live in the MBQL base query, not here.
  */
 
-import type { DateTimeAbsoluteUnit } from "metabase-types/api";
+import type {
+  DateTimeAbsoluteUnit,
+  ProductAnalyticsKind,
+} from "metabase-types/api";
 
-export type AnalysisKind =
-  | "funnel"
-  | "paths"
-  | "habit"
-  | "lifecycle"
-  | "cohorts";
+export type AnalysisKind = ProductAnalyticsKind;
 
 export type Granularity = Extract<
   DateTimeAbsoluteUnit,

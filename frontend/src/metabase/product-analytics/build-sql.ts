@@ -1,9 +1,16 @@
+import {
+  COLUMN_ROLES,
+  type ColumnRoles,
+  PLANNER_COLUMN_NAMES,
+} from "./columns";
 import type { AnalysisSpec } from "./spec/types";
 import { planCohorts } from "./sql/analyses/cohorts";
 import { planFunnel } from "./sql/analyses/funnel";
 import { planHabit } from "./sql/analyses/habit";
 import { planLifecycle } from "./sql/analyses/lifecycle";
 import { planPaths } from "./sql/analyses/paths";
+import { ident } from "./sql/compile/dialect";
+import { flagSql } from "./sql/compile/flag";
 import { type Cte, CycleError, type QueryPlan, compose } from "./sql/compose";
 
 export interface BuiltSql {
@@ -12,6 +19,11 @@ export interface BuiltSql {
   spec: AnalysisSpec;
   ctes: Cte[];
 }
+
+export type BaseColumns = {
+  columns: ColumnRoles;
+  flags: string[];
+};
 
 const planAnalysis = (spec: AnalysisSpec): QueryPlan => {
   switch (spec.kind) {
@@ -31,13 +43,45 @@ const planAnalysis = (spec: AnalysisSpec): QueryPlan => {
 const stripTrailingSemicolon = (sql: string): string =>
   sql.trim().replace(/;+\s*$/, "");
 
-export const buildSql = (spec: AnalysisSpec, baseSql: string): BuiltSql => {
+const MISSING_COLUMN_SQL: Record<keyof ColumnRoles, string> = {
+  timestamp: "NULL",
+  person: "NULL",
+  session: "NULL",
+  event_id: "NULL",
+  event_name: "''",
+  url_path: "''",
+};
+
+/** Renames the mapped table columns to the names the planners read. */
+const projectBase = (baseSql: string, { columns, flags }: BaseColumns) => {
+  const projected = [
+    ...COLUMN_ROLES.map((role) => {
+      const source = columns[role];
+      const sql = source !== null ? ident(source) : MISSING_COLUMN_SQL[role];
+      return `${sql} AS ${PLANNER_COLUMN_NAMES[role]}`;
+    }),
+    ...flags.map(flagSql),
+  ];
+  return [
+    "SELECT",
+    projected.map((column) => `  ${column}`).join(",\n"),
+    "FROM (",
+    stripTrailingSemicolon(baseSql),
+    ") AS base",
+  ].join("\n");
+};
+
+export const buildSql = (
+  spec: AnalysisSpec,
+  baseSql: string,
+  baseColumns: BaseColumns,
+): BuiltSql => {
   const plan = planAnalysis(spec);
   const eventsBase: Cte = {
     name: "events_base",
-    note: "MBQL-compiled event stream with flag columns",
+    note: "MBQL-compiled event stream, with columns renamed for the planners",
     deps: [],
-    body: stripTrailingSemicolon(baseSql),
+    body: projectBase(baseSql, baseColumns),
   };
   const merged: QueryPlan = {
     ...plan,

@@ -2,74 +2,46 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { DatePicker } from "metabase/querying/common/components/DatePicker";
-import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
-import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
-import {
-  ActionIcon,
-  Button,
-  Group,
-  Icon,
-  Menu,
-  Popover,
-  SegmentedControl,
-} from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { TemporalUnit } from "metabase-types/api";
+import { ActionIcon, Button, Group, Icon, SegmentedControl } from "metabase/ui";
 
-import type { AnalysisConfig } from "../analyses/config";
-import type { Grain, Granularity } from "../spec/types";
-import type { AnalysisPanel, AnalysisState } from "../use-analysis-state";
+import type { CommonSettings } from "../analyses/types";
+import type { SettingKey, SettingWidget } from "../settings/types";
+import type { AnalysisPanel } from "../use-analysis-state";
 
 import S from "./AnalysisToolbar.module.css";
 import { SqlModal } from "./SqlModal";
+import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
-const grainLabel = (grain: Grain): string => {
-  switch (grain) {
-    case "person":
-      return t`counting people`;
-    case "session":
-      return t`counting sessions`;
-    case "event":
-      return t`counting events`;
-  }
-};
-
-const isGranularity = (
-  unit: TemporalUnit,
-  units: Granularity[],
-): unit is Granularity => units.some((item) => item === unit);
+const findSetting = (
+  widgets: SettingWidget[],
+  id: SettingKey<CommonSettings>,
+): SettingWidget | undefined => widgets.find((widget) => widget.id === id);
 
 type AnalysisToolbarProps = {
-  config: AnalysisConfig;
-  state: AnalysisState;
+  widgets: SettingWidget[];
+  panel: AnalysisPanel;
+  setupLabel: string;
   sql: string | null;
+  canSave: boolean;
   onPanelChange: (panel: AnalysisPanel) => void;
-  onGrainChange: (grain: Grain) => void;
-  onDateFilterChange: (value: AnalysisState["dateFilter"]) => void;
-  onSpecChange: (spec: AnalysisState["spec"]) => void;
+  onSave: () => void;
 };
 
+/**
+ * The layout is fixed here. Settings only supply each control's value,
+ * visibility and options.
+ */
 export const AnalysisToolbar = ({
-  config,
-  state,
+  widgets,
+  panel,
+  setupLabel,
   sql,
+  canSave,
   onPanelChange,
-  onGrainChange,
-  onDateFilterChange,
-  onSpecChange,
+  onSave,
 }: AnalysisToolbarProps) => {
   const [sendToast] = useToast();
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
-  const [dateOpened, { close: closeDate, open: openDate }] = useDisclosure();
-  const [unitOpened, { close: closeUnit, open: openUnit }] = useDisclosure();
-
-  const currentUnit = config.granularity?.get(state.spec);
-  const unitItems =
-    config.granularity?.units.map((unit) => ({
-      value: unit,
-      label: Lib.describeTemporalUnit(unit),
-    })) ?? [];
 
   return (
     <>
@@ -79,37 +51,19 @@ export const AnalysisToolbar = ({
             classNames={{
               label: S.segmentedControlLabel,
             }}
-            value={state.panel}
+            value={panel}
             onChange={onPanelChange}
             data={[
-              { value: "setup", label: config.setupLabel },
+              { value: "setup", label: setupLabel },
               {
                 value: "advanced",
-                icon: "gear",
+                icon: "sliders",
                 ariaLabel: t`Advanced settings`,
-                withTooltip: true,
               },
             ]}
           />
           <Button.Group>
-            <Menu>
-              <Menu.Target>
-                <Button variant="default" leftSection={<Icon name="group" />}>
-                  {grainLabel(state.spec.grain)}
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item onClick={() => onGrainChange("person")}>
-                  {t`People`}
-                </Menu.Item>
-                <Menu.Item onClick={() => onGrainChange("session")}>
-                  {t`Sessions`}
-                </Menu.Item>
-                <Menu.Item onClick={() => onGrainChange("event")}>
-                  {t`Events`}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <ToolbarSetting setting={findSetting(widgets, "counting")} />
             <Button
               variant="default"
               leftSection={<Icon name="filter" />}
@@ -123,56 +77,8 @@ export const AnalysisToolbar = ({
         </Group>
 
         <Group gap="sm">
-          <Popover
-            opened={dateOpened}
-            onChange={(opened) => (opened ? openDate() : closeDate())}
-            position="bottom-end"
-          >
-            <Popover.Target>
-              <Button variant="default" leftSection={<Icon name="calendar" />}>
-                {getDateFilterDisplayName(state.dateFilter)}
-              </Button>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <DatePicker
-                value={state.dateFilter}
-                onChange={(value) => {
-                  onDateFilterChange(value);
-                  closeDate();
-                }}
-              />
-            </Popover.Dropdown>
-          </Popover>
-
-          {config.granularity !== undefined && currentUnit !== undefined && (
-            <Popover
-              opened={unitOpened}
-              onChange={(opened) => (opened ? openUnit() : closeUnit())}
-              position="bottom-end"
-            >
-              <Popover.Target>
-                <Button variant="default">
-                  {t`by ${Lib.describeTemporalUnit(currentUnit).toLowerCase()}`}
-                </Button>
-              </Popover.Target>
-              <Popover.Dropdown>
-                <TemporalUnitPicker
-                  value={currentUnit}
-                  availableItems={unitItems}
-                  onChange={(unit) => {
-                    if (
-                      config.granularity &&
-                      isGranularity(unit, config.granularity.units)
-                    ) {
-                      onSpecChange(config.granularity.set(state.spec, unit));
-                      closeUnit();
-                    }
-                  }}
-                />
-              </Popover.Dropdown>
-            </Popover>
-          )}
-
+          <ToolbarSetting setting={findSetting(widgets, "date_range")} />
+          <ToolbarSetting setting={findSetting(widgets, "granularity")} />
           <ActionIcon
             variant="subtle"
             size="lg"
@@ -181,12 +87,7 @@ export const AnalysisToolbar = ({
           >
             <Icon name="sql" />
           </ActionIcon>
-          <Button
-            variant="subtle"
-            onClick={() =>
-              sendToast({ message: t`Coming soon`, timeout: 3000 })
-            }
-          >
+          <Button variant="subtle" disabled={!canSave} onClick={onSave}>
             {t`Save`}
           </Button>
         </Group>

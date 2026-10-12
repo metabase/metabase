@@ -1,24 +1,21 @@
-import type { ConcreteTableId } from "metabase-types/api";
-
-export type EventAnalysisKind =
-  | "funnel"
-  | "paths"
-  | "habit"
-  | "lifecycle"
-  | "cohorts";
+import type {
+  CardId,
+  ConcreteTableId,
+  ProductAnalyticsKind,
+} from "metabase-types/api";
 
 export function newEventAnalysis(): string {
   return "/event-analysis/new";
 }
 
 export function eventAnalysis(
-  kind: EventAnalysisKind,
+  kind: ProductAnalyticsKind,
   tableId: ConcreteTableId,
 ): string {
   const params = new URLSearchParams({ table: String(tableId) });
   return `/event-analysis/new/${kind}?${params.toString()}`;
 }
 
-export function eventAnalysisDebug(): string {
-  return "/event-analysis/debug";
+export function savedEventAnalysis(cardId: CardId): string {
+  return `/event-analysis/${cardId}`;
 }

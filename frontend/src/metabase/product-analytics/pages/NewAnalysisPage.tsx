@@ -18,8 +18,9 @@ export const NewAnalysisPage = () => {
   const prototype = usePrototypeTable();
   const tableId = prototype.tableId;
 
-  // Prototype: base-query.ts hardcodes columns and event flags for
-  // pa_events_resolved, so every other table would fail or return zeros.
+  // Prototype: the saved events in events/catalog.ts filter on values seeded in
+  // pa_events_resolved, so other tables error or return zeros. Lift this once
+  // events can be defined per table.
   const handleTableChange = (id: ConcreteTableId) => {
     if (id !== tableId) {
       sendToast({

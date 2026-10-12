@@ -8,14 +8,13 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProvider } from "metabase/metadata-store";
-import type { DatePickerValue } from "metabase/querying/common/types";
 import type {
   ConcreteTableId,
   Dataset,
   DatasetQuery,
 } from "metabase-types/api";
 
-import { buildBaseQuery } from "./base-query";
+import { type BaseQueryInput, buildBaseQuery } from "./base-query";
 import { buildSql } from "./build-sql";
 import { nativeCompileRequest } from "./compile-base";
 import type { AnalysisSpec } from "./spec/types";
@@ -23,7 +22,8 @@ import type { AnalysisSpec } from "./spec/types";
 export type AnalysisQueryArgs = {
   spec: AnalysisSpec;
   tableId: ConcreteTableId | undefined;
-  dateFilter: DatePickerValue | undefined;
+  /** Must keep its identity while unchanged; see the comment on `compiledBase`. */
+  base: BaseQueryInput;
 };
 
 export type AnalysisQueryResult = {
@@ -38,7 +38,7 @@ export type AnalysisQueryResult = {
 export const useAnalysisQuery = ({
   spec,
   tableId,
-  dateFilter,
+  base,
 }: AnalysisQueryArgs): AnalysisQueryResult => {
   const tableMetadata = useGetTableQueryMetadataQuery(
     tableId !== undefined ? { id: tableId } : skipToken,
@@ -61,7 +61,7 @@ export const useAnalysisQuery = ({
       return undefined;
     }
     try {
-      const built = buildBaseQuery(metadataProvider, tableId, dateFilter);
+      const built = buildBaseQuery(metadataProvider, tableId, base);
       return {
         request: nativeCompileRequest(built.query),
         databaseId: built.databaseId,
@@ -71,7 +71,7 @@ export const useAnalysisQuery = ({
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  }, [databaseId, tableId, table, metadataProvider, dateFilter]);
+  }, [databaseId, tableId, table, metadataProvider, base]);
 
   const native = useGetNativeDatasetQuery(compiledBase?.request ?? skipToken);
   const compiledDatabaseId = compiledBase?.databaseId;
@@ -81,7 +81,10 @@ export const useAnalysisQuery = ({
 
   const built =
     baseSql && compiledDatabaseId !== undefined
-      ? buildSql(spec, baseSql)
+      ? buildSql(spec, baseSql, {
+          columns: base.columns,
+          flags: base.events.map(({ flag }) => flag),
+        })
       : undefined;
 
   const datasetQuery: DatasetQuery | undefined =

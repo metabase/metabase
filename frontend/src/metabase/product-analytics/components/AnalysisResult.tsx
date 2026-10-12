@@ -3,16 +3,20 @@ import { noop } from "underscore";
 
 import { Alert, Box, Loader, Paper, Stack, Text, Title } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { Dataset, DatasetQuery, RawSeries } from "metabase-types/api";
-
-import type { AnalysisConfig } from "../analyses/config";
-import type { AnalysisSpec } from "../spec/types";
+import type {
+  CardDisplayType,
+  Dataset,
+  DatasetQuery,
+  RawSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 const SYNTHETIC_CARD_ID = -1;
 
 type AnalysisResultProps = {
-  config: AnalysisConfig;
-  spec: AnalysisSpec;
+  title: string;
+  display: CardDisplayType;
+  vizSettings: VisualizationSettings;
   dataset: Dataset | undefined;
   datasetQuery: DatasetQuery | undefined;
   isLoading: boolean;
@@ -21,8 +25,9 @@ type AnalysisResultProps = {
 };
 
 export const AnalysisResult = ({
-  config,
-  spec,
+  title,
+  display,
+  vizSettings,
   dataset,
   datasetQuery,
   isLoading,
@@ -35,9 +40,9 @@ export const AnalysisResult = ({
           {
             card: {
               id: SYNTHETIC_CARD_ID,
-              name: config.question,
-              display: config.display,
-              visualization_settings: config.getVizSettings?.(spec) ?? {},
+              name: title,
+              display,
+              visualization_settings: vizSettings,
               dataset_query: datasetQuery,
             },
             data: dataset.data,
@@ -47,7 +52,7 @@ export const AnalysisResult = ({
 
   return (
     <Paper withBorder p="lg" style={{ flex: 1, minWidth: 0 }} mih={420}>
-      <Title order={4}>{config.question}</Title>
+      <Title order={4}>{title}</Title>
       <Stack gap="sm" mt="md">
         {warnings.map((warning) => (
           <Alert key={warning} color="warning">

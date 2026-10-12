@@ -1,4 +1,13 @@
-import type { ActorPredicate, AnalysisKind, AnalysisSpec } from "./spec/types";
+/**
+ * Fixed specs for check.ts, matching the ev_n flags in its hand-written
+ * events_base. The app derives specs from analysis settings instead.
+ */
+
+import type {
+  ActorPredicate,
+  AnalysisKind,
+  AnalysisSpec,
+} from "../../frontend/src/metabase/product-analytics/spec/types";
 
 const emptyScope: ActorPredicate = {
   kind: "group",

@@ -8,6 +8,10 @@ import type { Granularity } from "../../spec/types";
 export const lit = (value: string): string =>
   `'${value.replace(/\\/g, "\\\\").replace(/'/g, "''")}'`;
 
+/** A quoted ClickHouse identifier, escaped the same way as `lit`. */
+export const ident = (name: string): string =>
+  `\`${name.replace(/\\/g, "\\\\").replace(/`/g, "\\`")}\``;
+
 export const num = (value: string | number): string => {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? String(parsed) : "0";

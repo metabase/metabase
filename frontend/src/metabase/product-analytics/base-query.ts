@@ -1,39 +1,25 @@
-import type { DatePickerValue } from "metabase/querying/common/types";
+import { t } from "ttag";
+import _ from "underscore";
+
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
-import { findColumn } from "./columns";
-import { FLAG } from "./defaults";
+import { COLUMN_ROLES, type ColumnRoles } from "./columns";
+import { parseDateRange } from "./date-range";
+import type { AllocatedEvent } from "./events/types";
+import { findColumn } from "./find-column";
 
 const STAGE = -1;
-
-const STRING_OPTIONS = { caseSensitive: true } as const;
 
 const asFlag = (clause: Lib.ExpressionClause): Lib.ExpressionClause =>
   Lib.expressionClause("case", [clause, 1, 0]);
 
-const equals = (
-  column: Lib.ColumnMetadata,
-  value: string,
-): Lib.ExpressionClause =>
-  Lib.stringFilterClause({
-    operator: "=",
-    column,
-    values: [value],
-    options: STRING_OPTIONS,
-  });
-
-const startsWith = (
-  column: Lib.ColumnMetadata,
-  value: string,
-): Lib.ExpressionClause =>
-  Lib.stringFilterClause({
-    operator: "starts-with",
-    column,
-    values: [value],
-    options: STRING_OPTIONS,
-  });
+export type BaseQueryInput = {
+  dateRange: string;
+  columns: ColumnRoles;
+  events: AllocatedEvent[];
+};
 
 export type BuiltBaseQuery = {
   query: Lib.Query;
@@ -41,8 +27,9 @@ export type BuiltBaseQuery = {
 };
 
 /**
- * Lib query on pa_events_resolved: optional date filter, named 0/1 flag
- * expressions, and an explicit field list so compiled aliases stay stable.
+ * Lib query on the event table: the date range, a named 0/1 flag expression
+ * per event in use, and an explicit field list so compiled aliases stay
+ * stable. Columns keep their table names; `buildSql` renames them.
  *
  * Flags are `case(filter, 1, 0)` rather than raw boolean expressions — Lib
  * custom expressions are typed, and a filter clause as an expression is the
@@ -51,65 +38,45 @@ export type BuiltBaseQuery = {
 export const buildBaseQuery = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
-  dateFilter: DatePickerValue | undefined,
+  { dateRange, columns, events }: BaseQueryInput,
 ): BuiltBaseQuery => {
   const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, tableId);
   if (!tableMetadata) {
     throw new Error(`Table ${String(tableId)} is not in metadata yet`);
   }
+  if (columns.timestamp === null) {
+    throw new Error(t`Pick an event time column in Advanced settings.`);
+  }
+  if (columns.person === null) {
+    throw new Error(t`Pick a person column in Advanced settings.`);
+  }
 
   let query = Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
 
-  const createdAt = findColumn(query, "created_at");
+  const dateFilter = parseDateRange(dateRange);
   if (dateFilter !== undefined) {
     query = Lib.filter(
       query,
       STAGE,
-      getDateFilterClause(createdAt, dateFilter),
+      getDateFilterClause(findColumn(query, columns.timestamp), dateFilter),
     );
   }
 
-  const urlPath = findColumn(query, "url_path");
-  const eventName = findColumn(query, "event_name");
-
-  const flags: { name: string; clause: Lib.ExpressionClause }[] = [
-    { name: FLAG.pricing, clause: asFlag(equals(urlPath, "/pricing")) },
-    { name: FLAG.trial, clause: asFlag(equals(eventName, "trial_started")) },
-    {
-      name: FLAG.checkout,
-      clause: asFlag(equals(eventName, "checkout_completed")),
-    },
-    { name: FLAG.signup, clause: asFlag(equals(eventName, "signup")) },
-    {
-      name: FLAG.active,
-      clause: asFlag(
-        Lib.expressionClause("or", [
-          startsWith(urlPath, "/app"),
-          equals(eventName, "report_created"),
-          equals(eventName, "invite_sent"),
-          equals(eventName, "checkout_completed"),
-        ]),
-      ),
-    },
-    { name: FLAG.invite, clause: asFlag(equals(eventName, "invite_sent")) },
-    { name: FLAG.error, clause: asFlag(equals(eventName, "error")) },
-    { name: FLAG.report, clause: asFlag(equals(eventName, "report_created")) },
-  ];
-
-  for (const flag of flags) {
-    query = Lib.expression(query, STAGE, flag.name, flag.clause);
+  for (const { flag, event } of events) {
+    query = Lib.expression(
+      query,
+      STAGE,
+      flag,
+      asFlag(event.getFilter(query, columns)),
+    );
   }
 
-  const wanted = [
-    "person_id",
-    "session_id",
-    "event_id",
-    "created_at",
-    "event_name",
-    "url_path",
-    ...flags.map((flag) => flag.name),
-  ];
-  const selected = wanted.map((name) => findColumn(query, name));
+  const mappedColumns = _.uniq(
+    COLUMN_ROLES.flatMap((role) => columns[role] ?? []),
+  );
+  const selected = [...mappedColumns, ...events.map(({ flag }) => flag)].map(
+    (name) => findColumn(query, name),
+  );
   query = Lib.withFields(query, STAGE, selected);
 
   const databaseId = Lib.databaseID(query);

@@ -1,53 +1,58 @@
-import { useReducer } from "react";
+import { useCallback, useState } from "react";
+import _ from "underscore";
 
-import type { DatePickerValue } from "metabase/querying/common/types";
+import { useLocation, useNavigate } from "metabase/router";
 
-import { PROTOTYPE_RANGE_DAYS } from "./config";
-import { defaultSpec } from "./defaults";
-import type { AnalysisKind, AnalysisSpec, Grain } from "./spec/types";
+import { updateSettings } from "./settings/compute";
+import type { StoredSettings } from "./settings/types";
+import { decodeSettings, encodeSettings } from "./url-state";
 
 export type AnalysisPanel = "setup" | "advanced";
 
-export const DEFAULT_DATE_FILTER: DatePickerValue = {
-  type: "relative",
-  value: -PROTOTYPE_RANGE_DAYS,
-  unit: "day",
-};
+const NO_SAVED_SETTINGS: StoredSettings = {};
 
-export type AnalysisState = {
-  spec: AnalysisSpec;
-  dateFilter: DatePickerValue;
-  panel: AnalysisPanel;
-};
-
-type AnalysisAction =
-  | { type: "set-spec"; spec: AnalysisSpec }
-  | { type: "set-date-filter"; dateFilter: DatePickerValue }
-  | { type: "set-panel"; panel: AnalysisPanel }
-  | { type: "set-grain"; grain: Grain };
-
-const reducer = (
-  state: AnalysisState,
-  action: AnalysisAction,
-): AnalysisState => {
-  switch (action.type) {
-    case "set-spec":
-      return { ...state, spec: action.spec };
-    case "set-date-filter":
-      return { ...state, dateFilter: action.dateFilter };
-    case "set-panel":
-      return { ...state, panel: action.panel };
-    case "set-grain":
-      return { ...state, spec: { ...state.spec, grain: action.grain } };
-  }
-};
-
-export const useAnalysisState = (kind: AnalysisKind) => {
-  const [state, dispatch] = useReducer(reducer, {
-    spec: defaultSpec(kind),
-    dateFilter: DEFAULT_DATE_FILTER,
-    panel: "setup",
+/**
+ * The settings the user changed, plus which panel is open. Unsaved edits live
+ * in the URL hash, so a reload keeps them. The hash is empty when there are
+ * none, so a saved analysis's link always opens what was saved.
+ */
+export const useAnalysisState = <S>(
+  savedSettings: StoredSettings = NO_SAVED_SETTINGS,
+) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [stored, setStored] = useState<StoredSettings>(() => {
+    const hash = location.hash.slice(1);
+    return hash !== "" ? decodeSettings(hash) : savedSettings;
   });
+  const [panel, setPanel] = useState<AnalysisPanel>("setup");
 
-  return { state, dispatch };
+  const replaceHash = useCallback(
+    (hash: string) => {
+      navigate(
+        { pathname: location.pathname, search: location.search, hash },
+        { replace: true },
+      );
+    },
+    [location.pathname, location.search, navigate],
+  );
+
+  const handleChangeSettings = useCallback(
+    (changes: Partial<S>) => {
+      const next = updateSettings(stored, changes);
+      setStored(next);
+      replaceHash(_.isEqual(next, savedSettings) ? "" : encodeSettings(next));
+    },
+    [stored, savedSettings, replaceHash],
+  );
+
+  const handleSaved = useCallback(() => replaceHash(""), [replaceHash]);
+
+  return {
+    stored,
+    panel,
+    setPanel,
+    onChangeSettings: handleChangeSettings,
+    onSaved: handleSaved,
+  };
 };

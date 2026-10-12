@@ -1,12 +1,12 @@
 import { Box, Text, UnstyledButton } from "metabase/ui";
 
-import type { AnalysisConfig } from "../analyses/config";
+import type { AnalysisSummary } from "../analyses/config";
 
 import { AnalysisIllustration } from "./AnalysisIllustration";
 import S from "./AnalysisTypeCard.module.css";
 
 type AnalysisTypeCardProps = {
-  config: AnalysisConfig;
+  config: AnalysisSummary;
   disabled: boolean;
   onSelect: () => void;
 };
