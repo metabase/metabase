@@ -55,35 +55,35 @@ const monitorLayout = () =>
     }),
   );
 
-const dependencyDiagnosticsSectionLayout = () =>
+export const dependencyDiagnosticsSectionLayout = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout"
   ).then(({ DependencyDiagnosticsSectionLayout }) => ({
     Component: DependencyDiagnosticsSectionLayout,
   }));
 
-const dependencyDiagnosticsUpsellPage = () =>
+export const dependencyDiagnosticsUpsellPage = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage"
   ).then(({ DependencyDiagnosticsUpsellPage }) => ({
     Component: DependencyDiagnosticsUpsellPage,
   }));
 
-const contentDiagnosticsSectionLayout = () =>
+export const contentDiagnosticsSectionLayout = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout"
   ).then(({ ContentDiagnosticsSectionLayout }) => ({
     Component: ContentDiagnosticsSectionLayout,
   }));
 
-const contentDiagnosticsUpsellPage = () =>
+export const contentDiagnosticsUpsellPage = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage"
   ).then(({ ContentDiagnosticsUpsellPage }) => ({
     Component: ContentDiagnosticsUpsellPage,
   }));
 
-const apiKeyUsageUpsellPage = () =>
+export const apiKeyUsageUpsellPage = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/api-key-usage/ApiKeyUsageUpsellPage"
   ).then(({ ApiKeyUsageUpsellPage }) => ({
@@ -109,7 +109,7 @@ const modelPersistenceLogPage = () =>
     Component: ModelPersistenceLogPage,
   }));
 
-const sessionManagementUpsellPage = () =>
+export const sessionManagementUpsellPage = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/session-management/SessionManagementUpsellPage"
   ).then(({ SessionManagementUpsellPage }) => ({
@@ -129,41 +129,55 @@ const logLevelsModal = () =>
     loadCodeEditor(),
   ]).then(([{ LogLevelsModal }]) => LogLevelsModal);
 
+const getDependencyDiagnosticsUpsellRoutes = () => (
+  <>
+    <Route index lazy={dependencyDiagnosticsUpsellPage} />
+    <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
+  </>
+);
+
+const getContentDiagnosticsUpsellRoutes = () => (
+  <>
+    <Route index lazy={contentDiagnosticsUpsellPage} />
+    <Route path="*" lazy={contentDiagnosticsUpsellPage} />
+  </>
+);
+
+const getSessionsUpsellRoutes = () => (
+  <>
+    <Route index lazy={sessionManagementUpsellPage} />
+    <Route path="*" lazy={sessionManagementUpsellPage} />
+  </>
+);
+
+const getApiKeyUsageUpsellRoutes = () => (
+  <>
+    <Route index lazy={apiKeyUsageUpsellPage} />
+    <Route path="*" lazy={apiKeyUsageUpsellPage} />
+  </>
+);
+
 export function getMonitorRoutes() {
   return (
     <Route element={<CanAccessMonitor />}>
       <Route path="monitor" lazy={monitorLayout}>
         <Route index element={<MonitorIndexRedirect />} />
         <Route element={<CanAccessDependencyDiagnostics />}>
-          {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
-            <Route
-              path="dependency-diagnostics"
-              lazy={dependencyDiagnosticsSectionLayout}
-            >
-              {PLUGIN_MONITOR.getDependencyDiagnosticsRoutes()}
-            </Route>
-          ) : (
-            <Route path="dependency-diagnostics">
-              <Route index lazy={dependencyDiagnosticsUpsellPage} />
-              <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
-            </Route>
-          )}
+          <Route path="dependency-diagnostics">
+            {(
+              PLUGIN_MONITOR.getDependencyDiagnosticsRoutes ??
+              getDependencyDiagnosticsUpsellRoutes
+            )()}
+          </Route>
         </Route>
 
         <Route element={<CanAccessContentDiagnostics />}>
-          {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
-            <Route
-              path="content-diagnostics"
-              lazy={contentDiagnosticsSectionLayout}
-            >
-              {PLUGIN_MONITOR.getContentDiagnosticsRoutes()}
-            </Route>
-          ) : (
-            <Route path="content-diagnostics">
-              <Route index lazy={contentDiagnosticsUpsellPage} />
-              <Route path="*" lazy={contentDiagnosticsUpsellPage} />
-            </Route>
-          )}
+          <Route path="content-diagnostics">
+            {(
+              PLUGIN_MONITOR.getContentDiagnosticsRoutes ??
+              getContentDiagnosticsUpsellRoutes
+            )()}
+          </Route>
         </Route>
 
         <Route element={<CanAccessMonitoringTools />}>
@@ -189,16 +203,11 @@ export function getMonitorRoutes() {
             `GET /api/api-key`, superuser-only, so a non-admin with just the monitoring
             application permission would hit a 403. */}
         <Route element={<CanAccessApiKeyUsage />}>
-          {PLUGIN_MONITOR.isApiKeyUsageEnabled ? (
-            <Route path="api-key-usage">
-              {PLUGIN_MONITOR.getApiKeyUsageRoutes()}
-            </Route>
-          ) : (
-            <Route path="api-key-usage">
-              <Route index lazy={apiKeyUsageUpsellPage} />
-              <Route path="*" lazy={apiKeyUsageUpsellPage} />
-            </Route>
-          )}
+          <Route path="api-key-usage">
+            {(
+              PLUGIN_MONITOR.getApiKeyUsageRoutes ?? getApiKeyUsageUpsellRoutes
+            )()}
+          </Route>
         </Route>
 
         <Route element={<CanAccessAlertsManagement />}>
@@ -206,24 +215,13 @@ export function getMonitorRoutes() {
         </Route>
 
         <Route element={<CanAccessSessionManagement />}>
-          {PLUGIN_MONITOR.isSessionManagementEnabled ? (
-            <Route path="sessions">
-              {PLUGIN_MONITOR.getSessionManagementRoutes()}
-            </Route>
-          ) : (
-            <Route path="sessions">
-              <Route index lazy={sessionManagementUpsellPage} />
-              <Route path="*" lazy={sessionManagementUpsellPage} />
-            </Route>
-          )}
+          <Route path="sessions">
+            {(PLUGIN_MONITOR.getSessionsRoutes ?? getSessionsUpsellRoutes)()}
+          </Route>
         </Route>
 
         <Route element={<CanAccessAiAuditing />}>
-          {PLUGIN_AUDIT.isAiAuditingEnabled && (
-            <Route path="ai-auditing">
-              {PLUGIN_AUDIT.getAiAuditingRoutes()}
-            </Route>
-          )}
+          <Route path="ai-auditing">{PLUGIN_AUDIT.getAiAuditingRoutes()}</Route>
         </Route>
 
         <Route path="*" element={<NotFound />} />

@@ -16,6 +16,7 @@ import {
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedComponent } from "metabase-enterprise/settings/feature-gated-route";
 import { DataPermissionValue } from "metabase-types/api";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
@@ -49,6 +50,20 @@ const BLOCK_PERMISSION_OPTION = {
  * Initialize advanced permissions plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  const GatedImpersonationModal = featureGatedComponent(
+    "advanced_permissions",
+    ImpersonationModal,
+  );
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(
+    modalRoute("impersonated/group/:groupId", GatedImpersonationModal),
+  );
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.push(
+    modalRoute(
+      "impersonated/database/:impersonatedDatabaseId",
+      GatedImpersonationModal,
+    ),
+  );
+
   if (hasPremiumFeature("advanced_permissions")) {
     const addSelectedAdvancedPermission = (
       options: PermissionOption[],
@@ -78,17 +93,6 @@ export function initializePlugin() {
         : []),
       BLOCK_PERMISSION_OPTION,
     ];
-
-    PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(
-      modalRoute("impersonated/group/:groupId", ImpersonationModal),
-    );
-
-    PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.push(
-      modalRoute(
-        "impersonated/database/:impersonatedDatabaseId",
-        ImpersonationModal,
-      ),
-    );
 
     PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = (
       value,

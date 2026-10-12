@@ -1,181 +1,114 @@
-import { waitFor } from "@testing-library/react";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { getStore, mainReducers } from "__support__/entities-store";
+import { createMockSettingsState } from "__support__/state";
+import { reinitialize } from "metabase/plugins";
+import type { RouteObject } from "metabase/router";
+import { getRoutes } from "metabase/routes";
+import MetabaseSettings from "metabase/utils/settings";
+import type { TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import {
-  setupCurrentUserEndpoint,
-  setupDashboardQuestionCandidatesEndpoint,
-  setupUserKeyValueEndpoints,
-} from "__support__/server-mocks";
-import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
-import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
-import { Route } from "metabase/router";
-import { createMockUser } from "metabase-types/api/mocks";
+/**
+ * The route tree must not depend on configuration: every route mounts on every
+ * instance, and what a route renders is decided when it is navigated to. The
+ * preload manifest, the router and the tests can then all treat one tree as
+ * the truth.
+ *
+ * To make a route's page depend on a feature, gate it at render time instead of
+ * mounting it conditionally: `featureGatedRoute` for a lazy route,
+ * `featureGatedComponent` for an eager element, or a guard component that
+ * renders an `Outlet` or `NotFound` for a runtime setting.
+ */
 
-import { LegacyBrowseRedirect, getRoutes } from "./routes";
+const featuresWith = (enabled: boolean): TokenFeatures => {
+  const pairs = Object.keys(createMockTokenFeatures()).map((feature) => [
+    feature,
+    enabled,
+  ]);
 
-function setupLegacyBrowseRedirect(initialRoute: string) {
-  setupCurrentUserEndpoint(createMockUser());
+  // `fromEntries` widens the keys back to `string`, and every key here comes
+  // from the shape of the mock itself.
+  return Object.fromEntries(pairs) as TokenFeatures;
+};
 
-  const { router } = renderWithProviders(
-    <Route path="browse">
-      <Route path="databases/:slug" element={<div>browse databases</div>} />
-      <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
-    </Route>,
-    { withRouter: true, initialRoute },
-  );
-
-  return router;
-}
-
-describe("LegacyBrowseRedirect", () => {
-  it("redirects a v48-era /browse/<dbId>-<slug> url onto /browse/databases", async () => {
-    const router = setupLegacyBrowseRedirect("/browse/5-orders");
-
-    await waitFor(() =>
-      expect(router?.location.pathname).toBe("/browse/databases/5-orders"),
-    );
-    expect(screen.getByText("browse databases")).toBeInTheDocument();
+const storeFor = (tokenFeatures: TokenFeatures) => {
+  const store = getStore(mainReducers, {
+    settings: createMockSettingsState({ "token-features": tokenFeatures }),
   });
 
-  it("does not redirect a segment without the legacy hyphenated shape", async () => {
-    const router = setupLegacyBrowseRedirect("/browse/orders");
+  // The test store satisfies `getRoutes` at runtime but not on paper.
+  return store as unknown as Parameters<typeof getRoutes>[0];
+};
 
-    expect(router?.location.pathname).toBe("/browse/orders");
-  });
-});
+const treeFor = (tokenFeatures: TokenFeatures) => {
+  // Plugins write their slots once, at init, reading MetabaseSettings, so the
+  // features have to be in place before they re-register.
+  MetabaseSettings.set("token-features", tokenFeatures);
+  reinitialize();
+  setupEnterprisePlugins();
 
-jest.mock("metabase/AppComponent", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    __esModule: true,
-    App: () => <Outlet />,
-  };
-});
+  return getRoutes(storeFor(tokenFeatures));
+};
 
-jest.mock("metabase/common/components/NotFoundFallbackPage", () => ({
-  NotFoundFallbackPage: () => null,
-}));
+const patternsOf = (
+  routes: RouteObject[],
+  prefix = "",
+  found = new Set<string>(),
+) => {
+  for (const route of routes) {
+    const path = route.path ?? "";
+    const here = path.startsWith("/")
+      ? path
+      : `${prefix}/${path}`.replace(/\/{2,}/g, "/").replace(/\/$/, "") || "/";
+    found.add(here);
+    patternsOf(route.children ?? [], here === "/" ? "" : here, found);
+  }
+  return found;
+};
 
-let mockRenderMonitorOutlet = false;
-
-jest.mock("metabase/monitor/components/MonitorLayout", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    MonitorLayout: () => (mockRenderMonitorOutlet ? <Outlet /> : null),
-  };
-});
-
-jest.mock("metabase/collections/components/CollectionLanding", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return { __esModule: true, default: () => <Outlet /> };
-});
-
-function setupAppRoutes({
-  initialRoute,
-  user = createMockUser({ is_superuser: true }),
-}: {
-  initialRoute: string;
-  user?: ReturnType<typeof createMockUser>;
-}) {
-  const { router } = renderRoutes(getRoutes, {
-    initialRoute,
-    storeInitialState: { currentUser: user },
-  });
-  return { router };
-}
-
-describe("application routes", () => {
-  afterEach(() => {
-    mockRenderMonitorOutlet = false;
+describe("the route tree is the same on every instance", () => {
+  it("reads no configuration while it is built", () => {
+    const tokenFeatures = featuresWith(false);
+    MetabaseSettings.set("token-features", tokenFeatures);
     reinitialize();
+    setupEnterprisePlugins();
+
+    const store = storeFor(tokenFeatures);
+    const reads: string[] = [];
+
+    const settingsSpy = jest
+      .spyOn(MetabaseSettings, "get")
+      .mockImplementation((key) => {
+        reads.push(`MetabaseSettings.get("${String(key)}")`);
+        return undefined;
+      });
+    const stateSpy = jest.spyOn(store, "getState");
+
+    try {
+      getRoutes(store);
+    } finally {
+      settingsSpy.mockRestore();
+    }
+    if (stateSpy.mock.calls.length > 0) {
+      reads.push("store.getState()");
+    }
+    stateSpy.mockRestore();
+
+    expect([...new Set(reads)].sort()).toEqual([]);
   });
 
-  describe("legacy Admin Tools redirects", () => {
-    it.each([
-      ["/admin/tools/tasks", "/monitor/tasks"],
-      ["/admin/tools/tasks/list", "/monitor/tasks/list"],
-      ["/admin/tools/tasks/list/42", "/monitor/tasks/list/42"],
-      ["/admin/tools/tasks/runs", "/monitor/tasks/runs"],
-      ["/admin/tools/tasks/runs/7", "/monitor/tasks/runs/7"],
-      ["/admin/tools/jobs", "/monitor/jobs"],
-      ["/admin/tools/jobs/sync", "/monitor/jobs/sync"],
-      ["/admin/tools/logs", "/monitor/logs"],
-      ["/admin/tools/logs/levels", "/monitor/logs/levels"],
-      ["/admin/tools/errors", "/monitor/errors"],
-      ["/admin/tools/model-caching", "/monitor/model-persistence-log"],
-      ["/admin/tools/model-caching/9", "/monitor/model-persistence-log/9"],
-      ["/admin/tools/notifications", "/monitor/notifications"],
-      ["/admin/tools/notifications/13", "/monitor/notifications/13"],
-    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
-      const { router } = setupAppRoutes({ initialRoute });
+  it("mounts the same routes with and without token features", () => {
+    const withoutFeatures = patternsOf(treeFor(featuresWith(false)));
+    const withFeatures = patternsOf(treeFor(featuresWith(true)));
 
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe(expectedPathname);
-      });
-    });
+    const onlyWithFeatures = [...withFeatures].filter(
+      (route) => !withoutFeatures.has(route),
+    );
+    const onlyWithoutFeatures = [...withoutFeatures].filter(
+      (route) => !withFeatures.has(route),
+    );
 
-    it("redirects the legacy Admin Tools index to the Monitor index", async () => {
-      const { router } = setupAppRoutes({ initialRoute: "/admin/tools" });
-
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe("/monitor");
-      });
-    });
-  });
-
-  describe("legacy AI Auditing redirects", () => {
-    it.each([
-      ["/admin/metabot/usage-auditing", "/monitor/ai-auditing/usage"],
-      [
-        "/admin/metabot/usage-auditing/conversations",
-        "/monitor/ai-auditing/conversations",
-      ],
-      [
-        "/admin/metabot/usage-auditing/conversations/42",
-        "/monitor/ai-auditing/conversations/42",
-      ],
-      ["/admin/metabot/usage-auditing/mcp", "/monitor/ai-auditing/mcp"],
-      ["/admin/metabot/usage-auditing/cli", "/monitor/ai-auditing/cli"],
-    ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
-      const { router } = setupAppRoutes({ initialRoute });
-
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe(expectedPathname);
-      });
-    });
-
-    it("applies the AI Auditing guard after redirecting", async () => {
-      mockRenderMonitorOutlet = true;
-      PLUGIN_AUDIT.isAiAuditingEnabled = true;
-      PLUGIN_AUDIT.getAiAuditingRoutes = () => (
-        <Route path="usage" element={<div>AI Auditing</div>} />
-      );
-
-      const { router } = setupAppRoutes({
-        initialRoute: "/admin/metabot/usage-auditing",
-        user: createMockUser({ is_data_analyst: true }),
-      });
-
-      await waitFor(() => {
-        expect(router?.location.pathname).toBe("/unauthorized");
-      });
-    });
-  });
-});
-
-describe("collection modal routes", () => {
-  it("renders the move-questions-into-dashboards modal with a single dialog", async () => {
-    setupUserKeyValueEndpoints({
-      namespace: "user_acknowledgement",
-      key: "dashboard_question_migration_info_modal",
-      value: false,
-    });
-    setupDashboardQuestionCandidatesEndpoint([]);
-
-    setupAppRoutes({ initialRoute: "/collection/1/move-questions-dashboard" });
-
-    expect(
-      await screen.findByText("Move questions into their dashboards?"),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(onlyWithFeatures).toEqual([]);
+    expect(onlyWithoutFeatures).toEqual([]);
   });
 });

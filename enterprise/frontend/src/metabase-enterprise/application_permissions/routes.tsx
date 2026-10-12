@@ -1,4 +1,6 @@
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Route, registerPagePrefetch } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 const APPLICATION_PERMISSIONS_PATH = "/admin/permissions/application";
 
@@ -21,9 +23,13 @@ export function registerApplicationPermissionsPagePrefetch(): void {
   );
 }
 
-const getRoutes = () => (
-  <Route path="application" lazy={applicationPermissionsPage} />
+export const getApplicationPermissionsRoutes = () => (
+  <Route
+    path="application"
+    lazy={featureGatedRoute(
+      "advanced_permissions",
+      applicationPermissionsPage,
+      notFoundRoute,
+    )}
+  />
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default getRoutes;

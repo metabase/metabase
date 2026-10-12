@@ -12,7 +12,6 @@ import * as Urls from "metabase/urls";
 import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/slash-commands";
 import {
   getAiAuditingRoutes,
-  getAiAuditingUpsellRoutes,
   registerAiAuditingPagePrefetch,
   registerAiAuditingUpsellPagePrefetch,
 } from "metabase-enterprise/monitor/ai-auditing/routes";
@@ -40,9 +39,11 @@ const getUserMenuItems = (user: User): React.ReactNode => [
  * Initialize audit app plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  PLUGIN_ADMIN_USER_MENU_ROUTES.push(getUserMenuRoutes);
+  PLUGIN_AUDIT.getAiAuditingRoutes = getAiAuditingRoutes;
+
   if (hasPremiumFeature("audit_app")) {
     PLUGIN_ADMIN_USER_MENU_ITEMS.push(getUserMenuItems);
-    PLUGIN_ADMIN_USER_MENU_ROUTES.push(getUserMenuRoutes);
     PLUGIN_AUDIT.isEnabled = true;
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
@@ -51,10 +52,8 @@ export function initializePlugin() {
     PLUGIN_AUDIT.CollectionExportAnalytics = CollectionExportAnalytics;
     PLUGIN_AUDIT.isAiAuditingEnabled = true;
     if (hasPremiumFeature("ai_controls")) {
-      PLUGIN_AUDIT.getAiAuditingRoutes = getAiAuditingRoutes;
       registerAiAuditingPagePrefetch();
     } else {
-      PLUGIN_AUDIT.getAiAuditingRoutes = getAiAuditingUpsellRoutes;
       registerAiAuditingUpsellPagePrefetch();
     }
     PLUGIN_METABOT_SLASH_COMMANDS.handleSlashCommand =
