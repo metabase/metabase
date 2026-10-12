@@ -599,26 +599,22 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
-    // programmatically create and save a question as per repro instructions in #11007
-    cy.request("POST", "/api/card", {
+    // The filter on the aggregated column puts the aggregation in a nested stage
+    H.createQuestion({
       name: "11007",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        filter: [">", ["field", "sum", { "base-type": "type/Float" }], 100],
-        query: {
+      query: {
+        "source-query": {
           "source-table": ORDERS_ID,
+          filter: ["=", ["field", ORDERS.USER_ID, null], 1],
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
-            ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", ORDERS.PRODUCT_ID, null],
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
-          filter: ["=", ["field", ORDERS.USER_ID, null], 1],
         },
-        type: "query",
+        filter: [">", ["field", "sum", { "base-type": "type/Float" }], 100],
       },
-      display: "table",
-      visualization_settings: {},
     });
 
     H.createDashboard({ name: "dash:11007" });
@@ -657,10 +653,8 @@ describe("scenarios > dashboard", () => {
     // and connect it to the card
     H.selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.").should("not.exist");
+    H.saveDashboard();
+    H.filterWidget().should("have.length", 3);
   });
 
   it("should not get the parameter values from the field API", () => {
@@ -750,20 +744,21 @@ describe("scenarios > dashboard", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-    assertScrollBarExists();
+    H.getDashboardCard().findByText("37.65").should("be.visible");
 
     H.openLegacyStaticEmbeddingModal({
       resource: "dashboard",
       resourceId: ORDERS_DASHBOARD_ID,
     });
+    cy.get("body").should("have.attr", "data-scroll-locked");
 
     H.modal().within(() => {
       cy.icon("close").click();
     });
     H.modal().should("not.exist");
-    assertScrollBarExists();
+    cy.get("body")
+      .should("not.have.attr", "data-scroll-locked")
+      .and("not.have.css", "overflow", "hidden");
   });
 
   it("should support auto-scrolling to a dashcard via a url hash param", () => {
@@ -1103,10 +1098,6 @@ describe("scenarios > dashboard", () => {
     cy.button("Done").click();
     validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
 
-    H.editIFrameWhileEditing(0, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-    cy.button("Done").click();
-    validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
-
     // Test allowed subdomain, but no other domains
     H.editIFrameWhileEditing(0, "player.videos.com/video/123456789");
     cy.button("Done").click();
@@ -1281,13 +1272,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 });
-
-function assertScrollBarExists() {
-  cy.get("body").then(($body) => {
-    const bodyWidth = $body[0].getBoundingClientRect().width;
-    cy.window().its("innerWidth").should("be.gte", bodyWidth);
-  });
-}
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -1792,16 +1776,40 @@ describe("issue 28756", () => {
   });
 
   it("should not show a toast to enable notifications to user with no permissions to see the card (metabase#28756)", () => {
-    cy.signInAsNormalUser();
+    // The toast is only offered while the browser has not been asked for notification permission yet
+    cy.on("window:before:load", (win) => {
+      Object.defineProperty(win.Notification, "permission", {
+        get: () => "default",
+      });
+    });
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(60_000);
+      });
+    });
     cy.clock();
 
+    cy.log("A card that is still loading shows the toast");
     cy.get("@dashboardId").then((dashboardId) => {
-      H.visitDashboard(dashboardId);
-      cy.tick(TOAST_TIMEOUT);
-
-      H.undoToast().should("not.exist");
-      cy.findByText(TOAST_MESSAGE).should("not.exist");
+      cy.visit(`/dashboard/${dashboardId}`);
     });
+    H.getDashboardCard().findByTestId("loading-indicator").should("exist");
+    cy.tick(TOAST_TIMEOUT);
+    H.undoToast().should("contain.text", TOAST_MESSAGE);
+
+    cy.log(
+      "A card the user has no permission to see does not count as loading",
+    );
+    cy.signInAsNormalUser();
+    cy.get("@dashboardId").then((dashboardId) => {
+      cy.visit(`/dashboard/${dashboardId}`);
+    });
+    H.getDashboardCard().should(
+      "contain.text",
+      "Sorry, you don't have permission to see this card.",
+    );
+    cy.tick(TOAST_TIMEOUT);
+    H.undoToast().should("not.exist");
   });
 });
 
@@ -2025,8 +2033,15 @@ describe("issue 49556", () => {
   it("unlinks the filter when it is removed (metabase#49556)", () => {
     H.editDashboard();
 
+    cy.log("Values of a linked filter cannot be edited");
+    cy.findByTestId("fixed-width-filters").findByText("Target").click();
+    H.dashboardParameterSidebar().button("Edit").should("be.disabled");
+
     cy.findByTestId("fixed-width-filters").findByText("Source").click();
     H.dashboardParameterSidebar().findByText("Remove").click();
+    cy.findByTestId("fixed-width-filters")
+      .findByText("Source")
+      .should("not.exist");
 
     cy.findByTestId("fixed-width-filters").findByText("Target").click();
     H.dashboardParameterSidebar().button("Edit").should("be.enabled");
@@ -2106,6 +2121,7 @@ describe("issue 54353", () => {
       .click();
 
     cy.findByLabelText("Date").click();
+    H.popover().should("be.visible");
 
     cy.realPress("Escape");
 
@@ -2217,6 +2233,7 @@ describe("issue 52674", () => {
 
     cy.log("Close the popover");
     H.main().button("Number").click();
+    cy.findByRole("dialog").should("not.exist");
 
     cy.log("Opening with Space should work");
     H.main().button("Number").focus();
