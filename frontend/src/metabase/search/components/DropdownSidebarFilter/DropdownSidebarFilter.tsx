@@ -1,7 +1,10 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { isEmpty } from "underscore";
 
+import { EventSandbox } from "metabase/common/components/EventSandbox";
+import { FieldSet } from "metabase/common/components/FieldSet";
 import { useCaptureEvent } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type {
@@ -10,18 +13,14 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/common/search/types";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Box, Button, Icon, Popover, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Popover, Stack, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase-types/api";
 
-import {
-  DropdownFieldSet,
-  DropdownLabelIcon,
-  GroupOverflowHidden,
-  SearchEventSandbox,
-} from "./DropdownSidebarFilter.styled";
+import S from "./DropdownSidebarFilter.module.css";
 
 export type DropdownSidebarFilterProps<T extends FilterTypeKeys = any> = {
   filter: SearchFilterDropdown<T>;
@@ -114,21 +113,28 @@ export const DropdownSidebarFilter = ({
           w="100%"
           mt={fieldHasValue ? "0.25rem" : 0}
         >
-          <DropdownFieldSet
+          <FieldSet
+            className={cx(S.dropdownFieldSet, { [S.hasValue]: fieldHasValue })}
             noPadding
             legend={fieldHasValue ? label() : undefined}
-            fieldHasValueOrFocus={fieldHasValue}
           >
-            <GroupOverflowHidden justify="space-between" wrap="nowrap" w="100%">
+            <Group
+              className={CS.overflowHidden}
+              justify="space-between"
+              wrap="nowrap"
+              w="100%"
+            >
               {fieldHasValue ? (
                 <DisplayComponent value={value} />
               ) : (
-                <GroupOverflowHidden wrap="nowrap">
-                  {iconName && <DropdownLabelIcon size={16} name={iconName} />}
+                <Group className={CS.overflowHidden} wrap="nowrap">
+                  {iconName && (
+                    <Icon className={S.labelIcon} size={16} name={iconName} />
+                  )}
                   <Text fw={700} truncate>
                     {label()}
                   </Text>
-                </GroupOverflowHidden>
+                </Group>
               )}
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
@@ -139,13 +145,13 @@ export const DropdownSidebarFilter = ({
                 onClick={onClearFilter}
                 leftSection={<Icon name={getDropdownIcon()} />}
               />
-            </GroupOverflowHidden>
-          </DropdownFieldSet>
+            </Group>
+          </FieldSet>
         </Box>
       </Popover.Target>
 
       <Popover.Dropdown data-testid="popover">
-        <SearchEventSandbox>
+        <EventSandbox className={S.eventSandbox}>
           {popoverWidth && (
             <Stack mah="50vh">
               <ContentComponent
@@ -155,7 +161,7 @@ export const DropdownSidebarFilter = ({
               />
             </Stack>
           )}
-        </SearchEventSandbox>
+        </EventSandbox>
       </Popover.Dropdown>
     </Popover>
   );

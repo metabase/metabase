@@ -1,11 +1,12 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import { createMockStore, resetTestState } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 
 import { avg, breakout, filter, orderBy, sum } from "..";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 
@@ -14,9 +15,9 @@ describe("resolveDatasetQuery validation", () => {
     const field = TEST_SCHEMA.tables.orders.fields.createdAt;
 
     expect(breakout(field, { unit: undefined })).not.toHaveProperty("unit");
-    expect(orderBy(field, "asc", { unit: undefined })).not.toHaveProperty(
-      "unit",
-    );
+    expect(
+      orderBy(breakout(field, { unit: undefined }), "asc"),
+    ).not.toHaveProperty("unit");
   });
 
   it("rejects unknown dynamic query properties", async () => {
@@ -104,9 +105,12 @@ describe("resolveDatasetQuery validation", () => {
           }),
         ],
         orderBys: [
-          orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", {
-            unit: "year",
-          }),
+          orderBy(
+            breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+              unit: "year",
+            }),
+            "desc",
+          ),
         ],
       }),
     ).rejects.toThrow(

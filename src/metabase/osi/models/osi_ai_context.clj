@@ -119,10 +119,18 @@
   (let [{:keys [model id]} (last parent-path)]
     (if (= model "Table")
       {:entity_type "table"
-       :entity_local_id (serdes/*import-table-fk* (mapv :id parent-path))}
+       :entity_local_id (serdes/*import-table-fk* (serdes/table-path->table-ref parent-path))}
       (when-let [etype (parent-model->entity-type model)]
         (when-let [toucan (entity-type->toucan etype)]
           {:entity_type etype :entity_local_id (serdes/*import-fk* id toucan)})))))
+
+(defn- portable-parent-path
+  "The parent path of an ingested row from its `entity_type` and its portable `entity_local_id`."
+  [entity-type portable-id]
+  (cond
+    (= entity-type "table")           (serdes/table->path portable-id)
+    (entity-type->toucan entity-type) [{:model (name (entity-type->toucan entity-type)) :id portable-id}]
+    :else                             [{:model entity-type :id portable-id}]))
 
 (defmethod serdes/entity-id "OsiAiContext" [_ _] nil)
 
@@ -130,11 +138,14 @@
   (conj (vec (entity-parent-path entity_type entity_local_id))
         {:model "OsiAiContext" :id "ai_context"}))
 
+(defmethod serdes/ingested-path "OsiAiContext" [_ {:keys [entity_type entity_local_id]}]
+  (conj (portable-parent-path entity_type entity_local_id)
+        {:model "OsiAiContext" :id "ai_context"}))
+
 (defmethod serdes/storage-path "OsiAiContext" [entity _ctx]
   ;; Store under a flat top-level directory rather than nesting next to the entity: serdes/storage-path-prefixes
   ;; only knows how to nest under Database/Schema/Table/Field, so a Card/Measure/Segment parent would throw.
-  ;; The row's identity still lives in its nested generate-path (the on-disk :serdes/meta); this is only the
-  ;; file's location. Storage dedups by `:key`, so it must be unambiguous: use the EDN of the parent's
+  ;; The row's identity still lives in its nested generate-path; this is only the file's location. Storage dedups by `:key`, so it must be unambiguous: use the EDN of the parent's
   ;; `[model id]` pairs (ids can contain "/" and ":", so a delimiter-joined string could collide for distinct
   ;; paths). The slug is just a readable filename — the unique-name generator disambiguates it by `:key`.
   (let [parent (pop (vec (serdes/path entity)))]
@@ -143,17 +154,21 @@
       :key   (pr-str (mapv (juxt :model :id) parent))}]))
 
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
-;; verbatim. The key columns are carried by the path, not as fields: `entity_local_id` is resolved from the
-;; parent path on import, and `entity_type` is read back from the parent segment's model.
+;; verbatim. The key columns are exported so [[serdes/ingested-path]] can rebuild the path, and imported from that path.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
   {:copy      [:ai_context]
    :transform {:created_at      (serdes/date)
                :updated_at      (serdes/date)
-               :entity_type     {:export (constantly ::serdes/skip)
+               :entity_type     {:export identity
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
                :entity_local_id {::serdes/fk true
-                                 :export     (constantly ::serdes/skip)
+                                 :export-with-context
+                                 (fn [current _ local-id]
+                                   (let [parent (entity-parent-path (:entity_type current) local-id)]
+                                     (if (= "table" (:entity_type current))
+                                       (serdes/table-path->table-ref parent)
+                                       (:id (last parent)))))
                                  :import-with-context
                                  (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})
 

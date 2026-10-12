@@ -36,7 +36,10 @@ export const NewModals = () => {
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
-      const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
+      const nextLocation = Urls.modelDetail(
+        { id: action.model_id ?? undefined },
+        "actions",
+      );
       navigate(nextLocation);
     },
     [navigate],

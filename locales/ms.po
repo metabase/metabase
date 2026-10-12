@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-15 05:47+0000\n"
+"POT-Creation-Date: 2026-09-29 05:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Malay\n"
 "Language: ms_MY\n"
-"PO-Revision-Date: 2026-09-22 05:40\n"
+"PO-Revision-Date: 2026-10-06 05:43\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -162,11 +162,6 @@ msgid "Nothing here"
 msgstr "Tiada apa di sini"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
-#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-msgid "Select..."
-msgstr "Pilih..."
-
-#: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineSelect.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
@@ -295,7 +290,6 @@ msgstr "Atribut pengguna"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/PushChangesModal/PushChangesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -318,6 +312,8 @@ msgstr "Atribut pengguna"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.tsx
@@ -325,6 +321,7 @@ msgstr "Atribut pengguna"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
@@ -338,6 +335,7 @@ msgstr "Atribut pengguna"
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 #: frontend/src/metabase/common/components/ArchiveModal/ArchiveModal.tsx
 #: frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryRowEditor.tsx
@@ -366,9 +364,6 @@ msgstr "Atribut pengguna"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/home/components/EmbedHomepage/FeedbackModal.tsx
@@ -387,7 +382,6 @@ msgstr "Atribut pengguna"
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/components/EditHeader.tsx
 #: frontend/src/metabase/reference/components/RevisionMessageModal.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -424,6 +418,7 @@ msgstr "Batal"
 #: frontend/src/metabase/actions/utils.ts
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/components/ActionButton/ActionButton.tsx
@@ -608,8 +603,8 @@ msgid "Metabot illustration preview"
 msgstr "Pratonton ilustrasi Metabot"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotCustomizationPage/MetabotIconField.tsx
-msgid "Show Metabot illustrations in chat sidebar and AI exploration page"
-msgstr "Tunjukkan ilustrasi Metabot dalam sidebar chat dan halaman penerokaan AI"
+msgid "Show Metabot illustrations in the chat sidebar"
+msgstr "Tunjukkan ilustrasi Metabot dalam bar sisi sembang"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotCustomizationPage/MetabotIconField.tsx
 msgid "Show Metabot illustrations"
@@ -700,6 +695,8 @@ msgstr "Alih keluar akses daripada semua kumpulan"
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotFeatureAccessPage/components/GearIconMenu/GearIconMenu.tsx
 #: frontend/src/metabase/admin/ai/MetabotNavPane.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
@@ -727,7 +724,6 @@ msgstr "Kumpulan pengguna"
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant groups"
 msgstr "Kumpulan Penyewa"
 
@@ -761,8 +757,8 @@ msgstr "Arahan prompt sembang AI"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 #, javascript-format
-msgid "Add instructions here for the sidebar AI chat experience in {0}. You might want to give instructions about tone, types of entities to prefer, and things like that."
-msgstr "Tambah arahan di sini untuk pengalaman chat AI di sidebar dalam {0}. Anda mungkin mahu beri arahan tentang nada, jenis entiti yang perlu diutamakan, dan perkara seperti itu."
+msgid "Add instructions here for the sidebar AI chat experience in {0} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that."
+msgstr "Tambah arahan di sini untuk pengalaman chat AI bar sisi dalam {0} dan untuk Metabot dalam Slack. Anda mungkin mahu beri arahan tentang nada, jenis entiti yang diutamakan, dan perkara seperti itu."
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 msgid "Natural language query prompt instructions"
@@ -1165,7 +1161,6 @@ msgstr "Cari kumpulan"
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group name"
 msgstr "Nama kumpulan"
 
@@ -1285,11 +1280,9 @@ msgstr "Nyahlanggan daripada semua langganan / amaran"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/AuthSettingsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/AuthenticationCard.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Authentication"
@@ -1346,11 +1339,13 @@ msgid "Unit"
 msgstr "Unit"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping added"
 msgstr "Pemetaan ditambah"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping updated"
 msgstr "Pemetaan dikemas kini"
@@ -1393,6 +1388,7 @@ msgstr "Pemetaan baharu"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
 #, javascript-format
 msgid "Using {0}"
@@ -1408,6 +1404,7 @@ msgid "Add at least one mapping to use manual group mapping"
 msgstr "Tambah sekurang-kurangnya satu pemetaan untuk menggunakan pemetaan kumpulan manual"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 msgid "Add mapping"
 msgstr "Tambah pemetaan"
 
@@ -1437,30 +1434,36 @@ msgid "Enter JWT group..."
 msgstr "Masukkan kumpulan JWT..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 msgid "A mapping for this group already exists"
 msgstr "Pemetaan untuk kumpulan ini sudah wujud"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "{0} groups"
 msgstr "{0} kumpulan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "Pick {0} group..."
 msgstr "Pilih kumpulan {0}..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 msgid "Edit mapping"
 msgstr "Edit pemetaan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 msgid "Delete mapping"
 msgstr "Padam pemetaan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 msgid "No groups"
 msgstr "Tiada kumpulan"
@@ -1473,10 +1476,12 @@ msgid "Changes saved"
 msgstr "Perubahan disimpan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Ralat menyimpan pemetaan kumpulan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 msgid "Mapping deleted, but not all of its groups could be updated"
 msgstr "Pemetaan dipadamkan, tetapi bukan semua kumpulannya dapat dikemas kini"
 
@@ -1485,14 +1490,10 @@ msgid "Mapping deleted and group mapping turned off"
 msgstr "Pemetaan dipadamkan dan pemetaan kumpulan dimatikan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping deleted"
 msgstr "Pemetaan dipadam"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
-msgid "JWT"
-msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
@@ -1501,6 +1502,11 @@ msgstr "Ralat menyimpan Tetapan JWT"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Ralat memuatkan konfigurasi JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
+msgid "JWT"
+msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
@@ -1527,14 +1533,17 @@ msgid "You can send additional user attributes to {0} by adding the attributes a
 msgstr "Anda boleh menghantar atribut pengguna tambahan ke {0} dengan menambahkan atribut tersebut sebagai pasangan kunci/nilai ke JWT anda"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute key"
 msgstr "Kunci atribut emel"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Kunci atribut nama pertama"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Kunci atribut nama akhir"
 
@@ -1549,7 +1558,7 @@ msgstr "Kunci atribut penugasan Penyewa"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Pemetaan kumpulan"
 
@@ -1569,6 +1578,7 @@ msgstr "Simpan dan dayakan"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/UpdateRowActionFormModal.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
@@ -1751,17 +1761,14 @@ msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your
 msgstr "Petakan claim OIDC kepada atribut pengguna. Gunakan nama claim OIDC standard atau claim tersuai penyedia anda."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute"
 msgstr "Atribut emel"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute"
 msgstr "Atribut nama pertama"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute"
 msgstr "Atribut nama akhir"
 
@@ -1904,6 +1911,7 @@ msgid "SAML keystore password"
 msgstr "Kata laluan stor kunci SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Shh..."
 msgstr "Shh..."
 
@@ -2087,21 +2095,21 @@ msgstr "Item seterusnya"
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
 #: frontend/src/metabase/browse/models/ModelsTable.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/common/data-studio/components/PaneHeader/PaneHeader.tsx
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionDiff.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 #: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 #: frontend/src/metabase/transforms/components/TagMultiSelect/UpdateTagModal/UpdateTagModal.tsx
@@ -2153,8 +2161,8 @@ msgstr "Tetapan cache"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/LeftControls.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionRow.tsx
 #: frontend/src/metabase/plugins/oss/caching.ts
@@ -2610,11 +2618,11 @@ msgstr "Tetapkan URL pelayan dev untuk memuatkan kod plugin daripada pelayan dev
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 #: frontend/src/metabase/transforms/components/JobHeader/JobHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobListPage/JobListPage.tsx
@@ -2742,9 +2750,9 @@ msgstr "Lihat log perubahan SDK"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 msgid "Enabled"
 msgstr "Didayakan"
@@ -2888,6 +2896,7 @@ msgstr "Ia mungkin dibina untuk versi yang berbeza dan mungkin perlu dikemas kin
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
@@ -2950,6 +2959,7 @@ msgid "Snippet"
 msgstr "Petikan kod"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3765,7 +3775,6 @@ msgid "Actions for {0}"
 msgstr "Tindakan untuk {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: metabase/metabot/scope.clj
 msgid "View resources"
 msgstr "Lihat sumber"
 
@@ -3825,6 +3834,10 @@ msgstr "Pasang kemahiran Metabase Data App dalam projek anda, kemudian minta eje
 msgid "Install command"
 msgstr "Arahan pemasangan"
 
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
+msgid "Outdated"
+msgstr "Lapuk"
+
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
@@ -3848,6 +3861,7 @@ msgstr "Belum ada sesiapa mempunyai akses"
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/Pills.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricPill/MetricPill.tsx
+#: frontend/src/metabase/search/components/SearchUserPicker/SearchUserPicker.tsx
 #, javascript-format
 msgid "Remove {0}"
 msgstr "Alih keluar {0}"
@@ -3897,6 +3911,10 @@ msgid "This data app doesn’t exist or has been disabled."
 msgstr "Aplikasi data ini tidak wujud atau telah dinyahdayakan."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app is outdated"
+msgstr "Aplikasi data ini sudah lapuk"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app isn’t published yet"
 msgstr "Aplikasi data ini belum diterbitkan lagi"
 
@@ -3939,6 +3957,12 @@ msgstr "Sesuatu telah berlaku semasa memuatkan aplikasi ini. Cuba segar semula h
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back."
 msgstr "Aplikasi data ini tidak dimuatkan. Ia mungkin telah disekat atau tidak dapat dicapai. Cuba muat semula halaman, atau kembali."
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/constants.ts
+#: metabase_enterprise/data_apps/api.clj
+#, javascript-format
+msgid "This app was built for version {0} of data apps. Migrate it to the current version, then rebuild and sync it again."
+msgstr "Aplikasi ini dibina untuk versi {0} bagi aplikasi data. Migrasikan ke versi semasa, kemudian bina semula dan sync semula."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
 msgid "This data app can’t be opened directly."
@@ -4135,7 +4159,7 @@ msgstr "Proses ini berjalan di latar belakang. Bergantung pada saiz pangkalan da
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
 #: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
@@ -4279,6 +4303,7 @@ msgstr "Anda juga boleh menambah pangkalan data secara programatik melalui API."
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
@@ -4308,12 +4333,12 @@ msgstr "Lihat semua {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/common/TableBreadcrumbs.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/ErrorPages/BugReportModal.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricExpressionPill/MetricExpressionPill.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -4438,12 +4463,12 @@ msgstr "Pilih item untuk melihat kebergantungannya"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/FilterOptionsPicker/FilterOptionsPicker.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/EditTableDataFilterButton.tsx
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionTypeFilter.tsx
 #: frontend/src/metabase/common/components/ListFilterPopover/ListFilterPopover.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePicker.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
 #: frontend/src/metabase/embedding/LocaleProvider.unit.spec.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearchPanel/MetricSearchPanel.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
@@ -4943,8 +4968,22 @@ msgid "exact specifications"
 msgstr "spesifikasi tepat"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget/InteractiveEmbeddingAuthorizedOriginsWidget.tsx
-msgid "Authorized origins for full-app embedding"
-msgstr "Asal yang dibenarkan untuk pembenaman aplikasi penuh"
+msgid "Authorized origins"
+msgstr "Asal yang dibenarkan"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Enable full app embedding"
+msgstr "Dayakan pembenaman aplikasi penuh"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Embed the full Metabase application or individual pages into your app. Best for complex, BI-focused scenarios where you want to embed all of Metabase's capabilities into your app. If you are looking for stability of UX, flexibility or control, or don't have a complex use case that requires a full-blown BI solution, we recommend using Modular embedding instead."
+msgstr "Benamkan keseluruhan aplikasi Metabase atau halaman individu ke dalam aplikasi anda. Terbaik untuk senario kompleks yang berfokus BI apabila anda mahu benamkan semua keupayaan Metabase ke dalam aplikasi anda. Jika anda mencari kestabilan UX, fleksibiliti atau kawalan, atau tidak mempunyai use case kompleks yang memerlukan penyelesaian BI penuh, kami mengesyorkan menggunakan Pembenaman modular sebagai ganti."
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Documentation"
+msgstr "Dokumentasi"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts
@@ -5156,6 +5195,7 @@ msgstr "Google Sheets"
 #: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TransformsSyncRow/TransformsSyncRow.tsx
 #: frontend/src/metabase/databases/components/DatabaseSyncScheduleField/DatabaseSyncScheduleField.tsx
 #: frontend/src/metabase/monitor/tools/components/RunTypePicker/TaskRunTypePicker.tsx
@@ -5246,7 +5286,6 @@ msgstr "OK"
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationHeader.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/constants.ts
 #: frontend/src/metabase/palette/utils.ts
@@ -5852,12 +5891,12 @@ msgid "Queries generated"
 msgstr "Kueri dijana"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Negative"
 msgstr "Negatif"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Positive"
 msgstr "Positif"
 
@@ -6292,8 +6331,9 @@ msgid "Unavailable"
 msgstr "Tidak tersedia"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Complexity score"
-msgstr "Skor kompleksiti"
+#, javascript-format
+msgid "Complexity score {0}"
+msgstr "Skor kompleksiti {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.ts
 msgid "Input tokens"
@@ -6386,6 +6426,7 @@ msgstr "Diagnostik kebergantungan"
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/ai/MetabotAdminSuggestedPrompts.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
 #: frontend/src/metabase/common/components/CopyButton/CopyButton.tsx
 #: frontend/src/metabase/common/components/CopyTextField/copy-text-field-props.tsx
@@ -6393,7 +6434,6 @@ msgstr "Diagnostik kebergantungan"
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/DetailViewSidesheet.tsx
 #: frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButton.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
@@ -6433,6 +6473,7 @@ msgstr "Info"
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
@@ -6447,7 +6488,6 @@ msgstr "Info"
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobsTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/databases/DatabaseDetail.tsx
 #: frontend/src/metabase/reference/databases/FieldDetail.tsx
 #: frontend/src/metabase/reference/databases/TableDetail.tsx
@@ -6868,6 +6908,7 @@ msgid "No changes to push"
 msgstr "Tiada perubahan untuk di-push"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #, javascript-format
 msgctxt "{0} is the name of a metabase collection"
 msgid "Sync {0}"
@@ -7105,24 +7146,24 @@ msgid "Keep your dashboards, questions, and collections safely backed up in Git.
 msgstr "Pastikan papan pemuka, soalan dan koleksi anda disandarkan dengan selamat dalam Git."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync collections with dependencies?"
-msgstr "Segerakkan koleksi dengan kebergantungan?"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Couldn’t sync selected collection"
 msgstr "Tidak dapat segerakkan koleksi yang dipilih"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync to continue"
-msgstr "Segerakkan untuk meneruskan"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Can't be synced"
 msgstr "Tidak boleh disegerakkan"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync required collections"
-msgstr "Segerakkan koleksi yang diperlukan"
+msgid "Item"
+msgstr "Item"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Used By"
+msgstr "Digunakan Oleh"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Go to collection"
+msgstr "Pergi ke Koleksi"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 msgid "Content to sync"
@@ -7286,13 +7327,12 @@ msgid "What will be overwritten: "
 msgstr "Apa yang akan ditulis ganti: "
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
-msgid "Snippets"
-msgstr "Petikan kod"
+msgid "Snippets and glossary"
+msgstr "Petikan kod dan glosari"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-msgid "Library, Transforms and Snippets."
-msgstr "Pustaka, Transformasi dan Petikan kod."
+msgid "Library, Transforms, Snippets and Glossary."
+msgstr "Pustaka, Transformasi, Petikan kod dan Glosari."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 msgid "Failed to mark library and transforms as synced"
@@ -7387,6 +7427,14 @@ msgid "An error occurred during sync."
 msgstr "Ralat berlaku semasa sync."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "Sync stopped"
+msgstr "Sync dihentikan"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "The sync was cancelled."
+msgstr "Sync telah dibatalkan."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Please wait until this finishes before editing content."
 msgstr "Sila tunggu sehingga ini selesai sebelum mengedit kandungan."
 
@@ -7395,14 +7443,32 @@ msgid "Cancelling…"
 msgstr "Membatalkan…"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-msgid "Still working…"
-msgstr "Masih berjalan…"
+#, javascript-format
+msgctxt "{0} is a person's name, {1} is a time of day"
+msgid "Started by {0} at {1}"
+msgstr "Dimulakan oleh {0} pada {1}"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #, javascript-format
-msgid "Still working. No update for {0} minute."
-msgid_plural "Still working. No update for {0} minutes."
-msgstr[0] "Masih berjalan. Tiada kemas kini selama {0} minit."
+msgctxt "{0} is a time of day"
+msgid "Started at {0}"
+msgstr "Dimulakan pada {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgctxt "{0} is a percentage, {1} is a sync phase such as 'importing content'"
+msgid "Stopped at {0}% while {1}"
+msgstr "Berhenti pada {0}% semasa {1}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "No progress reported recently. The sync is still running."
+msgstr "Tiada progres dilaporkan baru-baru ini. Sync masih berjalan."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgid "No progress for {0} minute. The sync is still running."
+msgid_plural "No progress for {0} minutes. The sync is still running."
+msgstr[0] "Tiada progres selama {0} minit. Sync masih berjalan."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Pulling from Git"
@@ -7533,6 +7599,30 @@ msgid "The synced collection will update to match the new branch. Questions that
 msgstr "Koleksi yang disegerakkan akan dikemas kini untuk sepadan dengan branch baharu. Soalan yang wujud dalam branch semasa tetapi tidak dalam branch baharu akan dialih keluar secara kekal daripada mana-mana papan pemuka atau kandungan yang merujuknya, walaupun anda menukar kembali."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "preparing"
+msgstr "sedang menyediakan"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "exporting content"
+msgstr "mengeksport kandungan"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "pushing"
+msgstr "sedang push"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "importing content"
+msgstr "mengimport kandungan"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "recording sync state"
+msgstr "merekodkan keadaan sync"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "finishing"
+msgstr "sedang menyelesaikan"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "The sync branch changed in another session. Refresh the page and try again."
 msgstr "Cawangan sync berubah dalam sesi lain. Muat semula halaman dan cuba lagi."
 
@@ -7564,16 +7654,24 @@ msgid "Our analytics"
 msgstr "Analitik Kami"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Unknown collection"
+msgstr "Koleksi tidak diketahui"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue."
 msgstr "Papan pemuka atau soalan dalam koleksi ini bergantung pada kandungan yang disimpan dalam koleksi peribadi, yang tidak boleh disegerakkan. Alihkan kandungan itu ke koleksi dikongsi untuk meneruskan."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue."
+msgstr "Papan pemuka atau soalan dalam koleksi ini bergantung pada kandungan dalam analitik penggunaan, yang tidak boleh disync. Kemas kini mereka untuk menggunakan kandungan yang anda boleh sync untuk meneruskan."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue."
 msgstr "Papan pemuka atau soalan dalam koleksi ini bergantung pada kandungan yang tidak boleh disegerakkan di lokasi semasanya. Alihkan kandungan itu ke dalam koleksi yang anda sedang segerakkan untuk meneruskan."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
-msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue."
-msgstr "Papan pemuka atau soalan dalam koleksi ini bergantung pada snippet, yang disegerakkan bersama Pustaka. Segerakkan Pustaka juga untuk meneruskan."
+msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue."
+msgstr "Papan pemuka atau soalan dalam koleksi ini bergantung pada petikan kod, yang sync bersama Pustaka. Cipta Pustaka dalam Studio Data, kemudian sync untuk meneruskan."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well."
@@ -8254,8 +8352,9 @@ msgstr "Sila konfigurasikan saluran notifikasi dalam {0} supaya anda mendapat no
 
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterMobileNavItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterNavItem.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingSecuritySettings.tsx
 msgid "Security"
 msgstr "Keselamatan"
 
@@ -8678,13 +8777,13 @@ msgstr[0] "{0} baris dipilih"
 #: frontend/src/metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.tsx
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.tsx
 #: frontend/src/metabase/actions/utils.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryTable.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/DeleteSubscriptionAction.tsx
 #: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -8732,7 +8831,6 @@ msgstr "Cipta rekod baharu"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewDashboardDialog/NewDashboardDialog.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
@@ -9138,14 +9236,15 @@ msgstr "Jika anda perlu menukar tetapan ini, anda boleh kembali ke langkah sebel
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/containers/TenantsListingApp.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 #: metabase/permissions_rest/api.clj metabase_enterprise/api_routes/routes.clj
 msgid "Tenants"
 msgstr "Penyewa"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
 msgid "People"
@@ -9153,8 +9252,7 @@ msgstr "Orang"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubPermissionsPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 msgid "Permissions"
 msgstr "Kebenaran"
 
@@ -9183,7 +9281,8 @@ msgstr "dan"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "jadual"
+msgid_plural "tables"
+msgstr[0] "jadual"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -10063,6 +10162,7 @@ msgid "You'll be charged {0} per transform run."
 msgstr "Anda akan dicaj {0} لكل jalankan transformasi."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/PurchaseAdvancedTransforms.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
 msgid "Upgrade"
 msgstr "Naik taraf"
 
@@ -10186,6 +10286,7 @@ msgid "We'll notify you when you've hit {0}% of your allotment."
 msgstr "Kami akan memaklumkan anda apabila anda mencapai {0}% daripada peruntukan anda."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms/upsells/pages/TransformsUpsellPage/TransformsUpsellPage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
@@ -10402,7 +10503,7 @@ msgid "Note: deleting each of the values will revert them back to default."
 msgstr "Nota: memadam setiap nilai akan mengembalikannya kepada lalai."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSettings/ColorSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 msgid "Chart colors"
 msgstr "Warna carta"
 
@@ -10428,22 +10529,6 @@ msgstr "Warna"
 msgid "Preview"
 msgstr "Pratonton"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
-msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
-msgid "Loading message"
-msgstr "Mesej memuatkan"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When calculations return no results"
-msgstr "Apabila pengiraan tidak memulangkan sebarang hasil"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When no objects can be found"
-msgstr "Apabila tiada objek ditemui"
-
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontFilesWidget.tsx
 msgid "Font weight"
 msgstr "Berat fon"
@@ -10459,8 +10544,8 @@ msgid "URL"
 msgstr "URL"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 msgid "Font"
 msgstr "Fon"
 
@@ -10647,6 +10732,11 @@ msgstr "Favicon"
 msgid "Fonts"
 msgstr "Fon"
 
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
+msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
+msgid "Loading message"
+msgstr "Mesej memuatkan"
+
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 msgid "Conceal Metabase"
@@ -10691,6 +10781,14 @@ msgstr "Halaman log masuk dan nyahlanggan"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 msgid "Landing page"
 msgstr "Halaman muka"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When calculations return no results"
+msgstr "Apabila pengiraan tidak memulangkan sebarang hasil"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When no objects can be found"
+msgstr "Apabila tiada objek ditemui"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.ts
 msgid "Custom URL"
@@ -10819,7 +10917,7 @@ msgid "Add another summary"
 msgstr "Tambah ringkasan lain"
 
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionSummarizeWidget.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/visualizations/components/ClickActions/utils.ts
@@ -12512,10 +12610,10 @@ msgstr "Tindakan baharu hebat saya"
 #: frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "It's optional but oh, so helpful"
 msgstr "Ini pilihan, tapi oh, sangat membantu"
 
@@ -12600,10 +12698,8 @@ msgid "Field type"
 msgstr "Jenis medan"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormFieldEditor/FormFieldEditor.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/BaseAppearanceSection.tsx
 msgid "Appearance"
 msgstr "Penampilan"
@@ -13161,6 +13257,7 @@ msgid "upgrade"
 msgstr "naik taraf"
 
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
@@ -13175,6 +13272,12 @@ msgstr "naik taraf"
 #: frontend/src/metabase/reference/databases/TableSidebar.tsx
 msgid "Databases"
 msgstr "Pangkalan data"
+
+#: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/metabot/constants.ts
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Embedding"
+msgstr "Pembenaman"
 
 #: frontend/src/metabase/admin/app/reducers.ts
 msgid "AI"
@@ -13195,6 +13298,10 @@ msgstr "Prestasi"
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Help"
+
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/RelatedSettingsSection.tsx
+msgid "Related settings"
+msgstr "Tetapan berkaitan"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx
 #, javascript-format
@@ -13634,6 +13741,236 @@ msgstr "Cipta segmen untuk menambahkannya ke dropdown Filter dalam pembina kueri
 msgid "Filter by table"
 msgstr "Tapis mengikut jadual"
 
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+msgid "Setup guide"
+msgstr "Panduan persediaan"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/GuestEmbedsSettings/GuestEmbedsSettings.tsx
+msgid "Guest embeds"
+msgstr "Pembenaman tetamu"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Themes"
+msgstr "Tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Edit theme"
+msgstr "Edit tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
+#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
+msgid "Copy code"
+msgstr "Salin kod"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Theme name"
+msgstr "Nama tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Main colors"
+msgstr "Warna utama"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Reset main colors to defaults"
+msgstr "Tetapkan semula warna utama kepada lalai"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show fewer colors"
+msgstr "Tunjukkan lebih sedikit warna"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show more colors"
+msgstr "Tunjukkan lebih banyak warna"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
+msgstr "Jana semula warna penapis, ringkaskan, positif, negatif dan carta daripada warna jenama"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate from brand color"
+msgstr "Jana semula daripada warna jenama"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Base font size"
+msgstr "Saiz fon asas"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Delete theme"
+msgstr "Padam tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Save theme"
+msgstr "Simpan tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
+msgid "usage conditions"
+msgstr "syarat penggunaan"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
+msgid "Enable modular embedding to see a live preview of your theme."
+msgstr "Dayakan pembenaman modular untuk melihat pratonton langsung tema anda."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#, javascript-format
+msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
+msgid "Accept the {0} to see a live preview of your theme."
+msgstr "Terima {0} untuk melihat pratonton langsung tema anda."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Enable modular embedding"
+msgstr "Dayakan pembenaman modular"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgid "Accept and continue"
+msgstr "Terima dan teruskan"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Theme preview"
+msgstr "Pratonton tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Create a dashboard or question to preview this theme."
+msgstr "Cipta papan pemuka atau soalan untuk pratonton tema ini."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Change preview resource"
+msgstr "Tukar sumber pratonton"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Select data to preview"
+msgstr "Pilih data untuk pratonton"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Brand"
+msgstr "Jenama"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Background"
+msgstr "Latar belakang"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Primary text"
+msgstr "Teks utama"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Secondary text"
+msgstr "Teks sekunder"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Tertiary text"
+msgstr "Teks tertier"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Border"
+msgstr "Sempadan"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Shadow"
+msgstr "Bayang"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Are you sure you want to delete this theme? This action cannot be undone."
+msgstr "Adakah anda pasti mahu memadam tema ini? Tindakan ini tidak boleh dibuat asal."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+msgid "Duplicate and delete"
+msgstr "Duplikasi dan padam"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
+#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
+msgid "Duplicate"
+msgstr "Duplikat"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Theme duplicated successfully"
+msgstr "Tema berjaya diduplikasi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Failed to duplicate theme"
+msgstr "Gagal menduplikasi tema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Create and edit themes to reuse across multiple embeds."
+msgstr "Cipta dan edit tema untuk digunakan semula merentasi berbilang benaman."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/NewThemeCard.tsx
+msgid "New theme"
+msgstr "Tema baharu"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Light"
+msgstr "Cerah"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Dark"
+msgstr "Gelap"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Theme deleted successfully"
+msgstr "Tema berjaya dipadam"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Failed to delete theme"
+msgstr "Gagal memadam tema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Untitled theme"
+msgstr "Tema tanpa tajuk"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
+msgstr "Warna penapis, ringkaskan, positif, negatif dan carta dijana semula daripada warna jenama."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+#: frontend/src/metabase/common/components/UndoListing.tsx
+#: frontend/src/metabase/common/components/Unsubscribe.tsx
+#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#: frontend/src/metabase/visualizer/components/Header/Header.tsx
+msgid "Undo"
+msgstr "Buat asal"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Main colors reset to defaults."
+msgstr "Warna utama ditetapkan semula kepada lalai."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Theme saved"
+msgstr "Tema disimpan"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Failed to save theme"
+msgstr "Gagal menyimpan tema"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Embedding setup guide"
+msgstr "Panduan persediaan pembenaman"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Follow the guide to get started with modular embedding"
+msgstr "Ikuti panduan untuk mula menggunakan Pembenaman modular"
+
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 msgid "Get help"
@@ -13875,7 +14212,6 @@ msgstr "Kumpulan dalaman"
 
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant users"
 msgstr "Pengguna Penyewa"
 
@@ -14946,7 +15282,6 @@ msgid "You won't be able to recover a deleted API key. You'll have to create a n
 msgstr "Anda tidak akan dapat mendapatkan semula API key yang dipadam. Anda perlu cipta key baharu."
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
 msgid "No, don't delete"
 msgstr "Tidak, jangan padam"
 
@@ -14996,7 +15331,6 @@ msgid "Copy and save this API key"
 msgstr "Salin dan simpan kunci API ini"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Store this key somewhere safe. For security reasons, we can't show it to you again."
 msgstr "Simpan kunci ini di tempat yang selamat. Atas sebab keselamatan, kami tidak boleh tunjukkannya kepada anda lagi."
 
@@ -15156,6 +15490,208 @@ msgstr "Konfigurasi"
 msgid "Edit configuration"
 msgstr "Edit konfigurasi"
 
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
+msgid "First, some legalese"
+msgstr "Mula-mula, sedikit perundangan"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
+msgstr "Berkongsi akaun Metabase ialah risiko keselamatan. Walaupun anda menapis data di sisi klien, setiap pengguna boleh menggunakan token mereka untuk melihat apa-apa data yang kelihatan kepada akaun pengguna berkongsi itu."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
+msgstr "Selain itu, kami menganggap akaun kongsi sebagai penggunaan yang tidak adil. Penggunaan adil melibatkan pemberian setiap pengguna akhir analitik terbenam akaun Metabase mereka sendiri."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "Decline and go back"
+msgstr "Tolak dan kembali"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "When using the Embedded analytics SDK for React, each end user should have their own Metabase account."
+msgstr "Apabila menggunakan SDK Analitik terbenam untuk React, setiap pengguna akhir perlu mempunyai akaun Metabase mereka sendiri."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "When using modular embedding, each end user must have their own Metabase account."
+msgstr "Apabila menggunakan Pembenaman modular, setiap pengguna akhir mesti mempunyai akaun Metabase sendiri."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "implement JWT or SAML SSO"
+msgstr "laksanakan JWT atau SAML SSO"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to upsell the SDK. {1} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0} and {1}."
+msgstr "Anda boleh menguji SDK Analitik terbenam di localhost dengan cepat menggunakan API keys. Untuk menggunakan SDK di laman lain, {0} dan {1}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}."
+msgstr "Anda boleh menguji SDK Analitik terbenam di localhost dengan cepat menggunakan API keys. Untuk menggunakan SDK di laman lain, {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Enable modular embedding SDK"
+msgstr "Dayakan SDK pembenaman modular"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data."
+msgstr "Benamkan kuasa penuh Metabase ke dalam aplikasi anda untuk membina pengalaman analitik tersuai dan mengurus papan pemuka serta data secara programatik."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Quick start"
+msgstr "Mula pantas"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Embedding secret key"
+msgstr "Kunci rahsia pembenaman"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
+msgstr "Kunci Rahsia Penyematan Kendiri digunakan untuk menandatangani JSON Web Tokens untuk permintaan ke titik akhir /api/embed. Ini membolehkan anda mencipta persekitaran yang selamat yang terhad kepada pengguna atau organisasi tertentu."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Regenerate key"
+msgstr "Jana semula key"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Regenerate embedding key?"
+msgstr "Jana semula kunci pembenaman?"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "This will cause existing embeds to stop working until they are updated with the new key."
+msgstr "Ini akan menyebabkan benaman sedia ada berhenti berfungsi sehingga ia dikemas kini dengan kunci baharu."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Generate key"
+msgstr "Jana key"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
+msgstr "Asingkan nilai dengan ruang. Localhost tidak dibenarkan. Perubahan akan berkuat kuasa dalam masa satu minit."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
+msgstr "Asingkan nilai dengan ruang. Localhost disertakan secara automatik. Perubahan akan berkuat kuasa dalam masa satu minit."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Cross-Origin Resource Sharing (CORS)"
+msgstr "Cross-Origin Resource Sharing (CORS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+#, javascript-format
+msgid "Add the website domains where you want to allow embedding. {0}"
+msgstr "Tambah domain laman web tempat anda mahu membenarkan pembenaman. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "Determines whether to allow cookies for cross-site requests. {0}"
+msgstr "Menentukan sama ada untuk membenarkan cookies bagi permintaan merentas laman. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "You should probably change this setting to {0}."
+msgstr "Anda mungkin patut menukar tetapan ini kepada {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
+#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
+#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
+#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "None"
+msgstr "Tiada"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Lax (default)"
+msgstr "Lax (lalai)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
+msgstr "Membenarkan kuki sesi Metabase dikongsi pada domain yang sama. Digunakan untuk instans produksi pada domain yang sama."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Strict (not recommended)"
+msgstr "Strict (tidak disyorkan)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
+msgstr "Tidak membenarkan kuki sesi Metabase dikongsi dengan instans terbenam. Gunakan ini jika anda tidak mahu mendayakan perkongsian sesi dengan pembenaman."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "None (requires HTTPS)"
+msgstr "Tiada (memerlukan HTTPS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
+msgstr "Gunakan \"None\" apabila aplikasi anda dan Metabase dihoskan pada domain berbeza. Tidak serasi dengan Safari dan pelayar berasaskan iOS."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "SameSite cookie setting"
+msgstr "Tetapan cookie SameSite"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding settings"
+msgstr "Tetapan pembenaman"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding methods"
+msgstr "Kaedah pembenaman"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming."
+msgstr "Cara paling mudah untuk membenamkan Metabase. Benamkan papan pemuka, soalan, pembina kueri, kueri bahasa semula jadi dengan AI, dan banyak lagi dalam aplikasi anda dengan komponen. Dibina berasaskan SDK dengan kawalan per komponen dan theming."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Version pinning"
+msgstr "Version pinning"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
+msgstr "Instans Metabase Cloud dinaik taraf secara automatik kepada keluaran baharu. Pakej SDK serasi secara ketat dengan versi Metabase tertentu. Anda boleh meminta untuk pin Metabase anda kepada versi utama dan menaik taraf Metabase serta kebergantungan SDK anda secara terselaras."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Request version pinning"
+msgstr "Minta version pinning"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+msgid "Set via environment variable"
+msgstr "Ditetapkan melalui pembolehubah persekitaran"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "New embed"
+msgstr "Benam baharu"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Enable guest embeds"
+msgstr "Dayakan pembenaman tetamu"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through."
+msgstr "Cara selamat untuk membenamkan carta dan papan pemuka, tanpa log masuk tunggal, apabila anda tidak mahu menawarkan kueri ad-hoc atau drill-through carta."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Upgrade to Metabase Pro for more powerful embedding methods"
+msgstr "Naik taraf ke Metabase Pro untuk kaedah pembenaman yang lebih berkuasa"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on."
+msgstr "Benamkan carta, papan pemuka dengan drill-through, atau malah pembina kueri ke dalam aplikasi anda sendiri menggunakan komponen yang boleh disesuaikan. Lindungi benaman anda dengan log masuk tunggal."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Published embeds"
+msgstr "Benaman diterbitkan"
+
 #: frontend/src/metabase/admin/settings/components/GeneralSettings/DevInstanceBanner.tsx
 msgid "This instance is in development mode and can be used for development or testing purposes only."
 msgstr "Instans ini berada dalam mod pembangunan dan hanya boleh digunakan untuk tujuan pembangunan atau ujian sahaja."
@@ -15172,10 +15708,32 @@ msgstr "Instans ini berada dalam mod pembangunan dan hanya boleh digunakan untuk
 msgid "Get your token"
 msgstr "Dapatkan token anda"
 
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Peruntukkan orang secara automatik ke kumpulan {0} berdasarkan keahlian kumpulan LDAP mereka"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "Manual group mappings"
+msgstr "Pemetaan kumpulan manual"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "LDAP group name"
+msgstr "Nama kumpulan LDAP"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "No mappings yet"
+msgstr "Belum ada pemetaan"
+
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Aktifkan"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Error loading LDAP configuration"
+msgstr "Ralat memuatkan konfigurasi LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP host"
@@ -15188,18 +15746,6 @@ msgstr "Port LDAP"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP security"
 msgstr "Keselamatan LDAP"
-
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
-#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/viz-core/lib/settings/graph.ts
-msgid "None"
-msgstr "Tiada"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgctxt "short for 'Secure Sockets Layer'"
@@ -15230,12 +15776,26 @@ msgid "User search base"
 msgstr "Asas carian pengguna"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "The distinguished name (DN) of the entry in your LDAP server that {0} should use as the starting point when searching for users"
+msgstr "Distinguished name (DN) bagi entri dalam server LDAP anda yang {0} patut gunakan sebagai titik permulaan semasa mencari pengguna"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User filter"
 msgstr "Penapis pengguna"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
+msgstr "Petakan atribut LDAP kepada medan emel, nama pertama, dan nama akhir dalam {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
 msgstr "Asas carian kumpulan"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. It will be searched recursively."
+msgstr "Tidak diperlukan untuk direktori LDAP yang menyediakan overlay 'memberOf', seperti Active Directory. Ia akan dicari secara rekursif."
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx
 msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
@@ -15276,9 +15836,6 @@ msgstr "Webhook"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubLocalizationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Localization"
 msgstr "Pengesanan"
@@ -15500,18 +16057,6 @@ msgstr "Dayakan ciri X-Ray"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
 msgstr "Penjejakan penggunaan"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Version pinning"
-msgstr "Version pinning"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
-msgstr "Instans Metabase Cloud dinaik taraf secara automatik kepada keluaran baharu. Pakej SDK serasi secara ketat dengan versi Metabase tertentu. Anda boleh meminta untuk pin Metabase anda kepada versi utama dan menaik taraf Metabase serta kebergantungan SDK anda secara terselaras."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Request version pinning"
-msgstr "Minta version pinning"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
 msgid "Instance settings"
@@ -15977,10 +16522,6 @@ msgid "No mappings yet, group sync is not on"
 msgstr "Belum ada pemetaan, penyegerakan kumpulan belum dihidupkan"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Belum ada pemetaan"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Synchronize Group Memberships"
 msgstr "Segerakkan Keahlian Kumpulan"
 
@@ -16155,9 +16696,45 @@ msgstr "Bearer"
 msgid "Delete this destination"
 msgstr "Padam destinasi ini"
 
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded dashboards"
+msgstr "Papan pemuka terbenam"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No dashboards have been embedded yet."
+msgstr "Tiada papan pemuka yang dibenamkan lagi."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded questions"
+msgstr "Soalan terbenam"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No questions have been embedded yet."
+msgstr "Tiada soalan yang dibenamkan lagi."
+
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicDocumentResources.tsx
 msgid "No documents have been publicly shared yet."
 msgstr "Belum ada dokumen yang dikongsi secara awam lagi."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Public Link"
+msgstr "Pautan Awam"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke Link"
+msgstr "Tarik balik pautan"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke link"
+msgstr "Tarik balik pautan"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Disable this link?"
+msgstr "Lumpuhkan pautan ini?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "They won't work anymore, and can't be restored, but you can create new links."
+msgstr "Ia tidak akan berfungsi lagi, dan tidak boleh dipulihkan, tetapi anda boleh cipta pautan baharu."
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicResources.tsx
 msgid "No dashboards have been publicly shared yet."
@@ -16349,7 +16926,6 @@ msgstr "Kawal caching anda"
 #: frontend/src/metabase/admin/upsells/UpsellCacheConfig.tsx
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
 #: frontend/src/metabase/common/components/upsells/UpsellEmbedHomepage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubUpsellBanner.tsx
 msgid "Try Metabase Pro"
 msgstr "Cuba Metabase Pro"
 
@@ -16408,6 +16984,14 @@ msgstr "Uji kod di staging dalam instans Metabase yang berasingan sebelum deploy
 msgid "Whitelabel email notifications"
 msgstr "Notifikasi e-mel whitelabel"
 
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Create custom themes"
+msgstr "Cipta tema tersuai"
+
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Fine-tune the appearance of your embedded content with colors and fonts."
+msgstr "Perhalusi penampilan kandungan terbenam anda dengan warna dan fon."
+
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 msgid "Minimize maintenance"
 msgstr "Minimumkan penyelenggaraan"
@@ -16456,19 +17040,21 @@ msgstr "Sync kumpulan Metabase dengan SAML, JWT, dan LDAP"
 msgid "User provisioning with SCIM"
 msgstr "Provisioning pengguna dengan SCIM"
 
+#: frontend/src/metabase/admin/upsells/UpsellSdkLink.tsx
+msgid "upgrade to Metabase Pro"
+msgstr "naik taraf ke Metabase Pro"
+
 #: frontend/src/metabase/admin/upsells/UpsellSemanticSearch.tsx
 msgid "Get this with Pro. Try for free."
 msgstr "Dapatkan ini dengan Pro. Cuba secara percuma."
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Use a multi-tenant user strategy"
-msgstr "Gunakan strategi pengguna penyewa berbilang"
+msgid "Manage customer-facing analytics at scale"
+msgstr "Urus analitik berhadapan pelanggan pada skala besar"
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Securely share data with external users and allow them to create content. Reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Kongsi data dengan selamat dengan pengguna luaran dan benarkan mereka mencipta kandungan. Guna semula papan pemuka dan kebenaran yang sama merentasi semua penyewa, bukannya menciptanya semula untuk setiap pelanggan."
+msgid "Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated."
+msgstr "Kumpulkan pelanggan anda mengikut penyewa, guna semula papan pemuka dan keizinan yang sama, serta kekalkan data setiap penyewa terasing."
 
 #: frontend/src/metabase/admin/upsells/UpsellUploads.tsx
 msgctxt "in the sentence 'Upgrade to Metabase Pro to manage your uploaded files and available storage space.'"
@@ -16917,18 +17503,6 @@ msgid "There was an error bookmarking these items."
 msgstr "Terdapat ralat semasa menanda buku item ini."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
-#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
-msgid "Duplicate"
-msgstr "Duplikat"
-
-#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
 #, javascript-format
 msgid "{0} item has been duplicated."
 msgid_plural "{0} items have been duplicated."
@@ -17255,8 +17829,8 @@ msgid "This comment was deleted."
 msgstr "Komen ini telah dipadam."
 
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "What is the name of your dashboard?"
 msgstr "Apakah nama papan pemuka anda?"
 
@@ -17540,20 +18114,6 @@ msgstr "Peratus alfa"
 msgid "Use system default"
 msgstr "Guna lalai sistem"
 
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Dark"
-msgstr "Gelap"
-
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Light"
-msgstr "Cerah"
-
 #: frontend/src/metabase/common/components/CommunityLocalizationNotice/CommunityLocalizationNotice.tsx
 msgid "Some translations are created by the Metabase community, and might not be perfect."
 msgstr "Sesetengah terjemahan dicipta oleh komuniti Metabase, dan mungkin tidak sempurna."
@@ -17570,6 +18130,14 @@ msgstr "sumbang kepada terjemahan di sini"
 #, javascript-format
 msgid "You can {0}"
 msgstr "Anda boleh {0}"
+
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
+#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
+#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
+msgid "Where do you want to save this?"
+msgstr "Di mana anda mahu simpan ini?"
 
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 msgid "Only duplicate the dashboard"
@@ -17669,14 +18237,6 @@ msgstr "Pilih dimensi"
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 msgid "What is the name of your document?"
 msgstr "Apakah nama dokumen anda?"
-
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
-#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
-msgid "Where do you want to save this?"
-msgstr "Di mana anda mahu simpan ini?"
 
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
@@ -18180,7 +18740,6 @@ msgid "Databases will appear here once your admins have added some"
 msgstr "Pangkalan data akan muncul di sini sebaik sahaja pentadbir anda menambahkannya"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/metadata/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 msgid "Connect a database"
@@ -18290,26 +18849,6 @@ msgstr "Alihkan {0} item?"
 #: frontend/src/metabase/common/components/Pickers/QuestionPicker/QuestionPickerModal.tsx
 msgid "Choose a question or model"
 msgstr "Pilih soalan atau model"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Public Link"
-msgstr "Pautan Awam"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke Link"
-msgstr "Tarik balik pautan"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke link"
-msgstr "Tarik balik pautan"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Disable this link?"
-msgstr "Lumpuhkan pautan ini?"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "They won't work anymore, and can't be restored, but you can create new links."
-msgstr "Ia tidak akan berfungsi lagi, dan tidak boleh dipulihkan, tetapi anda boleh cipta pautan baharu."
 
 #: frontend/src/metabase/common/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx
 msgid "The maximum download size is 1 million rows."
@@ -18727,7 +19266,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "{0} Minit"
 
 #: frontend/src/metabase/common/components/SendTestPulse/SendTestPulse.tsx
@@ -18777,16 +19316,6 @@ msgstr "diubah suai"
 #: frontend/src/metabase/common/components/UndoListing.tsx
 msgid "item"
 msgstr "item"
-
-#: frontend/src/metabase/common/components/UndoListing.tsx
-#: frontend/src/metabase/common/components/Unsubscribe.tsx
-#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizer/components/Header/Header.tsx
-msgid "Undo"
-msgstr "Buat asal"
 
 #: frontend/src/metabase/common/components/Unsubscribe.tsx
 #, javascript-format
@@ -18991,8 +19520,8 @@ msgid "Please ask a Metabase Store Admin to upgrade your plan."
 msgstr "Sila minta Pentadbir Metabase Store untuk menaik taraf pelan anda."
 
 #: frontend/src/metabase/common/components/upsells/components/UpsellCardContent.tsx
-msgid "Get a 14 day trial of this and other Pro features."
-msgstr "Dapatkan percubaan 14 hari untuk ini dan ciri Pro yang lain."
+msgid "Get a 14-day free trial of this and other pro features"
+msgstr "Dapatkan percubaan percuma 14 hari untuk ini dan ciri pro lain"
 
 #: frontend/src/metabase/common/hooks/use-before-unload/use-before-unload.ts
 msgid "You have unsaved changes."
@@ -19407,6 +19936,7 @@ msgid "Indexed record"
 msgstr "Rekod berindeks"
 
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
 #: frontend/src/metabase/metabot/constants.ts
 msgid "Research"
 msgstr "Penyelidikan"
@@ -22490,227 +23020,6 @@ msgstr "Dokumen disimpan"
 msgid "Error saving document"
 msgstr "Ralat menyimpan dokumen"
 
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-msgid "Get started"
-msgstr "Mulakan"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Tenancy"
-msgstr "Penyewaan"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-msgid "Embedding hub"
-msgstr "Hab pembenaman"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "New embed"
-msgstr "Benam baharu"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Themes"
-msgstr "Tema"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Branding elements"
-msgstr "Elemen penjenamaan"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Colors and branding for full-app embedding are based on the appearance settings defined in the"
-msgstr "Warna dan penjenamaan untuk pembenaman aplikasi penuh adalah berdasarkan tetapan penampilan yang ditakrifkan dalam"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "SAML is configured"
-msgstr "SAML telah dikonfigurasikan"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "You can review all authentication settings in the Admin."
-msgstr "Anda boleh semak semua tetapan pengesahan dalam Admin."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Go to Admin"
-msgstr "Pergi ke Admin"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "View more authentication options, such as SAML, in the"
-msgstr "Lihat lebih banyak pilihan pengesahan, seperti SAML, dalam"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Admin settings"
-msgstr "Tetapan Admin"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Upgrade to Metabase Pro to access the SDK for React and more advanced options."
-msgstr "Naik taraf ke Metabase Pro untuk mengakses SDK untuk React dan lebih banyak pilihan lanjutan."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Published guest embeds"
-msgstr "Benaman tetamu yang diterbitkan"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Documentation"
-msgstr "Dokumentasi"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Enable multi-tenant user strategy"
-msgstr "Dayakan strategi pengguna penyewa berbilang"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Penyewa ialah satu set atribut yang diberikan kepada pengguna untuk mengasingkan mereka daripada penyewa lain. Contohnya, dalam aplikasi SaaS dengan papan pemuka Metabase yang dibenamkan, anda boleh tetapkan setiap pelanggan kepada seorang penyewa. Penyewa membolehkan anda guna semula papan pemuka dan kebenaran yang sama merentasi semua penyewa, bukannya menciptanya semula untuk setiap pelanggan."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "Enable multi-tenancy"
-msgstr "Dayakan penyewaan berbilang"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "View docs"
-msgstr "Lihat dokumen"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/ChecklistCard.tsx
-#, javascript-format
-msgid "Step {0} complete"
-msgstr "Langkah {0} selesai"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO to unlock"
-msgstr "Sediakan SSO untuk membuka kunci"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Get started with Metabase Embedding"
-msgstr "Mulakan dengan Pembenaman Metabase"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create your first embed"
-msgstr "Cipta benaman pertama anda"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If all you want is a simple embedded dashboard, these steps are all you need."
-msgstr "Jika anda hanya mahukan papan pemuka dibenamkan yang ringkas, langkah-langkah ini sahaja yang anda perlukan."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Start with the basics of Metabase embedding."
-msgstr "Mulakan dengan asas pembenaman Metabase."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Fine-tune your embed"
-msgstr "Perhalusi benaman anda"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
-msgstr "Jika anda ada setup yang lebih canggih dalam fikiran, dengan ramai pengguna dan penyewa, teruskan."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Upgrade to Metabase Pro to configure advanced options."
-msgstr "Naik taraf ke Metabase Pro untuk mengkonfigurasi pilihan lanjutan."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Connect your own database or upload a CSV and start working with your real data."
-msgstr "Sambungkan pangkalan data anda sendiri atau muat naik CSV dan mula bekerja dengan data sebenar anda."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "Create a dashboard"
-msgstr "Cipta papan pemuka"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Automatically generate a dashboard from your data using x-rays."
-msgstr "Jana papan pemuka secara automatik daripada data anda menggunakan X-ray."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Get embed snippet"
-msgstr "Dapatkan petikan benaman"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
-msgstr "Benamkan papan pemuka, soalan, pembina kueri atau pelayar koleksi. Konfigurasikan pengalaman dan sesuaikan penampilan."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embed a dashboard or question. Configure the experience and customize the appearance."
-msgstr "Benamkan papan pemuka atau soalan. Konfigurasi pengalaman dan sesuaikan penampilan."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure data permissions and tenants"
-msgstr "Konfigurasi kebenaran data dan penyewa"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Share data with external users and allow them to create content."
-msgstr "Kongsi data dengan pengguna luaran dan benarkan mereka mencipta kandungan."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO"
-msgstr "Sediakan SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
-msgstr "Konfigurasikan pengesahan JWT untuk memastikan hanya pengguna yang dibenarkan boleh mengakses embed anda."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed in production with SSO"
-msgstr "Benamkan dalam produksi dengan SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create a custom theme"
-msgstr "Cipta tema tersuai"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Fine-tune the appearance of your embedded content with colors and fonts."
-msgstr "Perhalusi penampilan kandungan terbenam anda dengan warna dan fon."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure AI"
-msgstr "Konfigurasi AI"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Connect to an LLM provider to embed AI chat interfaces and let your users ask natural language queries."
-msgstr "Sambung ke penyedia LLM untuk membenamkan antara muka chat AI dan membolehkan pengguna anda bertanya pertanyaan bahasa semula jadi."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Useful links"
-msgstr "Pautan berguna"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embedding methods"
-msgstr "Kaedah pembenaman"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Demo"
-msgstr "Demo"
-
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Create custom themes"
-msgstr "Cipta tema tersuai"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Secure your embeds with single sign-on"
-msgstr "Lindungi benaman anda dengan log masuk tunggal"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds."
-msgstr "Sambungkan Metabase ke penyedia identiti anda menggunakan JSON Web Tokens (JWT) untuk mengesahkan orang supaya hanya pengguna yang dibenarkan boleh mengakses benaman anda."
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Translate your embedded content"
-msgstr "Terjemahkan kandungan dibenamkan anda"
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Upload a translation dictionary to translate content such as item titles, headings, filter labels, and data in your embedded components."
-msgstr "Muat naik kamus terjemahan untuk menterjemah kandungan seperti tajuk item, heading, label penapis dan data dalam komponen dibenamkan anda."
-
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
 msgid "Actions"
@@ -23025,23 +23334,13 @@ msgid "Guest"
 msgstr "Tetamu"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Failed to enable modular embedding"
-msgstr "Gagal mendayakan Pembenaman modular"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Failed to enable embedding"
-msgstr "Gagal mendayakan pembenaman"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "usage conditions"
-msgstr "syarat penggunaan"
+msgid "Failed to enable guest embeds"
+msgstr "Gagal untuk mendayakan pembenaman tetamu"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #, javascript-format
-msgid "To continue, enable embedding and agree to the {0}."
-msgstr "Untuk meneruskan, dayakan pembenaman dan setuju dengan {0}."
+msgid "To continue, enable guest embeds and agree to the {0}."
+msgstr "Untuk meneruskan, dayakan pembenaman tetamu dan setuju dengan {0}."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23054,13 +23353,8 @@ msgid "Agree to the {0} to continue."
 msgstr "Setuju dengan {0} untuk meneruskan."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Enable modular embedding to get started."
-msgstr "Dayakan pembenaman modular untuk bermula."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Enable embedding to get started."
-msgstr "Dayakan pembenaman untuk bermula."
+msgid "Enable guest embeds to get started."
+msgstr "Dayakan pembenaman tetamu untuk mula."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23085,6 +23379,10 @@ msgid "You should, however, read the license text linked above as that is the ac
 msgstr "Walau bagaimanapun, anda patut membaca teks lesen yang dipautkan di atas kerana itulah lesen sebenar yang anda akan persetujui apabila mendayakan ciri ini."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Failed to enable modular embedding"
+msgstr "Gagal mendayakan Pembenaman modular"
+
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 msgid "To continue, enable modular embedding and agree to the usage conditions."
 msgstr "Untuk meneruskan, dayakan pembenaman modular dan setuju dengan syarat penggunaan."
 
@@ -23093,16 +23391,8 @@ msgid "Agree to the usage conditions to continue."
 msgstr "Setujui syarat penggunaan untuk meneruskan."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "When using modular embedding, each end user must have their own Metabase account."
-msgstr "Apabila menggunakan Pembenaman modular, setiap pengguna akhir mesti mempunyai akaun Metabase sendiri."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
-msgstr "Berkongsi akaun Metabase ialah risiko keselamatan. Walaupun anda menapis data di sisi klien, setiap pengguna boleh menggunakan token mereka untuk melihat apa-apa data yang kelihatan kepada akaun pengguna berkongsi itu."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
-msgstr "Selain itu, kami menganggap akaun kongsi sebagai penggunaan yang tidak adil. Penggunaan adil melibatkan pemberian setiap pengguna akhir analitik terbenam akaun Metabase mereka sendiri."
+msgid "Enable modular embedding to get started."
+msgstr "Dayakan pembenaman modular untuk bermula."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Common/EmbeddingUpsell.tsx
 msgid "Get more powerful embedding"
@@ -23137,12 +23427,6 @@ msgstr "Satu atau lebih soalan dalam papan pemuka ini sedang mengkueri pangkalan
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/DatabaseRoutingWarning.tsx
 msgid "This question is querying a database with database routing enabled. The database queries will be executed against the router database."
 msgstr "Soalan ini sedang mengkueri pangkalan data dengan penghalaan pangkalan data didayakan. Kueri pangkalan data akan dijalankan terhadap pangkalan data penghala."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
-msgid "Copy code"
-msgstr "Salin kod"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/PublishQuestionEmptyState.tsx
 #, javascript-format
@@ -23517,156 +23801,6 @@ msgstr "Visualisasi ini telah tamat tempoh. Minta klien MCP anda untuk menjalank
 msgid "Could not load this visualization. Make sure Metabase is reachable, then ask your MCP client to show this again."
 msgstr "Tidak dapat memuatkan visualisasi ini. Pastikan Metabase boleh dicapai, kemudian minta klien MCP anda untuk tunjukkan ini semula."
 
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded dashboards"
-msgstr "Papan pemuka terbenam"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No dashboards have been embedded yet."
-msgstr "Tiada papan pemuka yang dibenamkan lagi."
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded questions"
-msgstr "Soalan terbenam"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No questions have been embedded yet."
-msgstr "Tiada soalan yang dibenamkan lagi."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Each end user needs their own Metabase account"
-msgstr "Setiap pengguna akhir memerlukan akaun Metabase mereka sendiri"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage."
-msgstr "Apabila anda membenamkan Metabase, setiap orang yang menggunakan aplikasi anda memerlukan akaun Metabase mereka sendiri. Ini kerana berkongsi satu akaun antara pengguna ialah risiko keselamatan. Menapis data di sisi klien tidak menyelesaikannya, kerana sesiapa yang mempunyai token akaun itu boleh mencapai apa sahaja yang akaun itu boleh lihat. Selain itu, kami menganggap akaun kongsi sebagai penggunaan yang tidak adil."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Agree"
-msgstr "Setuju"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Modular embedding and SDK for React"
-msgstr "Pembenaman modular dan SDK untuk React"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data."
-msgstr "Benamkan kuasa penuh Metabase ke dalam aplikasi anda dengan pembenaman modular dan React SDK untuk membina pengalaman analitik tersuai serta mengurus papan pemuka dan data secara programatik."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Enable embedding"
-msgstr "Dayakan pembenaman"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed Metabase dashboards and questions into your application with modular embedding."
-msgstr "Benamkan papan pemuka dan soalan Metabase ke dalam aplikasi anda dengan pembenaman modular."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Full-app embedding"
-msgstr "Pembenaman aplikasi penuh"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing."
-msgstr "Satu cara untuk membenamkan keseluruhan aplikasi Metabase dalam iframe. Ini melibatkan trade-off yang besar dan secara umum tidak disyorkan melainkan anda benar-benar tahu apa yang anda lakukan."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Availability of embedding methods"
-msgstr "Ketersediaan kaedah pembenaman"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Secret key for guest embeds"
-msgstr "Kunci rahsia untuk benaman tetamu"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
-msgstr "Kunci Rahsia Penyematan Kendiri digunakan untuk menandatangani JSON Web Tokens untuk permintaan ke titik akhir /api/embed. Ini membolehkan anda mencipta persekitaran yang selamat yang terhad kepada pengguna atau organisasi tertentu."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Regenerate key"
-msgstr "Jana semula key"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Regenerate embedding key?"
-msgstr "Jana semula kunci pembenaman?"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "This will cause existing embeds to stop working until they are updated with the new key."
-msgstr "Ini akan menyebabkan benaman sedia ada berhenti berfungsi sehingga ia dikemas kini dengan kunci baharu."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Generate key"
-msgstr "Jana key"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
-msgstr "Asingkan nilai dengan ruang. Localhost tidak dibenarkan. Perubahan akan berkuat kuasa dalam masa satu minit."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
-msgstr "Asingkan nilai dengan ruang. Localhost disertakan secara automatik. Perubahan akan berkuat kuasa dalam masa satu minit."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost. {0}"
-msgstr "Tambah domain laman web tempat anda mahu membenarkan Pembenaman modular dan SDK. SDK yang menggunakan kunci API hanya boleh dijalankan pada localhost. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow embedding. {0}"
-msgstr "Tambah domain laman web tempat anda mahu membenarkan pembenaman. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Cross-Origin Resource Sharing (CORS)"
-msgstr "Cross-Origin Resource Sharing (CORS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
-msgstr "Menentukan sama ada cookies dibenarkan dihantar pada permintaan rentas-laman. Anda mungkin perlu menukarnya kepada None jika aplikasi pembenaman anda dihoskan di bawah domain yang berbeza daripada Metabase. Jika tidak, biarkan ia pada Lax, kerana ia lebih selamat."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgctxt "{0} is a 'Learn more' link to the embedding documentation"
-msgid "If you set this to None, you'll have to use HTTPS, or browsers will reject the request. {0}"
-msgstr "Jika anda tetapkan ini kepada None, anda perlu menggunakan HTTPS, atau pelayar akan menolak permintaan tersebut. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgid "You should probably change this setting to {0}."
-msgstr "Anda mungkin patut menukar tetapan ini kepada {0}."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Lax (default)"
-msgstr "Lax (lalai)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
-msgstr "Membenarkan kuki sesi Metabase dikongsi pada domain yang sama. Digunakan untuk instans produksi pada domain yang sama."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Strict (not recommended)"
-msgstr "Strict (tidak disyorkan)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
-msgstr "Tidak membenarkan kuki sesi Metabase dikongsi dengan instans terbenam. Gunakan ini jika anda tidak mahu mendayakan perkongsian sesi dengan pembenaman."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "None (requires HTTPS)"
-msgstr "Tiada (memerlukan HTTPS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
-msgstr "Gunakan \"None\" apabila aplikasi anda dan Metabase dihoskan pada domain berbeza. Tidak serasi dengan Safari dan pelayar berasaskan iOS."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "SameSite cookie setting"
-msgstr "Tetapan cookie SameSite"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
-msgid "Set via environment variable"
-msgstr "Ditetapkan melalui pembolehubah persekitaran"
-
 #: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
 msgid "If all you want is a simple embedded dashboard, you're done! \n"
 "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
@@ -23839,6 +23973,10 @@ msgid "Configure data permissions and enable tenants"
 msgstr "Konfigurasi kebenaran data dan dayakan penyewa"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Enable multi-tenant user strategy"
+msgstr "Dayakan strategi pengguna penyewa berbilang"
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 msgid "Move a dashboard to the shared collection"
 msgstr "Alihkan Papan pemuka ke Koleksi dikongsi"
 
@@ -23968,8 +24106,8 @@ msgid "404 error after SSO sign-in"
 msgstr "Ralat 404 selepas log masuk SSO"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in the embedding hub's Authentication tab is pointing to your endpoint and your endpoint is up and running and available."
-msgstr "Jika selepas mengklik \"Sign in with SSO\", pelayar memulangkan ralat 404, pastikan nilai URI JWT SSO dalam tab Pengesahan hab pembenaman menunjuk ke endpoint anda dan endpoint anda sedang berjalan serta tersedia."
+msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in admin settings / auth / JWT is pointing to your endpoint and your endpoint is up and running and available."
+msgstr "Jika selepas mengklik \"Sign in with SSO\", pelayar memulangkan ralat 404, pastikan nilai JWT SSO URI dalam tetapan pentadbir / auth / JWT menunjuk ke endpoint anda dan endpoint anda aktif dan tersedia."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "JWT decryption error: \"Message seems corrupt\""
@@ -23992,8 +24130,8 @@ msgid "User provisioning disabled for JWT SSO"
 msgstr "Peruntukan pengguna dilumpuhkan untuk JWT SSO"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
-msgstr "Jika selepas diubah hala daripada aplikasi anda ke Metabase, anda melihat mesej ralat \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Sama ada hidupkan ciri ini untuk membolehkan pengguna diprovisyenkan jika mereka belum wujud, atau pastikan pengguna wujud sebelum melog masuk mereka melalui JWT SSO."
+msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
+msgstr "Jika selepas diubah hala daripada aplikasi anda ke Metabase, anda melihat mesej ralat \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO.\", ini bermakna user provisioning untuk JWT SSO dimatikan dalam tetapan pentadbir/pengesahan. Sama ada hidupkan ciri ini supaya pengguna akan diprovisyenkan jika mereka belum wujud, atau pastikan pengguna wujud sebelum melog masuk mereka melalui JWT SSO."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "Contact customer support"
@@ -24008,14 +24146,36 @@ msgid "Create embed"
 msgstr "Cipta embed"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Get embed snippet"
+msgstr "Dapatkan petikan benaman"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
+msgstr "Benamkan papan pemuka, soalan, pembina kueri atau pelayar koleksi. Konfigurasikan pengalaman dan sesuaikan penampilan."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
 msgid "Add your data"
 msgstr "Tambah data anda"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Connect your own database or upload a CSV and start working with your real data."
+msgstr "Sambungkan pangkalan data anda sendiri atau muat naik CSV dan mula bekerja dengan data sebenar anda."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Prepare data"
 msgstr "Sediakan data"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a dashboard"
+msgstr "Cipta papan pemuka"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Automatically generate a dashboard from your data using x-rays."
+msgstr "Jana papan pemuka secara automatik daripada data anda menggunakan X-ray."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Pick a strategy for users and permissions"
@@ -24026,168 +24186,20 @@ msgid "Set granular permissions for multi-tenancy to control data access. Share 
 msgstr "Tetapkan kebenaran granular untuk penyewa berbilang bagi mengawal akses data. Kongsi papan pemuka, soalan dan model dengan pengguna luaran dan benarkan mereka mencipta kandungan, sambil mengehadkan akses kepada data dalaman atau data penyewa lain."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
+msgstr "Konfigurasikan pengesahan JWT untuk memastikan hanya pengguna yang dibenarkan boleh mengakses embed anda."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deployment"
 msgstr "Deployment"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed in production with SSO"
+msgstr "Benamkan dalam produksi dengan SSO"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deploy your embedded dashboard to a production environment and share with your users."
 msgstr "Deploy papan pemuka terbenam anda ke persekitaran produksi dan kongsikan dengan pengguna anda."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Edit theme"
-msgstr "Edit tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Theme name"
-msgstr "Nama tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Main colors"
-msgstr "Warna utama"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Reset main colors to defaults"
-msgstr "Tetapkan semula warna utama kepada lalai"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show fewer colors"
-msgstr "Tunjukkan lebih sedikit warna"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show more colors"
-msgstr "Tunjukkan lebih banyak warna"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
-msgstr "Jana semula warna penapis, ringkaskan, positif, negatif dan carta daripada warna jenama"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate from brand color"
-msgstr "Jana semula daripada warna jenama"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Base font size"
-msgstr "Saiz fon asas"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Delete theme"
-msgstr "Padam tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Save theme"
-msgstr "Simpan tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
-msgid "Enable modular embedding to see a live preview of your theme."
-msgstr "Dayakan pembenaman modular untuk melihat pratonton langsung tema anda."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-#, javascript-format
-msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
-msgid "Accept the {0} to see a live preview of your theme."
-msgstr "Terima {0} untuk melihat pratonton langsung tema anda."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Enable modular embedding"
-msgstr "Dayakan pembenaman modular"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Accept and continue"
-msgstr "Terima dan teruskan"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Theme preview"
-msgstr "Pratonton tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Create a dashboard or question to preview this theme."
-msgstr "Cipta papan pemuka atau soalan untuk pratonton tema ini."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Change preview resource"
-msgstr "Tukar sumber pratonton"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Select data to preview"
-msgstr "Pilih data untuk pratonton"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Brand"
-msgstr "Jenama"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Background"
-msgstr "Latar belakang"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Primary text"
-msgstr "Teks utama"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Secondary text"
-msgstr "Teks sekunder"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Tertiary text"
-msgstr "Teks tertier"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Border"
-msgstr "Sempadan"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Shadow"
-msgstr "Bayang"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Are you sure you want to delete this theme? This action cannot be undone."
-msgstr "Adakah anda pasti mahu memadam tema ini? Tindakan ini tidak boleh dibuat asal."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-msgid "Duplicate and delete"
-msgstr "Duplikasi dan padam"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Theme duplicated successfully"
-msgstr "Tema berjaya diduplikasi"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Failed to duplicate theme"
-msgstr "Gagal menduplikasi tema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/NewThemeCard.tsx
-msgid "New theme"
-msgstr "Tema baharu"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Theme deleted successfully"
-msgstr "Tema berjaya dipadam"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Failed to delete theme"
-msgstr "Gagal memadam tema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Untitled theme"
-msgstr "Tema tanpa tajuk"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
-msgstr "Warna penapis, ringkaskan, positif, negatif dan carta dijana semula daripada warna jenama."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Main colors reset to defaults."
-msgstr "Warna utama ditetapkan semula kepada lalai."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Theme saved"
-msgstr "Tema disimpan"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Failed to save theme"
-msgstr "Gagal menyimpan tema"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationErrorMarker.tsx
 msgid "Failed to generate"
@@ -24277,6 +24289,7 @@ msgstr "Dihentikan"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/forms/components/FormSubmitButton/FormSubmitButton.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/ToolStep.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskRunStatusPicker/TaskRunStatusPicker.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskStatusPicker/TaskStatusPicker.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/NotificationRunSummaryLog.tsx
@@ -24338,6 +24351,7 @@ msgid "Initial investigation"
 msgstr "Siasatan awal"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx
 msgid "New research"
 msgstr "Penyelidikan baharu"
 
@@ -24649,33 +24663,41 @@ msgstr "Pilih kumpulan"
 msgid "Set up key"
 msgstr "Sediakan kunci"
 
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Create a secret key"
-msgstr "Cipta kunci rahsia"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Store your new key"
-msgstr "Simpan kunci baharu anda"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key and generate a new one?"
-msgstr "Padam kunci dan jana yang baharu?"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "This will cause existing tokens to stop working until the identity provider is updated with a new key."
-msgstr "Ini akan menyebabkan token sedia ada berhenti berfungsi sehingga penyedia identiti dikemas kini dengan kunci baharu."
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key"
-msgstr "Padam kunci"
-
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Error generating secret key."
 msgstr "Ralat menjana kunci rahsia."
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Set up secret key"
+msgstr "Sediakan kunci rahsia"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Copy to clipboard"
+msgstr "Salin ke clipboard"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Secret key copied to clipboard"
+msgstr "Kunci rahsia disalin ke clipboard"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Error copying secret key to clipboard."
+msgstr "Ralat menyalin kunci rahsia ke clipboard."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "New secret key"
 msgstr "Kunci rahsia baharu"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Make sure you copy this key now and save it in a safe place."
+msgstr "Pastikan anda salin kunci ini sekarang dan simpan di tempat yang selamat."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "You won't be able to see it again."
+msgstr "Anda tidak akan dapat melihatnya lagi."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "This will cause existing tokens to stop working until the identity provider is updated with the new key."
+msgstr "Ini akan menyebabkan token sedia ada berhenti berfungsi sehingga identity provider dikemas kini dengan kunci baharu."
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 msgid "This dashboard has been set as your homepage."
@@ -24840,6 +24862,11 @@ msgstr "Jangan beritahu sesiapa, tapi anda kegemaran saya."
 #, javascript-format
 msgid "{0} tips"
 msgstr "Tip {0}"
+
+#: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
+msgid "Home"
+msgstr "Home"
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
 msgid "Pick a dashboard to serve as the homepage"
@@ -25237,7 +25264,6 @@ msgid "New conversation"
 msgstr "Perbualan baharu"
 
 #: frontend/src/metabase/metabot/components/MetabotAppBarButton.tsx
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
 #, javascript-format
 msgid "Chat with {0} ({1}+E)"
 msgstr "Chat dengan {0} ({1}+E)"
@@ -25314,14 +25340,6 @@ msgid "Data sources used"
 msgstr "Sumber data yang digunakan"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applying..."
-msgstr "Sedang digunakan..."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applied"
-msgstr "Telah digunakan"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
 msgstr "Revisi"
 
@@ -25332,10 +25350,6 @@ msgstr "Gagal memuatkan pratonton"
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Loading preview"
 msgstr "Memuatkan pratonton"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Read only"
-msgstr "Baca sahaja"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentTodoMessage.tsx
 msgid "Todo List"
@@ -25667,15 +25681,6 @@ msgstr "Tidak dapat memuatkan perbualan ini"
 msgid "Try refreshing the page."
 msgstr "Cuba muat semula halaman."
 
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
-#, javascript-format
-msgid "{0} can't be viewed on this page"
-msgstr "{0} tidak boleh dilihat pada halaman ini"
-
-#: frontend/src/metabase/metabot/components/MetabotDataStudioSidebar.tsx
-msgid "Let's transform your data together!"
-msgstr "Jom transform data anda bersama-sama!"
-
 #: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
 msgid "Describe what SQL you want, type @ to mention an item."
 msgstr "Huraikan SQL yang anda mahu, taip @ untuk sebut sesuatu item."
@@ -25754,11 +25759,6 @@ msgstr "Dialog {0}"
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew.tsx
 msgid "Mention an item"
 msgstr "Sebut item"
-
-#: frontend/src/metabase/metabot/constants.ts
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Embedding"
-msgstr "Pembenaman"
 
 #: frontend/src/metabase/metabot/constants.ts
 msgid "NLQ"
@@ -27911,10 +27911,6 @@ msgid "Internal Collections"
 msgstr "Koleksi Dalaman"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
-msgid "Home"
-msgstr "Home"
-
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
 msgid "Other users' personal collections"
 msgstr "Koleksi peribadi pengguna lain"
 
@@ -28331,6 +28327,14 @@ msgstr "Cipta kueri asli"
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add native query, add SQL, create SQL"
 msgstr "tambah kueri asli, tambah SQL, cipta SQL"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a research"
+msgstr "Cipta research"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "add research, add exploration, research mode"
+msgstr "tambah research, tambah penerokaan, mod research"
 
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add dashboard"
@@ -28880,10 +28884,6 @@ msgstr "Jangan cache hasil"
 #: frontend/src/metabase/plugins/oss/caching.ts
 msgid "No caching"
 msgstr "Tiada cache"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "First, some legalese"
-msgstr "Mula-mula, sedikit perundangan"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 #, javascript-format
@@ -29461,17 +29461,17 @@ msgid "Model last cached {0}"
 msgstr "Cache model kali terakhir {0}"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
+#, javascript-format
+msgid "Last attempt {0}"
+msgstr "Cubaan terakhir {0}"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
 msgid "Create now"
 msgstr "Cipta sekarang"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
 msgid "Refresh now"
 msgstr "Segar semula sekarang"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
-#, javascript-format
-msgid "Last attempt {0}"
-msgstr "Cubaan terakhir {0}"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx
 #, javascript-format
@@ -29631,6 +29631,10 @@ msgstr "Ungkapan Tersuai"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterColumnPicker/FilterColumnPicker.tsx
 msgid "Custom Expression"
 msgstr "Ungkapan Tersuai"
+
+#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
+msgid "Select..."
+msgstr "Pilih..."
 
 #: frontend/src/metabase/querying/common/components/DataSelector/constants.ts
 msgid "Trustworthy definitions to start from."
@@ -30010,6 +30014,10 @@ msgstr "Ini mungkin jawapan yang anda cari. Jika tidak, cuba buang atau ubah pen
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Kembali ke hasil sebelumnya"
+
+#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+msgid "Snippets"
+msgstr "Petikan kod"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -32850,6 +32858,12 @@ msgid "Succeeded"
 msgstr "Berjaya"
 
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexesPage.tsx
+#, javascript-format
+msgctxt "{0} is the application name, {1} is the database's own error message"
+msgid "{0} couldn't read the indexes on this table, so statuses may be out of date. The database said: {1}"
+msgstr "{0} tidak dapat membaca indeks pada jadual ini, jadi status mungkin tidak terkini. Pangkalan data berkata: {1}"
+
+#: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexesPage.tsx
 msgid "Delete this index?"
 msgstr "Padam indeks ini?"
 
@@ -32874,10 +32888,6 @@ msgstr[0] "Ini juga akan mengarkibkan {0} transformasi di dalamnya."
 #: frontend/src/metabase/transforms/pages/TransformListPage/CollectionRowMenu.tsx
 msgid "Are you sure you want to archive this folder?"
 msgstr "Adakah anda pasti mahu mengarkibkan folder ini?"
-
-#: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
-msgid "Create a transform that "
-msgstr "Cipta transformasi yang "
 
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "Transforms can't be created when Remote Sync is in read-only mode"
@@ -35228,6 +35238,14 @@ msgid "Number of tick marks"
 msgstr "Bilangan tanda tik"
 
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Left axis label"
+msgstr "Label paksi kiri"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Right axis label"
+msgstr "Label paksi kanan"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Hide overlapping labels"
 msgstr "Sembunyikan label yang bertindih"
 
@@ -35762,6 +35780,10 @@ msgstr "tidak dapat menjana kunci dengan prefix unik"
 #: metabase/api_routes/routes.clj
 msgid "API endpoint does not exist."
 msgstr "Endpoint API tidak wujud."
+
+#: metabase/api_scope/data_app.clj
+msgid "Read and query access for a sandboxed data app."
+msgstr "Akses baca dan kueri untuk aplikasi data yang disandboxkan."
 
 #: metabase/app_db/encryption.clj
 msgid "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY"
@@ -36414,10 +36436,6 @@ msgstr "Mengawal jenis hos yang dibenarkan sebagai destinasi saluran HTTP.\n"
 "- allow-all (tiada sekatan termasuk localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-
-#: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
 msgstr "Bilangan maksimum percubaan semula untuk sesuatu peristiwa."
 
@@ -36686,6 +36704,10 @@ msgstr "Kandungan komen mesti JSON yang sah."
 #: metabase/comments/api.clj
 msgid "Comment context must be a valid JSON object."
 msgstr "Konteks komen mestilah objek JSON yang sah."
+
+#: metabase/comments/schema.clj
+msgid "Emoji must be 1 to 10 Unicode code points."
+msgstr "Emoji mesti 1 hingga 10 code point Unicode."
 
 #: metabase/content_translation/models.clj
 #: metabase_enterprise/api_routes/routes.clj
@@ -37314,10 +37336,6 @@ msgstr "Mengawal rangkaian mana Metabase boleh sambungkan untuk sambungan gudang
 "Juga meliputi hos terowong SSH dan URL auth-provider pangkalan data."
 
 #: metabase/driver/settings.clj
-msgid "Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-private`,` and `allow-all` are allowed."
-msgstr "Invalid warehouse-allowed-networks! Hanya nilai `external-only`, `allow-private`, dan `allow-all` dibenarkan."
-
-#: metabase/driver/settings.clj
 msgid "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds)."
 msgstr "Mengawal kekerapan heartbeat dihantar apabila terowong SSH diwujudkan (dalam saat)."
 
@@ -37706,10 +37724,6 @@ msgid "Check if admin should see the simple embedding terms popup"
 msgstr "Semak sama ada pentadbir patut melihat popup terma pembenaman ringkas"
 
 #: metabase/embedding/settings.clj
-msgid "Check if admin should see the modular embedding and SDK licensing terms popup"
-msgstr "Semak sama ada pentadbir patut melihat pop-up terma pelesenan pembenaman modular dan SDK"
-
-#: metabase/embedding/settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
 msgstr "Benarkan pentadbir membenamkan soalan dan papan pemuka dengan selamat dalam aplikasi lain?"
 
@@ -37724,10 +37738,6 @@ msgstr "Benarkan pentadbir membenamkan Metabase melalui SDK?"
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via modular embedding?"
 msgstr "Benarkan Pentadbir benamkan Metabase melalui Pembenaman modular?"
-
-#: metabase/embedding/settings.clj
-msgid "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?"
-msgstr "Benarkan pentadbir membenamkan Metabase melalui pembenaman modular, SDK untuk React, dan benaman tetamu?"
 
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via interactive embedding?"
@@ -39824,10 +39834,6 @@ msgid "Whether the MCP server is enabled."
 msgstr "Sama ada pelayan MCP didayakan."
 
 #: metabase/mcp/settings.clj
-msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-msgstr "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-
-#: metabase/mcp/settings.clj
 msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
 msgstr "Bilangan jam handle kueri MCP yang disimpan dikekalkan sebelum tugas GC berjadual memadamkannya."
 
@@ -39838,62 +39844,6 @@ msgstr "Klien MCP popular yang didayakan untuk CORS, disimpan sebagai kunci klie
 #: metabase/mcp/settings.clj
 msgid "Custom CORS origins for self-hosted MCP clients, space-separated."
 msgstr "Origin CORS tersuai untuk klien MCP yang dihoskan sendiri, dipisahkan dengan ruang."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Metrics are aggregations, not sources. To use metric {0}, put its base table''s numeric id into `source-table:` (find it via `search` or `browse_data`) and reference the metric by its numeric id:"
-msgstr "Metrik ialah agregasi, bukan sumber. Untuk menggunakan metrik {0}, masukkan id numerik jadual asasnya ke dalam `source-table:` (cari melalui `search` atau `browse_data`) dan rujuk metrik itu dengan id numeriknya:"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "To reference a saved question or model as a query source, put its bare numeric id into `source-card:` — not a URI: `\"source-card\": {0}`."
-msgstr "Untuk merujuk Soalan tersimpan atau model sebagai sumber kueri, letakkan id numerik sahaja ke dalam `source-card:` — bukan URI: `\"source-card\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use the bare numeric table id in `source-table:` — not a URI: `\"source-table\": {0}`."
-msgstr "Gunakan id jadual numerik sahaja dalam `source-table:` — bukan URI: `\"source-table\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."
-msgstr "`source-table:` menerima id jadual numerik; `source-card:` menerima id numerik saved-card."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, then use one as `source-table`."
-msgstr "Panggil `browse_data` dengan action \"list_tables\" untuk menyenaraikan jadual yang tersedia beserta id numeriknya, kemudian gunakan salah satu sebagai `source-table`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" for the database, then retry with the numeric table id — it is never ambiguous."
-msgstr "Panggil `browse_data` dengan action \"list_tables\" untuk pangkalan data, kemudian cuba semula dengan id jadual numerik — ia tidak pernah ambigu."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids."
-msgstr "Panggil `browse_data` dengan action \"get_fields\" untuk jadual bagi menyenaraikan kolumnya beserta id numeriknya."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns."
-msgstr "Panggil `browse_data` dengan action \"get_fields\" untuk jadual sumber bagi menyenaraikan kolum foreign-key yang tersedia."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the table that owns the metric to read its dimensions, which give the exact `joins:` clause."
-msgstr "Jika metrik berkaitan dengan jadual itu, panggil `browse_data` dengan action \"get_fields\" untuk jadual yang memiliki metrik tersebut untuk membaca dimensinya, yang memberikan klausa `joins:` yang tepat."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Find the question or model with `search` and put its bare numeric id into `source-card:`."
-msgstr "Cari soalan atau model dengan `search` dan masukkan id numeriknya sahaja ke dalam `source-card:`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list."
-msgstr "Panggil `browse_data` dengan action \"get_fields\" untuk jadual yang memiliki ukuran dan gunakan id numerik daripada senarai ukurannya."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list."
-msgstr "Panggil `browse_data` dengan action \"get_fields\" untuk jadual yang memiliki segmen dan gunakan id numerik daripada senarai segmennya."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use a numeric table id in `source-table:` (from `browse_data` action \"list_tables\"), which needs no database name at all."
-msgstr "Gunakan id jadual numerik dalam `source-table:` (daripada `browse_data` action \"list_tables\"), yang tidak memerlukan nama pangkalan data langsung."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."
-msgstr "`source-table:` mengambil id jadual numerik; `source-card:` mengambil id numerik saved-card."
 
 #: metabase/mcp/validation.clj
 msgid "MCP server is not enabled."
@@ -40018,10 +39968,6 @@ msgid "View transforms"
 msgstr "Lihat transformasi"
 
 #: metabase/metabot/scope.clj
-msgid "Create and edit transforms"
-msgstr "Cipta dan edit transformasi"
-
-#: metabase/metabot/scope.clj
 msgid "View SQL snippets"
 msgstr "Lihat snippet SQL"
 
@@ -40102,6 +40048,10 @@ msgid "View database metadata"
 msgstr "Lihat metadata pangkalan data"
 
 #: metabase/metabot/scope.clj
+msgid "Read MCP resources"
+msgstr "Baca sumber MCP"
+
+#: metabase/metabot/scope.clj
 msgid "View todos"
 msgstr "Lihat todo"
 
@@ -40113,6 +40063,14 @@ msgstr "Cipta dan edit todo"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "Tiada sambungan provider LLM bernama {0} dikonfigurasi."
 
+#: metabase/metabot/self/adapter.clj
+msgid "{0} API error (HTTP {1})"
+msgstr "Ralat API {0} (HTTP {1})"
+
+#: metabase/metabot/self/adapter.clj
+msgid "AI proxy is not supported for {0}"
+msgstr "Proksi AI tidak disokong untuk {0}"
+
 #: metabase/metabot/self/azure.clj
 msgid "Unsupported Azure model {0}. Only anthropic/* and openai/* models are supported."
 msgstr "Model Azure {0} tidak disokong. Hanya model anthropic/* dan openai/* disokong."
@@ -40122,8 +40080,8 @@ msgid "Azure credentials are not configured"
 msgstr "Kelayakan Azure tidak dikonfigurasikan"
 
 #: metabase/metabot/self/azure.clj
-msgid "AI proxy is not supported for Azure"
-msgstr "Proksi AI tidak disokong untuk Azure"
+msgid "Azure API error (HTTP {0})"
+msgstr "Ralat API Azure (HTTP {0})"
 
 #: metabase/metabot/self/azure.clj
 msgid "Azure rejected the API key for this resource"
@@ -40144,10 +40102,6 @@ msgstr "Azure telah mengehadkan kadar permintaan kami"
 #: metabase/metabot/self/azure.clj
 msgid "Azure is not working but not saying why"
 msgstr "Azure tidak berfungsi tetapi tidak menyatakan sebabnya"
-
-#: metabase/metabot/self/azure.clj
-msgid "Azure API error (HTTP {0})"
-msgstr "Ralat API Azure (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported."
@@ -40174,8 +40128,8 @@ msgid "AWS Bedrock needs both an access key ID and a secret access key, or neith
 msgstr "AWS Bedrock memerlukan kedua-dua access key ID dan secret access key, atau tiada langsung untuk menggunakan default credentials chain"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AI proxy is not supported for AWS Bedrock"
-msgstr "Proksi AI tidak disokong untuk AWS Bedrock"
+msgid "AWS Bedrock API error (HTTP {0})"
+msgstr "Ralat API AWS Bedrock (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock rejected our credentials or request signature"
@@ -40198,12 +40152,12 @@ msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock tidak berfungsi tetapi tidak menyatakan sebabnya"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock API error (HTTP {0})"
-msgstr "Ralat API AWS Bedrock (HTTP {0})"
-
-#: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
 msgstr "Model Bedrock {0} tidak disokong. Hanya model anthropic.* dan openai.* disokong."
+
+#: metabase/metabot/self/claude.clj
+msgid "Anthropic API error (HTTP {0})"
+msgstr "Ralat API Anthropic (HTTP {0})"
 
 #: metabase/metabot/self/claude.clj
 msgid "Anthropic API key expired or invalid"
@@ -40233,10 +40187,6 @@ msgstr "API Anthropic tidak berfungsi tetapi tidak menyatakan sebabnya"
 msgid "Anthropic API is overloaded and is asking us to wait"
 msgstr "API Anthropic terlebih beban dan meminta kami menunggu"
 
-#: metabase/metabot/self/claude.clj
-msgid "Anthropic API error (HTTP {0})"
-msgstr "Ralat API Anthropic (HTTP {0})"
-
 #: metabase/metabot/self/core.clj
 msgid "{0} API request failed"
 msgstr "Permintaan API {0} gagal"
@@ -40254,8 +40204,8 @@ msgid "AI proxy is not configured"
 msgstr "Proksi AI tidak dikonfigurasikan"
 
 #: metabase/metabot/self/deepseek.clj
-msgid "AI proxy is not supported for DeepSeek"
-msgstr "Proksi AI tidak disokong untuk DeepSeek"
+msgid "DeepSeek API error (HTTP {0})"
+msgstr "Ralat API DeepSeek (HTTP {0})"
 
 #: metabase/metabot/self/deepseek.clj
 msgid "DeepSeek rejected the request — check the model and request parameters"
@@ -40293,10 +40243,6 @@ msgstr "DeepSeek mengembalikan ralat server dalaman"
 msgid "DeepSeek is overloaded and is asking us to wait"
 msgstr "DeepSeek terlalu dibebankan dan meminta kami menunggu"
 
-#: metabase/metabot/self/deepseek.clj
-msgid "DeepSeek API error (HTTP {0})"
-msgstr "Ralat API DeepSeek (HTTP {0})"
-
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google service account key: token_uri must be a Google OAuth endpoint."
 msgstr "Kunci akaun perkhidmatan Google tidak sah: token_uri mesti merupakan endpoint Google OAuth."
@@ -40322,10 +40268,6 @@ msgid "\"{0}\" is not a valid Google Cloud location. Use a location ID like \"us
 msgstr "\"{0}\" bukan lokasi Google Cloud yang sah. Gunakan ID lokasi seperti \"us-central1\", atau biarkan kosong untuk menggunakan lokasi global."
 
 #: metabase/metabot/self/google.clj
-msgid "AI proxy is not supported for the Google provider"
-msgstr "Proksi AI tidak disokong untuk penyedia Google"
-
-#: metabase/metabot/self/google.clj
 msgid "A Google Cloud project ID is required for the Google provider"
 msgstr "ID projek Google Cloud diperlukan untuk penyedia Google"
 
@@ -40340,6 +40282,10 @@ msgstr "Model Google {0} tidak disokong. Hanya model google/* dan anthropic/* di
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
 msgstr "Model Google tidak sah {0} — ID penerbit dan model hanya boleh mengandungi huruf, digit, dan aksara \".\", \"_\", \"-\" dan \"@\""
+
+#: metabase/metabot/self/google.clj
+msgid "Google API error (HTTP {0})"
+msgstr "Ralat Google API (HTTP {0})"
 
 #: metabase/metabot/self/google.clj
 msgid "Google API rejected the request as invalid"
@@ -40374,10 +40320,6 @@ msgid "Google API is temporarily unavailable"
 msgstr "Google API tidak tersedia buat sementara waktu"
 
 #: metabase/metabot/self/google.clj
-msgid "Google API error (HTTP {0})"
-msgstr "Ralat Google API (HTTP {0})"
-
-#: metabase/metabot/self/google.clj
 msgid "(endpoint: {0})"
 msgstr "(endpoint: {0})"
 
@@ -40386,8 +40328,8 @@ msgid "check that \"{0}\" is a valid location"
 msgstr "semak bahawa \"{0}\" ialah lokasi yang sah"
 
 #: metabase/metabot/self/mistral.clj
-msgid "AI proxy is not supported for Mistral"
-msgstr "Proksi AI tidak disokong untuk Mistral"
+msgid "Mistral API error (HTTP {0})"
+msgstr "Ralat API Mistral (HTTP {0})"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API key expired or invalid"
@@ -40405,13 +40347,9 @@ msgstr "Mistral telah mengenakan had kadar kepada kami"
 msgid "Mistral returned an internal server error"
 msgstr "Mistral mengembalikan ralat pelayan dalaman"
 
-#: metabase/metabot/self/mistral.clj
-msgid "Mistral API error (HTTP {0})"
-msgstr "Ralat API Mistral (HTTP {0})"
-
 #: metabase/metabot/self/moonshot.clj
-msgid "AI proxy is not supported for Moonshot"
-msgstr "Proksi AI tidak disokong untuk Moonshot"
+msgid "Moonshot API error (HTTP {0})"
+msgstr "Ralat API Moonshot (HTTP {0})"
 
 #: metabase/metabot/self/moonshot.clj
 msgid "Moonshot rejected the request — check the model and request parameters"
@@ -40437,17 +40375,13 @@ msgstr "Moonshot telah mengenakan had kadar pada kami, atau baki akaun telah hab
 msgid "Moonshot returned an internal server error"
 msgstr "Moonshot mengembalikan ralat pelayan dalaman"
 
-#: metabase/metabot/self/moonshot.clj
-msgid "Moonshot API error (HTTP {0})"
-msgstr "Ralat API Moonshot (HTTP {0})"
-
 #: metabase/metabot/self/openai.clj
 msgid "The model provider failed to complete the response"
 msgstr "Penyedia model gagal melengkapkan respons"
 
 #: metabase/metabot/self/openai.clj
-msgid "AI proxy is not supported for OpenAI"
-msgstr "AI proxy tidak disokong untuk OpenAI"
+msgid "OpenAI API error (HTTP {0})"
+msgstr "Ralat API OpenAI (HTTP {0})"
 
 #: metabase/metabot/self/openai.clj
 msgid "OpenAI API key expired or invalid"
@@ -40469,17 +40403,13 @@ msgstr "API OpenAI telah mengenakan had kadar pada kami"
 msgid "OpenAI API is not working but not saying why"
 msgstr "API OpenAI tidak berfungsi tetapi tidak menyatakan sebabnya"
 
-#: metabase/metabot/self/openai.clj
-msgid "OpenAI API error (HTTP {0})"
-msgstr "Ralat API OpenAI (HTTP {0})"
-
 #: metabase/metabot/self/openai/chat_completions.clj
 msgid "{0} returned an unexpected model list response"
 msgstr "{0} mengembalikan respons senarai model yang tidak dijangka"
 
 #: metabase/metabot/self/openrouter.clj
-msgid "AI proxy is not supported for OpenRouter"
-msgstr "Proksi AI tidak disokong untuk OpenRouter"
+msgid "OpenRouter API error (HTTP {0})"
+msgstr "Ralat API OpenRouter (HTTP {0})"
 
 #: metabase/metabot/self/openrouter.clj
 msgid "OpenRouter API key expired or invalid"
@@ -40513,21 +40443,13 @@ msgstr "Penyedia upstream OpenRouter mengembalikan ralat"
 msgid "OpenRouter service is unavailable"
 msgstr "Perkhidmatan OpenRouter tidak tersedia"
 
-#: metabase/metabot/self/openrouter.clj
-msgid "OpenRouter API error (HTTP {0})"
-msgstr "Ralat API OpenRouter (HTTP {0})"
-
-#: metabase/metabot/self/vllm.clj
-msgid "AI proxy is not supported for vLLM"
-msgstr "Proksi AI tidak disokong untuk vLLM"
-
 #: metabase/metabot/self/vllm.clj
 msgid "No vLLM base URL is set"
 msgstr "Tiada URL asas vLLM ditetapkan"
 
 #: metabase/metabot/self/vllm.clj
-msgid "No vLLM model is set"
-msgstr "Tiada model vLLM ditetapkan"
+msgid "vLLM API error (HTTP {0})"
+msgstr "ralat API vLLM (HTTP {0})"
 
 #: metabase/metabot/self/vllm.clj
 msgid "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar"
@@ -40550,8 +40472,8 @@ msgid "vLLM returned an internal server error"
 msgstr "vLLM mengembalikan ralat server dalaman"
 
 #: metabase/metabot/self/vllm.clj
-msgid "vLLM API error (HTTP {0})"
-msgstr "ralat API vLLM (HTTP {0})"
+msgid "No vLLM model is set"
+msgstr "Tiada model vLLM ditetapkan"
 
 #: metabase/metabot/self/vllm.clj
 msgid "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct."
@@ -40626,8 +40548,8 @@ msgid "The vLLM server did not respond within {0}ms. Check that it is not overlo
 msgstr "Server vLLM tidak memberi respons dalam {0}ms. Semak supaya ia tidak terlebih beban, atau tingkatkan timeout permintaan vLLM."
 
 #: metabase/metabot/self/zai.clj
-msgid "AI proxy is not supported for Z.AI"
-msgstr "Proksi AI tidak disokong untuk Z.AI"
+msgid "Z.AI API error (HTTP {0})"
+msgstr "Ralat API Z.AI (HTTP {0})"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API key expired or invalid"
@@ -40644,10 +40566,6 @@ msgstr "Z.AI telah mengenakan had kadar kepada kami"
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI returned an internal server error"
 msgstr "Z.AI mengembalikan ralat pelayan dalaman"
-
-#: metabase/metabot/self/zai.clj
-msgid "Z.AI API error (HTTP {0})"
-msgstr "Ralat API Z.AI (HTTP {0})"
 
 #: metabase/metabot/settings.clj
 msgid "Override Metabot ID for agent streaming requests."
@@ -40670,8 +40588,8 @@ msgid "Whether to show Metabot illustrations in the UI."
 msgstr "Sama ada untuk menunjukkan ilustrasi Metabot dalam UI."
 
 #: metabase/metabot/settings.clj
-msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot)."
-msgstr "Arahan tersuai yang ditambah pada prompt sistem Metabot untuk pengalaman chat (sidebar AI dan Metabot terbenam)."
+msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack)."
+msgstr "Arahan tersuai yang ditambah pada system prompt Metabot untuk pengalaman chat (bar sisi AI, Metabot terbenam, dan Metabot dalam Slack)."
 
 #: metabase/metabot/settings.clj
 msgid "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience."
@@ -42398,6 +42316,10 @@ msgstr "value mesti kueri MBQL yang sah dengan jadual sumber dan penapis."
 msgid "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit"
 msgstr "definisi segmen mesti kueri satu peringkat dengan jadual sumber dan penapis, dan tanpa joins, expressions, breakouts, aggregations, fields, order by, atau limit"
 
+#: metabase/server/middleware/body_limit.clj
+msgid "Request body exceeds the maximum size of {0} bytes."
+msgstr "Badan permintaan melebihi saiz maksimum {0} bait."
+
 #: metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "Gagal memuatkan templat ''{0}''. Anda ingat untuk build frontend Metabase?"
@@ -42437,6 +42359,10 @@ msgstr "Menghalang pelayan daripada menghantar header CORS untuk permintaan yang
 #: metabase/server/settings.clj
 msgid "Prevent the exception middleware from including stacktraces in responses."
 msgstr "Halang middleware pengecualian daripada memasukkan stacktrace dalam respons."
+
+#: metabase/server/settings.clj
+msgid "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+msgstr "Saiz maksimum dalam bait bagi badan permintaan HTTP daripada pemanggil yang tidak diautentikasi. Permintaan yang lebih besar akan ditolak dengan HTTP 413 sebelum badan dibaca."
 
 #: metabase/server/settings.clj
 msgid "Signing secret for verifying requests from the Metabot Slack app"
@@ -42789,8 +42715,8 @@ msgid "JSON containing LDAP to Metabase group mappings."
 msgstr "JSON yang mengandungi pemetaan kumpulan LDAP ke Metabase."
 
 #: metabase/sso/settings.clj
-msgid "{0} is not a valid DN."
-msgstr "{0} bukan DN yang sah."
+msgid "{0} is not a valid DN. Example: {1}"
+msgstr "{0} bukan DN yang sah. Contoh: {1}"
 
 #: metabase/sso/settings.clj
 msgid "Have the mandatory LDAP settings (host and user search base) been validated and saved?"
@@ -42927,10 +42853,6 @@ msgstr "Medan yang dirujuk melalui join tersirat tidak disokong."
 #: metabase/tiles/api.clj
 msgid "Query failed"
 msgstr "Kueri gagal"
-
-#: metabase/tiles/settings.clj
-msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
 
 #: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys."
@@ -44091,6 +44013,10 @@ msgstr "Pengguna Sokongan"
 msgid "Transforms Python"
 msgstr "Transformasi Python"
 
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Transforms Testing"
+msgstr "Ujian Transformasi"
+
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
 msgstr "Mod dev analitik tidak didayakan."
@@ -44234,6 +44160,10 @@ msgstr "Pengguna penyewa tidak boleh ditambah ke aplikasi data."
 #: metabase_enterprise/data_apps/api.clj
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Kueri aplikasi data tidak boleh menggunakan metrik yang merujuk soalan tersimpan lain atau metrik lain: {0}"
+
+#: metabase_enterprise/data_apps/config.clj
+msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
+msgstr "{0}/{1}: \"version\" mesti nombor bulat positif, seperti 1."
 
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"description\" must be a one-line string."
@@ -44550,8 +44480,8 @@ msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, th
 msgstr "Jika remote-sync-type ialah :read-only dan remote-sync-auto-import ialah true, kadar (dalam minit) untuk menyemak kemas kini untuk diimport. Lalai ialah 5."
 
 #: metabase_enterprise/remote_sync/settings.clj
-msgid "The maximum amount of time a remote sync task will be given to complete"
-msgstr "Tempoh masa maksimum yang diberikan kepada tugasan sync jauh untuk disiapkan"
+msgid "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit."
+msgstr "Tempoh maksimum tugas sync jauh boleh berjalan tanpa membuktikan prosesnya masih hidup (melalui heartbeat, atau progres pada baris yang tiada heartbeat) sebelum ia dianggap mati dan diganti. Tugas yang perlahan tetapi masih hidup tidak akan terjejas. Tugas itu sendiri akan digugurkan selepas sepuluh kali had ini."
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely."
@@ -45089,6 +45019,70 @@ msgstr "kunci atribut mesti berupa keyword atau string dan tidak boleh bermula d
 #: metabase_enterprise/tenants/models.clj
 msgid "Tenant collection: {0}"
 msgstr "Koleksi penyewa: {0}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} names column {1}, which matches more than one output column: {2}. Write it exactly as the output spells it."
+msgstr "Expectation {0} menamakan lajur {1}, yang sepadan dengan lebih daripada satu lajur output: {2}. Tulis tepat seperti ejaan dalam output."
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares column {1}, which the transform output does not have. It has: {2}"
+msgstr "Expectation {0} membandingkan lajur {1}, yang tiada dalam output transform. Yang ada: {2}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."
+msgstr "Expectation {0} membandingkan dengan kueri SQL, yang belum dilaksanakan lagi. Berikan ''columns'' dan ''rows'' sebagai ganti."
+
+#: metabase_enterprise/transform_testing/expectations/protocol.clj
+msgid "Expectation {0} is of type {1}, which is not implemented yet."
+msgstr "Expectation {0} adalah jenis {1}, yang belum dilaksanakan lagi."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The expectation could not be run, and the database gave no reason."
+msgstr "Expectation tidak dapat dijalankan, dan pangkalan data tidak memberikan sebab."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Only query transforms can be tested."
+msgstr "Hanya transformasi kueri boleh diuji."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The {0} database of this transform does not support transform testing."
+msgstr "Pangkalan data {0} untuk transformasi ini tidak menyokong ujian transformasi."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform source SQL could not be parsed for test input validation: {0}"
+msgstr "SQL sumber transformasi tidak dapat di-parse untuk pengesahan input ujian: {0}"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Could not create the test input for {0}:"
+msgstr "Tidak dapat mencipta input ujian untuk {0}:"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform under test failed to run:"
+msgstr "Transformasi yang sedang diuji gagal dijalankan:"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+msgstr "Expectation {0} membaca jadual yang ujian ini tidak menggantikannya: {1}. Expectation hanya boleh membaca output transform dan input yang diisytiharkan."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+msgstr "Ujian transform tidak dapat memetakan semula sumber sepenuhnya kepada jadual ujian; rujukan berikut masih kekal: {0}. Letakkan alias pada setiap jadual sumber dan kelayakkan lajurnya dengan alias tersebut (cth. `FROM my_table t ... t.col`), bukan dengan nama jadual."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} has SQL that could not be parsed: {1}"
+msgstr "Expectation {0} mempunyai SQL yang tidak dapat di-parse: {1}"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+msgstr "Transform membaca jadual tanpa input ujian yang diisytiharkan: {0}. Tambah input untuk setiap satu."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+msgstr "Input ujian diisytiharkan untuk jadual yang transform tidak baca: {0}. Buang input tersebut."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Duplicate test inputs; each input table may be declared only once: {0}"
+msgstr "Input ujian berganda; setiap jadual input hanya boleh diisytiharkan sekali: {0}"
 
 #: metabase_enterprise/transforms_inspector/core.clj
 msgid "Transform Inspector: {0}"

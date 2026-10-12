@@ -19,15 +19,29 @@ Data Studio provides tools to shape and track your data so everyone can trust th
 
 ## What's in Data Studio
 
-- **[Library](semantic-layer/library.md)**\*: A curated space for your organization's most trusted analytics content—tables, metrics, and SQL snippets that your data team recommends.
-- **[Managing tables](./metadata/managing-tables.md)**: Add table metadata to make tables easier to work with.
+The first time you open Data Studio, you'll land on the **Guide**: a quick tour of what you can do in Data Studio. You can come back to the Guide any time from the top of the left sidebar.
+
+### Data
+
+- **[Connected data](./metadata/managing-tables.md)**: Add table metadata to make tables easier to work with.
   - **[Segments](./semantic-layer/segments.md)**: Create saved filters on tables so people can use consistent definitions when building queries.
   - **[Measures](semantic-layer/measures.md)**: Create saved aggregations on tables so people can use consistent calculations when building queries.
+- **[Data transformation](./transforms/transforms-overview.md)**: Wrangle your data in Metabase, write the query results back to your database, and reuse them in Metabase as sources for new queries.
+
+### Library
+
+- **[Semantic layer](semantic-layer/library.md)**\*: A curated space for your organization's most trusted analytics content—tables, metrics, and SQL snippets that your data team recommends.
+- **[Glossary](./semantic-layer/glossary.md)**: Define terms relevant to your business, both for people and agents trying to understand your data.
+
+### Tools
+
 - **[Schema viewer](./tools/schema-viewer.md)**\*: Visualize relationships between tables as an entity-relationship diagram (ERD).
 - **[Dependency graph](./tools/graph.md)**\*: A visual map of how your content connects, so you can understand the impact of changes before you make them. To find content with broken dependencies, see [Dependency diagnostics](../monitor/dependency-diagnostics.md).
-  - **[Replace data sources](./tools/replace-data-sources.md)**\*: Swap out a table or model across all content that uses it, in one operation.
-- **[Transforms](./transforms/transforms-overview.md)**: Wrangle your data in Metabase, write the query results back to your database, and reuse them in Metabase as sources for new queries.
-- **[Glossary](../exploration-and-organization/data-model-reference.md#glossary)**: Define terms relevant to your business, both for people and agents trying to understand your data.
+
+### Remote sync and settings
+
+- **[Remote sync](../installation-and-operation/remote-sync.md)**\*: Click **Set up remote sync** to connect a Git repository and sync your Library and transforms.
+- **Settings**: Turn [transforms](./transforms/transforms-overview.md) on or off for your Metabase. Settings only appear once you've [enabled transforms](./transforms/transforms-overview.md#enable-transforms).
 
 \* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing).
 

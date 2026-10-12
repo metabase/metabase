@@ -3,16 +3,15 @@ import { useAsyncFn, useMount } from "react-use";
 
 import { publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { connect, useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useParams } from "metabase/router";
+import { Flex } from "metabase/ui";
 
 import PublicAction from "./PublicAction";
-import {
-  ContentContainer,
-  LoadingAndErrorWrapper,
-} from "./PublicAction.styled";
+import S from "./PublicActionLoader.module.css";
 
 interface DispatchProps {
   setErrorPage: (error: any) => void;
@@ -52,15 +51,15 @@ function PublicActionLoader({ setErrorPage }: Props) {
       return null;
     }
     return (
-      <ContentContainer>
+      <Flex flex="1 0 auto" align="center" justify="center" p="xl">
         <PublicAction action={action} publicId={uuid} onError={setErrorPage} />
-      </ContentContainer>
+      </Flex>
     );
   }, [action, uuid, setErrorPage]);
 
   return (
     <SyncedEmbedFrame footerVariant="large">
-      <LoadingAndErrorWrapper loading={!action}>
+      <LoadingAndErrorWrapper className={S.loadingWrapper} loading={!action}>
         {renderContent}
       </LoadingAndErrorWrapper>
     </SyncedEmbedFrame>

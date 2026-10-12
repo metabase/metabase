@@ -140,9 +140,7 @@ parameters:
     - Doohickey
   values_source_type: static-list
 serdes/meta:
-- id: thzuTON-F8WG6EcXTXrNK
-  label: all_parameter_types
-  model: Dashboard
+- model: Dashboard
 dashcards: []
 tabs: []
 width: fixed

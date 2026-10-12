@@ -6,16 +6,18 @@ import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { SettingsSection } from "metabase/settings-components";
-import { ActionIcon, Anchor, Button, Icon, Menu, Text } from "metabase/ui";
-import type { SettingDefinition } from "metabase-types/api";
-
 import {
-  CardBadge,
-  CardDescription,
-  CardHeader,
-  CardRoot,
-  CardTitle,
-} from "./AuthCard.styled";
+  ActionIcon,
+  Anchor,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  Title,
+} from "metabase/ui";
+import type { SettingDefinition } from "metabase-types/api";
 
 export interface AuthCardProps {
   setting?: Pick<SettingDefinition, "is_env_setting" | "env_name">;
@@ -124,17 +126,33 @@ export const AuthCardBody = ({
 
   return (
     <SettingsSection>
-      <CardRoot data-testid={`${type}-setting`}>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
+      <Box flex={1} maw="52rem" data-testid={`${type}-setting`}>
+        <Flex align="flex-end" gap="lg" mb="xxs">
+          <Title order={2} c="text-primary">
+            {title}
+          </Title>
           {isConfigured && (
-            <CardBadge isEnabled={isEnabled} data-testid="card-badge">
+            <Box
+              c={isEnabled ? "core-brand" : "feedback-negative"}
+              bg={
+                isEnabled
+                  ? "background_surface-brand-subtle"
+                  : "background_page-secondary"
+              }
+              py="xxs"
+              px="xs"
+              bdrs="xxs"
+              fw="bold"
+              data-testid="card-badge"
+            >
               {badgeContent}
-            </CardBadge>
+            </Box>
           )}
           {children}
-        </CardHeader>
-        <CardDescription>{description}</CardDescription>
+        </Flex>
+        <Box c="text-primary" fz="md" lh="1.5rem" mb="lg" maw="40rem">
+          {description}
+        </Box>
         {footer ? (
           footer
         ) : (
@@ -142,7 +160,7 @@ export const AuthCardBody = ({
             <Button>{buttonLabel}</Button>
           </Link>
         )}
-      </CardRoot>
+      </Box>
     </SettingsSection>
   );
 };

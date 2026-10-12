@@ -105,8 +105,7 @@
     (testing "thinking-only models reject the disable (error 1210): no directive, reasoning_effort instead"
       (let [body (zai/zai-request-body {:model "glm-5.3" :input input})]
         (is (not (contains? body :thinking)))
-        (is (= "max" (:reasoning_effort body)))
-        (is (not (contains? body :max_tokens)))))
+        (is (= "max" (:reasoning_effort body)))))
     (testing "a schema drops the effort to low and raises a title-sized cap to the floor"
       (is (=? {:reasoning_effort "low"
                :max_tokens       2048}
@@ -139,6 +138,22 @@
         (is (= {:type "disabled"} (:thinking body)))
         (is (not (contains? body :reasoning_effort)))
         (is (= 512 (:max_tokens body)))))))
+
+(deftest ^:parallel request-body-default-max-tokens-test
+  (let [input [{:role :user :content "hi"}]]
+    (testing "an uncapped call gets the default cap, whatever the model"
+      (are [model] (= 32000 (:max_tokens (zai/zai-request-body {:model model :input input})))
+        "glm-5.3"
+        "glm-5.2"
+        "glm-4.7"))
+    (testing "the caller's own task cap wins over the default"
+      (is (= 512 (:max_tokens (zai/zai-request-body {:model      "glm-5.3"
+                                                     :input      input
+                                                     :max-tokens 512})))))
+    (testing "a forced call takes the default, which is already above the floor"
+      (is (= 32000 (:max_tokens (zai/zai-request-body {:model  "glm-5.3"
+                                                       :input  input
+                                                       :schema {:type "object"}})))))))
 
 (deftest ^:parallel reasoning-model?-test
   (are [model expected] (= expected (zai/reasoning-model? model))

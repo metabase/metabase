@@ -1,5 +1,5 @@
-import { resolveCardProp } from "embedding-sdk-bundle/lib/sdk-question/resolve-card-prop";
 import { getCardFromSdkQuestionQuery } from "embedding-sdk-bundle/lib/sdk-question-query";
+import { resolveCardProp } from "embedding-sdk-bundle/lib/sdk-question/resolve-card-prop";
 import type { UnsavedCard } from "metabase-types/api";
 
 export function resolveDeserializedCard({

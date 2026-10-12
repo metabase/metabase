@@ -1,16 +1,17 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsHeaderVisible } from "metabase/dashboard/selectors";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
+import { useDashboardTimelines } from "metabase/dashboard/timeline-events";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex, Loader } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { DashboardCard } from "metabase-types/api";
 
@@ -32,10 +33,19 @@ import { Grid, ParametersList } from "./components";
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
-  const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
-    useDashboardContext();
+  const {
+    dashboard,
+    isEditing,
+    isFullscreen,
+    isSharing,
+    selectedTabId,
+    sidebar,
+  } = useDashboardContext();
+
+  const hasDockedSidebar = isSharing || sidebar.name === SIDEBAR_NAME.events;
 
   useDashboardChartPaste();
+  useDashboardTimelines();
 
   const isHeaderVisible = useSelector(getIsHeaderVisible);
 
@@ -54,15 +64,13 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
-  if (!dashboard) {
-    return <Loader size="lg" label={t`Loading…`} />;
-  }
-
-  const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const hasTabs = dashboard.tabs && dashboard.tabs.length > 1;
+  // While the dashboard loads, its header and grid render skeletons, so lay
+  // the page out as for a dashboard with cards.
+  const isEmpty = dashboard != null && (!dashboardHasCards || !tabHasCards);
+  const hasTabs = (dashboard?.tabs?.length ?? 0) > 1;
 
   // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
-  const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
+  const isFullHeight = isEditing || hasDockedSidebar || isEmbeddingSdk();
 
   return (
     <Flex
@@ -81,7 +89,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
       flex="1 0 auto"
       data-testid="dashboard"
     >
-      {dashboard.archived && <DashboardArchivedEntityBanner />}
+      {dashboard?.archived && <DashboardArchivedEntityBanner />}
 
       <Box
         component="header"
@@ -91,7 +99,9 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
-            [S.noBorder]: !hasTabs && !isHeaderVisible,
+            // The tab row draws its own full-width bottom border, so drop the
+            // header container's border when tabs are shown to avoid a doubled line.
+            [S.noBorder]: hasTabs || isEditing || !isHeaderVisible,
           },
         )}
         data-element-id="dashboard-header-container"
@@ -105,14 +115,14 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         miw={0}
         mih={0}
         className={cx(S.DashboardBody, {
-          [S.isEditingOrSharing]: isEditing || isSharing,
+          [S.isHeightConstrained]: isEditing || hasDockedSidebar,
           [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
       >
         <Box
           className={cx(S.ParametersAndCardsContainer, {
             [S.shouldMakeDashboardHeaderStickyAfterScrolling]:
-              !isFullscreen && (isEditing || isSharing),
+              !isFullscreen && (isEditing || hasDockedSidebar),
             [S.notEmpty]: !isEmpty,
           })}
           id={DASHBOARD_PDF_EXPORT_ROOT_ID}

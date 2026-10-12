@@ -1,0 +1,8 @@
+.border {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+}
+
+.borderRight {
+  border-right: 1px solid var(--mb-color-border-neutral);
+}

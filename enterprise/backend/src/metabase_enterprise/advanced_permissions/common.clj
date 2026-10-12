@@ -177,10 +177,28 @@
     (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
           impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
           sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
-          ;; New databases have no legacy grants to preserve. App groups must start blocked.
           blocked-groups      (into (or blocked-group-ids #{})
-                                    (concat impersonation-group-ids sandbox-group-ids (perms/data-app-group-ids)))]
+                                    (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
+
+(defenterprise new-table-sandboxed-groups
+  "Returns the subset of `group-ids` that must have new tables on `db-id` forced to `:blocked` view-data regardless of
+  the new table's schema, because they have a sandbox on a table in this DB. A sandbox is a stronger condition than
+  a few specific tables being blocked, so the presence of a sandbox on this DB for a group is sufficient to make any
+  new table `:blocked` for that group, even if the table came from a CSV upload.
+
+  OSS has no sandboxes, so the OSS implementation returns the empty set. On EE we deliberately do *not* consult
+  `enable-sandboxes?`: as with `apply-sandboxing`, we block *setting up* a sandbox without the feature (see
+  `metabase-enterprise.sandbox.api.gtap`) but keep enforcing one that is already configured, rather than silently
+  ignoring it when a token lapses. See UXW-4927 for the incident where an unlicensed EE instance leaked a
+  newly-synced table to a sandboxed group."
+  :feature :none ;; fail CLOSED if the feature is unavailable.
+  [db-id group-ids]
+  (if (empty? group-ids)
+    #{}
+    (into #{}
+          (map :group_id)
+          (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))))
 
 (defenterprise new-table-view-data-permission-levels
   "Returns a map of {group-id → permission-level} for multiple groups and a single DB."
@@ -191,17 +209,10 @@
     ;; We don't check for connection impersonations here, because impersonations are set at the
     ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
     (let [blocked-group-ids (advanced-permissions.db/blocked-group-ids-for-database db-id group-ids)
-          sandbox-group-ids (into #{}
-                                  (map :group_id)
-                                  (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))
-          app-group-ids     (set (perms/data-app-group-ids))
-          app-view-data     (when (some app-group-ids group-ids)
-                              (perms/data-app-view-data-permission-level db-id))
+          sandbox-group-ids (new-table-sandboxed-groups db-id group-ids)
           blocked-groups    (into (or blocked-group-ids #{}) sandbox-group-ids)]
-      ;; A new table must not introduce a block into an app group's database-wide legacy permission.
       (into {} (map (fn [group-id]
                       [group-id (cond
-                                  (app-group-ids group-id) app-view-data
                                   (blocked-groups group-id) :blocked
                                   :else :unrestricted)]))
             group-ids))))

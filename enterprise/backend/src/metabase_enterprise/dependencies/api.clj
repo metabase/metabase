@@ -205,9 +205,9 @@
   {:card      [:id :name :description :type :display :database_id :query_type :collection_id :dashboard_id :document_id :result_metadata
                :created_at :creator_id :view_count
                ;; :card_schema always has to be selected, and every column the Card schema upgrade
-               ;; reads has to come with it. The last three are not part of the response — `entity-keys`
+               ;; reads has to come with it. The last four are not part of the response — `entity-keys`
                ;; decides that — they are here only to make the upgrade runnable.
-               :card_schema :dataset_query :dimensions :dimension_mappings]
+               :card_schema :entity_id :dataset_query :dimensions :dimension_mappings]
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema

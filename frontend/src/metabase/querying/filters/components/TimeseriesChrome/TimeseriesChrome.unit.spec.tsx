@@ -9,7 +9,7 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { TimeseriesChrome } from "./TimeseriesChrome";
 
@@ -55,7 +55,13 @@ describe("TimeseriesChrome", () => {
             type: "table",
             id: ORDERS_ID,
           },
-          breakouts: [{ type: "column", name: "CATEGORY" }],
+          breakouts: [
+            {
+              type: "column",
+              name: "CATEGORY",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
+          ],
         },
       ],
     });
@@ -74,7 +80,6 @@ describe("TimeseriesChrome", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "month",
             },
@@ -103,13 +108,11 @@ describe("TimeseriesChrome", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "month",
             },
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "year",
             },

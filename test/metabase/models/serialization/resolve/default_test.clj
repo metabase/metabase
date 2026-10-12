@@ -36,11 +36,31 @@
                    :active false}
                   (t2/select-one :model/Table :id table-id))))))))
 
-(deftest import-table-fk-throws-when-database-missing-test
-  (testing "throws when the database itself does not exist"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"database not found"
-                          (serdes/*import-table-fk* ["does-not-exist" "public" "users"])))))
+(deftest import-database-fk-existing-test
+  (testing "returns the existing database id when found"
+    (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}]
+      (is (= db-id (serdes/*import-database-fk* "test-db"))))))
+
+(deftest import-database-fk-synthesizes-stub-database-test
+  (testing "creates a stub database when the database doesn't exist"
+    (mt/with-model-cleanup [:model/Database]
+      (let [db-id (serdes/*import-database-fk* "does-not-exist")]
+        (is (=? {:id      db-id
+                 :name    "does-not-exist"
+                 :engine  :postgres
+                 :details {}
+                 :is_stub true}
+                (t2/select-one :model/Database :id db-id)))))))
+
+(deftest import-table-fk-synthesizes-stub-database-test
+  (testing "creates a stub database and an inactive table when the database doesn't exist"
+    (mt/with-model-cleanup [:model/Database :model/Table]
+      (let [table-id (serdes/*import-table-fk* ["does-not-exist" "public" "users"])
+            table    (t2/select-one :model/Table :id table-id)]
+        (is (=? {:name "users" :schema "public" :active false}
+                table))
+        (is (=? {:name "does-not-exist" :is_stub true}
+                (t2/select-one :model/Database :id (:db_id table))))))))
 
 (deftest import-field-fk-existing-test
   (testing "returns the existing field id when found"

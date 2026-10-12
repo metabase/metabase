@@ -87,7 +87,10 @@
    [:metabase_version            {:optional true} [:maybe :string]]
    [:embedding_client_identifier {:optional true} [:maybe :string]]
    [:start_time_millis           {:optional true} [:maybe :int]]
-   [:json_query                  {:optional true} [:maybe query-like]]])
+   [:json_query                  {:optional true} [:maybe query-like]]
+   ;; the entry shape is enforced where it is built ([[metabase.lib.schema/sandboxing.details.entry]]) and on the way
+   ;; into the app DB ([[metabase.queries.schema/query-execution.update]]); this row schema only passes it through
+   [:sandbox_details             {:optional true} [:maybe [:sequential [:map {::mr/deliberately-open true}]]]]])
 
 (def ^:private id+timestamp
   [:map {:closed true}
