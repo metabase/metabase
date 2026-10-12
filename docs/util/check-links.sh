@@ -177,9 +177,12 @@ check_site() {
   [ "$count" -eq 0 ]
 }
 
-# Strings that look like metabase.com links but aren't followed by anyone, as regexes for lychee's
-# --exclude. Fix a real link instead of adding it here.
+# Urls the live check skips, as regexes for lychee's --exclude: strings that look like metabase.com links
+# but aren't followed by anyone, and docs pages the offline checks cover. Fix a real link instead of adding
+# it here.
 site_not_links=(
+  # The live /docs/latest is the last release, so pages added or moved on master since then redirect or 404.
+  '^https?://(www\.)?metabase\.com/docs/latest/'
   # Bare metabase.com: CSP origins, the OpenRouter attribution header, a dummy host for parsing paths.
   '^https?://metabase\.com/?$'
   # VersionUpdateNotice appends the version to this.

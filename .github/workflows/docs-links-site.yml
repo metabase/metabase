@@ -104,6 +104,20 @@ jobs:
             gh issue comment "$issue" --body "Updated with the results of the $(date -u +%Y-%m-%d) run ([run]($RUN_URL)). cc @metabase/growth-eng @metabase/tech-writers"
           fi
 
+      - name: Close the broken links issue
+        if: steps.check.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: Broken links report
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
+                    --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")
+          if [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "All links pass as of $(date -u +%Y-%m-%d) ([run]($RUN_URL))."
+          fi
+
       - name: Fail the run
         if: steps.check.outcome == 'failure'
         run: exit 1
