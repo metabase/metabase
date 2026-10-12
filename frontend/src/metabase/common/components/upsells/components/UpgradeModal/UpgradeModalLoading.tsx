@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import {
+  WAITING_REFRESH_INTERVAL,
   useGetSettingsQuery,
   useTokenRefreshUntil,
-  WAITING_REFRESH_INTERVAL,
 } from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 

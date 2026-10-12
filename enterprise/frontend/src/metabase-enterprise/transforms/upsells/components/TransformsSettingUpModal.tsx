@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import {
-  useTokenRefreshUntil,
   WAITING_REFRESH_INTERVAL,
+  useTokenRefreshUntil,
 } from "metabase/settings";
 import {
   Box,

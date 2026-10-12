@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import {
-  useTokenRefreshUntil,
   WAITING_REFRESH_INTERVAL,
+  useTokenRefreshUntil,
 } from "metabase/settings";
 import {
   Box,
