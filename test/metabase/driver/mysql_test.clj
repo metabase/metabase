@@ -787,6 +787,24 @@
                         database
                         (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
 
+(deftest json-unfolding-ignores-table-differing-only-in-case-test
+  (testing "JSON unfolding lists only the synced table's columns, not a table's differing only in case (#83790)"
+    (mt/test-driver :mysql
+      (when-not (mysql/mariadb? (mt/db))
+        (tx/drop-if-exists-and-create-db! driver/*driver* "json_case_test")
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "json_case_test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (doseq [statement ["CREATE TABLE `orders` (`id` INT PRIMARY KEY, `data` JSON);"
+                             "CREATE TABLE `Orders` (`id` INT PRIMARY KEY, `payload` JSON);"
+                             "INSERT INTO `orders` VALUES (1, '{\"a\": 1}');"]]
+            (jdbc/execute! spec [statement]))
+          (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+            (sync/sync-database! database {:scan :schema})
+            (is (= #{"id" "data" "data → a"}
+                   (t2/select-fn-set :name :model/Field
+                                     :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "orders")
+                                     :active true)))))))))
+
 (deftest json-alias-test
   (mt/test-driver :mysql
     (when (not (mysql/mariadb? (mt/db)))
