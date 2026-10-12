@@ -1,4 +1,8 @@
+import { t } from "ttag";
+
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getQuestionReturnUrl } from "metabase/common/metrics-viewer/question-handoff";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
 import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import {
@@ -12,11 +16,25 @@ import {
   useMetricsViewerContext,
 } from "metabase/metrics-viewer/context";
 import { useViewerState } from "metabase/metrics-viewer/hooks";
-import { Box, Center, Flex, Stack } from "metabase/ui";
+import { useLocation } from "metabase/router";
+import { Box, Button, Center, Flex, Icon, Stack } from "metabase/ui";
+
+import { QuestionSummaryPage } from "../QuestionSummaryPage/QuestionSummaryPage";
 
 import S from "./MetricsViewerPage.module.css";
 
 export function MetricsViewerPage() {
+  const location = useLocation();
+  return new URLSearchParams(location.search).get("mode") === "question" ? (
+    <QuestionSummaryPage />
+  ) : (
+    <SavedMetricsViewerPage />
+  );
+}
+
+function SavedMetricsViewerPage() {
+  const location = useLocation();
+  const returnTo = getQuestionReturnUrl(location.search);
   const viewerState = useViewerState();
 
   if (!viewerState.initialLoadComplete) {
@@ -30,12 +48,12 @@ export function MetricsViewerPage() {
 
   return (
     <MetricsViewerProvider value={viewerState}>
-      <MetricsViewerPageBody />
+      <MetricsViewerPageBody returnTo={returnTo} />
     </MetricsViewerProvider>
   );
 }
 
-function MetricsViewerPageBody() {
+function MetricsViewerPageBody({ returnTo }: { returnTo: string | null }) {
   const { definitions, activeDimensionBreakout, isSidebarOpen } =
     useMetricsViewerContext();
 
@@ -49,6 +67,17 @@ function MetricsViewerPageBody() {
 
   return (
     <Stack px="3rem" h="100%" gap={0} className={S.root}>
+      {returnTo && (
+        <Box pt="lg">
+          <Button
+            component={Link}
+            to={returnTo}
+            leftSection={<Icon name="arrow_left" aria-hidden />}
+          >
+            {t`Back to table`}
+          </Button>
+        </Box>
+      )}
       <Box pt="lg" flex="0 0 auto">
         <MetricSearchPanel />
       </Box>
