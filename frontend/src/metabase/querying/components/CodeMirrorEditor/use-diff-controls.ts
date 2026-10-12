@@ -48,6 +48,8 @@ function getShortcuts() {
   };
 }
 
+export type DiffControlsShortcuts = ReturnType<typeof getShortcuts>;
+
 class DiffControlsWidget extends WidgetType {
   constructor(private readonly container: HTMLElement) {
     super();
@@ -133,7 +135,7 @@ export function createDiffControlsExtensions({
   onRejectProposed,
 }: {
   container: HTMLElement;
-  shortcuts?: ReturnType<typeof getShortcuts>;
+  shortcuts?: DiffControlsShortcuts;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
 }) {
@@ -197,9 +199,11 @@ export function createDiffControlsExtensions({
 }
 
 export function useDiffControls({
+  isEnabled,
   onAcceptProposed,
   onRejectProposed,
 }: {
+  isEnabled: boolean;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
 }) {
@@ -207,7 +211,6 @@ export function useDiffControls({
   const shortcuts = useMemo(getShortcuts, []);
   const onAcceptRef = useLatest(onAcceptProposed);
   const onRejectRef = useLatest(onRejectProposed);
-  const isEnabled = !!onAcceptProposed && !!onRejectProposed;
   const extensions = useMemo(
     () =>
       isEnabled

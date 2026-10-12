@@ -8,15 +8,12 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { createPortal } from "react-dom";
-import { t } from "ttag";
 import _ from "underscore";
 
 import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { Button, Flex, KeyboardShortcut } from "metabase/ui";
 import { isEventOverElement } from "metabase/utils/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -24,6 +21,7 @@ import type { CardId } from "metabase-types/api";
 import type { SelectionRange } from "../../editor/types";
 
 import S from "./CodeMirrorEditor.module.css";
+import { DiffControls } from "./DiffControls";
 import { useExtensions } from "./extensions";
 import { useDiffControls } from "./use-diff-controls";
 import {
@@ -81,14 +79,16 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
-  const hasDiffControls = !!proposedQuery && !readOnly;
+  const hasDiffControls =
+    !!proposedQuery && !readOnly && !!onAcceptProposed && !!onRejectProposed;
   const {
     extensions: diffControlsExtensions,
     portalTarget,
     shortcuts,
   } = useDiffControls({
-    onAcceptProposed: hasDiffControls ? onAcceptProposed : undefined,
-    onRejectProposed: hasDiffControls ? onRejectProposed : undefined,
+    isEnabled: hasDiffControls,
+    onAcceptProposed,
+    onRejectProposed,
   });
   const placeholder =
     placeholderProp ??
@@ -193,36 +193,14 @@ export const CodeMirrorEditor = forwardRef<
         onFormat={onFormatQuery}
         onBlur={onBlur}
       />
-      {hasDiffControls &&
-        onAcceptProposed &&
-        onRejectProposed &&
-        createPortal(
-          <Flex gap="xs" py="xxs" px="xs" bg="background_page-secondary">
-            <Button
-              data-testid="accept-proposed-changes-button"
-              variant="default"
-              size="sm"
-              onClick={onAcceptProposed}
-              rightSection={
-                <KeyboardShortcut shortcut={shortcuts.accept.hint} />
-              }
-            >
-              {t`Accept`}
-            </Button>
-            <Button
-              data-testid="reject-proposed-changes-button"
-              variant="default"
-              size="sm"
-              onClick={onRejectProposed}
-              rightSection={
-                <KeyboardShortcut shortcut={shortcuts.reject.hint} />
-              }
-            >
-              {t`Reject`}
-            </Button>
-          </Flex>,
-          portalTarget,
-        )}
+      {hasDiffControls && (
+        <DiffControls
+          portalTarget={portalTarget}
+          shortcuts={shortcuts}
+          onAcceptProposed={onAcceptProposed}
+          onRejectProposed={onRejectProposed}
+        />
+      )}
     </>
   );
 });
