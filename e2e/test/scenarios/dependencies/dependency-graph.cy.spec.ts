@@ -391,7 +391,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
     });
 
-    it("should display dependencies for a model and navigate to them", () => {
+    it("should display dependencies for a measure and navigate to them", () => {
       getScoreboardTableId().then((tableId) => {
         createTableBasedMeasure({ tableId }).then(({ body: measure }) => {
           createMeasureBasedQuestion({ tableId, measureId: measure.id });
