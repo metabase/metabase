@@ -4221,6 +4221,7 @@
    :uses #{api
            audit-app
            driver
+           lib
            lib.metadata
            lib.schema
            models
