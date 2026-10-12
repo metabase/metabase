@@ -7,6 +7,7 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -89,7 +90,9 @@ describe("defaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [{ type: "column", name: "STATE", sourceName: "PEOPLE" }],
+          breakouts: [
+            { type: "column", name: "STATE", sourceFieldId: ORDERS.USER_ID },
+          ],
         },
       ],
     });
@@ -112,9 +115,7 @@ describe("defaultDisplay", () => {
             id: ACCOUNTS_ID,
           },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "COUNTRY", sourceName: "ACCOUNTS" },
-          ],
+          breakouts: [{ type: "column", name: "COUNTRY" }],
         },
       ],
     });
@@ -141,7 +142,6 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "CREATED_AT",
-              sourceName: "ORDERS",
               unit: "day-of-month",
             },
           ],
@@ -158,9 +158,7 @@ describe("defaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-          ],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
         },
       ],
     });
@@ -174,9 +172,7 @@ describe("defaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-          ],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
         },
       ],
     });
@@ -202,7 +198,6 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "TOTAL",
-              sourceName: "ORDERS",
               binning: { strategy: "num-bins", numBins: 10 },
             },
           ],
@@ -219,7 +214,7 @@ describe("defaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+          breakouts: [{ type: "column", name: "TOTAL" }],
         },
       ],
     });
@@ -234,7 +229,11 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
+            {
+              type: "column",
+              name: "CATEGORY",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
           ],
         },
       ],
@@ -250,8 +249,8 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-            { type: "column", name: "TOTAL", sourceName: "ORDERS" },
+            { type: "column", name: "CREATED_AT" },
+            { type: "column", name: "TOTAL" },
           ],
         },
       ],
@@ -270,13 +269,13 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "LATITUDE",
-              sourceName: "PEOPLE",
+              sourceFieldId: ORDERS.USER_ID,
               binning: { strategy: "default" },
             },
             {
               type: "column",
               name: "LONGITUDE",
-              sourceName: "PEOPLE",
+              sourceFieldId: ORDERS.USER_ID,
               binning: { strategy: "default" },
             },
           ],
@@ -299,8 +298,12 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "LATITUDE", sourceName: "PEOPLE" },
-            { type: "column", name: "LONGITUDE", sourceName: "PEOPLE" },
+            { type: "column", name: "LATITUDE", sourceFieldId: ORDERS.USER_ID },
+            {
+              type: "column",
+              name: "LONGITUDE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
           ],
         },
       ],
@@ -324,10 +327,14 @@ describe("defaultDisplay", () => {
             {
               type: "column",
               name: "LATITUDE",
-              sourceName: "PEOPLE",
+              sourceFieldId: ORDERS.USER_ID,
               // binning: { strategy: "default" },
             },
-            { type: "column", name: "LONGITUDE", sourceName: "PEOPLE" },
+            {
+              type: "column",
+              name: "LONGITUDE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
           ],
         },
       ],
@@ -348,8 +355,16 @@ describe("defaultDisplay", () => {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
           breakouts: [
-            { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
-            { type: "column", name: "VENDOR", sourceName: "PRODUCTS" },
+            {
+              type: "column",
+              name: "CATEGORY",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
+            {
+              type: "column",
+              name: "VENDOR",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
           ],
         },
       ],
@@ -368,8 +383,12 @@ describe("defaultDisplay", () => {
             { type: "operator", operator: "cum-count", args: [] },
           ],
           breakouts: [
-            { type: "column", name: "LATITUDE", sourceName: "PEOPLE" },
-            { type: "column", name: "LONGITUDE", sourceName: "PEOPLE" },
+            { type: "column", name: "LATITUDE", sourceFieldId: ORDERS.USER_ID },
+            {
+              type: "column",
+              name: "LONGITUDE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
           ],
         },
       ],

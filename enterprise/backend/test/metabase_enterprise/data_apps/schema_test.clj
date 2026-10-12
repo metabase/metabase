@@ -1,12 +1,10 @@
 (ns metabase-enterprise.data-apps.schema-test
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.lib.core :as lib]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,20 +36,6 @@
     (doseq [bad [0 -1 1.5 "1" "one" [1]]]
       (is (not (valid? ::data-apps.schema/version bad)) (str "should reject: " (pr-str bad))))))
 
-(deftest template-manifest-declares-the-supported-version-test
-  (testing "the scaffolding template stamps the version this Metabase serves, so a new app is never born outdated"
-    (is (= data-app.config/supported-app-version
-           (:version (yaml/parse-string (slurp "skills/metabase-data-app-setup/template/data_app.yaml")))))))
-
-(deftest migration-upgrade-guides-cover-every-version-test
-  (testing "the migrate skill ships one guide per upgrade up to the supported version, so an app at any older version has a path"
-    (let [upgrades (->> (.listFiles (io/file "skills/metabase-data-app-migrate/references/upgrades"))
-                        (keep #(re-matches #"v(\d+)-to-v(\d+)\.md" (.getName ^java.io.File %)))
-                        (map (fn [[_ from to]] [(parse-long from) (parse-long to)]))
-                        sort)]
-      (is (= (map (fn [n] [n (inc n)]) (range 1 data-app.config/supported-app-version))
-             upgrades)))))
-
 (deftest outdated-test
   (testing "an app below the supported version is outdated; one at it is not"
     (with-redefs [data-app.config/supported-app-version 2]
@@ -76,7 +60,7 @@
   (testing "a slug is used verbatim"
     (is (= "inventory-2" (normalize ::data-apps.schema/slug "inventory-2"))))
   (testing "a slug that can't appear in a URL as-is, or collides with an API sub-route, is rejected"
-    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "sales\n" "repo-status" "sandbox-host"
+    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "sales\n" "repo-status" "sandbox-host" "generate"
                  (apply str (repeat 101 "a"))]]
       (is (not (valid? ::data-apps.schema/slug bad)) (str "should reject: " (pr-str bad))))))
 

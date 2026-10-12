@@ -8,6 +8,11 @@ import { useDispatch } from "metabase/redux";
 
 import type { SetupGuideStep } from "../types";
 
+const SETUP_GUIDE_URLS = {
+  permissions: "/embedding/get-started/permissions",
+  sso: "/embedding/get-started/sso",
+};
+
 export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
   const dispatch = useDispatch();
 
@@ -69,7 +74,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure data permissions and enable tenants`,
           description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
-          to: "/admin/embedding/setup-guide/permissions",
+          to: SETUP_GUIDE_URLS.permissions,
           variant: "default",
           stepId: "data-permissions-and-enable-tenants",
         },
@@ -83,7 +88,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure SSO`,
           description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
-          to: "/admin/embedding/setup-guide/sso",
+          to: SETUP_GUIDE_URLS.sso,
           variant: "default",
           stepId: "sso-configured",
         },

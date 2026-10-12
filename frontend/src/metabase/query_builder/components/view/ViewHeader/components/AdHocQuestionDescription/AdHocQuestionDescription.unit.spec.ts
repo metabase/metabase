@@ -15,7 +15,6 @@ describe("describeQueryStage", () => {
             {
               type: "column",
               name: "CREATED_AT",
-              sourceName: "ORDERS",
               unit: "month",
             },
           ],
@@ -42,7 +41,6 @@ describe("describeQueryStage", () => {
             {
               type: "column",
               name: "RATING",
-              sourceName: "PRODUCTS",
               binning: { strategy: "num-bins", numBins: 10 },
             },
           ],

@@ -50,7 +50,6 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
             {
               type: "column",
               name: "TOTAL",
-              sourceName: "ORDERS",
               binning: { strategy: "num-bins", numBins: 10 },
             },
           ],
@@ -72,9 +71,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-          ],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
         },
       ],
     });

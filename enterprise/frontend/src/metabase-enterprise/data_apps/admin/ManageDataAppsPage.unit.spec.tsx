@@ -79,10 +79,9 @@ describe("ManageDataAppsPage", () => {
         screen.getByRole("link", { name: "Go to Git sync settings" }),
       ).toHaveAttribute("href", "/admin/settings/remote-sync");
       expect(
-        screen.getByText(/npx skills add metabase\/metabase/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/--skill metabase-data-app-setup/),
+        screen.getByText(
+          /npx skills add metabase\/agent-skills\/skills\/metabase-data-apps\/v1/,
+        ),
       ).toBeInTheDocument();
     });
   });

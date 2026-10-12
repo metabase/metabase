@@ -1,1 +1,2 @@
-export * from "./JobMoreMenu";
+export type { JobModalState } from "./JobMoreMenu";
+export { JobModal, JobMoreMenu } from "./JobMoreMenu";

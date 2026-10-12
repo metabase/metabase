@@ -8,10 +8,13 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
+   ;; Registers execute_sql, whose policy entry the native source gates read.
+   [metabase.mcp.v2.tools.query]
    [metabase.mcp.v2.tools.question :as v2.question]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1087,6 +1090,54 @@
             (is (:isError result))
             (is (str/includes? (-> result :content first :text) "mcp-execute-sql-enabled"))
             (is (zero? (t2/count :model/Card :name "Killed Native Q")))))))))
+
+(defn- native-source-args!
+  "The `question_write` args creating a question named `card-name` from `source`, one of the sources that resolve to
+   native SQL. A `:query_handle` is minted for the current user in session `sid`."
+  [source sid card-name]
+  (assoc (case source
+           :native       {:native {:database_id (mt/id) :sql "SELECT 1"}}
+           :query        {:query {:database (mt/id) :stages [{:native "SELECT 1"}]}}
+           :query_handle {:query_handle (v2.queries/mint-query-handle!
+                                         sid api/*current-user-id*
+                                         (v2.queries/encode-serialized-query
+                                          (lib/prepare-for-serialization
+                                           (lib/native-query (mt/metadata-provider) "SELECT 1"))))})
+         :method "create"
+         :name   card-name))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest native-source-honors-the-execute-sql-group-policy-test
+  (testing "a user whose groups deny execute_sql must not store raw SQL through question_write either, or
+            question_write plus run_saved_question rebuilds the tool an admin denied"
+    (mt/with-model-cleanup [:model/Card :model/McpQueryHandle]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [scopes #{"agent:content:write" "agent:sql:run"}]
+          (doseq [source [:native :query :query_handle]]
+            (testing (name source)
+              (testing "is refused, naming the denied tool, and nothing is written"
+                (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "no"}])]
+                  (let [sid    (str (random-uuid))
+                        result (call-tool scopes sid "question_write"
+                                          (native-source-args! source sid "Denied Native Q"))]
+                    (is (:isError result))
+                    (is (re-find #"^Saving a native \(SQL\) query needs the \"execute_sql\" tool, which is not enabled"
+                                 (-> result :content first :text)))
+                    (is (zero? (t2/count :model/Card :name "Denied Native Q"))))))
+              (testing "goes through once the groups allow execute_sql"
+                (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "yes"}])]
+                  (let [sid    (str (random-uuid))
+                        result (call-tool scopes sid "question_write"
+                                          (native-source-args! source sid "Allowed Native Q"))]
+                    (is (not (:isError result)) (-> result :content first :text))
+                    (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+                            (t2/select-one-fn :dataset_query :model/Card :id (:id (payload result))))))))))
+          (testing "an MBQL question is unaffected by the execute_sql denial"
+            (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"execute_sql" "no"}])]
+              (let [result (call-tool scopes (str (random-uuid)) "question_write"
+                                      {:method "create" :name "Plain MBQL Q"
+                                       :query  {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})]
+                (is (not (:isError result)) (-> result :content first :text))))))))))
 
 (deftest write-response-respects-read-scope-test
   (testing "GHY-4217: without agent:resource:read the response is a minimal ack — the write scope

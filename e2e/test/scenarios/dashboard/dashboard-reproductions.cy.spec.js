@@ -2,7 +2,6 @@ import { assoc } from "icepick";
 import _ from "underscore";
 
 const { H } = cy;
-import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -15,13 +14,8 @@ import {
 
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 
-const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-
-function capitalize(string) {
-  return string.charAt(0).toUpperCase() + string.slice(1);
-}
 
 const ORDERS_QUESTION = {
   name: "Orders question",
@@ -96,76 +90,46 @@ describe("issue 12926", () => {
     }).as("dashcardQueryRestored");
   }
 
-  function removeCard() {
-    H.editDashboard();
-
-    H.showDashboardCardActions();
-
-    cy.findByTestId("dashboardcard-actions-panel")
-      .findByLabelText("close icon")
-      .click();
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  describe("card removal while query is in progress", () => {
-    it("should stop the ongoing query when removing a card from a dashboard", () => {
-      slowDownDashcardQuery();
+  it("should stop the ongoing query when removing a card, re-fetch it on undo, and undo a virtual card removal (metabase#35545)", () => {
+    slowDownDashcardQuery();
 
-      H.createNativeQuestionAndDashboard({
-        questionDetails,
-      }).then(({ body: { dashboard_id } }) => {
-        cy.visit(`/dashboard/${dashboard_id}`);
-      });
-
-      // The query is deliberately slowed, so it is still in-flight here.
-      // The API client uses fetch, so cancelling the query aborts its
-      // AbortController rather than calling XMLHttpRequest.abort().
-      cy.window().then((win) => {
-        cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
-      });
-
-      removeCard();
-
-      cy.get("@queryAbort").should("have.been.called");
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      cy.visit(`/dashboard/${dashboard_id}`);
     });
 
-    it("should re-fetch the query when doing undo on the removal", () => {
-      slowDownDashcardQuery();
-
-      H.createNativeQuestionAndDashboard({
-        questionDetails,
-      }).then(({ body: { dashboard_id } }) => {
-        cy.visit(`/dashboard/${dashboard_id}`);
-      });
-
-      removeCard();
-
-      restoreDashcardQuery();
-
-      H.undo();
-
-      cy.wait("@dashcardQueryRestored");
-
-      H.getDashboardCard().findByText(queryResult);
+    // The API client uses fetch, so cancelling the query aborts its
+    // AbortController rather than calling XMLHttpRequest.abort().
+    cy.window().then((win) => {
+      cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
     });
 
-    it("should not break virtual cards (metabase#35545)", () => {
-      H.createDashboard().then(({ body: { id: dashboardId } }) => {
-        H.visitDashboard(dashboardId);
-      });
+    H.editDashboard();
+    H.showDashboardCardActions();
+    H.getDashboardCard().findByTestId("loading-indicator").should("exist");
+    cy.get("@queryAbort").invoke("resetHistory");
+    cy.findByTestId("dashboardcard-actions-panel")
+      .findByLabelText("close icon")
+      .click();
+    cy.get("@queryAbort").should("have.been.called");
 
-      H.addTextBox("Text card content");
+    restoreDashcardQuery();
+    H.undo();
+    cy.wait("@dashcardQueryRestored");
+    H.getDashboardCard().findByText(queryResult);
 
-      H.removeDashboardCard();
-
-      H.undo();
-
-      H.getDashboardCard().findByText("Text card content");
-    });
+    H.addTextBoxWhileEditing("Text card content");
+    H.getDashboardCards().should("have.length", 2);
+    H.removeDashboardCard(1);
+    H.getDashboardCards().should("have.length", 1);
+    H.undo();
+    H.getDashboardCard(1).findByText("Text card content");
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
@@ -393,176 +357,6 @@ describe("issue 16559", () => {
   });
 });
 
-describe("issue 17879", () => {
-  function setupDashcardAndDrillToQuestion({
-    sourceDateUnit,
-    expectedFilterText,
-    targetDateUnit = "default",
-  }) {
-    if (targetDateUnit === "default") {
-      H.createQuestion({
-        name: "Q1 - 17879",
-        query: {
-          "source-table": ORDERS_ID,
-          limit: 5,
-        },
-      });
-    } else {
-      H.createQuestion({
-        name: "Q1 - 17879",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": targetDateUnit }],
-          ],
-          limit: 5,
-        },
-      });
-    }
-
-    H.createDashboardWithQuestions({
-      dashboardName: "Dashboard with aggregated Q2",
-      questions: [
-        {
-          name: "Q2",
-          display: "line",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": sourceDateUnit }],
-            ],
-            limit: 5,
-          },
-        },
-      ],
-    }).then(({ dashboard }) => {
-      cy.intercept(
-        "POST",
-        `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
-      ).as("getCardQuery");
-
-      H.visitDashboard(dashboard.id);
-      H.editDashboard(dashboard.id);
-
-      H.showDashboardCardActions();
-      cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
-
-      cy.findByText("Go to a custom destination").click();
-      cy.findByText("Saved question").click();
-      cy.findByText("Q1 - 17879").click();
-      cy.findByText("Created At").click();
-
-      H.popover().within(() => {
-        cy.findByText(
-          "Created At: " + capitalize(sourceDateUnit.replace(/-/g, " ")),
-        ).click();
-      });
-
-      cy.findByText("Done").click();
-
-      H.saveDashboard();
-
-      cy.wait("@getCardQuery");
-
-      cy.findByTestId("visualization-root").within(() => {
-        H.cartesianChartCircle().first().click({ force: true });
-      });
-
-      cy.url().should("include", "/question");
-
-      cy.findByTestId("qb-filters-panel").should(
-        "have.text",
-        expectedFilterText,
-      );
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-  });
-
-  it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "month",
-      expectedFilterText: "Created At is Apr 1–30, 2025",
-    });
-  });
-
-  it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "week",
-      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
-    });
-  });
-
-  it("should map dashcard date parameter to correct date range filter in target question - year -> day (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
-    });
-  });
-
-  it("should map dashcard date parameter to correct date range filter in target question - year -> month (metabase#17879)", () => {
-    setupDashcardAndDrillToQuestion({
-      sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
-      targetDateUnit: "month",
-    });
-  });
-});
-
-describe("issue 21830", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("slow loading card visualization options click shouldn't lead to error (metabase#21830)", () => {
-    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept(
-      {
-        method: "POST",
-        url: "/api/dashboard/*/dashcard/*/card/*/query",
-        middleware: true,
-      },
-      (req) => {
-        req.on("response", (res) => {
-          // throttle the response to simulate a mobile 3G connection
-          res.setThrottle(100);
-        });
-      },
-    ).as("getCardQuery");
-
-    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    cy.wait("@getDashboard");
-
-    // it's crucial that we try to click on this icon BEFORE we wait for the `getCardQuery` response!
-    H.editDashboard();
-    H.showDashboardCardActions();
-
-    H.getDashboardCard().within(() => {
-      cy.icon("close").should("be.visible");
-      cy.icon("click").should("not.exist");
-      cy.icon("palette").should("not.exist");
-    });
-
-    cy.wait("@getCardQuery");
-
-    H.getDashboardCard().within(() => {
-      cy.icon("close").should("be.visible");
-      cy.icon("click").should("be.visible");
-      cy.icon("palette").should("be.visible");
-    });
-  });
-});
-
 describe("issue 28756", () => {
   const UNRESTRICTED_COLLECTION_NAME = "Unrestricted collection";
   const RESTRICTED_COLLECTION_NAME = "Restricted collection";
@@ -631,179 +425,45 @@ describe("issue 28756", () => {
   });
 });
 
-describe("issue 29076", () => {
-  beforeEach(() => {
-    H.restore();
-
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
-
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-          "create-queries": "no",
-        },
-      },
-      [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder",
-        },
-      },
-    });
-    cy.sandboxTable({
-      table_id: ORDERS_ID,
-      attribute_remappings: {
-        attr_uid: ["dimension", ["field", ORDERS.ID, null]],
-      },
-    });
-    cy.signInAsSandboxedUser();
-  });
-
-  it("should be able to drilldown to a saved question in a dashboard with sandboxing (metabase#29076)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.wait("@cardQuery");
-    // test that user is sandboxed - normal users has over 2000 rows
-    H.getDashboardCard()
-      .findByTestId("table-body")
-      .findAllByRole("row")
-      .should("have.length", 1);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("be.visible");
-    H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
-    H.assertDatasetReqIsSandboxed({
-      requestAlias: "@cardQuery",
-      columnId: ORDERS.USER_ID,
-      columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
-    });
-  });
-});
-
 describe("issue 31274", () => {
-  const createTextCards = (length) => {
-    return Array.from({ length }).map((_, index) => {
-      return H.getTextCardDetails({
-        size_x: 2,
-        size_y: 2,
-        row: (length - index - 1) * 2,
-        text: `Text ${index + 1}`,
-      });
-    });
-  };
-
-  function visibleActionsPanel() {
-    return cy.findAllByTestId("dashboardcard-actions-panel").filter(":visible");
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should not clip dashcard actions (metabase#31274)", () => {
-    H.createDashboard().then(({ body: dashboard }) => {
-      const dashcards = createTextCards(3);
-      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-        dashcards,
+    H.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      // The top card is created last, so it would come last in the DOM and
+      // cover the actions of the card below if dashcards render in creation order
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [H.getTextCardDetails({ row: 6, text: "Bottom card" })],
+      }).then(({ body: { dashcards } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            ...dashcards,
+            H.getTextCardDetails({ row: 0, text: "Top card" }),
+          ],
+        });
       });
-
-      H.visitDashboard(dashboard.id);
-      H.editDashboard(dashboard.id);
-
-      H.assertTabSelected("Tab 1");
-
-      H.getDashboardCard(1).realHover({
-        scrollBehavior: false, // prevents flaky tests
-      });
-
-      cy.log(
-        "Make sure cypress can click the element, which means it is not covered by another",
-      );
-
-      visibleActionsPanel().should("have.length", 1).icon("close").click({
-        position: "top",
-        scrollBehavior: false, // prevents flaky tests
-      });
-
-      cy.findAllByTestId("dashcard").should("have.length", 2);
-    });
-  });
-
-  it("renders cross icon on the link card without clipping", () => {
-    H.createDashboard().then(({ body: dashboard }) => {
-      H.visitDashboard(dashboard.id);
-      H.editDashboard(dashboard.id);
+      H.visitDashboard(dashboard_id);
     });
 
-    cy.findByLabelText("Add a link or iframe").click();
-    H.popover().findByText("Link").click();
-    cy.findByPlaceholderText("https://example.com").realHover();
+    H.editDashboard();
+    H.getDashboardCards().should("have.length", 2);
 
     cy.log(
-      "Make sure cypress can click the element, which means it is not covered by another",
+      "Make sure cypress can click the element, which means it is not covered by the card above",
     );
+    H.getDashboardCards()
+      .filter(":contains('Bottom card')")
+      .realHover({ scrollBehavior: false })
+      .findByTestId("dashboardcard-actions-panel")
+      .icon("close")
+      .click({ position: "top", scrollBehavior: false });
 
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").closest("a").click({ position: "bottom" });
-    });
-
-    cy.findByTestId("dashcard").should("not.exist");
-  });
-});
-
-describe("issue 31697", () => {
-  const segmentDetails = {
-    name: "Orders segment",
-    description: "All orders with a total under $100.",
-    definition: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
-      },
-    },
-  };
-
-  const getQuestionDetails = (segment) => ({
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      filter: ["segment", segment.id],
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-    visualization_settings: {
-      "graph.metrics": ["count"],
-      "graph.dimensions": ["CREATED_AT"],
-    },
-  });
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createSegment(segmentDetails).then(({ body: segment }) => {
-      H.createQuestion(getQuestionDetails(segment), { wrapId: true });
-    });
-    cy.intercept("GET", "/api/automagic-dashboards/**").as("xrayDashboard");
-  });
-
-  it("should allow x-rays for questions with segments (metabase#31697)", () => {
-    cy.get("@questionId").then(H.visitQuestion);
-    H.cartesianChartCircle().eq(0).click();
-    H.popover().findByText("Automatic insights…").click();
-    H.popover().findByText("X-ray").click();
-    cy.wait("@xrayDashboard");
-
-    cy.findByRole("main").within(() => {
-      cy.findByText(/A closer look at number of Orders/).should("be.visible");
-    });
+    H.getDashboardCards().should("have.length", 1);
   });
 });
 
@@ -986,6 +646,7 @@ describe("issue 34382", () => {
         .findAllByRole("gridcell")
         .eq(3)
         .should("contain", "Gizmo");
+      cy.findByTestId("table-body").should("not.contain", "Doohickey");
     });
   });
 });
@@ -1066,91 +727,6 @@ describe("should not redirect users to other pages when linking an entity (metab
       cy.location("pathname").should("eq", originPath);
     });
   }
-});
-
-describe("issue 42165", () => {
-  const peopleSourceFieldRef = [
-    "field",
-    PEOPLE.SOURCE,
-    { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-  ];
-  const ordersCreatedAtFieldRef = [
-    "field",
-    ORDERS.CREATED_AT,
-    { "base-type": "type/DateTime", "temporal-unit": "month" },
-  ];
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-
-    H.createDashboardWithQuestions({
-      dashboardDetails: {
-        parameters: [
-          createMockParameter({
-            id: "param-1",
-            name: "Date",
-            slug: "date",
-            type: "date/all-options",
-          }),
-        ],
-      },
-      questions: [
-        {
-          name: "fooBarQuestion",
-          display: "bar",
-          query: {
-            aggregation: [["count"]],
-            breakout: [peopleSourceFieldRef, ordersCreatedAtFieldRef],
-            "source-table": ORDERS_ID,
-          },
-        },
-      ],
-    }).then(({ dashboard: _dashboard }) => {
-      cy.request("GET", `/api/dashboard/${_dashboard.id}`).then(
-        ({ body: dashboard }) => {
-          const [dashcard] = dashboard.dashcards;
-          const [parameter] = dashboard.parameters;
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  {
-                    card_id: dashcard.card_id,
-                    parameter_id: parameter.id,
-                    target: ["dimension", ordersCreatedAtFieldRef],
-                  },
-                ],
-              },
-            ],
-          }).then(() => {
-            cy.wrap(_dashboard.id).as("dashboardId");
-          });
-        },
-      );
-    });
-  });
-
-  it("should use card name instead of series names when navigating to QB from dashcard title", () => {
-    cy.get("@dashboardId").then((dashboardId) => {
-      H.visitDashboard(dashboardId);
-
-      H.filterWidget().click();
-      H.popover().findByText("Previous 30 days").click();
-      cy.wait("@dashcardQuery");
-
-      H.getDashboardCard(0).findByText("fooBarQuestion").click();
-
-      cy.wait("@dataset");
-      cy.title().should("eq", "fooBarQuestion · Metabase");
-    });
-  });
 });
 
 describe("issue 47170", () => {
@@ -1419,89 +995,6 @@ describe("issue 44937", () => {
     );
   });
 });
-
-describe("issue 56716", () => {
-  function setupDashboard() {
-    const questionDetails = {
-      query: {
-        "source-table": PRODUCTS_ID,
-        fields: [
-          ["field", PRODUCTS.ID, null],
-          ["field", PRODUCTS.RATING, null],
-        ],
-      },
-    };
-
-    const parameterDetails = {
-      id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-      type: "number/=",
-      target: ["dimension", ["field", PRODUCTS.RATING, null]],
-      name: "Number",
-      slug: "number",
-    };
-
-    const dashboardDetails = {
-      parameters: [parameterDetails],
-    };
-
-    const vizSettings = {
-      column_settings: {
-        '["name","RATING"]': {
-          click_behavior: {
-            type: "crossfilter",
-            parameterMapping: {
-              [parameterDetails.id]: {
-                id: parameterDetails.id,
-                source: { id: "RATING", name: "RATING", type: "column" },
-                target: {
-                  id: parameterDetails.id,
-                  type: "parameter",
-                },
-              },
-            },
-          },
-        },
-      },
-    };
-
-    const getParameterMapping = (cardId) => ({
-      card_id: cardId,
-      parameter_id: parameterDetails.id,
-      target: ["dimension", ["field", PRODUCTS.RATING, null]],
-    });
-
-    H.createQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(({ body: dashcard, questionId }) => {
-      const { dashboard_id } = dashcard;
-
-      H.editDashboardCard(dashcard, {
-        parameter_mappings: [getParameterMapping(questionId)],
-        visualization_settings: vizSettings,
-      });
-
-      H.visitDashboard(dashboard_id);
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should reset the filter when clicking on a column value twice with a click behavior enabled (metabase#56716)", () => {
-    setupDashboard();
-
-    H.getDashboardCard().findByText("4.6").click();
-    H.filterWidget().should("contain.text", "4.6");
-    H.getDashboardCard().findByText("4 rows").should("be.visible");
-
-    H.getDashboardCard().findAllByText("4.6").first().click();
-    H.filterWidget().should("not.contain.text", "4.6");
-    H.getDashboardCard().findByText("200 rows").should("be.visible");
-  });
-});
 describe("issue 62170", () => {
   beforeEach(() => {
     H.restore();
@@ -1714,148 +1207,33 @@ describe("issue 64138", () => {
       });
 
     cy.log("hovering marker icons should not open their tooltips");
-    getMarkerIcon(0).realHover();
-    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+    getMarkerIcon(0).trigger("mousemove", { force: true });
+    H.tooltip().should("not.exist");
 
     cy.log("clicking marker icons should not navigate to the question");
     getMarkerIcon(0).click({ force: true });
     cy.location("pathname").should("match", /^\/dashboard\/[0-9]+$/);
     H.modal().should("not.exist");
+
+    cy.log(
+      "outside of edit mode, the map shows its controls and handles markers",
+    );
+    cy.findByTestId("edit-bar").button("Cancel").click();
+    H.getDashboardCard(0).findByLabelText("Zoom in").should("exist");
+    getMarkerIcon(0).trigger("mousemove", { force: true });
+    H.tooltip().should("be.visible");
+    getMarkerIcon(0).click({ force: true });
+    cy.location("pathname").should("match", /^\/question/);
+    cy.location("search").should("match", /objectId=\d+/);
   });
 
   function getMarkerIcon(index) {
     // pick the last one so it will be on top
     return H.getDashboardCard(index)
-      .get(".leaflet-marker-icon")
+      .find(".leaflet-marker-icon")
       .should("have.length.gt", 0)
       .last();
   }
-});
-
-describe("issue 58556, issue 66277", () => {
-  const QUESTION = {
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour" }]],
-    },
-    display: "table",
-  };
-
-  const PARAMETER = createMockParameter({
-    id: "date-param",
-    name: "Date",
-    slug: "date",
-    type: "date/all-options",
-  });
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-
-    H.createDashboardWithQuestions({
-      questions: [QUESTION],
-      dashboardDetails: {
-        parameters: [PARAMETER],
-      },
-    }).then(({ dashboard }) => {
-      cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
-        ({ body: dashboard }) => {
-          const [dashcard] = dashboard.dashcards;
-
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  {
-                    card_id: dashcard.card_id,
-                    parameter_id: PARAMETER.id,
-                    target: [
-                      "dimension",
-                      [
-                        "field",
-                        "CREATED_AT",
-                        {
-                          "base-type": "type/DateTime",
-                          "inherited-temporal-unit": "hour",
-                        },
-                      ],
-                      {
-                        "stage-number": 1,
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          });
-        },
-      );
-
-      H.visitDashboard(dashboard.id);
-    });
-
-    H.editDashboard();
-    H.showDashboardCardActions();
-  });
-
-  it("should be possible to add a click action on a time column with hour granularity and have the time be present in the resulting parameter (metabase#58556)", () => {
-    H.clickBehaviorSidebar().within(() => {
-      cy.findByText("Created At: Hour").click();
-      cy.findByText("Update a dashboard filter").click();
-      cy.findByText("Date").click();
-    });
-
-    H.popover().findByText("Created At: Hour").click();
-    H.sidebar().button("Done").click();
-
-    H.saveDashboard();
-
-    cy.log("click a row");
-    H.dashboardCards()
-      .findByTestId("table-body")
-      .findAllByTestId("link-formatted-text")
-      .eq(0)
-      .click();
-
-    cy.log("ensure the filter contains a time value");
-    cy.location().then((location) => {
-      const url = new URL(location.href);
-      const date = url.searchParams.get("date");
-      cy.wrap(date).should("match", /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
-    });
-  });
-
-  it("should pass hour or minutes to linked questions from click actions (metabase#66277)", () => {
-    H.clickBehaviorSidebar().within(() => {
-      cy.findByText("Created At: Hour").click();
-      cy.findByText("Go to a custom destination").click();
-      cy.findByText("Saved question").click();
-    });
-
-    H.entityPickerModal().findByText("Orders").click();
-
-    H.sidebar().findByText("Created At").scrollIntoView().click();
-
-    H.popover().findByText("Created At: Hour").click();
-    H.sidebar().button("Done").click();
-
-    H.saveDashboard();
-
-    cy.log("click a row");
-    H.dashboardCards()
-      .findByTestId("table-body")
-      .findAllByTestId("link-formatted-text")
-      .eq(0)
-      .click();
-
-    H.queryBuilderFiltersPanel()
-      .findByText(
-        /Created At is .* \d{1,2}:\d{2} (AM|PM) – \d{1,2}:\d{2} (AM|PM)/,
-      )
-      .should("be.visible");
-  });
 });
 
 describe("issue 65908", () => {

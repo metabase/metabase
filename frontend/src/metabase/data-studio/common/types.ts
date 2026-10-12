@@ -33,6 +33,8 @@ export type CollectionItemData = Pick<CollectionItem, "model" | "name"> &
       | "last-edit-info"
       | "namespace"
       | "can_write"
+      | "here"
+      | "below"
     >
   >;
 

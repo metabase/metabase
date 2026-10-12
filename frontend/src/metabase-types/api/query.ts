@@ -467,15 +467,11 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";
-  name: string;
-  tableId?: TableId;
-  sourceName?: string;
+  name?: string;
+  fieldId?: FieldId;
+  joinAlias?: string;
   sourceFieldId?: FieldId;
-  displayName?: string;
-
-  // When the columns cannot be disambiguated with name, sourceName and displayName
-  // use this index to pick one.
-  index?: number;
+  sourceFieldJoinAlias?: string;
 };
 
 export type TestExpressionSpec =
@@ -500,9 +496,14 @@ export type TestMetricSpec = {
 
 export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
 
+export type TestNamedAggregationSpec = {
+  name: string;
+  value: TestExpressionSpec | TestMeasureSpec | TestMetricSpec;
+};
+
 export type TestAggregationSpec =
   | TestExpressionSpec
-  | TestNamedExpressionSpec
+  | TestNamedAggregationSpec
   | TestMeasureSpec
   | TestMetricSpec;
 
@@ -555,11 +556,20 @@ type TestBucketSpec = TestTemporalBucketSpec & {
 
 export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
 
-export type TestBreakoutSpec = TestColumnWithBinningSpec;
+export type TestBreakoutWithNameSpec = {
+  type: "breakout";
+  name: string;
+  column: TestColumnWithBinningSpec;
+};
+
+export type TestBreakoutSpec =
+  | TestColumnWithBinningSpec
+  | TestBreakoutWithNameSpec;
 
 export type TestJoinSpec = {
   source: TestSourceSpec;
   strategy: JoinStrategy;
+  alias?: string;
 
   // If not set we will use the suggested join conditions
   conditions?: TestJoinConditionSpec[];

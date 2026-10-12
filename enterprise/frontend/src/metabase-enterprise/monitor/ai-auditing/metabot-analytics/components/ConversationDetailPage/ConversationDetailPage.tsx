@@ -310,7 +310,6 @@ function FeedbackCard({
             submittedFeedback={undefined}
             bg="background_page-secondary"
             p="lg"
-            pb="0"
             bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />

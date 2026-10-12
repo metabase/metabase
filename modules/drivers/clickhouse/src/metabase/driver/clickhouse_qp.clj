@@ -584,7 +584,7 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/BIGINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (with-null-check rs (.getBigDecimal rs i))))
+    (with-null-check rs (.getLong rs i))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/INTEGER]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
