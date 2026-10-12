@@ -403,7 +403,25 @@ describe("scenarios > dashboard", () => {
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
       });
 
-      it("should not have markdown content overflow the description area (metabase#31326)", () => {
+      it("should keep a long title and a markdown description within their areas (metabase#31326, metabase#53370)", () => {
+        cy.log("The title is limited to 254 characters");
+        const longTitle = "A".repeat(256);
+        cy.findByTestId("dashboard-name-heading")
+          .as("dashboardInput")
+          .clear()
+          .type(longTitle, { delay: 0 })
+          .blur();
+        cy.get("@dashboardInput").invoke("text").should("have.length", 254);
+        cy.wait("@updateDashboard");
+
+        cy.log("A long title wraps within the window (metabase#53370)");
+        cy.reload();
+        cy.findByDisplayValue("A".repeat(254))
+          .should("be.visible")
+          .then(($el) => {
+            cy.window().its("innerWidth").should("be.gt", $el[0].offsetWidth);
+          });
+
         H.openDashboardInfoSidebar();
 
         const testMarkdownContent =
@@ -452,63 +470,7 @@ describe("scenarios > dashboard", () => {
             });
         });
       });
-
-      it("should prevent entering a title longer than 254 chars", () => {
-        const longTitle = "A".repeat(256);
-        cy.findByTestId("dashboard-name-heading")
-          .as("dashboardInput")
-          .clear()
-          .type(longTitle, { delay: 0 })
-          .blur();
-        cy.get("@dashboardInput").invoke("text").should("have.length", 254);
-      });
     });
-
-    it(
-      "should not allow dashboard editing on small screens",
-      { viewportWidth: 480, viewportHeight: 800 },
-      () => {
-        cy.findByLabelText("Edit dashboard").should("not.be.visible");
-
-        cy.viewport(660, 800);
-
-        cy.findByLabelText("Edit dashboard").should("be.visible").click();
-        cy.findByTestId("edit-bar").findByText(
-          "You're editing this dashboard.",
-        );
-      },
-    );
-
-    it(
-      "shows sorted cards on mobile screens",
-      { viewportWidth: 400, viewportHeight: 800 },
-      () => {
-        H.createDashboard().then(({ body: { id: dashboard_id } }) => {
-          const cards = [
-            // the bottom card intentionally goes first to have unsorted cards coming from the BE
-            H.getTextCardDetails({
-              row: 1,
-              size_x: 24,
-              size_y: 1,
-              text: "bottom",
-            }),
-            H.getTextCardDetails({
-              row: 0,
-              size_x: 24,
-              size_y: 1,
-              text: "top",
-            }),
-          ];
-
-          H.updateDashboardCards({ dashboard_id, cards });
-
-          H.visitDashboard(dashboard_id);
-        });
-
-        H.getDashboardCard(0).contains("top");
-        H.getDashboardCard(1).contains("bottom");
-      },
-    );
 
     it("should not save the dashboard when the user clicks 'Discard changes'", () => {
       // Navigate to the dashboard via client-side navigation (to trigger the client-side "Discard changes" prompt)
@@ -537,6 +499,43 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("dashboard-empty-state").should("exist");
     });
   });
+
+  it(
+    "should sort cards and not allow dashboard editing on small screens",
+    { viewportWidth: 400, viewportHeight: 800 },
+    () => {
+      H.createDashboard().then(({ body: { id: dashboard_id } }) => {
+        const cards = [
+          // the bottom card intentionally goes first to have unsorted cards coming from the BE
+          H.getTextCardDetails({
+            row: 1,
+            size_x: 24,
+            size_y: 1,
+            text: "bottom",
+          }),
+          H.getTextCardDetails({
+            row: 0,
+            size_x: 24,
+            size_y: 1,
+            text: "top",
+          }),
+        ];
+
+        H.updateDashboardCards({ dashboard_id, cards });
+
+        H.visitDashboard(dashboard_id);
+      });
+
+      H.getDashboardCard(0).contains("top");
+      H.getDashboardCard(1).contains("bottom");
+      cy.findByLabelText("Edit dashboard").should("not.be.visible");
+
+      cy.viewport(660, 800);
+
+      cy.findByLabelText("Edit dashboard").should("be.visible").click();
+      cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
+    },
+  );
 
   it("should allow navigating to the notebook, model and metric editors directly from a dashboard card", () => {
     cy.log("notebook editor");
@@ -725,43 +724,7 @@ describe("scenarios > dashboard", () => {
     cy.get("@fetchFieldValues").should("not.have.been.called");
   });
 
-  it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
-    // Make this dashboard card extremely tall so that it spans outside of visible viewport
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      dashcards: [
-        {
-          id: ORDERS_DASHBOARD_DASHCARD_ID,
-          card_id: ORDERS_QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 16,
-          size_y: 20,
-          series: [],
-          visualization_settings: {},
-          parameter_mappings: [],
-        },
-      ],
-    });
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.getDashboardCard().findByText("37.65").should("be.visible");
-
-    H.openLegacyStaticEmbeddingModal({
-      resource: "dashboard",
-      resourceId: ORDERS_DASHBOARD_ID,
-    });
-    cy.get("body").should("have.attr", "data-scroll-locked");
-
-    H.modal().within(() => {
-      cy.icon("close").click();
-    });
-    H.modal().should("not.exist");
-    cy.get("body")
-      .should("not.have.attr", "data-scroll-locked")
-      .and("not.have.css", "overflow", "hidden");
-  });
-
-  it("should support auto-scrolling to a dashcard via a url hash param", () => {
+  it("should support auto-scrolling to a dashcard via a url hash param and keep the page scrollable after a modal closes (metabase#15596)", () => {
     const questionCard = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
       card_id: ORDERS_QUESTION_ID,
@@ -793,78 +756,23 @@ describe("scenarios > dashboard", () => {
         // wait for scroll to complete (hash cleared) then verify visibility
         cy.location("hash").should("not.include", "scrollTo");
         cy.findByText(TARGET_TEXT).should("be.visible");
+
+        cy.log("closing a modal should unlock scrolling (metabase#15596)");
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboard.id,
+        });
+        cy.get("body").should("have.attr", "data-scroll-locked");
+
+        H.modal().within(() => {
+          cy.icon("close").click();
+        });
+        H.modal().should("not.exist");
+        cy.get("body")
+          .should("not.have.attr", "data-scroll-locked")
+          .and("not.have.css", "overflow", "hidden");
       },
     );
-  });
-
-  it("should allow making card hide when it is empty", () => {
-    const FILTER_ID = "d7988e02";
-
-    cy.log("Add filter to the dashboard");
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      parameters: [
-        {
-          id: FILTER_ID,
-          name: "ID",
-          slug: "id",
-          type: "id",
-        },
-      ],
-    });
-
-    cy.log("Connect filter to the existing card");
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      dashcards: [
-        {
-          id: ORDERS_DASHBOARD_DASHCARD_ID,
-          card_id: ORDERS_QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 16,
-          size_y: 8,
-          parameter_mappings: [
-            {
-              parameter_id: FILTER_ID,
-              card_id: ORDERS_QUESTION_ID,
-              target: ["dimension", ["field", ORDERS.ID]],
-            },
-          ],
-          visualization_settings: {},
-        },
-      ],
-    });
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("palette").click({ force: true });
-    });
-
-    cy.findByRole("dialog").within(() => {
-      cy.findByRole("switch", {
-        name: "Hide this card if there are no results",
-      }).click({ force: true });
-      cy.button("Done").click();
-    });
-
-    H.saveDashboard();
-
-    // Verify the card is hidden when the value is correct but produces empty results
-    H.filterWidget().click();
-    H.dashboardParametersPopover().within(() => {
-      cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
-      cy.button("Add filter").click();
-    });
-
-    cy.findByTestId("dashcard").should("not.exist");
-
-    // Verify it becomes visible once the filter is cleared
-    H.filterWidget().within(() => {
-      cy.icon("close").click();
-    });
-
-    cy.findByTestId("dashcard").findByText("Orders");
   });
 
   describe("warn before leave", () => {
@@ -872,7 +780,7 @@ describe("scenarios > dashboard", () => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
 
-    it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
+    it("should warn a user before leaving after changing cards or tabs on a dashboard", () => {
       cy.visit("/");
       cy.findByTestId("loading-indicator").should("not.exist");
 
@@ -903,14 +811,10 @@ describe("scenarios > dashboard", () => {
       H.editDashboard();
       H.removeDashboardCard();
       assertPreventLeave();
-    });
-
-    it("should warn a user before leaving after adding, removing, moving, or duplicating a tab", () => {
-      cy.visit("/");
-      cy.findByTestId("loading-indicator").should("not.exist");
+      H.saveDashboard();
 
       // add tab
-      createNewDashboard();
+      H.editDashboard();
       H.createNewTab();
       assertPreventLeave();
       H.saveDashboard();
@@ -951,6 +855,14 @@ describe("scenarios > dashboard", () => {
       H.editDashboard();
       H.renameTab("Tab 2", "Foo tab");
       assertPreventLeave();
+      H.saveDashboard();
+
+      cy.log("No warning without changes");
+      H.editDashboard();
+      H.openQuestionsSidebar();
+      cy.findByTestId("new-button-bar").findByText("New Question").click();
+      cy.location("pathname").should("not.match", /^\/dashboard\//);
+      cy.get("body").should("not.contain", "Save your changes?");
     });
 
     function createNewDashboard() {
@@ -1133,7 +1045,43 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  it("should track enabling the hide empty cards setting", () => {
+  it("should allow making card hide when it is empty and track enabling it", () => {
+    const FILTER_ID = "d7988e02";
+
+    cy.log("Add filter to the dashboard");
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "ID",
+          slug: "id",
+          type: "id",
+        },
+      ],
+    });
+
+    cy.log("Connect filter to the existing card");
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      dashcards: [
+        {
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 16,
+          size_y: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: ORDERS_QUESTION_ID,
+              target: ["dimension", ["field", ORDERS.ID]],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
@@ -1156,7 +1104,26 @@ describe("scenarios > dashboard", () => {
         },
         2,
       );
+      cy.button("Done").click();
     });
+
+    H.saveDashboard();
+
+    // Verify the card is hidden when the value is correct but produces empty results
+    H.filterWidget().click();
+    H.dashboardParametersPopover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
+      cy.button("Add filter").click();
+    });
+
+    cy.findByTestId("dashcard").should("not.exist");
+
+    // Verify it becomes visible once the filter is cleared
+    H.filterWidget().within(() => {
+      cy.icon("close").click();
+    });
+
+    cy.findByTestId("dashcard").findByText("Orders");
   });
 
   it("should allow the creator to change the dashboard width to 'fixed' or 'full'", () => {
@@ -1346,35 +1313,31 @@ describe("scenarios > dashboard > permissions", () => {
     });
   });
 
-  it("should let admins view all cards in a dashboard", () => {
+  it("should show each user the cards and dashboards they have permission to see", () => {
+    cy.log("Admins can see all cards");
     H.visitDashboard(dashboardId);
-    // Admin can see both questions
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("First Question");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("foo");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Second Question");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("bar");
-  });
+    H.getDashboardCards()
+      .should("have.length", 2)
+      .and("contain", "First Question")
+      .and("contain", "foo")
+      .and("contain", "Second Question")
+      .and("contain", "bar");
 
-  it("should display dashboards with some cards locked down", () => {
+    cy.log("Users without collection access see the other cards");
     cy.signIn("nodata");
     H.visitDashboard(dashboardId);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sorry, you don't have permission to see this card.");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Second Question");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("bar");
-  });
+    H.getDashboardCards()
+      .should("have.length", 2)
+      .and("contain", "Sorry, you don't have permission to see this card.")
+      .and("contain", "Second Question")
+      .and("contain", "bar");
 
-  it("should display an error if they don't have perms for the dashboard", () => {
+    cy.log("Users without dashboard access see an error");
     cy.signIn("nocollection");
-    H.visitDashboard(dashboardId);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sorry, you don’t have permission to see that.");
+    cy.visit(`/dashboard/${dashboardId}`);
+    H.main()
+      .findByText("Sorry, you don’t have permission to see that.")
+      .should("be.visible");
   });
 });
 
@@ -1384,16 +1347,19 @@ describe("scenarios > dashboard > entity id support", () => {
     cy.signInAsAdmin();
   });
 
-  it("when loading `/dashboard/entity/${entity_id}`, it should redirect to `/dashboard/${id}` and display the dashboard correctly", () => {
+  it("should redirect entity id paths to the dashboard, its tabs and its modals, and keep the search params", () => {
+    cy.log("Dashboard entity id");
     cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}`);
-
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`);
-
-    // Making sure the dashboard loads
     H.main().findByText("Orders in a dashboard").should("be.visible");
-  });
 
-  it("when loading `/dashboard/entity/${entity_id}?tab=${tab_entity_id}`, it should redirect to `/dashboard/${id}?tab=${tab_id}` and select the correct tab", () => {
+    cy.log("Dashboard entity id with the move modal path");
+    cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}/move`);
+    cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}/move`);
+    H.main().findByText("Orders in a dashboard").should("be.visible");
+    H.modal().findByText("Move dashboard to…").should("be.visible");
+
+    cy.log("Dashboard and tab entity ids");
     H.createDashboardWithTabs({
       tabs: [
         { name: "Tab 1", id: -1 },
@@ -1414,10 +1380,8 @@ describe("scenarios > dashboard > entity id support", () => {
         .findByRole("tab", { name: "Tab 2" })
         .should("have.attr", "aria-selected", "true");
     });
-  });
 
-  it("it should preserve search params such as filters when redirecting", () => {
-    // Add filter to the dashboard
+    cy.log("Search params such as filters are kept");
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [
         {
@@ -1427,10 +1391,6 @@ describe("scenarios > dashboard > entity id support", () => {
           type: "string/=",
         },
       ],
-    });
-
-    // Connect filter to the existing card
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       dashcards: [
         {
           id: ORDERS_DASHBOARD_DASHCARD_ID,
@@ -1450,46 +1410,30 @@ describe("scenarios > dashboard > entity id support", () => {
         },
       ],
     });
-
-    // Visit the dashboard via the entity id path and verify that the filter is preserved
     cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?text=123`);
-
     cy.url()
       .should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`)
       .and("contain", "text=123");
-
     H.filterWidget().should("contain", "Text").and("contain", "123");
   });
 
-  it("when loading `/dashboard/entity/${entity_id}/move`, it should redirect to `/dashboard/${id}/move` and show the move modal", () => {
-    cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}/move`);
-    cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}/move`);
+  it("should show a 404 page for entity ids that do not exist", () => {
+    const assertNotFound = () =>
+      H.main().findByText("We're a little lost...").should("be.visible");
 
-    H.main().findByText("Orders in a dashboard").should("be.visible");
-    H.modal().findByText("Move dashboard to…").should("be.visible");
-  });
+    cy.log("non existing dashboard entity id");
+    cy.visit(`/dashboard/entity/${"x".repeat(21)}`);
+    assertNotFound();
 
-  it("when loading `/dashboard/entity/${non existing entity id}`, it should show a 404 page", () => {
-    const nonExistingEntityId = "x".repeat(21);
-    cy.visit(`/dashboard/entity/${nonExistingEntityId}`);
+    cy.log("non existing dashboard entity id that starts with a number");
+    cy.visit(`/dashboard/entity/${"12".padEnd(21, "x")}`);
+    assertNotFound();
 
-    H.main().findByText("We're a little lost...").should("be.visible");
-  });
-
-  it("when loading `/dashboard/entity/${non existing entity id}`, it should show a 404 page even if the entity id starts with a number", () => {
-    const nonExistingEntityId = "12".padEnd(21, "x");
-    cy.visit(`/dashboard/entity/${nonExistingEntityId}`);
-
-    H.main().findByText("We're a little lost...").should("be.visible");
-  });
-
-  it("when loading `/dashboard/entity/${entity id}?tab=${non existing tab entity id}`, it should show a 404 page even if the entity id starts with a number", () => {
-    const nonExistingEntityId = "12".padEnd(21, "x");
+    cy.log("non existing tab entity id that starts with a number");
     cy.visit(
-      `/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?tab=${nonExistingEntityId}`,
+      `/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?tab=${"12".padEnd(21, "x")}`,
     );
-
-    H.main().findByText("We're a little lost...").should("be.visible");
+    assertNotFound();
   });
 });
 
@@ -2048,7 +1992,7 @@ describe("issue 49556", () => {
   });
 });
 
-describe("issue 54353", () => {
+describe("issues 54353 and 52674", () => {
   const peopleSourceFieldRef = [
     "field",
     PEOPLE.SOURCE,
@@ -2059,13 +2003,18 @@ describe("issue 54353", () => {
     ORDERS.CREATED_AT,
     { "base-type": "type/DateTime", "temporal-unit": "month" },
   ];
+  const ordersTotalFieldRef = [
+    "field",
+    ORDERS.TOTAL,
+    { "base-type": "type/Number" },
+  ];
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should close date filter on esc (metabase#54353)", () => {
+  it("should open and close filter widgets with the keyboard (metabase#54353, metabase#52674)", () => {
     H.createDashboardWithQuestions({
       dashboardDetails: {
         parameters: [
@@ -2074,6 +2023,12 @@ describe("issue 54353", () => {
             name: "Date",
             slug: "date",
             type: "date/all-options",
+          }),
+          createMockParameter({
+            id: "param-2",
+            name: "Number",
+            slug: "number",
+            type: "number/between",
           }),
         ],
       },
@@ -2087,21 +2042,40 @@ describe("issue 54353", () => {
             "source-table": ORDERS_ID,
           },
         },
+        {
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        },
       ],
-    }).then(({ dashboard }) => {
+    }).then(({ dashboard, questions: [barQuestion, tableQuestion] }) => {
       cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
         ({ body: dashboard }) => {
-          const [dashcard] = dashboard.dashcards;
-          const [parameter] = dashboard.parameters;
+          const findDashcard = (question) =>
+            dashboard.dashcards.find(
+              (dashcard) => dashcard.card_id === question.id,
+            );
+          const barDashcard = findDashcard(barQuestion);
+          const tableDashcard = findDashcard(tableQuestion);
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             dashcards: [
               {
-                ...dashcard,
+                ...barDashcard,
                 parameter_mappings: [
                   {
-                    card_id: dashcard.card_id,
-                    parameter_id: parameter.id,
+                    card_id: barDashcard.card_id,
+                    parameter_id: "param-1",
                     target: ["dimension", ordersCreatedAtFieldRef],
+                  },
+                ],
+              },
+              {
+                ...tableDashcard,
+                parameter_mappings: [
+                  {
+                    card_id: tableDashcard.card_id,
+                    parameter_id: "param-2",
+                    target: ["dimension", ordersTotalFieldRef],
                   },
                 ],
               },
@@ -2114,7 +2088,7 @@ describe("issue 54353", () => {
     });
     H.visitDashboard("@dashboardId");
 
-    cy.log("set dashboard filter value");
+    cy.log("Escape should close the date filter (metabase#54353)");
     cy.findByLabelText("Date").click();
     H.popover()
       .findByText(/Previous 12 months/i)
@@ -2124,9 +2098,21 @@ describe("issue 54353", () => {
     H.popover().should("be.visible");
 
     cy.realPress("Escape");
-
-    cy.log("make sure popover is not open");
     cy.findByRole("dialog").should("not.exist");
+
+    cy.log("Enter should open a filter widget (metabase#52674)");
+    H.main().button("Number").focus();
+    cy.realPress("Enter");
+    H.popover().should("be.visible");
+
+    cy.log("Close the popover");
+    H.main().button("Number").click();
+    cy.findByRole("dialog").should("not.exist");
+
+    cy.log("Space should open a filter widget (metabase#52674)");
+    H.main().button("Number").focus();
+    cy.realPress("Space");
+    H.popover().should("be.visible");
   });
 });
 
@@ -2163,108 +2149,6 @@ describe("issue 44937", () => {
     H.main().findByText(
       "Browse your collections to find and add existing questions.",
     );
-  });
-});
-
-describe("issue 52674", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be possible to open a parameter widget using the keyboard shortcut (metabase#52674)", () => {
-    H.createDashboardWithQuestions({
-      questions: [
-        {
-          query: {
-            "source-table": ORDERS_ID,
-          },
-        },
-      ],
-      dashboardDetails: {
-        parameters: [
-          createMockParameter({
-            id: "param-1",
-            name: "Number",
-            slug: "number",
-            type: "number/between",
-          }),
-        ],
-      },
-    }).then(({ dashboard }) => {
-      cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
-        ({ body: dashboard }) => {
-          const [dashcard] = dashboard.dashcards;
-          const [parameter] = dashboard.parameters;
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-            dashcards: [
-              {
-                ...dashcard,
-                parameter_mappings: [
-                  {
-                    card_id: dashcard.card_id,
-                    parameter_id: parameter.id,
-                    target: [
-                      "dimension",
-                      [
-                        "field",
-                        ORDERS.TOTAL,
-                        {
-                          "base-type": "type/Number",
-                        },
-                      ],
-                    ],
-                  },
-                ],
-              },
-            ],
-          }).then(() => {
-            cy.wrap(dashboard.id).as("dashboardId");
-          });
-        },
-      );
-    });
-    H.visitDashboard("@dashboardId");
-
-    cy.log("Opening with Enter should work");
-    H.main().button("Number").focus();
-    cy.realPress("Enter");
-    H.popover().should("be.visible");
-
-    cy.log("Close the popover");
-    H.main().button("Number").click();
-    cy.findByRole("dialog").should("not.exist");
-
-    cy.log("Opening with Space should work");
-    H.main().button("Number").focus();
-    cy.realPress("Space");
-    H.popover().should("be.visible");
-  });
-});
-
-describe("issue 53370", () => {
-  const LONG_NAME = "a".repeat(254);
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-
-    H.createDashboard({
-      name: LONG_NAME,
-    }).then(({ body: dashboard }) => {
-      H.visitDashboard(dashboard.id);
-    });
-  });
-
-  it("should wrap long dashboard named (metabase#53370)", () => {
-    cy.findByDisplayValue(LONG_NAME)
-      .should("be.visible")
-      .then(($el) => {
-        cy.window().then((win) => {
-          cy.wrap($el[0].offsetWidth).should("be.lt", win.innerWidth);
-        });
-      });
-    //
   });
 });
 
