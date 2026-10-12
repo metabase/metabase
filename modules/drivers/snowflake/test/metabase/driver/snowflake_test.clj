@@ -52,7 +52,9 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (net.snowflake.client.internal.jdbc SnowflakeConnectString)))
 
 (set! *warn-on-reflection* true)
 
@@ -151,6 +153,17 @@
   (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
   (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
 
+(defn- put-get-as-the-client-reads-it
+  "The `enablePutGet` value the Snowflake client resolves `spec` to, asking its own parser. `clojure.java.jdbc` hands
+  it the URL built from `:subname` and every other spec key as a connection property."
+  [spec]
+  (let [url   (str "jdbc:" (:subprotocol spec) ":" (:subname spec))
+        props (java.util.Properties.)]
+    (doseq [[k v] (dissoc spec :classname :subprotocol :subname)
+            :when (some? v)]
+      (.setProperty props (name k) (str v)))
+    (get (.getParameters (SnowflakeConnectString/parse url props)) "ENABLEPUTGET")))
+
 (deftest ^:parallel connection-details->spec-test
   (let [details {:role nil
                  :warehouse "COMPUTE_WH"
@@ -195,6 +208,11 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "...including through a detail key in another casing, which the client would read in place of ours"
+      (doseq [k ["Enableputget" "eNableputget" "ENablePutGet" "enableputget" "ENABLEPUTGET" " enablePutGet "]]
+        (testing (pr-str k)
+          (is (= "false" (put-get-as-the-client-reads-it
+                          (sql-jdbc.conn/connection-details->spec :snowflake (assoc details (keyword k) "true"))))))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
