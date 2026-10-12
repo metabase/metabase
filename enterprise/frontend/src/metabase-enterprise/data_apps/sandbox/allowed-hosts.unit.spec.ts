@@ -94,10 +94,6 @@ describe("makeSandboxFetch", () => {
     location: { href: base, origin },
   });
 
-  it("returns null for an empty allowlist (keeps the sandbox hard block)", () => {
-    expect(makeSandboxFetch(window, [], "sales")).toBeNull();
-  });
-
   it("allows listed hosts and blocks others", async () => {
     const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
     const sandboxFetch = makeSandboxFetch(
@@ -116,7 +112,7 @@ describe("makeSandboxFetch", () => {
     expect(realFetch).toHaveBeenCalledTimes(1);
   });
 
-  it("always blocks the Metabase origin, even if it's in allowed_hosts", async () => {
+  it("blocks other Metabase paths, even if the origin is in allowed_hosts", async () => {
     const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
     // The Metabase origin is mistakenly allowlisted — it must still be denied.
     const sandboxFetch = makeSandboxFetch(
@@ -134,6 +130,41 @@ describe("makeSandboxFetch", () => {
     );
     expect(realFetch).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { allowedHosts: [] },
+    { allowedHosts: ["https://api.example.com"] },
+  ])(
+    "allows the analytics proxy with allowed_hosts $allowedHosts",
+    async ({ allowedHosts }) => {
+      const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+
+      const sandboxFetch = makeSandboxFetch(
+        fakeWindow(realFetch),
+        allowedHosts,
+        "sales",
+      )!;
+
+      const payload = {
+        method: "POST",
+        body: JSON.stringify({ schema: "test", data: [] }),
+        credentials: "omit" as const,
+      };
+
+      await sandboxFetch("/api/analytics-proxy", payload);
+      await sandboxFetch(new URL(`${origin}/api/analytics-proxy`), payload);
+      await sandboxFetch(new Request(`${origin}/api/analytics-proxy`, payload));
+
+      expect(realFetch.mock.calls).toEqual([
+        ["/api/analytics-proxy", { ...payload, redirect: "manual" }],
+        [
+          new URL(`${origin}/api/analytics-proxy`),
+          { ...payload, redirect: "manual" },
+        ],
+        [expect.any(Request), { redirect: "manual" }],
+      ]);
+    },
+  );
 });
 
 describe("onBlocked reporting", () => {

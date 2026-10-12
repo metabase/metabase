@@ -21,14 +21,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.io ByteArrayInputStream)
-   (java.net URI)))
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,27 +44,6 @@
    "Cache-Control"                "no-cache"})
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
-
-(defn- metaplow-origin
-  "Origin of the configured Metaplow collector, without its `/api/send` path.
-   The data-app sandbox accepts origins, not URLs with paths."
-  []
-  (when-let [url (setting/get-value-of-type :string :metaplow-url)]
-    (try
-      (let [uri    (URI. url)
-            scheme (some-> (.getScheme uri) u/lower-case-en)
-            host   (.getHost uri)
-            port   (.getPort uri)]
-        (when (and (#{"http" "https"} scheme) host)
-          (str scheme "://" host (when-not (= -1 port) (str ":" port)))))
-      (catch Exception _))))
-
-(defn- bundle-allowed-hosts
-  "Origins the bundle may fetch, including the configured analytics collector."
-  [allowed-hosts]
-  (let [origin (metaplow-origin)]
-    (cond-> allowed-hosts
-      origin (conj origin))))
 
 (defn- repo-status []
   (let [url (data-apps.apps/repo-url)]
@@ -410,12 +386,8 @@
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (-> bundle-response-headers
-                                   ;; JSON array of origins the sandboxed bundle may fetch/XHR. Include
-                                   ;; the configured product analytics collector so SDK analytics work
-                                   ;; without granting access to the collector for another environment.
-                                   ;; The iframe reads this to configure its Near-Membrane fetch allowlist.
                                    (assoc "X-Metabase-Data-App-Allowed-Hosts"
-                                          (json/encode (bundle-allowed-hosts (:allowed_hosts row))))
+                                          (json/encode (:allowed_hosts row)))
                                    (cond-> etag (assoc "ETag" etag)))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404
