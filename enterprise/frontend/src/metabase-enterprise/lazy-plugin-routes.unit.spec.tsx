@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { type RouteObject, toRouteObjects } from "metabase/router";
 import {
   getAiControlsRoutes,
-  getAiControlsUpsellRoutes,
   getMcpToolsAccessRoutes,
 } from "metabase-enterprise/ai-controls/routes";
 import { getApplicationPermissionsRoutes } from "metabase-enterprise/application_permissions/routes";
@@ -40,7 +39,6 @@ function lazyLoaders(tree: ReactNode) {
 
 const FACTORIES: [string, ReactNode, number][] = [
   ["ai-controls", getAiControlsRoutes(), 6],
-  ["ai-controls upsell", getAiControlsUpsellRoutes(), 3],
   ["mcp tools access", getMcpToolsAccessRoutes(), 1],
   ["schema viewer", getDataStudioSchemaViewerRoutes(), 1],
   ["transforms inspector", getInspectorRoutes(), 2],
