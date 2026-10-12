@@ -204,7 +204,7 @@ export const setup = async ({
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
-  const { wrapper, store } = getTestStoreAndWrapper({
+  const { wrapper } = getTestStoreAndWrapper({
     storeInitialState: initialState,
     withRouter: true,
     initialRoute: `/admin/settings${initialRoute}`,
@@ -213,9 +213,7 @@ export const setup = async ({
   const PassThroughGuard = () => <Outlet />;
 
   testingLibraryRender(
-    <Route path="admin/settings">
-      {getSettingsRoutes(store, PassThroughGuard)}
-    </Route>,
+    <Route path="admin/settings">{getSettingsRoutes(PassThroughGuard)}</Route>,
     { wrapper },
   );
 

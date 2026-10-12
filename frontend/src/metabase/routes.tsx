@@ -531,9 +531,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               ...toRouteObjects(getAccountRoutes(store, IsAuthenticated)),
 
               // ADMIN
-              ...toRouteObjects(
-                getAdminRoutes(store, CanAccessSettings, IsAdmin),
-              ),
+              ...toRouteObjects(getAdminRoutes(CanAccessSettings, IsAdmin)),
 
               // DATA STUDIO
               ...toRouteObjects(getDataStudioRoutes(IsAdmin)),
