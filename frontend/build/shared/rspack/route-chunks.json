@@ -1,0 +1,1807 @@
+[
+  {
+    "pattern": "/",
+    "chunks": [
+      "home"
+    ]
+  },
+  {
+    "pattern": "/account",
+    "chunks": [
+      "account"
+    ]
+  },
+  {
+    "pattern": "/account/authentication",
+    "chunks": [
+      "account"
+    ]
+  },
+  {
+    "pattern": "/account/login-history",
+    "chunks": [
+      "account"
+    ]
+  },
+  {
+    "pattern": "/account/profile",
+    "chunks": [
+      "account"
+    ]
+  },
+  {
+    "pattern": "/admin",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/databases",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/databases/:databaseId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/databases/:databaseId/edit",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/databases/:databaseId/write-data",
+    "chunks": [
+      "admin",
+      "writable-connection"
+    ]
+  },
+  {
+    "pattern": "/admin/databases/create",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/database",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/database/:databaseId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/database/:databaseId/schema/:schemaId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/database/:databaseId/schema/:schemaId/table/:tableId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/segment/:id",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/segment/:id/revisions",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/segment/create",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/datamodel/segments",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding/guest",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding/security",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding/setup-guide",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding/setup-guide/permissions",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding/setup-guide/sso",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding/themes",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/embedding/themes/:themeId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/help",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/customization",
+    "chunks": [
+      "admin",
+      "metabot-customization"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/mcp",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/mcp/authorizations",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/system-prompts/metabot-chat",
+    "chunks": [
+      "admin",
+      "metabot-system-prompts"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/system-prompts/natural-language-queries",
+    "chunks": [
+      "admin",
+      "metabot-system-prompts"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/system-prompts/sql-generation",
+    "chunks": [
+      "admin",
+      "metabot-system-prompts"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/usage-controls/ai-feature-access",
+    "chunks": [
+      "admin",
+      "metabot-feature-access"
+    ]
+  },
+  {
+    "pattern": "/admin/metabot/usage-controls/ai-usage-limits",
+    "chunks": [
+      "admin",
+      "metabot-usage-limits"
+    ]
+  },
+  {
+    "pattern": "/admin/people",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/people/:userId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/people/groups",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/people/groups/:groupId",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/people/tenants",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/people/tenants/groups",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/people/tenants/groups",
+    "chunks": [
+      "admin",
+      "tenants"
+    ]
+  },
+  {
+    "pattern": "/admin/people/tenants/groups/:groupId",
+    "chunks": [
+      "admin",
+      "tenants"
+    ]
+  },
+  {
+    "pattern": "/admin/people/tenants/people",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/people/tenants/people",
+    "chunks": [
+      "admin",
+      "tenants"
+    ]
+  },
+  {
+    "pattern": "/admin/performance",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/performance/databases",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/performance/models",
+    "chunks": [
+      "admin"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/application",
+    "chunks": [
+      "admin",
+      "application-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/collections",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/database",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/database/:databaseId",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/database/:databaseId/schema/:schemaName",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/database/:databaseId/schema/:schemaName/table/:tableId",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/database/:databaseId/table/:tableId",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/group",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/group/:groupId",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/group/:groupId/database/:databaseId",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName",
+    "chunks": [
+      "admin",
+      "admin-permissions"
+    ]
+  },
+  {
+    "pattern": "/admin/security-center",
+    "chunks": [
+      "admin",
+      "security-center"
+    ]
+  },
+  {
+    "pattern": "/admin/settings",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/appearance",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/apps",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/apps/:slug/users",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/2fa/enrolled",
+    "chunks": [
+      "admin",
+      "admin-settings",
+      "mfa-enrolled-users"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/2fa/unenrolled",
+    "chunks": [
+      "admin",
+      "admin-settings",
+      "mfa-unenrolled-users"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/api-keys",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/google",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/jwt",
+    "chunks": [
+      "admin",
+      "admin-settings",
+      "auth-jwt"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/ldap",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/oidc",
+    "chunks": [
+      "admin",
+      "admin-settings",
+      "auth-oidc"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/saml",
+    "chunks": [
+      "admin",
+      "admin-settings",
+      "auth-saml"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/authentication/user-provisioning",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/cloud",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/custom-visualizations",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/custom-visualizations/edit/:id",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/custom-visualizations/new",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/domains",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/email",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/general",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/license",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/localization",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/maps",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/public-sharing",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/python-runner",
+    "chunks": [
+      "admin",
+      "admin-settings",
+      "python-runner-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/remote-sync",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/slack",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/updates",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/uploads",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/webhooks",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/whitelabel",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/whitelabel/branding",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/admin/settings/whitelabel/conceal-metabase",
+    "chunks": [
+      "admin",
+      "admin-settings"
+    ]
+  },
+  {
+    "pattern": "/apps/:name",
+    "chunks": [
+      "data-apps"
+    ]
+  },
+  {
+    "pattern": "/apps/:name/*",
+    "chunks": [
+      "data-apps"
+    ]
+  },
+  {
+    "pattern": "/auto/dashboard/*",
+    "chunks": [
+      "automatic-dashboard"
+    ]
+  },
+  {
+    "pattern": "/browse/databases",
+    "chunks": [
+      "browse"
+    ]
+  },
+  {
+    "pattern": "/browse/databases/:dbId/schema/:schemaName",
+    "chunks": [
+      "browse"
+    ]
+  },
+  {
+    "pattern": "/browse/databases/:dbId/tables/:tableId/edit/:objectId?",
+    "chunks": [
+      "table-editing"
+    ]
+  },
+  {
+    "pattern": "/browse/databases/:dbName/schema/:schemaName/table/:tableName",
+    "chunks": [
+      "browse"
+    ]
+  },
+  {
+    "pattern": "/browse/databases/:dbName/table/:tableName",
+    "chunks": [
+      "browse"
+    ]
+  },
+  {
+    "pattern": "/browse/databases/:slug",
+    "chunks": [
+      "browse"
+    ]
+  },
+  {
+    "pattern": "/browse/metrics",
+    "chunks": [
+      "browse"
+    ]
+  },
+  {
+    "pattern": "/browse/models",
+    "chunks": [
+      "browse"
+    ]
+  },
+  {
+    "pattern": "/collection/:slug",
+    "chunks": [
+      "collection"
+    ]
+  },
+  {
+    "pattern": "/collection/tenant-specific",
+    "chunks": [
+      "tenant-collections"
+    ]
+  },
+  {
+    "pattern": "/collection/tenant-users",
+    "chunks": [
+      "tenant-users"
+    ]
+  },
+  {
+    "pattern": "/collection/tenant-users/:tenantId",
+    "chunks": [
+      "tenant-user-collections"
+    ]
+  },
+  {
+    "pattern": "/collection/users",
+    "chunks": [
+      "user-collection-list"
+    ]
+  },
+  {
+    "pattern": "/dashboard/:slug",
+    "chunks": [
+      "dashboard"
+    ]
+  },
+  {
+    "pattern": "/data-studio",
+    "chunks": [
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data",
+    "chunks": [
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/:tab",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/revisions",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/measures/new",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/revisions",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/segments/new",
+    "chunks": [
+      "data-model",
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/dependencies",
+    "chunks": [
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/dependencies",
+    "chunks": [
+      "data-studio",
+      "data-studio-upsells"
+    ]
+  },
+  {
+    "pattern": "/data-studio/dependencies",
+    "chunks": [
+      "data-studio",
+      "dependency-graph"
+    ]
+  },
+  {
+    "pattern": "/data-studio/git-sync",
+    "chunks": [
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/glossary",
+    "chunks": [
+      "data-studio",
+      "data-studio-glossary"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library",
+    "chunks": [
+      "data-studio",
+      "data-studio-library"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library",
+    "chunks": [
+      "data-studio",
+      "data-studio-upsells"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/metrics/:cardId",
+    "chunks": [
+      "data-studio",
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/metrics/:cardId/dependencies",
+    "chunks": [
+      "data-studio",
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/metrics/:cardId/dimensions",
+    "chunks": [
+      "data-studio",
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/metrics/:cardId/history",
+    "chunks": [
+      "data-studio",
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/metrics/:cardId/overview",
+    "chunks": [
+      "data-studio",
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/metrics/:cardId/query",
+    "chunks": [
+      "data-studio",
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/metrics/new",
+    "chunks": [
+      "data-studio",
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/snippets/:snippetId",
+    "chunks": [
+      "data-studio",
+      "data-studio-snippets"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/snippets/:snippetId/dependencies",
+    "chunks": [
+      "data-studio",
+      "data-studio-snippets"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/snippets/archived",
+    "chunks": [
+      "data-studio",
+      "data-studio-snippets"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/snippets/new",
+    "chunks": [
+      "data-studio",
+      "data-studio-snippets"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/dependencies",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/fields",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/fields/:fieldId",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/measures",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/measures/:measureId",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/measures/:measureId/dependencies",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/measures/:measureId/revisions",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/measures/new",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/segments",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/segments/:segmentId",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/segments/:segmentId/dependencies",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/segments/:segmentId/revisions",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/library/tables/:tableId/segments/new",
+    "chunks": [
+      "data-studio",
+      "data-studio-tables"
+    ]
+  },
+  {
+    "pattern": "/data-studio/schema-viewer",
+    "chunks": [
+      "data-studio",
+      "data-studio-upsells"
+    ]
+  },
+  {
+    "pattern": "/data-studio/schema-viewer",
+    "chunks": [
+      "data-studio",
+      "schema-viewer"
+    ]
+  },
+  {
+    "pattern": "/data-studio/settings",
+    "chunks": [
+      "data-studio",
+      "data-studio-settings"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms",
+    "chunks": [
+      "data-studio"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms",
+    "chunks": [
+      "data-studio",
+      "transforms-python"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/dependencies",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/edit",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/indexes",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/inspect",
+    "chunks": [
+      "data-studio",
+      "transforms-inspector"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/inspect",
+    "chunks": [
+      "data-studio",
+      "transforms-inspector-upsell"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/inspect/:lensId",
+    "chunks": [
+      "data-studio",
+      "transforms-inspector"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/inspect/:lensId",
+    "chunks": [
+      "data-studio",
+      "transforms-inspector-upsell"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/run",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/:transformId/settings",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/jobs",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/jobs/:jobId",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/jobs/:jobId/runs",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/jobs/new",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/library/:path",
+    "chunks": [
+      "data-studio",
+      "transforms-python"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/new/card/:cardId",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/new/native",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/new/python",
+    "chunks": [
+      "data-studio",
+      "transforms-python"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/new/query",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/runs",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/runs/individual",
+    "chunks": [
+      "data-studio",
+      "transforms"
+    ]
+  },
+  {
+    "pattern": "/data-studio/transforms/tools/migrate-models",
+    "chunks": [
+      "data-studio",
+      "model-replacement"
+    ]
+  },
+  {
+    "pattern": "/document/:entityId",
+    "chunks": [
+      "documents"
+    ]
+  },
+  {
+    "pattern": "/explore",
+    "chunks": [
+      "metrics-viewer"
+    ]
+  },
+  {
+    "pattern": "/getting-started",
+    "chunks": [
+      "onboarding"
+    ]
+  },
+  {
+    "pattern": "/metabot/conversation/:convoId",
+    "chunks": [
+      "metabot"
+    ]
+  },
+  {
+    "pattern": "/metric/:cardId",
+    "chunks": [
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/metric/:cardId/dependencies",
+    "chunks": [
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/metric/:cardId/dimensions",
+    "chunks": [
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/metric/:cardId/history",
+    "chunks": [
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/metric/:cardId/overview",
+    "chunks": [
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/metric/:cardId/query",
+    "chunks": [
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/metric/new",
+    "chunks": [
+      "metrics"
+    ]
+  },
+  {
+    "pattern": "/model",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/:slug",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/:slug/:objectId",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/:slug/columns",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/:slug/detail/:rowId",
+    "chunks": [
+      "model-detail"
+    ]
+  },
+  {
+    "pattern": "/model/:slug/metabot",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/:slug/metadata",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/:slug/notebook",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/:slug/query",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/metabot",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/model/query",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/monitor",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/cli",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/cli/calls",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/cli/usage",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/conversations",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/conversations/:convoId",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/mcp",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/mcp/events",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/mcp/usage",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/usage/:metric",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/ai-auditing/usage/*",
+    "chunks": [
+      "ai-auditing",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/dependency-diagnostics",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/dependency-diagnostics/*",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/dependency-diagnostics/broken",
+    "chunks": [
+      "dependency-diagnostics",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/dependency-diagnostics/unreferenced",
+    "chunks": [
+      "dependency-diagnostics",
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/jobs",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/logs",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/model-persistence-log",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/notifications",
+    "chunks": [
+      "monitor",
+      "monitor-notifications"
+    ]
+  },
+  {
+    "pattern": "/monitor/notifications/:notificationId",
+    "chunks": [
+      "monitor",
+      "monitor-notifications"
+    ]
+  },
+  {
+    "pattern": "/monitor/sessions",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/sessions",
+    "chunks": [
+      "monitor",
+      "monitor-session-management"
+    ]
+  },
+  {
+    "pattern": "/monitor/sessions/:sessionId",
+    "chunks": [
+      "monitor",
+      "monitor-session-management"
+    ]
+  },
+  {
+    "pattern": "/monitor/sessions/*",
+    "chunks": [
+      "monitor"
+    ]
+  },
+  {
+    "pattern": "/monitor/tasks/list",
+    "chunks": [
+      "monitor",
+      "monitor-tasks"
+    ]
+  },
+  {
+    "pattern": "/monitor/tasks/list/:taskId",
+    "chunks": [
+      "monitor",
+      "monitor-tasks"
+    ]
+  },
+  {
+    "pattern": "/monitor/tasks/runs",
+    "chunks": [
+      "monitor",
+      "monitor-tasks"
+    ]
+  },
+  {
+    "pattern": "/monitor/tasks/runs/:runId",
+    "chunks": [
+      "monitor",
+      "monitor-tasks"
+    ]
+  },
+  {
+    "pattern": "/question",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/question/:slug",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/question/:slug/:objectId",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/question/:slug/metabot",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/question/:slug/notebook",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/question/ask",
+    "chunks": [
+      "metabot-query-builder"
+    ]
+  },
+  {
+    "pattern": "/question/notebook",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/question/research",
+    "chunks": [
+      "explorations"
+    ]
+  },
+  {
+    "pattern": "/question/research/:id",
+    "chunks": [
+      "explorations"
+    ]
+  },
+  {
+    "pattern": "/question/research/:id/page/:pageId",
+    "chunks": [
+      "explorations"
+    ]
+  },
+  {
+    "pattern": "/question/research/:id/summary",
+    "chunks": [
+      "explorations"
+    ]
+  },
+  {
+    "pattern": "/question/research/plan",
+    "chunks": [
+      "explorations"
+    ]
+  },
+  {
+    "pattern": "/reference/databases",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/databases/:databaseId",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/databases/:databaseId/tables",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/databases/:databaseId/tables/:tableId",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/databases/:databaseId/tables/:tableId/fields",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/databases/:databaseId/tables/:tableId/fields/:fieldId",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/databases/:databaseId/tables/:tableId/questions",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/glossary",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/segments",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/segments/:segmentId",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/segments/:segmentId/fields",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/segments/:segmentId/fields/:fieldId",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/segments/:segmentId/questions",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/reference/segments/:segmentId/revisions",
+    "chunks": [
+      "reference"
+    ]
+  },
+  {
+    "pattern": "/search",
+    "chunks": [
+      "search"
+    ]
+  },
+  {
+    "pattern": "/setup",
+    "chunks": [
+      "setup"
+    ]
+  },
+  {
+    "pattern": "/slack-connect-success",
+    "chunks": [
+      "metabot-slack-connect"
+    ]
+  },
+  {
+    "pattern": "/table/:slug",
+    "chunks": [
+      "query-builder"
+    ]
+  },
+  {
+    "pattern": "/table/:tableId/detail/:rowId",
+    "chunks": [
+      "table-detail"
+    ]
+  },
+  {
+    "pattern": "/trash",
+    "chunks": [
+      "trash-collection"
+    ]
+  }
+]

@@ -1,6 +1,7 @@
 (ns metabase.server.routes.index-test
   (:require
    [clojure.test :refer :all]
+   [clout.core :as clout]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
@@ -84,3 +85,44 @@
     ;; but we can override with the user locale
     (binding [i18n/*user-locale* "fr"]
       (is (= "fr" (:language (#'index/template-parameters false {})))))))
+
+(deftest route-preload-tags-test
+  (let [tag (fn [file kind] (format "<link rel=\"preload\" href=\"%s\" as=\"%s\" fetchpriority=\"low\">" file kind))
+        manifest [["/question/ask" (tag "app/dist/metabot-query-builder.js" "script") false]
+                  ["/question" (tag "app/dist/query-builder.js" "script") false]
+                  ["/question/*" (tag "app/dist/query-builder.js" "script") false]
+                  ["/dashboard/*" (str (tag "app/dist/dashboard.js" "script")
+                                       (tag "app/dist/dashboard.css" "style"))
+                   false]
+                  ["/metric/*" (tag "app/dist/metrics.js" "script") false]
+                  ["/setup" (tag "app/dist/setup.js" "script") true]
+                  ["/" (tag "app/dist/home.js" "script") false]]
+        tags-for (fn tags-for
+                   ([uri] (tags-for uri true))
+                   ([uri signed-in?]
+                    (with-redefs-fn {#'index/route-preloads
+                                     (constantly
+                                      (mapv (fn [[pattern markup render-when-signed-out?]]
+                                              [(clout/route-compile pattern) markup render-when-signed-out?])
+                                            manifest))}
+                      (fn [] (#'index/route-preload-tags uri signed-in?)))))]
+    (testing "a wildcard covers the section below it"
+      (is (= (str (tag "app/dist/dashboard.js" "script")
+                  (tag "app/dist/dashboard.css" "style"))
+             (tags-for "/dashboard/42"))))
+    (testing "the first matching row wins"
+      (is (= (tag "app/dist/metabot-query-builder.js" "script") (tags-for "/question/ask")))
+      (is (= (tag "app/dist/query-builder.js" "script") (tags-for "/question/12-orders"))))
+    (testing "the home page matches only the whole path"
+      (is (= (tag "app/dist/home.js" "script") (tags-for "/")))
+      (is (nil? (tags-for "/xyzzy"))))
+    (testing "a section does not claim a URL that merely starts with its name"
+      (is (nil? (tags-for "/metrics/1"))))
+    (testing "a signed-out visitor is redirected to the login page, so gets no hints"
+      (is (nil? (tags-for "/dashboard/42" false)))
+      (is (nil? (tags-for "/" false))))
+    (testing "except on setup, which runs before any user exists"
+      (is (= (tag "app/dist/setup.js" "script") (tags-for "/setup" false)))))
+  (testing "no manifest, no hints"
+    (is (nil? (with-redefs-fn {#'index/route-preloads (constantly nil)}
+                (fn [] (#'index/route-preload-tags "/" true)))))))

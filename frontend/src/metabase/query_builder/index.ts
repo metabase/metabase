@@ -54,7 +54,21 @@ export type { DataSourcePart } from "./components/view/ViewHeader/components/Que
 export { QuestionFiltersHeader } from "./components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader";
 export { ViewHeading } from "./components/view/ViewSection";
 
-// The store imports this module on every page, so the pages themselves stay behind an import().
-export const loadQueryBuilder = () => import("./containers/QueryBuilder");
+/**
+ * The query builder, in its own chunk. The store imports this module on every
+ * page, so the pages themselves stay behind an `import()`. Every route that
+ * renders the query builder uses the same loader, so they share one chunk that
+ * is fetched the first time one of them is visited.
+ *
+ * A `lazy` route makes that first navigation asynchronous: the router resolves
+ * the module before it commits the location. It resolves the route in place, so
+ * every later navigation to the query builder is synchronous again.
+ */
+export const loadQueryBuilder = () =>
+  import(
+    /* webpackChunkName: "query-builder" */ "./containers/QueryBuilder"
+  ).then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
 export const loadMetabotQueryBuilder = () =>
-  import("./components/MetabotQueryBuilder/MetabotQueryBuilder");
+  import(
+    /* webpackChunkName: "metabot-query-builder" */ "./components/MetabotQueryBuilder/MetabotQueryBuilder"
+  ).then(({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }));
