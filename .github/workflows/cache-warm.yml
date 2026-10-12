@@ -10,7 +10,7 @@
 # at it, and master's copy backs up every ref that has none of its own.
 #
 # Keys are content-derived (see .github/scripts/cache-keys.sh), so a push whose dependencies already have
-# an entry does nothing but four lookups. There is no cron: nothing here is keyed by date.
+# an entry does nothing but five lookups. There is no cron: nothing here is keyed by date.
 #
 #
 # PRINCIPLES:
@@ -80,11 +80,18 @@ jobs:
           path: ${{ steps.cache-spec.outputs.cypress-path }}
           key: ${{ steps.cache-spec.outputs.cypress-key }}
           lookup-only: true
+      - name: Look up cljs build
+        id: cljs-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.cljs-dev-path }}
+          key: ${{ steps.cache-spec.outputs.cljs-dev-key }}
+          lookup-only: true
 
       # Also runs when only the Clojure CLI entry is missing: installing it is what there is to save,
-      # and the pre-resolve below needs it either way.
+      # and the pre-resolve below needs it either way. The cljs compile at the end needs it too.
       - name: Prepare backend
-        if: steps.m2-lookup.outputs.cache-hit != 'true' || steps.clojure-lookup.outputs.cache-hit != 'true'
+        if: steps.m2-lookup.outputs.cache-hit != 'true' || steps.clojure-lookup.outputs.cache-hit != 'true' || steps.cljs-lookup.outputs.cache-hit != 'true'
         uses: ./.github/actions/prepare-backend
 
       - name: Save Clojure CLI
@@ -168,11 +175,11 @@ jobs:
       # which is what fills the store. Patches are deliberately not applied: a store cached with patches
       # already in place breaks any pull request that changes or upgrades a patched dependency.
       #
-      # This also runs when only the Cypress cache is missing, because `bun run cypress install` below
-      # needs the node_modules this step creates. Narrowing the condition to the bun store alone would
-      # leave that step with no Cypress binary to run.
+      # This also runs when only the Cypress cache or the cljs build is missing, because `bun run cypress
+      # install` and the cljs compile below need the node_modules this step creates. Narrowing the
+      # condition to the bun store alone would leave those steps with nothing to run.
       - name: Install front-end dependencies
-        if: steps.bun-lookup.outputs.cache-hit != 'true' || steps.cypress-lookup.outputs.cache-hit != 'true'
+        if: steps.bun-lookup.outputs.cache-hit != 'true' || steps.cypress-lookup.outputs.cache-hit != 'true' || steps.cljs-lookup.outputs.cache-hit != 'true'
         uses: ./.github/actions/prepare-frontend
         with:
           apply-patches: "false"
@@ -199,3 +206,17 @@ jobs:
         with:
           path: ${{ steps.cache-spec.outputs.cypress-path }}
           key: ${{ steps.cache-spec.outputs.cypress-key }}
+
+      # The build that the frontend jobs restore through .github/actions/build-cljs. It is compiled here
+      # without the dependency patches those jobs apply. That makes no difference to the output: the
+      # build does not bundle npm packages, and no patch touches shadow-cljs.
+      - name: Compile cljs
+        if: steps.cljs-lookup.outputs.cache-hit != 'true'
+        run: bun run build-pure:cljs
+
+      - name: Save cljs build
+        if: steps.cljs-lookup.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.cljs-dev-path }}
+          key: ${{ steps.cache-spec.outputs.cljs-dev-key }}
