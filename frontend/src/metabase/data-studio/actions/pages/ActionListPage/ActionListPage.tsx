@@ -2,6 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
@@ -28,6 +32,8 @@ import { RootDataActionsMenu } from "./RootDataActionsMenu";
 
 export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionModal, setCollectionModal] =
+    useState<CollectionRowModalState>();
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -55,6 +61,12 @@ export function ActionListPage() {
     () => tree.slice(0, 1).map((node) => node.id),
     [tree],
   );
+  const renderRowMenu = useCallback(
+    (item: TreeItem) => (
+      <ActionRowMenu item={item} onOpenModal={setCollectionModal} />
+    ),
+    [],
+  );
 
   return (
     <LibraryTreePage
@@ -66,20 +78,30 @@ export function ActionListPage() {
       emptyMessage={t`No actions yet`}
       defaultExpandedIds={defaultExpandedIds}
       createMenu={canCreate && <ActionsCreateMenu />}
-      renderRowMenu={renderActionRowMenu}
+      renderRowMenu={renderRowMenu}
       onSearchQueryChange={setSearchQuery}
-    />
+    >
+      <CollectionRowModal
+        modal={collectionModal}
+        onClose={() => setCollectionModal(undefined)}
+      />
+    </LibraryTreePage>
   );
 }
 
-function renderActionRowMenu({ data }: TreeItem) {
+type ActionRowMenuProps = {
+  item: TreeItem;
+  onOpenModal: (modal: CollectionRowModalState) => void;
+};
+
+function ActionRowMenu({ item: { data }, onOpenModal }: ActionRowMenuProps) {
   if (!isCollectionData(data)) {
     return null;
   }
   if (data.id === "root") {
-    return <RootDataActionsMenu />;
+    return <RootDataActionsMenu collection={data} onOpenModal={onOpenModal} />;
   }
-  return <CollectionRowMenu collection={data} />;
+  return <CollectionRowMenu collection={data} onOpenModal={onOpenModal} />;
 }
 
 function ActionsCreateMenu() {

@@ -9,7 +9,7 @@ export const MetabotChatSuggestions = () => {
 
   // Keep in sync with [MetabotChat.tsx]
   const suggestedPromptsQuery = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabot.metabotId,
+    metabot_id: metabot.metabotEntityId,
     limit: 3,
     sample: true,
   });

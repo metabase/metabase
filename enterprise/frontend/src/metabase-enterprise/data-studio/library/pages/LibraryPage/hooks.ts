@@ -1,5 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
 import {
@@ -14,12 +15,10 @@ import type {
   LibrarySectionType,
   TreeItem,
 } from "metabase/data-studio/common/types";
-import {
-  createEmptyStateItem,
-  isEmptyStateData,
-} from "metabase/data-studio/common/utils";
+import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   Collection,
@@ -75,6 +74,17 @@ const SECTION_ITEM_MODELS: Record<LibrarySectionType, CollectionItemModel[]> = {
   actions: ["action", "collection"],
 };
 
+const NO_ITEMS: CollectionItem[] = [];
+
+const getCollectionItemsRequest = (
+  collectionId: CollectionId,
+  models: CollectionItemModel[],
+) => ({
+  id: collectionId,
+  models,
+  archived: false,
+});
+
 export function useLibraryCollectionTree(
   collection: Collection | undefined,
   sectionType: LibrarySectionType,
@@ -90,61 +100,82 @@ export function useLibraryCollectionTree(
     isLoading,
     error,
   } = useListCollectionItemsQuery(
-    collection
-      ? {
-          id: collection.id,
-          models,
-          archived: false,
-        }
-      : skipToken,
+    collection ? getCollectionItemsRequest(collection.id, models) : skipToken,
   );
 
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  // 2. Lazy-loaded subcollection items
-  const [loadedCollections, setLoadedCollections] = useState<
-    Map<CollectionId, CollectionItem[]>
-  >(new Map());
-  const loadingIds = useRef(new Set<string>());
-
-  useEffect(() => {
-    setLoadedCollections(new Map());
-    loadingIds.current = new Set();
-  }, [collection]);
-
-  const loadCollectionItems = useCallback(
-    async (collectionId: CollectionId) => {
-      const key = String(collectionId);
-      if (loadingIds.current.has(key)) {
-        return;
-      }
-      loadingIds.current.add(key);
-
-      const result = await dispatch(
-        collectionApi.endpoints.listCollectionItems.initiate(
-          {
-            id: collectionId,
-            models,
-            archived: false,
-          },
-          { forceRefetch: true },
-        ),
-      );
-      const items = (result.data?.data ?? []).filter((item) => !item.archived);
-      setLoadedCollections((prev) => new Map([...prev, [collectionId, items]]));
-    },
-    [dispatch, models],
+  // 2. Expanded subcollection items, subscribed to the API cache
+  const [expandedCollectionIds, setExpandedCollectionIds] = useState<
+    CollectionId[]
+  >([]);
+  const subscriptionsRef = useRef(
+    new Map<CollectionId, { unsubscribe: () => void }>(),
   );
 
-  const refreshCollections = useCallback(
-    async (collectionIds: CollectionId[]) => {
-      for (const id of collectionIds) {
-        const key = String(id);
-        loadingIds.current.delete(key);
+  const sectionCollectionId = collection?.id;
+  useEffect(() => {
+    setExpandedCollectionIds((ids) => (ids.length > 0 ? [] : ids));
+  }, [sectionCollectionId, models]);
+
+  useEffect(() => {
+    const subscriptions = subscriptionsRef.current;
+    expandedCollectionIds.forEach((collectionId) => {
+      if (!subscriptions.has(collectionId)) {
+        subscriptions.set(
+          collectionId,
+          dispatch(
+            collectionApi.endpoints.listCollectionItems.initiate(
+              getCollectionItemsRequest(collectionId, models),
+            ),
+          ),
+        );
       }
-      await Promise.all(collectionIds.map(loadCollectionItems));
-    },
-    [loadCollectionItems],
+    });
+    subscriptions.forEach((subscription, collectionId) => {
+      if (!expandedCollectionIds.includes(collectionId)) {
+        subscription.unsubscribe();
+        subscriptions.delete(collectionId);
+      }
+    });
+  }, [dispatch, expandedCollectionIds, models]);
+
+  useEffect(() => {
+    const subscriptions = subscriptionsRef.current;
+    return () => {
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
+      subscriptions.clear();
+    };
+  }, []);
+
+  const expandedCollectionSelectors = useMemo(
+    () =>
+      expandedCollectionIds.map((collectionId) =>
+        collectionApi.endpoints.listCollectionItems.select(
+          getCollectionItemsRequest(collectionId, models),
+        ),
+      ),
+    [expandedCollectionIds, models],
+  );
+
+  const expandedCollectionItems = useSelector(
+    (state: State) =>
+      expandedCollectionSelectors.map((selectCollectionItems) => {
+        const { data, isError } = selectCollectionItems(state);
+        return data?.data ?? (isError ? NO_ITEMS : undefined);
+      }),
+    shallowEqual,
+  );
+
+  const loadedCollections = useMemo(
+    () =>
+      new Map(
+        expandedCollectionIds.flatMap((collectionId, index) => {
+          const items = expandedCollectionItems[index];
+          return items ? [[collectionId, items] as const] : [];
+        }),
+      ),
+    [expandedCollectionIds, expandedCollectionItems],
   );
 
   // 3. Build tree
@@ -189,25 +220,38 @@ export function useLibraryCollectionTree(
     isRemoteSyncReadOnly,
   ]);
 
-  // 4. Watch rows for expanded-but-empty collections → trigger fetch
+  // 4. Watch rows for expanded-but-empty collections → subscribe to their items
+  const sectionRowId = tree[0]?.id;
   const watchRows = useCallback(
     (rows: Row<TreeItem>[]) => {
-      for (const row of rows) {
+      const collectionIdsToLoad = rows.flatMap((row) => {
         const { original } = row;
-        if (
+        const isExpandedWithoutChildren =
           row.getIsExpanded() &&
           row.getCanExpand() &&
           original.model === "collection" &&
-          original.children?.length === 0 &&
-          !isEmptyStateData(original.data) &&
-          "id" in original.data
-        ) {
-          // Unjustified type cast. FIXME
-          loadCollectionItems(original.data.id as number);
-        }
+          original.children?.length === 0;
+        const isInSection =
+          sectionRowId !== undefined &&
+          row.getParentRows()[0]?.id === sectionRowId;
+        return isExpandedWithoutChildren &&
+          isInSection &&
+          original.data.model === "collection" &&
+          original.data.id !== undefined
+          ? [original.data.id]
+          : [];
+      });
+      if (collectionIdsToLoad.length === 0) {
+        return;
       }
+      setExpandedCollectionIds((previousIds) => {
+        const newIds = collectionIdsToLoad.filter(
+          (collectionId) => !previousIds.includes(collectionId),
+        );
+        return newIds.length > 0 ? [...previousIds, ...newIds] : previousIds;
+      });
     },
-    [loadCollectionItems],
+    [sectionRowId],
   );
 
   // 5. isChildrenLoading for the spinner
@@ -225,7 +269,6 @@ export function useLibraryCollectionTree(
     error,
     watchRows,
     isChildrenLoading,
-    refreshCollections,
   };
 }
 

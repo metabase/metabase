@@ -1,3 +1,4 @@
+import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
 import type {
   BooleanFilterOperator,
   DefaultFilterOperator,
@@ -250,6 +251,7 @@ export type FilterOperator =
 
 type UnaryFilterOperator = "is-empty" | "not-empty" | "is-null" | "not-null";
 type BetweenFilterOperator = "between";
+type TimeIntervalFilterOperator = "time-interval";
 type StringFilterOperator = LibStringFilterOperator | DefaultFilterOperator;
 type DateFilterOperator =
   | SpecificDateFilterOperator
@@ -283,9 +285,14 @@ export type BetweenFilterOperatorForDimension<TDimension> = Extract<
   BetweenFilterOperator
 >;
 
+export type TimeIntervalFilterOperatorForDimension<TDimension> = Extract<
+  FilterOperatorForDimension<TDimension>,
+  TimeIntervalFilterOperator
+>;
+
 export type ValueFilterOperatorForDimension<TDimension> = Exclude<
   FilterOperatorForDimension<TDimension>,
-  UnaryFilterOperator | BetweenFilterOperator
+  UnaryFilterOperator | BetweenFilterOperator | TimeIntervalFilterOperator
 >;
 
 export type FilterForOperator<
@@ -735,3 +742,34 @@ export type UseMetabaseQuery = <
           >
       : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;
+
+export type UseMetabaseQueryObject = <
+  TEntity extends TableSchema | undefined = undefined,
+  TSchema = unknown,
+  const TQuery = MetabaseQueryOptions<TEntity, TSchema> & DefinedQuery,
+  const TDynamic = undefined,
+>(
+  query: TQuery &
+    DefinedQuery &
+    (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
+      ? TQuery extends { source: unknown }
+        ? RequireAggregationsForBreakouts<TQuery> &
+            RequireGroupedOrderByNames<TQuery>
+        : unknown
+      : MetabaseQueryOptions<TEntity, TSchema>),
+  dynamicQuery?: TDynamic &
+    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
+      ? RequireAggregationsForBreakouts<TDynamic> &
+          RequireDynamicOrderByNames<
+            QueryEntity<TEntity, TQuery>,
+            TQuery,
+            TDynamic
+          >
+      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+) => UseMetabaseQueryObjectResult;
+
+export type UseMetabaseQueryObjectResult = {
+  query: MetabaseQueryObject | null;
+  error: unknown;
+  isLoading: boolean;
+};

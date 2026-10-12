@@ -514,3 +514,17 @@
                           (lib/aggregate (lib/count)))]
         (is (= ["user_id" "venue_id" "count"]
                (map :name (mt/cols (qp/process-query query)))))))))
+
+(deftest ^:parallel filter-year-breakout-in-later-stage-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :nested-queries)
+    (testing "a later stage filters a year breakout by date, since `:year` truncates to a date"
+      (let [mp         (mt/metadata-provider)
+            created-at (lib.metadata/field mp (mt/id :checkins :date))
+            query      (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                           (lib/breakout (lib/with-temporal-bucket created-at :year))
+                           (lib/aggregate (lib/count))
+                           lib/append-stage)
+            year       (first (lib/filterable-columns query))
+            query      (lib/filter query (lib/>= year "2015-01-01"))]
+        (is (=? [[#"2015-01-01.*" 267]]
+                (mt/formatted-rows [str int] (qp/process-query query))))))))

@@ -20,9 +20,9 @@ import {
   getIsConversationProcessing,
   getLongChatNotice,
   getMessages,
-  getMetabotId,
+  getMetabotEntityId,
   getMetabotReactionsState,
-  getMetabotRequestId,
+  getMetabotRequestEntityId,
   getProfileOverride,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
@@ -48,8 +48,8 @@ export const useMetabotConversation = (conversationId: string) => {
 
   const isFullPageMetabot = useIsFullPageMetabot();
 
-  const metabotRequestId = useSelector((state) =>
-    getMetabotRequestId(state, conversationId),
+  const metabotRequestEntityId = useSelector((state) =>
+    getMetabotRequestEntityId(state, conversationId),
   );
 
   const prepareRetryIfUnsuccesful = useCallback(
@@ -88,7 +88,7 @@ export const useMetabotConversation = (conversationId: string) => {
             : prompt),
           context: await getChatContext(),
           conversationId,
-          metabot_id: metabotRequestId,
+          metabot_id: metabotRequestEntityId,
           profile: options?.profile,
           isFullPageMetabot,
         }),
@@ -105,7 +105,7 @@ export const useMetabotConversation = (conversationId: string) => {
     [
       dispatch,
       getChatContext,
-      metabotRequestId,
+      metabotRequestEntityId,
       prepareRetryIfUnsuccesful,
       conversationId,
       promptInputRef,
@@ -121,7 +121,7 @@ export const useMetabotConversation = (conversationId: string) => {
         retryPrompt({
           messageId,
           context,
-          metabot_id: metabotRequestId,
+          metabot_id: metabotRequestEntityId,
           conversationId,
           profile: options?.profile,
           isFullPageMetabot,
@@ -134,7 +134,7 @@ export const useMetabotConversation = (conversationId: string) => {
     [
       dispatch,
       getChatContext,
-      metabotRequestId,
+      metabotRequestEntityId,
       prepareRetryIfUnsuccesful,
       conversationId,
       isFullPageMetabot,
@@ -179,7 +179,7 @@ export const useMetabotConversation = (conversationId: string) => {
     continueResponse,
     cancelRequest,
     reloadConversation,
-    metabotId: useSelector(getMetabotId),
+    metabotEntityId: useSelector(getMetabotEntityId),
     profile: useSelector((state) => getProfileOverride(state, conversationId)),
     title: useSelector((state) => getConversationTitle(state, conversationId)),
     forkedFromConversationId: useSelector((state) =>

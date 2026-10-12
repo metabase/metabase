@@ -12,6 +12,7 @@
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -551,3 +552,22 @@
                   (lib/native-query (mt/metadata-provider))
                   (qp/process-query)
                   (mt/rows)))))))
+
+(deftest url-valued-connection-parameters-honor-network-policy-test
+  ;; the client fetches tokens and discovery documents from these, or routes through them, so a value naming an
+  ;; internal host has to be refused like the workspace host itself would be
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [details {:host "adb-1.azuredatabricks.net" :http-path "/sql/1.0/warehouses/x" :catalog "c" :token "t"}]
+      (doseq [opts ["OAuthDiscoveryURL=http://localhost/.well-known/openid-configuration"
+                    "OIDCDiscoveryEndpoint=http://localhost/.well-known/openid-configuration"
+                    "OAuth2AuthorizationEndPoint=http://localhost/authorize"
+                    "OAuth2TokenEndpoint=http://localhost/token"
+                    "OAuth2ConnAuthAuthorizeEndpoint=http://localhost/authorize"
+                    "OAuth2ConnAuthTokenEndpoint=http://localhost/token"
+                    "UseCFProxy=1;CFProxyHost=localhost;CFProxyPort=3128"
+                    "UseProxy=1;ProxyHost=localhost;ProxyPort=3128"]]
+        (is (=? {:status-code 400}
+                (try (driver.u/validate-connection-hosts! :databricks (assoc details :additional-options opts))
+                     nil
+                     (catch clojure.lang.ExceptionInfo e (ex-data e))))
+            (str "should be refused: " opts))))))

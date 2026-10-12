@@ -1,5 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import { type ReactNode, useCallback, useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -51,10 +51,6 @@ type LibraryTreePageProps = {
     section: LibrarySection,
     count: number,
   ) => string | undefined;
-  onBulkActionComplete?: (
-    section: LibrarySection,
-    affectedCollectionIds: CollectionId[],
-  ) => void;
 };
 
 export function LibraryTreePage({
@@ -75,7 +71,6 @@ export function LibraryTreePage({
   onSearchQueryChange,
   emptyStateActions,
   getTrashMessage,
-  onBulkActionComplete,
 }: LibraryTreePageProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -110,14 +105,6 @@ export function LibraryTreePage({
   useEffect(() => {
     onRowsChange?.(treeTableInstance.rows);
   }, [treeTableInstance.rows, onRowsChange]);
-
-  const handleBulkActionComplete = useCallback(
-    (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
-      onBulkActionComplete?.(section, affectedCollectionIds);
-      clearSelection();
-    },
-    [onBulkActionComplete, clearSelection],
-  );
 
   return (
     <>
@@ -186,7 +173,6 @@ export function LibraryTreePage({
               ? defaultMoveCollectionIds?.[selectionSection]
               : undefined
           }
-          onActionComplete={handleBulkActionComplete}
           getTrashMessage={getTrashMessage}
           onClear={clearSelection}
         />
