@@ -37,8 +37,22 @@ const projects = config.projects.map((project) => {
   };
 });
 
+// A file that jest transforms is the project's own code. A worker loads it
+// again for each spec file, and everything else only once.
+const isProjectSource = (file) =>
+  !file.includes(`${path.sep}node_modules${path.sep}`) &&
+  projects.some((project) => project.transform.some((pattern) => pattern.test(file)) && !project.transformIgnorePatterns.some((pattern) => pattern.test(file)));
+// The directories that a module name is mapped into with a pattern, such as a
+// build output.
+const mappedDirectories = [...new Set(projects.flatMap((project) => project.moduleNameMapper)
+  .map(([, target]) => target)
+  .filter((target) => target.includes("$"))
+  .map((target) => path.dirname(target.slice(0, target.indexOf("$") + 1))))];
+
 module.exports = {
   root,
+  isProjectSource,
+  mappedDirectories,
   testTimeout: config.testTimeout,
   projects,
   projectOf: (file) => projects.find((project) => project.matches(path.resolve(root, file))),

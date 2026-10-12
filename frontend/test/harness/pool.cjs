@@ -63,6 +63,8 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
   let pending = 0;
   let closing = false;
   let settle = null;
+  // Raised by restart(). A worker from before it is ended, not given a file.
+  let generation = 0;
 
   const saveDurations = () => {
     try {
@@ -72,8 +74,8 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
       // The times only order the next run, so a run does not fail over them.
     }
   };
-  const finished = () => {
-    pending -= 1;
+  const finished = (count = 1) => {
+    pending -= count;
     if (pending === 0 && settle) {
       saveDurations();
       const done = settle;
@@ -95,6 +97,7 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
   };
 
   const assign = (worker) => {
+    if (worker.generation !== generation) { worker.child.send({ done: true }); return; }
     const file = queues[worker.project].shift();
     if (!file) {
       // An idle worker of one project gives its slot to a project with work.
@@ -109,21 +112,22 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
   };
 
   const spawn = (project) => {
+    const settings = { ...process.env, ...env };
     const child = fork(runner, [], {
       execArgv: [
         "--require", harness,
         "--no-deprecation",
-        `--max-old-space-size=${process.env.NT_HEAP_MB ?? 1536}`,
+        `--max-old-space-size=${settings.NT_HEAP_MB ?? 1536}`,
         // React tests allocate fast and drop most of it at once, so a larger young
         // generation saves many small collections.
-        `--max-semi-space-size=${process.env.NT_SEMI_SPACE_MB ?? 32}`,
-        `--test-reporter=${process.env.NT_REPORTER ?? "dot"}`,
-        ...(process.env.NT_NODE_EXTRA ? process.env.NT_NODE_EXTRA.split(" ") : []),
+        `--max-semi-space-size=${settings.NT_SEMI_SPACE_MB ?? 32}`,
+        `--test-reporter=${settings.NT_REPORTER ?? "dot"}`,
+        ...(settings.NT_NODE_EXTRA ? settings.NT_NODE_EXTRA.split(" ") : []),
       ],
-      env: { ...process.env, ...env, NT_QUEUE: "1", NT_PROJECT: project },
+      env: { ...settings, NT_QUEUE: "1", NT_PROJECT: project },
       stdio: ["ignore", "ignore", "pipe", "ipc"],
     });
-    const worker = { child, project, running: null, changesSeen: changes.length, started: false };
+    const worker = { child, project, running: null, changesSeen: changes.length, started: false, generation };
     starting[project] += 1;
     live += 1;
     serving[project] += 1;
@@ -204,6 +208,18 @@ const createPool = ({ workers = fastCores(), keepAlive = false, env = {}, onFile
       });
     },
     changed(files) { changes.push(...files); },
+    // Drops the files that no worker has taken yet. The ones that are running finish.
+    stop() {
+      let dropped = 0;
+      for (const queue of Object.values(queues)) dropped += queue.splice(0).length;
+      if (dropped > 0) finished(dropped);
+    },
+    // For a change to something a worker loads only once, such as a package or
+    // a build that is not the project's own source: every worker is replaced.
+    restart() {
+      generation += 1;
+      for (const list of Object.values(idle)) for (const worker of list.splice(0)) worker.child.send({ done: true });
+    },
     // Ends every worker. Workers that are idle exit now, busy ones after their file.
     close() {
       closing = true;

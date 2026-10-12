@@ -9,7 +9,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { root, projectOf } = require("./jest-config.cjs");
+const { root, projectOf, isProjectSource, mappedDirectories } = require("./jest-config.cjs");
 const { createPool, estimateDuration, fastCores } = require("./pool.cjs");
 const { createReporter, reporterNames } = require("./reporters.cjs");
 
@@ -22,19 +22,23 @@ const USAGE = `Usage: node frontend/test/harness/cli.cjs [pattern...] [options]
   -w, --workers <n>         number of worker processes (default: one per fast core)
   -u, --update-snapshots    write snapshots that do not match
   --reporter <name>         human, agent or json (default: human at a terminal, agent otherwise)
+  --bail                    stop after the first spec file that has a failed test
+  --debug                   one worker that waits for a debugger, with no time limits
   --no-confirm              do not run a failed spec file again, alone, to see if it still fails
   --ignore-projects <a,b>   leave out the specs of these jest projects
   -h, --help                show this text
 `;
 
 const parse = (argv) => {
-  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, reporter: process.stdout.isTTY ? "human" : "agent", testNamePattern: undefined, confirm: true, ignoredProjects: [] };
+  const options = { patterns: [], watch: false, workers: undefined, updateSnapshots: false, reporter: process.stdout.isTTY ? "human" : "agent", testNamePattern: undefined, confirm: true, bail: false, debug: false, ignoredProjects: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--watch") options.watch = true;
     else if (argument === "-t" || argument === "--test-name-pattern") options.testNamePattern = argv[(index += 1)];
     else if (argument.startsWith("--test-name-pattern=")) options.testNamePattern = argument.slice("--test-name-pattern=".length);
     else if (argument === "--no-confirm") options.confirm = false;
+    else if (argument === "--bail") options.bail = true;
+    else if (argument === "--debug") options.debug = true;
     else if (argument === "--reporter") options.reporter = argv[(index += 1)];
     else if (argument.startsWith("--reporter=")) options.reporter = argument.slice("--reporter=".length);
     else if (argument === "-w" || argument === "--workers") options.workers = Number(argv[(index += 1)]);
@@ -48,6 +52,8 @@ const parse = (argv) => {
   }
   if (!reporterNames.includes(options.reporter)) { process.stderr.write(`--reporter is one of ${reporterNames.join(", ")}\n`); process.exit(2); }
   if (options.workers !== undefined && !(options.workers >= 1)) { process.stderr.write(`--workers needs a number of 1 or more\n`); process.exit(2); }
+  // A debugger attaches to one process, and a paused test must not time out.
+  if (options.debug) { options.workers = 1; options.confirm = false; }
   return options;
 };
 
@@ -90,7 +96,9 @@ const reporter = createReporter(options.reporter, {
   rerunCommand,
 });
 
+const NO_TIME_LIMIT = String(2 ** 31 - 1);
 const workerEnvironment = {
+  ...(options.debug ? { NT_NODE_EXTRA: "--inspect-brk", NT_TIMEOUT: NO_TIME_LIMIT, NT_HOOK_TIMEOUT: NO_TIME_LIMIT, NT_MAX_RSS_MB: NO_TIME_LIMIT } : {}),
   ...(options.updateSnapshots ? { NT_UPDATE_SNAPSHOTS: "1" } : {}),
   ...(options.testNamePattern ? { NT_TEST_NAME_PATTERN: options.testNamePattern } : {}),
   // A worker that wins colour prints jest's matcher messages as jest does at a terminal.
@@ -104,6 +112,7 @@ const pool = createPool({
   onFileDone: (done) => {
     loadedBy.set(done.file, new Set(done.loaded));
     reporter.fileDone(done);
+    if (options.bail && done.result.failed > 0) pool.stop();
   },
 });
 
@@ -131,6 +140,7 @@ const confirmFailures = async (failures) => {
 // Runs the files and prints the result. Returns the spec files that failed and
 // whether the run counts as failed.
 const run = async (files) => {
+  if (options.debug) process.stderr.write("The worker waits for a debugger. Open chrome://inspect, or attach your editor to the address below, then resume.\n");
   reporter.start(files);
   await pool.run(files);
   const confirmation = await confirmFailures(reporter.failures());
@@ -145,6 +155,8 @@ const watch = async (selected) => {
   let failed = (await run(selected)).failedFiles;
   let running = false;
   const waiting = new Set();
+  // Set when something changed that a worker loads only once.
+  let stale = false;
 
   const prompt = () => process.stdout.write(`\nWatching ${selected.length} spec ${selected.length === 1 ? "file" : "files"}. Press a to run all, f to run the failed ones, Enter to run the last set again, q to quit.\n`);
   const start = async (files) => {
@@ -159,10 +171,17 @@ const watch = async (selected) => {
   };
   // A changed file reaches a spec that is the file itself or that loaded it.
   const react = () => {
-    if (running || waiting.size === 0) return;
+    if (running || (waiting.size === 0 && !stale)) return;
     const changed = [...waiting];
     waiting.clear();
     pool.changed(changed);
+    if (stale) {
+      stale = false;
+      pool.restart();
+      process.stdout.write("\nA file outside the project's own code changed, such as a build output, a package or the jest config. The workers start again.\n");
+      start(lastRun);
+      return;
+    }
     for (const file of findSpecs()) if (!selected.includes(file)) selected.push(file);
     const affected = selected.filter((spec) => changed.some((file) => file === spec || loadedBy.get(spec)?.has(file)));
     if (affected.length === 0) {
@@ -188,12 +207,27 @@ const watch = async (selected) => {
     fs.watch(path.join(root, top), { recursive: true }, (event, name) => {
       // An editor's temporary file is a dot file next to the real one.
       if (!name || !WATCHED.test(name) || name.includes("node_modules") || path.basename(name).startsWith(".")) return;
-      waiting.add(path.join(root, top, name));
+      const file = path.join(root, top, name);
+      // A worker loads the project's own code again for each spec file. It
+      // keeps everything else, so a change there needs new workers. A build
+      // writes many files, so that case waits longer for the changes to stop.
+      const reloaded = isProjectSource(file) || !mappedDirectories.some((directory) => file.startsWith(directory + path.sep));
+      if (reloaded) waiting.add(file);
+      else stale = true;
       clearTimeout(timer);
-      timer = setTimeout(react, 150);
+      timer = setTimeout(react, stale ? 2000 : 150);
     });
   };
   watchEverythingKnown();
+  for (const directory of mappedDirectories) if (fs.existsSync(directory)) watchDirectoryOf(path.join(directory, "x"));
+  // The lock file and the jest config are at the root and stand for the packages
+  // and the configuration.
+  fs.watch(root, (event, name) => {
+    if (name !== "bun.lock" && !/^jest\..*\.js$/.test(name ?? "")) return;
+    stale = true;
+    clearTimeout(timer);
+    timer = setTimeout(react, 2000);
+  });
 
   const quit = () => { pool.close(); process.exit(0); };
   process.on("SIGINT", quit);
