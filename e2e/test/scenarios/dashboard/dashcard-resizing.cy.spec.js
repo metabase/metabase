@@ -916,3 +916,45 @@ describe("issue 76056", () => {
       });
   });
 });
+
+describe("issue 31274", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not clip dashcard actions (metabase#31274)", () => {
+    H.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      // The top card is created last, so it would come last in the DOM and
+      // cover the actions of the card below if dashcards render in creation order
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [H.getTextCardDetails({ row: 6, text: "Bottom card" })],
+      }).then(({ body: { dashcards } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            ...dashcards,
+            H.getTextCardDetails({ row: 0, text: "Top card" }),
+          ],
+        });
+      });
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.editDashboard();
+    H.getDashboardCards().should("have.length", 2);
+
+    cy.log(
+      "Make sure cypress can click the element, which means it is not covered by the card above",
+    );
+    H.getDashboardCards()
+      .filter(":contains('Bottom card')")
+      .realHover({ scrollBehavior: false })
+      .findByTestId("dashboardcard-actions-panel")
+      .icon("close")
+      .click({ position: "top", scrollBehavior: false });
+
+    H.getDashboardCards().should("have.length", 1);
+  });
+});

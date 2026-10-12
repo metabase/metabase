@@ -1,9 +1,12 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const cards = [
   {
@@ -161,4 +164,158 @@ describe("issue 48878", () => {
     });
     cy.wait("@fetchCard");
   }
+});
+
+describe("issue 12578", () => {
+  const ORDERS_QUESTION = {
+    name: "Orders question",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not fetch cards that are still loading when refreshing", () => {
+    cy.clock(Date.now());
+    H.createQuestionAndDashboard({ questionDetails: ORDERS_QUESTION }).then(
+      ({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      },
+    );
+
+    // Without tick the dashboard header will not load
+    cy.tick();
+    H.openDashboardMenu("Auto-refresh");
+    H.popover().findByText("1 minute").click();
+
+    // Mock slow card request
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(99999);
+      });
+    }).as("dashcardQuery");
+    cy.tick(61 * 1000);
+    cy.tick(61 * 1000);
+
+    cy.get("@dashcardQuery.all").should("have.length", 1);
+  });
+});
+
+describe("issue 13736", () => {
+  const questionDetails = {
+    name: "Orders count",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should work even if some cards are broken (metabase#13736)", () => {
+    H.createQuestion(questionDetails, {
+      wrapId: true,
+      idAlias: "failingQuestionId",
+    });
+    H.createQuestion(questionDetails, {
+      wrapId: true,
+      idAlias: "successfulQuestionId",
+    });
+    H.createDashboard({ name: "13736 Dashboard" }).then(
+      ({ body: { id: dashboardId } }) => {
+        cy.wrap(dashboardId).as("dashboardId");
+      },
+    );
+
+    cy.then(function () {
+      const dashboardId = this.dashboardId;
+      const failingQuestionId = this.failingQuestionId;
+      const successfulQuestionId = this.successfulQuestionId;
+
+      cy.intercept(
+        "POST",
+        `/api/dashboard/*/dashcard/*/card/${failingQuestionId}/query`,
+        {
+          statusCode: 500,
+          body: {
+            cause: "some error",
+            data: {},
+            message: "some error",
+          },
+        },
+      );
+
+      H.updateDashboardCards({
+        dashboard_id: dashboardId,
+        cards: [
+          {
+            card_id: failingQuestionId,
+          },
+          {
+            card_id: successfulQuestionId,
+            col: 11,
+          },
+        ],
+      });
+      H.visitDashboard(dashboardId);
+    });
+
+    H.getDashboardCards()
+      .eq(0)
+      .findByText("There was a problem displaying this chart.");
+
+    H.getDashboardCards().eq(1).findByText("18,760").should("be.visible");
+  });
+});
+
+describe("issue 62170", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should only refresh card data, not reload entire dashboard when auto-refresh is enabled", () => {
+    const REFRESH_PERIOD = 3;
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders Count",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
+        "dashboardLoad",
+      );
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "cardDataRefresh",
+      );
+
+      cy.visit(`/dashboard/${dashboard_id}#refresh=${REFRESH_PERIOD}`);
+    });
+
+    // Wait for initial dashboard load
+    cy.wait("@dashboardLoad");
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard is loaded
+    H.getDashboardCard().within(() => {
+      cy.findByText("Orders Count").should("be.visible");
+    });
+
+    // Verify card data was refreshed
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard itself was NOT reloaded
+    cy.get("@dashboardLoad.all").should("have.length", 1);
+  });
 });

@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard cards > visualization options", () => {
   beforeEach(() => {
@@ -244,4 +244,74 @@ describe("issue 63416", () => {
       assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
     });
   });
+});
+
+describe("issue 64138", () => {
+  const MAP_QUESTION = {
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+
+    display: "map",
+    displayIsLocked: true,
+    visualization_settings: {
+      "map.type": "pin",
+      "map.pin_type": "markers",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestionAndDashboard({
+      questionDetails: MAP_QUESTION,
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+  });
+
+  it("should hide map controls when editing dashboard (metabase#64138)", () => {
+    H.editDashboard();
+
+    cy.log("hovering the map should not show the zoom controls");
+    H.getDashboardCard(0)
+      .realHover({
+        position: "center",
+      })
+      .within(() => {
+        cy.findByLabelText("Zoom in").should("not.exist");
+        // the update button is disabled until the map is panned, so only
+        // assert that it is shown while the zoom controls are hidden
+        cy.findByText("Set as default view").should("be.visible");
+      });
+
+    cy.log("hovering marker icons should not open their tooltips");
+    getMarkerIcon(0).trigger("mousemove", { force: true });
+    H.tooltip().should("not.exist");
+
+    cy.log("clicking marker icons should not navigate to the question");
+    getMarkerIcon(0).click({ force: true });
+    cy.location("pathname").should("match", /^\/dashboard\/[0-9]+$/);
+    H.modal().should("not.exist");
+
+    cy.log(
+      "outside of edit mode, the map shows its controls and handles markers",
+    );
+    cy.findByTestId("edit-bar").button("Cancel").click();
+    H.getDashboardCard(0).findByLabelText("Zoom in").should("exist");
+    getMarkerIcon(0).trigger("mousemove", { force: true });
+    H.tooltip().should("be.visible");
+    getMarkerIcon(0).click({ force: true });
+    cy.location("pathname").should("match", /^\/question/);
+    cy.location("search").should("match", /objectId=\d+/);
+  });
+
+  function getMarkerIcon(index) {
+    // pick the last one so it will be on top
+    return H.getDashboardCard(index)
+      .find(".leaflet-marker-icon")
+      .should("have.length.gt", 0)
+      .last();
+  }
 });
