@@ -11,7 +11,14 @@ import {
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { Route } from "metabase/router";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -117,6 +124,42 @@ function getPinnedLink(itemName: string) {
 }
 
 describe("CollectionContent selection", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("tracks entering selection mode once per selection session", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await waitFor(() => {
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "collection_select_mode_entered",
+        target_id: defaultCollection.id,
+      });
+    });
+
+    await userEvent.click(getRowSelectionButton(tableDashboard.name));
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await userEvent.click(getRowSelectionButton(tableDashboard.name));
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+
+    await waitFor(() => {
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+    });
+    expect(trackSimpleEvent).toHaveBeenLastCalledWith({
+      event: "collection_select_mode_entered",
+      target_id: defaultCollection.id,
+    });
+  });
+
   it("should render pinned cards as links when nothing is selected", async () => {
     await setup();
 
@@ -334,6 +377,49 @@ describe("CollectionContent selection", () => {
     await userEvent.click(await screen.findByText("Select"));
 
     expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+  });
+
+  it("should adapt the bulk action bar to the selection composition", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Pin all" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Unpin all" }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(getPinnedCard(pinnedDashboard.name));
+    expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "More actions" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Pin all" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Unpin all" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    expect(
+      await screen.findByRole("button", { name: "Unpin all" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Move" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Pin all" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should open a row menu without selecting on shift+click", async () => {

@@ -62,7 +62,7 @@
              [:= [:field (meta/id :venues :name) nil] "Cam's Toucannery"])
             (expand-parameters
              (query-with-parameters
-              {:hash   "abc123"
+              {:id   "abc123"
                :name   "foo"
                :type   "id"
                :target [:dimension [:field (meta/id :venues :name) nil]]
@@ -74,7 +74,7 @@
              [:= [:field (meta/id :orders :id) nil] 9223372036854775808])
             (expand-parameters
              (query-with-parameters
-              {:hash   "abc123"
+              {:id   "abc123"
                :name   "foo"
                :type   "id"
                :target [:dimension [:field (meta/id :orders :id) nil]]
@@ -89,12 +89,12 @@
               [:= [:field (meta/id :venues :id) nil] 999]])
             (expand-parameters
              (-> (query-with-parameters
-                  {:hash   "abc123"
+                  {:id   "abc123"
                    :name   "foo"
                    :type   :id
                    :target [:dimension [:field (meta/id :venues :name) nil] nil]
                    :value  "Cam's Toucannery"}
-                  {:hash   "def456"
+                  {:id   "def456"
                    :name   "bar"
                    :type   :category
                    :target [:dimension [:field (meta/id :venues :id) nil] {}]
@@ -121,7 +121,7 @@
               (lib.tu.macros/mbql-5-query venues
                 {:stages [{:aggregation [[:count {}]]
                            :breakout    [[:field {:temporal-unit :day} %price]]
-                           :parameters  [{:hash   "abc123"
+                           :parameters  [{:id   "abc123"
                                           :name   "foo"
                                           :type   "id"
                                           ;; stage-number should get ignored by this
@@ -139,7 +139,7 @@
                                          {}
                                          [:field {:base-type :type/Integer} "count"]
                                          0]]
-                           :parameters [{:hash   "def456"
+                           :parameters [{:id   "def456"
                                          :name   "bar"
                                          :type   :number/<=
                                          :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
@@ -160,7 +160,7 @@
         (is (=? (expanded-query-with-filter expected-filter-clause)
                 (expand-parameters
                  (query-with-parameters
-                  {:hash   "abc123"
+                  {:id   "abc123"
                    :name   "foo"
                    :type   :date
                    :target [:dimension [:field (meta/id :users :last-login) nil]]
@@ -176,7 +176,7 @@
         (is (=? (expanded-query-with-filter expected-filter-clause)
                 (expand-parameters
                  (query-with-parameters
-                  {:hash   "abc123"
+                  {:id   "abc123"
                    :name   "foo"
                    :type   :date/single
                    :target [:dimension [:field (meta/id :users :last-login) nil]]
@@ -206,7 +206,7 @@
                (qp/process-query
                 (mt/query checkins
                   {:query      {:aggregation [[:count]]}
-                   :parameters [{:hash   "abc123"
+                   :parameters [{:id   "abc123"
                                  :name   "foo"
                                  :type   "date"
                                  :target [:dimension $date]
@@ -224,7 +224,7 @@
                    (qp/process-query
                     (mt/query checkins
                       {:query      {:aggregation [[:count]]}
-                       :parameters [{:hash   "abc123"
+                       :parameters [{:id   "abc123"
                                      :name   "foo"
                                      :type   :number
                                      :target [:dimension $id]
@@ -597,6 +597,29 @@
                                :target [:dimension (legacy-bucket :month) {}]}]))]
       (is (=? {:stages [{:breakout [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
                                     [:field {:temporal-unit :week}    (meta/id :orders :created-at)]]}]}
+              (expand-parameters query))))))
+
+(deftest ^:parallel temporal-unit-param-does-not-rewrite-join-condition-test
+  (testing "a temporal-unit param only updates breakouts and order bys, not join conditions (#80098)"
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (lib/with-temporal-bucket created-at :month)
+                                                            (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :month))]))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/update-query-stage
+                          0 assoc :parameters
+                          [{:type   :temporal-unit
+                            :value  "year"
+                            :target [:dimension
+                                     (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+                                     {}]}]))]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (meta/id :orders :created-at)]]
+                         :joins    [{:conditions [[:= {}
+                                                   [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                                   [:field {:temporal-unit :month} (meta/id :products :created-at)]]]}]}]}
               (expand-parameters query))))))
 
 (deftest ^:parallel bigint-number-operators-test

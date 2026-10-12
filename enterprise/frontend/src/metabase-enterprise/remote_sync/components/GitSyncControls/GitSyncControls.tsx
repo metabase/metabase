@@ -251,10 +251,9 @@ export const GitSyncControls = () => {
       >
         <Combobox.Target>
           <Button
-            p="sm"
-            size="compact-sm"
-            bd="none"
-            mr="lg"
+            variant="subtle"
+            color="neutral"
+            mr="xl"
             disabled={isLoading}
             onClick={() => combobox.toggleDropdown()}
             leftSection={
@@ -314,14 +313,18 @@ export const GitSyncControls = () => {
       {branchMismatch && (
         <Modal
           opened
-          padding="xl"
+          padding="xxl"
           title={t`This view is out of date`}
           withCloseButton={false}
           onClose={() => setBranchMismatch(null)}
         >
-          <Text mt="md">{branchMismatch.message}</Text>
-          <Group gap="sm" justify="end" mt="xl">
-            <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
+          <Text mt="lg">{branchMismatch.message}</Text>
+          <Group gap="sm" justify="end" mt="xxl">
+            <Button
+              variant="subtle"
+              color="neutral"
+              onClick={() => setBranchMismatch(null)}
+            >
               {t`Cancel`}
             </Button>
             <Button variant="filled" onClick={() => window.location.reload()}>

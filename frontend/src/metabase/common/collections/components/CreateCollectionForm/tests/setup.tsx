@@ -5,9 +5,8 @@ import {
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type {
   CollectionId,
@@ -23,12 +22,6 @@ import {
 
 import CreateCollectionForm from "../CreateCollectionForm";
 
-const ROOT_COLLECTION = createMockCollection({
-  id: "root",
-  name: "Our analytics",
-  can_write: true,
-});
-
 export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
@@ -37,6 +30,7 @@ export interface SetupOpts {
   parentCollectionNamespace?: CollectionNamespace | null;
   initialCollectionId?: CollectionId;
   namespaces?: CollectionNamespace[];
+  canWriteRoot?: boolean;
   onSubmit?: jest.Mock;
 }
 
@@ -48,8 +42,14 @@ export const setup = ({
   parentCollectionNamespace,
   initialCollectionId,
   namespaces,
+  canWriteRoot = true,
   onSubmit = jest.fn(),
 }: SetupOpts = {}) => {
+  const rootCollection = createMockCollection({
+    id: "root",
+    name: "Our analytics",
+    can_write: canWriteRoot,
+  });
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
 
@@ -61,12 +61,12 @@ export const setup = ({
         namespace: parentCollectionNamespace,
         can_write: true,
       })
-    : ROOT_COLLECTION;
+    : rootCollection;
 
   const collections =
     parentCollectionNamespace !== undefined
-      ? [ROOT_COLLECTION, parentCollection]
-      : [ROOT_COLLECTION];
+      ? [rootCollection, parentCollection]
+      : [rootCollection];
 
   const initialCollection = initialCollectionId
     ? createMockCollection({
@@ -86,7 +86,7 @@ export const setup = ({
   setupCollectionsEndpoints({
     collections:
       parentCollectionNamespace !== undefined ? [parentCollection] : [],
-    rootCollection: ROOT_COLLECTION,
+    rootCollection: rootCollection,
   });
 
   // Mock individual collection fetches
@@ -113,9 +113,6 @@ export const setup = ({
       storeInitialState: createMockState({
         currentUser: user,
         settings,
-        entities: createMockEntitiesState({
-          collections,
-        }),
       }),
     },
   );

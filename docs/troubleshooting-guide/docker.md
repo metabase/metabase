@@ -123,7 +123,7 @@ You can also try to connect to the database host using the `nc` command and chec
 nc -v your-db-host 5432
 ```
 
-These steps will help you determine whether this the problem is with the network or with authentication.
+These steps will help you determine whether the problem is with the network or with authentication.
 
 ## The Metabase application database is not being persisted
 

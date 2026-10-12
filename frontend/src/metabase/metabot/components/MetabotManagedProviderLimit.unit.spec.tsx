@@ -1,19 +1,23 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
+} from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import * as aiProviderConfigurationFormModule from "metabase/metabot/components/AIProviderConfigurationForm/AIProviderConfigurationForm";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockLlmProviderType,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { getMetabotManagedProviderLimitToastProps } from "./MetabotManagedProviderLimit";
 
 describe("getMetabotManagedProviderLimitToastProps", () => {
   beforeEach(() => {
-    jest.restoreAllMocks();
-    jest
-      .spyOn(aiProviderConfigurationFormModule, "AIProviderConfigurationForm")
-      .mockImplementation(() => (
-        <div>Mocked AI provider configuration form</div>
-      ));
+    setupLlmProviderTypesEndpoint([
+      createMockLlmProviderType({ type: "anthropic", label: "Anthropic" }),
+    ]);
+    setupLlmProvidersEndpoint();
   });
 
   it("dismisses the toast only when the configure modal closes", async () => {
@@ -37,7 +41,7 @@ describe("getMetabotManagedProviderLimitToastProps", () => {
     );
 
     expect(
-      screen.getByText("Mocked AI provider configuration form"),
+      await screen.findByRole("button", { name: /Anthropic/ }),
     ).toBeInTheDocument();
     expect(store.getState().undo).toHaveLength(1);
 

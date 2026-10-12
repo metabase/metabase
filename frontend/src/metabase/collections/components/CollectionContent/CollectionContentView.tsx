@@ -5,7 +5,6 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   Api,
   useCreateBookmarkMutation,
@@ -18,13 +17,17 @@ import { useSetArchive } from "metabase/archive/hooks";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import { CollectionHeader } from "metabase/collections/components/CollectionHeader";
 import { PinnedItemsGrid } from "metabase/collections/components/PinnedItemsGrid";
-import { trackCollectionBookmarked } from "metabase/common/collections/analytics";
+import {
+  trackCollectionBookmarked,
+  trackCollectionSelectModeEntered,
+} from "metabase/common/collections/analytics";
 import { getComposedDragProps } from "metabase/common/collections/dropzone";
 import type {
   CollectionOrTableIdProps,
   OnFileUpload,
 } from "metabase/common/collections/types";
 import { isTrashedCollection } from "metabase/common/collections/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useSetCollection, useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
@@ -37,12 +40,12 @@ import {
 } from "metabase/redux/uploads";
 import { useNavigate } from "metabase/router";
 import { Box } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionId,
   CollectionItem,
+  Database,
 } from "metabase-types/api";
 
 import { ModelUploadModal } from "../ModelUploadModal";
@@ -102,12 +105,19 @@ export const CollectionContentView = ({
   const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
+  const previousSelectedCount = usePrevious(selected.length);
 
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
       clear();
     }
   }, [previousCollection, collection, clear]);
+
+  useEffect(() => {
+    if (previousSelectedCount === 0 && selected.length > 0) {
+      trackCollectionSelectModeEntered(collectionId);
+    }
+  }, [collectionId, previousSelectedCount, selected.length]);
 
   const saveFile = useCallback(
     (file: File) => {
@@ -267,7 +277,7 @@ export const CollectionContentView = ({
         />
       )}
 
-      <Box className={S.main} mx="auto" mah="100%" px="5%" py="md">
+      <Box className={S.main} mx="auto" mah="100%" px="5%" py="lg">
         <ErrorBoundary>
           <CollectionHeader
             collection={collection}
@@ -315,6 +325,7 @@ export const CollectionContentView = ({
           />
           <CollectionBulkActions
             collection={collection}
+            bookmarks={bookmarks}
             selected={selected}
             clearSelected={clear}
             selectedItems={selectedItems}

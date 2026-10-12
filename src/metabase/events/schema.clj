@@ -76,15 +76,22 @@
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
 
-(mr/def ::publicize
+(mr/def ::publicize-dashboard
   [:map {:closed true}
    [:user-id pos-int?]
-   [:object-id pos-int?]])
+   [:object-id pos-int?]
+   [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
 
-(mr/def :event/dashboard-public-link-created ::publicize)
-(mr/def :event/dashboard-public-link-deleted ::publicize)
-(mr/def :event/card-public-link-created ::publicize)
-(mr/def :event/card-public-link-deleted ::publicize)
+(mr/def ::publicize-card
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]
+   [:object [:fn #(t2/instance-of? :model/Card %)]]])
+
+(mr/def :event/dashboard-public-link-created ::publicize-dashboard)
+(mr/def :event/dashboard-public-link-deleted ::publicize-dashboard)
+(mr/def :event/card-public-link-created ::publicize-card)
+(mr/def :event/card-public-link-deleted ::publicize-card)
 
 ;; user events
 
@@ -94,6 +101,13 @@
 
 (mr/def :event/user-login  ::user)
 (mr/def :event/user-joined ::user)
+
+(mr/def :event/user-credentials-revoked ::user)
+
+(mr/def :event/user-create
+  [:map {:closed true}
+   [:object [:map
+             [:id ms/PositiveInt]]]])
 
 (mr/def :event/user-invited
   [:map {:closed true}
@@ -113,6 +127,43 @@
      [:invitor [:map {:closed true}
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
+
+;; action events
+
+(mr/def ::action
+  [:map {:closed true}
+   [:user-id  [:maybe pos-int?]]
+   [:object   [:fn #(t2/instance-of? :model/Action %)]]])
+
+(mr/def :event/action-create ::action)
+(mr/def :event/action-update ::action)
+(mr/def :event/action-delete ::action)
+
+;; session events
+
+(mr/def :event/session-revoked
+  [:map {:closed true}
+   ;; the admin who revoked, and the user whose sessions they were. `:model` is passed explicitly because the object is
+   ;; a plain map rather than a Toucan instance, so the audit log cannot derive it.
+   [:user-id  pos-int?]
+   [:model    [:= :model/User]]
+   [:model-id pos-int?]
+   ;; one per-user row of a revoke by criteria: the criteria and how many of that user's sessions went, which the
+   ;; `:event/sessions-revoked` summary covers
+   [:details
+    [:map {:closed true}
+     [:criteria :map]
+     [:count    pos-int?]]]])
+
+(mr/def :event/sessions-revoked
+  ;; the one summary row a revoke by criteria writes. No `:model`: the call is about a set of sessions picked out by
+  ;; criteria, not about any one object.
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:details [:map {:closed true}
+              [:criteria  :map]
+              [:count     ms/IntGreaterThanOrEqualToZero]
+              [:remaining ms/IntGreaterThanOrEqualToZero]]]])
 
 ;; segment events
 

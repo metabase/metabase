@@ -6,6 +6,7 @@
    [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase.auth-identity.provider :as provider]
    [metabase.test :as mt]
+   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -103,13 +104,15 @@
             new-password "new-secure-password-123"]
         (provider/login! :provider/support-access-grant {:token token
                                                          :password new-password})
-        (let [updated-user (t2/select-one [:model/User :password] :id user-id)
-              updated-pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
+        (let [updated-pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
               updated-auth-identity (t2/select-one :model/AuthIdentity :id (:id auth-identity) :provider "support-access-grant")
               session (t2/select-one :model/Session :auth_identity_id (:id updated-auth-identity))]
           (is (some? (:expires_at session)))
           (is (= grant-end (:expires_at updated-pw-auth-identity)))
-          (is (= (get-in updated-pw-auth-identity [:credentials :password_hash]) (:password updated-user)))
+          (is (u.password/verify-password new-password
+                                          (get-in updated-pw-auth-identity [:credentials :password_salt])
+                                          (get-in updated-pw-auth-identity [:credentials :password_hash]))
+              "the new password is stored on the password AuthIdentity and verifies")
           (is (some? (get-in updated-auth-identity [:credentials :consumed_at]))))))))
 
 (deftest support-access-authenticate-inherits-from-emailed-secret-test

@@ -8,23 +8,6 @@ import { memo, useEffect } from "react";
 import { t } from "ttag";
 import { isObject } from "underscore";
 
-import {
-  useGetActionQuery,
-  useGetCardQuery,
-  useGetCollectionQuery,
-  useGetDashboardQuery,
-  useGetDatabaseQuery,
-  useGetDocumentQuery,
-  useGetSegmentQuery,
-  useGetTableQuery,
-  useGetTransformQuery,
-  useListMentionsQuery,
-} from "metabase/api";
-import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { Link } from "metabase/common/components/Link";
-import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
-import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Icon } from "metabase/ui";
@@ -32,14 +15,15 @@ import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/urls";
-import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
+import { getName } from "metabase/utils/name";
 import type {
   Card,
   Collection,
   Dashboard,
   Database,
   Document,
+  Measure,
   MentionableUser,
   Segment,
   Table,
@@ -48,13 +32,14 @@ import type {
 } from "metabase-types/api";
 
 import {
-  entityToUrlableModel,
   isMentionableUser,
   mbProtocolModelToSuggestionModel,
 } from "../shared/suggestionUtils";
 import type { SuggestionModel } from "../shared/types";
 
+import { EntitySmartLink } from "./EntitySmartLink";
 import styles from "./SmartLinkNode.module.css";
+import { useEntityData } from "./use-entity-data";
 
 export type SmartLinkEntity =
   | Card
@@ -66,6 +51,7 @@ export type SmartLinkEntity =
   | Document
   | WritebackAction
   | Segment
+  | Measure
   | MentionableUser;
 
 // Utility function to parse entity URLs and extract entityId and model
@@ -299,147 +285,8 @@ export const SmartLink = Node.create<{
   },
 });
 
-function assertUnreachable(value: never) {
-  console.warn(`Unhandled model type: ${value}`);
-}
-
-export const useEntityData = (
-  entityId: number | null,
-  model: SuggestionModel | null,
-) => {
-  const isCard = model && ["card", "dataset", "metric"].includes(model);
-  const cardQuery = useGetCardQuery(
-    { id: entityId!, ignore_error: true },
-    { skip: !entityId || !isCard },
-  );
-
-  const dashboardQuery = useGetDashboardQuery(
-    { id: entityId!, ignore_error: true },
-    { skip: !entityId || model !== "dashboard" },
-  );
-
-  const collectionQuery = useGetCollectionQuery(
-    { id: entityId!, ignore_error: true },
-    { skip: !entityId || model !== "collection" },
-  );
-
-  const tableQuery = useGetTableQuery(
-    { id: entityId! },
-    { skip: !entityId || model !== "table" },
-  );
-
-  const databaseQuery = useGetDatabaseQuery(
-    { id: entityId! },
-    { skip: !entityId || model !== "database" },
-  );
-
-  const documentQuery = useGetDocumentQuery(
-    {
-      id: entityId!,
-    },
-    {
-      skip: !entityId || model !== "document",
-    },
-  );
-
-  const transformQuery = useGetTransformQuery(entityId!, {
-    skip: !PLUGIN_TRANSFORMS.isEnabled || !entityId || model !== "transform",
-  });
-
-  const actionQuery = useGetActionQuery(
-    { id: entityId! },
-    { skip: !entityId || model !== "action" },
-  );
-
-  const segmentQuery = useGetSegmentQuery(entityId!, {
-    skip: !entityId || model !== "segment",
-  });
-
-  const usersQuery = useListMentionsQuery(undefined, {
-    skip: !entityId || model !== "user",
-  });
-
-  // Determine which query is active and return its state
-  switch (model) {
-    case "card":
-    case "dataset":
-    case "metric":
-      return {
-        entity: cardQuery.data,
-        isLoading: cardQuery.isLoading,
-        error: cardQuery.error,
-      };
-    case "dashboard":
-      return {
-        entity: dashboardQuery.data,
-        isLoading: dashboardQuery.isLoading,
-        error: dashboardQuery.error,
-      };
-    case "collection":
-      return {
-        entity: collectionQuery.data,
-        isLoading: collectionQuery.isLoading,
-        error: collectionQuery.error,
-      };
-    case "table":
-      return {
-        entity: tableQuery.data,
-        isLoading: tableQuery.isLoading,
-        error: tableQuery.error,
-      };
-    case "database":
-      return {
-        entity: databaseQuery.data,
-        isLoading: databaseQuery.isLoading,
-        error: databaseQuery.error,
-      };
-    case "document":
-      return {
-        entity: documentQuery.data,
-        isLoading: documentQuery.isLoading,
-        error: documentQuery.error,
-      };
-    case "transform":
-      return {
-        entity: transformQuery.data,
-        isLoading: transformQuery.isLoading,
-        error: transformQuery.error,
-      };
-    case "action":
-      return {
-        entity: actionQuery.data,
-        isLoading: actionQuery.isLoading,
-        error: actionQuery.error,
-      };
-    case "segment":
-      return {
-        entity: segmentQuery.data,
-        isLoading: segmentQuery.isLoading,
-        error: segmentQuery.error,
-      };
-    case "user": {
-      const user = usersQuery.data?.data.find((user) => user.id === entityId);
-
-      return {
-        entity: user ? { ...user, name: user.common_name } : null,
-        isLoading: usersQuery.isLoading,
-        error: usersQuery.error,
-      };
-    }
-    case "indexed-entity":
-    case "measure":
-    case "exploration":
-    case null:
-      return { entity: null, isLoading: false, error: null };
-    default:
-      assertUnreachable(model);
-      return { entity: null, isLoading: false, error: null };
-  }
-};
-
 export const SmartLinkComponent = memo(
   ({ node, updateAttributes }: NodeViewProps) => {
-    const getIcon = useGetIcon();
     const { entityId, model, label } = node.attrs;
 
     const {
@@ -497,7 +344,7 @@ export const SmartLinkComponent = memo(
       );
     }
 
-    if (model === "user" && isMentionableUser(entity)) {
+    if (isMentionableUser(entity)) {
       return (
         <NodeViewWrapper as="span" data-type="smart-link">
           <span className={styles.userMention}>@{entity.common_name}</span>
@@ -505,38 +352,18 @@ export const SmartLinkComponent = memo(
       );
     }
 
-    const entityUrlableModel = entityToUrlableModel(entity, model);
-    const entityUrl = modelToUrl(entityUrlableModel);
-
-    const iconData =
-      entity === cachedEntity
-        ? getIcon(cachedEntity)
-        : getIcon(
-            entityToObjectWithModel(
-              // Unjustified type cast. FIXME
-              entity as NonNullable<typeof networkEntity>,
-              model,
-            ),
-          );
-
     return (
       <NodeViewWrapper as="span" data-type="smart-link">
-        <Link
-          to={entityUrl || "#"}
-          target="_blank"
-          rel="noreferrer"
+        <EntitySmartLink
+          id={cachedEntity.id}
+          model={model}
+          name={getName(entity)}
           tabIndex={-1}
           onMouseUp={(e) => {
             // Stop tiptap from opening this link twice
             e.stopPropagation();
           }}
-          className={styles.smartLink}
-        >
-          <span className={styles.smartLinkInner}>
-            <EntityIcon {...iconData} className={styles.icon} />
-            {getName(entity)}
-          </span>
-        </Link>
+        />
       </NodeViewWrapper>
     );
   },
@@ -552,27 +379,3 @@ export const SmartLinkComponent = memo(
 );
 
 SmartLinkComponent.displayName = "SmartLinkComponent";
-
-function entityToObjectWithModel(
-  entity: SmartLinkEntity,
-  model: SuggestionModel | null,
-): ObjectWithModel {
-  return {
-    // Unjustified type cast. FIXME
-    model: ((entity as Dashboard).model || model || "") as IconModel,
-    // Unjustified type cast. FIXME
-    display: (entity as Card).display,
-    // Unjustified type cast. FIXME
-    is_personal: (entity as Collection).is_personal,
-  };
-}
-
-function getName(entity: { name?: string; display_name?: string }) {
-  if ("display_name" in entity && entity.display_name !== "") {
-    return entity.display_name;
-  }
-  if ("name" in entity && entity.name !== "") {
-    return entity.name;
-  }
-  return "";
-}

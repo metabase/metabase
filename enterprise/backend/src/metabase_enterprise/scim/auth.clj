@@ -1,17 +1,17 @@
 (ns metabase-enterprise.scim.auth
   (:require
+   [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.api.open-api :as open-api]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.util.password :as u.password]
-   [toucan2.core :as t2]))
+   [metabase.util.password :as u.password]))
 
 (defn- validate-scim-api-key
   "Checks whether the API key provided as a Bearer token in the request matches an API key
   in the database with the SCIM scope."
   [api-key]
   (boolean
-   (let [expected-api-key (-> (t2/select-one :model/ApiKey :scope :scim) :key)]
+   (let [expected-api-key (-> (scim.db/scim-api-key) :key)]
      (if (and api-key expected-api-key)
        (u.password/verify-password api-key "" expected-api-key)
        (mw.session/do-useless-hash)))))

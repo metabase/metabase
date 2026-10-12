@@ -12,7 +12,7 @@ redirect_from:
 
 Row and column security lets you give granular permissions for different groups of people. You can change what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
 
-You can use row and column security to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
+You can use row and column security to set up [self-service analytics](./embedding.md), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
 
 ![Row and column security](./images/row-and-column-level-security.png)
 
@@ -33,7 +33,7 @@ You can define up to one row and column security policy for each table/group com
 
 ## Types of row and column security
 
-Row and column security show specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
+Row and column security shows specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
 
 - [Restrict **rows**](#row-level-security-filter-by-a-column-in-the-table)
 - [Restrict **columns** and rows](#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) for specific people.
@@ -124,7 +124,7 @@ Metabase will display the results of the question in place of an original table 
 
 Aside from excluding rows and columns, you can also **display edited columns** (without changing the columns in your database).
 
-For example, you can create a "Edited Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
+For example, you can create an "Edited Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
 
 If you edit a column, the schema of the SQL question (the question you want to display instead of the table) must match the schema of the original table. That means the "Edited Accounts" SQL question must return the same number of columns and corresponding data types as the original Accounts table.
 
@@ -194,7 +194,7 @@ Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
 
 ### Advanced row-level security: filtering tables for people that have multiple IDs
 
-For example, say have a table like this:
+For example, say you have a table like this:
 
 | User_ID | Value |
 | ------- | ----- |
@@ -317,7 +317,7 @@ If you can't use SQL casting in Metabase, create a view in your database that co
 
 #### Option 3: Use transforms
 
-Use a [transform](../data-studio/transforms/transforms-overview.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead. You'll also need to block the original table.
+Use a [transform](../data-modeling/transforms/transforms-overview.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead. You'll also need to block the original table.
 
 ### People with row and column security can't create Slack subscriptions or alerts
 

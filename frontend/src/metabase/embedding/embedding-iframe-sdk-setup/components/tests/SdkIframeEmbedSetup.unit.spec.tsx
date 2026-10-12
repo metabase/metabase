@@ -4,7 +4,8 @@ import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { fireEvent, screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
@@ -33,6 +34,56 @@ describe("Embed flow > initial setup", () => {
   });
 });
 
+describe("Embed flow > enabling embedding from the Guest option", () => {
+  const guestSetup = (
+    options: Parameters<typeof setup>[0] & { hasLicense: boolean },
+  ) => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => options.hasLicense;
+
+    setup({ ...options, initialState: { isGuest: true } });
+  };
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("states the modular embedding terms on EE with a license", () => {
+    guestSetup({
+      hasLicense: true,
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: true,
+    });
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "To continue, enable modular embedding and agree to the usage conditions.",
+    );
+  });
+
+  it("only asks to enable on EE with a license once the terms are accepted", () => {
+    guestSetup({
+      hasLicense: true,
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: false,
+    });
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "Enable modular embedding to get started.",
+    );
+  });
+
+  it("states the guest embedding terms on EE without a license", () => {
+    guestSetup({
+      hasLicense: false,
+      modularEmbeddingEnabled: false,
+      showStaticEmbedTerms: true,
+    });
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "To continue, enable embedding and agree to the usage conditions.",
+    );
+  });
+});
+
 describe("Embed flow > misconfigured Site URL (EMB-1747)", () => {
   beforeEach(() => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
@@ -44,7 +95,7 @@ describe("Embed flow > misconfigured Site URL (EMB-1747)", () => {
 
   it("renders a Site URL mismatch error in the preview area when the configured Site URL origin doesn't match the current host", async () => {
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       siteUrl: "http://different-host.example:9999",
       initialState: {
         resourceType: "dashboard",
@@ -69,7 +120,7 @@ describe("Embed flow > misconfigured Site URL (EMB-1747)", () => {
 
   it("does not render the Site URL mismatch error when origins match", async () => {
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       siteUrl: window.location.origin,
       initialState: {
         resourceType: "dashboard",
@@ -116,7 +167,7 @@ describe("Embed flow > custom visualizations", () => {
     );
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       initialState: {
         resourceType: "question",
         resourceId: mockCard.id,
@@ -139,7 +190,7 @@ describe("Embed flow > custom visualizations", () => {
     );
   });
 
-  it("automatically allows the custom visualizations used by a dashboard opened from the embedding hub", async () => {
+  it("automatically allows the custom visualizations used by a dashboard opened from the setup guide", async () => {
     const dashboard = createMockDashboard({
       enable_embedding: true,
       dashcards: [
@@ -154,7 +205,7 @@ describe("Embed flow > custom visualizations", () => {
       ],
     });
 
-    setup({ simpleEmbeddingEnabled: true, dashboard });
+    setup({ modularEmbeddingEnabled: true, dashboard });
 
     await waitFor(() => {
       expect(window.metabaseConfig?.allowedCustomVisualizations).toEqual([
@@ -178,7 +229,7 @@ describe("Embed flow > Get Code Snippet", () => {
     jest.mocked(navigator.clipboard.writeText).mockClear();
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       jwtReady: true,
       initialState: { useExistingUserSession: false },
     });
@@ -199,6 +250,29 @@ describe("Embed flow > Get Code Snippet", () => {
       instanceUrl: window.location.origin,
     });
   });
+
+  it("tracks embed_wizard_code_copied when the snippet is copied without the button (EMB-2309)", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+
+    setup({
+      modularEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: true },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+    // A keyboard or context-menu copy never reaches the Copy code button, so
+    // the card tracks the snippet's own `copy` event too.
+    fireEvent.copy(await screen.findByTestId("embed-code-snippet"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "embed_wizard_code_copied",
+      event_detail:
+        "experience=dashboard,snippetType=frontend,authSubType=user-session",
+    });
+  });
 });
 
 describe("Embed flow > forward and backward navigation", () => {
@@ -211,7 +285,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates forward through the embed flow", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
     expect(screen.getByText("Authentication")).toBeInTheDocument();
 
@@ -245,7 +319,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates backward to the previous step", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
     // First step (experience + resource) > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -264,7 +338,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("hides the resource picker for exploration on the first step", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
     await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
@@ -280,7 +354,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("hides the authentication and resource cards when Exploration is selected", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
     expect(screen.getByText("Authentication")).toBeInTheDocument();
     expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
@@ -297,7 +371,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("hides the authentication card but keeps the resource card (as a collection picker) when Browser is selected", async () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
     expect(screen.getByText("Authentication")).toBeInTheDocument();
     expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
@@ -314,7 +388,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("renders the SSO radio above the Guest radio in the authentication card", () => {
-    setup({ simpleEmbeddingEnabled: true });
+    setup({ modularEmbeddingEnabled: true });
 
     const radios = screen.getAllByRole("radio");
     const ssoIndex = radios.findIndex((r) => r.getAttribute("value") === "sso");
@@ -329,7 +403,7 @@ describe("Embed flow > forward and backward navigation", () => {
 
   it("selects Guest when initialState.isGuest is true, even with SSO configured", () => {
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       jwtReady: true,
       initialState: { isGuest: true, useExistingUserSession: true },
     });
@@ -343,7 +417,7 @@ describe("Embed flow > forward and backward navigation", () => {
       /This embed will only work for local testing\. To get production ready code, configure/;
 
     it("shows a warning on the authentication card when SSO is selected but not configured", () => {
-      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+      setup({ modularEmbeddingEnabled: true, jwtReady: false });
 
       expect(screen.getByDisplayValue("sso")).toBeChecked();
       expect(screen.getByText("Authentication")).toBeInTheDocument();
@@ -351,7 +425,7 @@ describe("Embed flow > forward and backward navigation", () => {
     });
 
     it("hides the warning when Guest is selected", async () => {
-      setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+      setup({ modularEmbeddingEnabled: true, jwtReady: false });
 
       await userEvent.click(screen.getByRole("radio", { name: "Guest" }));
 
@@ -359,7 +433,7 @@ describe("Embed flow > forward and backward navigation", () => {
     });
 
     it("hides the warning when SSO is configured", () => {
-      setup({ simpleEmbeddingEnabled: true, jwtReady: true });
+      setup({ modularEmbeddingEnabled: true, jwtReady: true });
 
       expect(screen.queryByText(warningText)).not.toBeInTheDocument();
     });
@@ -367,7 +441,7 @@ describe("Embed flow > forward and backward navigation", () => {
     it.each(["Exploration", "Browser"])(
       "shows a warning on the experience card when %s is selected and SSO is not configured",
       async (experienceLabel) => {
-        setup({ simpleEmbeddingEnabled: true, jwtReady: false });
+        setup({ modularEmbeddingEnabled: true, jwtReady: false });
 
         await userEvent.click(
           screen.getByRole("radio", { name: new RegExp(experienceLabel) }),
@@ -380,7 +454,7 @@ describe("Embed flow > forward and backward navigation", () => {
     );
 
     it("hides the experience card warning when Exploration is selected and SSO is configured", async () => {
-      setup({ simpleEmbeddingEnabled: true, jwtReady: true });
+      setup({ modularEmbeddingEnabled: true, jwtReady: true });
 
       await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
@@ -389,7 +463,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("disables next and back buttons when simple embedding is disabled", () => {
-    setup({ simpleEmbeddingEnabled: false });
+    setup({ modularEmbeddingEnabled: false });
 
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
     expect(
@@ -410,7 +484,7 @@ describe("Embed flow > forward and backward navigation", () => {
     );
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       initialState: {
         resourceType: "question",
         resourceId: 456,
@@ -441,7 +515,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     );
 
     setup({
-      simpleEmbeddingEnabled: false,
+      modularEmbeddingEnabled: false,
       initialState: {
         resourceType: "question",
         resourceId: 456,
@@ -482,7 +556,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     );
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       hasEmailSetup: true,
       initialState: {
         resourceType: "question",
@@ -514,7 +588,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
 
   it("disables Pro checkboxes for OSS users (dashboard)", () => {
     setup({
-      simpleEmbeddingEnabled: false,
+      modularEmbeddingEnabled: false,
       initialState: {
         resourceType: "dashboard",
         resourceId: 1,
@@ -538,7 +612,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
 
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       hasEmailSetup: true,
     });
 
@@ -574,7 +648,7 @@ describe("Embed flow > Metabot", () => {
 
   it("toggles the save option for Metabot", async () => {
     setup({
-      simpleEmbeddingEnabled: true,
+      modularEmbeddingEnabled: true,
       metabotEnabled: true,
     });
 

@@ -17,7 +17,7 @@
   width: 100%;
   border-collapse: collapse;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
 }
 
 .tableHeader {

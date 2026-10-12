@@ -6,13 +6,13 @@ import {
   useListNotificationsQuery,
   useListSubscriptionsQuery,
 } from "metabase/api";
-import type { NotificationListItem } from "metabase/notifications/types";
-import { useSelector } from "metabase/redux";
-import { Outlet, useNavigate } from "metabase/router";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import type { NotificationListItem } from "metabase/notifications/types";
+import { useSelector } from "metabase/redux";
+import { Outlet, useNavigate } from "metabase/router";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 
 import { getArchiveUrl, getHelpUrl, getUnsubscribeUrl } from "../../actions";

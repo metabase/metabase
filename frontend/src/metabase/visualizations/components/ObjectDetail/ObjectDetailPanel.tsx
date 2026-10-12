@@ -11,10 +11,10 @@ import {
   datasetApi,
   skipToken,
   useListActionsQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { Loader, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -263,9 +263,10 @@ export function ObjectDetailPanel({
       : skipToken,
   );
 
-  const { data: databases = [] } = useDatabaseListQuery({
-    enabled: areImplicitActionsEnabled,
-  });
+  const { data: databasesResponse } = useListDatabasesQuery(
+    areImplicitActionsEnabled ? undefined : skipToken,
+  );
+  const databases = databasesResponse?.data ?? [];
 
   const actionItems = areImplicitActionsEnabled
     ? getActionItems({

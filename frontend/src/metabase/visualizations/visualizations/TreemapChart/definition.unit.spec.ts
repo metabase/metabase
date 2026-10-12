@@ -1,8 +1,10 @@
 import { checkNotNull } from "metabase/utils/types";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
-import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
 import { registerVisualizations } from "metabase/visualizations/register";
+import {
+  ChartSettingsError,
+  getComputedSettings,
+  getSettingsWidgets,
+} from "metabase/viz-core";
 import type { RowValues } from "metabase-types/api/dataset";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {

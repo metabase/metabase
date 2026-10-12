@@ -85,7 +85,7 @@ Currently, Metabase doesn't tokenize strings for translations, so you should inc
 
 For example, if you have a dashboard called "Monthly Sales", it's not sufficient to have translations of "Monthly" and "Sales" - you also need to include "Monthly Sales" as a full string.
 
-Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") into the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
+Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") in the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
 
 ## Translations are case-insensitive
 
@@ -109,7 +109,7 @@ If the strings you want to translate include markdown formatting, you'll need to
 
 ## The AI chat component isn't translated
 
-One exception is that Metabase won't translate the text in the [AI chat component](./sdk/ai-chat.md). While Metabot can understand other languages, it works best in English.
+One exception is that Metabase won't translate the text in the [AI chat component](./ai-chat.md). While Metabot can understand other languages, it works best in English.
 
 ## Further reading
 

@@ -31,7 +31,7 @@
   [arguments]
   (if (string? arguments)
     (try
-      (json/decode+kw arguments)
+      (json/decode arguments)
       (catch Exception e
         (log/warnf "Failed to decode tool call arguments: %s" (ex-message e))
         arguments))

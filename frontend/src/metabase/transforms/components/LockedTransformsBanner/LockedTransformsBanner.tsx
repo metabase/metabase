@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux/hooks";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 
 export const LockedTransformsBanner = () => {
@@ -16,9 +16,9 @@ export const LockedTransformsBanner = () => {
   return (
     <Flex
       bg="background_page-tertiary"
-      p="lg"
+      p="xl"
       mb="sm"
-      bdrs="md"
+      bdrs="sm"
       lh="lg"
       align="center"
       justify="space-between"
@@ -39,7 +39,7 @@ export const LockedTransformsBanner = () => {
         )}
       </Stack>
       {canPurchaseTransforms && (
-        <Box ml="md">
+        <Box ml="lg">
           <Button
             component={ExternalLink}
             href={storeUrl}

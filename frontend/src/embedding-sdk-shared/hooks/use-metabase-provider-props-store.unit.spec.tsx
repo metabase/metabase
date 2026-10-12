@@ -7,6 +7,10 @@ import { useMetabaseProviderPropsStore } from "./use-metabase-provider-props-sto
 
 const PROPS_STORE_KEY = "METABASE_PROVIDER_PROPS_STORE" as const;
 
+type TestProps = {
+  authConfig?: { metabaseInstanceUrl?: string };
+};
+
 const resetWindow = () => {
   // Unjustified type cast. FIXME
   delete (window as any)[PROPS_STORE_KEY];
@@ -26,7 +30,7 @@ const ParentWithCleanup = ({ children }: { children: React.ReactNode }) => {
 };
 
 const Consumer = () => {
-  const { state } = useMetabaseProviderPropsStore();
+  const { state } = useMetabaseProviderPropsStore<TestProps>();
   return (
     <div data-testid="instance-url">
       {state.props?.authConfig?.metabaseInstanceUrl ?? "none"}
@@ -52,7 +56,7 @@ describe("useMetabaseProviderPropsStore", () => {
     expect(screen.getByTestId("instance-url")).toHaveTextContent("none");
 
     act(() => {
-      ensureMetabaseProviderPropsStore().setProps({
+      ensureMetabaseProviderPropsStore<TestProps>().setProps({
         authConfig: { metabaseInstanceUrl: "https://example.com" },
       });
     });
@@ -86,7 +90,7 @@ describe("useMetabaseProviderPropsStore", () => {
     render(<App />);
 
     act(() => {
-      ensureMetabaseProviderPropsStore().setProps({
+      ensureMetabaseProviderPropsStore<TestProps>().setProps({
         authConfig: { metabaseInstanceUrl: "https://before.com" },
       });
     });
@@ -102,7 +106,7 @@ describe("useMetabaseProviderPropsStore", () => {
     fireEvent.click(screen.getByTestId("toggle"));
 
     act(() => {
-      ensureMetabaseProviderPropsStore().setProps({
+      ensureMetabaseProviderPropsStore<TestProps>().setProps({
         authConfig: { metabaseInstanceUrl: "https://after.com" },
       });
     });

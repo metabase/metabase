@@ -5,9 +5,9 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (org.quartz DisallowConcurrentExecution)))
 
@@ -30,7 +30,7 @@
   []
   (log/infof "Attempting to delete remote_sync_task records older than %d days." retention-days)
   (let [cutoff-date (t/minus (t/offset-date-time) (t/days retention-days))
-        deleted-count (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff-date]})]
+        deleted-count (remote-sync.db/delete-tasks-started-before! cutoff-date)]
     (log/infof "Deleted %d remote_sync_task records. Cleanup successful." deleted-count)
     deleted-count))
 

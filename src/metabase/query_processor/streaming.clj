@@ -1,5 +1,5 @@
 (ns metabase.query-processor.streaming
-  (:refer-clojure :exclude [every? some mapv not-empty])
+  (:refer-clojure :exclude [some mapv not-empty])
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
@@ -17,7 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv some not-empty]])
+   [metabase.util.performance :refer [mapv some not-empty]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -58,18 +58,6 @@
                   (assoc :name unique-name)))))
         cols))
 
-(defn- validate-table-columns
-  "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by
-  field ref or name. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
-  Otherwise returns `table-columns`."
-  [table-columns cols]
-  (let [col-field-refs (set (remove nil? (map :field_ref cols)))
-        col-names      (set (remove nil? (map :name cols)))]
-    (when (every? (fn [table-col] (or (col-field-refs (::mb.viz/table-column-field-ref table-col))
-                                      (col-names (::mb.viz/table-column-name table-col))))
-                  table-columns)
-      table-columns)))
-
 (defn- not-explicitly-excluded-columns
   "If a column is not explicitly excluded (it doesn't have a row in `table-columns` that marks it as disabled), we
   should include it. This way, if e.g. the query has changed from `SELECT id FROM ...` to `SELECT id, created_at FROM
@@ -109,9 +97,13 @@
     ;; If the columns contain a pivot-grouping, we're exporting a pivot and the cols order is not used,
     ;; so we can just pass the indices in order.
     (range (count cols))
-    (let [table-columns'     (or (when-let [tcs (seq (validate-table-columns table-columns cols))]
+    (let [;; Entries in `table-columns` that don't match any result column (e.g. a stale column left over from a
+          ;; previous version of the query) are silently dropped per-entry: their `cols-index` lookups below produce
+          ;; `nil`, which is filtered out. This way visibility (`enabled false`) and ordering still apply to the
+          ;; entries that do match, instead of being discarded all-or-nothing (#19465, #75791).
+          table-columns'     (or (when (seq table-columns)
                                    (concat
-                                    (filter ::mb.viz/table-column-enabled tcs)
+                                    (filter ::mb.viz/table-column-enabled table-columns)
                                     (not-explicitly-excluded-columns table-columns cols)))
                                  ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                  ;; that retains the original column ordering in `cols`

@@ -6,7 +6,6 @@
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.walk :as lib.walk]
@@ -14,23 +13,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
-
-(mr/def ::field-id-or-name->filters
-  [:map-of [:or ::lib.schema.id/field :string] ::lib.schema/filters])
-
-(mu/defn- filters->field-map :- ::field-id-or-name->filters
-  "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses the reference
-  it."
-  [filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
-  (reduce
-   (partial merge-with concat)
-   {}
-   (for [subclause        (match/match-many filters [#{:between :< :<= :> :>=} & _] &match)
-         field-id-or-name (match/match-many subclause [:field _opts field-id-or-name] field-id-or-name)]
-     {field-id-or-name [subclause]})))
 
 (mu/defn- extract-bounds :- [:map [:min-value number?] [:max-value number?]]
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
@@ -38,26 +22,12 @@
   given field."
   [field-id-or-name          :- [:maybe [:or ::lib.schema.id/field :string]]
    fingerprint               :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
-   field-id-or-name->filters :- ::field-id-or-name->filters]
-  (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
-        filter-clauses                     (get field-id-or-name->filters field-id-or-name)
-        ;; [:between <field> <min> <max>] or [:< <field> <x>]
-        user-maxes                         (match/match-many filter-clauses
-                                             [#{:< :<= :between} _opts & args] (last args))
-        user-mins                          (match/match-many filter-clauses
-                                             [#{:> :>= :between} _opts _field min-val & _] min-val)
-        min-value                          (or (when (seq user-mins)
-                                                 (apply max user-mins))
-                                               global-min)
-        max-value                          (or (when (seq user-maxes)
-                                                 (apply min user-maxes))
-                                               global-max)]
-    (when-not (and min-value max-value)
+   field-id-or-name->filters :- ::lib.binning.util/field-id-or-name->filters]
+  (or (lib.binning.util/extract-bounds field-id-or-name fingerprint field-id-or-name->filters)
       (throw (ex-info (tru "Unable to bin Field without a min/max value (missing or incomplete fingerprint)")
                       {:type             qp.error-type/invalid-query
                        :field-id-or-name field-id-or-name
-                       :fingerprint      fingerprint})))
-    {:min-value min-value, :max-value max-value}))
+                       :fingerprint      fingerprint}))))
 
 (mu/defn- update-binned-field :- :mbql.clause/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
@@ -65,7 +35,7 @@
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
   [query                                                        :- ::lib.schema/query
    path                                                         :- ::lib.walk/path
-   field-id-or-name->filters                                    :- ::field-id-or-name->filters
+   field-id-or-name->filters                                    :- ::lib.binning.util/field-id-or-name->filters
    [_tag {:keys [binning], :as _opts} id-or-name :as field-ref] :- :mbql.clause/field]
   (let [metadata                                   (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)
         {:keys [min-value max-value], :as min-max} (extract-bounds id-or-name
@@ -94,7 +64,7 @@
   (let [path->field-id-or-name->filters (memoize
                                          (fn [path]
                                            (let [stage (get-in query path)]
-                                             (filters->field-map (:filters stage)))))]
+                                             (lib.binning.util/filters->field-map (:filters stage)))))]
     (lib.walk/walk-clauses
      query
      (fn [query path-type path clause]

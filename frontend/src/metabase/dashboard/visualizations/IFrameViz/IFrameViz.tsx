@@ -5,16 +5,17 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
-} from "metabase/visualizations/lib/iframe";
+} from "metabase/viz-core";
 import type {
   Dashboard,
   VirtualDashboardCard,
@@ -97,7 +98,7 @@ function IFrameVizInner({
             </Text>{" "}
             <Box ml="auto">
               <Button
-                size="compact-md"
+                size="sm"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
@@ -162,8 +163,8 @@ function IFrameVizInner({
 function ForbiddenDomainError({ url }: { url: string }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    "configuring-metabase/settings",
-    { anchor: "allowed-domains-for-iframes-in-dashboards" },
+    "configuring-metabase/domains",
+    { anchor: "allow-iframes-from-a-site-in-dashboards" },
   );
 
   const domain = useMemo(() => {
@@ -177,7 +178,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   const renderMessage = () => {
     if (isAdmin) {
-      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
+      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to={`${Urls.domainsSettings()}#allowed-iframe-hosts`} target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
     }
     return showMetabaseLinks
       ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>}.`
@@ -194,7 +195,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText c="text-primary" px="lg" mt="md">
+      <InteractiveText c="text-primary" px="xl" mt="lg">
         {renderMessage()}
       </InteractiveText>
     </Box>

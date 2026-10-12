@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -513,6 +514,25 @@
                 (mt/run-mbql-query checkins
                   {:aggregation [[:count]]
                    :filter      [:> $__time "2015-10-01T00:00:00Z"]}))))))))
+
+(deftest ^:parallel host-and-port-cannot-add-connection-properties-test
+  ;; both are written into the Avatica connect string, where `;` separates properties and quotes group them
+  (testing "a host or port carrying connect-string syntax is refused"
+    (doseq [details [{:host "http://localhost;truststore=/tmp/x" :port 8082}
+                     {:host "http://localhost" :port "8082;truststore=/tmp/x"}
+                     {:host "http://localhost'" :port 8082}
+                     {:host "http://localhost\"" :port 8082}
+                     {:host "http://local host" :port 8082}
+                     {:host "http://localhost" :port "80 82"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)invalid"
+                              (sql-jdbc.conn/connection-details->spec :druid-jdbc details))))))
+  (testing "ordinary hosts and ports are accepted"
+    (doseq [[details subname] [[{:host "http://localhost" :port 8082}
+                                "url=http://localhost:8082/druid/v2/sql/avatica/;transparent_reconnection=true"]
+                               [{:host "https://druid.example.com" :port "8082"}
+                                "url=https://druid.example.com:8082/druid/v2/sql/avatica/;transparent_reconnection=true"]]]
+      (is (= subname (:subname (sql-jdbc.conn/connection-details->spec :druid-jdbc details)))))))
 
 (deftest ssh-tunnel-test
   (mt/test-driver

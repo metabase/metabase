@@ -67,13 +67,6 @@ export interface ParameterSettingsProps {
   editingParameterInlineDashcard?: DashboardCard;
 }
 
-const parameterSections = getDashboardParameterSections();
-const dataTypeSectionsData = parameterSections.map((section) => ({
-  label: section.name,
-  value: section.id,
-}));
-const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
-
 export const ParameterSettings = ({
   parameter,
   editingParameterInlineDashcard,
@@ -90,6 +83,13 @@ export const ParameterSettings = ({
   embeddedParameterVisibility,
   hasMapping,
 }: ParameterSettingsProps): JSX.Element => {
+  const parameterSections = getDashboardParameterSections();
+  const dataTypeSectionsData = parameterSections.map((section) => ({
+    label: section.name,
+    value: section.id,
+  }));
+  const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
+
   const dispatch = useDispatch();
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
   // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
@@ -162,11 +162,11 @@ export const ParameterSettings = ({
       label: option.menuName ?? option.name,
       value: option.type,
     }));
-  }, [sectionId]);
+  }, [sectionId, parameterSections]);
 
   return (
     <Box p="1.5rem 1rem 0.5rem">
-      <Box mb="xl">
+      <Box mb="xxl">
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
           onChange={handleLabelChange}
@@ -178,7 +178,7 @@ export const ParameterSettings = ({
       </Box>
       {sectionId && (
         <>
-          <Box mb="xl">
+          <Box mb="xxl">
             <SettingLabel>{t`Filter or parameter type`}</SettingLabel>
             <Select
               data={dataTypeSectionsData}
@@ -187,7 +187,7 @@ export const ParameterSettings = ({
             />
           </Box>
           {filterOperatorData.length > 1 && (
-            <Box mb="xl">
+            <Box mb="xxl">
               <SettingLabel>{t`Filter operator`}</SettingLabel>
               <Select
                 data={filterOperatorData}
@@ -199,7 +199,7 @@ export const ParameterSettings = ({
         </>
       )}
       {isTemporalUnitParameter(parameter) && (
-        <Box mb="xl">
+        <Box mb="xxl">
           <SettingLabel>{t`Time grouping options`}</SettingLabel>
           <TemporalUnitSettings
             parameter={parameter}
@@ -208,7 +208,7 @@ export const ParameterSettings = ({
         </Box>
       )}
       {canUseCustomSource(parameter) && (
-        <Box mb="xl">
+        <Box mb="xxl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
           <ValuesSourceSettings
             parameter={parameter}
@@ -219,13 +219,13 @@ export const ParameterSettings = ({
       )}
 
       {isSingleOrMultiSelectable(parameter) && (
-        <Box mb="xl">
+        <Box mb="xxl">
           <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio.Group
             value={isMultiValue}
             onChange={(val) => onChangeIsMultiSelect(val === "multi")}
           >
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Radio
                 checked={isMultiValue === "multi"}
                 label={t`Multiple values`}
@@ -241,7 +241,7 @@ export const ParameterSettings = ({
         </Box>
       )}
 
-      <Box mb="lg">
+      <Box mb="xl">
         <SettingLabel id="default-value-label">
           {t`Default value`}
           {parameter.required &&

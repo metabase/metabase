@@ -1,6 +1,6 @@
 .root {
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
 
   &:not(:last-child) {
     margin-bottom: 1.25rem;

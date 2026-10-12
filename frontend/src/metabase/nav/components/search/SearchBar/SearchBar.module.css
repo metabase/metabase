@@ -65,7 +65,7 @@
     &.active {
       width: 100%;
       border-color: var(--mb-color-border-neutral);
-      border-radius: var(--mantine-radius-sm);
+      border-radius: var(--mantine-radius-xs);
       justify-content: flex-start;
     }
   }
@@ -95,7 +95,7 @@
 @media screen and (--breakpoint-min-sm) {
   .container {
     max-width: 50em;
-    border-radius: var(--mantine-radius-sm);
+    border-radius: var(--mantine-radius-xs);
     justify-content: flex-start;
   }
 

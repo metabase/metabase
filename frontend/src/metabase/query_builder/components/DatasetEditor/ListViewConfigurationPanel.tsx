@@ -1,17 +1,24 @@
 import { useCallback, useMemo } from "react";
 
-import { updateQuestion as updateQuestionAction } from "metabase/query_builder/actions";
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { useDispatch } from "metabase/redux";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { ListViewConfiguration } from "metabase/visualizations/visualizations/List/components/ListView";
+import {
+  type ComputedVisualizationSettings,
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { IconName, RawSeries, Series } from "metabase-types/api";
+import {
+  type IconName,
+  type RawSeries,
+  type Series,
+  isConcreteTableId,
+} from "metabase-types/api";
+
+import { updateQuestion as updateQuestionAction } from "../../actions";
 
 export function getComputedVisualizationSettings(
   series: Series | null,
@@ -55,17 +62,21 @@ export const ListViewConfigurationPanel = ({
     return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
   }, [data, question]);
 
-  const entityType = useMemo(() => {
+  // A saved question's virtual table has no entity type, so only a real table
+  // is worth asking for.
+  const sourceTableId = useMemo(() => {
     try {
-      const query = question.query();
-      const sourceTableId = Lib.sourceTableOrCardId(query);
-      const table = question.metadata().table(sourceTableId);
-      // entity_type exists in the database but not in the TypeScript types
-      return (table as any)?.entity_type;
+      const id = Lib.sourceTableOrCardId(question.query());
+      return id != null && isConcreteTableId(id) ? id : undefined;
     } catch {
       return undefined;
     }
   }, [question]);
+
+  const { data: table } = useGetTableQuery(
+    sourceTableId != null ? { id: sourceTableId } : skipToken,
+  );
+  const entityType = table?.entity_type ?? undefined;
 
   const handleChange = useCallback(
     ({

@@ -1,8 +1,7 @@
+import { HttpResponse, http } from "msw";
+
+import { createMockState } from "__support__/state";
 import { ReduxProvider } from "__support__/storybook";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 
 import { DatabaseForm } from "./DatabaseForm";
 import { TEST_ENGINES } from "./tests/setup";
@@ -10,13 +9,16 @@ import { TEST_ENGINES } from "./tests/setup";
 export default {
   title: "App/Databases/DatabaseForm",
   component: DatabaseForm,
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/setting/engines", () => HttpResponse.json(TEST_ENGINES)),
+      ],
+    },
+  },
 };
 
-const initialState = createMockState({
-  settings: createMockSettingsState({
-    engines: TEST_ENGINES,
-  }),
-});
+const initialState = createMockState();
 
 export const Default = () => (
   <ReduxProvider storeInitialState={initialState}>

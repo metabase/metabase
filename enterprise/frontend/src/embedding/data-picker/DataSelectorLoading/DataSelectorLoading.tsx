@@ -1,11 +1,15 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box } from "metabase/ui";
 
-import type { DataSelectorSectionHeaderProps } from "../DataSelectorSectionHeader";
-import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
+import {
+  DataSelectorSectionHeader,
+  type DataSelectorSectionHeaderProps,
+} from "../DataSelectorSectionHeader";
 import { CONTAINER_WIDTH } from "../constants";
 
-const DataSelectorLoading = ({ header }: DataSelectorSectionHeaderProps) =>
+export const DataSelectorLoading = ({
+  header,
+}: DataSelectorSectionHeaderProps) =>
   header ? (
     <Box component="section" w={CONTAINER_WIDTH}>
       <DataSelectorSectionHeader header={header} />
@@ -14,6 +18,3 @@ const DataSelectorLoading = ({ header }: DataSelectorSectionHeaderProps) =>
   ) : (
     <LoadingAndErrorWrapper loading />
   );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorLoading;

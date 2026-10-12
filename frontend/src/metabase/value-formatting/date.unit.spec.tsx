@@ -1,4 +1,4 @@
-import dayjs from "dayjs";
+import { dayjs, loadDayjsLocale } from "metabase/dayjs";
 
 import {
   DATE_RANGE_FORMAT_SPECS,
@@ -8,8 +8,8 @@ import {
   formatDateTimeWithUnit,
 } from "./date";
 
-import "dayjs/locale/es";
-import "dayjs/locale/fr";
+loadDayjsLocale("es");
+loadDayjsLocale("fr");
 
 describe("formatDateTimeRangeWithUnit", () => {
   afterEach(() => {
@@ -46,7 +46,7 @@ describe("formatDateTimeRangeWithUnit", () => {
             );
 
             if (verboseOutput) {
-              // eslint-disable-next-line jest/no-conditional-expect
+              // eslint-disable-next-line jest-js/no-conditional-expect
               expect(formatDateTimeRangeWithUnit(input, unit)).toBe(
                 verboseOutput,
               );

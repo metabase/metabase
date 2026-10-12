@@ -6,54 +6,28 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { getAccentColors } from "metabase/ui/colors/groups";
-import type { AccentColorOptions } from "metabase/ui/colors/types";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { getEventTarget } from "metabase/utils/dom";
 import { isEmpty } from "metabase/utils/validate";
-import type { Series } from "metabase-types/api";
+import type {
+  ChartSettingSeriesOrderItem,
+  ChartSettingSeriesOrderProps,
+} from "metabase/viz-core";
 
 import { ChartSettingMessage } from "./ChartSettingMessage";
-import {
-  ChartSettingOrderedItems,
-  type SortableItem as SortableChartSettingOrderedItem,
-} from "./ChartSettingOrderedItems";
-
-export { SortableChartSettingOrderedItem };
-
-export interface SortableItem {
-  key: string;
-  enabled: boolean;
-  name: string;
-  color?: string;
-  hidden?: boolean;
-  hideSettings?: boolean;
-}
-
-export type ChartSettingSeriesOrderProps = {
-  onChange: (rows: SortableItem[]) => void;
-  value: SortableItem[];
-  onShowWidget: (
-    widget: { id?: string; props?: { seriesKey: string } },
-    ref: HTMLElement | undefined,
-  ) => void;
-  series: Series;
-  hasEditSettings: boolean;
-  onChangeSeriesColor: (seriesKey: string, color: string) => void;
-  onSortEnd: (newItems: SortableItem[]) => void;
-  isSortable?: boolean;
-  accentColorOptions?: AccentColorOptions;
-  getItemColor?: (item: SortableChartSettingOrderedItem) => string | undefined;
-  addButtonLabel?: string;
-  searchPickerPlaceholder?: string;
-  groupedAfterIndex?: number;
-  otherColor?: string;
-  otherSettingWidgetId?: string;
-  onOtherColorChange?: (newColor: string) => void;
-  truncateAfter?: number;
-};
+import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 
 export const ChartSettingSeriesOrder = ({
   onChange,
@@ -109,7 +83,7 @@ export const ChartSettingSeriesOrder = ({
   const canAddSeries = hiddenItems.length > 0;
 
   const toggleDisplay = useCallback(
-    (selectedItem: SortableItem) => {
+    (selectedItem: ChartSettingSeriesOrderItem) => {
       const index = orderedItems.findIndex(
         (item) => item.key === selectedItem.key,
       );
@@ -133,12 +107,12 @@ export const ChartSettingSeriesOrder = ({
     [orderedItems, onChange, onSortEnd],
   );
 
-  const getItemTitle = useCallback((item: SortableItem) => {
-    return isEmpty(item.name) ? NULL_DISPLAY_VALUE : item.name;
+  const getItemTitle = useCallback((item: ChartSettingSeriesOrderItem) => {
+    return isEmpty(item.name) ? getNullDisplayValue() : item.name;
   }, []);
 
   const handleOnEdit = useCallback(
-    (item: SortableItem, ref: HTMLElement | undefined) => {
+    (item: ChartSettingSeriesOrderItem, ref: HTMLElement | undefined) => {
       onShowWidget(
         {
           props: {
@@ -152,8 +126,12 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleColorChange = useCallback(
-    (item: SortableItem, color: string) => {
-      onChangeSeriesColor(item.key, color);
+    (
+      item: ChartSettingSeriesOrderItem,
+      hexValue: string,
+      colorName?: string,
+    ) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );
@@ -169,7 +147,10 @@ export const ChartSettingSeriesOrder = ({
     [hiddenItems, toggleDisplay],
   );
 
-  const getId = useCallback((item: SortableItem) => item.key, []);
+  const getId = useCallback(
+    (item: ChartSettingSeriesOrderItem) => item.key,
+    [],
+  );
 
   const handleOtherSeriesSettingsClick = useCallback(
     (e: React.MouseEvent) => {
@@ -187,16 +168,17 @@ export const ChartSettingSeriesOrder = ({
             <Group p={4} gap="sm">
               <ColorSelector
                 value={otherColor ?? color("text-disabled")}
-                colors={getAccentColors()}
+                colors={getNamedAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
               />
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
-              size="compact-md"
-              color="text-secondary"
               variant="subtle"
+              color="neutral"
+              size="sm"
               leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
@@ -213,7 +195,7 @@ export const ChartSettingSeriesOrder = ({
   ]);
 
   return (
-    <Box pl="md" pb="sm">
+    <Box pl="lg" pb="sm">
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems
@@ -231,24 +213,26 @@ export const ChartSettingSeriesOrder = ({
             getItemColor={getItemColor}
             dividers={dividers}
           />
-          {truncatedItems.length > 0 ? (
-            <div>
+          <Stack gap="md" mt="md" align="flex-start">
+            {truncatedItems.length > 0 && (
               <Button
-                variant="subtle"
+                variant="transparent"
+                size="compact-md"
                 onClick={() => setIsListTruncated(false)}
               >
                 {t`${truncatedItems.length} more series`}
               </Button>
-            </div>
-          ) : null}
-          {canAddSeries && !isSeriesPickerVisible && (
-            <Button
-              variant="subtle"
-              onClick={() => setSeriesPickerVisible(true)}
-            >
-              {addButtonLabel}
-            </Button>
-          )}
+            )}
+            {canAddSeries && !isSeriesPickerVisible && (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                onClick={() => setSeriesPickerVisible(true)}
+              >
+                {addButtonLabel}
+              </Button>
+            )}
+          </Stack>
           {isSeriesPickerVisible && (
             <Select
               dropdownOpened

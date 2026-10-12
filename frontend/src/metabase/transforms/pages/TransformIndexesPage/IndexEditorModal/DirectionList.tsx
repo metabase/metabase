@@ -24,7 +24,7 @@ export function DirectionList({
   disabled,
 }: DirectionListProps) {
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Stack gap="sm">
         <Text fw="bold">{t`Sort order for each column to be stored in`}</Text>
         {columns.map((column) => (

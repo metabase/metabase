@@ -15,7 +15,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
-   [metabase.notification.task.send :as task.notification]
+   [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -120,6 +120,7 @@
 
 (def default-card-name "Card notification test card")
 
+;; the `!` calls only create and delete this helper's own temp notification, so parallel use is safe
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-temp-notification
   "Create a temporary notification for testing."
@@ -260,8 +261,8 @@
   [subscription-id]
   (map
    #(select-keys % [:key :schedule :data :timezone])
-   (task/existing-triggers @#'task.notification/send-notification-job-key
-                           (#'task.notification/send-notification-trigger-key subscription-id))))
+   (task/existing-triggers notification.task.send-trigger/send-notification-job-key
+                           (#'notification.task.send-trigger/send-notification-trigger-key subscription-id))))
 
 (defn notification-triggers
   "Return the quartz triggers for a notification."
@@ -274,7 +275,7 @@
   ([subscription-id cron-schedule]
    (subscription->trigger-info subscription-id cron-schedule "UTC"))
   ([subscription-id cron-schedule timezone]
-   {:key      (.getName ^org.quartz.TriggerKey (#'task.notification/send-notification-trigger-key subscription-id))
+   {:key      (.getName ^org.quartz.TriggerKey (#'notification.task.send-trigger/send-notification-trigger-key subscription-id))
     :schedule cron-schedule
     :data     {"subscription-id" subscription-id}
     :timezone timezone}))

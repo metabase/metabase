@@ -10,7 +10,8 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.util.log :as log]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -24,7 +25,7 @@
   `source-card:`, so the schema deliberately omits `:source_entity` and `:referenced_entities`."
   [:map {:closed true}
    [:reasoning :string]
-   [:query :map]
+   [:query construct/LLMExternalQuery]
    [:title {:optional true} [:maybe :string]]
    [:display {:optional true
               :description "Visualization type for displaying the query results in Slack. Required in practice whenever the user asks for a chart or graph, and it must match any requested chart type. Valid values: 'table', 'bar', 'line', 'pie', 'area', 'row', 'scatter', 'funnel'. Use requested chart types like 'line', 'bar', 'area', 'pie', 'scatter', 'funnel', 'row', or 'table' when they fit the query. Omitting this field falls back to Metabase's default table display, so do not omit it for chart or graph requests. Only omit it when you intentionally want a plain table and the user did not request a chart type."}
@@ -41,7 +42,9 @@
   tool."
   [{:keys [_reasoning query title display]} :- slackbot-query-schema]
   (try
-    (let [query-result (construct/execute-representations-query query)
+    (let [query-result (construct/execute-representations-query
+                        query
+                        {:recovery-hint recovery-hints/recovery-hint})
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [metabase-link (streaming/query->question-url (:query structured) display)
@@ -57,7 +60,4 @@
            :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
         query-result))
     (catch Exception e
-      (log/errorf "Failed to construct slackbot notebook query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-or-api-error e))))

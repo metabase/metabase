@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
+import { getUserId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserId } from "metabase/selectors/user";
 import type { SearchResult } from "metabase-types/api";
 
 import type { SdkIframeEmbedSetupRecentItem } from "../types";

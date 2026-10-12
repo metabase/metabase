@@ -6,12 +6,15 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -26,11 +29,11 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
 (defn- validate-mbql5-definition
-  "Validate that an MBQL 5 segment definition has the correct structure."
+  "Validate that an MBQL 5 segment definition has the correct structure. Normalizing a definition that cannot be made
+  into a query yields an empty map, which is as invalid as any other broken definition."
   [definition]
-  (when (seq definition)
-    (mu/validate-throw ::segments.schema/segment definition)
-    definition))
+  (mu/validate-throw ::segments.schema/definition definition)
+  definition)
 
 (defn- normalize-segment-definition
   "Normalize segment definition.
@@ -42,10 +45,14 @@
   [definition table-id database-id]
   (if (seq definition)
     (u/prog1 (-> (case (lib/normalized-mbql-version definition)
-                   (:mbql-version/mbql5 :mbql-version/legacy)
+                   :mbql-version/mbql5
+                   (lib/normalize ::lib.schema/query definition)
+
+                   :mbql-version/legacy
                    definition
                    ;; default MBQL4 fragment
-                   (let [definition
+                   (let [definition (update-keys definition keyword)
+                         definition
                          (if (:aggregation definition)
                            (do
                              (log/warn "Stripping :aggregation from MBQL4 segment definition during migration")
@@ -62,7 +69,7 @@
   "Transform for segment definitions. Only handles JSON serialization/deserialization.
   Normalization and validation happen in before-insert and after-select hooks."
   {:in mi/json-in
-   :out mi/json-out-with-keywordization})
+   :out mi/json-out-without-keywordization})
 
 (t2/deftransforms :model/Segment
   {:definition transform-segment-definition})
@@ -76,8 +83,8 @@
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
      (mi/can-read? table)))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-read? (segments.db/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -86,9 +93,9 @@
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (segments.db/table (:table_id instance)))]
      (and (or (mi/superuser?)
-              (and api/*is-data-analyst?*
+              (and (api/entitled-data-analyst?)
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*
                     :perms/view-data
@@ -96,8 +103,8 @@
                     (:db_id table)
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-write? (segments.db/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -106,9 +113,9 @@
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (segments.db/table (:table_id instance)))]
     (and (or (mi/superuser?)
-             (and api/*is-data-analyst?*
+             (and (api/entitled-data-analyst?)
                   (perms/user-has-permission-for-table?
                    api/*current-user-id*
                    :perms/view-data
@@ -131,7 +138,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (segments.db/collections collection-ids))
                                 {})
         ;; Associate collection info with each segment's table
         segments-with-collection (for [segment segments-with-tables
@@ -152,7 +159,7 @@
   [{:keys [definition], table-id :table_id}]
   (when (some? definition)
     (let [database-id (when table-id
-                        (t2/select-one-fn :db_id :model/Table :id table-id))]
+                        (segments.db/table-database-id table-id))]
       (normalize-segment-definition definition table-id database-id))))
 
 (t2/define-before-insert :model/Segment
@@ -163,7 +170,19 @@
     (cond-> (assoc segment :definition definition)
       (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition)))))
 
+(defenterprise pre-update-check-sandbox-constraints-for-segment
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_ _])
+
+(defenterprise pre-delete-check-sandbox-constraints-for-segment
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_])
+
 (t2/define-before-update :model/Segment [{:keys [id] :as segment}]
+  ;; additional checks (Enterprise Edition only)
+  (pre-update-check-sandbox-constraints-for-segment segment (t2/changes segment))
   ;; throw an Exception if someone tries to update creator_id
   (when (contains? (t2/changes segment) :creator_id)
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
@@ -176,10 +195,16 @@
         (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
     segment))
 
+(t2/define-before-delete :model/Segment
+  [segment]
+  ;; additional checks (Enterprise Edition only)
+  (pre-delete-check-sandbox-constraints-for-segment segment)
+  segment)
+
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (segments.db/table-perms-columns (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition

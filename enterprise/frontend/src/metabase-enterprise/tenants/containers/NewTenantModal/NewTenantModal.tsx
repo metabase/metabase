@@ -41,7 +41,7 @@ export const NewTenantModal = ({ onClose, location }: NewUserModalProps) => {
     <Modal
       opened
       title={isOnboarding ? t`Set up your first tenant` : t`New tenant`}
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <TenantForm

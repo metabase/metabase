@@ -17,6 +17,7 @@
   and produces a merged set of file specs plus a list of genuine conflicts (the same entity changed
   differently on both sides)."
   (:require
+   [clojure.string :as str]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
@@ -26,10 +27,11 @@
 (defn- entity-identity
   "Returns a stable, rename-independent identity key for a serialized entity's YAML `content`, or nil if the
   content can't be parsed or has no serdes path. The key is a vector of `[model id]` pairs (the serdes path
-  with labels dropped)."
+  restored by [[serdes/restore-path]], with labels dropped)."
   [content]
   (try
     (some->> (yaml/parse-string content)
+             serdes/restore-path
              serdes/path
              seq
              (mapv (fn [seg] [(str (:model seg)) (str (:id seg))])))
@@ -41,10 +43,11 @@
       nil)))
 
 (defn- file-key
-  "Identity key for a `{:path :content}` file spec: the serdes identity when available, otherwise a
-  path-based fallback so non-serdes files still merge sanely."
-  [{:keys [path content]}]
-  (or (entity-identity content)
+  "Identity key for a `{:path :content}` file spec: the serdes identity of a YAML file when available, otherwise a
+  path-based fallback so non-serdes files, such as resource files, still merge sanely."
+  [{:keys [^String path content]}]
+  (or (when (str/ends-with? path ".yaml")
+        (entity-identity content))
       [::by-path path]))
 
 (defn- index-by-key
@@ -98,22 +101,10 @@
     (cond-> (or (:name entity) descriptor)
       (and path (not= descriptor path)) (str " (" path ")"))))
 
-(defn three-way-merge
-  "Three-way merge of serialized content keyed on serdes identity.
-
-  `base`, `ours`, `theirs` are each sequences of `{:path :content}` file specs (base/theirs typically read
-  from the corresponding git trees, ours freshly serialized from the app DB).
-
-  Returns a map:
-  - `:merged`    - sequence of winning `{:path :content}` specs to write
-  - `:conflicts` - sequence of `{:key :ours :theirs :base}` for entities changed differently on both sides
-  - `:summary`   - `{:added :updated :removed}` counts of remote-originated changes folded into the result
-                   (i.e. changes coming from `theirs` that `ours` did not already have)"
-  [base ours theirs]
-  (let [b (index-by-key base)
-        o (index-by-key ours)
-        t (index-by-key theirs)
-        all-keys (into #{} (concat (keys b) (keys o) (keys t)))]
+(defn- merge-indexed
+  "[[three-way-merge]] over sides already indexed by [[index-by-key]]."
+  [b o t]
+  (let [all-keys (into #{} (concat (keys b) (keys o) (keys t)))]
     (reduce
      (fn [acc k]
        (let [bv (get b k)
@@ -148,6 +139,35 @@
      {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
      all-keys)))
 
+(defn three-way-merge
+  "Three-way merge of serialized content keyed on serdes identity.
+
+  `base`, `ours`, `theirs` are each sequences of `{:path :content}` file specs (base/theirs typically read
+  from the corresponding git trees, ours freshly serialized from the app DB).
+
+  Returns a map:
+  - `:merged`    - sequence of winning `{:path :content}` specs to write
+  - `:conflicts` - sequence of `{:key :ours :theirs :base}` for entities changed differently on both sides
+  - `:summary`   - `{:added :updated :removed}` counts of remote-originated changes folded into the result
+                   (i.e. changes coming from `theirs` that `ours` did not already have)"
+  [base ours theirs]
+  (merge-indexed (index-by-key base) (index-by-key ours) (index-by-key theirs)))
+
+(defn- casualties-indexed
+  "[[force-push-casualties]] over sides already indexed by [[index-by-key]]."
+  [b o t]
+  (reduce-kv
+   (fn [acc k tv]
+     (let [ov (get o k)
+           bv (get b k)]
+       (cond
+         ;; remote unchanged since base, or already matches ours -> nothing lost
+         (or (same? tv bv) (same? tv ov)) acc
+         (nil? ov) (update acc :deleted conj (conflict-label {:key k :theirs tv}))
+         :else     (update acc :overwritten conj (conflict-label {:key k :ours ov :theirs tv})))))
+   {:deleted [] :overwritten []}
+   t))
+
 (defn force-push-casualties
   "Remote content that a force push would discard. A force export rewrites every managed file from `ours`,
   so any change the remote made since the merge `base` is lost. Returns `{:deleted :overwritten}`, each a
@@ -160,16 +180,15 @@
   casualties — that's a routine push, not a loss. `base`, `ours`, `theirs` are sequences of
   `{:path :content}` specs."
   [base ours theirs]
+  (casualties-indexed (index-by-key base) (index-by-key ours) (index-by-key theirs)))
+
+(defn merge-with-casualties
+  "[[three-way-merge]] with `:force-push-casualties` (see [[force-push-casualties]]) assoc'd, from one
+  indexing pass per side. Indexing parses every document's YAML, so callers that need both use this rather
+  than the two functions separately."
+  [base ours theirs]
   (let [b (index-by-key base)
-        o (index-by-key ours)]
-    (reduce-kv
-     (fn [acc k tv]
-       (let [ov (get o k)
-             bv (get b k)]
-         (cond
-           ;; remote unchanged since base, or already matches ours -> nothing lost
-           (or (same? tv bv) (same? tv ov)) acc
-           (nil? ov) (update acc :deleted conj (conflict-label {:key k :theirs tv}))
-           :else     (update acc :overwritten conj (conflict-label {:key k :ours ov :theirs tv})))))
-     {:deleted [] :overwritten []}
-     (index-by-key theirs))))
+        o (index-by-key ours)
+        t (index-by-key theirs)]
+    (assoc (merge-indexed b o t)
+           :force-push-casualties (casualties-indexed b o t))))

@@ -66,6 +66,21 @@ export type MetabotErrorMessage = {
 };
 
 /** @category useMetabot */
+export type MetabotIncompleteResponse = {
+  /** Why the latest response stopped before it finished. */
+  reason:
+    | "step-limit"
+    | "max-length"
+    | "context-window-full"
+    | "content-filter"
+    | "other";
+  /** User-friendly explanation of why the response stopped. */
+  message: string;
+  /** Resume the response where it left off. Absent when the response can't be continued. */
+  continueResponse?: () => Promise<void>;
+};
+
+/** @category useMetabot */
 export type UseMetabotResult = {
   /** Submit a new message to the conversation. */
   submitMessage: (message: string) => Promise<void>;
@@ -83,11 +98,17 @@ export type UseMetabotResult = {
   messages: MetabotMessage[];
   /** Errors are conversation-level, not attached to individual messages. */
   errorMessages: MetabotErrorMessage[];
+  /** Set when the latest agent response stopped before it finished, e.g. at its step limit. */
+  incompleteResponse: MetabotIncompleteResponse | null;
   /**
    * `true` from the moment a message is submitted until the response
    * completes — including success, error, or cancellation.
    */
   isProcessing: boolean;
+  /** How much of the model's context window the conversation occupies, 0-100. */
+  contextWindowPercentUsage: number;
+  /** Whether the conversation has consumed its entire context window. */
+  isContextWindowFull: boolean;
 
   /**
    * A pre-wired component bound to the latest chart the agent produced.

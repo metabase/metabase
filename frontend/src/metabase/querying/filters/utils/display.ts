@@ -1,5 +1,5 @@
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 
 export const getTranslatedFilterDisplayName = (

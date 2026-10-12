@@ -13,7 +13,6 @@
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -126,10 +125,10 @@
                {:database-id database_id
                 :sql sql_query})
               {:keys [valid? dialect error-message]} validation-result
-              {:keys [query-id query-content]} action-result]
+              {:keys [query-content]} action-result]
           (if valid?
             (let [structured (assoc action-result :result-type :query)
-                  instr      (instructions/query-created-instructions-for query-id)]
+                  instr      instructions/query-loaded-in-editor-instructions]
               {:output (format-query-output structured instr {:preamble? true})
                :structured-output structured
                :instructions instr
@@ -171,9 +170,9 @@
           {:keys [valid? error-message dialect]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/edit-sql-query-instructions-for query-id)
-              buffer-id  (first-code-editor-buffer-id)]
+        (let [structured (assoc action-result :result-type :query)
+              buffer-id  (first-code-editor-buffer-id)
+              instr      (instructions/edit-sql-query-instructions-for query-id (some? buffer-id))]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
@@ -187,10 +186,7 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/errorf "Error editing SQL query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
@@ -220,9 +216,9 @@
           {:keys [valid? dialect error-message]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
-        (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/replace-sql-query-instructions-for query-id)
-              buffer-id  (first-code-editor-buffer-id)]
+        (let [structured (assoc action-result :result-type :query)
+              buffer-id  (first-code-editor-buffer-id)
+              instr      (instructions/replace-sql-query-instructions-for query-id (some? buffer-id))]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
@@ -236,7 +232,4 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/errorf "Error replacing SQL query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))

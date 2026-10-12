@@ -28,7 +28,7 @@ const TimelineEmptyState = ({
 
   const applicationName = useSelector(getApplicationName);
   return (
-    <Stack align="center" ta="center" gap="lg">
+    <Stack align="center" ta="center" gap="xl">
       <Tooltip label={t`Launch of v2.0`} offset={-24} opened>
         <Box maw="6rem">
           <img src={EmptyEvent} alt={t`Collection event illustration`} />
@@ -49,7 +49,7 @@ const TimelineEmptyState = ({
       </Box>
       {canWrite && (
         <Link to={link} target={shouldOpenLinkInNewTab ? "_blank" : undefined}>
-          <Button variant="filled" w="12.5rem">
+          <Button variant="filled" size="lg" w="12.5rem">
             {t`Create event`}
           </Button>
         </Link>

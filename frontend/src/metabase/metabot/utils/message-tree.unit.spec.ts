@@ -1,27 +1,22 @@
-import { type ParentedChatMessage, activeResponses } from "./message-tree";
+import {
+  createMockMetabotTextPart,
+  createMockMetabotToolCallPart,
+  createMockParentedMessage,
+} from "__support__/server-mocks";
+import type { MetabotMessage } from "metabase/metabot/state/types";
 
-function user(id: string, parentId: string | null): ParentedChatMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "user",
-    type: "text",
-    message: id,
-  };
-}
+import { type ParentedMessage, activeResponses } from "./message-tree";
 
-function agent(id: string, parentId: string | null): ParentedChatMessage {
-  return {
-    id,
-    parent_message_id: parentId,
-    role: "agent",
-    type: "text",
-    message: id,
-    externalId: id,
-  };
-}
+const user = (id: string, parentId: string | null) =>
+  createMockParentedMessage(id, parentId, { role: "user" });
 
-const regenerated: ParentedChatMessage[] = [
+const agent = (
+  id: string,
+  parentId: string | null,
+  overrides?: Partial<Omit<MetabotMessage, "id">>,
+) => createMockParentedMessage(id, parentId, { ...overrides, role: "agent" });
+
+const regenerated: ParentedMessage[] = [
   user("u1", null),
   agent("a1", "u1"),
   agent("a2", "u1"),
@@ -29,35 +24,22 @@ const regenerated: ParentedChatMessage[] = [
   agent("b1", "u2"),
 ];
 
+const responseIds = (messages: ParentedMessage[]) =>
+  activeResponses(messages, {}).map(({ message }) => message.id);
+
 describe("activeResponses", () => {
   it("defaults each branch to its newest reply", () => {
-    const responses = activeResponses(regenerated, {}, { isSlack: false });
-
-    expect(
-      responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
-    ).toEqual(["u1", "a2", "u2", "b1"]);
+    expect(responseIds(regenerated)).toEqual(["u1", "a2", "u2", "b1"]);
   });
 
   it("follows a selected older reply and truncates everything downstream", () => {
-    const responses = activeResponses(
-      regenerated,
-      { u1: "a1" },
-      { isSlack: false },
-    );
+    const responses = activeResponses(regenerated, { u1: "a1" });
 
-    expect(
-      responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
-    ).toEqual(["u1", "a1"]);
+    expect(responses.map(({ message }) => message.id)).toEqual(["u1", "a1"]);
   });
 
   it("marks a regenerated reply with its branch and alternatives", () => {
-    const [prompt, reply] = activeResponses(
-      regenerated,
-      {},
-      {
-        isSlack: false,
-      },
-    );
+    const [prompt, reply] = activeResponses(regenerated, {});
 
     expect(prompt.branch).toBeNull();
     expect(reply.branch).toEqual({
@@ -71,33 +53,26 @@ describe("activeResponses", () => {
     const [, reply] = activeResponses(
       [user("u1", null), agent("a1", "u1")],
       {},
-      { isSlack: false },
     );
 
     expect(reply.branch).toBeNull();
   });
 
-  it("groups a multi-message reply", () => {
-    const messages = [
-      user("u1", null),
-      agent("a1", "u1"),
-      agent("a2", "u1"),
-      agent("a2-tool", "a2"),
-      user("u2", "a2-tool"),
-    ];
-    const [, reply, followUp] = activeResponses(
-      messages,
-      {},
-      { isSlack: false },
-    );
-
-    expect(reply.messages.map(({ id }) => id)).toEqual(["a2", "a2-tool"]);
-    expect(reply.branch).toEqual({
-      parentId: "u1",
-      currentIndex: 1,
-      replyIds: ["a1", "a2"],
+  it("keeps all parts in a row as one response", () => {
+    const reply = agent("a1", "u1", {
+      parts: [
+        createMockMetabotToolCallPart({ id: "a1-tool" }),
+        createMockMetabotTextPart({ id: "a1-text" }),
+      ],
     });
-    expect(followUp.messages[0].id).toBe("u2");
+
+    const [, response] = activeResponses([user("u1", null), reply], {});
+
+    expect(response.message.id).toBe("a1");
+    expect(response.message.parts.map(({ id }) => id)).toEqual([
+      "a1-tool",
+      "a1-text",
+    ]);
   });
 
   describe("user-prompt branches (rewound errored turn)", () => {
@@ -109,31 +84,24 @@ describe("activeResponses", () => {
     ];
 
     it("defaults to the newest root prompt and marks it with a branch on the prompt", () => {
-      const [prompt, reply] = activeResponses(
-        rewoundAtRoot,
-        {},
-        { isSlack: false },
-      );
+      const [prompt, reply] = activeResponses(rewoundAtRoot, {});
 
-      expect(prompt.messages.map(({ id }) => id)).toEqual(["uLive"]);
+      expect(prompt.message.id).toBe("uLive");
       expect(prompt.branch).toEqual({
         parentId: "__root__",
         currentIndex: 1,
         replyIds: ["uErr", "uLive"],
       });
-      expect(reply.messages.map(({ id }) => id)).toEqual(["aLive"]);
+      expect(reply.message.id).toBe("aLive");
     });
 
     it("follows a selected older root prompt to reveal the rewound errored turn", () => {
-      const responses = activeResponses(
-        rewoundAtRoot,
-        { __root__: "uErr" },
-        { isSlack: false },
-      );
+      const responses = activeResponses(rewoundAtRoot, { __root__: "uErr" });
 
-      expect(
-        responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
-      ).toEqual(["uErr", "aErr"]);
+      expect(responses.map(({ message }) => message.id)).toEqual([
+        "uErr",
+        "aErr",
+      ]);
     });
 
     it("branches user prompts mid-thread too", () => {
@@ -146,25 +114,22 @@ describe("activeResponses", () => {
         agent("aLive", "uLive"),
       ];
 
-      const promptResponse = activeResponses(
-        messages,
-        {},
-        { isSlack: false },
-      ).find(({ messages }) => messages[0]?.id === "uLive");
+      const promptResponse = activeResponses(messages, {}).find(
+        ({ message }) => message.id === "uLive",
+      );
       expect(promptResponse?.branch).toEqual({
         parentId: "a1",
         currentIndex: 1,
         replyIds: ["uErr", "uLive"],
       });
 
-      const selected = activeResponses(
-        messages,
-        { a1: "uErr" },
-        { isSlack: false },
-      );
-      expect(
-        selected.flatMap(({ messages }) => messages.map(({ id }) => id)),
-      ).toEqual(["u1", "a1", "uErr", "aErr"]);
+      const selected = activeResponses(messages, { a1: "uErr" });
+      expect(selected.map(({ message }) => message.id)).toEqual([
+        "u1",
+        "a1",
+        "uErr",
+        "aErr",
+      ]);
     });
   });
 });

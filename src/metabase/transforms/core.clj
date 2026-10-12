@@ -34,7 +34,6 @@
   native-query-transform?
   output-table
   python-transform?
-  query-transform?
   transform-source-database
   transform-source-type]
  [metabase.transforms.util

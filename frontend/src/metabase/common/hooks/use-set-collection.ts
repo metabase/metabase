@@ -4,6 +4,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
+  actionApi,
   cardApi,
   collectionApi,
   dashboardApi,
@@ -12,6 +13,7 @@ import {
   snippetApi,
   tableApi,
   timelineApi,
+  useUpdateActionMutation,
   useUpdateCardMutation,
   useUpdateCollectionMutation,
   useUpdateDashboardMutation,
@@ -41,6 +43,7 @@ import type {
   NativeQuerySnippet,
   Table,
   Timeline,
+  WritebackAction,
 } from "metabase-types/api";
 
 type Movable<
@@ -60,12 +63,33 @@ export type MovableItem =
   | Movable<"collection", Collection>
   | Movable<"snippet-collection", Collection>
   | Movable<"snippet", NativeQuerySnippet>
+  | Movable<"action", WritebackAction>
   | Movable<"document", Document>
   | Movable<"exploration", Exploration>
   | Movable<"table", Table>
   | Movable<"timeline", Timeline, "name">;
 
 export type MovableModel = MovableItem["model"];
+
+type MovedEntity<T extends MovableItem> = T extends {
+  model: "card" | "dataset" | "metric";
+}
+  ? Card
+  : T extends { model: "dashboard" }
+    ? Dashboard
+    : T extends { model: "collection" | "snippet-collection" }
+      ? Collection
+      : T extends { model: "snippet" }
+        ? NativeQuerySnippet
+        : T extends { model: "action" }
+          ? WritebackAction
+          : T extends { model: "document" }
+            ? Document
+            : T extends { model: "exploration" }
+              ? Exploration
+              : T extends { model: "table" }
+                ? Table
+                : Timeline;
 
 const MOVABLE_MODELS = new Set<MovableModel>([
   "card",
@@ -75,6 +99,7 @@ const MOVABLE_MODELS = new Set<MovableModel>([
   "collection",
   "snippet-collection",
   "snippet",
+  "action",
   "document",
   "exploration",
   "timeline",
@@ -100,6 +125,7 @@ const LABELS = {
   collection: () => t`collection`,
   "snippet-collection": () => t`folder`,
   snippet: () => t`snippet`,
+  action: () => t`action`,
   document: () => t`document`,
   exploration: () => t`research`,
   table: () => t`table`,
@@ -120,6 +146,7 @@ function isCollectionDestination(
 
 export function useSetCollection() {
   const dispatch = useDispatch();
+  const [updateAction] = useUpdateActionMutation();
   const [updateCard] = useUpdateCardMutation();
   const [updateDashboard] = useUpdateDashboardMutation();
   const [updateCollection] = useUpdateCollectionMutation();
@@ -130,12 +157,15 @@ export function useSetCollection() {
   const [updateTimeline] = useUpdateTimelineMutation();
 
   const setCollection = useCallback(
-    (item: MovableItem, destination: SetCollectionDestination) => {
+    <T extends MovableItem>(
+      item: T,
+      destination: SetCollectionDestination,
+    ): Promise<MovedEntity<T>> => {
       const archived =
         isCollectionDestination(destination) &&
         isRootTrashCollection(destination);
 
-      return match(item)
+      const moved = match<MovableItem>(item)
         .with(
           { model: "card" },
           { model: "dataset" },
@@ -214,6 +244,16 @@ export function useSetCollection() {
             archived,
           }).unwrap();
         })
+        .with({ model: "action" }, ({ id }) => {
+          if (!isCollectionDestination(destination)) {
+            throw new Error("Cannot move an action into a dashboard");
+          }
+          return updateAction({
+            id,
+            collection_id: canonicalCollectionId(destination.id),
+            archived,
+          }).unwrap();
+        })
         .with({ model: "table" }, ({ id }) => {
           if (!isCollectionDestination(destination)) {
             throw new Error("Cannot move a table into a dashboard");
@@ -238,8 +278,11 @@ export function useSetCollection() {
           }).unwrap();
         })
         .exhaustive();
+      // Each branch resolves to the entity its model names, which is what MovedEntity spells out per model.
+      return moved as Promise<MovedEntity<T>>;
     },
     [
+      updateAction,
       updateCard,
       updateDashboard,
       updateCollection,
@@ -330,6 +373,17 @@ export function useSetCollection() {
               archived: snippet.archived,
             });
         })
+        .with({ model: "action" }, async ({ id }) => {
+          const action = await dispatch(
+            actionApi.endpoints.getAction.initiate({ id }),
+          ).unwrap();
+          return () =>
+            updateAction({
+              id,
+              collection_id: action.collection_id,
+              archived: action.archived,
+            });
+        })
         .with({ model: "table" }, async ({ id }) => {
           const table = await dispatch(
             tableApi.endpoints.getTable.initiate({ id }),
@@ -355,6 +409,7 @@ export function useSetCollection() {
         .exhaustive(),
     [
       dispatch,
+      updateAction,
       updateCard,
       updateDashboard,
       updateCollection,
@@ -367,11 +422,11 @@ export function useSetCollection() {
   );
 
   return useCallback(
-    async (
-      item: MovableItem,
+    async <T extends MovableItem>(
+      item: T,
       destination: SetCollectionDestination,
       { notify = true, message }: SetCollectionOptions = {},
-    ) => {
+    ): Promise<MovedEntity<T>> => {
       const undoAction = notify ? await captureUndoAction(item) : null;
 
       const result = await setCollection(item, destination);

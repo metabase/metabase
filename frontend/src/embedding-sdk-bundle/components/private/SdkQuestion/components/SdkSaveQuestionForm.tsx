@@ -48,7 +48,7 @@ export const SdkSaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
       multiStep={false}
       targetCollection={targetCollection ?? undefined}
     >
-      <Stack p="md">
+      <Stack p="lg">
         <Title order={2}>
           <SaveQuestionTitle />
         </Title>

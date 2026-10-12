@@ -1,11 +1,15 @@
+import { createMockMetadata } from "__support__/metadata";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import { createMockField } from "metabase-types/api/mocks";
 import {
+  createMockField,
+  createMockFieldDimension,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  PRODUCTS,
   REVIEWS_ID,
   createOrdersTable,
-  createPeoplePasswordField,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
@@ -17,6 +21,9 @@ export const LISTABLE_PK_FIELD_VALUE = "1234";
 export const STRING_PK_FIELD_ID = 101;
 export const SEARCHABLE_FK_FIELD_ID = 102;
 export const LISTABLE_FIELD_WITH_MANY_VALUES_ID = 103;
+export const REMAPPED_TO_STRING_FIELD_ID = 104;
+export const REMAPPED_TO_NUMBER_FIELD_ID = 105;
+export const PK_REMAPPED_TO_NUMBER_FIELD_ID = 106;
 export const EXPRESSION_FIELD_ID = [
   "field",
   "CC",
@@ -67,6 +74,46 @@ const database = createSampleDatabase({
           has_more_values: true,
         }),
         createMockField({
+          id: REMAPPED_TO_STRING_FIELD_ID,
+          table_id: REVIEWS_ID,
+          display_name: "Remapped to a string",
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          dimensions: [
+            createMockFieldDimension({
+              type: "external",
+              human_readable_field_id: PRODUCTS.TITLE,
+            }),
+          ],
+        }),
+        createMockField({
+          id: REMAPPED_TO_NUMBER_FIELD_ID,
+          table_id: REVIEWS_ID,
+          display_name: "Remapped to a number",
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          dimensions: [
+            createMockFieldDimension({
+              type: "external",
+              human_readable_field_id: ORDERS.TOTAL,
+            }),
+          ],
+        }),
+        createMockField({
+          id: PK_REMAPPED_TO_NUMBER_FIELD_ID,
+          table_id: REVIEWS_ID,
+          display_name: "Number ID remapped to a number",
+          base_type: "type/BigInteger",
+          effective_type: "type/BigInteger",
+          semantic_type: "type/PK",
+          dimensions: [
+            createMockFieldDimension({
+              type: "external",
+              human_readable_field_id: ORDERS.TOTAL,
+            }),
+          ],
+        }),
+        createMockField({
           // Unjustified type cast. FIXME
           id: EXPRESSION_FIELD_ID as any,
           field_ref: ["expression", "CC"],
@@ -82,26 +129,4 @@ export const state = createMockState({
   }),
 });
 
-export const metadata = getMetadata(state);
-
-const stateWithSearchValuesField = createMockState({
-  entities: createMockEntitiesState({
-    databases: [
-      createSampleDatabase({
-        tables: [
-          createPeopleTable({
-            fields: [
-              createPeoplePasswordField({
-                has_field_values: "search",
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  }),
-});
-
-export const metadataWithSearchValuesField = getMetadata(
-  stateWithSearchValuesField,
-);
+export const metadata = createMockMetadata({ databases: [database] });

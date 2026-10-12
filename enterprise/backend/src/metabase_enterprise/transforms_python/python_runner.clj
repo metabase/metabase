@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.analytics-interface.core :as analytics]
@@ -20,8 +21,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang PersistentQueue)
    (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
@@ -41,15 +41,25 @@
                         {:error-type :configuration-error}))
         {}))))
 
+(def ^:private connection-timeout-ms
+  "Connection timeout for runner requests."
+  (u/seconds->ms 10))
+
+(def ^:private socket-timeout-ms
+  "Read timeout for the short runner requests (logs, cancel); /execute adds it as a margin on top of the run timeout."
+  (u/seconds->ms 60))
+
 (defn- python-runner-request
   "Helper function for making HTTP requests to the python runner service."
   [server-url method endpoint request-options & extra-args]
   (let [url          (str server-url "/v1" endpoint)
-        base-options {:content-type     :json
-                      :accept           :json
-                      :throw-exceptions false
-                      :as               :json
-                      :headers          (authorization-headers)}]
+        base-options {:content-type       :json
+                      :accept             :json
+                      :throw-exceptions   false
+                      :as                 :json
+                      :connection-timeout connection-timeout-ms
+                      :socket-timeout     socket-timeout-ms
+                      :headers            (authorization-headers)}]
     (apply http/request (merge base-options request-options {:method method, :url url}) extra-args)))
 
 (defn root-type
@@ -197,6 +207,14 @@
      [~job-run-id]
      (^:once fn* [] ~@body)))
 
+(defn cancel-python-code-http-call!
+  "Calls the /cancel endpoint of the python runner. Returns immediately."
+  [server-url run-id]
+  (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
+                                                     :async? true}
+                         #_success (fn [_] (log/debug "Python runner cancel request completed"))
+                         #_failure #(log/errorf "Python runner cancel request failed: %s" (ex-message %))))
+
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
@@ -210,9 +228,10 @@
         table-name->manifest-url (into {} (map (fn [{:keys [alias table_id]}]
                                                  [alias (url-for-path [:table table_id :manifest])]))
                                        source-tables)
+        run-timeout-secs         (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
         payload                  {:code                code
-                                  :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                  :library             (transforms-python.db/library-sources-by-path)
+                                  :timeout             run-timeout-secs
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)
                                   :output_manifest_url (:url output-manifest)
@@ -220,7 +239,17 @@
                                   :table_mapping       table-name->url
                                   :manifest_mapping    table-name->manifest-url}
         response                 (with-python-api-timing [run-id]
-                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
+                                   (try
+                                     (python-runner-request server-url :post "/execute"
+                                                            {:body           (json/encode payload)
+                                                             :socket-timeout (+ (u/seconds->ms run-timeout-secs)
+                                                                                socket-timeout-ms)})
+                                     ;; a connect/read timeout counts as a runner timeout. we stop waiting, so tell
+                                     ;; the runner to stop too, otherwise it keeps working on an abandoned run
+                                     (catch java.io.InterruptedIOException _
+                                       (u/ignore-exceptions
+                                         (cancel-python-code-http-call! server-url (or request-id run-id)))
+                                       {:status 408 :body {:timeout true}})))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
@@ -250,32 +279,18 @@
   ^InputStream [{:keys [s3-client bucket-name objects]}]
   (s3/open-object s3-client bucket-name (:path (:output objects))))
 
-(defn cancel-python-code-http-call!
-  "Calls the /cancel endpoint of the python runner. Returns immediately."
-  [server-url run-id]
-  (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
-                                                     :async? true}
-                         #_success (fn [_] (log/debug "Python runner cancel request completed"))
-                         #_failure #(log/errorf "Python runner cancel request failed: %s" (ex-message %))))
-
 (defn- safe-delete
   "Safely delete a file."
   [^File file]
   (try (.delete file) (catch Exception _)))
 
 (defn- fields-metadata [_driver table-id]
-  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-             :table_id table-id
-             :active true
-             ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
-             :parent_id nil
-             :nfc_path nil
-             {:order-by [[:database_position :asc]]}))
+  (transforms-python.db/top-level-fields-metadata table-id))
 
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."
   [table-id source-incremental-strategy source-range-params limit]
-  (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
+  (let [db-id             (transforms-python.db/table-database-id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
         table-metadata    (lib.metadata/table metadata-provider table-id)]
     (cond-> (-> (lib/query metadata-provider table-metadata)
@@ -303,8 +318,8 @@
     (let [tmp-data-file (File/createTempFile data-path "")
           tmp-meta-file (File/createTempFile manifest-path "")]
       (try
-        (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table_id)
-              driver      (t2/select-one-fn :engine :model/Database db-id)
+        (let [db-id       (transforms-python.db/table-database-id table_id)
+              driver      (transforms-python.db/database-engine db-id)
               fields-meta (fields-metadata driver table_id)
               manifest    (generate-manifest table_id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]

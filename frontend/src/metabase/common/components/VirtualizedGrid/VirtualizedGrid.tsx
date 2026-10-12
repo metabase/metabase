@@ -3,7 +3,7 @@ import type { Key, ReactNode } from "react";
 import { useMemo, useRef } from "react";
 import _ from "underscore";
 
-import { Box, type BoxProps, Grid, useMatches } from "metabase/ui";
+import { Box, type BoxProps, SimpleGrid, useMatches } from "metabase/ui";
 import type { BreakpointName } from "metabase/ui/theme";
 
 type VirtualizedGridProps<T> = {
@@ -53,9 +53,6 @@ export const VirtualizedGrid = <T,>({
 
   const virtualRows = virtualizer.getVirtualItems();
 
-  // Calculate span for current breakpoint
-  const currentSpan = 12 / currentColumns;
-
   return (
     <Box ref={parentRef} h="100%" style={{ overflowY: "auto" }} {...boxProps}>
       <Box h={virtualizer.getTotalSize()} pos="relative">
@@ -71,13 +68,11 @@ export const VirtualizedGrid = <T,>({
               w="100%"
               style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
-              <Grid gutter="md">
+              <SimpleGrid cols={currentColumns} spacing="lg">
                 {rowItems.map((item) => (
-                  <Grid.Col key={keyExtractor(item)} span={currentSpan}>
-                    {renderItem(item)}
-                  </Grid.Col>
+                  <Box key={keyExtractor(item)}>{renderItem(item)}</Box>
                 ))}
-              </Grid>
+              </SimpleGrid>
             </Box>
           );
         })}

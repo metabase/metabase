@@ -4,14 +4,17 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
+   [metabase-enterprise.sso.providers.jwt :as providers.jwt]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
    [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -236,6 +239,22 @@
           (is
            (= {"extra" "keypairs", "are" "also present"}
               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest login-with-existing-session-test
+  (testing "a JWT login from a client that already carries a Metabase session succeeds"
+    (with-jwt-default-setup!
+      (let [response (client/client-real-response (test.users/username->token :rasta)
+                                                  :get 302 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                                                  :return_to default-redirect-uri
+                                                  :jwt
+                                                  (jwt/sign
+                                                   {:email      "rasta@metabase.com"
+                                                    :first_name "Rasta"
+                                                    :last_name  "Toucan"}
+                                                   default-jwt-secret))]
+        (is (sso.test-setup/successful-login? response))
+        (is (= default-redirect-uri
+               (get-in response [:headers "Location"])))))))
 
 (deftest request-jwt-test
   (let [token "some.jwt.token"]
@@ -534,6 +553,31 @@
                 (is (not (contains? (group-memberships
                                      (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com")))
                                     "admins")))))))))))
+
+(deftest group-names->ids-no-mappings-input-validation-test
+  (testing "with no mappings, group names are matched by exact value"
+    (mt/with-temporary-setting-values [jwt-group-mappings nil]
+      (let [captured (atom nil)]
+        (with-redefs [t2/select-pks-set (fn [_model _col in-clause]
+                                          (reset! captured (second in-clause))
+                                          #{})]
+          (testing "a string group name is bound as a parameter"
+            (#'providers.jwt/group-names->ids ["developers"])
+            (let [[query & params] (sql/format {:select [:id]
+                                                :from   [:permissions_group]
+                                                :where  [:in :name @captured]})]
+              (is (str/includes? query "IN (?)"))
+              (is (= ["developers"] params))))
+          (testing "non-string group names are ignored"
+            (reset! captured nil)
+            (#'providers.jwt/group-names->ids ["developers" {:select :x}])
+            (is (= #{"developers"} @captured))
+            (let [[query & params] (sql/format {:select [:id]
+                                                :from   [:permissions_group]
+                                                :where  [:in :name @captured]})]
+              (is (str/includes? query "IN (?)"))
+              (is (= ["developers"] params))
+              (is (not (str/includes? query "select"))))))))))
 
 (deftest login-as-existing-user-test
   (testing "login as an existing user works"

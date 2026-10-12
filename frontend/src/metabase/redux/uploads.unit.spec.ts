@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
 import { UploadMode } from "metabase/redux/store/upload";
 
 import {
@@ -29,6 +29,13 @@ const mockUploadCSV = (valid = true) => {
           throws: { data: { message: "It's dead Jim" } },
         },
   );
+};
+
+const mockGetTable = (name = "Fancy Table") => {
+  fetchMock.get("glob:*/api/table/123", {
+    id: 123,
+    name,
+  });
 };
 
 const mockAppendCSV = (valid = true) => {
@@ -132,6 +139,7 @@ describe("csv uploads", () => {
 
     it("should handle file append success", async () => {
       mockAppendCSV();
+      mockGetTable();
 
       await uploadFile({
         file,
@@ -148,6 +156,7 @@ describe("csv uploads", () => {
           id: now,
           name: "test.csv",
           tableId: 123,
+          tableName: "Fancy Table",
         },
       });
 
@@ -170,6 +179,7 @@ describe("csv uploads", () => {
 
     it("should handle file replace success", async () => {
       mockReplaceCSV();
+      mockGetTable();
 
       await uploadFile({
         file,
@@ -186,6 +196,7 @@ describe("csv uploads", () => {
           id: now,
           name: "test.csv",
           tableId: 123,
+          tableName: "Fancy Table",
         },
       });
 

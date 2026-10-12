@@ -45,9 +45,18 @@ export type {
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 
-export { DataAppRouter } from "./components/public/DataAppRouter";
-export { DataAppLink } from "./components/public/DataAppLink";
-export { useDataAppLocation } from "./hooks/public/use-data-app-location";
+export {
+  DataAppRouter,
+  type DataAppRouterProps,
+} from "./components/public/DataAppRouter";
+export {
+  DataAppLink,
+  type DataAppLinkProps,
+} from "./components/public/DataAppLink";
+export {
+  useDataAppLocation,
+  type UseDataAppLocationResult,
+} from "./hooks/public/use-data-app-location";
 
 export {
   type CollectionBrowserProps,
@@ -75,6 +84,7 @@ export {
   type InteractiveQuestionQuestionSettingsProps,
   type InteractiveQuestionQuestionSettingsDropdownProps,
   type InteractiveQuestionQuestionVisualizationProps,
+  type InteractiveQuestionRefreshButtonProps,
   type InteractiveQuestionResetButtonProps,
   type InteractiveQuestionSaveButtonProps,
   type InteractiveQuestionSaveQuestionFormProps,
@@ -142,12 +152,14 @@ export type {
   MetabotAgentTextMessage,
   MetabotChartProps,
   MetabotErrorMessage,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotUserTextMessage,
   ParameterChangeSource,
   ParameterChangePayload,
   UseMetabotResult,
   SdkEntityToken,
+  SdkBrowserCollectionId,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardEntityPublicProps,
@@ -164,6 +176,8 @@ export type {
   SdkUserId,
   SqlParameterValues,
   SdkActionId,
+  SdkActionDefinition,
+  SdkActionInput,
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,

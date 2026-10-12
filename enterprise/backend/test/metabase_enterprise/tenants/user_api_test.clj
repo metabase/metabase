@@ -232,3 +232,23 @@
                                                                        {:id gid}]})]
               (is (= #{(u/the-id (perms/all-external-users-group)) gid}
                      (set (map :id (:user_group_memberships resp))))))))))))
+
+(deftest tenant-user-visibility-when-tenants-disabled-test
+  (testing "Tenant users when use-tenants is off"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temp [:model/Tenant {tenant-id :id}      {:name "Test Tenant"}
+                     :model/User   {tenant-user-id :id} {:tenant_id  tenant-id
+                                                         :email      "tenant-hide@example.com"
+                                                         :first_name "Tenant"
+                                                         :last_name  "Hide"}]
+        (mt/with-temporary-setting-values [use-tenants false]
+          (testing "explicit opt-in paths still surface tenant users (needed for the demote workflow)"
+            (testing "GET /api/user/:id by known ID returns the tenant user"
+              (is (=? {:id tenant-user-id :tenant_id tenant-id}
+                      (mt/user-http-request :crowberto :get 200 (format "user/%d" tenant-user-id)))))
+            (testing "GET /api/user?tenancy=external still lists tenant users"
+              (is (some #(= tenant-user-id (:id %))
+                        (:data (mt/user-http-request :crowberto :get 200 "user" :tenancy "external" :status "all"))))))
+          (testing "GET /api/user/recipients hides tenant users (no opt-in API)"
+            (is (not-any? #(= tenant-user-id (:id %))
+                          (:data (mt/user-http-request :crowberto :get 200 "user/recipients"))))))))))

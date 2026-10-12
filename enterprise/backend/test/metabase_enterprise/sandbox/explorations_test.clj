@@ -363,7 +363,7 @@
   (testing "when the enforcement guard says the user IS sandboxed but the attribute lookup returns nil,
             the token must NOT collapse to nil (the compatibility gate reads nil as 'unrestricted')"
     (met/with-gtaps-for-user! :rasta (price-sandbox)
-      (with-redefs [sandbox.field-values/field->sandbox-attributes-for-current-user (constantly nil)]
+      (mt/with-dynamic-fn-redefs [sandbox.field-values/field->sandbox-attributes-for-current-user (constantly nil)]
         (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
           (testing "the sandbox dimension is present and scoped to the user (fail closed)"
             (is (= (venues-token-for-lens

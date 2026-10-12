@@ -5,15 +5,18 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.permissions.metric :as permissions.metric]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
@@ -23,9 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some not-empty get-in]]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the already-loaded `dashcard` at the
@@ -35,16 +36,16 @@
     (api/check-404
      (and (= (:dashboard_id dashcard) dashboard-id)
           (or (= (:card_id dashcard) card-id)
-              (t2/exists? :model/DashboardCardSeries
-                          :card_id          card-id
-                          :dashboardcard_id dashcard-id))))))
+              (query-processor.db/dashcard-series-exists? card-id dashcard-id))))))
 
 (defn- current-dimension-mapping?
-  [provider query mapping]
+  [provider card query mapping]
   (let [target-key (lib-metric/field-ref->key (:target mapping))]
     (boolean
      (some #(= target-key (lib-metric/field-ref->key (-> % :mapping :target)))
-           (lib-metric/compute-dimension-pairs provider query)))))
+           ;; Only the computed targets are read here, never the ids, but pass the card's real owner key anyway
+           ;; rather than teach a second call site that it may lie about one.
+           (lib-metric/compute-dimension-pairs provider (:entity_id card) query)))))
 
 (defn- default-metric-dimension
   [provider query card]
@@ -59,7 +60,7 @@
                                        (not= :status/orphaned (:status %)))
                                  dimensions)]
       (when-let [mapping (u/seek #(= (:id dimension) (:dimension-id %)) mappings)]
-        (when (current-dimension-mapping? provider query mapping)
+        (when (current-dimension-mapping? provider card query mapping)
           (when-let [database-provider (lib-metric/database-provider-for-table provider (:table-id mapping))]
             (when (permissions.metric/can-use-dimension-mapping? database-provider (:database_id card) mapping)
               (let [field-id (lib-metric/dimension-target->field-id (:target mapping))]
@@ -82,7 +83,9 @@
                    (lib/mbql-stage? query -1))
         card
         (if-let [dimension (default-metric-dimension provider query card)]
-          (let [definition (lib-metric/from-metric-metadata provider card)
+          (let [definition (lib-metric/from-metric-metadata
+                            provider
+                            (lib.metadata/metric (lib-be/application-database-metadata-provider (:database_id card)) (:id card)))
                 breakout   (lib-metric/dimension-breakout definition dimension)]
             (cond-> card
               breakout (assoc :dataset_query (-> query
@@ -145,7 +148,7 @@
 
 (defn- dashboard-param-defaults
   "Construct parameter entries for any parameters with default values in `dashboard-param-id->param` as returned
-  by [[dashboard/dashboard->resolved-params]]."
+  by [[params/dashboard->resolved-params]]."
   [dashboard-param-id->param card-id]
   (into
    {}
@@ -169,14 +172,14 @@
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
   [dashboard      :- ::dashboards.schema/dashboard
-   dashcard       :- ::dashboards.schema/dashcard
+   dashcard       :- ::dashboards.schema/dashboard-card
    card-id        :- ::lib.schema.id/card
-   request-params :- [:maybe [:sequential :map]]]
+   request-params :- [:maybe ::dashboards.schema/parameters]]
   (let [dashboard-id              (:id dashboard)
         dashcard-id               (:id dashcard)
         _                         (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
         request-params            (some-> request-params not-empty (->> (lib/normalize ::dashboards.schema/parameters)))
-        resolved-params           (dashboard/dashboard->resolved-params (assoc dashboard :dashcards [dashcard]))
+        resolved-params           (params/dashboard->resolved-params (assoc dashboard :dashcards [dashcard]))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
                                         ;; use these values ourselves -- the expectation is that the frontend will pass
@@ -238,12 +241,13 @@
              (perms/most-permissive-database-permission-for-user
               api/*current-user-id* :perms/view-data
               (:database_id card))))
-      (let [resolved-params (resolve-params-for-query dashboard dashcard card-id parameters)
+      (let [resolved-params (resolve-params-for-query dashboard dashcard card-id
+                                                      (some->> parameters not-empty (lib/normalize ::dashboards.schema/parameters)))
             options         (merge
                              {:ignore-cache false
                               :constraints  (qp.constraints/default-query-constraints)
                               :context      :dashboard}
-                             (dissoc options :dashboard :card)
+                             (dissoc options :dashboard :card :export-format)
                              {:parameters   resolved-params
                               :dashboard-id dashboard-id})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d"

@@ -57,7 +57,7 @@ export function CronExpressionInput({
   };
 
   return (
-    <Flex direction="column" gap="xs" {...flexProps}>
+    <Flex direction="column" gap="xxs" {...flexProps}>
       <TextInput
         placeholder="For example 5   0   *   Aug   ?"
         size="md"

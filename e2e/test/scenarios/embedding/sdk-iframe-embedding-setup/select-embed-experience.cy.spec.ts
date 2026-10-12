@@ -24,9 +24,8 @@ describe(suiteTitle, () => {
     H.activateToken("pro-self-hosted");
     H.enableTracking();
 
-    H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("enable-embedding-static", true);
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.updateSetting("enable-embedding-modular", true);
+    H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -106,30 +105,6 @@ describe(suiteTitle, () => {
       });
     });
 
-    it("shows exploration template when selected", { tags: "@skip" }, () => {
-      visitNewEmbedPage();
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").click();
-
-        cy.findByText("Exploration").click();
-        cy.findByText("Next").click();
-      });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_completed",
-        event_detail:
-          "authType=sso,experience=exploration,isDefaultExperience=false",
-      });
-
-      H.waitForSimpleEmbedIframesToLoad();
-
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("data picker is visible");
-        cy.findByText("Pick your starting data").should("be.visible");
-      });
-    });
-
     it("shows browser template when selected", () => {
       visitNewEmbedPage();
 
@@ -193,49 +168,18 @@ describe(suiteTitle, () => {
         cy.findByText("Person detail").should("be.visible");
       });
     });
-
-    it(
-      "shows question of id=1 when activity log is empty and chart is selected",
-      { tags: "@skip" },
-      () => {
-        visitNewEmbedPage();
-        cy.wait("@emptyRecentItems");
-
-        getEmbedSidebar().within(() => {
-          cy.findByLabelText("Guest").click();
-        });
-        embedModalEnableEmbedding();
-
-        getEmbedSidebar().within(() => {
-          cy.findByText("Chart").click();
-          cy.findByText("Next").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_experience_completed",
-          event_detail:
-            "authType=guest-embed,experience=chart,isDefaultExperience=false",
-        });
-
-        H.waitForSimpleEmbedIframesToLoad();
-
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.log("question title of id=1 is visible");
-          cy.findByText("Query log").should("be.visible");
-        });
-      },
-    );
   });
 
   it("should show a fake loading indicator in embed preview", () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
-    H.embedModalEnableEmbedding();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })
       .should("be.visible");
+
+    H.embedModalEnableEmbedding();
 
     cy.get("[data-iframe-loaded]", { timeout: 20_000 }).should(
       "have.length",
@@ -253,6 +197,13 @@ describe(suiteTitle, () => {
     }).as("getRecents");
 
     visitNewEmbedPage();
+
+    // The hub's "New embed" button sits in the nav and is clickable as soon as
+    // the layout mounts, where the admin settings card it replaced only
+    // appeared once that page had loaded its settings. That delay was giving
+    // the throttled recents response a head start; without it the wizard is
+    // still resolving when the assertions run.
+    cy.wait("@getRecents");
 
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("Person overview").should("not.exist");

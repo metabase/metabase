@@ -46,23 +46,24 @@ function selectJestJunit(name: string): (entries: string[]) => string[] {
  * (jest-junit XML → the shared normalized shape).
  */
 export function normalizeFrontendJunit(
+  ignorePassingTests: boolean = true,
   dir: string = JUNIT_DIR,
   name: string = JUNIT_NAME,
 ): NormalizedTest[] {
   const files = findJunitFiles(dir, selectJestJunit(name));
   const failures = files.flatMap((file) => {
     try {
-      return parseJunit(readFileSync(file, "utf8"));
+      return parseJunit(readFileSync(file, "utf8"), ignorePassingTests);
     } catch (error) {
       console.error(`[ci-conductor] failed to read ${file}`, error);
       return [];
     }
   });
   log(
-    `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} failing test(s)`,
+    `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} ${ignorePassingTests ? "failing " : ""}test(s)`,
   );
   for (const test of failures) {
-    log(`  failing: ${test.path || "(no describe path)"} / ${test.name}`);
+    log(`  ${test.status ?? 'failure'}: ${test.path || "(no describe path)"} / ${test.name}`);
   }
   return failures;
 }

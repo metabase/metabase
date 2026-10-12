@@ -1,7 +1,14 @@
 import type { CollectionId } from "./collection";
+import type {
+  ContentDiagnosticsDuplicatedUserParams,
+  ContentDiagnosticsImbalancedUserParams,
+  ContentDiagnosticsSlowUserParams,
+  ContentDiagnosticsStaleUserParams,
+} from "./content-diagnostics";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
+import type { ExportFormat, TableExportFormat } from "./export-format";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { ConcreteTableId, SchemaName } from "./table";
 
@@ -188,8 +195,8 @@ export type UserKeyValue =
       namespace: "last_download_format";
       key: string;
       value: {
-        last_download_format: "csv" | "xlsx" | "json" | "png";
-        last_table_download_format: "csv" | "xlsx" | "json";
+        last_download_format: ExportFormat;
+        last_table_download_format: TableExportFormat;
       };
     }
   | {
@@ -208,9 +215,44 @@ export type UserKeyValue =
       value: boolean;
     }
   | {
+      namespace: "embedding_hub";
+      key: "isNavbarOpened";
+      value: boolean;
+    }
+  | {
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "stale";
+      value: ContentDiagnosticsStaleUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "slow";
+      value: ContentDiagnosticsSlowUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "duplicated";
+      value: ContentDiagnosticsDuplicatedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "empty";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "sparse";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "crowded";
+      value: ContentDiagnosticsImbalancedUserParams;
     }
   | {
       namespace: "schema_viewer";

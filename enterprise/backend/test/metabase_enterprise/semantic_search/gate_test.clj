@@ -255,8 +255,10 @@
 (deftest flush-watermark!-test
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
-        model1         {:provider "foo" :model-name "m1" :vector-dimensions 42}
-        model2         {:provider "foo" :model-name "m2" :vector-dimensions 42}
+        model1         (semantic.tu/resolved-mock-embedding-model
+                        :provider "foo" :model-name "m1" :vector-dimensions 42)
+        model2         (semantic.tu/resolved-mock-embedding-model
+                        :provider "foo" :model-name "m2" :vector-dimensions 42)
         index1         (semantic.index-metadata/qualify-index (semantic.index/default-index model1) index-metadata)
         index2         (semantic.index-metadata/qualify-index (semantic.index/default-index model2) index-metadata)
         watermark      {:last-poll (ts "2025-01-01T13:00:00Z")

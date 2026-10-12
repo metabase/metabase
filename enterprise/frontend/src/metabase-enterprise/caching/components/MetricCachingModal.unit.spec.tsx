@@ -4,12 +4,13 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
+  changeInput,
   getCacheStrategySelect,
   selectCacheStrategy,
 } from "metabase/admin/performance/components/test-utils";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockSettings,
@@ -85,6 +86,7 @@ describe("MetricCachingModal", () => {
     const { onClose } = setup();
 
     await selectCacheStrategy(/^Duration/i);
+    await changeInput(/Cache duration/, 0, 24);
     await userEvent.click(screen.getByTestId("strategy-form-submit-button"));
 
     await waitFor(() => {

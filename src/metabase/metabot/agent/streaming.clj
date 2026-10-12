@@ -16,13 +16,13 @@
 (def state-type "AI-SDK data type for state updates." "state")
 (def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
-(def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
 (def tool-title-type "AI-SDK data type for a tool call's settled display title." "tool_title")
+(def research-plan-update-type "AI-SDK data type for a Research plan edit's picker hydration." "research_plan_update")
 
 (def ^:private ephemeral-data-types
   "Data types not written to MetabotMessage.data."
@@ -97,17 +97,6 @@
    :data-type code-edit-type
    :data edit-data})
 
-(defn transform-suggestion-part
-  "Create a TRANSFORM_SUGGESTION data part for streaming.
-  Suggestion should be a map containing the suggested transform definition.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TRANSFORM_SUGGESTION, version=1, value=suggestion)"
-  [suggestion]
-  {:type :data
-   :data-type transform-suggestion-type
-   :data suggestion})
-
 (defn adhoc-viz-part
   "Create an ADHOC_VIZ data part for streaming.
   Value should be a map with :query (dataset query), :link (question URL),
@@ -156,6 +145,17 @@
   [value]
   {:type :data
    :data-type search-results-type
+   :data value})
+
+(defn research-plan-update-part
+  "Data part carrying the picker hydration for a Research plan edit — the metrics and
+  dimension groups the FE needs to turn the agent's chosen groups into picker blocks.
+  It rides here rather than in the tool's `:output` because the LLM only needs to know
+  the edit happened, while the payload is large and grows with the metrics a group
+  pulls in."
+  [value]
+  {:type :data
+   :data-type research-plan-update-type
    :data value})
 
 (defn tool-title-part

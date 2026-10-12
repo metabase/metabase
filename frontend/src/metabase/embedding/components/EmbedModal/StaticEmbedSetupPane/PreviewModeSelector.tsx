@@ -1,37 +1,14 @@
 import { t } from "ttag";
 
-import { Box, Group, Icon, SegmentedControl } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
+import { SegmentedControl, type SegmentedControlItem } from "metabase/ui";
 
 import type { ActivePreviewPane } from "./types";
 
-const ControlOptionItem = ({
-  label,
-  iconName,
-}: {
-  label: string;
-  iconName: IconName;
-}) => (
-  <Group wrap="nowrap" px="sm" gap="xs">
-    <Icon name={iconName} />
-    <Box>{label}</Box>
-  </Group>
-);
-
-const CODE_PREVIEW_CONTROL_OPTIONS = [
-  {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: <ControlOptionItem label={t`Code`} iconName="embed" />,
-    // Unjustified type cast. FIXME
-    value: "code" as ActivePreviewPane,
-  },
-  {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: <ControlOptionItem label={t`Preview`} iconName="eye_filled" />,
-    // Unjustified type cast. FIXME
-    value: "preview" as ActivePreviewPane,
-  },
-];
+const getCodePreviewControlOptions =
+  (): SegmentedControlItem<ActivePreviewPane>[] => [
+    { label: t`Code`, icon: "embed", value: "code" },
+    { label: t`Preview`, icon: "eye_filled", value: "preview" },
+  ];
 
 interface PreviewModeSelectorProps {
   value: ActivePreviewPane;
@@ -44,7 +21,7 @@ export const PreviewModeSelector = ({
 }: PreviewModeSelectorProps): JSX.Element => (
   <SegmentedControl
     value={value}
-    data={CODE_PREVIEW_CONTROL_OPTIONS}
+    data={getCodePreviewControlOptions()}
     onChange={onChange}
   />
 );

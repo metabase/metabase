@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -66,7 +67,11 @@
                   (setting/set-value-of-type! :string :site-url new-value)))
   :doc "This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
-        Make sure that the address defined is how Metabase is being accessed.")
+        Make sure that the address defined is how Metabase is being accessed.
+        If left unset, Metabase learns this value from the request headers of the first authenticated
+        admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
+        that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
+        `MB_SITE_URL` explicitly.")
 
 ;;; TODO -- we might want to move this into a separate `metabase.i18n` module
 (defsetting site-locale
@@ -97,6 +102,7 @@
 
 (defsetting available-fonts
   "Available fonts"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -105,6 +111,7 @@
 
 (defsetting available-locales
   "Available i18n locales"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -113,14 +120,19 @@
 
 (defsetting available-timezones
   "Available report timezone options"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
   :getter     (comp sort t/available-zone-ids)
-  :doc        false)
+  :doc        false
+  ;; ~600 zone ids that change only when the instance is upgraded, and only the localization admin page
+  ;; reads them, so clients fetch them by key from `GET /api/setting/available-timezones`.
+  :include-in-list? false)
 
 (defsetting system-timezone
   "The timezone used by the system by default. AKA the JVM timezone."
+  :encryption :no
   :visibility :authenticated
   :export?    true
   :setter     :none
@@ -134,4 +146,36 @@
   :export?    false
   :setter     :none
   :getter     encryption/default-encryption-enabled?
+  :doc        false)
+
+(defn- env-path-allowlist
+  "The allowlist of paths for `setting-name`, read from its env var only. `NONE` allows no path. With nothing set,
+  hosted instances allow only `/tmp` and self-hosted ones allow every path."
+  [setting-name]
+  (if-let [raw (setting/env-var-value setting-name)]
+    (let [paths (into [] (comp (map str/trim) (remove str/blank?)) (str/split raw #","))]
+      (if (= paths ["NONE"]) [] paths))
+    (if (premium-features/is-hosted?) ["/tmp"] ["/"])))
+
+(defsetting readable-paths
+  (deferred-tru (str "Comma-separated allowlist of directories Metabase may read files from, e.g. for database "
+                     "secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase "
+                     "Cloud and / (every path) when self-hosted."))
+  :type       :csv
+  :encryption :no
+  :visibility :internal
+  :export?    false
+  :setter     :none
+  :getter     #(env-path-allowlist :readable-paths)
+  :doc        false)
+
+(defsetting writable-paths
+  (deferred-tru (str "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no "
+                     "paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."))
+  :type       :csv
+  :encryption :no
+  :visibility :internal
+  :export?    false
+  :setter     :none
+  :getter     #(env-path-allowlist :writable-paths)
   :doc        false)

@@ -12,72 +12,100 @@ import {
  * They are fetched the first time one of these routes is matched.
  */
 const databaseList = () =>
-  import("./databases/DatabaseListContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./databases/DatabaseListContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const databaseDetail = () =>
-  import("./databases/DatabaseDetailContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./databases/DatabaseDetailContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const tableList = () =>
-  import("./databases/TableListContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./databases/TableListContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const tableDetail = () =>
-  import("./databases/TableDetailContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./databases/TableDetailContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const tableQuestions = () =>
-  import("./databases/TableQuestionsContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./databases/TableQuestionsContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const fieldList = () =>
-  import("./databases/FieldListContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./databases/FieldListContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const fieldDetail = () =>
-  import("./databases/FieldDetailContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./databases/FieldDetailContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const segmentList = () =>
-  import("./segments/SegmentListContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./segments/SegmentListContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const segmentDetail = () =>
-  import("./segments/SegmentDetailContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./segments/SegmentDetailContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const segmentFieldList = () =>
-  import("./segments/SegmentFieldListContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./segments/SegmentFieldListContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const segmentFieldDetail = () =>
-  import("./segments/SegmentFieldDetailContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./segments/SegmentFieldDetailContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const segmentQuestions = () =>
-  import("./segments/SegmentQuestionsContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./segments/SegmentQuestionsContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const segmentRevisions = () =>
-  import("./segments/SegmentRevisionsContainer").then((module) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./segments/SegmentRevisionsContainer"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const glossary = () =>
-  import("./glossary/GlossaryContainer").then(({ GlossaryContainer }) => ({
+  import(
+    /* webpackChunkName: "reference" */ "./glossary/GlossaryContainer"
+  ).then(({ GlossaryContainer }) => ({
     Component: GlossaryContainer,
   }));
 

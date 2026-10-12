@@ -2,9 +2,9 @@
   "API endpoints for Security Center advisories."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
-   [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.api.common :as api]
@@ -12,6 +12,7 @@
    [metabase.api.routes.common :as routes.common :refer [+auth]]
    [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -69,8 +70,7 @@
   "List all security advisories with match status."
   []
   (api/check-superuser)
-  (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {:order-by [[:published_at :desc]]})
-                               :acknowledged_by_user)]
+  (let [advisories (t2/hydrate (security-center.db/advisories-newest-first) :acknowledged_by_user)]
     {:last_checked_at (settings/security-center-last-synced-at)
      :advisories      (mapv advisory-response advisories)}))
 
@@ -82,9 +82,9 @@
 
 (api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
-  [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
+  [{:keys [advisory-id]} :- [:map {:closed true} [:advisory-id ms/NonBlankString]]]
   (api/check-superuser)
-  (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
+  (let [advisory (security-center.db/advisory-by-advisory-id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 
@@ -92,7 +92,7 @@
   "Acknowledge multiple security advisories. Skips already-acknowledged advisories."
   [_route-params
    _query-params
-   {:keys [advisory_ids]} :- [:map [:advisory_ids [:sequential ms/NonBlankString]]]]
+   {:keys [advisory_ids]} :- [:map {:closed true} [:advisory_ids [:sequential ms/NonBlankString]]]]
   (api/check-superuser)
   (api/check (seq advisory_ids) [400 "advisory_ids must be a non-empty array"])
   (mapv acknowledge-response
@@ -123,7 +123,7 @@
   [_route-params
    _query-params
    body
-   :- [:map
+   :- [:map {:closed true}
        [:email_recipients {:optional true} [:maybe [:sequential ::models.notification/NotificationRecipient]]]
        [:slack_channel    {:optional true} [:maybe :string]]]]
   (api/check-superuser)

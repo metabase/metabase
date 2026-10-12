@@ -15,10 +15,10 @@ import { useDeleteBookmarkMutation } from "metabase/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
+import { getIsTenantUser } from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Bookmark } from "metabase-types/api";
@@ -64,7 +64,14 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 
 function getBookmarkModel(bookmark: Bookmark) {
   // we should really fix this on the backend
-  return bookmark.card_type === "model" ? "dataset" : bookmark.type;
+  switch (bookmark.card_type) {
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+    default:
+      return bookmark.type;
+  }
 }
 
 const BookmarkItem = ({

@@ -1,16 +1,22 @@
 import cx from "classnames";
 import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { Box, Icon, Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Table from "metabase-lib/v1/metadata/Table";
+import type {
+  DataSelectorDatabase,
+  DataSelectorTable,
+} from "metabase/querying/common/components/DataSelector";
+import { Box, Icon } from "metabase/ui";
 
 import DataSelectorS from "./DataSelector/DataSelector.module.css";
+
+export type TriggerComponentProps = {
+  database?: DataSelectorDatabase | null;
+  table?: DataSelectorTable | null;
+  hasMultipleSchemas?: boolean;
+};
 
 export function Trigger({
   className,
@@ -23,7 +29,7 @@ export function Trigger({
   className?: string;
   style?: CSSProperties;
   showDropdownIcon?: boolean;
-  iconSize?: number;
+  iconSize?: number | string;
   isMantine?: boolean;
   children: ReactNode;
 }) {
@@ -56,32 +62,7 @@ export function Trigger({
   );
 }
 
-export function FieldTrigger({
-  database,
-  field,
-}: {
-  database: Database;
-  field: Field;
-}) {
-  const tc = useTranslateContent();
-  if (!field || !field.table) {
-    return <Text>{t`Select...`}</Text>;
-  }
-  const hasMultipleSchemas =
-    _.uniq(database?.tables ?? [], (t) => t.schema_name).length > 1;
-
-  return (
-    <div>
-      <Box className={DataSelectorS.TextSchema}>
-        {hasMultipleSchemas && tc(field.table.schema_name) + " > "}
-        {tc(field.table.display_name)}
-      </Box>
-      <Text lh="1.2rem">{tc(field.display_name)}</Text>
-    </div>
-  );
-}
-
-export function DatabaseTrigger({ database }: { database: Database }) {
+export function DatabaseTrigger({ database }: TriggerComponentProps) {
   const tc = useTranslateContent();
   return database ? (
     <span
@@ -97,7 +78,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
   );
 }
 
-export function TableTrigger({ table }: { table: Table }) {
+export function TableTrigger({ table }: TriggerComponentProps) {
   const tc = useTranslateContent();
   return table ? (
     <span

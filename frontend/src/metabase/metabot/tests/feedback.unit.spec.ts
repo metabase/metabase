@@ -6,6 +6,7 @@ import {
   enterChatMessage,
   feedbackModal,
   lastChatMessage,
+  lastReqBody,
   mockAgentEndpoint,
   mockFeedbackEndpoint,
   setup,
@@ -54,9 +55,12 @@ describe("metabot > feedback", () => {
   it("should present the user an option to provide feedback", async () => {
     setup();
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+    const agentEndpoint = mockAgentEndpoint({
+      events: whoIsYourFavoriteResponse,
+    });
 
     await enterChatMessage("Who is your favorite?");
+    const agentRequestBody = await lastReqBody(agentEndpoint);
     const lastMessage = (await lastChatMessage())!;
     expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
 
@@ -72,7 +76,7 @@ describe("metabot > feedback", () => {
     const body = await feedbackEndpoint.calls()[0].request?.json();
     expect(body).toEqual({
       metabot_id: expect.any(Number),
-      message_id: "msg_test_favorite",
+      message_id: agentRequestBody.assistant_message_id,
       positive: false,
       freeform_feedback: "",
     });
@@ -123,9 +127,12 @@ describe("metabot > feedback", () => {
   it("should submit positive feedback", async () => {
     setup();
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+    const agentEndpoint = mockAgentEndpoint({
+      events: whoIsYourFavoriteResponse,
+    });
 
     await enterChatMessage("Who is your favorite?");
+    const agentRequestBody = await lastReqBody(agentEndpoint);
     const lastMessage = (await lastChatMessage())!;
 
     await userEvent.click(await thumbsUp(lastMessage));
@@ -136,7 +143,7 @@ describe("metabot > feedback", () => {
     const body = await feedbackEndpoint.calls()[0].request?.json();
     expect(body).toEqual({
       metabot_id: expect.any(Number),
-      message_id: "msg_test_favorite",
+      message_id: agentRequestBody.assistant_message_id,
       positive: true,
       freeform_feedback: "",
     });

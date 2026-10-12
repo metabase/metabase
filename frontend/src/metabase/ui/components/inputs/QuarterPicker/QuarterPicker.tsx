@@ -7,9 +7,10 @@ import {
 } from "@mantine/dates";
 import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
-import dayjs from "dayjs";
 import { type Ref, forwardRef } from "react";
 import { c } from "ttag";
+
+import { dayjs } from "metabase/dayjs";
 
 import CalendarS from "../Calendar/Calendar.module.css";
 

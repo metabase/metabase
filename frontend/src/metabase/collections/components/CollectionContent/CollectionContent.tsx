@@ -2,12 +2,11 @@ import {
   useGetCollectionQuery,
   useListBookmarksQuery,
   useListCollectionsTreeQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
 import type { CollectionId } from "metabase-types/api";
 
@@ -19,7 +18,9 @@ export function CollectionContent({
   collectionId: CollectionId;
 }) {
   const { data: bookmarks, error: bookmarksError } = useListBookmarksQuery();
-  const { data: databases, error: databasesError } = useDatabaseListQuery();
+  const { data: databasesResponse, error: databasesError } =
+    useListDatabasesQuery();
+  const databases = databasesResponse?.data;
 
   const { data: collections, error: collectionsError } =
     useListCollectionsTreeQuery({
@@ -36,11 +37,8 @@ export function CollectionContent({
   );
   const uploadsEnabled = !!uploadDbId;
 
-  const canCreateUploadInDb = useSelector(
-    (state) =>
-      uploadDbId != null &&
-      !!getMetadata(state).database(uploadDbId)?.canUpload(),
-  );
+  const canCreateUploadInDb = !!databases?.find(({ id }) => id === uploadDbId)
+    ?.can_upload;
 
   const isAdmin = useSelector(getUserIsAdmin);
 

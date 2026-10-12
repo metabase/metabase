@@ -1,16 +1,16 @@
 import _ from "underscore";
 
 import { createThunkAction } from "metabase/redux";
-import { resetUIControls } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
 import type { Action, Location } from "metabase/router";
 
+import { resetUIControls } from "../store/actions";
 import {
   getCard,
   getDatasetEditorTab,
   getQueryBuilderMode,
   getZoomedObjectId,
-} from "../selectors";
+} from "../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 
 import { setCardAndRun } from "./core/core";

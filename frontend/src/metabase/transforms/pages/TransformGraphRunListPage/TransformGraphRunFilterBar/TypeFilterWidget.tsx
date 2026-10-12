@@ -103,7 +103,7 @@ function TypeFilterForm({
   return (
     <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       <Checkbox.Group value={types} onChange={handleChange}>
-        <Stack p="md">
+        <Stack p="lg">
           {TRANSFORM_GRAPH_RUN_TYPES.map((type) => (
             <Checkbox
               key={type}
@@ -114,7 +114,7 @@ function TypeFilterForm({
         </Stack>
       </Checkbox.Group>
       <Divider />
-      <Group p="md" justify="end">
+      <Group p="lg" justify="end">
         <Button type="submit" variant="filled" disabled={!isValid}>
           {initialTypes.length > 0 ? t`Update filter` : t`Add filter`}
         </Button>

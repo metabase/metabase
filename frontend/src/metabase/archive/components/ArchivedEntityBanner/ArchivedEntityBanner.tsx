@@ -60,7 +60,7 @@ export const ArchivedEntityBanner = ({
             </Text>
           </Flex>
           {hasAction && (
-            <Flex gap={{ base: "sm", sm: "md" }}>
+            <Flex gap={{ base: "sm", sm: "lg" }}>
               {canRestore && (
                 <BannerButton iconName="revert" onClick={onUnarchive}>
                   {t`Restore`}

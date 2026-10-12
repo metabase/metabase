@@ -27,7 +27,7 @@ function HelpModal({ onClose }: HelpModalProps): JSX.Element {
       }
       onClose={handleClose}
     >
-      <Stack gap="md">
+      <Stack gap="lg">
         <Box>
           {t`It's possible you may also receive emails from ${applicationName} if you're a member of an email distribution list, like "team@mycompany.com" and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
         </Box>

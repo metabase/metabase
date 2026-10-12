@@ -74,9 +74,9 @@
 (def ^:private questions-json-schema
   "JSON Schema for the structured output tool, matching Python's ExampleQuestionGenerationSchema."
   {:type       "object"
-   :properties {:questions {:type  "array"
-                            :items {:type "string"}
-                            :description "List of example questions. No additional explanation."}}
+   :properties {"questions" {:type  "array"
+                             :items {:type "string"}
+                             :description "List of example questions. No additional explanation."}}
    :required   ["questions"]
    :additionalProperties false})
 

@@ -5,9 +5,9 @@ import {
   setupCardDataset,
   setupFieldEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { waitFor } from "__support__/ui";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";
 import type { FieldId, RowValue } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";

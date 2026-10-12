@@ -94,7 +94,7 @@ class SnippetSidebarInner extends Component<
   footer = () => (
     <Flex
       className={S.SidebarFooter}
-      p="md"
+      p="lg"
       onClick={() => this.setState({ showArchived: true })}
     >
       <Icon mr="sm" name="view_archive" />
@@ -176,7 +176,7 @@ class SnippetSidebarInner extends Component<
           />
         ) : (
           <>
-            <Flex align="center" justify="space-between" p="md" pl="lg" pr="sm">
+            <Flex align="center" justify="space-between" p="lg" pl="xl" pr="sm">
               {showSearch ? (
                 <>
                   <input
@@ -192,13 +192,14 @@ class SnippetSidebarInner extends Component<
                       }
                     }}
                   />
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
-                    variant="transparent"
+                    variant="subtle"
+                    color="neutral"
+                    size="sm"
                     onClick={this.hideSearch}
-                    className={S.HeaderButton}
-                  >
-                    <Icon name="close" />
-                  </Button>
+                    leftSection={<Icon name="close" />}
+                  />
                 </>
               ) : (
                 <>
@@ -214,6 +215,7 @@ class SnippetSidebarInner extends Component<
                   <Flex
                     align="center"
                     justify="flex-end"
+                    gap="md"
                     data-testid="snippet-header-buttons"
                   >
                     {PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
@@ -221,24 +223,26 @@ class SnippetSidebarInner extends Component<
                     )}
 
                     {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
+                      // TODO: replace with ActionIcon (GDGT-2457)
                       <Button
-                        variant="transparent"
+                        variant="subtle"
+                        color="neutral"
+                        size="sm"
                         onClick={this.showSearch}
-                        className={S.HeaderButton}
-                      >
-                        <Icon name="search" />
-                      </Button>
+                        leftSection={<Icon name="search" />}
+                      />
                     )}
 
                     {showAddMenu && (
                       <Menu position="bottom-end">
                         <Menu.Target>
+                          {/* TODO: replace with ActionIcon (GDGT-2457) */}
                           <Button
-                            variant="transparent"
-                            className={S.HeaderButton}
-                          >
-                            <Icon name="add" />
-                          </Button>
+                            variant="subtle"
+                            color="neutral"
+                            size="sm"
+                            leftSection={<Icon name="add" />}
+                          />
                         </Menu.Target>
                         <Menu.Dropdown>
                           {[
@@ -369,7 +373,7 @@ function ArchivedSnippetsInner({
 
   return (
     <SidebarContent>
-      <Box p="lg">
+      <Box p="xl">
         <SidebarHeader title={t`Archived snippets`} onBack={onBack} />
       </Box>
 

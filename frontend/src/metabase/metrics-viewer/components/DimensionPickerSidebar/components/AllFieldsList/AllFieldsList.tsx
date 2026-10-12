@@ -36,7 +36,7 @@ export function AllFieldsList({
 }: AllFieldsListProps) {
   if (sections.length === 0) {
     return (
-      <Text c="text-secondary" ta="center" py="lg">{t`No fields found`}</Text>
+      <Text c="text-secondary" ta="center" py="xl">{t`No fields found`}</Text>
     );
   }
 

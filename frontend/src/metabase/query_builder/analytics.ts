@@ -1,6 +1,10 @@
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
+import {
+  getRecordedTimelineEventsVisibility,
+  isSameTimelineEventsVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
 import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, VisualizationDisplay } from "metabase-types/api";
 
 export const trackNewQuestionSaved = (
   draftQuestion: Question,
@@ -37,10 +41,12 @@ export const trackNotebookNativePreviewShown = (
   });
 };
 
-export const trackFirstNonTableChartGenerated = (card: Card) => {
+export const trackFirstNonTableChartGenerated = (
+  display: VisualizationDisplay,
+) => {
   trackSimpleEvent({
     event: "chart_generated",
-    event_detail: card.display,
+    event_detail: display,
   });
 };
 
@@ -50,4 +56,36 @@ export const trackCardBookmarkAdded = (card: Card) => {
     event_detail: card.type,
     triggered_from: "qb_action_panel",
   });
+};
+
+export type QuestionEventsPanelLocation = "footer" | "chart";
+
+export const trackQuestionEventsPanelOpened = (
+  location: QuestionEventsPanelLocation,
+) => {
+  trackSimpleEvent({
+    event: "question_events_panel_opened",
+    triggered_from: location,
+  });
+};
+
+export const trackQuestionTimelineEventsSaved = (
+  question: Question,
+  originalQuestion?: Question,
+) => {
+  const visibility = getRecordedTimelineEventsVisibility(question.settings());
+  const originalVisibility = getRecordedTimelineEventsVisibility(
+    originalQuestion?.settings(),
+  );
+  const isVisibilityChanged =
+    visibility != null &&
+    (originalVisibility == null ||
+      !isSameTimelineEventsVisibility(visibility, originalVisibility));
+
+  if (isVisibilityChanged) {
+    trackSimpleEvent({
+      event: "question_timeline_events_saved",
+      target_id: question.id(),
+    });
+  }
 };

@@ -10,8 +10,6 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Alert, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -21,7 +19,7 @@ import {
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type { WritebackAction } from "metabase-types/api";
+import type { Database, WritebackAction } from "metabase-types/api";
 
 import {
   EmptyStateActionContainer,
@@ -40,9 +38,11 @@ interface OwnProps {
 
 type Props = OwnProps;
 
+const EMPTY_DATABASE_LIST: Database[] = [];
+
 function ModelActionDetails({ model }: Props) {
-  useListDatabasesQuery();
-  const databases = useSelector((state) => getMetadata(state).databasesList());
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const databases = databasesResponse?.data ?? EMPTY_DATABASE_LIST;
   const { data: actions = [] } = useListActionsQuery({
     "model-id": model.id(),
   });

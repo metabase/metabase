@@ -23,13 +23,13 @@ Dependency diagnostics has two tabs: **Broken dependencies** and **Unreferenced 
 
 ![Broken dependencies](./images/broken-dependencies.png)
 
-Broken dependencies lists items that other content depends on, where a dependent item references a column or field the item no longer provides. This can happen when a column is removed or renamed, or when a field is hidden from the query builder by setting Visibility to **Do not include** in [metadata editing](../data-modeling/metadata-editing.md).
+Broken dependencies lists items that other content depends on, where a dependent item references a column or field the item no longer provides. This can happen when a column is removed or renamed, or when a field is hidden from the query builder by setting Visibility to **Do not include** in [metadata editing](../data-modeling/metadata/metadata-editing.md).
 
 The broken dependencies table includes:
 
 - Tables
 - [Questions](../questions/introduction.md)
-- [Models](../data-modeling/models.md)
+- [Models](../data-modeling/models/models.md)
 
 
 For each item, the list shows:
@@ -48,7 +48,7 @@ Selecting an item opens a details panel with:
 - The item's name, owner, and creation date
 - A list of missing or invalid columns, with copy buttons to help fix references
 - Downstream items that are broken because of this specific issue. You can filter this list by entity type
-- Quick links to open items or view them in the [dependency graph](../data-studio/dependencies/graph.md)
+- Quick links to open items or view them in the [dependency graph](../data-modeling/tools/graph.md)
 
 For tables created by transforms, the sidebar also shows a link to the source transform.
 
@@ -84,8 +84,8 @@ Unreferenced entities includes:
 
 - Tables
 - [Questions](../questions/introduction.md)
-- [Models](../data-modeling/models.md)
-- [Metrics](../data-modeling/metrics.md)
+- [Models](../data-modeling/models/models.md)
+- [Metrics](../data-modeling/semantic-layer/metrics.md)
 - Segments
 - Measures
 - [Snippets](../questions/native-editor/snippets.md)
@@ -101,6 +101,6 @@ Selecting an item opens a details panel with:
 
 - Who created the item and when
 - When it was last edited
-- Links to open the item or view it in the [dependency graph](../data-studio/dependencies/graph.md)
+- Links to open the item or view it in the [dependency graph](../data-modeling/tools/graph.md)
 
 For tables, the sidebar also shows owners, descriptions, and links to open the schema or database. For tables created by transforms, the sidebar shows a link to the source transform.

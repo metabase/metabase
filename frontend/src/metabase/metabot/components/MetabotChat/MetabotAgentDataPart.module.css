@@ -1,0 +1,36 @@
+.sources [data-smart-link="link"] {
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-brand-hover);
+  }
+}
+
+.feedbackButton[data-variant="subtle"] {
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  &[data-active="true"] {
+    color: var(--mb-color-text-brand);
+  }
+}
+
+.feedbackList {
+  overflow: hidden;
+}
+
+.feedbackRow {
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+  }
+
+  &:hover {
+    background-color: var(--mb-color-background_page-secondary);
+  }
+}

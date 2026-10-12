@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
-import _ from "underscore";
 
+import { memoize } from "metabase/utils/memoize";
 import * as Lib from "metabase-lib";
 
 import { CompileError } from "./errors";
@@ -30,11 +30,11 @@ export function resolver(options: Options): Resolver {
     availableMetrics,
   } = options;
 
-  const metrics = _.memoize(
+  const metrics = memoize(
     () => availableMetrics ?? Lib.availableMetrics(query, stageIndex),
   );
-  const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
-  const measures = _.memoize(() => Lib.availableMeasures(query, stageIndex));
+  const segments = memoize(() => Lib.availableSegments(query, stageIndex));
+  const measures = memoize(() => Lib.availableMeasures(query, stageIndex));
 
   const cache = infoCache(options);
 

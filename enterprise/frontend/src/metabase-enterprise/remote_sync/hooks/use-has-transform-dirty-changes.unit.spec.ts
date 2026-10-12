@@ -6,8 +6,8 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
@@ -124,6 +124,17 @@ describe("useHasTransformDirtyChanges", () => {
     const { result } = setup({
       collections: [createMockTransformsCollection()],
       dirty: [createMockRemoteSyncEntity({ model: "transform" })],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("returns true when a transform test entity is dirty", async () => {
+    const { result } = setup({
+      collections: [createMockTransformsCollection()],
+      dirty: [createMockRemoteSyncEntity({ model: "transformtest" })],
     });
 
     await waitFor(() => {

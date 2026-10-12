@@ -3,3 +3,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The theme resolves --mantine-color-placeholder to transparent, because the native
+   ::placeholder has its own style. That would hide the span placeholder that FileInput
+   renders. Give it the color that native input placeholders get. */
+.FileInputPlaceholder {
+  color: var(--mb-color-text-disabled);
+}
+
+/* The clear button rendered by `clearable` is a CloseButton, which takes its color
+   from the gray palette that the theme resolves to transparent. Without this it is
+   present and clickable but invisible. */
+.FileInputSection button {
+  color: var(--mb-color-text-primary);
+}

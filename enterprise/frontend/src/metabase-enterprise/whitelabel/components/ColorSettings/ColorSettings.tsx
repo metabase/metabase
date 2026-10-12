@@ -1,13 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components";
 import { Box, Stack, Tabs } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
-import BrandColorSettings from "../BrandColorSettings";
-import ChartColorPreview from "../ChartColorPreview";
-import ChartColorSettings from "../ChartColorSettings";
+import { BrandColorSettings } from "../BrandColorSettings";
+import { ChartColorPreview } from "../ChartColorPreview";
+import { ChartColorSettings } from "../ChartColorSettings";
 
 export interface ColorSettingsProps {
   initialColors: ColorSettingsType | null;
@@ -35,7 +35,7 @@ export const ColorSettings = ({
   );
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Box>
         <SettingHeader
           id="user-interface-colors"
@@ -61,7 +61,7 @@ export const ColorSettings = ({
               <Tabs.Tab value="palette-preview">{t`Preview`}</Tabs.Tab>
             </Tabs.List>
 
-            <Box mt="lg" bdrs={0}>
+            <Box mt="xl" bdrs={0}>
               <Tabs.Panel value="chart-colors">
                 <ChartColorSettings
                   colors={colors}

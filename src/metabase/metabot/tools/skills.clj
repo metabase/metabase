@@ -37,8 +37,4 @@
   [{:keys [ids]} :- [:map {:closed true}
                      [:ids [:sequential
                             [:string {:description "A skill id, e.g. construct-notebook-query-core"}]]]]]
-  (try
-    {:output (str/join "\n\n" (map load-one ids))}
-    (catch Exception e
-      (log/errorf "Failed to load skill(s): %s" (ex-message e))
-      {:output (str "Failed to load skill(s): " (or (ex-message e) "Unknown error"))})))
+  {:output (str/join "\n\n" (map load-one ids))})

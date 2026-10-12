@@ -1,8 +1,11 @@
 .tooltip {
+  box-shadow: var(--mantine-shadow-sm);
   color: var(--mb-color-tooltip-text);
   font-size: var(--mantine-font-size-sm);
-  font-weight: bold;
-  padding: 0.6rem 0.75rem;
+  font-weight: normal;
+  line-height: var(--mantine-line-height-sm);
+  /* The 6px vertical padding from Figma has no matching spacing token. */
+  padding: 6px var(--mantine-spacing-sm);
   white-space: unset;
   max-width: 320px;
   /* Break long unbreakable strings so the tooltip can't overflow its max-width (metabase#74433). */

@@ -52,22 +52,23 @@
 (defmethod tx/dbdef->connection-details :databricks
   [_driver _connection-type {:keys [database-name] :as _dbdef}]
   (let [catalog (tx/db-test-env-var-or-throw :databricks :catalog)
-        multi-level? (tx/db-test-env-var :databricks :multi-level-schema)
         ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
         ;; in catalog or all catalogs on one Metabase database connection. Following expression generates schema
         ;; filters so only one schema is treated as a Metabase database, for compatibility with existing tests.
-        schema-filters (when (or (string? (not-empty database-name))
-                                 multi-level?)
+        schema-filters (when (string? (not-empty database-name))
                          {:schema-filters-type "inclusion"
-                          :schema-filters-patterns (str
-                                                    (when multi-level? (str catalog "."))
-                                                    (if database-name database-name "*"))})]
+                          :schema-filters-patterns (if database-name database-name "*")})]
     (merge
      {:host (tx/db-test-env-var-or-throw :databricks :host)
       :token (tx/db-test-env-var-or-throw :databricks :token)
       :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
       :catalog catalog
-      :multi-level-schema multi-level?}
+      ;; default behavior inside the databricks driver when receiving a 429
+      ;; (rate limit response) is to retry *immediately* with no backoff and
+      ;; keep going for 120 seconds (basically 120 retries since each takes one
+      ;; second) essentially DOSing the database.
+      ;; https://github.com/databricks/databricks-jdbc/blob/v3.4.2/src/main/java/com/databricks/jdbc/dbclient/impl/http/DatabricksHttpRetryHandler.java#L187
+      :rate-limit-retry 0}
      schema-filters)))
 
 (defn- existing-databases
@@ -145,6 +146,7 @@
    table-identifier
    rows]
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
+    ;; test loader has a raw Connection; reuses the driver's declared SET-timezone SQL format string
     (when-let [set-timezone-format-string #_{:clj-kondo/ignore [:deprecated-var]} (sql-jdbc.execute/set-timezone-sql driver)]
       (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)

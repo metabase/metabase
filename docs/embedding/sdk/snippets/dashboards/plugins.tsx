@@ -5,29 +5,17 @@ import {
 
 const dashboardId = 1;
 
-const ExampleBase1 = () => {
-  // [<snippet example-base-1>]
-  const plugins = {
-    dashboard: {
-      dashboardCardMenu: {
-        withDownloads: true,
-        withEditLink: true,
-        customItems: [],
-      },
-    },
-  };
-  // [<endsnippet example-base-1>]
-
-  return <InteractiveDashboard dashboardId={dashboardId} plugins={plugins} />;
-};
-
 const ExampleBase2 = () => (
   // [<snippet example-base-2>]
   <InteractiveDashboard
     dashboardId={1}
     plugins={{
       dashboard: {
-        dashboardCardMenu: () => null,
+        dashboardCardMenu: {
+          withDownloads: true,
+          withEditLink: true,
+          customItems: [],
+        },
       },
     }}
   />

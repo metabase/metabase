@@ -1,0 +1,11 @@
+.tooltipIcon {
+  color: var(--mb-color-text-disabled);
+}
+
+.iconContainer:hover .tooltipIcon {
+  color: var(--mb-color-text-secondary);
+}
+
+.tooltipIconContainer {
+  border-radius: var(--mantine-radius-sm);
+}

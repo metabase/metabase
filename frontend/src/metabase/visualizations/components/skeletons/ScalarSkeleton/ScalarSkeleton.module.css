@@ -1,0 +1,8 @@
+.actionMenu {
+  position: absolute;
+  top: 0.3125rem;
+  right: 0.3125rem;
+  z-index: 3;
+  color: var(--mb-color-text-secondary);
+  visibility: hidden;
+}

@@ -2,7 +2,8 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.timeline.db :as timeline.db]
+   [metabase.timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -11,6 +12,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -28,8 +30,9 @@
 
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
-  Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
-  [:enum "collections" "question"])
+  Events are added from one of four sources: `collections`, `question` (cards in backend code), `dashboard`, or directly
+  with an API call. An API call is indicated by having no source key in the `timeline-event` request."
+  [:enum "collections" "question" "dashboard"])
 
 ;;;; transforms
 
@@ -45,7 +48,7 @@
 (defmethod mi/perms-objects-set :model/TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (t2/select-one 'Timeline :id (:timeline_id event)))]
+                     (timeline.db/timeline (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
 (defmethod mi/can-create? :model/TimelineEvent
@@ -58,7 +61,7 @@
   [_model k events]
   (mi/instances-with-hydrated-data
    events k
-   #(t2/select-pk->fn identity :model/Timeline :id [:in (map :timeline_id events)])
+   #(timeline.db/timelines-by-id (map :timeline_id events))
    :timeline_id))
 
 (defn- fetch-events
@@ -66,29 +69,7 @@
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
   regardless of archive state."
   [timeline-ids {:events/keys [all? start end]}]
-  (let [clause {:where [:and
-                        ;; in our collections
-                        [:in :timeline_id timeline-ids]
-                        (when-not all?
-                          [:= :archived false])
-                        (when (or start end)
-                          [:or
-                           ;; absolute time in bounds
-                           [:and
-                            [:= :time_matters true]
-                            ;; less than or equal?
-                            (when start
-                              [:<= start :timestamp])
-                            (when end
-                              [:<= :timestamp end])]
-                           ;; non-specic time in bounds
-                           [:and
-                            [:= :time_matters false]
-                            (when start
-                              [:<= (h2x/->date start) (h2x/->date :timestamp)])
-                            (when end
-                              [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (t2/hydrate (t2/select :model/TimelineEvent clause) :creator)))
+  (t2/hydrate (timeline.db/timeline-events-for-timelines timeline-ids all? start end) :creator))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
@@ -112,9 +93,7 @@
 (defn dashcard-timeline-events
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (t2/select :model/Timeline
-                             :collection_id collection_id
-                             :archived false)]
+  (let [timelines (timeline.db/timelines-for-collection collection_id false)]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
@@ -122,9 +101,12 @@
 
 ;;;; serialization
 
-;; nested in Timeline
+(defmethod serdes/generate-path "TimelineEvent" [_ event]
+  [(serdes/infer-self-path "Timeline" (timeline.db/timeline (:timeline_id event)))
+   (serdes/infer-self-path "TimelineEvent" event)])
+
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :icon :name :time_matters :timezone]
+  {:copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
    :skip      []
    :transform {:created_at  (serdes/date)
                :creator_id  (serdes/fk :model/User)

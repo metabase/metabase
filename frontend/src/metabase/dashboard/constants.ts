@@ -14,7 +14,7 @@ export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
     sharing: "sharing",
     settings: "settings",
     info: "info",
-    analyze: "analyze",
+    events: "events",
   };
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
@@ -24,6 +24,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   dashboards: {},
   dashcards: {},
   dashcardData: {},
+  linkTargets: { questions: {}, dashboards: {} },
   parameterValues: {},
   draftParameterValues: {},
   loadingDashCards: {
@@ -39,6 +40,12 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   isNavigatingBackToDashboard: false,
   slowCards: {},
   sidebar: { props: {} },
+  timelineEvents: {
+    overrides: {},
+    enabledByDashCard: {},
+    selection: null,
+    hasTrackedEventsShown: false,
+  },
   missingActionParameters: null,
   autoApplyFilters: {
     toastId: null,
@@ -61,5 +68,5 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   // TODO: (Kelvin 2025-11-17) this will be removed when I work on EMB-1025
   withSubscriptions: true,
   withFooter: true,
-  getClickActionMode: undefined,
+  clickActionMode: undefined,
 };

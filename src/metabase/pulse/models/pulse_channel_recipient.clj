@@ -1,5 +1,6 @@
 (ns metabase.pulse.models.pulse-channel-recipient
   (:require
+   [metabase.pulse.db :as pulse.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,13 +13,11 @@
 ;;; automatically deleted.
 (t2/define-before-delete :model/PulseChannelRecipient
   [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
-  (let [other-recipients-count (t2/count :model/PulseChannelRecipient
-                                         :pulse_channel_id channel-id
-                                         :id               [:not= pulse-channel-recipient-id])
+  (let [other-recipients-count (pulse.db/other-pulse-channel-recipient-count channel-id pulse-channel-recipient-id)
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (t2/select-one-fn :details :model/PulseChannel :id channel-id)
+      (let [details              (pulse.db/pulse-channel-details channel-id)
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
-          (t2/delete! :model/PulseChannel :id channel-id))))))
+          (pulse.db/delete-pulse-channel! channel-id))))))

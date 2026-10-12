@@ -88,14 +88,12 @@ export function GlossaryTable({
 
   return (
     <>
-      <Group justify="space-between" mb="xs">
+      <Group justify="space-between" mb="xxs">
         <Text>
           {t`Define terms to help your team and ${metabotName} understand your data.`}
         </Text>
         {!readOnly && (
           <Button
-            variant="default"
-            size="sm"
             leftSection={<Icon name="add" />}
             onClick={() => {
               if (editingId) {
@@ -126,7 +124,7 @@ export function GlossaryTable({
         }
         emptyBody={
           <Center>
-            <Box mb="md">
+            <Box mb="lg">
               <EmptyState
                 message={t`No terms yet`}
                 illustrationElement={<NoObjectError mb="-1.5rem" />}
@@ -192,7 +190,7 @@ export function GlossaryTable({
                     valign="top"
                     onClick={() => startEditing(item.id, "term")}
                   >
-                    <Text lh="1.2" fw="bold" pt="xs">
+                    <Text lh="1.2" fw="bold" pt="xxs">
                       {item.term}
                     </Text>
                   </Box>
@@ -202,7 +200,7 @@ export function GlossaryTable({
                     style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
                     onClick={() => startEditing(item.id, "definition")}
                   >
-                    <Text lh="1.2" pt="xs">
+                    <Text lh="1.2" pt="xxs">
                       {item.definition}
                     </Text>
                   </Box>

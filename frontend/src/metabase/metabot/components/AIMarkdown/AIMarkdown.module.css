@@ -8,9 +8,15 @@
 }
 
 .aiMarkdown {
-  line-height: 1.5;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   min-width: 0;
   max-width: 100%;
+
+  .large & {
+    font-size: 1rem;
+    line-height: 1.75rem;
+  }
 }
 
 .aiMarkdown > :last-child {
@@ -63,6 +69,7 @@
   padding: 0.5rem 0.75rem;
   text-align: left;
   vertical-align: top;
+  border: none;
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 
@@ -121,20 +128,17 @@
 }
 
 .aiMarkdown code {
-  font-family: Monaco, Menlo, "Courier New", monospace;
-  background: var(--mb-color-background_page-secondary);
+  background: var(--mb-color-background_surface-secondary);
   color: var(--mb-color-text-primary);
   padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.875em;
-  border: 1px solid var(--mb-color-border-neutral);
+  border-color: var(--mb-color-border-neutral-subtle);
+  border-radius: 6px;
 }
 
 .aiMarkdown pre code {
   font-size: 0.6875rem;
   line-height: 1.5;
   background: transparent;
-  border: none;
   padding: 0;
 }
 
@@ -149,25 +153,16 @@
 
 .aiMarkdown ul,
 .aiMarkdown ol {
-  padding-left: 1.5rem;
   margin-bottom: 1rem;
-}
-
-.aiMarkdown ul {
-  list-style-type: disc;
-}
-
-.aiMarkdown ol {
-  list-style-type: decimal;
 }
 
 .aiMarkdown li {
   margin-bottom: 0.5rem;
-  line-height: 1.5;
+  line-height: inherit;
 }
 
 .aiMarkdown li p {
-  line-height: 1.5;
+  line-height: inherit;
 }
 
 .aiMarkdown li > ul,
@@ -175,24 +170,29 @@
   margin-top: 0.5rem;
 }
 
+.link {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.125rem;
+}
+
 .smartLink {
   color: var(--mb-color-core-brand);
   font-weight: 700;
   padding: 0.125rem;
-  border-radius: var(--mantine-radius-sm);
-  transition: 200ms background-color;
+  border-radius: var(--mantine-radius-xs);
   outline: none;
-
-  &:hover {
-    background-color: var(--mb-color-background_surface-hover);
-  }
 }
 
 .smartLinkInner {
-  border-bottom: 1px solid var(--mb-color-border-brand);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.125rem;
 }
 
 .icon {
   margin-bottom: -0.125rem;
   margin-right: 0.25rem;
+}
+
+.large [data-smart-link="token"] {
+  padding-inline: 0.375rem;
 }

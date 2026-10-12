@@ -7,10 +7,13 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import { selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { fetchTableMetadata } from "metabase/redux/tables";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
+import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { TEST_METADATA } from "./fixtures";
 
@@ -36,6 +39,8 @@ jest.mock("metabase/api", () => ({
       getCardQueryMetadata: { name: "getCardQueryMetadata" },
     },
   },
+  selectCard: jest.fn(),
+  selectTableQueryMetadata: jest.fn(),
 }));
 
 jest.mock("metabase/api/utils/run-rtk-endpoint", () => ({
@@ -43,18 +48,26 @@ jest.mock("metabase/api/utils/run-rtk-endpoint", () => ({
 }));
 
 jest.mock("metabase/redux/tables", () => ({
-  fetchTableMetadata: jest.fn(({ id }) => ({
-    type: "fetchTableMetadata",
+  fetchTableMetadataAndForeignKeys: jest.fn(({ id }) => ({
+    type: "fetchTableMetadataAndForeignKeys",
     payload: id,
   })),
 }));
 
-jest.mock("metabase/selectors/metadata", () => ({
-  getMetadataUnfiltered: jest.fn(),
+jest.mock("metabase/metadata-store", () => ({
+  selectMetadataProviderUnfiltered: jest.fn(),
 }));
 
-export const mockFetchTableMetadata = jest.mocked(fetchTableMetadata);
-export const mockGetMetadataUnfiltered = jest.mocked(getMetadataUnfiltered);
+export const mockFetchTableMetadataAndForeignKeys = jest.mocked(
+  fetchTableMetadataAndForeignKeys,
+);
+export const mockSelectCard = jest.mocked(selectCard);
+export const mockSelectTableQueryMetadata = jest.mocked(
+  selectTableQueryMetadata,
+);
+export const mockSelectMetadataProviderUnfiltered = jest.mocked(
+  selectMetadataProviderUnfiltered,
+);
 export const mockRunRtkEndpoint = jest.mocked(runRtkEndpoint);
 export const mockUseLazySelector = jest.mocked(useLazySelector);
 export const mockUseMetabaseProviderPropsStore = jest.mocked(
@@ -87,9 +100,12 @@ export const TEST_DATASET_QUERY = createMockDatasetQuery([
   { "source-table": 1 },
 ]);
 
-export const mockPropsStore = (reduxStore: SdkStore) =>
+export const mockPropsStore = (
+  reduxStore: SdkStore,
+  dataApp?: { name: string; isDev?: boolean },
+) =>
   mockUseMetabaseProviderPropsStore.mockReturnValue({
-    state: { internalProps: { reduxStore }, props: null },
+    state: { internalProps: { reduxStore, dataApp }, props: null },
     store: ensureMetabaseProviderPropsStore(),
   });
 
@@ -124,14 +140,31 @@ export function createDeferred<TValue>() {
   return { promise, resolve, reject };
 }
 
+/** The entity ID a published "Orders question" (card 41) resolves from. */
+export const PUBLISHED_QUESTION_ENTITY_ID = "ordersQuestionEntity1";
+
 export const resetTestState = (): void => {
   jest.clearAllMocks();
-  mockRunRtkEndpoint.mockResolvedValue(undefined);
-
-  mockGetMetadataUnfiltered.mockReturnValue(
-    // `Metadata` is a class; the fixture is the plain shape read out of it.
-    TEST_METADATA as unknown as ReturnType<typeof getMetadataUnfiltered>,
+  mockRunRtkEndpoint.mockImplementation(async (request) =>
+    isObject(request) && request.id === PUBLISHED_QUESTION_ENTITY_ID
+      ? TEST_METADATA.questions[41]
+      : undefined,
   );
+
+  // One fixture drives the provider and both cache lookups.
+  const metadata = TEST_METADATA as unknown as Lib.Metadata;
+
+  mockSelectMetadataProviderUnfiltered.mockImplementation(
+    (_state, databaseId) => Lib.metadataProvider(databaseId, metadata),
+  );
+  // The RTK-generated selectors carry the whole endpoint map in their types,
+  // which a fixture cannot satisfy. Only `data` is read from the result.
+  mockSelectTableQueryMetadata.mockImplementation(((arg: { id: 1 | 2 }) =>
+    () => ({ data: TEST_METADATA.tables[arg.id] })) as never);
+  // Same reason as the table selector above.
+  mockSelectCard.mockImplementation(((arg: { id: 31 | 41 }) => () => ({
+    data: TEST_METADATA.questions[arg.id],
+  })) as never);
 
   mockUseLazySelector.mockReturnValue({ status: "success" });
   mockUseSdkLoadingState.mockReturnValue(LOADED_SDK_STATE);

@@ -1,11 +1,11 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 
 export const ExplainerTextContainer = styled.p`
-  margin-left: var(--mantine-spacing-xl);
-  margin-right: var(--mantine-spacing-xl);
+  margin-left: var(--mantine-spacing-xxl);
+  margin-right: var(--mantine-spacing-xxl);
   color: var(--mb-color-text-secondary);
 `;
 

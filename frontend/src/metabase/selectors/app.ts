@@ -1,10 +1,10 @@
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getUser } from "metabase/current-user";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import type { State } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export interface RouterProps {

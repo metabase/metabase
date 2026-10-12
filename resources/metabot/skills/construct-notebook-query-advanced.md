@@ -2,7 +2,7 @@
 id: construct-notebook-query-advanced
 title: Construct notebook query — advanced
 description: Joins (explicit and implicit), multi-stage queries, querying saved questions/models with source-card, metrics, measures, segments, expressions, and aggregation references in construct_notebook_query — load when a query needs any of these.
-tools: [construct_notebook_query]
+tools: [construct_notebook_query, document_construct_model_chart]
 priority: 50
 ---
 # Construct Query Reference — Advanced
@@ -24,13 +24,13 @@ Define custom columns inside a stage using `expressions` and reference by name w
 ```json
 "expressions": {
   "Subtotal": ["+", {},
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]],
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TAX"]]]
+               ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]],
+               ["field", {}, ["Sample Database", null, "ORDERS", "TAX"]]]
 },
 "aggregation": [["sum", {}, ["expression", {}, "Subtotal"]]]
 ```
 
-The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted and auto-converted.
+A sequential form is also accepted, but the name must live in the defining clause's own options as `lib/expression-name` — `[["+", {"lib/expression-name": "Subtotal"}, <a>, <b>], ...]`. There is no `["expression", {}, "Name", expr]` definition form; `["expression", {}, "<Name>"]` is only a *reference* to an already-defined expression. Prefer the object form above.
 
 ## Joins (explicit)
 
@@ -39,14 +39,14 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
   "alias": "Products",
   "strategy": "left-join",
   "stages": [{"lib/type": "mbql.stage/mbql",
-              "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+              "source-table": ["Sample Database", null, "PRODUCTS"]}],
   "conditions": [["=", {},
-    ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+    ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
     ["field", {"join-alias": "Products"},
-     ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]]
+     ["Sample Database", null, "PRODUCTS", "ID"]]]]
 }],
 "breakout": [["field", {"join-alias": "Products"},
-              ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+              ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - `alias` is a free-choice string; use it consistently in conditions, breakout, aggregation, order-by.
@@ -59,9 +59,9 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
 Reference a field on a related table directly — when the source has exactly one FK to that target, the tool auto-fills `source-field` and performs the implicit join:
 
 ```json
-"source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+"source-table": ["Sample Database", null, "ORDERS"],
 "aggregation": [["count", {}]],
-"breakout": [["field", {}, ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+"breakout": [["field", {}, ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - **Multiple FKs** to the target → `:ambiguous-fk` lists them. Retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field.
@@ -70,7 +70,7 @@ Reference a field on a related table directly — when the source has exactly on
 - If the FK column lives on a previous stage's output, write `{"source-field-name": "<col>"}` (not auto-filled).
 - If multiple explicit joins all expose the target FK, `:ambiguous-fk-via-join` lists them — set `{"source-field-join-alias": "<alias>"}` to pick one.
 
-**Tip:** discover FKs with `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
+**Tip:** where `read_resource` is available, discover FKs with `read_resource metabase://table/<id>/fields` — FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"`, so always look for one before assuming a column lives on the current table. Without `read_resource`, call `list_available_fields` with the table's id in `table_ids` — it emits the same `fk_target_fully_qualified_name` on every FK column. (All three id arrays — `table_ids`, `model_ids`, `metric_ids` — are required; pass `[]` for the ones you don't need.)
 
 ## Multi-stage queries
 
@@ -81,9 +81,9 @@ Post-aggregation filter — count orders per product, keep only those with > 10:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+   "source-table": ["Sample Database", null, "ORDERS"],
    "aggregation": [["count", {}]],
-   "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]]]},
+   "breakout": [["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]]]},
   {"lib/type": "mbql.stage/mbql",
    "filters": [[">", {}, ["field", {}, "count"], 10]]}
 ]
@@ -94,10 +94,10 @@ Re-aggregate — average daily total by month:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+   "source-table": ["Sample Database", null, "ORDERS"],
+   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
    "breakout": [["field", {"temporal-unit": "day"},
-                 ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]},
+                 ["Sample Database", null, "ORDERS", "CREATED_AT"]]]},
   {"lib/type": "mbql.stage/mbql",
    "aggregation": [["avg", {}, ["field", {}, "sum"]]],
    "breakout": [["field", {"temporal-unit": "month"}, ["field", {}, "CREATED_AT"]]]}
@@ -108,9 +108,25 @@ Re-aggregate — average daily total by month:
 - Within the **same stage**, refer to your own aggregation with `["aggregation", {}, <idx>]` (see Aggregation references above). In a **later** stage, use the cross-stage string-name form against the previous stage's output.
 - Joins, expressions, filters, aggregation, breakout, order-by, limit are all valid in later stages.
 
-## Rates and ratios (numerator ÷ denominator) — always two stages
+## Rates and ratios (numerator ÷ denominator)
 
-A rate like **open rate**, **bounce rate**, **conversion rate**, or **% of total** divides one aggregation by another. You **cannot** divide two aggregations inside a single stage's `expressions` — that produces a *non-aggregation expression* error. Compute the numerator and denominator as separate aggregations in **stage 1**, then divide them in **stage 2**.
+A rate like **open rate**, **bounce rate**, **conversion rate**, or **% of total** divides one aggregation by another. What you **cannot** do is divide two aggregations inside `expressions:` — a custom column is computed per row, so aggregations aren't allowed there and you get a *non-aggregation expression* error. Two shapes do work:
+
+**One stage — divide inside `aggregation:`** (simplest when the ratio is all you need). An arithmetic clause over aggregations is itself a valid aggregation:
+
+```json
+{"lib/type": "mbql/query",
+ "stages": [{"lib/type": "mbql.stage/mbql",
+             "source-table": ["Sample Database", null, "ORDERS"],
+             "aggregation": [["/", {},
+                              ["count-where", {},
+                               ["<", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 50]],
+                              ["count", {}]]],
+             "breakout": [["field", {"temporal-unit": "month"},
+                           ["Sample Database", null, "ORDERS", "CREATED_AT"]]]}]}
+```
+
+**Two stages** — use this when you also want the numerator and denominator as their own columns, or when the ratio needs further post-aggregation work. Compute them as separate aggregations in **stage 1**, then divide in **stage 2**.
 
 Worked example — share of small orders per month (`count of orders under $50 ÷ total orders`):
 
@@ -118,12 +134,12 @@ Worked example — share of small orders per month (`count of orders under $50 �
 {"lib/type": "mbql/query",
  "stages": [
    {"lib/type": "mbql.stage/mbql",
-    "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+    "source-table": ["Sample Database", null, "ORDERS"],
     "aggregation": [
-      ["count-where", {}, ["<", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 50]],
+      ["count-where", {}, ["<", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 50]],
       ["count", {}]],
     "breakout": [["field", {"temporal-unit": "month"},
-                  ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]},
+                  ["Sample Database", null, "ORDERS", "CREATED_AT"]]]},
    {"lib/type": "mbql.stage/mbql",
     "expressions": {
       "Small Order Rate": ["/", {}, ["field", {}, "count_where"], ["field", {}, "count"]]},
@@ -139,7 +155,7 @@ Instead of `source-table`, use `source-card` to query an existing question or mo
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
-3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`).
+3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names and `read_resource` is available, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`). Without `read_resource`: for a **model**, call `list_available_fields` with its numeric id in `model_ids` (`table_ids` and `metric_ids` are required too — pass `[]`). For a **saved question**, `list_available_fields` has no lookup — passing a question id in `model_ids` errors ("not a valid model id, it's a question"). Reuse the column names already visible from an earlier `search` or tool result instead of guessing.
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -162,9 +178,9 @@ A metric is a pre-defined aggregation attached to a base table. To use one:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
- "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+ "source-table": ["Sample Database", null, "ORDERS"],
  "filters": [[">", {}, ["field", {},
-                        ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 0]],
+                        ["Sample Database", null, "ORDERS", "TOTAL"]], 0]],
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
@@ -176,18 +192,18 @@ To group a metric by a field that lives on a **different** table, add an explici
 
 ```json
 {"lib/type": "mbql.stage/mbql",
- "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+ "source-table": ["Sample Database", null, "ORDERS"],
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]],
  "joins": [{"alias": "Products",
             "strategy": "left-join",
             "stages": [{"lib/type": "mbql.stage/mbql",
-                        "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+                        "source-table": ["Sample Database", null, "PRODUCTS"]}],
             "conditions": [["=", {},
-                            ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+                            ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
                             ["field", {"join-alias": "Products"},
-                             ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]}],
+                             ["Sample Database", null, "PRODUCTS", "ID"]]]]}],
  "breakout": [["field", {"join-alias": "Products"},
-               ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]}
+               ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]}
 ```
 
 When the breakout dimension lives on the metric's **own** base table, no join is needed — just break out on a portable FK as in the example above.

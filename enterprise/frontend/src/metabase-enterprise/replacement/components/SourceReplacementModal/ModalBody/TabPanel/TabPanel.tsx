@@ -26,7 +26,7 @@ export function TabPanel({
   };
 
   return (
-    <Box className={S.panel} px="lg" bg="background_page-primary">
+    <Box className={S.panel} px="xl" bg="background_page-primary">
       <Tabs value={selectedTab} onChange={handleChange} listBorder={false}>
         <Tabs.List>
           <Tabs.Tab value="column-mappings">{t`Column comparison`}</Tabs.Tab>

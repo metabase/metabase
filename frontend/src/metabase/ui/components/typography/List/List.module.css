@@ -1,6 +1,14 @@
 .root {
+  --list-marker-gap: var(--mantine-spacing-xl);
+
   /* to revert "none" from the reset */
   list-style-type: revert;
+
+  &[data-with-padding] {
+    padding-inline-start: calc(
+      var(--list-marker-gap) + var(--mantine-spacing-lg)
+    );
+  }
 }
 
 .item {

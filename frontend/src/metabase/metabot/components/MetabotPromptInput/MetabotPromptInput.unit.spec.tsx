@@ -11,11 +11,11 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotMentionPluginKey } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotMentionExtension";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   createMockCollection,

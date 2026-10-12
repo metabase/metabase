@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
+import { moveCollectionItemAndTrack } from "metabase/common/collections/analytics";
 import {
   type Destination,
   QuestionMoveConfirmModal,
@@ -20,7 +21,7 @@ import {
   type RegisterShortcutProps,
   useRegisterShortcut,
 } from "metabase/palette/hooks/useRegisterShortcut";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
@@ -38,6 +39,7 @@ function hasBlockingOverlay() {
 type CollectionBulkActionsProps = {
   selected: CollectionItem[];
   collection: Collection;
+  bookmarks?: Bookmark[];
   selectedItems: CollectionItem[] | null;
   setSelectedItems: (items: CollectionItem[] | null) => void;
   selectedAction: string | null;
@@ -49,6 +51,7 @@ export const CollectionBulkActions = memo(
   ({
     selected,
     collection,
+    bookmarks,
     selectedItems,
     setSelectedItems,
     selectedAction,
@@ -142,9 +145,13 @@ export const CollectionBulkActions = memo(
     const doMove = async (destination: Destination) => {
       if (selectedItems) {
         await Promise.all(
-          selectedItems
-            .filter(isMovable)
-            .map((item) => setCollection(item, destination)),
+          selectedItems.filter(isMovable).map((item) =>
+            moveCollectionItemAndTrack({
+              item,
+              move: () => setCollection(item, destination),
+              triggeredFrom: "move_modal",
+            }),
+          ),
         ).finally(clearSelected);
       }
       handleCloseModal();
@@ -210,6 +217,10 @@ export const CollectionBulkActions = memo(
             />
           ) : (
             <UnarchivedBulkActions
+              selected={selected}
+              collection={collection}
+              bookmarks={bookmarks ?? []}
+              clearSelected={clearSelected}
               onRequestMove={canMove ? handleBulkMoveStart : undefined}
               onRequestTrash={canArchive ? openTrashConfirm : undefined}
             />

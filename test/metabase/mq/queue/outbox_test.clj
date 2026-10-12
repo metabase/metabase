@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase.mq.queue.outbox-test
+(ns ^:synchronized metabase.mq.queue.outbox-test
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]
@@ -230,7 +230,7 @@
               id (t2/insert-returning-pk! :queue_message_outbox
                                           {:queue_name "outbox-require" :payload pl})]
           (binding [q.backend/*backend* q.quartz/backend]
-            (with-redefs [task/scheduler-disabled? (constantly true)]
+            (mt/with-dynamic-fn-redefs [task/scheduler-disabled? (constantly true)]
               (outbox/publish-outbox-rows!
                (atom {:metabase.mq.queue.outbox/rows
                       [{:id id :channel :queue/outbox-require :payload pl}]}))))

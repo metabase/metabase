@@ -26,6 +26,32 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
+(defn visible-columns
+  "The columns a rendered table shows, in result order. Drops columns `visible?` rejects (default [[show-in-table?]])
+  and columns with `:remapped_from`. Each column gets `:source-idx`, the index of its value in a result row. A
+  remapped column also gets its target as `:remapped_to_column`, and its `:source-idx` points at the target's value."
+  ([cols]
+   (visible-columns cols show-in-table?))
+  ([cols visible?]
+   (let [remapping-lookup (create-remapping-lookup cols)]
+     (into []
+           (comp (map-indexed vector)
+                 (filter (fn [[_idx col]] (visible? col)))
+                 (remove (fn [[_idx col]] (:remapped_from col)))
+                 (map (fn [[idx col]]
+                        (if-let [target-idx (get remapping-lookup (:name col))]
+                          (assoc col
+                                 :remapped_to_column (nth cols target-idx)
+                                 :source-idx         target-idx)
+                          (assoc col :source-idx idx)))))
+           cols))))
+
+(defn remapped-display-name
+  "The `:display_name` of the column's `:remapped_to_column` if it has one, else its own."
+  [col]
+  (or (:display_name (:remapped_to_column col))
+      (:display_name col)))
+
 (defn prepare-table-data
   "Prepare query results for table rendering.
    - Filters out columns the `visible?` predicate rejects (defaults to [[show-in-table?]])
@@ -35,24 +61,6 @@
   ([cols rows]
    (prepare-table-data cols rows show-in-table?))
   ([cols rows visible?]
-   (let [remapping-lookup (create-remapping-lookup cols)
-         ;; Build list of columns to keep (visible and not remapped_from)
-         ;; and track which source index to read from for each
-         col-info         (into []
-                                (comp
-                                 (map-indexed vector)
-                                 (filter (fn [[_ col]] (visible? col)))
-                                 (remove (fn [[_ col]] (:remapped_from col)))
-                                 (map (fn [[idx col]]
-                                        {:source-idx (or (get remapping-lookup (:name col)) idx)
-                                         :col        (if-let [remapped-idx (get remapping-lookup (:name col))]
-                                                       (nth cols remapped-idx)
-                                                       col)})))
-                                cols)
-         output-cols      (mapv :col col-info)
-         col-indices      (mapv :source-idx col-info)
-         output-rows      (mapv (fn [row]
-                                  (mapv #(nth row % nil) col-indices))
-                                rows)]
-     {:cols output-cols
-      :rows output-rows})))
+   (let [visible-cols (visible-columns cols visible?)]
+     {:cols (mapv #(or (:remapped_to_column %) (dissoc % :source-idx)) visible-cols)
+      :rows (mapv (fn [row] (mapv #(nth row (:source-idx %) nil) visible-cols)) rows)})))

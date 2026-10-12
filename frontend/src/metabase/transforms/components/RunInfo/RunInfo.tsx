@@ -1,10 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import dayjs from "dayjs";
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { dayjs } from "metabase/dayjs";
 import {
   ActionIcon,
   Box,
@@ -55,7 +55,7 @@ export function RunInfo({ status, message, endTime }: RunInfoProps) {
         <Modal
           title={getTitle(status, endTime)}
           size="xl"
-          padding="xl"
+          padding="xxl"
           opened
           onClick={handleModalClick}
           onClose={close}
@@ -98,8 +98,8 @@ type RunErrorModalContentProps = {
 
 function RunInfoModalContent({ message, onClose }: RunErrorModalContentProps) {
   return (
-    <Stack pt="md" gap="lg">
-      <Box className={S.codeContainer} pos="relative" pr="lg">
+    <Stack pt="lg" gap="xl">
+      <Box className={S.codeContainer} pos="relative" pr="xl">
         <CodeEditor value={message} readOnly />
         <Box p="sm" pos="absolute" right={0} top={0}>
           <CopyButton value={message} />

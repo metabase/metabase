@@ -1,6 +1,5 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-/* eslint-disable import/order */
 const rspack = require("@rspack/core");
 
 const mainConfig = require("./rspack.main.config");
@@ -9,6 +8,9 @@ const {
 } = require("./frontend/build/embedding-sdk/rspack/shared");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
@@ -60,6 +62,7 @@ const baseConfig = {
 
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,

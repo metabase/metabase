@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync, spawn } = require("child_process");
+const { spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -10,8 +10,21 @@ const { waitUntilReady, shell } = require("./cypress-runner-utils");
 const tempDbPath = path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
 function getJvmOptsFromDepsEdn(alias = "e2e") {
-  const cmd = `clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :${alias} :jvm-opts) (clojure.string/join " ") println)'`;
-  return execSync(cmd, { encoding: "utf8" }).trim().toString();
+  const depsEdnPath = path.resolve(__dirname, "../../deps.edn");
+  const depsEdn = fs.readFileSync(depsEdnPath, "utf8");
+  const aliasBlockPattern = new RegExp(
+    `:${alias}\\s*\\n\\s*\\{:jvm-opts\\s*\\[([\\s\\S]*?)\\]\\s*\\}`,
+    "m",
+  );
+  const aliasBlock = depsEdn.match(aliasBlockPattern)?.[1];
+  if (!aliasBlock) {
+    throw new Error(`Could not find :jvm-opts for alias :${alias} in deps.edn`);
+  }
+
+  const jvmOpts = [...aliasBlock.matchAll(/"((?:\\.|[^"\\])*)"/g)].map(
+    ([, option]) => JSON.parse(`"${option}"`),
+  );
+  return jvmOpts.join(" ");
 }
 
 // Ensure that the only two required env vars have values
@@ -33,6 +46,8 @@ process.env.MB_SAMPLE_DATABASE_ENGINE = "h2";
 // add or sync a test database. Set here rather than in the `:e2e` deps.edn alias because CI runs the uberjar and
 // never reads that alias. A spec that wants the policy on can set it through the settings API.
 process.env.MB_WAREHOUSE_ALLOWED_NETWORKS = "allow-all";
+// Metabot specs use a mock LLM server on localhost, so E2E runs must allow loopback LLM endpoints.
+process.env.MB_LLM_ALLOWED_NETWORKS = "allow-all";
 
 if (!process.env.CI) {
   // Use a temporary copy of the sample db so it won't use and lock the db used for local development

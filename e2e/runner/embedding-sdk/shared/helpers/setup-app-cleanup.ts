@@ -9,7 +9,7 @@ export function setupAppCleanup({
   cleanupAppDir,
 }: {
   rootPath: string;
-  env: Record<string, string | number>;
+  env: Record<string, string | number | undefined>;
   appDownCommand: string;
   cleanupAppDir: boolean;
 }) {

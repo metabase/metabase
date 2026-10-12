@@ -12,6 +12,7 @@
    ;; TODO (Bronsa 16/02/26): get rid of macaw
    [macaw.ast :as macaw.ast]
    [macaw.core :as macaw]
+   [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
@@ -20,8 +21,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -120,7 +120,7 @@
     :macaw.ast/literal (let [{:keys [value]} node]
                          (cond
                            (nil? value) nil
-                           :else        [:inline value]))
+                           :else        [:lift value]))
     nil))
 
 (defn- macaw-condition->hsql
@@ -216,7 +216,7 @@
                            qp.preprocess/preprocess)
           sql (lib/raw-native-query native-query)
           db-id (transforms-base.u/transform-source-database transform)
-          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          driver (keyword (transforms-inspector.db/database-engine db-id))
           parsed (macaw-parsed-query sql driver)
           ast (macaw.ast/->ast parsed {:with-instance? false})]
       (when (and ast (= (:type ast) :macaw.ast/select))

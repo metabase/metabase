@@ -15,17 +15,8 @@ fk_target_field_id:
 - PUBLIC
 - PEOPLE
 - ID
-dimensions: []
 position: 1
-custom_position: 0
 database_position: 1
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: ORDERS
-  model: Table
-- id: USER_ID
-  model: Field
+- model: Field
 database_indexed: true

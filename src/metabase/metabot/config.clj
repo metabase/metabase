@@ -3,8 +3,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.settings :as metabot.settings]
-   [toucan2.core :as t2]))
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.settings :as metabot.settings]))
 
 (def internal-metabot-id
   "The ID of the internal Metabot instance."
@@ -59,7 +59,7 @@
   Returns nil if no entry can be found.
   The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
   [metabot-id]
-  (t2/select-one-pk :model/Metabot :entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
+  (metabot.db/metabot-id-by-entity-id (get-in metabot-config [metabot-id :entity-id] metabot-id)))
 
 (defn resolve-dynamic-metabot-id
   "Resolve dynamic metabot ID with logical fall backs
@@ -70,11 +70,14 @@
       internal-metabot-id))
 
 (defn resolve-dynamic-profile-id
-  "Resolve the ultimate ai-service profile ID with logical fall backs
-   Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedding_next)"
+  "Resolve the profile ID: explicit profile-id > metabot-id->profile-id > embedding_next.
+   Throws a 400 for retired profiles without a replacement."
   ([profile-id]
    (resolve-dynamic-profile-id profile-id (resolve-dynamic-metabot-id nil)))
   ([profile-id metabot-id]
-   (or profile-id
-       (metabot-id->profile-id metabot-id)
-       "embedding_next")))
+   (let [profile-id (or profile-id
+                        (metabot-id->profile-id metabot-id)
+                        "embedding_next")]
+     (api/check (not= (some-> profile-id name) "transforms_codegen")
+                [400 "Transform code generation is no longer supported."])
+     profile-id)))

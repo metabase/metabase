@@ -14,7 +14,7 @@
    Both are gated on the `:quartz` trace group — zero overhead when disabled."
   (:require
    [clojure.string :as str]
-   [metabase.task.bootstrap :as task.bootstrap]
+   [metabase.app-db.quartz :as app-db.quartz]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -136,7 +136,7 @@
            (invoke-or-unwrap method conn args)))))))
 
 (defn- connection-interceptor
-  "Connection wrapping function installed into bootstrap's ConnectionProvider.
+  "Connection wrapping function installed into the app-db's Quartz ConnectionProvider.
    Checks `:quartz` group at call time — wraps only when enabled."
   [^Connection conn]
   (if (tracing/group-enabled? :quartz)
@@ -189,4 +189,4 @@
 (defmethod task/init! ::QuartzTracing [_]
   (log/info "Initializing Quartz tracing instrumentation")
   (task/add-job-listener! (create-tracing-job-listener))
-  (task.bootstrap/set-connection-interceptor! connection-interceptor))
+  (app-db.quartz/set-connection-interceptor! connection-interceptor))

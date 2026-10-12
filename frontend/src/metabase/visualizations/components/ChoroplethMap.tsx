@@ -2,33 +2,30 @@ import cx from "classnames";
 import * as d3 from "d3";
 import type { Feature, FeatureCollection } from "geojson";
 import type L from "leaflet";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Loader, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   HEAT_MAP_ZERO_COLOR,
+  MinColumnsError,
+  type VisualizationDefinition,
   buildColorScale,
-  getLegendTitles,
-} from "metabase/visualizations/lib/choropleth";
-import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import { getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
-import {
+  getCanonicalRowKey,
   getDefaultSize,
+  getLegendTitles,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+  unaggregatedDataWarningMap,
+} from "metabase/viz-core";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomGeoJSONMap,
@@ -230,19 +227,6 @@ function getMapProjection(region: string | undefined): MapProjection {
   return { projection: null, projectionFrame: null };
 }
 
-function buildValuesMap(
-  rows: RowValue[][],
-  getRowKey: (row: RowValue[]) => string,
-  getRowValue: (row: RowValue[]) => number,
-): Record<string, number> {
-  const valuesMap: Record<string, number> = {};
-  for (const row of rows) {
-    const key = getRowKey(row);
-    valuesMap[key] = (valuesMap[key] || 0) + getRowValue(row);
-  }
-  return valuesMap;
-}
-
 function computeAspectRatio(
   projection: Projection,
   projectionFrame: ProjectionFrame | null,
@@ -278,6 +262,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     isDashboard,
     isDocument,
     isMetricsViewer,
+    onRender,
     onRenderError,
   } = props;
 
@@ -285,13 +270,47 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const geoJsonPath = details ? getMapUrl(details, props) : null;
   const { geoJson, minimalBounds } = useGeoJson(geoJsonPath);
 
+  const [
+    {
+      data: { cols, rows },
+      card,
+    },
+  ] = series;
+  const region = settings["map.region"];
+  const dimensionIndex = _.findIndex(
+    cols,
+    (col) => col.name === settings["map.dimension"],
+  );
+  const metricIndex = _.findIndex(
+    cols,
+    (col) => col.name === settings["map.metric"],
+  );
+  const dimensionColumn = cols[dimensionIndex];
+
+  const rowsByFeatureKey = useMemo(
+    () =>
+      _.groupBy(rows, (row) => getCanonicalRowKey(row[dimensionIndex], region)),
+    [rows, dimensionIndex, region],
+  );
+
+  const warnings = useMemo(() => {
+    const hasRowsToAggregate = Object.values(rowsByFeatureKey).some(
+      (featureRows) => featureRows.length > 1,
+    );
+    return hasRowsToAggregate && dimensionColumn
+      ? [unaggregatedDataWarningMap([dimensionColumn]).text]
+      : [];
+  }, [rowsByFeatureKey, dimensionColumn]);
+
+  useEffect(() => {
+    onRender({ warnings });
+  }, [onRender, warnings]);
+
   if (!details) {
     return <MapNotFound />;
   }
 
-  const { projection, projectionFrame } = getMapProjection(
-    settings["map.region"],
-  );
+  const { projection, projectionFrame } = getMapProjection(region);
 
   if (!geoJson) {
     return (
@@ -304,23 +323,6 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const nameProperty = details.region_name;
   const keyProperty = details.region_key;
 
-  const [
-    {
-      data: { cols, rows },
-      card,
-    },
-  ] = series;
-  const dimensionIndex = _.findIndex(
-    cols,
-    (col) => col.name === settings["map.dimension"],
-  );
-  const metricIndex = _.findIndex(
-    cols,
-    (col) => col.name === settings["map.metric"],
-  );
-
-  const getRowKey = (row: RowValue[]): string =>
-    getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
   const getRowValue = (row: RowValue[]): number => {
     const value = row[metricIndex];
     return typeof value === "number" ? value : 0;
@@ -336,13 +338,11 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     return lowerCase ? key.toLowerCase() : key;
   };
 
-  const valuesMap = buildValuesMap(rows, getRowKey, getRowValue);
+  const valuesMap = _.mapObject(rowsByFeatureKey, (featureRows) =>
+    featureRows.reduce((sum, row) => sum + getRowValue(row), 0),
+  );
   const getFeatureValue = (feature: Feature): number | undefined =>
     valuesMap[getFeatureKey(feature)];
-
-  const rowByFeatureKey = new Map<string, RowValue[]>(
-    rows.map((row) => [getRowKey(row), row]),
-  );
 
   const clickContext: FeatureClickContext = {
     cols,
@@ -357,9 +357,13 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const onClickFeature =
     onVisualizationClick != null
       ? (click: FeatureInteraction) => {
-          const row = rowByFeatureKey.get(getFeatureKey(click.feature));
+          const featureRows = rowsByFeatureKey[getFeatureKey(click.feature)];
           const clickData = {
-            ...buildFeatureClickObject(row, click.feature, clickContext),
+            ...buildFeatureClickObject(
+              featureRows,
+              click.feature,
+              clickContext,
+            ),
             event: click.event,
           };
           if (visualizationIsClickable(clickData)) {
@@ -370,10 +374,15 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
 
   const onHoverFeature = onHoverChange
     ? (hover: FeatureInteraction | null) => {
-        const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
-        if (row && hover) {
+        const featureRows =
+          hover && rowsByFeatureKey[getFeatureKey(hover.feature)];
+        if (featureRows && hover) {
           onHoverChange({
-            ...buildFeatureClickObject(row, hover.feature, clickContext),
+            ...buildFeatureClickObject(
+              featureRows,
+              hover.feature,
+              clickContext,
+            ),
             event: hover.event,
           });
         } else {
@@ -396,14 +405,15 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
   };
 
-  const isSeriesHighlighted = card.id === highlighted?.cardId;
-  const dimensionColumn = cols[dimensionIndex];
+  const isSeriesHighlighted =
+    highlighted != null &&
+    (highlighted.cardId == null || highlighted.cardId === card.id);
   const highlightedDimension = highlighted?.dimensions?.find(
     (d) => d.columnName === dimensionColumn?.name,
   );
   const highlightedKey =
     isSeriesHighlighted && highlightedDimension
-      ? getCanonicalRowKey(highlightedDimension.value, settings["map.region"])
+      ? getCanonicalRowKey(highlightedDimension.value, region)
       : null;
 
   const isFeatureHighlighted = (feature: Feature): boolean | null => {

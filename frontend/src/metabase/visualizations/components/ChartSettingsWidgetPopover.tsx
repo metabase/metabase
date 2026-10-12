@@ -5,8 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box, Space, Tabs } from "metabase/ui";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
-
-import type { Widget } from "../types";
+import type { Widget } from "metabase/viz-core";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import {
@@ -93,18 +92,14 @@ export const ChartSettingsWidgetPopover = ({
           >
             {hasMultipleSections && (
               <Tabs
-                px="md"
-                pt="xs"
+                px="lg"
+                pt="xxs"
                 value={currentSection}
                 onChange={(section) => setCurrentSection(section ?? undefined)}
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (
-                    <Tabs.Tab
-                      key={sectionName}
-                      value={String(sectionName)}
-                      p="md"
-                    >
+                    <Tabs.Tab key={sectionName} value={String(sectionName)}>
                       {sectionName}
                     </Tabs.Tab>
                   ))}

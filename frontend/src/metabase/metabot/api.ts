@@ -1,5 +1,6 @@
 import { Api } from "metabase/api";
 import { idTag, invalidateTags, listTag } from "metabase/api/tags";
+import type { MetabotMessage } from "metabase/metabot/state/types";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
@@ -12,19 +13,26 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
-  MetabotProvider,
-  MetabotSettingsResponse,
   MetabotSlackSettings,
   MetabotSourceFeedback,
+  MetabotStateContext,
   RegenerateSuggestedMetabotPromptsResponse,
   SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
-  UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
-import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
+export type MetabotConversationDetail = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  forked_from_conversation_id: string | null;
+  state?: MetabotStateContext;
+  messages: MetabotMessage[];
+  context_window_tokens?: number;
+};
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -73,29 +81,6 @@ export const metabotApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/metabot/conversations/${conversationId}/title`,
       }),
-    }),
-    getMetabotSettings: builder.query<
-      MetabotSettingsResponse,
-      { provider: MetabotProvider }
-    >({
-      query: ({ provider }) => ({
-        method: "GET",
-        url: "/api/metabot/settings",
-        params: { provider },
-      }),
-      providesTags: () => [listTag("llm-models")],
-    }),
-    updateMetabotSettings: builder.mutation<
-      MetabotSettingsResponse,
-      UpdateMetabotSettingsRequest
-    >({
-      query: (body) => ({
-        method: "PUT",
-        url: "/api/metabot/settings",
-        body,
-      }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, ["session-properties"]),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
@@ -211,12 +196,10 @@ export const metabotApi = Api.injectEndpoints({
 });
 
 export const {
-  useGetMetabotSettingsQuery,
   useGetMetabotConversationQuery,
   useForkMetabotConversationMutation,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
-  useUpdateMetabotSettingsMutation,
   useUpdateMetabotMutation,
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,

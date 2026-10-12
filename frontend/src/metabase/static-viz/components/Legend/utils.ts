@@ -1,6 +1,5 @@
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import type { LegendItem } from "metabase/visualizations/echarts/cartesian/model/types";
-import { truncateText } from "metabase/visualizations/lib/text";
+import { type LegendItem, truncateText } from "metabase/viz-core";
 
 import {
   DEFAULT_LEGEND_FONT_SIZE,

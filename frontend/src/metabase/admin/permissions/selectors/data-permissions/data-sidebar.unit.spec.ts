@@ -172,7 +172,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 10,
             },
             icon: "table",
@@ -182,7 +182,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 11,
             },
             icon: "table",
@@ -192,7 +192,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 13,
             },
             icon: "table",
@@ -202,7 +202,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 12,
             },
             icon: "table",

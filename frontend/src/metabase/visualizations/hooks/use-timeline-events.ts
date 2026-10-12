@@ -1,0 +1,119 @@
+import { useEffect, useMemo } from "react";
+
+import { skipToken, useListTimelinesQuery } from "metabase/api";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
+import {
+  getRecordedTimelineEventsVisibility,
+  isTimelineEventsEnabled,
+  resolveVisibleTimelineEvents,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import {
+  type ComputedVisualizationSettings,
+  getTimeseriesXAxis,
+  isTimelineEventInRange,
+} from "metabase/viz-core";
+import type {
+  Series,
+  Timeline,
+  TimelineEvent,
+  TimelineEventsVisibility,
+} from "metabase-types/api";
+
+interface UseTimelineEventsProps {
+  series: Series;
+  settings: ComputedVisualizationSettings;
+  timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
+  onTimelineEventsShown?: () => void;
+  onTimelineEventsEnabledChange?: (isEnabled: boolean) => void;
+  isDashboard?: boolean;
+  width?: number;
+  height?: number;
+}
+
+interface UseTimelineEventsResult {
+  timelineEvents: TimelineEvent[];
+  isLoading: boolean;
+  isError: boolean;
+}
+
+// stable references to avoid triggering re-renders
+const EMPTY_EVENTS: TimelineEvent[] = [];
+const NO_TIMELINES: Timeline[] = [];
+
+const canLoadTimelineEvents = (isDashboard: boolean) =>
+  !isPublicEmbedding() &&
+  !isStaticEmbedding() &&
+  (!isEmbeddingSdk() || isDashboard);
+
+export function useTimelineEvents({
+  timelineEvents: explicitEvents,
+  timelineEventsVisibility,
+  settings,
+  series,
+  onTimelineEventsShown,
+  onTimelineEventsEnabledChange,
+  isDashboard = false,
+  width = 0,
+  height = 0,
+}: UseTimelineEventsProps): UseTimelineEventsResult {
+  const isEnabled = isTimelineEventsEnabled(settings);
+  const visibility = isEnabled
+    ? (timelineEventsVisibility ??
+      getRecordedTimelineEventsVisibility(settings))
+    : undefined;
+  const hasSelection =
+    (visibility?.["timeline.selected_timeline_ids"]?.length ?? 0) > 0;
+
+  const shouldFetch =
+    isEnabled &&
+    !explicitEvents &&
+    hasSelection &&
+    canLoadTimelineEvents(isDashboard);
+
+  const {
+    data: timelines = NO_TIMELINES,
+    isLoading,
+    isError,
+  } = useListTimelinesQuery(shouldFetch ? { include: "events" } : skipToken);
+
+  const timelineEvents = useMemo(() => {
+    if (!isEnabled) {
+      return EMPTY_EVENTS;
+    }
+    const candidates =
+      explicitEvents ?? resolveVisibleTimelineEvents({ timelines, visibility });
+    if (candidates.length === 0) {
+      return EMPTY_EVENTS;
+    }
+    const xAxis = getTimeseriesXAxis(series, settings);
+    const domain = xAxis?.domain;
+    if (xAxis == null || domain == null) {
+      return EMPTY_EVENTS;
+    }
+    const events = candidates.filter((event) =>
+      isTimelineEventInRange(event, domain, xAxis.interval),
+    );
+    return events.length > 0 ? events : EMPTY_EVENTS;
+  }, [isEnabled, explicitEvents, timelines, visibility, series, settings]);
+
+  useEffect(() => {
+    if (timelineEvents.length > 0) {
+      onTimelineEventsShown?.();
+    }
+  }, [timelineEvents, onTimelineEventsShown]);
+
+  // getDashboardAdjustedSettings turns events off for small cards and while unmeasured (0x0)
+  const isMeasured = width > 0 && height > 0;
+  useEffect(() => {
+    if (isMeasured) {
+      onTimelineEventsEnabledChange?.(isEnabled);
+    }
+  }, [isMeasured, isEnabled, onTimelineEventsEnabledChange]);
+
+  return { timelineEvents, isLoading, isError };
+}

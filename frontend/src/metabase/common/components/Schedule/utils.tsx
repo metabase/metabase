@@ -1,13 +1,8 @@
 import type { ReactNode } from "react";
-import { match } from "ts-pattern";
-import _ from "underscore";
 
 import type { SelectProps } from "metabase/ui";
-import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import type { ScheduleSettings } from "metabase-types/api";
-
-import { defaultDay, defaultHour } from "./constants";
+import { memoize } from "metabase/utils/memoize";
 
 export const combineConsecutiveStrings = (arr: ReactNode[]) => {
   return arr.reduce<ReactNode[]>((acc, node) => {
@@ -23,11 +18,11 @@ export const combineConsecutiveStrings = (arr: ReactNode[]) => {
 };
 
 export const getLongestSelectLabel = (
-  data: SelectProps["data"] | { value: string }[] = [],
+  data: SelectProps<string | null>["data"] | { value: string }[] = [],
   fontFamily?: string,
 ): string => {
   const width = (str: string) =>
-    measureTextWidthSafely(str, str.length, { family: fontFamily });
+    measureTextWidthSafely(str, str.length, fontFamily);
   return [...data].reduce<string>((acc: string, option) => {
     let label: string;
     if (typeof option === "string") {
@@ -45,72 +40,27 @@ export const getLongestSelectLabel = (
   }, "");
 };
 
-/** Since measureTextWidth can throw an error, this function catches the error and returns a default width
+/**
+ * measureTextWidth can throw, so this returns defaultWidth instead.
  *
- * Note that you may want to set the style prop to reflect the currently chosen font family, like this:
+ * Pass the currently chosen font family:
  * ```
  *    const fontFamily = useSelector(state => getSetting(state, "application-font"));
- *    measureTextWidthSafely("string", 50, {family: fontFamily});
+ *    measureTextWidthSafely("string", 50, fontFamily);
  * ```
- * */
-export const measureTextWidthSafely = _.memoize(
-  (text: string, defaultWidth: number, style?: Partial<FontStyle>) => {
+ *
+ * The arguments are all primitives on purpose. The cache matches them by value,
+ * and they come from a fixed set of schedule labels, so it cannot grow with
+ * anything the user does.
+ */
+// eslint-disable-next-line metabase/no-module-level-memoize
+export const measureTextWidthSafely = memoize(
+  (text: string, defaultWidth: number, fontFamily?: string) => {
     try {
-      return measureTextWidth(text, style);
+      return measureTextWidth(text, { family: fontFamily });
     } catch (e) {
       console.error(`Error while measuring text width:`, e);
       return defaultWidth;
     }
   },
-  function hashFunction(...args) {
-    return JSON.stringify(args);
-  },
 );
-
-export const getScheduleDefaults = (
-  schedule: ScheduleSettings,
-): ScheduleSettings => {
-  return match<ScheduleSettings>(schedule)
-    .with({ schedule_type: "every_n_minutes" }, () => ({
-      schedule_day: null,
-      schedule_frame: null,
-      schedule_hour: null,
-      schedule_minute: 10,
-    }))
-    .with({ schedule_type: "hourly" }, () => ({
-      schedule_day: null,
-      schedule_frame: null,
-      schedule_hour: null,
-      schedule_minute: 0,
-    }))
-    .with({ schedule_type: "daily" }, () => ({
-      schedule_day: null,
-      schedule_frame: null,
-      schedule_hour: defaultHour,
-      schedule_minute: 0,
-    }))
-    .with({ schedule_type: "weekly" }, () => ({
-      schedule_day: defaultDay,
-      schedule_frame: null,
-      schedule_hour: defaultHour,
-      schedule_minute: 0,
-    }))
-    .with({ schedule_type: "monthly", schedule_frame: "mid" }, () => ({
-      schedule_day: null,
-      schedule_frame: "mid",
-      schedule_hour: defaultHour,
-      schedule_minute: 0,
-    }))
-    .with({ schedule_type: "monthly" }, () => ({
-      schedule_frame: "first",
-      schedule_hour: defaultHour,
-      schedule_minute: 0,
-    }))
-    .with({ schedule_type: "cron" }, () => ({
-      schedule_day: null,
-      schedule_frame: null,
-      schedule_hour: defaultHour,
-      schedule_minute: 0,
-    }))
-    .otherwise(() => ({}));
-};

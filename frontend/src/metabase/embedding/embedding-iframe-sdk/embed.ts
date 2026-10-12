@@ -1,13 +1,13 @@
 import type { SqlParameterValues } from "embedding-sdk-bundle/types";
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { decodeJwt } from "metabase/utils/jwt";
 
 import { debouncedReportAnalytics } from "./analytics";
@@ -27,7 +27,6 @@ import type {
 } from "./types/embed";
 import { listenForEajsMessages } from "./utils/post-message";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
-
 // Import EE Iframe Embedding script plugins
 import "sdk-iframe-embedding-script-ee-plugins";
 
@@ -371,6 +370,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     this._iframe.style.minHeight = "600px";
 
     this._iframe.setAttribute("data-metabase-embed", "true");
+
+    // Chrome blocks the Clipboard API in cross-origin iframes unless the host
+    // explicitly delegates the permission (e.g. copying a Metabot answer).
+    this._iframe.setAttribute("allow", "clipboard-write");
 
     this._removeMessageListener = listenForEajsMessages({
       messageSource: "iframe-content",

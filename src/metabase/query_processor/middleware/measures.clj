@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
@@ -53,7 +54,7 @@
                      :measure-id id
                      :measure-name name}))))
 
-(mu/defn- fetch-measures :- [:map-of pos-int? :map]
+(mu/defn- fetch-measures :- [:map-of pos-int? ::lib.schema.metadata/measure]
   "Fetch measure metadata for the given IDs."
   [query       :- ::lib.schema/query
    measure-ids :- [:set {:min 1} pos-int?]]
@@ -77,7 +78,7 @@
 (mu/defn- expand-measures-in-stage :- ::lib.schema/stage
   "Replace :measure clauses in a stage with their actual aggregation expressions."
   [stage        :- ::lib.schema/stage
-   id->measure  :- [:map-of pos-int? :map]]
+   id->measure  :- [:map-of pos-int? ::lib.schema.metadata/measure]]
   (match/replace stage
     [:measure opts (id :guard pos-int?)]
     (b/cond
@@ -89,9 +90,9 @@
                                         {:type qp.error-type/invalid-measure, :measure measure}))
       :else (do
               (log/debugf "Expanding measure %d" id)
-              ;; Preserve :lib/uuid and :display-name from the measure clause options if present
-              ;; This is important so that :aggregation refs pointing to the measure remain valid
-              (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :display-name]))))))
+              ;; Preserve :lib/uuid so that :aggregation refs pointing to the measure remain valid, and the
+              ;; caller-supplied names so the expansion keeps the column name the caller asked for.
+              (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :name :display-name]))))))
 
 (mu/defn- expand-measures-once :- ::lib.schema/query
   "Expand all :measure clauses in the query (single pass)."

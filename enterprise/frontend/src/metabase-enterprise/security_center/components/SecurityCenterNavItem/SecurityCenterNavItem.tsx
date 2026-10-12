@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { useListSecurityAdvisoriesQuery } from "metabase/api";
 import {
   AdminNavLink,
   AdminNavListItem,
 } from "metabase/nav/components/AdminNavbar/AdminNavLink";
 import { Box, Flex } from "metabase/ui";
 
+import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAffected } from "../../utils";
 
 const PATH = "/admin/security-center";

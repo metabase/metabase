@@ -7,6 +7,7 @@ import {
   setupTokenRefreshEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -18,7 +19,6 @@ import { Api } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { ICloudAddOnProduct, TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,

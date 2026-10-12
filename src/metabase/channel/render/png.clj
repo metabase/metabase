@@ -11,19 +11,22 @@
    [hiccup.core :refer [html]]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.style :as style]
+   [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (cz.vutbr.web.css MediaSpec)
+   (cz.vutbr.web.css CSSFactory MediaSpec NetworkProcessor)
    (java.awt Font GraphicsEnvironment Graphics2D RenderingHints)
    (java.awt.image BufferedImage)
-   (java.io ByteArrayInputStream ByteArrayOutputStream)
+   (java.io ByteArrayInputStream ByteArrayOutputStream IOException)
+   (java.net URL)
    (java.nio.charset StandardCharsets)
    (javax.imageio ImageIO)
    (org.fit.cssbox.awt GraphicsEngine)
    (org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin)
-   (org.fit.cssbox.io DefaultDOMSource StreamDocumentSource)
-   (org.fit.cssbox.layout Dimension)
+   (org.fit.cssbox.io DefaultDOMSource DefaultDocumentSource DocumentSource StreamDocumentSource)
+   (org.fit.cssbox.layout BrowserConfig Dimension)
    (org.w3c.dom Document)))
 
 (set! *warn-on-reflection* true)
@@ -44,18 +47,66 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
+;;; CSSBox's default `BrowserConfig` resolves every `<img src>` with a bare `URL.openConnection`, and a
+;;; `view_as: "image"` table cell puts an attacker-chosen query result in that attribute. So the
+;;; config below honors only our own inline `data:` chart images plus `https:` through the SSRF-hardened
+;;; [[u.http/fetch-bytes]]; anything else throws `IOException`, which CSSBox catches and logs.
+
+(defonce ^{:private  true
+           :doc      "jStyleParser retrieves `<link rel=stylesheet>` and `@import` URLs itself, with a bare
+                     `URL.openConnection` that [[browser-config]] never sees. Our documents only ever carry
+                     inline styles, so refuse those outright."
+           :arglists '([])} refuse-external-stylesheets!
+  (let [refused (delay (CSSFactory/setNetworkProcessor
+                        (reify NetworkProcessor
+                          (fetch [_ url]
+                            (throw (IOException. (str "Refusing to load stylesheet: " url)))))))]
+    (fn [] @refused)))
+
+(def ^:private allowed-image-content-types #{"image/png" "image/jpeg" "image/gif"})
+
+(defn- https-image-source
+  ^DocumentSource [^URL url]
+  (if-let [{:keys [content-type], image-bytes :bytes} (u.http/fetch-bytes
+                                                       (str url)
+                                                       {:allowed-content-types allowed-image-content-types})]
+    (StreamDocumentSource. (ByteArrayInputStream. ^bytes image-bytes) url content-type)
+    (throw (IOException. (str "Refusing to load image: " url)))))
+
+(defn- image-document-source
+  ^DocumentSource [^URL url]
+  (case (some-> url .getProtocol u/lower-case-en)
+    "data"  (DefaultDocumentSource. url)
+    "https" (https-image-source url)
+    (throw (IOException. (str "Unsupported image URL scheme: " url)))))
+
+(defn- browser-config
+  "CSSBox config whose only route to an image is a `data:` URI or [[u.http/fetch-bytes]]."
+  ^BrowserConfig []
+  (proxy [BrowserConfig] []
+    (createDocumentSource
+      ([^URL url] (image-document-source url))
+      ([^URL url ^String _content-type] (image-document-source url)))))
+
 (defn- scale-px
   "`px` scaled by `scale`, rounded *up* to a whole pixel so the scaled box never falls short of the
   content it has to hold."
   ^long [px scale]
   (long (Math/ceil (* (double px) (double scale)))))
 
+(defn- painted-px
+  "`px` scaled by `scale`, rounded *down* to a whole pixel (at least one) -- the canvas must not reach past
+  where the scaled graphics paints. Rounding up leaves a fractional `scale`'s last row/column untouched, and
+  that transparent edge fringes grey in viewers that resample without premultiplying (poppler does)."
+  ^long [px scale]
+  (max 1 (long (Math/floor (* (double px) (double scale))))))
+
 (defn- redraw-at-scale!
   "Re-render the already-laid-out boxes of `graphics-engine` into a fresh image `scale`x the device size
   of `base`, for crisp supersampled output. Returns the new [[BufferedImage]]."
   ^java.awt.image.BufferedImage [^GraphicsEngine graphics-engine ^java.awt.image.BufferedImage base scale]
-  (let [big (BufferedImage. (scale-px (.getWidth base) scale)
-                            (scale-px (.getHeight base) scale)
+  (let [big (BufferedImage. (painted-px (.getWidth base) scale)
+                            (painted-px (.getHeight base) scale)
                             BufferedImage/TYPE_INT_ARGB)]
     (.setImage graphics-engine big)
     (.redrawBoxes graphics-engine)
@@ -63,21 +114,28 @@
 
 (defn- render-to-png
   "Render `html` to a [[BufferedImage]] at `width` logical pixels. `scale` > 1 rasterizes to that many
-  device pixels for crispness (via scaled device graphics, since CSSBox ignores CSS `zoom`/`transform`)."
+  device pixels for crispness (via scaled device graphics, since CSSBox ignores CSS `zoom`/`transform`).
+
+  `scale` may instead be a function of the laid-out content's width and height in logical px, returning a
+  positive factor -- for callers that can only choose one once they know how big the content turned out."
   (^java.awt.image.BufferedImage [^String html width]
    (render-to-png html width 1.0))
   (^java.awt.image.BufferedImage [^String html width scale]
    (style/register-fonts-if-needed!)
+   (refuse-external-stylesheets!)
    (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
                doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
-     (let [scale           (double scale)
+     ;; `setupGraphics` runs for the measuring layout and again for the redraw, but a function `scale` can't be
+     ;; resolved until the first has happened -- so the factor it applies lives here, set just before the redraw.
+     (let [device-scale    (volatile! 1.0)
            dimension       (Dimension. width 1)
            doc             (.parse (DefaultDOMSource. doc-source))
            da              (dom-analyzer doc doc-source dimension)
            graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
                              (setupGraphics [^Graphics2D g]
-                               (when (not= 1.0 scale)
-                                 (.scale g scale scale))
+                               (let [s (double @device-scale)]
+                                 (when (not= 1.0 s)
+                                   (.scale g s s)))
                                (doto g
                                  (.setRenderingHint RenderingHints/KEY_RENDERING
                                                     RenderingHints/VALUE_RENDER_QUALITY)
@@ -87,15 +145,21 @@
                                                     RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
                                  (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
                                                     RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
+       (.setConfig graphics-engine (browser-config))
        (.createLayout graphics-engine dimension)
        (let [base          (.getImage graphics-engine)
              viewport      (.getViewport graphics-engine)
              ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
              content-width (max (int (.getMinimalWidth viewport))
                                 (int (.getMaximalWidth viewport)))
+             ;; a function `scale` sees the dims a 1:1 render would return: cropped width, full height
+             scale         (if (ifn? scale)
+                             (double (scale (min content-width (.getWidth base)) (.getHeight base)))
+                             (double scale))
              image         (if (= 1.0 scale)
                              base
-                             (redraw-at-scale! graphics-engine base scale))
+                             (do (vreset! device-scale scale)
+                                 (redraw-at-scale! graphics-engine base scale)))
              crop-width    (scale-px content-width scale)]
          ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
          (if (< crop-width (.getWidth image))
@@ -152,12 +216,12 @@
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   (^bytes [rendered-info :- ::body/RenderedPartCard
-           width]
+           width         :- pos-int?]
    (render-html-to-png rendered-info width nil))
 
   (^bytes [{:keys [content]} :- ::body/RenderedPartCard
-           width
-           options]
+           width   :- pos-int?
+           options :- [:maybe ::body/options]]
    (try
      (let [padding-x (or (:channel.render/padding-x options) 0)
            padding-y (or (:channel.render/padding-y options) 0)

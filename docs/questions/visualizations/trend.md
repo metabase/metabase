@@ -29,6 +29,6 @@ To add a comparison, click on the **gear** icon in the lower left (next to Visua
 - **Previous time period**
 - **Previous value**. If there is no previous value, Metabase will ignore the value so the chart doesn't show a comparison with a null value.
 - **Custom value**.
-- **Value from another column**. Metabase will only show this option if your results contain multiple columns with aggregate values in your results (e.g., if you have two Summarize columns).
+- **Value from another column**. Metabase will only show this option if your results contain multiple columns with aggregate values (e.g., if you have two Summarize columns).
 
 You can add up to three comparisons.

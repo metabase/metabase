@@ -51,9 +51,9 @@
                    :model/Table    table    {:db_id (:id database)}
                    :model/Field    _field   {:table_id (:id table)}]
       (let [calls (atom 0)]
-        (with-redefs [interestingness/dimension-interestingness (fn [_field]
-                                                                  (swap! calls inc)
-                                                                  (throw (ex-info "boom" {})))]
+        (mt/with-dynamic-fn-redefs [interestingness/dimension-interestingness (fn [_field]
+                                                                                (swap! calls inc)
+                                                                                (throw (ex-info "boom" {})))]
           (is (= {:fields-scored 0 :fields-failed 1}
                  (#'sync.interestingness/score-missing-leftovers! database)))
           (is (= 1 @calls))

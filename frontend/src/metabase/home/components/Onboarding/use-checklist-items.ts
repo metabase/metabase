@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getUserIsAdmin } from "metabase/current-user";
 import { AiItem } from "metabase/home/components/Onboarding/items/AiItem";
 import { AlertItem } from "metabase/home/components/Onboarding/items/AlertItem";
 import { DashboardItem } from "metabase/home/components/Onboarding/items/DashboardItem";
@@ -11,7 +12,6 @@ import { PermissionsItem } from "metabase/home/components/Onboarding/items/Permi
 import { QueryItem } from "metabase/home/components/Onboarding/items/QueryItem";
 import type { ChecklistItemGroup } from "metabase/home/components/Onboarding/types";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 
 export const useChecklistItems = () => {

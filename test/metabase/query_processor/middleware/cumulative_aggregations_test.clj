@@ -146,8 +146,9 @@
                   [#t "2016-04-04" "San Francisco" 40] ; [SF] 40 + 40 => 80
                   [#t "2016-04-06" "Long Beach"    8]] ; [LB] 6 + 8 => 14
             rff  (qp.cumulative-aggregations/sum-cumulative-aggregation-columns
-                  {:stages [{:breakout                                     [:a :b]
-                             ::qp.cumulative-aggregations/replaced-indexes #{2}}]}
+                  {:lib/type :mbql/query
+                   :stages   [{:breakout                                     [:a :b]
+                               ::qp.cumulative-aggregations/replaced-indexes #{2}}]}
                   (fn [_metadata]
                     conj))
             rf   (rff nil)]
@@ -171,8 +172,9 @@
                   [#t "2016-04-06" "Long Beach"    "LB"  8]  ; [LB] 6 + 8 => 14
                   [#t "2016-04-06" "Long Beach"    "LBC" 8]] ; [LBC] 4 + 8 => 12
             rff  (qp.cumulative-aggregations/sum-cumulative-aggregation-columns
-                  {:stages [{:breakout                                     [:a :b :c]
-                             ::qp.cumulative-aggregations/replaced-indexes #{3}}]}
+                  {:lib/type :mbql/query
+                   :stages   [{:breakout                                     [:a :b :c]
+                               ::qp.cumulative-aggregations/replaced-indexes #{3}}]}
                   (fn [_metadata]
                     conj))
             rf   (rff nil)]

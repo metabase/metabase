@@ -5,6 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockQueryBuilderState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
@@ -12,7 +13,6 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import { formatNumber } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";

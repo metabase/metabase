@@ -40,7 +40,7 @@ Metabase offers several options for authentication.
 
 ### SSO for Metabase Pro and Enterprise plans
 
-With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have more options to help orchestrate lots of people and groups.
+With [Pro and Enterprise plans](https://www.metabase.com/pricing), you have more options to help orchestrate lots of people and groups.
 
 - [JWT][jwt]
 - LDAP advanced features

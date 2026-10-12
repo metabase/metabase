@@ -1,13 +1,17 @@
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
-import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
+import {
+  getChartLayout,
+  getWaterfallChartModel,
+  getWaterfallChartOption,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
+import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 
 registerEChartsModules();
 
@@ -52,6 +56,7 @@ export function WaterfallChart({
   const chart = init(null, null, { renderer: "svg", ssr: true, width, height });
   chart.setOption(option);
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  const allPointsOutOfRange = readAllPointsOutOfRange(chart);
   chart.dispose();
 
   return (
@@ -66,6 +71,13 @@ export function WaterfallChart({
           preserveAspectRatio="xMinYMin slice"
           fill={renderingContext.getColor("text-secondary")}
           opacity={0.2}
+        />
+      )}
+      {allPointsOutOfRange && (
+        <DataOutOfRangeOverlay
+          width={width}
+          height={height}
+          renderingContext={renderingContext}
         />
       )}
     </svg>

@@ -1,15 +1,21 @@
-import { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import {
+  isNamedBreakout,
+  isUnaryOperator,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import type { TemporalUnit } from "metabase-types/api";
 
 import type { SchemaColumn } from "../data-schema";
 
 import type {
+  AggregationResultColumnName,
   BetweenFilterOperatorForDimension,
-  BinningOptions,
   BreakoutOptionsArgument,
+  FilterForOperator,
   FilterLiteralValue,
   FilterOperator,
-  MetabaseDimensionFilterForOperator,
-  OrderByDirection,
+  MetabaseOrderByDirection,
+  NamedBreakout,
+  TimeIntervalFilterOperatorForDimension,
   UnaryFilterOperatorForDimension,
   ValueFilterOperatorForDimension,
 } from "./types";
@@ -27,7 +33,7 @@ export function filter<
   dimension: TDimension,
   operator: TOperator,
   value: unknown,
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter<
   const TDimension,
@@ -36,7 +42,16 @@ export function filter<
   dimension: TDimension,
   operator: TOperator,
   values: readonly [unknown, unknown],
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
+
+export function filter<
+  const TDimension,
+  TOperator extends TimeIntervalFilterOperatorForDimension<TDimension>,
+>(
+  dimension: TDimension,
+  operator: TOperator,
+  interval: readonly [amount: number, unit: TemporalUnit],
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter<
   const TDimension,
@@ -44,13 +59,13 @@ export function filter<
 >(
   dimension: TDimension,
   operator: TOperator,
-): MetabaseDimensionFilterForOperator<TDimension, TOperator>;
+): FilterForOperator<TDimension, TOperator>;
 
 export function filter(
   dimension: unknown,
   operator: FilterOperator,
   value?: unknown,
-): MetabaseDimensionFilterForOperator<unknown, FilterOperator> {
+): FilterForOperator<unknown, FilterOperator> {
   if (operator === "between") {
     // The `between` overload takes a `[min, max]` tuple, but the implementation
     // signature shared by all overloads widens `value` to `unknown`.
@@ -60,6 +75,18 @@ export function filter(
       type: "operator",
       operator,
       args: [dimension, toFilterLiteral(min), toFilterLiteral(max)],
+    };
+  }
+
+  if (operator === "time-interval") {
+    // The `time-interval` overload takes an `[amount, unit]` tuple, but the
+    // implementation signature shared by all overloads widens `value` to `unknown`.
+    const [amount, unit] = value as readonly [number, TemporalUnit];
+
+    return {
+      type: "operator",
+      operator,
+      args: [dimension, toFilterLiteral(amount), toFilterLiteral(unit)],
     };
   }
 
@@ -78,6 +105,14 @@ export function breakout<const TDimension extends object>(
   dimension: TDimension,
 ): TDimension;
 
+export function breakout<
+  const TDimension extends object,
+  const TName extends string,
+>(
+  dimension: TDimension,
+  options: BreakoutOptionsArgument<TDimension> & { name: TName },
+): NamedBreakout<TDimension & BreakoutOptionsArgument<TDimension>, TName>;
+
 export function breakout<const TDimension extends object>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
@@ -85,40 +120,62 @@ export function breakout<const TDimension extends object>(
 
 export function breakout<TDimension extends object>(
   dimension: TDimension,
-  options?: BreakoutOptionsArgument<TDimension>,
+  options?: BreakoutOptionsArgument<TDimension> & { name?: string },
 ) {
-  return {
+  const column = {
     ...dimension,
-    unit: options && "unit" in options ? options.unit : undefined,
-    ...getBinningOptions(options),
+    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
+    ...(options?.binning !== undefined
+      ? { binning: options.binning }
+      : undefined),
   };
+
+  return options?.name !== undefined
+    ? { type: "breakout", name: options.name, column }
+    : column;
 }
+
+export function orderBy<const TName extends string>(
+  breakout: NamedBreakout<unknown, TName>,
+  direction?: MetabaseOrderByDirection,
+): {
+  type: "column";
+  name: TName;
+  sourceFieldId?: number;
+  direction?: MetabaseOrderByDirection;
+};
 
 export function orderBy<
   TAggregation extends { columns?: readonly SchemaColumn[] },
 >(
   aggregation: TAggregation,
-  direction?: OrderByDirection,
-): SchemaColumn & { type: "column"; direction?: OrderByDirection };
+  direction?: MetabaseOrderByDirection,
+): {
+  type: "column";
+  name: AggregationResultColumnName<TAggregation>;
+  direction?: MetabaseOrderByDirection;
+};
 
 export function orderBy<const TDimension>(
   dimension: TDimension,
-  direction?: OrderByDirection,
-): TDimension & { direction?: OrderByDirection };
-
-export function orderBy<const TDimension>(
-  dimension: TDimension,
-  direction: OrderByDirection | undefined,
-  options: BreakoutOptionsArgument<TDimension>,
-): TDimension & {
-  direction?: OrderByDirection;
-} & BreakoutOptionsArgument<TDimension>;
+  direction?: MetabaseOrderByDirection,
+): TDimension & { direction?: MetabaseOrderByDirection };
 
 export function orderBy<TDimension>(
   dimension: TDimension,
-  direction?: OrderByDirection,
-  options?: BreakoutOptionsArgument<TDimension>,
+  direction?: MetabaseOrderByDirection,
 ) {
+  if (isNamedBreakout(dimension)) {
+    const { sourceFieldId } = dimension.column;
+
+    return {
+      type: "column",
+      name: dimension.name,
+      ...(sourceFieldId !== undefined ? { sourceFieldId } : undefined),
+      ...(direction ? { direction } : undefined),
+    };
+  }
+
   const aggregationColumn = getAggregationResultColumn(dimension);
 
   if (aggregationColumn) {
@@ -138,8 +195,6 @@ export function orderBy<TDimension>(
   return {
     ...orderableDimension,
     ...(direction ? { direction } : undefined),
-    unit: options && "unit" in options ? options.unit : undefined,
-    ...getBinningOptions(options),
   };
 }
 
@@ -166,42 +221,6 @@ function isSchemaColumn(value: unknown): value is SchemaColumn {
     "name" in value &&
     typeof value.name === "string"
   );
-}
-
-function getBinningOptions(
-  options:
-    | {
-        binning?: BinningOptions;
-        bins?: number | "auto";
-        binWidth?: number | "auto";
-      }
-    | undefined,
-) {
-  if (!options) {
-    return undefined;
-  }
-
-  if ("bins" in options && options.bins != null) {
-    return { bins: options.bins };
-  }
-
-  if ("binWidth" in options && options.binWidth != null) {
-    return { binWidth: options.binWidth };
-  }
-
-  if (options.binning?.strategy === "num-bins") {
-    return { bins: options.binning["num-bins"] };
-  }
-
-  if (options.binning?.strategy === "bin-width") {
-    return { binWidth: options.binning["bin-width"] };
-  }
-
-  if (options.binning?.strategy === "default") {
-    return { bins: "auto" as const };
-  }
-
-  return undefined;
 }
 
 function toFilterLiteral(value: unknown): {

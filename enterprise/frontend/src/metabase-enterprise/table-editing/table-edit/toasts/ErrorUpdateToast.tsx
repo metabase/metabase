@@ -33,10 +33,10 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
     return (
       <Box w="18rem">
         <Text
-          c="text-primary-inverse"
+          c="inherit"
           fw={700}
         >{t`Editing unavailable: no PK defined`}</Text>
-        <Text c="text-primary-inverse">{jt`Add a primary key in your database or set an ${(
+        <Text c="inherit">{jt`Add a primary key in your database or set an ${(
           <Anchor
             component={Link}
             to={Urls.dataStudioData({
@@ -57,8 +57,8 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   if (showDetails) {
     return (
       <Stack gap="0.5rem" w="30rem" maw="100%">
-        <Text c="text-primary-inverse">{t`Couldn't save table changes:`}</Text>
-        <Text c="text-primary-inverse" style={{ fontFamily: "monospace" }}>
+        <Text c="inherit">{t`Couldn't save table changes:`}</Text>
+        <Text c="inherit" style={{ fontFamily: "monospace" }}>
           {errorMessage}
         </Text>
       </Stack>
@@ -69,18 +69,12 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
     <Group gap="2.5rem" w="20rem">
       <Group gap="0.5rem">
         <Icon name="warning" c="feedback-negative" size={12} />
-        <Text
-          c="text-primary-inverse"
-          fw={700}
-        >{t`Couldn't save table changes`}</Text>
+        <Text c="inherit" fw={700}>{t`Couldn't save table changes`}</Text>
       </Group>
 
       <Button
-        size="compact-lg"
-        c="background_page-secondary-inverse"
-        variant="filled"
-        autoContrast
-        radius="0.5rem"
+        variant="on-dark-secondary"
+        size="sm"
         onClick={() => setShowDetails(true)}
       >{t`More info`}</Button>
     </Group>

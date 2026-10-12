@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import { useLocation, useNavigate } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import { DependencyDiagnostics } from "metabase-enterprise/monitor/dependency-diagnostics/components";

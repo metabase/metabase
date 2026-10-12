@@ -88,8 +88,12 @@ export function SidebarHeader({
       <Flex align="center" gap="sm">
         {actions}
         {onClose && (
-          <a className={SidebarHeaderS.CloseButton} onClick={onClose}>
-            <Icon name="close" size={18} />
+          <a
+            className={SidebarHeaderS.CloseButton}
+            aria-label={t`Close`}
+            onClick={onClose}
+          >
+            <Icon name="close" size={18} aria-hidden />
           </a>
         )}
       </Flex>

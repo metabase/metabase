@@ -12,7 +12,7 @@ export const PageContainer = React.forwardRef(function PageContainerInner(
       h="100%"
       pb="2rem"
       px="3.5rem"
-      gap="xl"
+      gap="xxl"
       style={{ overflow: "auto" }}
       ref={ref}
       {...rest}

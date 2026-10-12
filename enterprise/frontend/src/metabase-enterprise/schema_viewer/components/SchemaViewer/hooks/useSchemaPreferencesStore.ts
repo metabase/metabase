@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { usePrevious } from "react-use";
 
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import type {
   ConcreteTableId,
   DatabaseId,

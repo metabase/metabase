@@ -67,4 +67,31 @@ describe("charts", () => {
       S28: color("accent2"), // we have 24 colors in the palette, that's why they would repeat after 24 keys
     });
   });
+
+  it("should hash default keys even when series keys are not sorted (metabase#83415)", () => {
+    // Visualizer remaps series to COLUMN_N while keeping original names as
+    // default keys. Reordering metrics puts COLUMN_N out of sorted order;
+    // colors must still follow the original names, not the COLUMN_N index.
+    const sortedKeys = ["COLUMN_2", "COLUMN_3"];
+    const sortedDefaultKeys = ["revenue", "bookings"];
+    const reorderedKeys = ["COLUMN_3", "COLUMN_2"];
+    const reorderedDefaultKeys = ["bookings", "revenue"];
+
+    const sortedMapping = getColorsForValues(
+      sortedKeys,
+      undefined,
+      undefined,
+      sortedDefaultKeys,
+    );
+    const reorderedMapping = getColorsForValues(
+      reorderedKeys,
+      undefined,
+      undefined,
+      reorderedDefaultKeys,
+    );
+
+    expect(reorderedMapping["COLUMN_2"]).toBe(sortedMapping["COLUMN_2"]);
+    expect(reorderedMapping["COLUMN_3"]).toBe(sortedMapping["COLUMN_3"]);
+    expect(sortedMapping["COLUMN_2"]).not.toBe(sortedMapping["COLUMN_3"]);
+  });
 });

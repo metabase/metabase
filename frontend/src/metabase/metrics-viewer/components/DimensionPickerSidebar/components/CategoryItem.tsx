@@ -65,7 +65,7 @@ export function CategoryItem({
         onConfigure={onToggleCategorySettings}
       />
       {isExpanded && canConfigure && (
-        <Stack className={S.categorySelectList} gap="xs">
+        <Stack className={S.categorySelectList} gap="xxs">
           {metricSlots.length === 1 ? (
             <SingleMetricDimensionList
               row={categorySelectRows[0]}

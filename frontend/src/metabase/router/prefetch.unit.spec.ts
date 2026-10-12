@@ -27,6 +27,18 @@ describe("prefetchPage", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
+  it("matches only the whole path when the registration is exact", () => {
+    const path = uniquePath();
+    const load = jest.fn().mockResolvedValue(undefined);
+    registerPagePrefetch(path, load, { exact: true });
+
+    prefetchPage(`${path}/42`);
+    expect(load).not.toHaveBeenCalled();
+
+    prefetchPage(path);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
   it("leaves an unrelated path alone", () => {
     const load = jest.fn().mockResolvedValue(undefined);
     registerPagePrefetch(uniquePath(), load);

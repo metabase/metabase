@@ -13,6 +13,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { deleteTransformAndTrack } from "metabase/transforms/analytics";
 import {
   Box,
   Button,
@@ -46,7 +47,7 @@ export function DeleteTransformModal({
     <Modal
       title={getModalTitle(transform)}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -82,17 +83,23 @@ function DeleteTransformForm({
     if (transform == null) {
       return;
     }
-    if (shouldDeleteTarget) {
-      await deleteTransformTarget(transform.id).unwrap();
-    }
-    await deleteTransform(transform.id).unwrap();
+    await deleteTransformAndTrack({
+      deleteTransform: async () => {
+        if (shouldDeleteTarget) {
+          await deleteTransformTarget(transform.id).unwrap();
+        }
+        await deleteTransform(transform.id).unwrap();
+      },
+      transformId: transform.id,
+      triggeredFrom: "transform_page",
+    });
     onDelete();
   };
 
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <Text>{getFormMessage(transform)}</Text>
           {transform.table && (
             <Radio.Group
@@ -116,7 +123,7 @@ function DeleteTransformForm({
             <FormSubmitButton
               label={getSubmitButtonLabel(transform, shouldDeleteTarget)}
               variant="filled"
-              color="feedback-negative"
+              color="negative"
             />
           </Group>
         </Stack>

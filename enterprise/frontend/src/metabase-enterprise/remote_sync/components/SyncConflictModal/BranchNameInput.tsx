@@ -36,7 +36,7 @@ export const BranchNameInput = (props: BranchNameInputProps) => {
     <TextInput
       error={error}
       label={t`Name for your new branch`}
-      mt="lg"
+      mt="xl"
       onChange={(event) => setValue(event.target.value.trim())}
       placeholder={t`your-branch-name`}
       value={value}

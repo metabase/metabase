@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.models.humanization :as humanization]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.analyze :as sync.analyze]
@@ -18,6 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.settings :as warehouse-schema.settings]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp])
   (:import
@@ -87,9 +88,8 @@
 
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} :- [:map
-                                                             [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
-   db                                                    :- :map]
+  [{:keys [table-definitions], :as _database-definition} :- tx/DatabaseDefinitionSchema
+   db                                                    :- :metabase.warehouses.schema/database]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
@@ -157,7 +157,7 @@
                            (:native base-type)
 
                            (and (map? base-type) (contains? base-type :natives))
-                           (get-in base-type [:natives driver])
+                           (get-in base-type [:natives (u/qualified-name driver)])
 
                            :else
                            ;; Use fake-sync-database-type to get the type the database reports
@@ -177,7 +177,7 @@
                            (some? fk) :type/FK
                            :else      semantic-type)]
     {:name              field-name
-     :display_name      (humanization/name->human-readable-name :simple field-name)
+     :display_name      (warehouse-schema.humanization/name->human-readable-name :simple field-name)
      :database_type     database-type
      :base_type         actual-base-type
      :effective_type    (or effective-type actual-base-type)
@@ -199,7 +199,7 @@
         table-row      {:db_id               db-id
                         :name                sync-table-name
                         :schema              schema
-                        :display_name        (humanization/name->human-readable-name :simple table-name)
+                        :display_name        (warehouse-schema.humanization/name->human-readable-name :simple table-name)
                         :description         table-comment
                         :active              true
                         :visibility_type     nil
@@ -281,7 +281,7 @@
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
-  (assert (= (humanization/humanization-strategy) :simple)
+  (assert (= (warehouse-schema.settings/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
@@ -298,11 +298,11 @@
                                (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
               ;;
-              ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
-              ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
-              ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
-              ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
-              (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
+              ;; `*log-exceptions-and-continue?*` is true in production; pinning it false here makes one bad table fail
+              ;; the whole test database setup, which is what we want for drivers whose table listing is authoritative.
+              ;; Redshift and BigQuery list tables from metadata that lags the tables themselves, so a table dropped by
+              ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it.
+              (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk} driver)]
                 (sync/sync-database! db {:scan scan}))
               ;; add extra metadata for fields
               (try
@@ -417,13 +417,12 @@
       (u/with-timeout create-database-timeout-ms
         ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
         (test.tz/with-system-timezone-id! "UTC"
-          (tx/create-db! driver dbdef)))))
-  (tx/track-dataset driver dbdef))
+          (tx/create-db! driver dbdef))))))
 
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
   [driver                                           :- :keyword
-   {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]
+   {:keys [database-name], :as database-definition} :- tx/DatabaseDefinitionSchema]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge
@@ -448,6 +447,7 @@
       ;; Destroying the DB when there's a failure loading and syncing is fine
       ;; for most DBs, but for cloud databases it makes things worse.
       (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
+        ;; test-harness console notice; stays visible even when log output is captured
         #_{:clj-kondo/ignore [:discouraged-var]}
         (println "create-database! failed; destroying database"
                  driver (pr-str database-name))

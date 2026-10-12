@@ -4,13 +4,13 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { useEffect, useMemo } from "react";
 
+import { createMockState } from "__support__/state";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { mainReducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { MantineThemeOverride } from "metabase/ui";

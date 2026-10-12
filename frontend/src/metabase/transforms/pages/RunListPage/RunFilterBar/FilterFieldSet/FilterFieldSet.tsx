@@ -37,14 +37,14 @@ export const FilterFieldSet = forwardRef(function FilterWidget(
       {...props}
       ref={ref}
       className={S.fieldset}
-      pl="md"
-      pr="xs"
-      py="xs"
+      pl="lg"
+      pr="xxs"
+      py="xxs"
       bg="background_page-primary"
       aria-label={label}
     >
       {hasValue && (
-        <Box component="legend" h="2px" ml="-4px" px="xs" fz="sm" lh={0}>
+        <Box component="legend" h="2px" ml="-4px" px="xxs" fz="sm" lh={0}>
           {label}
         </Box>
       )}

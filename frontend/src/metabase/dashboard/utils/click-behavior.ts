@@ -35,20 +35,20 @@ import type {
 } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
-interface Target {
+export interface Target {
   id: Parameter["id"];
   name: Parameter["name"] | null | undefined;
   target: ClickBehaviorTarget;
   sourceFilters: SourceFilters;
 }
 
-interface SourceFilters {
-  column: (column: DatasetColumn, question: Question) => boolean;
+export interface SourceFilters {
+  column: (column: DatasetColumn) => boolean;
   parameter: (parameter: Parameter) => boolean;
   userAttribute: (userAttribute: string) => boolean;
 }
 
-interface ExtraData {
+export interface ClickBehaviorExtraData {
   dashboard?: Dashboard;
   parameters?: Parameter[];
   dashboards?: Record<Dashboard["id"], Dashboard>;
@@ -273,7 +273,7 @@ export function formatSourceForTarget(
     clickBehavior,
   }: {
     data: ValueAndColumnForColumnNameDate;
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -364,7 +364,7 @@ export function getTargetForQueryParams(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -381,7 +381,7 @@ function getParameter(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ): Parameter | undefined {

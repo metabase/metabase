@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+} from "metabase/settings-components";
 import { Badge, Box, Flex, Group, Loader, Stack, Title } from "metabase/ui";
 import {
   useGetDataAppRepoStatusQuery,
@@ -50,12 +50,12 @@ export const ManageDataAppsPage = () => {
 
       <DataAppsBanner />
 
-      <Stack gap="md">
+      <Stack gap="lg">
         <Title order={2}>{t`Setup`}</Title>
 
         <SettingsSection
           stackProps={{
-            gap: "lg",
+            gap: "xl",
           }}
         >
           <DataAppRepoSection isConfigured={isConfigured} url={status?.url} />
@@ -65,15 +65,15 @@ export const ManageDataAppsPage = () => {
       </Stack>
 
       {isStatusLoading ? (
-        <Flex justify="center" p="xl">
+        <Flex justify="center" p="xxl">
           <Loader />
         </Flex>
       ) : (
-        <Stack gap="md">
+        <Stack gap="lg">
           <Title order={2}>{t`Apps`}</Title>
 
           {isAppsLoading && (
-            <Flex justify="center" p="xl">
+            <Flex justify="center" p="xxl">
               <Loader />
             </Flex>
           )}
@@ -83,7 +83,7 @@ export const ManageDataAppsPage = () => {
           {apps && apps.length > 0 && (
             <Box
               bd="1px solid var(--mb-color-border)"
-              bdrs="md"
+              bdrs="sm"
               bg="background-primary"
               className={S.appList}
               style={{ overflow: "hidden" }}

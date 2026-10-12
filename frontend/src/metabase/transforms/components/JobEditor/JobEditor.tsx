@@ -18,7 +18,6 @@ type JobEditorProps = {
   tabs?: ReactNode;
   readOnly?: boolean;
   isCheckingPermissions?: boolean;
-  showMetabotButton?: boolean;
   onNameChange: (name: string) => void;
   onScheduleChange: (
     schedule: string,
@@ -34,7 +33,6 @@ export function JobEditor({
   tabs,
   readOnly,
   isCheckingPermissions,
-  showMetabotButton,
   onNameChange,
   onScheduleChange,
   onTagListChange,
@@ -47,7 +45,6 @@ export function JobEditor({
         actions={actions}
         tabs={tabs}
         readOnly={readOnly}
-        showMetabotButton={showMetabotButton}
         onNameChange={onNameChange}
       />
       <Stack gap="3.5rem">

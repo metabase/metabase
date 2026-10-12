@@ -6,9 +6,9 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
-  Card,
   Parameter,
   ParameterTarget,
+  SeriesCard,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -65,7 +65,7 @@ export function getTemplateTagParameter(
   };
 }
 
-// NOTE: this should mirror `template-tag-parameters` in src/metabase/queries/models/card.clj
+// NOTE: this should mirror `template-tag-parameters` in src/metabase/query_processor/card.clj
 // If this function moves you should update the comment that links to this one
 export function getTemplateTagParameters(
   tags: TemplateTag[],
@@ -87,7 +87,10 @@ export function getTemplateTagParameters(
     .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));
 }
 
-export function getTemplateTags(card: Card, metadata: Metadata): TemplateTag[] {
+export function getTemplateTags(
+  card: SeriesCard,
+  metadata: Metadata,
+): TemplateTag[] {
   const question = new Question(card, metadata);
   // this code path is used by the last audit v1 query, `bad_table`
   if (InternalQuery.isDatasetQueryType(question.datasetQuery())) {
@@ -99,7 +102,7 @@ export function getTemplateTags(card: Card, metadata: Metadata): TemplateTag[] {
 }
 
 export function getParametersFromCard(
-  card: Card,
+  card: SeriesCard,
   metadata: Metadata,
 ): Parameter[] | ParameterWithTarget[] {
   if (!card) {
@@ -114,7 +117,7 @@ export function getParametersFromCard(
 }
 
 export function getTemplateTagParametersFromCard(
-  card: Card,
+  card: SeriesCard,
   metadata: Metadata,
 ) {
   const tags = getTemplateTags(card, metadata);

@@ -13,6 +13,7 @@
 
 (defsetting scim-base-url
   (deferred-tru "Base URL for SCIM endpoints")
+  :encryption :no
   :visibility :admin
   :type       :string
   :setter     :none

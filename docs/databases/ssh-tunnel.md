@@ -17,7 +17,7 @@ In general, there are two basic use cases for an SSH tunnel:
 
 Sometimes when a data warehouse is inside an enterprise environment, direct connections are blocked by security devices such as firewalls and intrusion prevention systems. Bastion hosts offer the option to first connect to a computer on the edge of the protected network, then, from that bastion host computer, establish a second connection to the data warehouse within the internal network, essentially patching these two connections together. Using the SSH tunneling feature, Metabase can automate this process.
 
-> [Metabase Cloud](https://www.metabase.com/cloud/) does not currently support VPN connections to databases. To connect to databases in private networks, you can instead use SSH tunneling.
+> [Metabase Cloud](https://www.metabase.com/cloud) does not currently support VPN connections to databases. To connect to databases in private networks, you can instead use SSH tunneling.
 
 ## How to use SSH tunneling
 
@@ -41,7 +41,7 @@ For authentication, you have two options:
   - Paste the contents of your SSH private key into the `SSH private key` field.
   - If your key has a passphrase, enter it into the `Passphrase for the SSH private key` field.
 
-If you're unable to connect test your SSH credentials by connecting to the SSH server/Bastion Host using ssh directly:
+If you're unable to connect, test your SSH credentials by connecting to the SSH server/Bastion Host using ssh directly:
 
 ```
 ssh <SSH tunnel username>@<SSH tunnel host> -p <SSH tunnel port>
@@ -87,9 +87,9 @@ ssh -Nf -L input-port:internal-server-name:port-on-server username@bastion-host.
 
 This allows you to use the full array of features included in SSH. If you find yourself doing this often, please let us know so we can see about making your process more convenient through Metabase.
 
-## Reverse tunnelling
+## Reverse tunneling
 
-If inbound connections aren't allowed to the infrastructure that hosts the database, then reverse SSH tunneling should be used. Reverse tunnelling works by making a connection from within the database server or a server that lives next to it inside a private network, to an intermediate server that Metabase will connect to. 
+If inbound connections aren't allowed to the infrastructure that hosts the database, then reverse SSH tunneling should be used. Reverse tunneling works by making a connection from within the database server or a server that lives next to it inside a private network, to an intermediate server that Metabase will connect to. 
 
 ## Further reading
 

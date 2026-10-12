@@ -12,8 +12,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import type { Document } from "metabase-types/api";
 
 interface DocumentRevisionHistorySidebarProps {

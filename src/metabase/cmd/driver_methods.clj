@@ -13,7 +13,10 @@
          :when   (and (or (starts-with? "metabase.driver")
                           (starts-with? "metabase.test.data"))
                       (do
-                        (u/ignore-exceptions (classloader/require ns-symb))
+                        ;; Driver namespaces are discovered from the runtime classpath.
+                        (u/ignore-exceptions
+                          #_{:clj-kondo/ignore [:metabase/modules]}
+                          (classloader/require ns-symb))
                         (find-ns ns-symb)))]
      ns-symb)))
 

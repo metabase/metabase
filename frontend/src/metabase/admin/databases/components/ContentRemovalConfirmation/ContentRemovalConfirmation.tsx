@@ -34,7 +34,7 @@ const ContentRemovalConfirmation = ({
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {question > 0 && (
         <Checkbox
           label={ngettext(

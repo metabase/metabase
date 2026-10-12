@@ -19,6 +19,7 @@ const metadata = createMockMetadata({
 });
 
 const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
+const sampleDatabase = createSampleDatabase();
 
 const rawDataQuery: StructuredQueryObject = {
   "source-table": ORDERS_ID,
@@ -57,7 +58,7 @@ const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
     metadata,
     dataset_query: { database: database.id, type: "query", query },
   });
-  return getQuestionSteps(question, metadata, {});
+  return getQuestionSteps(question, sampleDatabase, {});
 };
 
 const getMetricStepsForMBQLQuery = (query: StructuredQueryObject) => {
@@ -66,7 +67,7 @@ const getMetricStepsForMBQLQuery = (query: StructuredQueryObject) => {
     dataset_query: { database: database.id, type: "query", query },
     cardType: "metric",
   });
-  return getQuestionSteps(question, metadata, {});
+  return getQuestionSteps(question, sampleDatabase, {});
 };
 
 describe("raw data query", () => {
@@ -301,7 +302,7 @@ describe("aggregated query without breakout", () => {
       metadata,
     });
 
-    const steps = getQuestionSteps(question, metadata, {});
+    const steps = getQuestionSteps(question, sampleDatabase, {});
 
     expect(
       steps

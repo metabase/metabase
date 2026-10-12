@@ -27,7 +27,7 @@
 }
 
 .compactChartMenuItem {
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   color: var(--mb-color-text-primary);
   min-height: 2rem;
 

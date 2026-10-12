@@ -1,8 +1,7 @@
 import type { ChangeEvent } from "react";
 
-import CS from "metabase/css/core/index.css";
+import { useLazyGetTableQuery } from "metabase/api";
 import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
-import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { NativeQueryEditorCoreProps } from "../NativeQueryEditorRoot";
@@ -16,8 +15,9 @@ type NativeQueryEditorProps = Pick<
   | "question"
   | "readOnly"
   | "setDatasetQuery"
-  | "setParameterValue"
 >;
+
+export const NATIVE_EDITOR_ICON_SIZE = 18;
 
 export const NativeQueryEditor = ({
   canChangeDatabase = true,
@@ -27,8 +27,9 @@ export const NativeQueryEditor = ({
   question,
   readOnly,
   setDatasetQuery,
-  setParameterValue,
 }: NativeQueryEditorProps) => {
+  const [fetchTable] = useLazyGetTableQuery();
+
   const onChange = (evt: ChangeEvent<HTMLTextAreaElement>) => {
     setDatasetQuery(query.setQueryText(evt.target.value));
   };
@@ -39,9 +40,9 @@ export const NativeQueryEditor = ({
     }
   };
 
-  const onTableIdChange = (tableId: TableId) => {
-    const table = query.metadata().table(tableId);
-    if (table && table.name !== query.collection()) {
+  const onTableIdChange = async (tableId: TableId) => {
+    const table = await fetchTable({ id: tableId }).unwrap();
+    if (table.name !== query.collection()) {
       setDatasetQuery(query.setCollectionName(table.name));
     }
   };
@@ -62,12 +63,6 @@ export const NativeQueryEditor = ({
       {query.queryText && (
         <textarea value={query.queryText()} onChange={onChange} />
       )}
-      <SyncedParametersList
-        className={CS.mt1}
-        parameters={query.question().parameters()}
-        setParameterValue={setParameterValue}
-        commitImmediately
-      />
     </div>
   );
 };
@@ -78,6 +73,5 @@ export const NativeQueryEditor = ({
 const Noop = () => null;
 NativeQueryEditor.TopBar = Noop;
 NativeQueryEditor.Sidebar = Noop;
-NativeQueryEditor.ParametersList = Noop;
 NativeQueryEditor.VisibilityToggler = Noop;
 NativeQueryEditor.RunButton = Noop;

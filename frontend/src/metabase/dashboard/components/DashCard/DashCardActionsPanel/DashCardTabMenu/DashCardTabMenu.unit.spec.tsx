@@ -1,11 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { DashboardTab } from "metabase-types/api";
 import {
   createMockDashboard,

@@ -1,7 +1,6 @@
-import dayjs from "dayjs";
-
 import { render, screen } from "__support__/ui";
 import { DateTime } from "metabase/common/components/DateTime";
+import { dayjs } from "metabase/dayjs";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,

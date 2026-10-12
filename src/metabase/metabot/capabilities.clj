@@ -6,6 +6,8 @@
   Some capabilities are inferred from backend state rather than sent by the frontend."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]))
 
 (set! *warn-on-reflection* true)
@@ -15,8 +17,7 @@
   `:capabilities` metadata."
   {"frontend:navigate_user_v1"    :frontend-navigate-user-v1
    "permission:save_questions"    :permission-save-questions
-   "permission:write_sql_queries" :permission-write-sql-queries
-   "permission:write_transforms"  :permission-write-transforms})
+   "permission:write_sql_queries" :permission-write-sql-queries})
 
 (defn- capability->keyword
   "Normalize a capability value to a keyword.
@@ -28,6 +29,35 @@
         ;; Fallback: keywordize unknown strings so new capabilities degrade
         ;; gracefully without requiring a map update.
         (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
+
+(def ^:private permission-capabilities
+  #{:permission-save-questions
+    :permission-write-sql-queries})
+
+(defn- granted-permission-capabilities
+  "Nil user grants everything as a crash guard -- `query-creation-capabilities` throws there under
+  EE with `:library`. Safe because `sql.common/check-native-query-access!` still refuses per
+  database."
+  []
+  (if (or api/*is-superuser?* (nil? api/*current-user-id*))
+    permission-capabilities
+    (let [{:keys [can-create-queries can-create-native-queries]}
+          (perms/query-creation-capabilities api/*current-user-id*)]
+      (cond-> #{}
+        can-create-queries        (conj :permission-save-questions)
+        can-create-native-queries (conj :permission-write-sql-queries)))))
+
+(defn enforce-permissions
+  "Drop every client-claimed `permission:*` capability the current user has not been granted."
+  [capabilities]
+  (if (empty? capabilities)
+    capabilities
+    (let [granted (granted-permission-capabilities)]
+      (into #{}
+            (remove #(let [cap (capability->keyword %)]
+                       (and (contains? permission-capabilities cap)
+                            (not (contains? granted cap)))))
+            capabilities))))
 
 (defn- feature-capabilities
   "Return the set of capabilities inferred from BE state rather than sent from the FE.
@@ -41,8 +71,6 @@
         [(when (or (not (premium-features/is-hosted?))
                    (premium-features/has-feature? :transforms-basic))
            :feature-transforms)
-         (when (premium-features/has-feature? :transforms-python)
-           :feature-transforms-python)
          (when (premium-features/has-feature? :semantic-search)
            :feature-semantic-search)]))
 

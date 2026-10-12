@@ -13,16 +13,16 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
-import { useGetCurrentUserQuery } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { useGetCurrentUserQuery } from "metabase/current-user";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockCollectionItem,

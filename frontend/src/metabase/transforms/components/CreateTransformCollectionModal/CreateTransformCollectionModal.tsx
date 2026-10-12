@@ -68,7 +68,7 @@ export function CreateTransformCollectionModal({
       title={t`Transform folder`}
       opened
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       onKeyDown={stopPropagation}
     >
       <FormProvider
@@ -77,7 +77,7 @@ export function CreateTransformCollectionModal({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="lg" mt="sm">
+          <Stack gap="xl" mt="sm">
             <FormTextInput
               name="name"
               label={t`Name`}
@@ -97,7 +97,7 @@ export function CreateTransformCollectionModal({
             />
             <Group justify="flex-end">
               <FormErrorMessage />
-              <Button variant="subtle" onClick={onClose}>
+              <Button variant="subtle" color="neutral" onClick={onClose}>
                 {t`Cancel`}
               </Button>
               <FormSubmitButton label={t`Create`} variant="filled" />

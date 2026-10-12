@@ -294,7 +294,7 @@
                               (:native base-type)
 
                               (and (map? base-type) (contains? base-type :natives))
-                              (get-in base-type [:natives driver])
+                              (get-in base-type [:natives (u/qualified-name driver)])
 
                               base-type
                               (field-base-type->sql-type driver base-type))

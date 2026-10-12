@@ -7,11 +7,20 @@ import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppActionsMenu } from "./DataAppActionsMenu";
 
-const setup = ({ enabled = true, canRemove = false } = {}) => {
+const setup = ({
+  enabled = true,
+  canRemove = false,
+  resourceCollectionId = 9,
+}: {
+  enabled?: boolean;
+  canRemove?: boolean;
+  resourceCollectionId?: number;
+} = {}) => {
   const app = createMockDataApp({
     name: "sales",
     display_name: "Sales",
     enabled,
+    resource_collection_id: resourceCollectionId,
   });
   renderWithProviders(
     <>
@@ -19,6 +28,7 @@ const setup = ({ enabled = true, canRemove = false } = {}) => {
       {/* Mounts the toaster so failure toasts are assertable in the DOM. */}
       <UndoListing />
     </>,
+    { withRouter: true },
   );
 };
 
@@ -33,6 +43,28 @@ const confirmRemove = async () =>
   );
 
 describe("DataAppActionsMenu", () => {
+  it("links to the app's resources and group above the enable action", async () => {
+    setup();
+
+    await openMenu();
+
+    const menuItems = await screen.findAllByRole("menuitem");
+    expect(menuItems).toHaveLength(3);
+
+    const [viewResource, manageAccess, disable] = menuItems;
+
+    expect(viewResource).toHaveTextContent("View resources");
+    expect(viewResource).toHaveAttribute("href", "/collection/9");
+
+    expect(manageAccess).toHaveTextContent("Manage group access");
+    expect(manageAccess).toHaveAttribute(
+      "href",
+      "/admin/settings/apps/sales/groups",
+    );
+
+    expect(disable).toHaveTextContent("Disable");
+  });
+
   it("should show a toast when toggling enabled fails", async () => {
     fetchMock.put("path:/api/apps/sales", 500);
     setup({ enabled: true });

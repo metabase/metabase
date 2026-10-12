@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useListPermissionsGroupsQuery,
@@ -14,9 +13,17 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { MonitorBreadcrumbs } from "metabase/monitor/components/MonitorBreadcrumbs";
-import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { ActionIcon, Anchor, Flex, Icon, Menu, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Anchor,
+  Flex,
+  Icon,
+  Menu,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import { useGetTenantQuery } from "metabase-enterprise/api";
@@ -67,14 +74,14 @@ export function ConversationHeader({
     <>
       <MonitorBreadcrumbs crumbs={crumbs} />
 
-      <Flex justify="space-between" align="flex-start" gap="md">
+      <Flex justify="space-between" align="flex-start" gap="lg">
         <Stack gap="sm">
           <Flex align="center">
-            <MonitorHeaderTitle>
+            <Title order={2}>
               {conversation.title || t`Conversation with ${userName}`}
-            </MonitorHeaderTitle>
+            </Title>
             {conversation.user && (
-              <Menu shadow="md" position="bottom-start" withinPortal>
+              <Menu shadow="sm" position="bottom-start" withinPortal>
                 <Menu.Target>
                   <ActionIcon
                     variant="subtle"
@@ -95,15 +102,15 @@ export function ConversationHeader({
               </Menu>
             )}
           </Flex>
-          <Flex gap="lg" align="center" wrap="wrap">
-            <Flex gap="xs" align="center">
+          <Flex gap="xl" align="center" wrap="wrap">
+            <Flex gap="xxs" align="center">
               <Icon name="calendar" size={16} c="text-disabled" />
               <Text size="md" c="text-secondary">
                 <DateTime value={conversation.created_at} unit="day" />
               </Text>
             </Flex>
             {firstProfile && (
-              <Flex gap="xs" align="center">
+              <Flex gap="xxs" align="center">
                 <Icon name="metabot" size={16} c="text-disabled" />
                 <Text size="md" c="text-secondary">
                   {renderMetabotProfileLabel(firstProfile)}
@@ -112,13 +119,13 @@ export function ConversationHeader({
             )}
             {(userGroupsInfo.userGroups.length > 0 ||
               userGroupsInfo.isAdmin) && (
-              <Flex gap="xs" align="center">
+              <Flex gap="xxs" align="center">
                 <Icon name="group" size={16} c="text-disabled" />
                 <UserGroupsMenu {...userGroupsInfo} />
               </Flex>
             )}
             {tenant && (
-              <Flex gap="xs" align="center">
+              <Flex gap="xxs" align="center">
                 <Icon name="company" size={16} c="text-disabled" />
                 <Anchor
                   component={ForwardRefLink}
@@ -132,7 +139,7 @@ export function ConversationHeader({
               </Flex>
             )}
             {conversation.forked_from_conversation_id && (
-              <Flex gap="xs" align="center">
+              <Flex gap="xxs" align="center">
                 <Icon name="git_branch" size={16} c="text-disabled" />
                 <Anchor
                   component={ForwardRefLink}
@@ -207,7 +214,7 @@ function UserGroupsMenu({
   }
 
   return (
-    <Menu shadow="md" position="bottom-start" withinPortal>
+    <Menu shadow="sm" position="bottom-start" withinPortal>
       <Menu.Target>
         <Anchor
           component="button"
@@ -225,12 +232,12 @@ function UserGroupsMenu({
         </Anchor>
       </Menu.Target>
       <Menu.Dropdown miw="14rem">
-        <Menu.Label>{t`View a group's permissions`}</Menu.Label>
+        <Menu.Label>{t`View a group's usage`}</Menu.Label>
         {userGroups.map((group) => (
           <Menu.Item
             key={group.id}
             component={ForwardRefLink}
-            to={getGroupFocusPermissionsUrl(group.id)}
+            to={Urls.monitorAiAuditingUsage({ groupId: group.id })}
             leftSection={<Icon name="group" size={14} />}
           >
             {group.name}

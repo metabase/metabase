@@ -35,7 +35,7 @@ export const ReasoningStep = ({
         />
       </UnstyledButton>
       <Collapse in={open}>
-        <div className={cx(S.reasoningBody, Animation.fadeIn)}>
+        <div className={cx(S.reasoningBody, S.nested, Animation.fadeIn)}>
           <AIMarkdown isStreaming={active}>{text}</AIMarkdown>
         </div>
       </Collapse>

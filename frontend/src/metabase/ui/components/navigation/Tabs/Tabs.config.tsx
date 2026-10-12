@@ -8,6 +8,7 @@ export const tabsOverrides: MantineThemeOverride["components"] = {
       keepMounted: false,
     },
     classNames: {
+      root: TabStyles.root,
       tab: TabStyles.tab,
       list: TabStyles.list,
       tabSection: TabStyles.tabSection,

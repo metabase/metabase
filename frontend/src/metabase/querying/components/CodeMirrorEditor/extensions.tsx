@@ -36,14 +36,10 @@ export function useExtensions({
   diff,
   onRunQuery,
 }: Options): Extension[] {
-  const { databaseId, engine, referencedCardIds } = useMemo(
-    () => ({
-      databaseId: Lib.databaseID(query),
-      engine: Lib.engine(query),
-      referencedCardIds: getReferencedCardIds(query),
-    }),
-    [query],
-  );
+  const databaseId = Lib.databaseID(query);
+  const engine = Lib.engine(query);
+  const referencedCardIds = getReferencedCardIds(query);
+  const originalQueryText = diff ? Lib.rawNativeQuery(query) : null;
 
   const schemaCompletion = useSchemaCompletion({ databaseId });
   const snippetCompletion = useSnippetCompletion();
@@ -84,9 +80,9 @@ export function useExtensions({
           },
         ]),
       ),
-      diff
+      originalQueryText != null
         ? unifiedMergeView({
-            original: Lib.rawNativeQuery(query),
+            original: originalQueryText,
             mergeControls: false,
           })
         : null,
@@ -94,8 +90,7 @@ export function useExtensions({
       .flat()
       .filter(isNotNull);
   }, [
-    query,
-    diff,
+    originalQueryText,
     engine,
     schemaCompletion,
     snippetCompletion,

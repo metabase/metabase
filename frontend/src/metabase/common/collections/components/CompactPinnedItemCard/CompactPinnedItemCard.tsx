@@ -16,12 +16,12 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Card, Checkbox, Ellipsified, Group } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Database,
   RecentCollectionItem,
 } from "metabase-types/api";
 
@@ -153,7 +153,6 @@ export function CompactPinnedItemCard({
             className={S.selectCheckbox}
             data-testid="pinned-item-checkbox"
             readOnly
-            size="sm"
             style={{ pointerEvents: "none" }}
             tabIndex={-1}
           />

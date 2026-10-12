@@ -486,7 +486,7 @@
 (deftest ^:parallel placeholder-no-card-refs-test
   (testing "Queries with tables named as placeholder produce expected validation results"
     (let [mp     (lib.tu/mock-metadata-provider
-                  {:database {:id 100 :engine :h2}
+                  {:database {:id 100 :engine :h2 :default-schema "PUBLIC"}
                    :tables   [{:name   "MB__VALIDAT_CARD__10330"
                                :schema "PUBLIC"
                                :id     333
@@ -613,7 +613,7 @@
                                                           :table-id     1}}))]
       (is (empty? (deps.native-validation/validate-native-query driver query))))))
 
-(deftest ^:sequential validate-native-query-with-database-routing-test
+(deftest ^:synchronized validate-native-query-with-database-routing-test
   (testing "native query validation works on databases with routing enabled (#74084)"
     (mt/with-premium-features #{:database-routing}
       (let [mp     (mt/metadata-provider)

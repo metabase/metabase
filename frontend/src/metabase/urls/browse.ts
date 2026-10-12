@@ -7,7 +7,7 @@ import type { Database } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
-export function browseDatabase(
+export function databaseSlug(
   database: Pick<DatabaseV1 | Database, "id"> &
     Partial<Pick<DatabaseV1 | Database, "name">>,
 ) {
@@ -16,7 +16,14 @@ export function browseDatabase(
       ? "Saved Questions"
       : database.name;
 
-  return appendSlug(`/browse/databases/${database.id}`, slugg(name ?? ""));
+  return appendSlug(database.id, slugg(name ?? ""));
+}
+
+export function browseDatabase(
+  database: Pick<DatabaseV1 | Database, "id"> &
+    Partial<Pick<DatabaseV1 | Database, "name">>,
+) {
+  return `/browse/databases/${databaseSlug(database)}`;
 }
 
 export function browseSchema(table: {

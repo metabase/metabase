@@ -108,9 +108,9 @@ const AutomaticDashboardAppInner = () => {
                 isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
                 <Flex
-                  columnGap="md"
+                  columnGap="lg"
                   justify="space-between"
-                  py="md"
+                  py="lg"
                   wrap={{ base: "wrap", sm: "nowrap" }}
                 >
                   <FixedWidthContainer
@@ -123,7 +123,7 @@ const AutomaticDashboardAppInner = () => {
                   </FixedWidthContainer>
                   <Group
                     align="center"
-                    gap="md"
+                    gap="lg"
                     justify="flex-end"
                     w={{ base: "auto", md: SIDEBAR_W }}
                     wrap="nowrap"
@@ -143,7 +143,7 @@ const AutomaticDashboardAppInner = () => {
                       <ActionButton
                         className={cx(CS.mlAuto, CS.textNoWrap)}
                         variant="filled"
-                        color="feedback-positive"
+                        color="positive"
                         // The dashboard isn't always loaded when the header first
                         // renders. Without this guard, "Save this" is clickable while
                         // `dashboard` is undefined, which fires a false `x-ray_saved`

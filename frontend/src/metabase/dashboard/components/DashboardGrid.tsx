@@ -28,6 +28,7 @@ import {
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
+  GRID_MARGINS,
   GRID_WIDTH,
   MIN_ROW_HEIGHT,
 } from "metabase/utils/dashboard_grid";
@@ -87,7 +88,6 @@ interface DashboardGridInnerState {
   };
   replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
-  isAnimationPaused: boolean;
   dashcardCountByCardId: Record<CardId, number>;
   _lastProps?: LastProps;
 
@@ -143,7 +143,7 @@ type DashboardGridContext = {
   | "isEditingParameter"
   | "isFullscreen"
   | "clickBehaviorSidebarDashcard"
-  | "getClickActionMode"
+  | "clickActionMode"
   | "navigateToNewCardFromDashboard"
   | "downloadsEnabled"
   | "autoScrollToDashcardId"
@@ -167,8 +167,6 @@ class DashboardGridInner extends Component<
   DashboardGridInnerState
 > {
   static contextType = ContentViewportContext;
-
-  _pauseAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(props: DashboardGridInnerProps, context: unknown) {
     super(props, context);
@@ -195,28 +193,12 @@ class DashboardGridInner extends Component<
       ),
       replaceCardModalDashCard: null,
       isDragging: false,
-      isAnimationPaused: true,
       _lastProps: {
         dashboard: props.dashboard,
         isEditing: props.isEditing,
         selectedTabId: props.selectedTabId,
       },
     };
-  }
-
-  componentDidMount() {
-    // In order to skip the initial cards animation we must let the grid layout calculate
-    // the initial card positions. The timer is necessary to enable animation only
-    // after the grid layout has been calculated and applied to the DOM.
-    this._pauseAnimationTimer = setTimeout(() => {
-      this.setState({ isAnimationPaused: false });
-    }, 0);
-  }
-
-  componentWillUnmount() {
-    if (this._pauseAnimationTimer !== null) {
-      clearTimeout(this._pauseAnimationTimer);
-    }
   }
 
   componentDidUpdate(prevProps: DashboardGridInnerProps) {
@@ -614,7 +596,6 @@ class DashboardGridInner extends Component<
           S.DashboardCardContainer,
           {
             [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
-            [S.isAnimationDisabled]: this.state.isAnimationPaused,
           },
         )}
       >
@@ -647,7 +628,7 @@ class DashboardGridInner extends Component<
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
         width={width}
-        margin={{ desktop: [6, 6], mobile: [6, 10] }}
+        margin={GRID_MARGINS}
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
         onLayoutChange={this.onLayoutChange}
@@ -724,7 +705,7 @@ const DashboardGrid = forwardRef<
     isEditingParameter = false,
     isFullscreen,
     clickBehaviorSidebarDashcard,
-    getClickActionMode,
+    clickActionMode,
     navigateToNewCardFromDashboard,
     downloadsEnabled,
     autoScrollToDashcardId,
@@ -748,7 +729,7 @@ const DashboardGrid = forwardRef<
       isEditingParameter={isEditingParameter}
       isFullscreen={isFullscreen}
       clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={clickActionMode}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       downloadsEnabled={downloadsEnabled}
       autoScrollToDashcardId={autoScrollToDashcardId}

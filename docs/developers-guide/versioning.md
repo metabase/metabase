@@ -61,7 +61,7 @@ The gold release is the first stable release of a new major version of Metabase.
 
 ### Cloud builds
 
-If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud/).
+If you see a version followed by an `-X`, like `v1.56.2-X01`, these are version numbers related to builds for customers on [Metabase Cloud](https://www.metabase.com/cloud).
 
 ## Further reading
 

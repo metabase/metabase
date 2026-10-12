@@ -14,12 +14,12 @@ concurrency:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Prepare front-end environment

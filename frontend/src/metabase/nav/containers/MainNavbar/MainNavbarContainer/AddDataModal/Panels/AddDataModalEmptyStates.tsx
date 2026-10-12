@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import databasesImage from "assets/img/empty-states/databases.svg?url";
 import { Link } from "metabase/common/components/Link";
 import { StoragePurchaseButton } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { useSelector } from "metabase/redux";
@@ -18,7 +19,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { getSubpathSafeUrl } from "metabase/urls";
 
 import IconCSV from "./illustrations/csv.svg?component";
 
@@ -133,10 +133,10 @@ const AddDataEmptyState = ({
   secondaryAction,
 }: EmptyStateProps) => {
   return (
-    <Stack gap="lg" align="center" justify="center" pt="2.5rem">
+    <Stack gap="xl" align="center" justify="center" pt="2.5rem">
       {illustration}
       <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
-        <Title order={2} size="h4" mb="xs">
+        <Title order={2} size="h4" mb="xxs">
           {title}
         </Title>
         <Text c="text-secondary">{subtitle}</Text>
@@ -160,15 +160,11 @@ const AddDataEmptyState = ({
 };
 
 export const DatabasePanelEmptyState = () => {
-  const illustration = getSubpathSafeUrl(
-    "app/assets/img/empty-states/databases.svg",
-  );
-
   return (
     <AddDataEmptyState
       title={t`Add a database`}
       subtitle={t`Start exploring in minutes. We support more than 20 data connectors.`}
-      illustration={<Center component="img" src={illustration} w="3rem" />}
+      illustration={<Center component="img" src={databasesImage} w="3rem" />}
       contactAdminReason="add-database"
     />
   );

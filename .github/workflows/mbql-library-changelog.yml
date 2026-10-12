@@ -11,7 +11,8 @@ on:
       - src/metabase/utils/js.cljs
 jobs:
   mbql-library-changelog-check:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     if: ${{ !contains( github.event.pull_request.labels.*.name, '.metabase-lib/no-change' ) }}
     steps:
       # - uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -19,7 +20,7 @@ jobs:
       #     github-token: '${{ secrets.GITHUB_TOKEN }}'
       #     valid-labels: '.metabase-lib/no-change'
       #     disable-reviews: true
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check for updated MBQL library changelog
         run: |
           if [[ $(git show HEAD -- docs/developers-guide/mbql-library-changelog.md) ]]; then

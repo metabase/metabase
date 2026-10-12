@@ -1,15 +1,15 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import {
-  getFirstQueryResult,
-  getIsVisualized,
-  getQuestion,
-} from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/redux";
 import { Box, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import {
+  getFirstQueryResult,
+  getIsVisualized,
+  getQuestion,
+} from "../../../store/selectors";
 import { ViewSection } from "../ViewSection";
 
 import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";

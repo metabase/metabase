@@ -4,8 +4,8 @@ import { jt, t } from "ttag";
 import { Box, Modal } from "metabase/ui";
 import { useRegenerateRecoveryCodesMutation } from "metabase-enterprise/api";
 
+import { RecoveryCodesForm } from "../../common/RecoveryCodesForm";
 import { ConfirmCodeForm } from "../ConfirmCodeForm";
-import { RecoveryCodesForm } from "../RecoveryCodesForm";
 
 type RecoveryCodesModalProps = {
   opened: boolean;

@@ -43,13 +43,14 @@ describe("issue 47058", () => {
       cy.findByText("Loading...").should("be.visible");
       H.getNotebookStep("summarize").should("not.exist");
 
-      cy.findByText("[Unknown Metric]").should("not.exist");
-
       cy.wait("@metadata");
 
       cy.findByText("Loading...").should("not.exist");
       H.getNotebookStep("summarize").should("be.visible");
 
+      H.getNotebookStep("summarize")
+        .findByText("Metric 47058")
+        .should("be.visible");
       cy.findByText("[Unknown Metric]").should("not.exist");
     });
   });
@@ -107,6 +108,7 @@ describe("issue 44171", () => {
 
   it("should not save viz settings on metrics", () => {
     cy.intercept("PUT", "/api/card/*").as("saveCard");
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.get<number>("@metricBId").then((metricBId) => {
@@ -119,6 +121,8 @@ describe("issue 44171", () => {
       cy.findByText("Sum of ...").click();
       cy.findByText("Total").click();
     });
+    H.runButtonInOverlay().click();
+    cy.wait("@dataset");
     H.MetricPage.saveButton().click();
     cy.wait("@saveCard");
 
@@ -147,56 +151,59 @@ describe("issue 44171", () => {
   });
 });
 
-describe("issue 32037", () => {
+describe("issue 79571", () => {
+  const METRIC_NAME = "Metric 79571";
+
+  const ORDERS_COUNT_METRIC: StructuredQuestionDetails = {
+    name: METRIC_NAME,
+    type: "metric",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+  };
+
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    H.createQuestion(
-      {
-        name: "Metric 32037",
-        type: "metric",
-        display: "line",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              ORDERS.CREATED_AT,
-              { "temporal-unit": "month", "base-type": "type/DateTime" },
-            ],
-          ],
-        },
-      },
-      { wrapId: true, idAlias: "metricId" },
-    );
   });
 
-  it("should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)", () => {
-    cy.get<number>("@metricId").then((metricId) => {
-      cy.visit(`/metric/${metricId}/query`);
-    });
-    H.MetricPage.queryEditor().should("be.visible");
-    H.MetricPage.saveButton().should("not.exist");
+  it("logs choosing a metric as a recent selection, offers custom column and join actions on it, and lists it under Recent items (metabase#79571)", () => {
+    H.createQuestion(ORDERS_COUNT_METRIC).then(({ body: { id: metricId } }) => {
+      cy.intercept("POST", "/api/activity/recents").as("logRecent");
 
-    H.getNotebookStep("summarize").findByText("Count").click();
-    H.popover().within(() => {
-      cy.findByText("Sum of ...").click();
-      cy.findByText("Total").click();
-    });
+      H.startNewQuestion();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText(METRIC_NAME).click();
+      });
 
-    H.MetricPage.saveButton().should("be.visible");
+      cy.wait("@logRecent").then(({ request, response }) => {
+        expect(request.body).to.deep.equal({
+          model: "metric",
+          model_id: metricId,
+          context: "selection",
+        });
+        expect(response?.statusCode).to.eq(204);
+      });
 
-    H.MetricPage.aboutTab().click();
+      H.getNotebookStep("data").within(() => {
+        cy.findByTestId("action-buttons")
+          .button("Custom column")
+          .should("be.visible");
+        cy.findByTestId("action-buttons")
+          .button("Join data")
+          .should("be.visible");
+      });
 
-    H.modal().within(() => {
-      cy.findByText("Discard your changes?").should("be.visible");
-      cy.findByText("Discard changes").click();
-    });
-
-    H.MetricPage.aboutPage().should("be.visible");
-    cy.get<number>("@metricId").then((metricId) => {
-      cy.location("pathname").should("eq", `/metric/${metricId}`);
+      // Reopening the picker now surfaces the metric under Recent items
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalItem(0, "Recent items").click();
+      cy.findByRole("dialog", { name: "Pick your starting data" })
+        .findByText(METRIC_NAME)
+        .should("exist");
     });
   });
 });

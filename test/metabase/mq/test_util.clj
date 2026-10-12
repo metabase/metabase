@@ -283,7 +283,7 @@
   worker would simply never see the rebinding. A root swap is the only thing it observes.
 
   That swap is process-global for the duration of `body`, so a test using this must be marked
-  `^:synchronous`, exactly as it would if it reached for `with-redefs` directly.
+  `^:synchronized`, exactly as it would if it reached for `with-redefs` directly.
 
   Prefer this over a bare `with-redefs` + inline `:clj-kondo/ignore` in queue tests. Stubbing a
   handler's collaborators is a standing requirement of testing a queue, not a code smell, and

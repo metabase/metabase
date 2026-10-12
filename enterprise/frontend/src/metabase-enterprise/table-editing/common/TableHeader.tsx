@@ -38,7 +38,7 @@ export function TableHeader({
         <Skeleton height={rem(24)} width={rem(300)} />
       )}
 
-      <Group gap="md">{children}</Group>
+      <Group gap="lg">{children}</Group>
     </Group>
   );
 }

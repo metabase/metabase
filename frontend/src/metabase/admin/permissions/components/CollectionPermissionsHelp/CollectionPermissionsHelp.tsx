@@ -6,10 +6,10 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { Flex, Stack, Text, Title, rem } from "metabase/ui";
 
 export const CollectionPermissionsHelp = () => {
-  const { url } = useDocsUrl("permissions/collection");
+  const { url } = useDocsUrl("permissions/collections");
 
   return (
-    <Flex direction="column" py={rem(22)} px="lg">
+    <Flex direction="column" py={rem(22)} px="xl">
       <Title order={3}>{t`Collection permissions`}</Title>
       <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 

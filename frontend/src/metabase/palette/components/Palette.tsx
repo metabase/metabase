@@ -2,9 +2,9 @@ import { KBarPortal, VisualState, useKBar } from "kbar";
 import { useEffect, useMemo, useRef } from "react";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useLocation, useParams } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 import { type SearchQuery, parseSearchQuery } from "metabase/utils/browser";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -85,7 +85,7 @@ export const PaletteContainer = ({
       data-testid="command-palette"
       bd="1px solid var(--mb-color-border-neutral)"
     >
-      <Stack gap={rem(4)} pb="lg">
+      <Stack gap={rem(4)} pb="xl">
         <Box pos="relative">
           <HydratedKBarSearch searchText={searchText} />
 

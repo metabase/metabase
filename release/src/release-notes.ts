@@ -258,14 +258,6 @@ export async function publishRelease({
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
-  
-  const minorVersion = getMinorVersion(version);
-  if (Number(minorVersion) > 1) {
-    // just print a warning since this shouldn't fail the workflow calling this function
-    console.warn("Skipping Github release as these are only published for major or gold releases (ex. v0.58.0 or v0.58.1).");
-    return;
-  }
-  
   const payload = {
     owner,
     repo,

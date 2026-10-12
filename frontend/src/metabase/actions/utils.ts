@@ -314,15 +314,15 @@ export const getSubmitButtonColor = (
   action: WritebackAction,
 ): ButtonProps["color"] => {
   if (isImplicitDeleteAction(action)) {
-    return "feedback-negative";
+    return "negative";
   }
 
   return match(action.visualization_settings?.submitButtonColor)
     .returnType<ButtonProps["color"]>()
-    .with("danger", () => "feedback-negative")
-    .with("success", () => "feedback-positive")
-    .with("warning", () => "feedback-warning")
-    .otherwise(() => "core-brand");
+    .with("danger", () => "negative")
+    .with("success", () => "positive")
+    .with("warning", () => "warning")
+    .otherwise(() => "brand");
 };
 
 export const getSubmitButtonLabel = (action: WritebackAction): string => {

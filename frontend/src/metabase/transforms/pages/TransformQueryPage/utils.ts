@@ -1,7 +1,10 @@
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DraftTransformSource,
+  Transform,
+} from "metabase-types/api";
 
 /**
  * True when saving `source` would leave an existing incremental (table-incremental)
@@ -15,7 +18,7 @@ import type { DraftTransformSource, Transform } from "metabase-types/api";
 export function isMissingIncrementalTableTag(
   transform: Transform,
   source: DraftTransformSource,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ): boolean {
   if (transform.target.type !== "table-incremental") {
     return false;
@@ -24,7 +27,7 @@ export function isMissingIncrementalTableTag(
     return false;
   }
 
-  const query = getLibQuery(source, metadata);
+  const query = getLibQuery(source, getMetadataProvider);
   const hasTableTag = query
     ? Object.values(Lib.templateTags(query)).some(
         (tag) => tag.type === "table" && tag["table-id"] != null,

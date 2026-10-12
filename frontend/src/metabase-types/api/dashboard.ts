@@ -14,7 +14,9 @@ import type {
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
+  SingleSeries,
   Table,
+  TimelineEvent,
   UserId,
   UserInfo,
   VirtualCardDisplay,
@@ -161,6 +163,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   collection_authority_level?: CollectionAuthorityLevel;
   entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
+  timeline_events?: TimelineEvent[];
   justAdded?: boolean;
   created_at: string;
   updated_at: string;
@@ -396,3 +399,32 @@ export type GetValidDashboardFilterFieldsRequest = {
   filtered: FieldId[];
   filtering: FieldId[];
 };
+
+export type DashCardSeriesItem = {
+  card: Card | VirtualCard;
+  isSlow: boolean;
+  isUsuallyFast: boolean;
+} & Partial<Dataset>;
+
+export type DashCardSeries = DashCardSeriesItem[];
+
+export type DashCardDataSeriesItem = SingleSeries<Card> &
+  Dataset & {
+    isSlow: boolean;
+    isUsuallyFast: boolean;
+  };
+
+export type DashCardDataSeries = DashCardDataSeriesItem[];
+
+export type VisualizerSeriesItem = Pick<SingleSeries, "card"> &
+  Partial<Omit<SingleSeries, "card">> & {
+    _isVisualizer: true;
+  };
+
+export type VisualizerSeries = VisualizerSeriesItem[];
+
+export type VisualizerDataSeriesItem = SingleSeries & {
+  _isVisualizer: true;
+};
+
+export type VisualizerDataSeries = VisualizerDataSeriesItem[];

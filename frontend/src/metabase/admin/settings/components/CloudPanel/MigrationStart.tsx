@@ -19,7 +19,7 @@ export const MigrationStart = ({
 
   return (
     <>
-      <Box mb="xl">
+      <Box mb="xxl">
         <UpsellCloud onOpenModal={openModal} source="settings-cloud" />
       </Box>
 
@@ -34,7 +34,7 @@ export const MigrationStart = ({
           },
         }}
       >
-        <Box mt="md" pb="4rem" px="6rem" ta="center">
+        <Box mt="lg" pb="4rem" px="6rem" ta="center">
           <Icon name="cloud_filled" size="3rem" c="core-brand" />
           <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
 

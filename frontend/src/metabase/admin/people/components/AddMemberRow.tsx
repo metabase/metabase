@@ -78,7 +78,7 @@ export function AddMemberRow({
           opened={suggestedUsers.length > 0}
           position="bottom-start"
           withArrow
-          shadow="md"
+          shadow="sm"
         >
           <Popover.Target>
             <div>
@@ -91,11 +91,10 @@ export function AddMemberRow({
                 onCancel={onCancel}
                 ariaLabel={t`Search for a user to add`}
               >
-                {Array.from(selectedUsersById.values()).map((user, index) => (
+                {Array.from(selectedUsersById.values()).map((user) => (
                   <Pill
                     key={user.id}
                     size="md"
-                    ms={index > 0 ? "sm" : ""}
                     withRemoveButton
                     onRemove={() => handleRemoveUser(user)}
                   >
@@ -107,13 +106,13 @@ export function AddMemberRow({
           </Popover.Target>
 
           <Popover.Dropdown>
-            <Flex direction="column" p="xs" miw="15rem">
+            <Flex direction="column" p="xxs" miw="15rem">
               {suggestedUsers.map((user: User, index: number) => (
                 <Flex
                   key={index}
                   component={UnstyledButton}
                   align="center"
-                  gap="md"
+                  gap="lg"
                   p="0.5rem 1rem"
                   onClick={() => handleAddUser(user)}
                 >

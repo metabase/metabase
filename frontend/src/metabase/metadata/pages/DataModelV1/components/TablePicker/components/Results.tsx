@@ -98,7 +98,7 @@ export function Results({
   }, [selectedIndex]);
 
   return (
-    <Box ref={ref} px="xl" pb="lg" className={S.results}>
+    <Box ref={ref} px="xxl" pb="xl" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
         {virtualItems.map(({ start, index }) => {
           const item = items[index];
@@ -232,9 +232,9 @@ export function Results({
               onFocus={() => onSelectedIndexChange?.(index)}
               ref={virtual.measureElement}
             >
-              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
-                <Flex align="flex-start" gap="xs" w="100%">
-                  <Flex align="center" gap="xs">
+              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xxs" w="100%">
+                <Flex align="flex-start" gap="xxs" w="100%">
+                  <Flex align="center" gap="xxs">
                     {hasChildren(type) && !isEmpty && (
                       <Icon
                         name="chevronright"
@@ -351,7 +351,7 @@ function Loading() {
       data-testid="loading-placeholder"
       height={rem(16)}
       width={`${width}%`}
-      radius="sm"
+      radius="xs"
     />
   );
 }

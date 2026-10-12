@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+
+import { prefetchExpressionWidget } from "metabase/querying/components/expressions/ExpressionWidget";
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -36,6 +39,13 @@ export function JoinConditionColumnPicker({
   onChange,
   onOpenChange,
 }: JoinConditionColumnPickerProps) {
+  // The expression widget is a separate chunk. This picker is on screen before
+  // anyone opens the custom expression, so fetching it here means the dropdown
+  // opens with the editor already in place.
+  useEffect(() => {
+    prefetchExpressionWidget();
+  }, []);
+
   return (
     <Popover opened={isOpened} position="bottom-start" onChange={onOpenChange}>
       <Popover.Target>

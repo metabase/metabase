@@ -8,7 +8,7 @@
 }
 
 .active {
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);

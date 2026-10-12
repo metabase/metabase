@@ -22,6 +22,8 @@
   (walk/postwalk
    (fn [x]
      (if (symbol? x)
+       ;; macro schemas can contain symbols from any module
+       #_{:clj-kondo/ignore [:metabase/modules]}
        (try @(requiring-resolve x)
             (catch Exception _ x)) x))
    form))
@@ -34,7 +36,8 @@
 (defn ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
-  (let [schema      (try #_:clj-kondo/ignore
+  ;; eval runs at macroexpansion time; the schema arg may be a form needing evaluation
+  (let [schema      (try #_{:clj-kondo/ignore [:discouraged-var]}
                      (eval schema)
                          (catch Exception _
                            (requiring-resolve-form schema)))

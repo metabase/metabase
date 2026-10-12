@@ -7,7 +7,7 @@ description: The Danger Zone section of database connections is where you can di
 
 The Danger zone section of the database connection is the destructive section. Here you can discard field values for that database, or remove the database entirely.
 
-But since of course you're making [backups of your Metabase application database](../installation-and-operation/backing-up-metabase-application-data.md), it's not _that_ destructive. But these changes are permanent in Metabase. The only way to get your stuff back is if you restore your Metabase application database from a backup. If you're on [Metabase Cloud](https://www.metabase.com/cloud/), backups are handled for you.
+But since of course you're making [backups of your Metabase application database](../installation-and-operation/backing-up-metabase-application-data.md), it's not _that_ destructive. But these changes are permanent in Metabase. The only way to get your stuff back is if you restore your Metabase application database from a backup. If you're on [Metabase Cloud](https://www.metabase.com/cloud), backups are handled for you.
 
 To access the Danger Zone section for a database connection:
 

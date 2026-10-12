@@ -14,7 +14,7 @@ const cancelButton = () => cy.findByTestId("metabot-inline-sql-cancel");
 const errorMessage = () => cy.findByTestId("metabot-inline-sql-error");
 const acceptButton = () => cy.findByTestId("accept-proposed-changes-button");
 const rejectButton = () => cy.findByTestId("reject-proposed-changes-button");
-const generatingLoader = () => cy.findByTestId("metabot-inline-sql-generating");
+const generatingLoader = () => cy.findByLabelText("Stop generating");
 
 describe("Native SQL generation", () => {
   it("should show setup guidance when metabot is not configured", () => {
@@ -40,9 +40,7 @@ describe("Native SQL generation", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
-        value: "sk-ant-api03-test-token",
-      });
+      H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
@@ -128,9 +126,7 @@ describe("Native SQL generation", () => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
-        value: "sk-ant-api03-test-token",
-      });
+      H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 

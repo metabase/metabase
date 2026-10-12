@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { QueryEditorUiOptions } from "../../types";
@@ -14,7 +13,6 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
 
 export function useQueryQuestion(
   query: Lib.Query,
-  proposedQuery: Lib.Query | undefined,
   {
     cardType,
     cardDisplay,
@@ -22,32 +20,22 @@ export function useQueryQuestion(
   }: QueryEditorUiOptions = {},
   onChangeQuery: (newQuery: Lib.Query) => void,
 ) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromOptsBuilder();
   const [parameterValues, setParameterValues] = useState({});
 
-  const { question, proposedQuestion } = useMemo(
+  const { question } = useMemo(
     () => ({
-      question: Question.create({
+      question: buildQuestion({
         dataset_query: Lib.toJsQuery(query),
-        metadata,
         cardType,
         display: cardDisplay,
         visualization_settings: cardVizSettings,
         parameterValues,
       }),
-      proposedQuestion:
-        proposedQuery != null
-          ? Question.create({
-              dataset_query: Lib.toJsQuery(proposedQuery),
-              metadata,
-              visualization_settings: DEFAULT_VIZ_SETTINGS,
-            })
-          : undefined,
     }),
     [
       query,
-      proposedQuery,
-      metadata,
+      buildQuestion,
       cardType,
       cardDisplay,
       cardVizSettings,
@@ -61,7 +49,6 @@ export function useQueryQuestion(
 
   return {
     question,
-    proposedQuestion,
     setQuestion,
     parameterValues,
     setParameterValues,

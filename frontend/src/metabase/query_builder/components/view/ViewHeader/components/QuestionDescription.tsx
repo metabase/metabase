@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { shouldRenderAdhocDescription } from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription";
 import type Question from "metabase-lib/v1/Question";
 
 import { AdHocQuestionDescription } from "./AdHocQuestionDescription";
+import { shouldRenderAdhocDescription } from "./AdHocQuestionDescription/AdHocQuestionDescription";
 import { QuestionDataSource } from "./QuestionDataSource";
 
 interface QuestionDescriptionProps {

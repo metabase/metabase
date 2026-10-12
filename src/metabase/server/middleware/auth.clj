@@ -5,6 +5,7 @@
    [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
+   [clojure.string :as str]
    [metabase.server.settings :as server.settings]))
 
 (set! *warn-on-reflection* true)
@@ -55,30 +56,44 @@
 
 (defn- verify-slack-signature
   "Verify that the request came from Slack using signature verification.
-   Returns nil if no signing secret is configured, false if timestamp is too old
-   (replay attack prevention) or signature is invalid, true if valid."
-  [request-body timestamp slack-signature]
-  (when-let [signing-secret (server.settings/unobfuscated-metabot-slack-signing-secret)]
-    (and (slack-timestamp-valid? timestamp)
-         (some? slack-signature)
-         (let [message (str "v0:" timestamp ":" request-body)
-               computed-signature (hmac-sha256 signing-secret message)
-               expected-signature (str "v0=" computed-signature)]
-           ;; Use constant-time comparison to prevent timing attacks
-           (bytes/equals? (.getBytes ^String expected-signature "UTF-8")
-                          (.getBytes ^String slack-signature "UTF-8"))))))
+   Returns false if timestamp is too old (replay attack prevention) or signature is invalid, true if valid."
+  [signing-secret request-body timestamp slack-signature]
+  (and (slack-timestamp-valid? timestamp)
+       (some? slack-signature)
+       (let [message (str "v0:" timestamp ":" request-body)
+             computed-signature (hmac-sha256 signing-secret message)
+             expected-signature (str "v0=" computed-signature)]
+         ;; Use constant-time comparison to prevent timing attacks
+         (bytes/equals? (.getBytes ^String expected-signature "UTF-8")
+                        (.getBytes ^String slack-signature "UTF-8")))))
+
+(def ^:private slack-routes-prefix
+  "Where the Slack endpoints that consume `:slack/validated?` are mounted (see `metabase.metabot.api/routes`)."
+  "/api/metabot/slack")
+
+(defn- slack-route? [{:keys [uri]}]
+  (and uri (str/starts-with? uri slack-routes-prefix)))
 
 (defn verify-slack-request
   "Middleware that detects if an incoming request is from Slack and sets the `:slack/validated?` keyword on a request
-  with a boolean if that request has been correctly signed with our signing secret."
+  with a boolean if that request has been correctly signed with our signing secret.
+
+  This runs before authentication on every route, so it only reads the body for requests to the Slack routes when a
+  signing secret is configured and the caller sent a signature header. The body itself is bounded by
+  [[metabase.server.middleware.body-limit/wrap-limit-request-body]], which must sit outside this middleware."
   [handler]
   (fn
     [req respond raise]
-    (let [signature (get-in req [:headers "x-slack-signature"])]
-      (if signature
+    (let [signature      (when (slack-route? req)
+                           (get-in req [:headers "x-slack-signature"]))
+          signing-secret (when signature
+                           (server.settings/unobfuscated-metabot-slack-signing-secret))]
+      (if signing-secret
         (let [timestamp (get-in req [:headers "x-slack-request-timestamp"])
-              str-body (slurp (:body req))
-              valid? (verify-slack-signature str-body timestamp signature)]
+              str-body  (if-let [body (:body req)]
+                          (slurp body)
+                          "")
+              valid?    (verify-slack-signature signing-secret str-body timestamp signature)]
           (handler (-> req
                        (assoc :body (java.io.ByteArrayInputStream. (.getBytes ^String str-body "UTF-8")))
                        (assoc :slack/validated? valid?))

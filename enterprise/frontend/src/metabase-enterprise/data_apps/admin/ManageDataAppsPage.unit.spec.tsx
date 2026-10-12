@@ -79,10 +79,9 @@ describe("ManageDataAppsPage", () => {
         screen.getByRole("link", { name: "Go to Git sync settings" }),
       ).toHaveAttribute("href", "/admin/settings/remote-sync");
       expect(
-        screen.getByText(/npx skills add metabase\/metabase/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/--skill metabase-data-app-setup/),
+        screen.getByText(
+          /npx skills add metabase\/agent-skills\/skills\/metabase-data-apps\/v1/,
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -106,6 +105,21 @@ describe("ManageDataAppsPage", () => {
         screen.queryByRole("link", { name: "Sales" }),
       ).not.toBeInTheDocument();
       expect(screen.getByText("Disabled")).toBeInTheDocument();
+    });
+
+    it("shows an outdated app as plain text with an Outdated badge", async () => {
+      setup({
+        apps: [
+          createMockDataApp({ name: "sales", version: 1, outdated: true }),
+        ],
+      });
+
+      expect(await screen.findByText("Sales")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Sales" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Outdated")).toBeInTheDocument();
+      expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
     });
 
     it("gives every app its own actions menu", async () => {
@@ -132,36 +146,6 @@ describe("ManageDataAppsPage", () => {
       expect(
         screen.getByRole("button", { name: "Actions for Beta App" }),
       ).toBeInTheDocument();
-    });
-
-    it("renders each sync status: a synced sha, a failure with its reason, and never-synced", async () => {
-      setup({
-        apps: [
-          createMockDataApp({
-            id: 1,
-            display_name: "Synced App",
-            last_synced_sha: "abcdef0",
-          }),
-          createMockDataApp({
-            id: 2,
-            display_name: "Failed App",
-            sync_error: "boom: bad manifest",
-          }),
-          createMockDataApp({
-            id: 3,
-            display_name: "New App",
-            last_synced_sha: null,
-            sync_error: null,
-          }),
-        ],
-      });
-
-      expect(await screen.findByText("Synced abcdef0")).toBeInTheDocument();
-      expect(screen.getByText("Sync failed")).toHaveAttribute(
-        "title",
-        "boom: bad manifest",
-      );
-      expect(screen.getByText("Not synced yet")).toBeInTheDocument();
     });
 
     it("shows how many hosts an app is allowed to reach", async () => {
@@ -223,8 +207,8 @@ describe("ManageDataAppsPage", () => {
     });
 
     it("removes an app once the repository is unlinked", async () => {
-      // A sync never deletes, so an app synced while a repo was connected stays
-      // listed after unlinking — with a Remove action to clear it out.
+      // Unlinked, there's no sync to prune it, so an app synced while a repo was
+      // connected stays listed — with a Remove action to clear it out.
       setup({
         configured: false,
         apps: [createMockDataApp({ name: "sales" })],

@@ -24,7 +24,7 @@ See [Limitations of linking filters](../dashboards/linked-filters.md#limitations
 
 ## Do you understand the directionality of linked filters?
 
-**Root cause:** Linked filters are one of the more complex features of Metabase, and many problems stems from misunderstanding their operation.
+**Root cause:** Linked filters are one of the more complex features of Metabase, and many problems stem from misunderstanding their operation.
 
 **Steps to take:** Check that you understand the points below, and that your linked filter is set up with them in mind.
 

@@ -22,28 +22,16 @@ import { updateTransformSignature } from "./utils";
 
 export function PythonTransformEditor({
   source,
-  proposedSource,
   uiOptions,
   isEditMode,
   transform,
   onChangeSource,
-  onAcceptProposed,
-  onRejectProposed,
-  onDryRunErrorChange,
   onRunTransform,
   onRun,
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult, isDirty } =
     useTestPythonTransform(source);
   const isRunnable = canRunPythonTransformSource(source);
-
-  useEffect(() => {
-    const errMsg = [executionResult?.error?.message, executionResult?.logs]
-      .filter((x) => !!x)
-      .join("\n\n");
-    onDryRunErrorChange?.(errMsg);
-    return () => onDryRunErrorChange?.(undefined);
-  }, [executionResult, onDryRunErrorChange]);
 
   const wasRunning = usePrevious(isRunning);
 
@@ -154,11 +142,8 @@ export function PythonTransformEditor({
             onRun={handleRun}
             onCancel={cancel}
             source={source.body}
-            proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
             withDebugger={isEditMode && !uiOptions?.hidePreview}
-            onAcceptProposed={onAcceptProposed}
-            onRejectProposed={onRejectProposed}
           />
           {!uiOptions?.hidePreview && isEditMode && (
             <PythonEditorResults

@@ -2,15 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import {
+  createMockDashboardState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import {
-  createMockDashboardState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { IconName } from "metabase-types/api";
 import {

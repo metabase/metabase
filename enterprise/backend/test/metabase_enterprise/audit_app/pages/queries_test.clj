@@ -116,3 +116,59 @@
               (is (= [erroring-id] (map first rows))))
             (testing "and the total_count agrees"
               (is (= 1 (bad-table-total "collision-error-marker-abc" nil nil))))))))))
+
+(deftest bad-table-dedupes-tied-executions-for-one-card-test
+  (testing "a card whose latest executions tie on started_at appears once, not once per tied execution"
+    (mt/test-helpers-set-global-values!
+      (let [shared-ts #t "2026-04-04T09:00:00Z"]
+        (mt/with-temp [:model/Card {card-id :id} {:name "Kestrel tied-run card"}
+                       ;; an older run, to prove ranking picks from the latest timestamp only
+                       :model/QueryExecution _ (merge query-execution-defaults
+                                                      {:card_id     card-id
+                                                       :executor_id (mt/user->id :crowberto)
+                                                       :started_at  #t "2026-04-04T08:00:00Z"
+                                                       :error       "tied-run-marker-de stale error"})
+                       ;; two runs of the SAME card landing in the same clock tick
+                       :model/QueryExecution _ (merge query-execution-defaults
+                                                      {:card_id     card-id
+                                                       :executor_id (mt/user->id :crowberto)
+                                                       :started_at  shared-ts
+                                                       :error       "tied-run-marker-de first error"})
+                       :model/QueryExecution _ (merge query-execution-defaults
+                                                      {:card_id     card-id
+                                                       :executor_id (mt/user->id :crowberto)
+                                                       :started_at  shared-ts
+                                                       :error       "tied-run-marker-de second error"})]
+          (let [rows (mt/rows (run-query ::queries/bad-table :args ["tied-run-marker-de" nil nil]))]
+            (testing "one row for the card (the un-deduped join returns one per tied execution)"
+              (is (= 1 (count rows)))
+              (is (= [card-id] (map first rows))))
+            (testing "the surviving row is the most recently inserted of the tied executions"
+              (is (= "tied-run-marker-de second error..." (nth (first rows) 2))))
+            (testing "and the total_count agrees"
+              (is (= 1 (bad-table-total "tied-run-marker-de" nil nil))))))))))
+
+(deftest bad-table-paging-is-stable-across-tied-sort-values-test
+  (testing "cards tied on the sort column don't repeat across pages: each page yields a distinct card"
+    (mt/test-helpers-set-global-values!
+      (let [shared-ts #t "2026-05-05T15:00:00Z"
+            page      (fn [offset]
+                        (mt/rows (run-query ::queries/bad-table
+                                            :args   ["paging-tie-marker-fg" "last_run_at" "desc"]
+                                            :limit  1
+                                            :offset offset)))]
+        (mt/with-temp [:model/Card {card-a :id} {:name "Avocet paging card"}
+                       :model/Card {card-b :id} {:name "Bittern paging card"}
+                       :model/QueryExecution _ (merge query-execution-defaults
+                                                      {:card_id     card-a
+                                                       :executor_id (mt/user->id :crowberto)
+                                                       :started_at  shared-ts
+                                                       :error       "paging-tie-marker-fg"})
+                       :model/QueryExecution _ (merge query-execution-defaults
+                                                      {:card_id     card-b
+                                                       :executor_id (mt/user->id :crowberto)
+                                                       :started_at  shared-ts
+                                                       :error       "paging-tie-marker-fg"})]
+          (is (= 2 (bad-table-total "paging-tie-marker-fg" "last_run_at" "desc")))
+          (is (= #{card-a card-b}
+                 (set (concat (map first (page 0)) (map first (page 1)))))))))))

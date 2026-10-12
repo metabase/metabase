@@ -49,6 +49,19 @@ describe("makeCreateElementDistortion", () => {
       expect(sharedImpl).toHaveBeenCalledWith("script", options);
       expect(el).toBe(sentinel);
     });
+
+    it("routes a non-string tag to the blocklisted creator, not the <style> exception", () => {
+      const sentinel = document.createElement("div");
+      const { sharedImpl, shared } = setup(sentinel);
+      const create = makeCreateElementDistortion(CREATE_ELEMENT, shared);
+
+      const tag = { toLowerCase: () => "style", toString: () => "script" };
+      // The tag wrapper is passed to runtime
+      const el = create.call(document, tag as unknown as string);
+
+      expect(sharedImpl).toHaveBeenCalledWith("script", undefined);
+      expect(el).toBe(sentinel);
+    });
   });
 
   describe("createElementNS", () => {
@@ -84,6 +97,33 @@ describe("makeCreateElementDistortion", () => {
       expect(sharedImpl).toHaveBeenCalledWith(
         "http://www.w3.org/2000/svg",
         "svg:script",
+        undefined,
+      );
+      expect(el).toBe(sentinel);
+    });
+
+    it("routes a non-string qualified name to the blocklisted creator, not the <style> exception", () => {
+      const sentinel = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg",
+      );
+      const { sharedImpl, shared } = setup(sentinel);
+      const create = makeCreateElementDistortion(CREATE_ELEMENT_NS, shared);
+
+      const qualifiedName = {
+        toLowerCase: () => "html:style",
+        toString: () => "html:script",
+      };
+      const el = create.call(
+        document,
+        "http://www.w3.org/1999/xhtml",
+        // The qualifiedName wrapper is passed to runtime
+        qualifiedName as unknown as string,
+      );
+
+      expect(sharedImpl).toHaveBeenCalledWith(
+        "http://www.w3.org/1999/xhtml",
+        "html:script",
         undefined,
       );
       expect(el).toBe(sentinel);

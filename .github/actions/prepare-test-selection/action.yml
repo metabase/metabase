@@ -1,0 +1,39 @@
+name: Prepare test selection
+description: Download this run's test plan and write the suite's selected test paths.
+
+inputs:
+  suite:
+    description: The suite to select tests for (unit, loki or e2e).
+    required: true
+  test-plan-artifact-id:
+    description: ID of this run's test-plan.json artifact.
+    required: true
+  require-download:
+    description: Fail the step when the test plan download fails, instead of running the full suite.
+    required: false
+    default: "false"
+
+outputs:
+  paths-file:
+    description: JSON file listing the selected test paths, or '' when the suite runs in full.
+    value: ${{ steps.selection.outputs.paths-file }}
+  selection:
+    description: full, narrowed or empty, or '' when the plan is unavailable and the suite runs in full.
+    value: ${{ steps.selection.outputs.selection }}
+
+runs:
+  using: composite
+  steps:
+    - name: Download test plan
+      id: test-plan
+      continue-on-error: ${{ inputs.require-download != 'true' }}
+      uses: actions/download-artifact@v8
+      with:
+        artifact-ids: ${{ inputs.test-plan-artifact-id }}
+        path: ${{ runner.temp }}/test-plan
+    - name: Prepare test selection
+      id: selection
+      shell: bash
+      env:
+        PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
+      run: bun .github/scripts/prepare-test-selection.ts "${{ inputs.suite }}"

@@ -4,11 +4,11 @@ import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import {
+  type PreviousPeriodChange,
   computePreviousPeriodChange,
   findPreviousNonEmptyRowIndex,
-} from "metabase/visualizations/lib/trend-helpers";
+} from "metabase/viz-core";
 import type { Dataset, DatasetColumn } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 

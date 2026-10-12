@@ -61,6 +61,18 @@
   (is (= [] (mapv-via-run! inc [])))
   (is (= [1 2 3 4 5] (mapv-via-run! inc (range 5)))))
 
+(deftest dropv-test
+  (is (= [3 4 5] (perf/dropv 2 [1 2 3 4 5])))
+  (is (= [1 2 3] (perf/dropv 0 [1 2 3])))
+  (is (= [] (perf/dropv 3 [1 2 3])))
+  (is (= [] (perf/dropv 5 [1 2 3])))
+  (testing "nil input"
+    (is (= [] (perf/dropv 0 nil)))
+    (is (= [] (perf/dropv 5 nil))))
+  (testing "non-vectors"
+    (is (= [3 4 5] (perf/dropv 2 '(1 2 3 4 5))))
+    (is (vector? (perf/dropv 2 '(1 2 3 4 5))))))
+
 #?(:clj
    (deftest ^:parallel transpose-test
      (is (= [[1 2 3 4] [1 2 3 4] [1 2 3 4] [1 2 3 4] [1 2 3 4]]
@@ -126,6 +138,16 @@
                       y nil]
            (println x y)))
        #_=> "")))
+
+(deftest str-test
+  (is (= "" (perf/str nil)))
+  (is (= "1" (perf/str 1)))
+  (is (= "12" (perf/str 1 2)))
+  (is (= "1" (perf/str 1 nil)))
+  (is (= "2" (perf/str nil 2)))
+  (is (= "123" (perf/str 1 2 3)))
+  (is (= "13" (perf/str 1 nil 3)))
+  (is (= "1234567" (perf/str 1 2 3 4 5 6 7))))
 
 (deftest ^:parallel test-postwalk
   (are [before after] (= after (perf/postwalk #(cond-> %
@@ -245,6 +267,9 @@
                       (concat (range 1000)
                               (for [_ (range 10)]
                                 (throw (ex-info "you should not be here" {})))))))))
+
+(deftest ^:parallel mapa-test
+  (is (= [1 2 3] (vec (perf/mapa inc (range 3))))))
 
 #?(:clj
    (defspec mapv-single-coll-equivalence 100

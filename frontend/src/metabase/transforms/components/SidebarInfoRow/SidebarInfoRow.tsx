@@ -16,8 +16,8 @@ export function SidebarInfoRow({ label, children }: SidebarInfoRowProps) {
   return (
     <Stack
       className={S.row}
-      p="md"
-      gap="xs"
+      p="lg"
+      gap="xxs"
       role="group"
       aria-labelledby={labelId}
     >

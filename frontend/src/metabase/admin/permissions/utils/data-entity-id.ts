@@ -1,28 +1,28 @@
-import { checkNotNull } from "metabase/utils/types";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   ConcreteTableId,
+  Database,
   DatabaseEntityId,
   PermissionEntityId,
   SchemaEntityId,
+  Table,
   TableEntityId,
 } from "metabase-types/api";
 
-export const getDatabaseEntityId = (databaseEntity: Database) => ({
+import type { PermissionsSchema } from "./metadata";
+
+export const getDatabaseEntityId = (databaseEntity: Pick<Database, "id">) => ({
   databaseId: databaseEntity.id,
 });
 
-export const getSchemaEntityId = (schemaEntity: Schema) => ({
-  databaseId: checkNotNull(schemaEntity.database).id,
+export const getSchemaEntityId = (schemaEntity: PermissionsSchema) => ({
+  databaseId: schemaEntity.databaseId,
   schemaName: schemaEntity.name,
 });
 
 export const getTableEntityId = (tableEntity: Table) => ({
   databaseId: tableEntity.db_id,
-  schemaName: tableEntity.schema_name,
-  // Unjustified type cast. FIXME
+  schemaName: tableEntity.schema,
+  // A permission entity always names a real warehouse table, never a card.
   tableId: tableEntity.id as ConcreteTableId,
 });
 

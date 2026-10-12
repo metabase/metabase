@@ -1,8 +1,5 @@
-import { useMemo } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
@@ -12,99 +9,7 @@ import type {
   GetEntityPickerSyntheticLibraryItemFunction,
   LibrarySubCollectionType,
 } from "metabase/plugins/oss/library";
-import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
-import type { CollectionItem, CollectionType } from "metabase-types/api";
-
-const isLibrary = (
-  collection: CollectionItem | { data: null } | undefined,
-): collection is CollectionItem => !!collection && "name" in collection;
-
-export const useGetLibraryCollection = ({
-  skip = false,
-}: { skip?: boolean } = {}) => {
-  const {
-    data,
-    isLoading: isLoadingCollection,
-    error,
-  } = useGetLibraryCollectionQuery(undefined, { skip });
-
-  const maybeLibrary = useMemo(
-    () => (isLibrary(data) ? data : undefined),
-    [data],
-  );
-
-  return {
-    isLoading: isLoadingCollection,
-    data: maybeLibrary,
-    error,
-  };
-};
-export const useGetLibraryChildCollectionByType = ({
-  skip,
-  type,
-}: {
-  skip?: boolean;
-  type: CollectionType;
-}) => {
-  const { data: rootLibraryCollection, isLoading: isLoadingLibrary } =
-    useGetLibraryCollection({ skip });
-  const { data: libraryCollections, isLoading: isLoadingItems } =
-    useListCollectionItemsQuery(
-      rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
-    );
-  const data = useMemo(
-    () =>
-      libraryCollections?.data.find(
-        (collection: CollectionItem) => collection.type === type,
-      ),
-    [libraryCollections, type],
-  );
-
-  return {
-    data,
-    isLoading:
-      isLoadingLibrary || (rootLibraryCollection != null && isLoadingItems),
-  };
-};
-// This hook will return the library collection if there are both metrics and models in the library,
-// the library-metrics collection if the library has no models, or the library-data collection
-// if the library has no metrics
-export const useGetResolvedLibraryCollection = ({
-  skip = false,
-}: { skip?: boolean } = {}) => {
-  const { data: libraryCollection, isLoading: isLoadingCollection } =
-    useGetLibraryCollection({ skip });
-
-  const hasStuff = Boolean(
-    libraryCollection &&
-    (libraryCollection?.below?.length || libraryCollection?.here?.length),
-  );
-  const { data: libraryItems, isLoading: isLoadingItems } =
-    useListCollectionItemsQuery(
-      libraryCollection && hasStuff ? { id: libraryCollection.id } : skipToken,
-    );
-
-  const subcollectionsWithStuff =
-    libraryItems?.data.filter(
-      (item) =>
-        item.model === "collection" &&
-        (item.here?.length || item.below?.length),
-    ) ?? [];
-
-  const showableLibrary = match({ subcollectionsWithStuff, hasStuff })
-    .when(
-      // if there's only one subcollection with stuff, we want to go straight into it
-      ({ subcollectionsWithStuff }) => subcollectionsWithStuff?.length === 1,
-      () => subcollectionsWithStuff[0],
-    )
-    .with({ hasStuff: true }, () => libraryCollection)
-    .otherwise(() => undefined);
-
-  return {
-    isLoading: isLoadingCollection || isLoadingItems,
-    data: showableLibrary,
-  };
-};
+import type { CollectionItem } from "metabase-types/api";
 
 type LibrarySectionCollectionItem = CollectionItem &
   OmniPickerCollectionItem & {
@@ -118,6 +23,8 @@ function getLibrarySectionName(type: LibrarySubCollectionType) {
       return t`Data`;
     case "library-metrics":
       return t`Metrics`;
+    case "library-dashboards":
+      return t`Dashboards`;
   }
 }
 
@@ -135,6 +42,7 @@ export function getCollectionPickerItems({
   const librarySubCollectionType: LibrarySubCollectionType[] = [
     "library-data",
     "library-metrics",
+    "library-dashboards",
   ];
 
   return librarySubCollectionType.flatMap((type) => {
@@ -189,20 +97,31 @@ export const getLibraryCollectionEmptyStateMessages = (
   if (type === "library-data") {
     return {
       title: t`No published tables yet`,
-      description: t`Publish tables in the Library to see them here.`,
+      description: t`Publish tables in the semantic layer to see them here.`,
+    };
+  }
+
+  if (type === "library-dashboards") {
+    return {
+      title: t`No dashboards yet`,
+      description: t`Put dashboards in the semantic layer to see them here.`,
     };
   }
 
   return {
     title: t`No metrics yet`,
-    description: t`Put metrics in the Library to see them here.`,
+    description: t`Put metrics in the semantic layer to see them here.`,
   };
 };
 
 export const isLibrarySubCollectionType = (
   type?: string | null,
 ): type is LibrarySubCollectionType => {
-  return type === "library-data" || type === "library-metrics";
+  return (
+    type === "library-data" ||
+    type === "library-metrics" ||
+    type === "library-dashboards"
+  );
 };
 
 export const isLibraryDataCollectionType = (

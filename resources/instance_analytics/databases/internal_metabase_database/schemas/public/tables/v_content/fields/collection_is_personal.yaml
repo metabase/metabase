@@ -9,7 +9,6 @@ effective_type: type/Boolean
 semantic_type: type/Category
 dimensions: []
 position: 16
-custom_position: 0
 database_position: 16
 has_field_values: list
 serdes/meta:

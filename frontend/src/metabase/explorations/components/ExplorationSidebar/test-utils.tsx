@@ -136,6 +136,7 @@ export function setup({
 
   const getSelectedPageUrl = (pageId: string) =>
     `${Urls.exploration(exploration.id)}/page/${encodeURIComponent(pageId)}`;
+  const getSelectedSummaryUrl = () => Urls.explorationSummary(exploration.id);
 
   const explorationPath = Urls.exploration(exploration.id);
   const {
@@ -157,8 +158,11 @@ export function setup({
       selectedSidebarTab={selectedSidebarTab}
       getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
       tree={displayTree}
-      selectedPageId={resolvedPageId}
+      selectedEntity={
+        resolvedPageId != null ? { type: "page", id: resolvedPageId } : null
+      }
       getSelectedPageUrl={getSelectedPageUrl}
+      getSelectedSummaryUrl={getSelectedSummaryUrl}
       shouldScrollSelectionRef={{ current: true }}
       isOpen
       readPageIds={readPageIds}
@@ -184,6 +188,7 @@ export function setup({
     onToggleShowHidden,
     onChangeSortOrder,
     getSelectedPageUrl,
+    getSelectedSummaryUrl,
     exploration,
   };
 }

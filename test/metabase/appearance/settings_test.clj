@@ -2,10 +2,121 @@
   (:require
    [clojure.test :refer :all]
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util.jvm :as u.jvm]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- image-data-uri [content-type content]
+  (str "data:" content-type ";base64," (u.jvm/encode-base64 content)))
+
+(defn- do-with-raw-value! [setting-key value thunk]
+  (tu/do-with-temporary-setting-value! setting-key value thunk :raw-setting? true))
+
+(deftest custom-illustration-url-test
+  (mt/with-premium-features #{:whitelabel}
+    (doseq [setting-key appearance.settings/custom-illustration-settings]
+      (testing setting-key
+        (do-with-raw-value!
+         setting-key (image-data-uri "image/png" "first")
+         (fn []
+           (let [url (setting/get setting-key)]
+             (testing "an uploaded image is returned as a URL"
+               (is (re-matches (re-pattern (str "api/session/illustration/" (name setting-key) "\\?v=[0-9a-f]{16}"))
+                               url)))
+             (testing "the stored value is still the data URI"
+               (is (= (image-data-uri "image/png" "first")
+                      (setting/get-value-of-type :string setting-key))))
+             (testing "the same image gives the same URL"
+               (is (= url (setting/get setting-key))))
+             (testing "another image gives another URL"
+               (do-with-raw-value! setting-key (image-data-uri "image/png" "second")
+                                   #(is (not= url (setting/get setting-key))))))))))))
+
+(deftest custom-illustration-other-values-test
+  (mt/with-premium-features #{:whitelabel}
+    (doseq [setting-key appearance.settings/custom-illustration-settings]
+      (testing setting-key
+        (testing "other values are returned unchanged"
+          (doseq [value ["https://example.com/login.png"
+                         (image-data-uri "text/plain" "not an image")
+                         "data:image/png;base64,%%%"
+                         "data:image/svg+xml,%3Csvg%3E%3C/svg%3E"]]
+            (do-with-raw-value! setting-key value #(is (= value (setting/get setting-key))))))
+        (testing "no value"
+          (do-with-raw-value! setting-key nil #(is (nil? (setting/get setting-key)))))))))
+
+(deftest custom-illustration-feature-test
+  (testing "without the whitelabel feature there is no value and no image"
+    (mt/with-premium-features #{}
+      (doseq [setting-key appearance.settings/custom-illustration-settings]
+        (testing setting-key
+          (do-with-raw-value! setting-key (image-data-uri "image/png" "first")
+                              (fn []
+                                (is (nil? (setting/get setting-key)))
+                                (is (nil? (appearance.settings/illustration-image setting-key))))))))))
+
+(deftest illustration-image-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "returns the decoded image of each setting"
+      (mt/with-temporary-raw-setting-values [login-page-illustration-custom   (image-data-uri "IMAGE/PNG" "login")
+                                             landing-page-illustration-custom (image-data-uri "image/png" "landing")
+                                             no-data-illustration-custom      (image-data-uri "image/png" "no data")
+                                             no-object-illustration-custom    (image-data-uri "image/png" "no object")]
+        (doseq [[setting-key content] {:login-page-illustration-custom   "login"
+                                       :landing-page-illustration-custom "landing"
+                                       :no-data-illustration-custom      "no data"
+                                       :no-object-illustration-custom    "no object"}]
+          (testing setting-key
+            (let [{:keys [content-type], image-bytes :bytes, image-hash :hash}
+                  (appearance.settings/illustration-image setting-key)]
+              (is (= "image/png" content-type))
+              (is (= content (String. ^bytes image-bytes "UTF-8")))
+              (is (= (str "api/session/illustration/" (name setting-key) "?v=" image-hash)
+                     (setting/get setting-key))))))))))
+
+(deftest illustration-image-media-type-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "media type parameters are kept"
+      (mt/with-temporary-raw-setting-values [login-page-illustration-custom
+                                             (image-data-uri "image/svg+xml;charset=iso-8859-1" "<svg/>")]
+        (is (= {:content-type "image/svg+xml;charset=iso-8859-1", :media-type "image/svg+xml"}
+               (select-keys (appearance.settings/illustration-image :login-page-illustration-custom)
+                            [:content-type :media-type])))))
+    (testing "a header with many parameters does not overflow the regex"
+      (let [media-type (apply str "image/png" (for [i (range 5000)] (str ";p" i "=b")))]
+        (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri media-type "first")]
+          (is (= "image/png" (:media-type (appearance.settings/illustration-image :login-page-illustration-custom)))))))
+    (testing "a header with invalid characters is returned unchanged"
+      (let [value (str "data:image/png;x=a\r\nb;base64," (u.jvm/encode-base64 "first"))]
+        (mt/with-temporary-raw-setting-values [login-page-illustration-custom value]
+          (is (= value (appearance.settings/login-page-illustration-custom))))))))
+
+(deftest illustration-image-nil-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "nil when the value is not an uploaded image"
+      (mt/with-temporary-raw-setting-values [login-page-illustration-custom "https://example.com/login.png"]
+        (is (nil? (appearance.settings/illustration-image :login-page-illustration-custom)))))
+    (testing "nil for other settings"
+      (mt/with-temporary-raw-setting-values [application-logo-url (image-data-uri "image/png" "logo")]
+        (is (nil? (appearance.settings/illustration-image :application-logo-url)))))))
+
+(deftest parsed-illustration-cache-reload-test
+  (let [setting-key :login-page-illustration-custom
+        raw         (image-data-uri "image/png" "first")
+        reloaded    (String. ^String raw)
+        cache       (atom {})]
+    (with-redefs [appearance.settings/parsed-illustrations cache]
+      (let [parsed (#'appearance.settings/parsed-illustration setting-key raw)]
+        (is (some? parsed))
+        (is (= raw reloaded))
+        (is (not (identical? raw reloaded)))
+        (is (identical? parsed
+                        (#'appearance.settings/parsed-illustration setting-key reloaded)))
+        (is (identical? reloaded (first (get @cache setting-key))))))))
 
 (deftest help-link-setting-test
   (mt/discard-setting-changes [help-link]

@@ -9,6 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 
 export type SnippetSidebarMenuOption = {
   icon: IconName;
@@ -68,8 +69,6 @@ export const getDefaultPluginSnippetFolders = () => ({
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,
 });
 
-export const PLUGIN_SNIPPET_FOLDERS = getDefaultPluginSnippetFolders();
-
-export function reinitialize() {
-  Object.assign(PLUGIN_SNIPPET_FOLDERS, getDefaultPluginSnippetFolders());
-}
+export const PLUGIN_SNIPPET_FOLDERS = definePluginSlot(
+  getDefaultPluginSnippetFolders,
+);

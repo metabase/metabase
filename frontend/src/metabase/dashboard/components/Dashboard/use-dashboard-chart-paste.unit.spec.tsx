@@ -7,11 +7,11 @@ import {
   setupCardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getDashcards } from "metabase/dashboard/selectors";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,

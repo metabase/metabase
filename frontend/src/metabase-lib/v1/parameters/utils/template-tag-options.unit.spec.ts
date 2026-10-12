@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import Field from "metabase-lib/v1/metadata/Field";
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/v1/parameters/constants";
+import type { NormalizedField } from "metabase-types/api";
 import { createMockNormalizedField } from "metabase-types/api/mocks";
 
 import {
@@ -9,8 +10,15 @@ import {
   getParameterOptionsForField,
 } from "./template-tag-options";
 
-function createMockField(mocks: Partial<Field>): Field {
-  return Object.assign(new Field(createMockNormalizedField({})), mocks);
+function createMockField(field: Partial<NormalizedField>): Field {
+  return new Field(
+    createMockNormalizedField({
+      base_type: "type/*",
+      semantic_type: null,
+      has_field_values: "none",
+      ...field,
+    }),
+  );
 }
 
 describe("parameters/utils/template-tag-options", () => {
@@ -50,21 +58,8 @@ describe("parameters/utils/template-tag-options", () => {
   });
 
   describe("getParameterOptionsForField", () => {
-    const fieldPredicates = {
-      isDate: () => false,
-      isID: () => false,
-      isNumeric: () => false,
-      isString: () => false,
-      isStringLike: () => false,
-      isBoolean: () => false,
-      isAddress: () => false,
-    };
-
     it("should return relevantly typed options for date field", () => {
-      const dateField = createMockField({
-        ...fieldPredicates,
-        isDate: () => true,
-      });
+      const dateField = createMockField({ base_type: "type/DateTime" });
       const availableOptions = getParameterOptionsForField(dateField);
       expect(
         availableOptions.length > 0 &&
@@ -73,10 +68,7 @@ describe("parameters/utils/template-tag-options", () => {
     });
 
     it("should return relevantly typed options for id field", () => {
-      const idField = createMockField({
-        ...fieldPredicates,
-        isID: () => true,
-      });
+      const idField = createMockField({ semantic_type: "type/PK" });
       const availableOptions = getParameterOptionsForField(idField);
       expect(
         availableOptions.length > 0 &&
@@ -86,9 +78,8 @@ describe("parameters/utils/template-tag-options", () => {
 
     it("should return string options for an address field", () => {
       const addressField = createMockField({
-        ...fieldPredicates,
-        isString: () => true,
-        isAddress: () => true,
+        base_type: "type/Text",
+        semantic_type: "type/Address",
       });
       const availableOptions = getParameterOptionsForField(addressField);
       expect(
@@ -98,11 +89,7 @@ describe("parameters/utils/template-tag-options", () => {
     });
 
     it("should return string options for a TextLike field", () => {
-      const enumField = createMockField({
-        ...fieldPredicates,
-        isString: () => false,
-        isStringLike: () => true,
-      });
+      const enumField = createMockField({ base_type: "type/TextLike" });
       const availableOptions = getParameterOptionsForField(enumField);
       expect(
         availableOptions.length > 0 &&

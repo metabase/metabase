@@ -178,4 +178,4 @@ If you're using Metabase Cloud, cached question results will be saved to Metabas
 
 ## Further reading
 
-- [Model persistence](../data-modeling/model-persistence.md)
+- [Model persistence](../data-modeling/models/model-persistence.md)

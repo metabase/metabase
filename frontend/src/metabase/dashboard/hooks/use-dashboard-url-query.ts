@@ -16,6 +16,7 @@ import {
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import {
@@ -91,7 +92,7 @@ export function useDashboardUrlQuery(location: Location) {
       return;
     }
 
-    const pathname = location.pathname.replace(siteUrl, "");
+    const pathname = getPathnameWithoutSubPath(location.pathname, siteUrl);
     const isDashboardUrl = pathname.startsWith("/dashboard/");
     if (isDashboardUrl) {
       const dashboardSlug = pathname.replace("/dashboard/", "");

@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
@@ -26,6 +27,17 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(defmacro ^:private with-temp-index-version
+  "Run `body` under index version `version`, then drop its metadata rows and any tables they tracked."
+  [version & body]
+  `(let [version# ~version]
+     (binding [search.spec/*testing-only-index-version-hash* version#]
+       (try
+         ~@body
+         (finally
+           (t2/delete! :model/SearchIndexMetadata :version version#)
+           (search.index/delete-obsolete-tables!))))))
 
 (defn- index-hits [term]
   (count (search.index/search term)))
@@ -375,7 +387,8 @@
                                                         :updated_at yesterday
                                                         ;; :archived = true
                                                         :archived true}
-                     :model/QueryAction _               {:dataset_query (mt/native-query {:query "select * from metabase"})
+                     :model/QueryAction _               {:dataset_query (assoc (mt/native-query {:query "select * from metabase"})
+                                                                               :database db-id)
                                                          ;; :database_id = db-id
                                                          :database_id   db-id
                                                          :action_id     action-id}]
@@ -542,6 +555,7 @@
    "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
    "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"           #{"action" "model_index_value" "report_card"}
+   "exploration"        #{"action" "document" "model_index_value" "report_card"}
    "report_card"        #{"action" "model_index_value"}
    "report_dashboard"   #{"action" "model_index_value" "report_card"}})
 
@@ -564,60 +578,99 @@
 
 (deftest auto-refresh-test
   (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "auto-refresh-test"]
-      (try
-        (reset! @#'search.index/next-sync-at nil)
-        (search.index/reset-index!)
-        (let [active-before (search.index/active-table)
-              active-after  (search.index/gen-table-name)
-              pending-after (search.index/gen-table-name)
-              period        @#'search.index/sync-tracking-period
-              version       (search.spec/index-version-hash)]
-          (search-index-metadata/create-pending! :appdb version active-after)
-          (search.index/create-table! active-after)
-          (search-index-metadata/active-pending! :appdb version)
-          (search-index-metadata/create-pending! :appdb version pending-after)
-          (search.index/create-table! pending-after)
-          (testing "We continue using our cached references for some time"
-            (is (= active-before (active-table-after 100)))
-            (is (= active-before (active-table-after (/ period 2)))))
-          (testing "But eventually we refresh"
-            (is (= active-after (active-table-after period)))))
-        (finally
-          (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
-          (#'search.index/delete-obsolete-tables!))))))
+    (with-temp-index-version "auto-refresh-test"
+      (reset! @#'search.index/next-sync-at nil)
+      (search.index/reset-index!)
+      (let [active-before (search.index/active-table)
+            active-after  (search.index/gen-table-name)
+            pending-after (search.index/gen-table-name)
+            period        @#'search.index/sync-tracking-period
+            version       (search.spec/index-version-hash)]
+        (search-index-metadata/create-pending! :appdb version active-after)
+        (search.index/create-table! active-after)
+        (search-index-metadata/active-pending! :appdb version)
+        (search-index-metadata/create-pending! :appdb version pending-after)
+        (search.index/create-table! pending-after)
+        (testing "We continue using our cached references for some time"
+          (is (= active-before (active-table-after 100)))
+          (is (= active-before (active-table-after (/ period 2)))))
+        (testing "But eventually we refresh"
+          (is (= active-after (active-table-after period))))))))
 
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "pending-timeout-test"]
-      (try
-        (reset! @#'search.index/next-sync-at nil)
-        (search.index/reset-index!)
-        (let [active-table (search.index/active-table)
-              pending-old  (search.index/gen-table-name)
-              pending-new  (search.index/gen-table-name)
-              version      (search.spec/index-version-hash)]
-          ;; Set up old pending table (more than a day old)
-          (search.index/create-table! pending-old)
-          (search-index-metadata/create-pending! :appdb version pending-old)
-          (t2/update! :model/SearchIndexMetadata
-                      {:index_name (name pending-old)}
-                      {:created_at (t/minus (t/offset-date-time) (t/days 2))})
-          (#'search.index/sync-tracking-atoms!)
-          (testing "Active table is returned"
-            (is (= active-table (search.index/active-table))))
-          (testing "Old pending table is ignored (more than a day old)"
-            (is (nil? (#'search.index/pending-table))))
-          ;; Create new pending table (less than a day old)
-          (search.index/create-table! pending-new)
-          (search-index-metadata/create-pending! :appdb version pending-new)
-          (#'search.index/sync-tracking-atoms!)
-          (testing "New pending table is included (less than a day old)"
-            (is (= active-table (search.index/active-table)))
-            (is (= pending-new (#'search.index/pending-table)))))
-        (finally
-          (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
-          (#'search.index/delete-obsolete-tables!))))))
+    (with-temp-index-version "pending-timeout-test"
+      (reset! @#'search.index/next-sync-at nil)
+      (search.index/reset-index!)
+      (let [active-table (search.index/active-table)
+            pending-old  (search.index/gen-table-name)
+            pending-new  (search.index/gen-table-name)
+            version      (search.spec/index-version-hash)]
+        ;; Set up old pending table (more than a day old)
+        (search.index/create-table! pending-old)
+        (search-index-metadata/create-pending! :appdb version pending-old)
+        (t2/update! :model/SearchIndexMetadata
+                    {:index_name (name pending-old)}
+                    {:created_at (t/minus (t/offset-date-time) (t/days 2))})
+        (#'search.index/sync-tracking-atoms!)
+        (testing "Active table is returned"
+          (is (= active-table (search.index/active-table))))
+        (testing "Old pending table is ignored (more than a day old)"
+          (is (nil? (#'search.index/pending-table))))
+        ;; Create new pending table (less than a day old)
+        (search.index/create-table! pending-new)
+        (search-index-metadata/create-pending! :appdb version pending-new)
+        (#'search.index/sync-tracking-atoms!)
+        (testing "New pending table is included (less than a day old)"
+          (is (= active-table (search.index/active-table)))
+          (is (= pending-new (#'search.index/pending-table))))))))
+
+(deftest failed-reindex-drops-orphaned-tables-test
+  (when (search/supports-index?)
+    (with-temp-index-version "orphan-cleanup-test"
+      (reset! @#'search.index/next-sync-at nil)
+      (search.index/reset-index!)
+      (let [orphan (search.index/gen-table-name)]
+        (search.index/create-table! orphan)
+        (mt/with-dynamic-fn-redefs [search.ingestion/searchable-documents #(throw (ex-info "Simulated connection loss" {}))]
+          (mt/with-log-level [metabase.search.appdb.core :fatal]
+            (is (thrown-with-msg? Exception #"Simulated connection loss"
+                                  (search.engine/reindex! :search.engine/appdb {})))))
+        (testing "the orphan is dropped even though the reindex never reached activation"
+          (is (not (search.index/exists? orphan))))
+        (testing "the active table and the pending table left behind by the failed run are kept"
+          (is (search.index/exists? (search.index/active-table)))
+          (is (search.index/exists? (#'search.index/pending-table))))))))
+
+(deftest sweep-leaves-an-enclosing-transaction-intact-test
+  (when (search/supports-index?)
+    (with-temp-index-version "sweep-in-transaction-test"
+      (search.index/reset-index!)
+      (let [orphan (search.index/gen-table-name)
+            before (t2/count :model/Collection)]
+        (search.index/create-table! orphan)
+        (testing "a rollback-only transaction survives a sweep inside it, which leaves the orphan behind"
+          (mt/with-temp [:model/Collection _ {}]
+            (mt/with-temp [:model/Collection _ {}]
+              (search.index/delete-obsolete-tables!)))
+          (is (= before (t2/count :model/Collection)))
+          (is (search.index/exists? orphan)))
+        (testing "a later sweep, outside any transaction, drops it"
+          (search.index/delete-obsolete-tables!)
+          (is (not (search.index/exists? orphan))))))))
+
+(deftest sweep-under-the-cluster-lock-still-drops-orphans-test
+  (when (search/supports-index?)
+    (with-temp-index-version "sweep-under-lock-test"
+      (search.index/reset-index!)
+      (let [orphan (search.index/gen-table-name)]
+        (search.index/create-table! orphan)
+        ;; Deferring the drops inside a transaction is only safe because this lock opens none on h2.
+        ;; Pin that here, so making it transactional fails a test instead of silently stopping the sweep.
+        (testing "the lock leaves the sweep able to drop an orphan"
+          (cluster-lock/with-cluster-lock ::sweep-test-lock
+            (search.index/delete-obsolete-tables!))
+          (is (not (search.index/exists? orphan))))))))
 
 (deftest strip-junk-chars-test
   (let [strip @#'search.index/strip-junk-chars]
@@ -769,21 +822,38 @@
 
 (deftest when-index-created
   (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
-      (try
-        (let [table-name (search.index/gen-table-name)
-              version (search.spec/index-version-hash)]
-          (testing "Nil age if no active table"
-            (is (nil? (#'search.index/when-index-created))))
-          (testing "Returns age of active table"
-            (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
-              (search.index/create-table! table-name)
-              (search-index-metadata/create-pending! :appdb version table-name)
-              (search-index-metadata/active-pending! :appdb version)
-              (t2/update! :model/SearchIndexMetadata
-                          :index_name  (name table-name)
-                          {:created_at  update-time})
-              (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
-        (finally
-          (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
-          (#'search.index/delete-obsolete-tables!))))))
+    (with-temp-index-version "index-age-test"
+      (let [table-name (search.index/gen-table-name)
+            version (search.spec/index-version-hash)]
+        (testing "Nil age if no active table"
+          (is (nil? (#'search.index/when-index-created))))
+        (testing "Returns age of active table"
+          (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
+            (search.index/create-table! table-name)
+            (search-index-metadata/create-pending! :appdb version table-name)
+            (search-index-metadata/active-pending! :appdb version)
+            (t2/update! :model/SearchIndexMetadata
+                        :index_name  (name table-name)
+                        {:created_at  update-time})
+            (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis)))))))))
+
+(deftest missing-index-table-does-not-abort-enclosing-transaction-test
+  (when (search/supports-index?)
+    (testing "Handling writes to a missing index table does not abort an enclosing transaction"
+      (search.tu/with-temp-index-table
+        (let [table-name (search.index/active-table)]
+          (#'search.index/drop-table! table-name)
+          (testing "delete!"
+            (t2/with-transaction [_conn]
+              (is (= {"card" 0} (search.engine/delete! :search.engine/appdb "card" [1])))
+              (testing "\nthe enclosing transaction remains usable"
+                (is (true? (t2/exists? :model/User))))))
+          (testing "upsert"
+            (t2/with-transaction [_conn]
+              ;; Include a non-key column so PostgreSQL reaches the missing-table failure instead of rejecting an empty
+              ;; `DO UPDATE SET` clause.
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Currently tracked index does not exist"
+                                    (#'search.index/safe-batch-upsert! :active (constantly table-name)
+                                                                       [{:model "card" :model_id "1" :name "x"}])))
+              (testing "\nthe enclosing transaction remains usable"
+                (is (true? (t2/exists? :model/User)))))))))))

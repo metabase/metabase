@@ -55,7 +55,7 @@ const DefaultTemplate = ({
         <Button variant="filled">Hover to open</Button>
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <Box p="md">{children}</Box>
+        <Box p="lg">{children}</Box>
       </HoverCard.Dropdown>
     </HoverCard>
   </Flex>
@@ -80,5 +80,13 @@ export const InteractiveContent = {
   name: "Interactive content",
   args: {
     children: sampleArgs.interactive,
+  },
+};
+
+export const Opened = {
+  render: DefaultTemplate,
+  args: {
+    children: sampleArgs.simple,
+    initiallyOpened: true,
   },
 };

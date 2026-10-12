@@ -310,7 +310,6 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         ],
       ] as [string, Record<string, unknown>][]) {
         it(`should filter sources for a ${targetParameterType} parameter target`, () => {
-          const question = new Question(createMockCard(), metadata);
           const parameter = createMockParameter({
             id: "foo123",
             name: "My Param",
@@ -323,9 +322,7 @@ describe("metabase/dashboard/utils/click-behavior", () => {
           );
 
           const filteredSources = {
-            column: sources.column.filter((column) =>
-              sourceFilters.column(column, question),
-            ),
+            column: sources.column.filter(sourceFilters.column),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
               sourceFilters.userAttribute,
@@ -401,9 +398,7 @@ describe("metabase/dashboard/utils/click-behavior", () => {
           const [{ sourceFilters }] = getTargetsForQuestion(question);
 
           const filteredSources = {
-            column: sources.column.filter((column) =>
-              sourceFilters.column(column, question),
-            ),
+            column: sources.column.filter(sourceFilters.column),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
               sourceFilters.userAttribute,
@@ -492,9 +487,7 @@ describe("metabase/dashboard/utils/click-behavior", () => {
           const [{ sourceFilters }] = getTargetsForQuestion(question);
 
           const filteredSources = {
-            column: sources.column.filter((column) =>
-              sourceFilters.column(column, question),
-            ),
+            column: sources.column.filter(sourceFilters.column),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
               sourceFilters.userAttribute,

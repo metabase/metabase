@@ -1,7 +1,3 @@
-import {
-  registerVisualization,
-  setDefaultVisualization,
-} from "metabase/visualizations";
 import { AREA_CHART_DEFINITION } from "metabase/visualizations/visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "metabase/visualizations/visualizations/BarChart/definition";
 import { BOXPLOT_CHART_DEFINITION } from "metabase/visualizations/visualizations/BoxPlot/definition";
@@ -17,6 +13,10 @@ import { SCATTER_PLOT_DEFINITION } from "metabase/visualizations/visualizations/
 import { SMART_SCALAR_CHART_DEFINITION } from "metabase/visualizations/visualizations/SmartScalar/definition";
 import { TREEMAP_CHART_DEFINITION } from "metabase/visualizations/visualizations/TreemapChart/definition";
 import { WATERFALL_CHART_DEFINITION } from "metabase/visualizations/visualizations/WaterfallChart/definition";
+import {
+  registerVisualization,
+  setDefaultVisualization,
+} from "metabase/viz-core";
 
 const STATIC_CHART_DEFINITIONS = [
   SCALAR_CHART_DEFINITION,

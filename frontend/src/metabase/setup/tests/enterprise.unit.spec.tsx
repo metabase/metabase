@@ -166,7 +166,7 @@ describe("setup (EE build, but no token)", () => {
   });
 
   describe("AI config step with the managed AI offer", () => {
-    it("should preselect the managed provider and ask the admin to accept the terms", async () => {
+    it("should offer the managed provider and ask the admin to accept the terms", async () => {
       await setupEnterprise({
         tokenFeatures: createMockTokenFeatures({
           hosting: true,
@@ -179,13 +179,19 @@ describe("setup (EE build, but no token)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
       await startAiConfigStep();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Metabase AI service" }),
+      );
 
       expect(
-        await screen.findByText("About Metabase AI service"),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
-      expect(screen.getByLabelText("Provider")).toHaveValue("Metabase");
       expect(
         await screen.findByRole("checkbox", {
           name: /I agree with the Metabase AI Service/i,

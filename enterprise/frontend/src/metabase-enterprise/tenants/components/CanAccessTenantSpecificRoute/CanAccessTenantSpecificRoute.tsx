@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { useGetCollectionQuery } from "metabase/api";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
 type Props = {
   children?: ReactNode;

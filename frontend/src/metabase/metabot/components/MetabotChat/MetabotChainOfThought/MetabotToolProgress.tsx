@@ -3,28 +3,29 @@ import { match } from "ts-pattern";
 
 import Animation from "metabase/css/core/animation.module.css";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
-import { Loader, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
+
+import { MetabotResponseLoader } from "../MetabotResponseLoader";
 
 import S from "./MetabotChainOfThought.module.css";
 import { ResourceGroupStep, ToolStep } from "./ToolStep";
 import { buildDisplayItems, isRenderableStep } from "./utils";
 
 export const MetabotToolProgress = ({
-  message,
-  isStreaming,
+  part,
 }: {
-  message: MetabotAgentChainOfThoughtMessage;
-  isStreaming: boolean;
+  part: MetabotAgentChainOfThoughtMessage;
 }) => {
-  if (!isStreaming) {
+  if (part.finished) {
     return null;
   }
 
-  const activeIndex = message.steps.findLastIndex(isRenderableStep);
+  const activeIndex = part.steps.findLastIndex(isRenderableStep);
 
   return (
     <Stack gap="0.5rem" data-testid="metabot-tool-progress">
-      {buildDisplayItems(message.steps).map((item) =>
+      <MetabotResponseLoader />
+      {buildDisplayItems(part.steps).map((item) =>
         match(item)
           .with({ kind: "resourceGroup" }, ({ steps, index }) => (
             <div
@@ -47,12 +48,6 @@ export const MetabotToolProgress = ({
           .with({ kind: "reasoning" }, () => null)
           .exhaustive(),
       )}
-      <Loader
-        type="dots"
-        size="lg"
-        color="core-brand"
-        data-testid="metabot-response-loader"
-      />
     </Stack>
   );
 };

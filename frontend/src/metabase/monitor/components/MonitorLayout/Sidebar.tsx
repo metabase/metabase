@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 
 import { useMonitorSidebarContext } from "./MonitorContent";
 import { SidebarResizableBox } from "./SidebarResizableBox";

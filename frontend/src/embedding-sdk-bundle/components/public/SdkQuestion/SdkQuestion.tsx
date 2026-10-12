@@ -18,6 +18,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  RefreshButton,
   SaveButton,
   SdkSaveQuestionForm,
   SqlParametersList,
@@ -101,6 +102,7 @@ export type SdkQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
+  RefreshButton: typeof RefreshButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeDropdown: typeof SummarizeDropdown;
@@ -151,7 +153,7 @@ export const _SdkQuestion = ({
   withAlerts = false,
   targetDashboardId,
   backToDashboard,
-  getClickActionMode,
+  clickActionMode,
   navigateToNewCard,
   onDrillThrough,
 
@@ -214,7 +216,7 @@ export const _SdkQuestion = ({
         withAlerts={withAlerts}
         targetDashboardId={targetDashboardId}
         backToDashboard={backToDashboard}
-        getClickActionMode={getClickActionMode}
+        clickActionMode={clickActionMode}
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
         onVisualizationChange={onVisualizationChange}
@@ -240,6 +242,7 @@ const subComponents: SdkQuestionComponents = {
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
+  RefreshButton: RefreshButton,
   Title: Title,
   Summarize: Summarize,
   SummarizeDropdown: SummarizeDropdown,

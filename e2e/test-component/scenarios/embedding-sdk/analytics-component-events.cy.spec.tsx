@@ -3,6 +3,7 @@ import {
   CreateQuestion,
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
+import { version as hostReactVersion } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, updateSetting } from "e2e/support/helpers";
@@ -83,7 +84,7 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
   });
 
   // Capture every POST to the proxy into a closure array so we can assert across
-  // the several immediate (bufferSize: 1) posts a single mount produces.
+  // the one or more posts a single mount produces.
   const interceptAnalyticsProxy = () => {
     const capturedEvents: SdkEventData[] = [];
     cy.intercept("POST", "/api/analytics-proxy", (request) => {
@@ -107,10 +108,9 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
       cy.findByText("Product ID").should("be.visible");
     });
 
-    // Beacon and component event are serialized by Snowplow's executingQueue:
-    // event 2 is only sent after event 1's XHR response arrives, so they come
-    // in two separate requests. Wait for both before asserting.
-    cy.wait(["@analyticsProxy", "@analyticsProxy"]);
+    // Snowplow v4 batches same-tick events into one POST, so both events may share a request.
+    // Wait for the first request; the retrying assertions below cover the rest.
+    cy.wait("@analyticsProxy");
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const componentEvent = findEventByComponent(events, "StaticQuestion");
@@ -122,6 +122,15 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
       expect(detail.global.sdk_version, "sdk_version in event_detail").to.be.a(
         "string",
       );
+
+      expect(
+        detail.global.react_version,
+        "react_version in event_detail",
+      ).to.eq(hostReactVersion);
+
+      expect(detail.global.client, "client in event_detail").to.eq(
+        "embedding-sdk-react",
+      );
     });
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
@@ -129,6 +138,16 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
         (event) => event.event === "embedding_sdk_initialized",
       );
       expect(beacon, "global init beacon").to.exist;
+
+      const beaconDetail = parseEventDetail(beacon!);
+      expect(
+        beaconDetail.global.react_version,
+        "react_version in the init beacon",
+      ).to.eq(hostReactVersion);
+
+      expect(beaconDetail.global.client, "client in the init beacon").to.eq(
+        "embedding-sdk-react",
+      );
     });
   });
 
@@ -188,8 +207,8 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     });
 
     // beacon already fired in test 1 (once per JS context);
-    // InteractiveQuestion + CollectionBrowser = 2 component events
-    cy.wait(["@analyticsProxy", "@analyticsProxy"]);
+    // InteractiveQuestion + CollectionBrowser = 2 component events, possibly in one POST
+    cy.wait("@analyticsProxy");
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = findEventByComponent(

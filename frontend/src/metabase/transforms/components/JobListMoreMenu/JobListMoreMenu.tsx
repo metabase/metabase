@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useBulkUpdateTransformJobsActiveMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { Button, Icon, Menu } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
 
@@ -40,6 +40,7 @@ export function JobListMoreMenu({ jobs }: JobListMoreMenuProps) {
       <Menu>
         <Menu.Target>
           <Button
+            size="lg"
             aria-label={t`More job options`}
             leftSection={<Icon name="ellipsis" />}
           />

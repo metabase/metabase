@@ -16,8 +16,10 @@ import { getParameterValues } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useDispatch, useSelector } from "metabase/redux";
 import { isEmpty } from "metabase/utils/validate";
-import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
-import type { VisualizationGridSize } from "metabase/visualizations/types";
+import {
+  DATA_IMAGE_URI_PATTERN,
+  type VisualizationGridSize,
+} from "metabase/viz-core";
 import type {
   Dashboard,
   VirtualDashboardCard,

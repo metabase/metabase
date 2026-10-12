@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
@@ -9,6 +8,7 @@ import {
   isLibraryCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,
@@ -25,7 +25,7 @@ type LibraryCollectionSectionProps = {
   onItemSelect: () => void;
 };
 
-/** Build the tree for a single library section (Data or Metrics).
+/** Build the tree for a single library section (Data, Metrics, or Dashboards).
  *  If the user has access to the root collection, use it directly.
  *  If not, create a synthetic container for any promoted children. */
 function buildSectionTree(
@@ -116,8 +116,14 @@ export function NavbarLibrarySection({
       "library-metrics",
       t`Metrics`,
     );
+    const dashboardsTree = buildSectionTree(
+      libraryCollection,
+      collections,
+      "library-dashboards",
+      t`Dashboards`,
+    );
 
-    return [dataTree, metricsTree].filter(
+    return [dataTree, metricsTree, dashboardsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
   }, [collections]);

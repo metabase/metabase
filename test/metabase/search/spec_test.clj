@@ -118,7 +118,10 @@
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
                                 :fields       #{:authority_level :name :type :location}
-                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}}}
+                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}}
+                 :TableUserSettings #{{:search-model "table"
+                                       :fields       #{:updated_at}
+                                       :where        [:= :updated.table_id :this.id]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))

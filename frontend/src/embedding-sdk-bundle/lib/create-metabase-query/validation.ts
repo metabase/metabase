@@ -1,15 +1,19 @@
 import {
+  type DynamicQueryInput,
   type QueryInput,
   type QuestionQueryInput,
   type TableQueryInput,
   isMeasureReference,
   isMetricReference,
+  isNamedBreakout,
   isSegmentReference,
+  unwrapNamedAggregation,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type {
   MetricSchema,
   QuestionSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import * as Lib from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
 // `satisfies` ties the list to the input type, so a renamed or mistyped clause
@@ -23,6 +27,15 @@ const QUESTION_QUERY_KEYS: readonly string[] = [
   "limit",
   "enabled",
 ] satisfies readonly (keyof QuestionQueryInput)[];
+
+const DYNAMIC_QUERY_KEYS: readonly string[] = [
+  "filters",
+  "aggregations",
+  "breakouts",
+  "orderBys",
+  "limit",
+  "enabled",
+] satisfies readonly (keyof DynamicQueryInput)[];
 
 export function validateQueryInput(input: QueryInput) {
   if (isQuestionQueryInput(input)) {
@@ -62,24 +75,68 @@ function validateQuestionScopedInputs(input: QuestionQueryInput) {
     );
   }
 
+  validateResultColumnClauses(
+    input,
+    "Saved question query",
+    (reference, context) =>
+      validateQuestionResultColumn(reference, input.source, context),
+  );
+}
+
+/**
+ * The dynamic clauses a caller layers on top of a static query. They run as a
+ * stage of their own, so they see result columns rather than the source table —
+ * the same scoping a card stage has.
+ */
+export function validateDynamicQuery(input: DynamicQueryInput | undefined) {
+  if (!input) {
+    return;
+  }
+
+  const extraKeys = Object.keys(input).filter(
+    (key) => !DYNAMIC_QUERY_KEYS.includes(key),
+  );
+
+  if (extraKeys.length > 0) {
+    throw new Error(
+      `Dynamic queries only support ${DYNAMIC_QUERY_KEYS.join(
+        ", ",
+      )}, but received ${extraKeys.join(", ")}.`,
+    );
+  }
+
+  validateLimit(input.limit, "Dynamic query");
+  validateResultColumnClauses(
+    input,
+    "Dynamic query",
+    validateResultColumnShape,
+  );
+}
+
+/**
+ * Clause checks shared by every stage whose dimensions are result columns.
+ * `validateDimension` supplies the part that depends on knowing those columns.
+ */
+function validateResultColumnClauses(
+  input: DynamicQueryInput,
+  label: string,
+  validateDimension: (reference: unknown, context: string) => void,
+) {
   input.filters?.forEach((filter) => {
     if (isSegmentReference(filter)) {
       throw new Error(
-        "Saved question query filters cannot use Segments, which belong to a table source.",
+        `${label} filters cannot use Segments, which belong to a table source.`,
       );
     }
 
-    validateQuestionResultColumn(
-      getFirstOperatorArg(filter),
-      input.source,
-      "Saved question query filters",
-    );
+    validateDimension(getFirstOperatorArg(filter), `${label} filters`);
   });
 
   input.aggregations?.forEach((aggregation) => {
-    if (isMeasureReference(aggregation) || isMetricReference(aggregation)) {
+    const unwrapped = unwrapNamedAggregation(aggregation);
+    if (isMeasureReference(unwrapped) || isMetricReference(unwrapped)) {
       throw new Error(
-        "Saved question query aggregations cannot use Measures or Metrics, which belong to a table source.",
+        `${label} aggregations cannot use Measures or Metrics, which belong to a table source.`,
       );
     }
 
@@ -87,32 +144,31 @@ function validateQuestionScopedInputs(input: QuestionQueryInput) {
       return;
     }
 
-    validateQuestionResultColumn(
+    validateDimension(
       getFirstOperatorArg(aggregation),
-      input.source,
-      "Saved question query aggregations",
+      `${label} aggregations`,
     );
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateQuestionResultColumn(
-      breakout,
-      input.source,
-      "Saved question query breakouts",
+    validateDimension(
+      isNamedBreakout(breakout) ? breakout.column : breakout,
+      `${label} breakouts`,
     );
   });
 
   validateOrderBys(
     input,
-    "Saved question query orderBys",
-    (orderBy) =>
-      validateQuestionResultColumn(
-        orderBy,
-        input.source,
-        "Saved question query orderBys",
-      ),
+    `${label} orderBys`,
+    (orderBy) => validateDimension(orderBy, `${label} orderBys`),
     { matchBreakoutsByName: true },
   );
+}
+
+function validateResultColumnShape(reference: unknown, context: string) {
+  if (!isObject(reference) || typeof reference.name !== "string") {
+    throw new Error(`${context} must reference a result column.`);
+  }
 }
 
 function validateQuestionResultColumn(
@@ -161,7 +217,7 @@ function validateTableScopedInputs(input: TableQueryInput) {
     );
   });
 
-  input.aggregations?.forEach((aggregation) => {
+  input.aggregations?.map(unwrapNamedAggregation).forEach((aggregation) => {
     if (isMetricReference(aggregation)) {
       validateMetricAggregation(aggregation, tableId);
       return;
@@ -184,7 +240,11 @@ function validateTableScopedInputs(input: TableQueryInput) {
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateGeneratedTableReference(breakout, tableId, "Table query breakouts");
+    validateGeneratedTableReference(
+      isNamedBreakout(breakout) ? breakout.column : breakout,
+      tableId,
+      "Table query breakouts",
+    );
   });
 
   validateOrderBys(input, "Table query orderBys", (orderBy) =>
@@ -295,6 +355,16 @@ function getAggregationResultColumnNames(
   aggregations: readonly unknown[] | undefined,
 ) {
   return (aggregations ?? []).flatMap((aggregation) => {
+    // Metrics and Measures also carry a `name`, but it is their title, not a
+    // result column name.
+    if (
+      isObject(aggregation) &&
+      aggregation.type === "operator" &&
+      typeof aggregation.name === "string"
+    ) {
+      return [aggregation.name];
+    }
+
     if (isCountAggregation(aggregation)) {
       return ["count"];
     }
@@ -328,12 +398,18 @@ function isBreakoutReference(
     return false;
   }
 
-  return (breakouts ?? []).some(
-    (breakout) =>
-      (matchByName
-        ? namesMatch(breakout, value)
-        : fieldsMatch(breakout, value)) && bucketOptionsMatch(breakout, value),
-  );
+  return (breakouts ?? []).some((breakout) => {
+    if (isNamedBreakout(breakout) && breakout.name === value.name) {
+      return true;
+    }
+
+    const column = isNamedBreakout(breakout) ? breakout.column : breakout;
+
+    return (
+      (matchByName ? namesMatch(column, value) : fieldsMatch(column, value)) &&
+      bucketOptionsMatch(column, value)
+    );
+  });
 }
 
 function getTableId(value: unknown): number | undefined {
@@ -422,10 +498,7 @@ function bucketOptionsMatch(left: unknown, right: Record<string, unknown>) {
   }
 
   return (
-    left.unit === right.unit &&
-    binningOptionsMatch(left.binning, right.binning) &&
-    left.bins === right.bins &&
-    left.binWidth === right.binWidth
+    left.unit === right.unit && binningOptionsMatch(left.binning, right.binning)
   );
 }
 
@@ -440,7 +513,73 @@ function binningOptionsMatch(left: unknown, right: unknown) {
 
   return (
     left.strategy === right.strategy &&
-    left["num-bins"] === right["num-bins"] &&
-    left["bin-width"] === right["bin-width"]
+    left.numBins === right.numBins &&
+    left.binWidth === right.binWidth
   );
+}
+
+type StageColumnName = {
+  name: string;
+  displayName: string;
+};
+
+function stageColumnNames(
+  query: Lib.Query,
+  stageIndex: number,
+): StageColumnName[] {
+  const breakouts = Lib.breakouts(query, stageIndex).reduce<StageColumnName[]>(
+    (columns, breakout) => {
+      const column = Lib.breakoutColumn(query, stageIndex, breakout);
+
+      if (column) {
+        const { name, displayName } = Lib.displayInfo(
+          query,
+          stageIndex,
+          column,
+        );
+        columns.push({ name, displayName });
+      }
+
+      return columns;
+    },
+    [],
+  );
+  const aggregations = Lib.aggregations(query, stageIndex).map(
+    (aggregation) => ({
+      name: Lib.displayInfo(
+        query,
+        stageIndex,
+        Lib.aggregationColumn(query, stageIndex, aggregation),
+      ).name,
+      displayName: Lib.displayInfo(query, stageIndex, aggregation).displayName,
+    }),
+  );
+
+  return [...breakouts, ...aggregations];
+}
+
+function stageConflicts(query: Lib.Query, stageIndex: number): string[] {
+  const byName = new Map<string, StageColumnName[]>();
+  stageColumnNames(query, stageIndex).forEach((column) => {
+    byName.set(column.name, [...(byName.get(column.name) ?? []), column]);
+  });
+
+  return [...byName]
+    .filter(([, columns]) => columns.length > 1)
+    .map(
+      ([name, columns]) =>
+        `${columns.map((column) => column.displayName).join(", ")} share the column name "${name}"`,
+    );
+}
+
+export function validateUniqueColumnNames(query: Lib.Query) {
+  const conflicts = Lib.stageIndexes(query).flatMap((stageIndex) =>
+    stageConflicts(query, stageIndex),
+  );
+
+  if (conflicts.length > 0) {
+    throw new Error(
+      `Breakouts and aggregations need unique column names: ${conflicts.join("; ")}. Name them apart with the \`name\` option of \`breakout\` or of an aggregation helper, or with \`aggregations.measure\` or \`aggregations.metric\` for a measure or metric.`,
+    );
+  }
 }

@@ -19,23 +19,16 @@ export const ContactSupportButtonSection = () => {
   return (
     <TroubleshootingTip
       body={
-        <Flex direction="column" gap="md" align="flex-start">
+        <Flex direction="column" gap="lg" align="flex-start">
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Only visible to admins */}
           {t`Reach out to Metabase engineers who can help with technical troubleshooting. Not your typical support agents.`}
-          <Button
-            component={Link}
-            radius="md"
-            size="md"
-            target="_blank"
-            to={helpUrl}
-            variant="default"
-          >
+          <Button component={Link} target="_blank" to={helpUrl}>
             {t`Contact Support`}
           </Button>
         </Flex>
       }
       noIcon
-      pb="xl"
+      pb="xxl"
       title={t`Still stuck? We’re here to help`}
     />
   );

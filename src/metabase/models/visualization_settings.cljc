@@ -28,7 +28,9 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -36,12 +38,12 @@
 
 ;;; -------------------------------------------------- Specs --------------------------------------------------
 
-(def ^:private field-metadata-schema [:maybe map?])
+(def ^:private field-metadata-schema [:maybe ::lib.schema.common/visualization-settings])
 ;; field-str - a field reference that is a string, which could be a reference to some named field (ex: output of an
 ;; aggregation) or to a fully qualified field name (in the context of serialization); we won't attempt to interpret it
 ;; here, only report that it's a string and set it in the ref map appropriately
 (def ^:private column-ref-schema
-  [:map
+  [:map {:closed true}
    [::field-id {:optional true} ::lib.schema.id/field]
    [::column-name {:optional true} string?]
    [::field-str {:optional true} string?]
@@ -54,17 +56,17 @@
             [:tuple
              [:= "field"]
              [:orn [:field-id ::lib.schema.id/field] [:field-str string?]]
-             [:orn [:field-metadata map?] [:nil nil?]]]]]
+             [:orn [:field-metadata ::lib.schema.common/visualization-settings] [:nil nil?]]]]]
    [:expression [:tuple [:= "ref"] [:tuple [:= "expression"] string?]]]
    [:column-name [:tuple [:= "name"] string?]]])
 
 ;; TODO: add more specific shape for this one
-(def ^:private parameter-mapping-schema [:maybe map?])
+(def ^:private parameter-mapping-schema [:maybe ::lib.schema.common/visualization-settings])
 
 (def ^:private click-behavior-schema
-  [:map
+  [:map {:closed true}
    [::click-behavior-type {:optional true} keyword?]
-   [::link-type {:optional true} :any]
+   [::link-type {:optional true} [:or [:= ::card] [:= ::dashboard] [:= ::url]]]
    [::parameter-mapping {:optional true} parameter-mapping-schema]
    [::link-template {:optional true} string?]
    [::link-text {:optional true} string?]
@@ -235,7 +237,7 @@
   passed the output of another fn (including, currently, `visualization-settings`). If the given `from-field-id`
   already has a click action, it will be replaced."
   {:added "0.40.0"}
-  [settings :- map?, col-key :- column-ref-schema, action :- click-behavior-schema]
+  [settings :- ::lib.schema.common/visualization-settings, col-key :- column-ref-schema, action :- click-behavior-schema]
   (-> settings
       with-col-settings
       (update ::column-settings assoc col-key {::click-behavior action})))
@@ -246,7 +248,7 @@
   (including, currently, `visualization-settings`). If the given `from-field-id` already has a click action, it will
   be replaced."
   {:added "0.40.0"}
-  [settings :- map?
+  [settings :- ::lib.schema.common/visualization-settings
    from-field-id :- ::lib.schema.id/field
    to-entity-type :- entity-type-schema
    to-entity-id :- pos-int?
@@ -446,7 +448,7 @@
                          (norm->db-generic-param-mapping k v))]
                    (assoc acc new-k new-v))) {} parameter-mapping)))
 
-(defn- db->norm-click-behavior [v]
+(defn- db->norm-click-behavior* [v]
   (-> v
       (assoc
        ::click-behavior-type
@@ -459,6 +461,21 @@
       (dissoc :parameterMapping)
       (set/rename-keys db->norm-click-behavior-keys)))
 
+(defn- db->norm-click-behavior
+  "Normalizes a DB-form click behavior, returning `nil` for one that can't be normalized.
+
+  Click behaviors are stored inside free-form JSON blobs (a card's `visualization_settings` and a column's
+  `settings`) that are only loosely validated on write, so anything at all can turn up here. Normalization assumes a
+  map; treat everything else as no click behavior rather than throwing, since the callers sit on the export and
+  static-viz render paths where a throw kills the whole download."
+  [v]
+  (when (map? v)
+    (try
+      (db->norm-click-behavior* v)
+      (catch #?(:clj Exception :cljs js/Error) e
+        (log/warnf "Ignoring malformed click behavior: %s" (ex-message e))
+        nil))))
+
 (defn- db->norm-time-style
   "Converts the deprecated k:mm format to HH:mm (#18112)"
   [v]
@@ -466,66 +483,93 @@
     "HH:mm"
     v))
 
-(defn- db->norm-table-columns [v]
-  (-> v
-      (assoc ::table-columns (mapv (fn [tbl-col]
-                                     (set/rename-keys tbl-col db->norm-table-columns-keys))
-                                   (:table.columns v)))
-      (dissoc :table.columns)))
+(defn- db->norm-table-columns
+  "Normalizes the `:table.columns` entry of a DB-form viz settings map.
+
+  `:table.columns` is a free-form JSON blob that is only validated as far as its enclosing map, so it need not be a
+  sequence of maps; anything it isn't is dropped rather than allowed to throw."
+  [v]
+  (let [tbl-cols (:table.columns v)]
+    (cond-> (dissoc v :table.columns)
+      (sequential? tbl-cols)
+      (assoc ::table-columns (into []
+                                   (comp (filter map?)
+                                         (map #(set/rename-keys % db->norm-table-columns-keys)))
+                                   tbl-cols)))))
 
 (defn- db->norm-column-settings-entry
   "Converts the DB form of a :column_settings entry value to its normalized form. Does the opposite of
-  `norm->db-column-settings-entry`."
+  `norm->db-column-settings-entry`.
+
+  Entry values are only loosely validated on write (`result_metadata[].settings` types them as `:any`), so an entry
+  that cannot be normalized is dropped rather than allowed to throw. CSV, JSON and XLSX export and the static-viz
+  render path all normalize a column's settings through here, so one unnormalizable entry would otherwise take all
+  of them down."
   [m k v]
-  (case k
-    :click_behavior
-    (assoc m ::click-behavior (db->norm-click-behavior v))
+  (try
+    (case k
+      :click_behavior
+      (m/assoc-some m ::click-behavior (db->norm-click-behavior v))
 
-    :time_style
-    (assoc m ::time-style (db->norm-time-style v))
+      :time_style
+      (assoc m ::time-style (db->norm-time-style v))
 
-    (assoc m (db->norm-column-settings-keys k) v)))
+      (assoc m (db->norm-column-settings-keys k) v))
+    (catch #?(:clj Exception :cljs js/Error) e
+      (log/warnf "Ignoring malformed column setting %s: %s" (pr-str k) (ex-message e))
+      m)))
 
 (defn db->norm-column-settings-entries
-  "Converts the DB form of a map of :column_settings entries to its normalized form."
+  "Converts the DB form of a map of :column_settings entries to its normalized form. Drops any entries that fail to be
+  normalized."
   [entries]
-  (reduce-kv db->norm-column-settings-entry {} entries))
+  (if (map? entries)
+    (reduce-kv db->norm-column-settings-entry {} entries)
+    {}))
 
 (defn db->norm-column-settings
-  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed."
+  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed, and treats a
+  `settings` that isn't a map as having no column settings at all — the per-column `catch` below can't help there,
+  since `reduce-kv` throws before it ever reaches the reducing fn."
   [settings]
-  (reduce-kv (fn [m k v]
-               (try
-                 (let [k' (parse-db-column-ref k)
-                       v' (db->norm-column-settings-entries v)]
-                   (assoc m k' v'))
-                 (catch #?(:clj Throwable :cljs js/Error) _e
-                   m)))
-             {}
-             settings))
+  (if-not (map? settings)
+    {}
+    (reduce-kv (fn [m k v]
+                 (try
+                   (let [k' (parse-db-column-ref k)
+                         v' (db->norm-column-settings-entries v)]
+                     (assoc m k' v'))
+                   (catch #?(:clj Exception :cljs js/Error) _e
+                     m)))
+               {}
+               settings)))
 
 (defn db->norm
   "Converts a DB form of visualization settings (i.e. map with key `:visualization_settings`) into the equivalent
   normalized form (i.e. map with keys `::column-settings`, `::click-behavior`, etc.).
 
-  Does the opposite of `norm->db`."
+  Does the opposite of `norm->db`.
+
+  `vs` comes out of a free-form JSON column, so a blob that isn't a map at all normalizes to no settings rather than
+  throwing on the `dissoc` below."
   {:added "0.40.0"}
   [vs]
-  (cond-> vs
-    ;; column_settings at top level; ex: table card
-    (:column_settings vs)
-    (assoc ::column-settings (->> (:column_settings vs)
-                                  db->norm-column-settings))
+  (let [vs (if (map? vs) vs {})]
+    (cond-> vs
+      ;; column_settings at top level; ex: table card
+      (:column_settings vs)
+      (assoc ::column-settings (->> (:column_settings vs)
+                                    db->norm-column-settings))
 
-    ;; click behavior key at top level; ex: non-table card
-    (:click_behavior vs)
-    (assoc ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
+      ;; click behavior key at top level; ex: non-table card
+      (:click_behavior vs)
+      (m/assoc-some ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
 
-    (:table.columns vs)
-    db->norm-table-columns
+      (:table.columns vs)
+      db->norm-table-columns
 
-    :always
-    (dissoc :column_settings :click_behavior)))
+      :always
+      (dissoc :column_settings :click_behavior))))
 
 (defn- norm->db-click-behavior-value [v]
   (-> v

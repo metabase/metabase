@@ -421,8 +421,13 @@
                             (lib/available-drill-thrus query context))
         drilled (lib/drill-thru query -1 nil drill "=")]
     (is (=? [[:= {}
-              [:field {:binning {:strategy :default, :lib/type :metabase.lib.binning/binning}} (:id total-col)]
+              [:field {:binning {:strategy :default}} (:id total-col)]
               40]]
             (lib/filters drilled)))
+    (testing "the binning that lands in the query is plain options, with none of the `:lib/type`/`:metadata-fn`
+             bookkeeping [[metabase.lib.binning/binning]] tags its return value with"
+      (is (= [{:strategy :default}]
+             (for [[_tag _opts [_field field-opts _id]] (lib/filters drilled)]
+               (:binning field-opts)))))
     (is (= #{(:id count-col) (:id total-col)}
            (set (map :id (lib/returned-columns drilled)))))))

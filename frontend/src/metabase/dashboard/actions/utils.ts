@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import { isActionDashCard } from "metabase/utils/dashboard";
-import { getIframeDomainName } from "metabase/visualizations/lib/iframe";
+import { getIframeDomainName } from "metabase/viz-core";
 import type {
   DashCardId,
   Dashboard,

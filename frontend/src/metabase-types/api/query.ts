@@ -1,5 +1,3 @@
-import type * as Lib from "metabase-lib";
-
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
@@ -48,7 +46,6 @@ export interface InternalDatasetQuery {
   offset?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
@@ -321,6 +318,8 @@ export type SegmentFilter = ["segment", SegmentId];
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];
 
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+
 export type JoinStrategy =
   | "left-join"
   | "right-join"
@@ -468,15 +467,11 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";
-  name: string;
-  tableId?: TableId;
-  sourceName?: string;
+  name?: string;
+  fieldId?: FieldId;
+  joinAlias?: string;
   sourceFieldId?: FieldId;
-  displayName?: string;
-
-  // When the columns cannot be disambiguated with name, sourceName and displayName
-  // use this index to pick one.
-  index?: number;
+  sourceFieldJoinAlias?: string;
 };
 
 export type TestExpressionSpec =
@@ -501,9 +496,14 @@ export type TestMetricSpec = {
 
 export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
 
+export type TestNamedAggregationSpec = {
+  name: string;
+  value: TestExpressionSpec | TestMeasureSpec | TestMetricSpec;
+};
+
 export type TestAggregationSpec =
   | TestExpressionSpec
-  | TestNamedExpressionSpec
+  | TestNamedAggregationSpec
   | TestMeasureSpec
   | TestMetricSpec;
 
@@ -521,46 +521,69 @@ export type TestOperatorSpec = {
   type: "operator";
   operator: string;
   args?: readonly TestExpressionSpec[];
+
+  // For an aggregation: the name of its result column, which a later stage
+  // refers to.
+  name?: string;
 };
 
 export type TestTemporalBucketSpec = {
   unit?: TemporalUnit;
 };
 
-export type TestBinCountSpec = {
-  bins?: number | "auto";
+export type TestDefaultBinningSpec = {
+  strategy: "default";
 };
 
-export type TestBinWidthSpec = {
-  binWidth?: number | "auto";
+export type TestNumBinsBinningSpec = {
+  strategy: "num-bins";
+  numBins: number;
 };
 
-type TestBinningSpec =
-  | TestTemporalBucketSpec
-  | TestBinCountSpec
-  | TestBinWidthSpec;
+export type TestBinWidthBinningSpec = {
+  strategy: "bin-width";
+  binWidth: number;
+};
 
-export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
+export type TestBinningSpec =
+  | TestDefaultBinningSpec
+  | TestNumBinsBinningSpec
+  | TestBinWidthBinningSpec;
 
-export type TestBreakoutSpec = TestColumnWithBinningSpec;
+type TestBucketSpec = TestTemporalBucketSpec & {
+  binning?: TestBinningSpec;
+};
+
+export type TestColumnWithBinningSpec = TestColumnSpec & TestBucketSpec;
+
+export type TestBreakoutWithNameSpec = {
+  type: "breakout";
+  name: string;
+  column: TestColumnWithBinningSpec;
+};
+
+export type TestBreakoutSpec =
+  | TestColumnWithBinningSpec
+  | TestBreakoutWithNameSpec;
 
 export type TestJoinSpec = {
   source: TestSourceSpec;
   strategy: JoinStrategy;
+  alias?: string;
 
   // If not set we will use the suggested join conditions
   conditions?: TestJoinConditionSpec[];
 };
 
 type TestJoinConditionSpec = {
-  operator: Lib.JoinConditionOperator;
+  operator: JoinConditionOperator;
   left: TestColumnWithBinningSpec | TestExpressionSpec;
   right: TestColumnWithBinningSpec | TestExpressionSpec;
 };
 
 export type TestOrderBySpec = TestColumnSpec & {
   direction?: "asc" | "desc";
-} & TestBinningSpec;
+} & TestBucketSpec;
 
 export type TestStageSpec = {
   fields?: readonly TestColumnSpec[];

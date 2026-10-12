@@ -10,6 +10,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -17,7 +18,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
@@ -289,6 +289,18 @@ describe("ConversationsPage", () => {
       expect(
         await screen.findByDisplayValue(BOBBY_TENANT.name),
       ).toBeInTheDocument();
+    });
+
+    it("clears the filters when navigated to the unfiltered url", async () => {
+      const { router } = setup({
+        initialRoute: `${CONVERSATIONS_PATH}?user=${ROBERT.id}`,
+      });
+
+      await screen.findByDisplayValue(ROBERT.common_name);
+
+      act(() => router?.navigate(CONVERSATIONS_PATH));
+
+      expect(await screen.findByDisplayValue("All users")).toBeInTheDocument();
     });
 
     it("filters by user", async () => {

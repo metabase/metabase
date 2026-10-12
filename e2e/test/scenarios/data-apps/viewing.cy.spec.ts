@@ -1,12 +1,25 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type GroupPermissions,
+} from "metabase-types/api";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
 const { H } = cy;
+
+const BLOCKED_PERMISSION: GroupPermissions = {
+  [SAMPLE_DB_ID]: {
+    [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+    [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+  },
+};
 
 describe("scenarios > data apps > viewing & routing", () => {
   beforeEach(() => {
@@ -38,20 +51,26 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("opens the app shell for a user without data access, but shows no data", () => {
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.ALL_USERS_GROUP]: BLOCKED_PERMISSION,
+        [USER_GROUPS.COLLECTION_GROUP]: BLOCKED_PERMISSION,
+      });
+
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
       });
 
-      // The `nodata` user can open the app (viewing isn't gated), but the query
-      // the app runs goes through the QP with the user's own permissions — with
-      // no data access it resolves to no data (the fixture renders "—").
       cy.signIn("nodata");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        // Group access lets users view the app shell.
         cy.findByRole("heading", { name: "Orders overview" }).should(
           "be.visible",
         );
+
+        // The user's incomplete data permissions still blocks its query,
+        // so the orders-count renders "—".
         cy.findByTestId("orders-count", { timeout: 30000 }).should(
           "have.text",
           "—",
@@ -72,7 +91,7 @@ describe("scenarios > data apps > viewing & routing", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
-        bundleDelay: 2000,
+        bundleDelayMs: 2000,
       });
 
       H.openDataApp(APP_NAME);
@@ -149,6 +168,36 @@ describe("scenarios > data apps > viewing & routing", () => {
         cy.findByTestId("current-pathname").should("have.text", "/details");
       });
       cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
+    });
+  });
+
+  describe("outdated apps", () => {
+    it("tells a non-admin why an outdated app won't open", () => {
+      H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME });
+
+      // The metadata endpoint refuses an outdated app to non-admins with this
+      // exact shape (see `check-not-outdated` in data_apps/api.clj).
+      cy.intercept(
+        { method: "GET", pathname: `/api/apps/${APP_NAME}` },
+        {
+          statusCode: 409,
+          body: {
+            "error-code": "data-app-outdated",
+            message: "This app was built for version 1 of data apps.",
+          },
+        },
+      );
+
+      cy.signInAsNormalUser();
+      H.openDataApp(APP_NAME);
+
+      H.main().within(() => {
+        cy.findByText("This data app is outdated").should("be.visible");
+        cy.findByText("This app was built for version 1 of data apps.").should(
+          "be.visible",
+        );
+      });
+      cy.get("iframe").should("not.exist");
     });
   });
 

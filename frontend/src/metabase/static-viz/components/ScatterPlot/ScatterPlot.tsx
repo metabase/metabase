@@ -2,15 +2,19 @@ import { Group } from "@visx/group";
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getChartHeight } from "metabase/static-viz/lib/utils";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
+import {
+  getChartLayout,
+  getLegendItems,
+  getScatterPlotModel,
+  getScatterPlotOption,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
+import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
@@ -78,14 +82,13 @@ export function ScatterPlot({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  const allPointsOutOfRange = readAllPointsOutOfRange(chart);
   chart.dispose();
 
+  const totalHeight = fitWithinBounds ? height : height + legendHeight;
+
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={width}
-      height={fitWithinBounds ? height : height + legendHeight}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" width={width} height={totalHeight}>
       <Legend items={legendLayoutItems} />
       <Group top={legendHeight}>
         <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
@@ -99,6 +102,13 @@ export function ScatterPlot({
           preserveAspectRatio="xMinYMin slice"
           fill={renderingContext.getColor("text-secondary")}
           opacity={0.2}
+        />
+      )}
+      {allPointsOutOfRange && (
+        <DataOutOfRangeOverlay
+          width={width}
+          height={totalHeight}
+          renderingContext={renderingContext}
         />
       )}
     </svg>

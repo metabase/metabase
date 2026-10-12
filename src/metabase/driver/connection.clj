@@ -66,6 +66,7 @@
 (mr/def ::connection-type
   (into [:enum] connection-types))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *connection-type*
   "Which connection details [[effective-details]] should resolve.
 
@@ -132,6 +133,7 @@
   [& body]
   `(do-with-transform-connection (fn [] ~@body)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
   false)
 

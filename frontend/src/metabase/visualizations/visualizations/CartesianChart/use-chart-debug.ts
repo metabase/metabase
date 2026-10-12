@@ -3,7 +3,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { useEffect } from "react";
 
 import { isChartsDebugLoggingEnabled } from "metabase/env";
-import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { BaseCartesianChartModel } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 export function useChartDebug({

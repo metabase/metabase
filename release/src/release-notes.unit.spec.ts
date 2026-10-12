@@ -1,5 +1,3 @@
-import type { Octokit } from "@octokit/rest";
-
 import {
   categorizeIssues,
   generateReleaseNotes,
@@ -7,7 +5,6 @@ import {
   getReleaseTitle,
   getWebsiteChangelog,
   markdownIssueLinks,
-  publishRelease,
 } from "./release-notes";
 import {
   githubReleaseTemplate,
@@ -509,78 +506,6 @@ describe("Release Notes", () => {
       expect(notes).toContain(
         "- Issue That Users Don't Care About ([#4](https://github.com/metabase/metabase/issues/4))",
       );
-    });
-  });
-
-  describe("publishRelease", () => {
-    const buildGithub = () => ({
-      rest: {
-        repos: {
-          createRelease: jest.fn().mockResolvedValue({ data: {} }),
-        },
-      },
-    });
-
-    const publish = (version: string, github: ReturnType<typeof buildGithub>) =>
-      publishRelease({
-        version,
-        owner: "metabase",
-        repo: "metabase",
-        // publishRelease only reaches rest.repos.createRelease, so the stub
-        // above is the whole surface it uses; a full Octokit is unnecessary.
-        github: github as unknown as Octokit,
-      });
-
-    it("should create a draft release for a major release", async () => {
-      const github = buildGithub();
-
-      await publish("v0.58.0-beta", github);
-
-      expect(github.rest.repos.createRelease).toHaveBeenCalledWith(
-        expect.objectContaining({
-          owner: "metabase",
-          repo: "metabase",
-          tag_name: "v0.58.0-beta",
-          name: "Metabase 58.0-beta",
-          draft: true,
-          prerelease: true,
-        }),
-      );
-    });
-
-    it("should create a draft release for a gold release", async () => {
-      const github = buildGithub();
-
-      await publish("v1.58.1", github);
-
-      expect(github.rest.repos.createRelease).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tag_name: "v0.58.1",
-          name: "Metabase 58.1",
-          draft: true,
-        }),
-      );
-    });
-
-    it.each(["v0.58.2", "v1.57.16", "v0.62.20"])(
-      "should skip %s since it is neither a major nor a gold release",
-      async (version) => {
-        const github = buildGithub();
-
-        await expect(publish(version, github)).resolves.toBeUndefined();
-
-        expect(github.rest.repos.createRelease).not.toHaveBeenCalled();
-      },
-    );
-
-    it("should still reject an invalid version string that reaches the release step", async () => {
-      const github = buildGithub();
-
-      await expect(publish("v2.58.0", github)).rejects.toThrow(
-        "Invalid version string: v2.58.0",
-      );
-
-      expect(github.rest.repos.createRelease).not.toHaveBeenCalled();
     });
   });
 

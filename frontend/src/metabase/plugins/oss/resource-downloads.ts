@@ -1,5 +1,7 @@
 import type { EmbedResourceDownloadOptions } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 const getDefaultPluginResourceDownloads = () => ({
   areDownloadsEnabled: (_args: {
     downloads?: string | boolean | null;
@@ -9,11 +11,6 @@ const getDefaultPluginResourceDownloads = () => ({
   }),
 });
 
-export const PLUGIN_RESOURCE_DOWNLOADS = getDefaultPluginResourceDownloads();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_RESOURCE_DOWNLOADS, getDefaultPluginResourceDownloads());
-}
+export const PLUGIN_RESOURCE_DOWNLOADS = definePluginSlot(
+  getDefaultPluginResourceDownloads,
+);

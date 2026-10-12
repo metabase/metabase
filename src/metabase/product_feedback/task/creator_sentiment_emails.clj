@@ -5,15 +5,13 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.app-db.core :as mdb]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.product-feedback.db :as product-feedback.db]
    [metabase.task.core :as task]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time.temporal WeekFields)
    (java.util Locale)))
@@ -27,26 +25,7 @@
     - Created at least 1 dashboard
     - Only admins if whitelabeling is enabled"
   [has-whitelabelling?]
-  (t2/query {:select [[:u.email :email]
-                      [:u.date_joined :created_at]
-                      [:u.first_name :first_name]
-                      [[:count [:distinct [:case [:= :d.archived false] :d.id]]] :num_dashboards]
-                      [[:count [:distinct [:case [:and [:= :rc.type "question"] [:= :rc.archived false]] :rc.id]]] :num_questions]
-                      [[:count [:distinct [:case [:and [:= :rc.type "model"] [:= :rc.archived false]] :rc.id]]] :num_models]]
-             :from [[:core_user :u]]
-             :join [[:report_card :rc] [:= :rc.creator_id :u.id]
-                    [:report_dashboard :d] [:= :d.creator_id :u.id]]
-             :where [:and
-                     [:>= :rc.created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)]
-                     [:>= :d.created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)]
-                     [:= :u.is_active true]
-                     [:= :u.type "personal"]
-                     (when has-whitelabelling? [:= :u.is_superuser true])]
-             :group-by [:u.id]
-             :having [:and
-                      [:>= [:count [:distinct :rc.id]] 10]
-                      [:>= [:count [:distinct [:case [:= :rc.query_type "native"] :rc.id]]] 2]
-                      [:>= [:count [:distinct :d.id]] 1]]}))
+  (product-feedback.db/creator-sentiment-candidates has-whitelabelling?))
 
 (defn fetch-plan-info
   "Figure out what plan this Metabase instance is on."
@@ -64,11 +43,11 @@
   {:created_at     (analytics/instance-creation)
    :plan           (fetch-plan-info)
    :version        (config/mb-version-info :tag)
-   :num_users      (t2/count :model/User :is_active true, :type "personal")
-   :num_dashboards (t2/count :model/Dashboard :archived false)
-   :num_databases  (t2/count :model/Database :is_audit false)
-   :num_questions  (t2/count :model/Card :archived false :type "question")
-   :num_models     (t2/count :model/Card :archived false :type "model")})
+   :num_users      (product-feedback.db/active-personal-user-count)
+   :num_dashboards (product-feedback.db/unarchived-dashboard-count)
+   :num_databases  (product-feedback.db/non-audit-database-count)
+   :num_questions  (product-feedback.db/unarchived-card-count "question")
+   :num_models     (product-feedback.db/unarchived-card-count "model")})
 
 (defn- user-instance-info
   "Create a blob of instance/user data to be sent to the creator sentiment survey."

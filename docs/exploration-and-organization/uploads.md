@@ -35,19 +35,19 @@ The upload icon only appears in collections where you have Curate access. Everyo
 4. Choose the destination collection at the bottom of the modal.
 5. Click **Upload**.
 
-You can also add data from [Google Sheets](../cloud/google-sheets.md) (Metabase Cloud only).
+You can also add data from [Google Sheets](https://www.metabase.com/docs/latest/cloud/google-sheets) (Metabase Cloud only).
 
 ## Create, append, or replace models with uploads
 
 When you upload a CSV file, Metabase may ask to select a destination for that upload (depending on whether there are other uploads).
 
-If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new [model](../data-modeling/models.md). You can:
+If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new [model](../data-modeling/models/models.md). You can:
 
 - Create a new model
 - [Append to an existing model created by an upload](#appending-to-a-model-created-by-an-upload)
 - [Replace the data for an existing model created by an upload](#replacing-the-data-of-an-uploaded-model)
 
-Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
+Metabase will create a [model](../data-modeling/models/models.md) that contains that CSV data, as well as the model's underlying table.
 
 ## Appending to a model created by an upload
 

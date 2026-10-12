@@ -10,8 +10,5 @@
 
 .tab {
   max-width: 236px;
-
-  &[data-orientation="horizontal"] {
-    padding: 0.625rem 0.625rem 0.625rem var(--mantine-spacing-sm);
-  }
+  padding-inline: var(--mantine-spacing-sm) 0.625rem;
 }

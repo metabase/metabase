@@ -11,7 +11,7 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof ActionEventSchema>, never>,
 > = T;
 
-type ActionType = "http" | "query" | "implicit";
+type ActionType = "query" | "implicit";
 
 export type ActionCreatedEvent = ValidateEvent<{
   event: "action_created";

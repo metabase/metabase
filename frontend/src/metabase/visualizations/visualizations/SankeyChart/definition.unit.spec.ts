@@ -1,5 +1,5 @@
 import { checkNotNull } from "metabase/utils/types";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+import { ChartSettingsError } from "metabase/viz-core";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,

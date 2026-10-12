@@ -6,8 +6,8 @@ import {
   type MetricsViewerFormulaEntity,
   type SourceBreakoutColorMap,
   isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
-import { isMetricEntry } from "../types/viewer-state";
 
 import { getDefinitionName } from "./definition-builder";
 import {

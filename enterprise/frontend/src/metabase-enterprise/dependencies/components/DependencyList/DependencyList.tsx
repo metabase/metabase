@@ -64,7 +64,7 @@ function DependentItem({ node, onGraphOpened }: DependentItemProps) {
       <Menu.Target>
         <Stack
           className={cx(S.item, { [S.active]: isOpened })}
-          p="md"
+          p="lg"
           gap="sm"
           aria-label={label}
         >

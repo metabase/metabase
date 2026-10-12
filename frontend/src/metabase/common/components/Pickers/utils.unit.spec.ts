@@ -123,7 +123,7 @@ describe("getCollectionItemsOptions", () => {
 
   it("should include library collections when the library plugin is disabled (metabase#73143)", () => {
     expect(
-      getCollectionItemsOptions({ models: ["card"] }).include_library,
+      getCollectionItemsOptions({ models: ["card"] })["include-library"],
     ).toBe(true);
   });
 
@@ -134,7 +134,7 @@ describe("getCollectionItemsOptions", () => {
     setupEnterpriseOnlyPlugin("library");
 
     expect(
-      getCollectionItemsOptions({ models: ["card"] }).include_library,
+      getCollectionItemsOptions({ models: ["card"] })["include-library"],
     ).toBe(false);
   });
 });

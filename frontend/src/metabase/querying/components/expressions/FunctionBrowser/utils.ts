@@ -6,9 +6,8 @@ import {
   getSupportedClauses,
 } from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
 
 export function getSearchPlaceholder(expressionMode: Lib.ExpressionMode) {
   if (expressionMode === "expression" || expressionMode === "filter") {
@@ -46,7 +45,7 @@ export function getFilteredClauses({
 }: {
   expressionMode: Lib.ExpressionMode;
   filter: string;
-  database: Database | null;
+  database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
 }) {
   const filteredClauses = getSupportedClauses({ expressionMode, database })
@@ -77,9 +76,4 @@ export function getFilteredClauses({
 
 function byName(a: HelpText, b: HelpText) {
   return a.displayName.localeCompare(b.displayName);
-}
-
-export function getDatabase(query: Lib.Query, metadata: Metadata) {
-  const databaseId = Lib.databaseID(query);
-  return metadata.database(databaseId);
 }

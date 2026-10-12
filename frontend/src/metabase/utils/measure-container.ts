@@ -1,7 +1,5 @@
 import type { Root } from "react-dom/client";
 
-import { unmountRoot } from "metabase/utils/react-compat";
-
 interface MeasurementContainerOptions {
   fontSize?: string;
 }
@@ -31,10 +29,10 @@ export function createMeasurementContainer(
 
 export function removeMeasurementContainer(
   container: HTMLDivElement,
-  tree: Root | undefined,
+  tree: Root,
 ): void {
   setTimeout(() => {
-    unmountRoot(tree, container);
+    tree.unmount();
     document.body.removeChild(container);
   }, 0);
 }

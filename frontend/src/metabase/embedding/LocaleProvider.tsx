@@ -1,28 +1,17 @@
-import {
-  type Context,
-  type PropsWithChildren,
-  createContext,
-  useEffect,
-  useState,
-} from "react";
+import { type PropsWithChildren, useEffect, useState } from "react";
 
 import { setLocaleHeader } from "metabase/api/client";
-import { loadLocalization } from "metabase/api/localization";
+import { FrontendLocaleContext } from "metabase/common/hooks/use-locale/frontend-locale-context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSetting } from "metabase/settings";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 import type { LocaleDataWithLanguage } from "metabase/utils/i18n";
+import { loadLocalization } from "metabase/utils/localization";
 
 interface LocaleProviderProps {
   locale?: string | null;
   shouldWaitForLocale?: boolean;
 }
-
-/** context for the locale used in the sdk and in public/static from the #locale parameter  */
-export const FrontendLocaleContext = createContext({}) as unknown as Context<{
-  locale: string | null;
-  isLocaleLoading: boolean;
-}>;
 
 export const LocaleProvider = ({
   children,
@@ -50,7 +39,11 @@ export const LocaleProvider = ({
           setContextLocale(localeToLoad);
         })
         .catch(() => {
+          // The locale stands whether or not its catalogue arrives. The API
+          // header is already set, so content translation still has to run
+          // against it.
           setIsLocaleLoading(false);
+          setContextLocale(localeToLoad);
         });
     }
   }, [locale, shouldLoadLocale, availableLocalesData]);

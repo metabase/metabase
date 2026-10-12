@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -78,9 +79,10 @@
 (defn- date-type? [col]
   ;; legacy usage -- do not use going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
-                                       :type/Text ;; sqlite uses text :(
-                                       :type/Date]))
+  (let [col (select-keys col [:base_type :effective_type])]
+    (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                         :type/Text ;; sqlite uses text :(
+                                         :type/Date])))
 
 (defn- parse-date [s]
   (try

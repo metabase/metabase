@@ -23,10 +23,6 @@
     z-index: 2;
   }
 
-  &.isAnimationDisabled {
-    transition: none;
-  }
-
   @media (prefers-reduced-motion) {
     /* short duration (instead of none) to still trigger transition events */
     transition-duration: 10ms !important;

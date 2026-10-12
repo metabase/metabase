@@ -5,15 +5,15 @@ import { t } from "ttag";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import {
   ItemNameCell,
   TBody,
   Table,
   TableColumn,
-} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/common/components/ItemsTable/Columns";
+} from "metabase/common/components/ItemsTable/TableElements";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
@@ -41,16 +41,12 @@ export interface ModelsTableProps {
   skeleton?: boolean;
 }
 
-export const itemsTableContainerName = "ItemsTableContainer";
-
 const descriptionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
-  containerName: itemsTableContainerName,
 };
 
 const collectionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "xs",
-  containerName: itemsTableContainerName,
 };
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
@@ -208,7 +204,7 @@ function NameCell({ model }: { model?: ModelResult }) {
   const getIcon = useGetIcon();
   const headingId = `model-${model?.id || "dummy"}-heading`;
   const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
-  const name = <EntityItem.Name name={model?.name || ""} variant="list" />;
+  const name = <EntityItemName name={model?.name || ""} />;
   return (
     <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <Flex id={headingId} align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">

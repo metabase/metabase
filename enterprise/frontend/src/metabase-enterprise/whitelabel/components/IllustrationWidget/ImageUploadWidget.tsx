@@ -3,14 +3,14 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";
 
-import { PreviewImage } from "./IllustrationWidget.styled";
+import S from "./IllustrationWidget.module.css";
 
 const MB = 1024 * 1024;
 const IMAGE_SIZE_LIMIT = 2 * MB;
@@ -98,18 +98,23 @@ export function ImageUploadWidget({
         <Paper withBorder shadow="none">
           <Flex>
             <Flex
+              className={S.borderRight}
               align="center"
               justify="center"
               w="7.5rem"
-              style={{
-                borderRight: "1px solid var(--mb-color-border-neutral)",
-              }}
             >
               {!isDefaultImage && typeof imageSource === "string" && (
-                <PreviewImage src={imageSource} aria-label={t`Image preview`} />
+                <Box
+                  component="img"
+                  className={S.previewImage}
+                  src={imageSource}
+                  aria-label={t`Image preview`}
+                  w="6.25rem"
+                  h="5.625rem"
+                />
               )}
             </Flex>
-            <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
+            <Flex p="xl" gap="lg" direction="column" justify="center" w="100%">
               <Flex w="100%" align="center">
                 <Button
                   className={CS.flexNoShrink}
@@ -125,20 +130,21 @@ export function ImageUploadWidget({
                   accept="image/jpeg,image/png,image/svg+xml"
                   multiple={false}
                 />
-                <Text ml="lg" truncate="end">
+                <Text ml="xl" truncate="end">
                   {isDefaultImage
                     ? t`No file chosen`
                     : fileName
                       ? fileName
                       : t`Remove uploaded image`}
                 </Text>
+                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {!isDefaultImage && (
                   <Button
-                    leftSection={<Icon name="close" />}
                     variant="subtle"
-                    c="text-primary"
-                    ml="md"
-                    size="compact-md"
+                    color="neutral"
+                    size="sm"
+                    leftSection={<Icon name="close" />}
+                    ml="lg"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}
                   />

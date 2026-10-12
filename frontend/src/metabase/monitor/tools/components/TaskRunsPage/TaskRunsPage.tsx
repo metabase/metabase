@@ -71,7 +71,7 @@ export const TaskRunsPage = () => {
 
   return (
     <TasksTabs>
-      <Group gap="md" align="center" wrap="wrap">
+      <Group gap="lg" align="center" wrap="wrap">
         <TaskRunTypePicker
           value={runType}
           onChange={(runType) =>

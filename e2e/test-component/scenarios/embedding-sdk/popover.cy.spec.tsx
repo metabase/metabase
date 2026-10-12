@@ -15,6 +15,9 @@ import type { ConcreteFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
+// take into account radius corner
+const EDGE_CLICK_Y = 16;
+
 const ORDERS_TOTAL_FIELD: ConcreteFieldReference = [
   "field",
   ORDERS.TOTAL,
@@ -120,7 +123,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
         () => {
           cy.findByTestId("multi-select").click();
           // Clicking at the edge of the multiselect popover to be sure that the click does not close it
-          cy.get('[data-element-id="mantine-popover"]').click(2, 2);
+          cy.get('[data-element-id="mantine-popover"]').click(2, EDGE_CLICK_Y);
           cy.get('[data-element-id="mantine-popover"]').should("be.visible");
 
           // Clicking outside of the multiselect popover to be sure that the click closes it
@@ -142,11 +145,11 @@ describe("scenarios > embedding-sdk > popovers", () => {
       cy.findByTestId("color-selector-button").click();
 
       // Clicking at the edge of the color picker popover to be sure that the click does not close it
-      cy.findByTestId("color-selector-popover").click(1, 1);
+      cy.findByTestId("color-selector-popover").click(1, EDGE_CLICK_Y);
       cy.findByTestId("color-selector-popover").should("be.visible");
 
       // Clicking outside the color picker to be sure that the click closes it
-      cy.findByTestId("chartsettings-sidebar").click(1, 1);
+      cy.findByTestId("chartsettings-sidebar").click(1, EDGE_CLICK_Y);
       cy.findByTestId("color-selector-popover").should("not.exist");
 
       cy.findByTestId("settings-count").click();
@@ -155,7 +158,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
         cy.findByTestId("color-selector-button").click();
 
         // Clicking at the edge of the color picker popover to be sure that the click does not close it
-        cy.findByTestId("color-selector-popover").click(1, 1);
+        cy.findByTestId("color-selector-popover").click(1, EDGE_CLICK_Y);
         cy.findByTestId("color-selector-popover").should("be.visible");
       });
     });
@@ -175,7 +178,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
       cy.findAllByTestId("color-selector-button").first().click();
 
       // Clicking at the edge of the color picker popover to be sure that the click does not close it
-      cy.findByTestId("color-selector-popover").click(1, 1);
+      cy.findByTestId("color-selector-popover").click(1, EDGE_CLICK_Y);
       cy.findByTestId("color-selector-popover").should("be.visible");
 
       // Clicking outside the color picker to be sure that the click closes it
@@ -204,7 +207,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
       cy.findByTestId("comparison-picker-dropdown").should("be.visible");
 
       // Clicking outside of the ComparisonPicker popover to be sure that the click closes it
-      cy.findByTestId("chartsettings-sidebar").click(1, 1);
+      cy.findByTestId("chartsettings-sidebar").click(1, EDGE_CLICK_Y);
       cy.findByTestId("comparison-picker-dropdown").should("not.exist");
     });
   });

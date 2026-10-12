@@ -134,6 +134,57 @@
         (is (= [] (:segments m)))
         (is (= #{"d1"} (set (keys (:applicability m)))))))))
 
+(deftest metric-context-default-time-dimension-summary-test
+  (testing ":default-temporal-breakout-summary reflects the curated default dimension —
+            its display name and :default-temporal-unit"
+    (let [dim-id (str (random-uuid))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :name               "Orders"
+                                         :dataset_query      (orders-count-metric-query)
+                                         :dimensions         [{:id             dim-id
+                                                               :display-name   "Order Date"
+                                                               :effective-type :type/DateTimeWithLocalTZ
+                                                               :status         :status/active
+                                                               :default        true
+                                                               :default-temporal-unit :week}]
+                                         :dimension_mappings [{:type         :table
+                                                               :table-id     (mt/id :orders)
+                                                               :dimension-id dim-id
+                                                               :target       [:field {} (mt/id :orders :created_at)]}]}]
+        (let [m (-> (qp.context/metric-and-dim-context
+                     [{:id 1 :metrics [{:card_id (:id metric)}] :dimensions []}])
+                    :blocks first :metrics first)]
+          (is (= {:column "Order Date" :unit "week"}
+                 (:default-temporal-breakout-summary m))))))))
+
+(deftest metric-context-no-fallback-to-query-breakout-test
+  (testing "a curated non-temporal default dimension yields no temporal summary,
+            even when the metric's dataset_query still carries a temporal breakout"
+    (let [mp     (mt/metadata-provider)
+          query  (lib/->legacy-MBQL
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket
+                                      (lib.metadata/field mp (mt/id :orders :created_at))
+                                      :month))))
+          dim-id (str (random-uuid))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :name               "Orders"
+                                         :dataset_query      query
+                                         :dimensions         [{:id             dim-id
+                                                               :display-name   "Quantity"
+                                                               :effective-type :type/Integer
+                                                               :status         :status/active
+                                                               :default        true}]
+                                         :dimension_mappings [{:type         :table
+                                                               :table-id     (mt/id :orders)
+                                                               :dimension-id dim-id
+                                                               :target       [:field {} (mt/id :orders :quantity)]}]}]
+        (let [m (-> (qp.context/metric-and-dim-context
+                     [{:id 1 :metrics [{:card_id (:id metric)}] :dimensions []}])
+                    :blocks first :metrics first)]
+          (is (nil? (:default-temporal-breakout-summary m))))))))
+
 (deftest build-row-context-resolves-from-block-test
   (testing "build-row-context resolves the dim target + snapshot from the row's page's block (not per-thread tables)"
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
@@ -366,12 +417,8 @@
         (is (= :default (:strategy (lib/binning lhs)))
             "click ref's default binning is applied to the explore filter target")))))
 
-(deftest enrich-explore-filters-disambiguates-same-named-dimensions-test
-  (testing "enrich-explore-filters qualifies ambiguous explore-filter dimension_names with the dim's group"
-    ;; Block snapshots don't carry :group — it lives on the metric Card's :dimensions. When two
-    ;; block dims share a display_name, explore-filter labels should mirror query :dimension_name
-    ;; disambiguation (e.g. \"Users → Created At\"), not fall back to the bare name or the raw
-    ;; column display name.
+(deftest enrich-explore-filters-uses-curated-dimension-name-test
+  (testing "enrich-explore-filters labels explore-filter dimension_names with the curated display_name"
     (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
           orders-created "00000000-0000-0000-0000-00000000bbbb"
           users-field    (mt/id :venues :latitude)
@@ -395,8 +442,8 @@
                                                       :target ["field" {} orders-field]}]}
               filter-spec     {:operator "=" :field_ref ["field" {} users-field] :value 40.7}
               [enriched]      (qp.context/enrich-explore-filters mp metric block metric-selection [filter-spec])]
-          (is (= "Users → Created At" (:dimension_name enriched))
-              "the clicked filter is labeled with the dim's group when the display_name is shared"))))))
+          (is (= "Created At" (:dimension_name enriched))
+              "the clicked filter is labeled with the curated display_name"))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; build-row-context — "Explore further" filter edge cases

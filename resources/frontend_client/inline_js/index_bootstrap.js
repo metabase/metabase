@@ -3,7 +3,9 @@
   window.MetabaseUserLocalization = JSON.parse(document.getElementById("_metabaseUserLocalization").textContent);
   window.MetabaseSiteLocalization = JSON.parse(document.getElementById("_metabaseSiteLocalization").textContent);
   window.MetabaseUserColorScheme = JSON.parse(document.getElementById("_metabaseUserColorScheme").textContent);
-  window.MetabaseNonce            = JSON.parse(document.getElementById("_metabaseNonce").textContent);
+  // Read from the script element, not from a JSON block: the browser blanks a nonce content attribute
+  // after parsing, so the value never stays readable in the DOM.
+  window.MetabaseNonce            = document.currentScript.nonce || "";
 
   var configuredRoot = document.head.querySelector("meta[name='base-href']").content;
   var actualRoot = "/";

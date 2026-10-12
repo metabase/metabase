@@ -50,10 +50,10 @@ export const CollectionInfoSidebar = ({
       size="md"
       onClose={onClose}
     >
-      <Stack gap="lg">
-        <SidesheetCard pb="md">
-          <Stack gap="md">
-            <Stack gap="xs">
+      <Stack gap="xl">
+        <SidesheetCard pb="lg">
+          <Stack gap="lg">
+            <Stack gap="xxs">
               <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
               <SidesheetEditableDescription
                 description={description}

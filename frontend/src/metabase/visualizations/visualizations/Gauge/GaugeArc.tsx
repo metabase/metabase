@@ -4,9 +4,9 @@ import type { MouseEvent } from "react";
 import { formatValue } from "metabase/value-formatting";
 import type {
   ClickObject,
-  ComputedVisualizationSettings,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { INNER_RADIUS_RATIO, OUTER_RADIUS } from "./constants";

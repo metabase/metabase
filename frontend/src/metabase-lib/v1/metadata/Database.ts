@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type { NativeQuery, NormalizedDatabase } from "metabase-types/api";
 
@@ -20,10 +18,10 @@ interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
  */
 class Database {
   private readonly _plainObject: NormalizedDatabase;
+  private _tablesLookup?: Record<string, Table>;
 
   constructor(database: NormalizedDatabase) {
     this._plainObject = database;
-    this.tablesLookup = _.memoize(this.tablesLookup);
     Object.assign(this, database);
   }
 
@@ -57,10 +55,17 @@ class Database {
     return this.tables ?? [];
   }
 
-  tablesLookup() {
-    return Object.fromEntries(
+  tablesLookup(): Record<string, Table> {
+    const cached = this._tablesLookup;
+    if (cached != null) {
+      return cached;
+    }
+
+    const lookup: Record<string, Table> = Object.fromEntries(
       this.getTables().map((table) => [table.id, table]),
     );
+    this._tablesLookup = lookup;
+    return lookup;
   }
 
   // @deprecated: use tablesLookup

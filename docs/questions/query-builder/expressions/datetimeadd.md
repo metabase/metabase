@@ -85,7 +85,7 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#cast-to-a-specific-data-type) from the Table Metadata page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata/metadata-editing.md#cast-to-a-specific-data-type) from the Table Metadata page.
 
 ## Limitations
 
@@ -150,7 +150,7 @@ produces the same result as
 datetimeAdd([Opened On], 14, "day")
 ```
 
-Most spreadsheet tools require use different functions for different time units (for example, you'd use a different function to add "months" to a date). `datetimeAdd` makes it easy for you to convert all of those functions to a single consistent syntax.
+Most spreadsheet tools require you to use different functions for different time units (for example, you'd use a different function to add "months" to a date). `datetimeAdd` makes it easy for you to convert all of those functions to a single consistent syntax.
 
 ### Python
 

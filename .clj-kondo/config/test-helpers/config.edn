@@ -58,6 +58,7 @@
      metabase.app-db.core/finish-db-setup!
      metabase.app-db.core/migrate!
      metabase.app-db.core/setup-db!
+     metabase.app-db.encryption-test-util/do-with-encrypted-app-db!
      metabase.app-db.schema-migrations-test.impl/run-migrations-in-range!
      metabase.app-db.setup/migrate!
      metabase.app-db.setup/setup-db!

@@ -69,8 +69,8 @@
          #'base/transfer-file-to-db                            (constantly nil)}
         (fn []
           (let [response (#'base/run-python-transform-impl!
-                          {:source {:source-tables [] :body "stub"}
-                           :target {:type "table"}
+                          {:source {:type :python :source-tables [] :body "stub"}
+                           :target {:type "table" :name "out"}
                            :id     7}
                           {:engine :h2 :id 1}
                           42

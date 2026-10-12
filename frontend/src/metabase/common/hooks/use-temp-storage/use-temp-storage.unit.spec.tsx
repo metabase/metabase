@@ -1,15 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockAppState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
   TempStorage,
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
-import {
-  createMockAppState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 
 import { useTempStorage } from "./use-temp-storage";
 
