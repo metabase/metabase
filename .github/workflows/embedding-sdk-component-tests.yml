@@ -49,6 +49,7 @@ jobs:
           openldap: false
           webhook: false
           snowplow: true
+          metaplow: true
           postgres: false
           mysql: false
           mongo: false
@@ -264,6 +265,7 @@ jobs:
           openldap: false
           webhook: false
           snowplow: true
+          metaplow: true
           postgres: false
           mysql: false
           mongo: false

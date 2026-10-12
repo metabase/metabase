@@ -176,6 +176,17 @@ describe("file-paths.yaml", () => {
     expect(matches("frontend_specs", "metaplow/sink.unit.spec.js")).toBe(true);
   });
 
+  // e2e-containers.unit.spec.ts asserts over these, and it runs in the ci-scripts suite.
+  it.each([
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/embedding-sdk-component-tests.yml",
+    ".github/actions/e2e-prepare-containers/action.yml",
+    "metaplow/docker-compose.yml",
+    "deps.edn",
+  ])("runs the CI script tests for %s, which a spec asserts over", (path) => {
+    expect(matches("ci_scripts", path)).toBe(true);
+  });
+
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
