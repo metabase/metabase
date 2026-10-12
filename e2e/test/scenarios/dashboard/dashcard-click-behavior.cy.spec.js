@@ -917,8 +917,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").button("Done").click();
       H.saveDashboard();
 
+      cy.intercept("POST", "/api/dataset").as("multiParamDataset");
       clickLineChartPoint();
-      cy.wait("@dataset");
+      cy.wait("@multiParamDataset");
       cy.findByTestId("qb-filters-panel")
         .should("contain.text", "Created At is Jul 1–31, 2025")
         .should("contain.text", "Quantity is equal to 64");
