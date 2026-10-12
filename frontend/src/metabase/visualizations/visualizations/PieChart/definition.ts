@@ -91,6 +91,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   hasEmptyState: true,
   settings: {
     ...metricSetting("pie.metric", {
+      // Same look as the ring pickers below it, not the single field input look
+      widget: "listField",
       getSection: () => t`Data`,
       get title() {
         return t`Measure`;
