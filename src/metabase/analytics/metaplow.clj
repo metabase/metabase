@@ -2,9 +2,11 @@
   "Sends analytics events to a Metaplow (Umami-compatible) collector.
 
   `track-event!` builds a payload, offers it onto an async send queue, and returns. A `pipeline-blocking` worker pool
-  drains the queue and POSTs each event to the collector's `/api/send` endpoint, retrying transient failures via
-  [[metabase.util.retry/with-retry]]. The HTTP connection pool is sized to match the worker count so workers never
-  contend for slots.
+  drains the queue and POSTs each event to the collector's `/api/send` endpoint. The HTTP connection pool is sized to
+  match the worker count so workers never contend for slots.
+
+  Delivery is bounded per event by [[retry-policy]] and across events by [[breaker]]. Neither failure mode logs above
+  debug; the `:metabase-metaplow/errors` counter, labelled by `:stage`, is the operational signal.
 
   Emission is gated by [[metabase.analytics.settings/metaplow-tracking-enabled]]. The public entry point used by the
   rest of the codebase is [[metabase.analytics.event/track-event!]], which fans out to both Snowplow and Metaplow."
@@ -13,6 +15,8 @@
    [clj-http.conn-mgr :as conn-mgr]
    [clojure.core.async :as a]
    [clojure.walk :as walk]
+   [diehard.circuit-breaker :as dh.cb]
+   [diehard.core :as dh]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
@@ -23,7 +27,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
-   [metabase.version.core :as version]))
+   [metabase.version.core :as version])
+  (:import
+   (dev.failsafe CircuitBreakerOpenException)))
 
 (set! *warn-on-reflection* true)
 
@@ -103,30 +109,84 @@
                 :connection-manager @connection-manager})
     (catch Throwable e
       (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
-      (log/warnf "Connection failure sending Metaplow event: %s" (ex-message e))
+      (log/debugf "Connection failure sending Metaplow event: %s" (ex-message e))
       {:status -1})))
 
-(defn- retryable-response?
-  "Truthy when a `send-event!` response should trigger another attempt: non-2xx and not one of the no-retry
-  status codes that Snowplow also gives up on (400/401/403/410/422)."
+(defn- delivered?
+  "Truthy when the collector accepted the event, i.e. the response is a 2xx."
   [{:keys [status]}]
+  (and (some? status) (<= 200 status 299)))
+
+(defn- retryable-response?
+  "Truthy when a `send-event!` response should trigger another attempt: not accepted, and not one of the no-retry
+  status codes that Snowplow also gives up on (400/401/403/410/422)."
+  [{:keys [status] :as response}]
   (and (some? status)
-       (not (<= 200 status 299))
+       (not (delivered? response))
        (not (contains? no-retry-status-codes status))))
 
+(defn- failed-attempt?
+  "Truthy when one attempt at [[send-event!]] counts as a failure, for both retry and circuit-breaking purposes."
+  [response ex]
+  ;; a no-retry status is not a failure here: the collector answered, so it is reachable, it just won't take this event
+  (or (some? ex) (retryable-response? response)))
+
+(def ^:private retry-policy
+  "Bounds the delivery of one event: at most three attempts, 500ms to 2s apart, with no further attempt started more
+  than 5s in.
+
+  That bounds the retrying, not the wall clock. `:max-duration-ms` is only tested between attempts, so an event whose
+  first attempt stalls out on [[send-event!]]'s connect and socket timeouts gets one attempt rather than three, and
+  can hold a worker for around twice those timeouts."
+  {:max-retries     2
+   :backoff-ms      [500 2000]
+   :max-duration-ms 5000
+   :retry-if        failed-attempt?})
+
+(def ^:private breaker-config
+  "Opens after ten consecutive failed events, rejects every event for the next 60 seconds, then admits one probe and
+  closes again if it succeeds. Counted in failed events, not failed attempts — see [[breaker]]."
+  {:failure-threshold 10
+   :delay-ms          (u/seconds->ms 60)
+   :success-threshold 1
+   :fail-if           failed-attempt?
+   :on-open           (fn [_] (log/warn "Metaplow collector unreachable; opening circuit breaker"))
+   :on-half-open      (fn [_] (log/info "Metaplow circuit breaker half-open; probing the collector"))
+   :on-close          (fn [_] (log/info "Metaplow collector reachable again; closing circuit breaker"))})
+
+(defn- new-breaker
+  "A circuit breaker built from [[breaker-config]], with `overrides` merged over it."
+  [overrides]
+  (dh.cb/circuit-breaker (merge breaker-config overrides)))
+
+(defonce ^:private
+  ^{:doc "Process-wide circuit breaker guarding the collector, shared by every worker, so that once it is open they
+         all reject immediately."}
+  breaker
+  (new-breaker nil))
+
 (defn- send-event-with-retries!
-  "Send an event, retrying with exponential backoff on connection failures or retryable HTTP statuses (via
-  [[metabase.util.retry/with-retry]]). Returns `:sent` on success and `:error` on failure (never nil), so callers can
-  reliably distinguish outcomes."
+  "Send one event under [[retry-policy]], guarded by [[breaker]]. Returns `:sent` when the collector accepted the
+  event, `:error` when it did not, and `:rejected` when the breaker was open and nothing was sent — never nil, so
+  callers can tell the three apart."
   [payload]
   (try
-    (retry/with-retry {:retry-if (fn [response _ex] (retryable-response? response))}
-      (send-event! payload))
-    :sent
-    (catch Throwable e
-      (analytics/inc! :metabase-metaplow/errors {:stage :send-event-with-retries!})
-      (log/warnf "Error sending Metaplow event: %s" (ex-message e))
-      :error)))
+    ;; the breaker wraps the retry rather than being passed to it as Diehard's `:circuit-breaker` option, which would
+    ;; compose it inside the retry and count one failure per failed attempt instead of one per failed event
+    (let [response (dh/with-circuit-breaker breaker
+                     (retry/with-retry retry-policy
+                       (send-event! payload)))]
+      (if (delivered? response)
+        :sent
+        (do (analytics/inc! :metabase-metaplow/errors {:stage :send-event-with-retries!})
+            (log/debugf "Giving up on Metaplow event; last status %s" (:status response))
+            :error)))
+    ;; `send-event!` swallows everything and the retry returns the last response rather than throwing when it gives
+    ;; up on one, so the breaker is the only thing in the body that throws
+    (catch CircuitBreakerOpenException _e
+      (analytics/inc! :metabase-metaplow/errors {:stage :circuit-breaker-open})
+      (log/debug "Metaplow circuit breaker is open; dropping event without attempting a send")
+      :rejected)))
 
 (defonce ^:private
   ^{:doc "Individual payloads queued by `track-event!` land here. Bounded chan of size `queue-size`; new events are
