@@ -1266,14 +1266,8 @@ describe("issue 42165", () => {
 
   it("should use card name instead of series names when navigating to QB from dashcard title", () => {
     cy.get("@dashboardId").then((dashboardId) => {
-      H.visitDashboard(dashboardId);
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "filteredQuery",
-      );
-
-      H.filterWidget().click();
-      H.popover().findByText("Previous 30 days").click();
-      cy.wait("@filteredQuery");
+      H.visitDashboard(dashboardId, { params: { date: "2027-01" } });
+      H.filterWidget().should("contain", "2027");
 
       H.getDashboardCard(0).within(() => {
         cy.findAllByTestId("legend-item").should("have.length", 5);
