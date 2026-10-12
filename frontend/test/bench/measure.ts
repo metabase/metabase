@@ -204,9 +204,13 @@ class Session {
 // and when the page has its data. See metabase/utils/performance-marks.ts.
 const READ_METRICS = `JSON.stringify((() => {
   const nav = performance.getEntriesByType("navigation")[0];
-  const scripts = performance
+  // Only what arrived before DOMContentLoaded is counted. That set is fixed
+  // once the event fires, so the counts do not depend on when this runs, and a
+  // build that records no marks is counted at the same moment as one that does.
+  const resources = performance
     .getEntriesByType("resource")
-    .filter((entry) => entry.name.endsWith(".js"));
+    .filter((entry) => nav && entry.responseEnd <= nav.domContentLoadedEventEnd);
+  const scripts = resources.filter((entry) => entry.name.endsWith(".js"));
   const paint = (name) => {
     const entry = performance.getEntriesByName(name)[0];
     return entry ? entry.startTime : 0;
@@ -226,14 +230,13 @@ const READ_METRICS = `JSON.stringify((() => {
     lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
     scriptCount: scripts.length,
     scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
-    styleBytes: performance
-      .getEntriesByType("resource")
+    styleBytes: resources
       .filter((entry) => entry.name.endsWith(".css"))
       .reduce((total, entry) => total + entry.encodedBodySize, 0),
-    // Every byte the page fetched so far, compressed as it arrived: the document
-    // itself, then each script, stylesheet, font, image and API response.
-    totalBytes: (nav ? nav.encodedBodySize : 0) + performance
-      .getEntriesByType("resource")
+    // Every byte the page fetched before DOMContentLoaded, compressed as it
+    // arrived: the document itself, then each script, stylesheet, font, image
+    // and API response.
+    totalBytes: (nav ? nav.encodedBodySize : 0) + resources
       .reduce((total, entry) => total + entry.encodedBodySize, 0),
   };
 })())`;
