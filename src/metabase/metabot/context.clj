@@ -361,14 +361,6 @@
       (assoc context :user_is_viewing enhanced-viewing))
     context))
 
-(defn- get-metabot
-  "Look up the metabot row for the given UUID/entity-id, mirroring the resolution used by `metabase.metabot.tools.search`."
-  [metabot-id]
-  (when metabot-id
-    (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config
-                                             [metabot-id :entity-id]
-                                             metabot-id))))
-
 (defn- filter-recents-to-curated
   "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
   Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
@@ -409,7 +401,7 @@
                                                                 [:views :selections]
                                                                 {:models [:card :dataset :metric :dashboard :table]}))
                    recents (cond->> recents
-                             (:use_verified_content (get-metabot metabot-id))
+                             (:use_verified_content (metabot.config/metabot-by-id metabot-id))
                              filter-recents-to-curated)]
                (mapv (fn [item]
                        (let [item-type

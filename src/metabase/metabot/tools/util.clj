@@ -189,6 +189,14 @@
                       ;; pivot questions have strange result-columns so we work with the dataset-query
                       (#{:question} (:type card)) (get :dataset-query))))))
 
+(defn card-results-query
+  "Return a query over the result columns of the card with ID `card-id`, whatever its type: what the card exposes,
+  rather than what its definition reads. [[card-query]] widens this to the definition for questions."
+  [card-id]
+  (when-let [card (get-card card-id)]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+      (lib/query mp (lib.metadata/card mp card-id)))))
+
 (defn metric-query
   "Return a query based on the metric with ID `metric-id`."
   [metric-id]

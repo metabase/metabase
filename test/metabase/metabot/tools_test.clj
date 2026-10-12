@@ -217,7 +217,25 @@
     (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
     (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
 
+(defn- curated-probe-tool
+  "A tool that reports whether the session it runs in is restricted to curated content."
+  {:tool-name "curated_probe"}
+  [_args]
+  (shared/curated-only?))
+
 (deftest wrap-tools-with-state-test
+  (testing "binds the session's curated-only verdict for the Metabot it serves"
+    (mt/with-temp [:model/Metabot {curated-id :entity_id} {:name "curated metabot" :use_verified_content true}
+                   :model/Metabot {open-id :entity_id}    {:name "open metabot" :use_verified_content false}]
+      (let [probe (fn [metabot-id profile-id]
+                    (let [wrapped (agent-tools/wrap-tools-with-state {"curated_probe" #'curated-probe-tool}
+                                                                     (atom {}) metabot-id profile-id)]
+                      ((get-in wrapped ["curated_probe" :fn]) {})))]
+        (is (false? (shared/curated-only?)) "unbound outside a session")
+        (is (true? (probe curated-id :internal)))
+        (is (false? (probe curated-id :nlq)) "the nlq profile is exempt")
+        (is (false? (probe open-id :internal)))
+        (is (false? (probe nil :internal))))))
   (testing "wraps state-dependent tools with state injection"
     (let [memory-atom (atom {:state {:queries {"q1" {:database 1}}
                                      :charts {"c1" {:query-id "q1"}}}})

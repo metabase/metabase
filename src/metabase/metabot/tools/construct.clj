@@ -13,11 +13,13 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -516,6 +518,21 @@
                table-fks))
      already-checked)))
 
+(defn- check-curated-query-sources!
+  "Under `use_verified_content`, reject `pmbql-query` unless everything it reads is curated, or covered by curated
+  content it reads (see [[curation/uncurated-query-sources]] for the rule)."
+  [metadata-provider pmbql-query]
+  (when (shared/curated-only?)
+    (let [uncurated (curation/uncurated-query-sources (lib/query metadata-provider pmbql-query))]
+      (when (seq uncurated)
+        (throw (ex-info (tru (str "This Metabot only uses curated content (verified, official, or Library content), "
+                                  "and the query reads a table, model, or metric that is not curated. Use `search` "
+                                  "to find curated tables, models, or metrics and build the query on those instead."))
+                        {:agent-error? true
+                         :status-code  403
+                         :error        :uncurated-source
+                         :uncurated    uncurated}))))))
+
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
 
@@ -737,6 +754,7 @@
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            _curated      (check-curated-query-sources! mp pmbql-query)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
                             (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
                                                  (pr-str why))

@@ -39,7 +39,8 @@
         {:value structured}
         {:error (or output (str "No metadata returned for ID " id))}))
     (catch Exception e
-      (if (= 404 (:status-code (ex-data e)))
+      (if (or (= 404 (:status-code (ex-data e)))
+              (:agent-error? (ex-data e)))
         (log/debugf "Omitting unresolvable metadata entry: %s %s" id (ex-message e))
         (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)}))
       {:error (or (ex-message e) (str "Failed to fetch metadata for ID " id))})))
@@ -54,9 +55,14 @@
     (doseq [[ids label] [[table-ids "table"] [model-ids "model"] [metric-ids "metric"]]]
       (validate-id-count ids label))
     (metabot.perms/with-cache
-      (let [table-results (mapv #(safe-fetch
+      (let [curated-only? (shared/curated-only?)
+            check-curated (fn [label subject]
+                            (when curated-only?
+                              (resources-tools/check-curated-subject! label subject)))
+            table-results (mapv #(safe-fetch
                                   (fn [table-id]
                                     (resources-tools/check-table-resource-database table-id)
+                                    (check-curated (str "table " table-id) ["table" table-id])
                                     (entity-details-tools/get-table-details
                                      {:entity-type :table
                                       :entity-id table-id
@@ -72,6 +78,7 @@
             model-results (mapv #(safe-fetch
                                   (fn [model-id]
                                     (resources-tools/check-card-resource-database model-id)
+                                    (check-curated (str "model " model-id) ["card" model-id])
                                     (entity-details-tools/get-table-details
                                      {:entity-type :model
                                       :entity-id model-id
@@ -87,6 +94,7 @@
             metric-results (mapv #(safe-fetch
                                    (fn [metric-id]
                                      (resources-tools/check-card-resource-database metric-id)
+                                     (check-curated (str "metric " metric-id) ["metric" metric-id])
                                      (entity-details-tools/get-metric-details
                                       {:metric-id metric-id
                                        :with-default-temporal-breakout? false
@@ -189,6 +197,13 @@
     "table"                                (resources-tools/check-table-resource-database source_id)
     ("model" "metric" "question" "report") (resources-tools/check-card-resource-database source_id)
     nil)
+  (when (shared/curated-only?)
+    (resources-tools/check-curated-subject! (str data_source " " source_id)
+                                            (case data_source
+                                              "table"                       ["table" source_id]
+                                              "metric"                      ["metric" source_id]
+                                              ("model" "question" "report") ["card" source_id]
+                                              nil)))
   (add-output
    (field-stats-tools/field-values {:entity-type data_source
                                     :entity-id source_id
