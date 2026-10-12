@@ -1,5 +1,10 @@
-import { Route, registerPagePrefetch } from "metabase/router";
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
+import { Outlet, Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
+import {
+  featureGatedComponent,
+  featureGatedRoute,
+} from "metabase-enterprise/settings/feature-gated-route";
 
 import {
   RequireMcpEnabled,
@@ -140,38 +145,76 @@ export function registerAiControlsUpsellPagePrefetch(): void {
   );
 }
 
+const PassThroughOutlet = () => <Outlet />;
+
+const GatedRequireMetabotConfigured = featureGatedComponent(
+  "ai_controls",
+  RequireMetabotConfigured,
+  PassThroughOutlet,
+);
+
+const GatedRequireMcpEnabled = featureGatedComponent(
+  "ai_controls",
+  RequireMcpEnabled,
+  PassThroughOutlet,
+);
+
 export function getAiControlsRoutes() {
   return (
-    <Route element={<RequireMetabotConfigured />}>
+    <Route element={<GatedRequireMetabotConfigured />}>
       <Route
         key="ai-feature-access"
         path={PATHS.featureAccess}
-        lazy={aiFeatureAccessPage}
+        lazy={featureGatedRoute(
+          "ai_controls",
+          aiFeatureAccessPage,
+          aiFeatureAccessUpsellPage,
+        )}
       />
       <Route
         key="ai-usage-limits"
         path={PATHS.usageLimits}
-        lazy={metabotUsageLimitsPage}
+        lazy={featureGatedRoute(
+          "ai_controls",
+          metabotUsageLimitsPage,
+          notFoundRoute,
+        )}
       />
       <Route
         key="customization"
         path={PATHS.customization}
-        lazy={metabotCustomizationPage}
+        lazy={featureGatedRoute(
+          "ai_controls",
+          metabotCustomizationPage,
+          metabotCustomizationUpsellPage,
+        )}
       />
       <Route
         key="system-prompts-metabot-chat"
         path={PATHS.chatPrompt}
-        lazy={metabotChatPromptPage}
+        lazy={featureGatedRoute(
+          "ai_controls",
+          metabotChatPromptPage,
+          metabotSystemPromptsUpsellPage,
+        )}
       />
       <Route
         key="system-prompts-natural-language-queries"
         path={PATHS.naturalLanguagePrompt}
-        lazy={naturalLanguagePromptPage}
+        lazy={featureGatedRoute(
+          "ai_controls",
+          naturalLanguagePromptPage,
+          notFoundRoute,
+        )}
       />
       <Route
         key="system-prompts-sql-generation"
         path={PATHS.sqlGenerationPrompt}
-        lazy={sqlGenerationPromptPage}
+        lazy={featureGatedRoute(
+          "ai_controls",
+          sqlGenerationPromptPage,
+          notFoundRoute,
+        )}
       />
     </Route>
   );
@@ -179,34 +222,16 @@ export function getAiControlsRoutes() {
 
 export function getMcpToolsAccessRoutes() {
   return (
-    <Route element={<RequireMcpEnabled />}>
+    <Route element={<GatedRequireMcpEnabled />}>
       <Route
         key="mcp-tools-access"
         path={PATHS.mcpToolsAccess}
-        lazy={mcpToolsAccessPage}
+        lazy={featureGatedRoute(
+          "ai_controls",
+          mcpToolsAccessPage,
+          notFoundRoute,
+        )}
       />
     </Route>
-  );
-}
-
-export function getAiControlsUpsellRoutes() {
-  return (
-    <>
-      <Route
-        key="ai-feature-access"
-        path={PATHS.featureAccess}
-        lazy={aiFeatureAccessUpsellPage}
-      />
-      <Route
-        key="customization"
-        path={PATHS.customization}
-        lazy={metabotCustomizationUpsellPage}
-      />
-      <Route
-        key="system-prompts"
-        path={PATHS.chatPrompt}
-        lazy={metabotSystemPromptsUpsellPage}
-      />
-    </>
   );
 }
