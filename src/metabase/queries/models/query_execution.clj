@@ -36,7 +36,7 @@
 ;; This hook serves as a safety net for any direct sync inserts.
 (t2/define-before-insert :model/QueryExecution
   [{context :context, :as query-execution}]
-  (u/prog1 (analytics/include-sdk-info query-execution)
+  (u/prog1 (-> query-execution analytics/include-sdk-info analytics/include-react-version)
     (validate-context context)))
 
 (t2/define-after-select :model/QueryExecution

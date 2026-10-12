@@ -88,6 +88,7 @@
         execution-info' (-> execution-info
                             (dissoc :json_query)
                             analytics.core/include-sdk-info
+                            analytics.core/include-react-version
                             add-running-time
                             (cond-> json-query (assoc :json_query json-query)))]
     (if qp.util/*execute-async?*

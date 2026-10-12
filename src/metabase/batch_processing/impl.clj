@@ -69,6 +69,7 @@
    [:cache_hash                  {:optional true} [:maybe [:or bytes? :string]]]
    [:embedding_client            {:optional true} [:maybe :string]]
    [:embedding_sdk_version       {:optional true} [:maybe :string]]
+   [:embedding_react_version     {:optional true} [:maybe :string]]
    [:parameterized               {:optional true} [:maybe :boolean]]
    [:transform_id                {:optional true} [:maybe :int]]
    [:lens_id                     {:optional true} [:maybe :string]]

@@ -1,5 +1,6 @@
 (ns metabase.analytics.settings
   (:require
+   [clojure.core.memoize :as memoize]
    [java-time.api :as t]
    [metabase.analytics.db :as analytics.db]
    [metabase.config.core :as config]
@@ -119,6 +120,24 @@
   :visibility :admin
   :export?    true
   :feature    :audit-app)
+
+(defn- sdk-react-18-hostnames*
+  []
+  (analytics.db/sdk-react-18-hostnames-since (t/minus (t/instant) (t/days 4)) 10))
+
+(def ^:private sdk-react-18-hostnames-cached
+  (memoize/ttl sdk-react-18-hostnames* :ttl/threshold (* 60 60 1000)))
+
+(defsetting sdk-react-18-hostnames
+  (deferred-tru "Hostnames of host apps using the React embedding SDK with React 18, seen in the last 4 days.")
+  :type       :json
+  :encryption :no
+  :visibility :admin
+  :setter     :none
+  :export?    false
+  :doc        false
+  :audit      :never
+  :getter     (fn [] (or (sdk-react-18-hostnames-cached) [])))
 
 (defsetting experiments-enabled
   (deferred-tru "Enable or disable all code experiments. When disabled, only the production code path runs.")

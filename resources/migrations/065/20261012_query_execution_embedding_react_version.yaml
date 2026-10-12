@@ -1,0 +1,53 @@
+# Record the React version of the host app that runs the React embedding SDK, sent by the SDK in the
+# X-Metabase-Client-React-Version header.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.s6ktht
+      author: Nicolò Pretto
+      comment: Add embedding_react_version to query_execution
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_react_version
+                  remarks: "React version of the host app, as sent by the React embedding SDK. NULL for other clients."
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: query_execution
+            columnName: embedding_react_version
+
+  - changeSet:
+      id: v65.6luw2e
+      author: Nicolò Pretto
+      comment: Updated view v_query_log v8 - add embedding_react_version
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v8/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v8/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v8/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v7/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v7/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v7/h2-query_log.sql
+            relativeToChangelogFile: true
