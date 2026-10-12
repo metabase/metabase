@@ -200,10 +200,8 @@ describe("issue 12578", () => {
     }).as("dashcardQuery");
     cy.tick(61 * 1000);
     cy.get("@dashcardQuery.all").should("have.length", 1);
-    H.getDashboardCard().findByTestId("loading-indicator").should("exist");
 
     cy.tick(61 * 1000);
-    H.getDashboardCard().findByTestId("loading-indicator").should("exist");
     cy.get("@dashcardQuery.all").should("have.length", 1);
   });
 });

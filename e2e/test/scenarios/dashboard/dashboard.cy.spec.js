@@ -763,9 +763,8 @@ describe("scenarios > dashboard", () => {
           cy.icon("close").click();
         });
         H.modal().should("not.exist");
-        cy.get("body")
-          .should("not.have.attr", "data-scroll-locked")
-          .and("not.have.css", "overflow", "hidden");
+        cy.get("body").should("not.have.attr", "data-scroll-locked");
+        cy.get("body").should("not.have.css", "overflow", "hidden");
       },
     );
   });
