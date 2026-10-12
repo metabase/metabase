@@ -1164,7 +1164,7 @@ jobs:
   be-tests-starburst-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.starburst-should-run == 'true' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ubuntu-22.04-8-cores
     timeout-minutes: 40
     env:
       CI: 'true'
