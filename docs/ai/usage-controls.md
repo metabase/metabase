@@ -44,7 +44,7 @@ Tool access doesn't replace other permissions. People still need the usual [data
 
 ### Allow or block MCP tools
 
-The grid lists tools as rows and groups as columns. Tools are grouped under scope rows, named after the [permission scope](./mcp.md#permission-scopes) each tool needs:
+[MCP tools](./mcp-tools.md) are grouped under scope rows, named after the [permission scope](./mcp.md#permission-scopes) each tool needs:
 
 | Scope row      | Permission scope       |
 | -------------- | ---------------------- |
@@ -54,13 +54,7 @@ The grid lists tools as rows and groups as columns. Tools are grouped under scop
 | **Write**      | `agent:content:write`  |
 | **Deliveries** | `agent:delivery:write` |
 
-To see which tools need which scope, check out [MCP server tools](./mcp-tools.md).
-
-To allow or block one tool for a group, check or clear the tool's box in the group's column. To allow or block every tool in a scope, check or clear the scope row's box. If a group has only some of a scope's tools, the scope box shows a partial check, and clicking it allows the rest.
-
-To see what a tool does, hover over the info icon next to its name.
-
-When you're done, click **Save changes**.
+Check or uncheck tools as needed, and click **Save changes**.
 
 The **Administrators** column always has every box checked: admins always get every tool.
 
@@ -71,24 +65,20 @@ The **Administrators** column always has every box checked: admins always get ev
 - **Blocked tools are hidden.** Metabase leaves blocked tools out of the tool list it gives a client. If a client calls a blocked tool anyway, Metabase refuses, and tells the person to ask an admin to enable the tool under **Admin > AI > Usage controls > MCP tools access**.
 - **People with no tools can't connect.** If none of a person's groups allows any tool, their client can't connect to the MCP server.
 - **Blocking `execute_sql` also blocks saving SQL questions.** People who can't use the `execute_sql` tool can't save SQL questions with the `question_write` tool either.
-- **A group with no tools gets only the tools you check.** If a group has no tools, checking one tool's box allows only that tool, and the group's other tools stay blocked. If you clear a group's last tool, that group loses MCP access.
-- **Saved access stays in place.** If your plan no longer includes AI controls, Metabase keeps enforcing the tool access you saved.
 
 ### Set MCP tool access for each group
 
 By default, the grid has two columns: **Administrators** and **All Users**. Every person who isn't an admin gets the tools you allow for **All Users**. If you use [tenants](../embedding/tenants.md), the **Tenant groups** tab does the same for **All tenant users**.
 
-To give different groups different tools, switch to group-level permissions. Switching removes MCP tool access from **All Users** (and from **All tenant users**, if you use tenants), so people who aren't admins only get tools from groups that allow them. Anyone who isn't in such a group loses access to MCP tools, even if their client is already connected. Metabase also gives the [Data Analysts](../people-and-groups/managing.md#data-analysts) group every tool.
-
-To switch:
+To give different groups different tools, switch to group-level permissions:
 
 1. Set up your [groups](../people-and-groups/managing.md#groups).
 2. Click **Switch to group-level permissions**.
 3. Click **Switch** to confirm.
 
-In group-level mode, the grid has a column for each group except **All Users** and **All tenant users**. To find a group's column, use **Search for a group...**.
+In group-level mode, **All Users** and **All tenant users** groups lose MCP tool access. That way, groups only get the tools you allow them. Admin and Data Analyst groups always get access to every MCP tool.
 
-Switching back to one set of tools for everyone deletes the tool access you set for each group, and gives **All Users** (and **All tenant users**) every tool. To switch back, click the gear icon, then **Remove group-level access**, then **Remove access from all groups**.
+To switch back, click the gear icon, then **Remove group-level access**, then **Remove access from all groups**. Switching back to one set of tools for everyone deletes the tool access you set for each group, and gives **All Users** (and **All tenant users**) every tool.
 
 ## AI usage limits
 
