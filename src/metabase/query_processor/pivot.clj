@@ -57,8 +57,9 @@
 (def ^:private max-powerset-breakouts
   "The most breakouts [[breakout-combinations]] will expand to their full powerset (2^n grouping combinations) when no
   pivot rows or columns are given. Beyond this a single request could force the server to enumerate billions of
-  combinations. 12 breakouts (4096 combinations) also matches Postgres's maximum number of grouping sets."
-  12)
+  combinations. Each combination is a separate query on the multi-query path, so the cap is kept low: 10 breakouts
+  is 1024 combinations."
+  10)
 
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -93,7 +94,7 @@
 
 (defn- validate-pivot-indices!
   "Throw an `:invalid-query` error if any index in `pivot-rows` or `pivot-cols` falls outside
-  `[0, num-breakouts)`."
+  `[0, num-breakouts)`, if either contains duplicates, or if they overlap."
   [num-breakouts pivot-rows pivot-cols]
   (doseq [[k pivots] [[:pivot-rows pivot-rows]
                       [:pivot-cols pivot-cols]]
@@ -104,7 +105,19 @@
                       {:type          qp.error-type/invalid-query
                        :num-breakouts num-breakouts
                        :pivot-rows    pivot-rows
-                       :pivot-cols    pivot-cols})))))
+                       :pivot-cols    pivot-cols}))))
+  (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                      [:pivot-cols pivot-cols]]]
+    (when-not (apply distinct? (or (seq pivots) [nil]))
+      (throw (ex-info (tru "Invalid {0}: duplicate breakout indices" (name k))
+                      {:type       qp.error-type/invalid-query
+                       :pivot-rows pivot-rows
+                       :pivot-cols pivot-cols}))))
+  (when (some (set pivot-rows) pivot-cols)
+    (throw (ex-info (tru "Invalid pivot options: pivot-rows and pivot-cols must not overlap")
+                    {:type       qp.error-type/invalid-query
+                     :pivot-rows pivot-rows
+                     :pivot-cols pivot-cols}))))
 
 (defn- validate-powerset-size!
   "Throw an `:invalid-query` error if `num-breakouts` is too large to expand into its full powerset of combinations."

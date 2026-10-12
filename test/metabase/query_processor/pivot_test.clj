@@ -122,7 +122,21 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+  (testing "Should throw an Exception if pivot-rows or pivot-cols contain duplicates"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-rows: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [0 0 1] [] true true)))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-cols: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [] [1 1] true true))))
+  (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"pivot-rows and pivot-cols must not overlap"
+         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true)))))
 
 (deftest ^:parallel breakout-combinations-powerset-cap-test
   (let [max-breakouts @#'qp.pivot/max-powerset-breakouts]
@@ -412,8 +426,8 @@
 
 (deftest ^:parallel apply-legacy-pivot-keys-kebab-case-test
   (testing "kebab-case legacy indices resolve to breakout :lib/uuid values"
-    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1 0] :pivot-cols [0]})]
-      (is (=? {:rows               [(breakout-uuid q 1) (breakout-uuid q 0)]
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1] :pivot-cols [0]})]
+      (is (=? {:rows               [(breakout-uuid q 1)]
                :columns            [(breakout-uuid q 0)]
                :show-row-totals    true
                :show-column-totals true}
