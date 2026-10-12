@@ -79,19 +79,26 @@ describe("scenarios > dependencies > dependency graph", () => {
       itemName,
       itemIcon,
       isRecentItem,
+      eventDetail,
+      eventCount,
     }: {
       itemName: string;
       itemIcon: IconName;
       isRecentItem: boolean;
+      eventDetail: DependencyType;
+      eventCount: number;
     }) {
       cy.log(`verify that "${itemName}" can be found via search`);
       H.DependencyGraph.entrySearchInput().clear().type(itemName);
       H.popover().findByText(itemName).click();
-      H.expectUnstructuredSnowplowEvent({
-        event: "dependency_entity_selected",
-        triggered_from: "dependency-graph",
-        event_detail: "table",
-      });
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "dependency_entity_selected",
+          triggered_from: "dependency-graph",
+          event_detail: eventDetail,
+        },
+        eventCount,
+      );
 
       H.DependencyGraph.entryButton().should("have.text", itemName);
       H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
@@ -159,26 +166,36 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemName: "Products",
         itemIcon: "table",
         isRecentItem: true,
+        eventDetail: "table",
+        eventCount: 1,
       });
       testEntitySearch({
         itemName: "Orders, Count, Grouped by Created At (year)",
         itemIcon: "line",
         isRecentItem: true,
+        eventDetail: "card",
+        eventCount: 1,
       });
       testEntitySearch({
         itemName: "Orders Model",
         itemIcon: "model",
         isRecentItem: true,
+        eventDetail: "card",
+        eventCount: 2,
       });
       testEntitySearch({
         itemName: TABLE_BASED_METRIC_NAME,
         itemIcon: "metric",
         isRecentItem: false,
+        eventDetail: "card",
+        eventCount: 3,
       });
       testEntitySearch({
         itemName: TABLE_BASED_TRANSFORM_NAME,
         itemIcon: "transform",
         isRecentItem: false,
+        eventDetail: "transform",
+        eventCount: 1,
       });
 
       testEntityPicker({
@@ -300,12 +317,14 @@ describe("scenarios > dependencies > dependency graph", () => {
         });
 
       cy.log("select an entity via search");
-      H.DependencyGraph.selectionButton().click();
-      H.popover().findByText(TABLE_DISPLAY_NAME).click();
       H.DependencyGraph.graph().within(() => {
         cy.findByLabelText(TABLE_DISPLAY_NAME).should("be.visible");
         cy.findByLabelText(TABLE_BASED_QUESTION_NAME).should("be.visible");
       });
+      verifyNodeCentered({ nodeLabel: TABLE_DISPLAY_NAME, isCentered: false });
+      H.DependencyGraph.selectionButton().click();
+      H.popover().findByText(TABLE_DISPLAY_NAME).click();
+      verifyNodeCentered({ nodeLabel: TABLE_DISPLAY_NAME, isCentered: true });
 
       verifyPanelNavigation({
         itemTitle: TABLE_BASED_QUESTION_NAME,
@@ -626,6 +645,39 @@ describe("scenarios > dependencies > dependency graph", () => {
 
 function visitGraph() {
   cy.visit(BASE_URL);
+}
+
+function getElementCenter(element: HTMLElement) {
+  const { left, top, width, height } = element.getBoundingClientRect();
+  return { x: left + width / 2, y: top + height / 2 };
+}
+
+function verifyNodeCentered({
+  nodeLabel,
+  isCentered,
+}: {
+  nodeLabel: string;
+  isCentered: boolean;
+}) {
+  const maxOffsetPx = 10;
+
+  H.DependencyGraph.graph().then(($graph) => {
+    const graphCenter = getElementCenter($graph[0]);
+    H.DependencyGraph.graph()
+      .findByLabelText(nodeLabel)
+      .should(($node) => {
+        const nodeCenter = getElementCenter($node[0]);
+        const offsetPx = Math.hypot(
+          nodeCenter.x - graphCenter.x,
+          nodeCenter.y - graphCenter.y,
+        );
+        if (isCentered) {
+          expect(offsetPx).to.be.lessThan(maxOffsetPx);
+        } else {
+          expect(offsetPx).to.be.greaterThan(maxOffsetPx);
+        }
+      });
+  });
 }
 
 function verifyPanelNavigation({

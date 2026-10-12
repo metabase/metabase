@@ -10,6 +10,7 @@ import type {
   CollectionId,
   DependencyNode,
   FieldId,
+  ListUnreferencedGraphNodesResponse,
   NativeQuerySnippetId,
   SegmentId,
   TableId,
@@ -96,6 +97,27 @@ const SEARCHABLE_ENTITY_NAMES = [
   ...SNIPPET_NAMES,
 ];
 
+// Entities that `setupEntities({ withReferences: true })` creates to reference
+// the entities above. Nothing references them, so they are unreferenced.
+// Dashboards are not in the unreferenced list.
+const TABLE_REFERENCING_ENTITY_NAME = `${TABLE_DISPLAY_NAME} -> Question`;
+const SEARCHABLE_REFERENCING_ENTITY_NAMES = [
+  `${MODEL_FOR_QUESTION_DATA_SOURCE} -> Question`,
+  `${MODEL_FOR_MODEL_DATA_SOURCE} -> Model`,
+  `${MODEL_FOR_METRIC_DATA_SOURCE} -> Metric`,
+  `${MODEL_FOR_NATIVE_QUESTION_CARD_TAG} -> Question`,
+  `${MODEL_FOR_NATIVE_QUESTION_PARAMETER_SOURCE} -> Question`,
+  `${SEGMENT_FOR_QUESTION_FILTER} -> Question`,
+  `${SEGMENT_FOR_MODEL_FILTER} -> Model`,
+  `${SEGMENT_FOR_SEGMENT_FILTER} -> Segment`,
+  `${SEGMENT_FOR_METRIC_FILTER} -> Metric`,
+  `${METRIC_FOR_QUESTION_AGGREGATION} -> Question`,
+  `${METRIC_FOR_MODEL_AGGREGATION} -> Model`,
+  `${METRIC_FOR_METRIC_AGGREGATION} -> Metric`,
+  `${SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG} -> Question`,
+  `${SNIPPET_FOR_SNIPPET_TAG} -> Snippet`,
+];
+
 const MODELS_SORTED_BY_NAME = [
   MODEL_FOR_DASHBOARD_CARD,
   MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
@@ -135,15 +157,27 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("analysis", () => {
     it("should not show referenced entities", () => {
       setupEntities({ withReferences: true });
-      // These entities are referenced, so they should never appear in the
-      // unreferenced list — we can't poll for their presence. Wait for the
-      // global backfill so the analysis has run before asserting their absence.
       H.waitForBackfillComplete();
+      waitForSearchedUnreferencedAnalysis({
+        query: ENTITY_SEARCH_TERM,
+        expectedNames: SEARCHABLE_REFERENCING_ENTITY_NAMES,
+      });
+      waitForSearchedUnreferencedAnalysis({
+        query: TABLE_DISPLAY_NAME,
+        expectedNames: [TABLE_REFERENCING_ENTITY_NAME],
+      });
       H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("not.exist");
-        });
+
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
+      checkList({
+        visibleEntities: SEARCHABLE_REFERENCING_ENTITY_NAMES,
+        hiddenEntities: SEARCHABLE_ENTITY_NAMES,
+      });
+
+      H.DependencyDiagnostics.searchInput().clear().type(TABLE_DISPLAY_NAME);
+      checkList({
+        visibleEntities: [TABLE_REFERENCING_ENTITY_NAME],
+        hiddenEntities: [TABLE_DISPLAY_NAME],
       });
     });
   });
@@ -153,7 +187,10 @@ describe("scenarios > dependencies > unreferenced list", () => {
       setupEntities();
       waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type("tag");
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
+      checkList({ visibleEntities: [MODEL_FOR_QUESTION_DATA_SOURCE] });
+
+      H.DependencyDiagnostics.searchInput().clear().type("tag");
       checkList({
         visibleEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
@@ -221,6 +258,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
       });
 
+      interceptSaveListParams();
       H.popover().findByText("Include items in personal collections").click();
       checkList({
         visibleEntities: [
@@ -229,9 +267,16 @@ describe("scenarios > dependencies > unreferenced list", () => {
           SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         ],
       });
+      cy.wait("@saveListParams");
 
       cy.log("persisted after page reload");
       H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.filterButton().click();
+      H.popover().within(() => {
+        cy.findByRole("checkbox", { name: "Model" }).should("be.checked");
+        cy.findByRole("checkbox", { name: "Segment" }).should("not.be.checked");
+        cy.findByRole("checkbox", { name: "Metric" }).should("not.be.checked");
+      });
       H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
       checkList({
         visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
@@ -271,10 +316,12 @@ describe("scenarios > dependencies > unreferenced list", () => {
       });
 
       cy.log("sorted by name descending");
+      interceptSaveListParams();
       H.DependencyDiagnostics.list().findByText("Name").click();
       checkListSorting({
         visibleEntities: [...MODELS_SORTED_BY_NAME].reverse(),
       });
+      cy.wait("@saveListParams");
 
       cy.log("persisted after page reload");
       H.DependencyDiagnostics.visitUnreferencedEntities();
@@ -1102,6 +1149,49 @@ function waitForUnreferencedAnalysis(expectedNames: string[] = ENTITY_NAMES) {
     const presentNames = new Set(nodes.map(getNodeName));
     return expectedNames.every((name) => presentNames.has(name));
   });
+}
+
+// The unreferenced endpoint returns one page, so narrow it with `query` when
+// the expected entities are not all on the first page.
+function waitForSearchedUnreferencedAnalysis({
+  query,
+  expectedNames,
+  timeoutMs = 30000,
+}: {
+  query: string;
+  expectedNames: string[];
+  timeoutMs?: number;
+}): Cypress.Chainable {
+  const intervalMs = 100;
+
+  return cy
+    .request<ListUnreferencedGraphNodesResponse>({
+      method: "GET",
+      url: "/api/ee/dependencies/graph/unreferenced",
+      qs: { query, "include-personal-collections": true },
+    })
+    .then(({ body }) => {
+      const presentNames = new Set(body.data.map(getNodeName));
+      if (expectedNames.every((name) => presentNames.has(name))) {
+        return;
+      }
+      if (timeoutMs <= 0) {
+        throw new Error("Unreferenced entities analysis retry timeout");
+      }
+      cy.wait(intervalMs);
+      waitForSearchedUnreferencedAnalysis({
+        query,
+        expectedNames,
+        timeoutMs: timeoutMs - intervalMs,
+      });
+    });
+}
+
+function interceptSaveListParams() {
+  cy.intercept(
+    "PUT",
+    "/api/user-key-value/namespace/dependency_diagnostics/key/unreferenced",
+  ).as("saveListParams");
 }
 
 function checkList({

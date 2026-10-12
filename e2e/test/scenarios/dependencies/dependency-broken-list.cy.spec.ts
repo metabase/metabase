@@ -1,6 +1,11 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { DependencyNode, TransformId } from "metabase-types/api";
+import type {
+  DependencyNode,
+  DependencySortColumn,
+  SortDirection,
+  TransformId,
+} from "metabase-types/api";
 
 const { H } = cy;
 
@@ -61,15 +66,16 @@ const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
-  TABLE_BASED_QUESTION, // 1 error: PRICE
-  TABLE_BASED_MODEL, // 1 error: AMOUNT
-  TABLE_DISPLAY_NAME, // 1 error: SCORE; plus 1 "soft" error on STATUS, which is only in a `:fields` list.
+  TABLE_DISPLAY_NAME, // 1-2 errors: SCORE; STATUS only if the join condition counts
+  TABLE_BASED_QUESTION, // 3 errors: PRICE, TAX, DISCOUNT
+  TABLE_BASED_MODEL, // 4 errors: AMOUNT, QUANTITY, SUBTOTAL, TOTAL
 ];
 
+// Ties are broken by entity id, and the question is created before the model.
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
   TABLE_BASED_QUESTION, // 1 question
   TABLE_BASED_MODEL, // 1 model
-  TABLE_DISPLAY_NAME, // 6 questions
+  TABLE_DISPLAY_NAME, // 5 questions
 ];
 
 const BROKEN_DEPENDENTS = [
@@ -117,6 +123,9 @@ describe("scenarios > dependencies > broken list", () => {
       missingColumns: ["score"],
       brokenDependents: BROKEN_TABLE_DEPENDENTS,
     });
+    H.DependencyDiagnostics.Sidebar.brokenDependentsSection()
+      .findByText(TABLE_BASED_QUESTION_BROKEN_FIELD)
+      .should("not.exist");
     H.expectUnstructuredSnowplowEvent({
       event: "dependency_diagnostics_entity_selected",
       triggered_from: "broken",
@@ -127,7 +136,7 @@ describe("scenarios > dependencies > broken list", () => {
     H.DependencyDiagnostics.list().findByText(TABLE_BASED_QUESTION).click();
     checkSidebar({
       title: TABLE_BASED_QUESTION,
-      missingColumns: ["PRICE"],
+      missingColumns: ["PRICE", "TAX", "DISCOUNT"],
       brokenDependents: BROKEN_QUESTION_DEPENDENTS,
     });
 
@@ -135,7 +144,7 @@ describe("scenarios > dependencies > broken list", () => {
     H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
     checkSidebar({
       title: TABLE_BASED_MODEL,
-      missingColumns: ["AMOUNT"],
+      missingColumns: ["AMOUNT", "QUANTITY", "SUBTOTAL", "TOTAL"],
       brokenDependents: BROKEN_MODEL_DEPENDENTS,
     });
 
@@ -214,6 +223,7 @@ describe("scenarios > dependencies > broken list", () => {
   it("should sort entities", () => {
     H.DependencyDiagnostics.visitBrokenDependencies();
     H.DependencyDiagnostics.searchInput().type("test");
+    cy.wait("@breakingEntities");
 
     cy.log("sorted by name by default");
     checkListSorting({
@@ -221,53 +231,69 @@ describe("scenarios > dependencies > broken list", () => {
     });
 
     cy.log("sorted by name ascending");
-    H.DependencyDiagnostics.list().findByText("Dependency").click();
+    sortList({ header: "Dependency", column: "name", direction: "asc" });
     checkListSorting({
       visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
     });
 
     cy.log("sorted by name descending");
-    H.DependencyDiagnostics.list().findByText("Dependency").click();
+    sortList({ header: "Dependency", column: "name", direction: "desc" });
     checkListSorting({
       visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_NAME].reverse(),
     });
 
     cy.log("sorted by location ascending");
-    H.DependencyDiagnostics.list().findByText("Location").click();
+    sortList({ header: "Location", column: "location", direction: "asc" });
     checkListSorting({
       visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_LOCATION,
     });
 
     cy.log("sorted by location descending");
-    H.DependencyDiagnostics.list().findByText("Location").click();
+    sortList({ header: "Location", column: "location", direction: "desc" });
     checkListSorting({
       visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_LOCATION].reverse(),
     });
 
-    cy.log("sorted by dependents errors ascending");
-    H.DependencyDiagnostics.list().findByText("Problems").click();
+    cy.log("sorted by dependents errors descending");
+    sortList({
+      header: "Problems",
+      column: "dependents-errors",
+      direction: "desc",
+    });
     checkListSorting({
       visibleEntities: [
         ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
       ].reverse(),
     });
 
-    cy.log("sorted by dependents errors descending");
-    H.DependencyDiagnostics.list().findByText("Problems").click();
+    cy.log("sorted by dependents errors ascending");
+    sortList({
+      header: "Problems",
+      column: "dependents-errors",
+      direction: "asc",
+    });
     checkListSorting({
       visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
     });
 
-    cy.log("sorted by dependents with errors ascending");
-    H.DependencyDiagnostics.list().findByText("Broken dependents").click();
+    cy.log("sorted by dependents with errors descending");
+    sortList({
+      header: "Broken dependents",
+      column: "dependents-with-errors",
+      direction: "desc",
+    });
     checkListSorting({
       visibleEntities: [
         ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
       ].reverse(),
     });
 
-    cy.log("sorted by dependents with errors descending");
-    H.DependencyDiagnostics.list().findByText("Broken dependents").click();
+    cy.log("sorted by dependents with errors ascending");
+    sortList({
+      header: "Broken dependents",
+      column: "dependents-with-errors",
+      direction: "asc",
+    });
     checkListSorting({
       visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
     });
@@ -445,7 +471,12 @@ function createQuestionContent() {
         name: QUESTION_BASED_QUESTION_BROKEN_FILTER,
         query: {
           "source-table": `card__${card.id}`,
-          filter: [">", ["field", "PRICE", { "base-type": "type/Float" }], 10],
+          filter: [
+            "and",
+            [">", ["field", "PRICE", { "base-type": "type/Float" }], 10],
+            ["=", ["field", "TAX", { "base-type": "type/Float" }], 0],
+            ["=", ["field", "DISCOUNT", { "base-type": "type/Float" }], 0],
+          ],
         },
       });
     });
@@ -468,6 +499,12 @@ function createModelContent() {
         type: "model",
         query: {
           "source-table": `card__${card.id}`,
+          filter: [
+            "and",
+            ["=", ["field", "QUANTITY", { "base-type": "type/Integer" }], 0],
+            ["=", ["field", "SUBTOTAL", { "base-type": "type/Integer" }], 0],
+            ["=", ["field", "TOTAL", { "base-type": "type/Integer" }], 0],
+          ],
           aggregation: [
             ["distinct", ["field", "AMOUNT", { "base-type": "type/Integer" }]],
           ],
@@ -548,6 +585,24 @@ function checkSidebar({
       });
     }
   });
+}
+
+// Each call must request a new column and direction, or the list is served from
+// the cache and no request is sent.
+function sortList({
+  header,
+  column,
+  direction,
+}: {
+  header: string;
+  column: DependencySortColumn;
+  direction: SortDirection;
+}) {
+  H.DependencyDiagnostics.list().findByText(header).click();
+  cy.wait("@breakingEntities")
+    .its("request.url")
+    .should("include", `sort-column=${column}`)
+    .and("include", `sort-direction=${direction}`);
 }
 
 function checkListSorting({ visibleEntities }: { visibleEntities: string[] }) {
