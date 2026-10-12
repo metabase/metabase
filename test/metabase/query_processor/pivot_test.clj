@@ -21,7 +21,9 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -117,10 +119,66 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
-  ;; TODO -- we should require these columns to be distinct as well (I think?)
-  ;; TODO -- require all numbers to be positive
-  ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+  (testing "Should throw an Exception if pivot-rows or pivot-cols contain duplicates"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-rows: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [0 0 1] [] true true)))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-cols: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [] [1 1] true true))))
+  (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"pivot-rows and pivot-cols must not overlap"
+         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true)))))
+
+(deftest ^:parallel breakout-combinations-powerset-cap-test
+  (let [max-breakouts @#'qp.pivot/max-powerset-breakouts]
+    (testing "the powerset fallback is allowed up to the cap"
+      (is (= (long (Math/pow 2 max-breakouts))
+             (count (#'qp.pivot/breakout-combinations max-breakouts [] [] true true)))))
+    (testing "the powerset fallback is rejected past the cap, before any combinations are enumerated"
+      (doseq [num-breakouts [(inc max-breakouts) 30 62]]
+        (is (=? {:type          :invalid-query
+                 :num-breakouts num-breakouts}
+                (try
+                  (#'qp.pivot/breakout-combinations num-breakouts [] [] true true)
+                  nil
+                  (catch ExceptionInfo e
+                    (ex-data e)))))))
+    (testing "explicit pivot-rows/pivot-cols only produce a linear number of combinations, so they are not capped"
+      (is (= 60
+             (count (#'qp.pivot/breakout-combinations 30 (range 29) [29] true true)))))))
+
+(defn- many-breakouts-query
+  "A query against `checkins` with `n` distinct breakouts (the date bucketed by different temporal units)."
+  [n]
+  (let [mp    (mt/metadata-provider)
+        units [:day :week :month :quarter :year :day-of-week :day-of-month :day-of-year
+               :week-of-year :month-of-year :quarter-of-year]
+        date  (lib.metadata/field mp (mt/id :checkins :date))
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                  (lib/aggregate (lib/count)))
+        cols  (concat (map #(lib/with-temporal-bucket date %) units)
+                      (map #(lib.metadata/field mp (mt/id :checkins %)) [:id :user_id :venue_id]))]
+    (assert (<= n (count cols)))
+    (reduce lib/breakout query (take n cols))))
+
+(deftest powerset-breakout-cap-run-pivot-query-test
+  (testing "a pivot query with no pivot rows/cols and too many breakouts fails as an invalid query instead of
+           enumerating every breakout combination"
+    (let [query (qp/userland-query (many-breakouts-query (inc @#'qp.pivot/max-powerset-breakouts)))]
+      (is (=? {:status     :failed
+               :error      #"Too many breakouts.*"
+               :error_type :invalid-query}
+              (qp.pivot/run-pivot-query query))))))
+
+;; TODO -- we should require these columns to be distinct as well (I think?)
+;; TODO -- require all numbers to be positive
+;; TODO -- can you specify something in both pivot-rows and pivot-cols?
 
 (defn- test-query []
   (mt/dataset test-data
