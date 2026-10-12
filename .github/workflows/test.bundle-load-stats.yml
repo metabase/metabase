@@ -73,7 +73,7 @@ jobs:
     needs: [uberjar-built]
     if: ${{ needs.uberjar-built.outputs.found == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       HEAD_SHA: ${{ inputs.commit || github.event.workflow_run.head_sha }}
       MB_JETTY_PORT: "4000"
